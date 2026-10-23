@@ -420,7 +420,7 @@ func (s staleCause) Error() string { return s.What }
 // what went stale, watched anew; the time limit is the call's, over all
 // its turns. A turn that ends by a reply of the class capacity is reported,
 // then, while the call has made fewer than capacityTurns such turns, made
-// again as it was given, in the session it reported, else in the one it
+// again in the session it reported, its message "Go on.", else as it
 // was given, once capacityWait of their count has passed on the timer;
 // unless it reported a session other than the one it resumed, ctx or the
 // time limit has ended, or the time limit leaves no more than the wait,
@@ -498,6 +498,7 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 			}
 			if session := last.session(); session != "" {
 				turn.Session = session
+				turn.Prompt = "Go on."
 			}
 			continue
 		}
@@ -544,22 +545,24 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 }
 
 // capacityTurns is the most turns at capacity a call makes.
-const capacityTurns = 4
+const capacityTurns = 5
 
 // capacityWait is the wait before the retry that follows turns at
 // capacity: 30 seconds after the first, a minute after the second, three
-// after the third. The waits are fixed rather than drawn at random: the
-// load is the provider's, which the few calls of a run retrying together
-// do not change. They grow because an account's capacity limit lasts
-// minutes, not seconds.
+// after the third, five after the fourth. The waits are fixed rather
+// than drawn at random: the load is the provider's, which the few calls
+// of a run retrying together do not change. They grow because an account's
+// capacity limit lasts minutes, not seconds.
 func capacityWait(turns int) time.Duration {
 	switch turns {
 	case 1:
 		return 30 * time.Second
 	case 2:
 		return time.Minute
+	case 3:
+		return 3 * time.Minute
 	}
-	return 3 * time.Minute
+	return 5 * time.Minute
 }
 
 // pause waits wait on the timer, unless ctx ends first, and tells whether
