@@ -1,12 +1,13 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished } from "vitest";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PairsResultScreen } from "../src/PairsResultScreen.tsx";
+import { pairsResultType, pairsResultWidth, PORTRAIT_PAIRS_RESULT } from "../src/pairsResultLayout.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { withPictures } from "./pictures.tsx";
 import { SHIPPED_PALS, fakeBodyPicture } from "./support.ts";
-import { openWindow, windowsAnd } from "./windowSizes.ts";
+import { openWindow, styleAt, windowsAnd, type WindowSize } from "./windowSizes.ts";
 
 // jsdom does not lay out a page. Read the delivered CSS and budget its
 // grid, rows and text using conservative widths in ems: Lexend's bold
@@ -16,7 +17,7 @@ const FIT_TABLE = windowsAnd([1366, 1024]).flatMap(([width, height]) => [["Explo
 const WORD_EMS: Record<string, number> = {
   "PLAY AGAIN": 7.2, HOME: 3.2, BACK: 2.9, "WELL DONE!": 7.5, "FIRST BEST!": 7.6,
   "ЕЩЁ РАЗ": 5.8, ДОМОЙ: 4.1, НАЗАД: 3.7, "МОЛОДЕЦ!": 6.8, "ПЕРВЫЙ РЕКОРД!": 10.8,
-  BEST: 3.2, РЕКОРД: 5.2, NEW: 2.9, НОВЫЙ: 4.4
+  BEST: 3.2, РЕКОРД: 5.2, NEW: 2.9, НОВЫЙ: 4.4, "2": 0.7
 };
 
 const element = (selector: string) => {
@@ -130,6 +131,83 @@ describe.each(FIT_TABLE)("%s's %i-dinosaur result at %i by %i", (_, count, width
       const best = style(".best-score");
       expect(sides(best) + 22 + wordWidth(text.best, pixels(best.fontSize)) + 2 * 0.75 * pixels(best.fontSize) + 20 + 2 * 0.75 * pixels(style(".best-score-value").fontSize) + 4 * gap(best)).toBeLessThanOrEqual(right);
       expect([screen.getByLabelText(text.tries).textContent, screen.getByLabelText(text.starsEarned).textContent, screen.getByLabelText(text.bestScore).textContent]).toEqual(["20", "★7", `${text.best}20`]);
+    }
+  );
+});
+
+// The document stands in a tall window, as App marks it.
+function tallWindow(size: WindowSize) {
+  openWindow(...size);
+  document.documentElement.dataset.size = "tall";
+  onTestFinished(() => void delete document.documentElement.dataset.size);
+}
+
+// find-the-pair-result-portrait.feature's "Every word fits the narrowest
+// width": Hatchling's climb, a first best and a new level, and a
+// Paleontologist board, a first best, upright in a 600 by 1000 window.
+const UPRIGHT_BOARDS = [
+  ["Hatchling's climb", 3, { level: 2, rows: 2, columns: 4 }],
+  ["Paleontologist", 12, null]
+] as const;
+
+describe.each(UPRIGHT_BOARDS)("%s's %i-dinosaur result upright", (_, count, levelUp) => {
+  it.each(LANGUAGES.flatMap((language) => [0, 16].map((scrollbar) => [language, scrollbar] as const)))(
+    "keeps every word on its line in %s at 600 by 1000 with a %i-pixel scrollbar",
+    (language, scrollbar) => {
+      const size: WindowSize = [600, 1000];
+      tallWindow(size);
+      const sizes = PORTRAIT_PAIRS_RESULT;
+      const width = pairsResultWidth(600, 0, 0, scrollbar);
+      const type = pairsResultType(width, count);
+      const text = TEXTS[language];
+      render(
+        <PairsResultScreen
+          language={language}
+          pals={SHIPPED_PALS.slice(0, count).map(({ id, name }, at) => ({ id, name: name[language], picture: fakeBodyPicture(id), newlyFound: at >= count - 3 }))}
+          tries={20} stars={7} best={20} beaten={undefined} celebration="first-best" levelUp={levelUp}
+          onPlayAgain={() => {}} onBack={() => {}} onHome={() => {}} width={width}
+        />,
+        withPictures
+      );
+      const at = (selector: string) => styleAt(element(selector), size);
+      const sides = (selector: string) => at(selector).px("padding-left") + at(selector).px("padding-right");
+      const words = (words: string, size: number) => (WORD_EMS[words] ?? NaN) * size;
+
+      // Every name and NEW on one line on its card, as wide as the grid's
+      // three columns leave it.
+      const card = (Math.min(sizes.foundMaximum, width) - 2 * at(".pairs-found").columnGap()) / 3;
+      const nameSize = Math.min(sizes.nameMaximum, (card - 2 * sizes.namePadding) / sizes.nameEms);
+      expect(at(".pairs-found-name").value("white-space")).toBe("nowrap");
+      const allNames = SHIPPED_PALS.map(({ name }) => name[language].toLocaleUpperCase(language));
+      expect(allNames.filter((name) => !((NAME_EMS[name] ?? Infinity) * nameSize <= card - sides(".pairs-found-name")))).toEqual([]);
+      expect(words(text.newlyFound, at(".pairs-new-badge").px("font-size")) + sides(".pairs-new-badge") + 20 + at(".pairs-new-badge").columnGap() + at(".pairs-new-badge").px("right")).toBeLessThanOrEqual(card);
+
+      // Each badge on one line across the width; side by side where both
+      // fit, which Russian's do not.
+      const celebration = words(text.celebrations["first-best"].text, at(".celebration").px("font-size")) + sides(".celebration") + 30 + at(".celebration").columnGap();
+      expect(celebration).toBeLessThanOrEqual(width);
+      if (levelUp) {
+        const next = levelUp.columns * 12 + (levelUp.columns - 1) * 3;
+        const level = 34 + words(String(levelUp.level), at(".pairs-level-up").px("font-size")) + next + 2 * at(".pairs-level-up").columnGap() + sides(".pairs-level-up");
+        expect(level).toBeLessThanOrEqual(width);
+        expect([at(".pairs-badges").value("flex-wrap"), celebration + at(".pairs-badges").columnGap() + level <= width]).toEqual(["wrap", language === "en"]);
+      }
+
+      // PLAY AGAIN, BACK and HOME side by side, each on one line in the
+      // window's one type, at least 22.
+      const buttons = [text.playAgain, text.back, text.home].map((name) => screen.getByRole("button", { name }));
+      const across = buttons.reduce((sum, button) => {
+        const own = styleAt(button, size);
+        expect([own.value("white-space"), own.px("font-size")]).toEqual(["nowrap", type.action]);
+        return sum + own.px("padding-left") + own.px("padding-right") + 28 + own.columnGap() + words(button.textContent ?? "", own.px("font-size"));
+      }, 2 * at(".result-actions").columnGap());
+      expect(across).toBeLessThanOrEqual(width + 1e-9);
+      expect(type.action).toBeGreaterThanOrEqual(22);
+
+      // WELL DONE! and the best, each on one line.
+      expect(words(text.wellDone, at(".result-title").px("font-size"))).toBeLessThanOrEqual(width);
+      const best = at(".best-score");
+      expect(sides(".best-score") + 22 + words(text.best, best.px("font-size")) + 2 * 0.75 * at(".best-score-value").px("font-size") + 3 * best.columnGap()).toBeLessThanOrEqual(width);
     }
   );
 });
