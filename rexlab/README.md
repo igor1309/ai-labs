@@ -10,6 +10,5 @@ themes.
 
 - Behaviour: `docs/features/` (Gherkin).
 - Architecture: `docs/mvp-infrastructure.md`.
-- Dinosaur pictures: `art/style.md`; placeholders stand in until the
-  artwork is generated.
+- Dinosaur pictures: `art/style.md`.
 - Running it locally, commands and releases: `AGENTS.md`.
