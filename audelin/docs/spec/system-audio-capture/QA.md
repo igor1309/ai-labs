@@ -1,69 +1,81 @@
 # System audio capture — QA
 
-Most rows run through a fake of the Core Audio binding. The fake lists
-processes, accepts or refuses a tap, delivers mono buffers with timestamps
-at a rate it can change, and stops its device on cue. The binding runs for
-real over a tone played by `afplay` into a tap of that process alone, muted
-when tapped, so the test makes no sound. The whole capture is proven on a
-real Zoom call by the user spec (LAB-408), which is also where the call
-staying audible is checked.
+Most rows run through a fake of the Core Audio binding. The fake records
+what the capture asks of it (the tap's processes or its "all but" list, a
+mono mix, playback unmuted, a device start) and plays a distinct tone per
+process only by what was asked, so a wrong request fails the row. It
+accepts or refuses each request, changes its rate on a device change, and
+stops its device on cue. The binding runs for real over a muted `afplay`
+tone, so the test makes no sound. The real Zoom call of the user spec
+(LAB-408) proves the whole path and that the call stays audible.
 
-## S-1 The chosen processes' sound is heard
+## S-1 A named process is heard
 
-Fake: the call app's buffers come out in order, and the tap is asked for
-call app processes' choice with a mono mixdown. Real: the muted `afplay`
-tone is read back above the noise floor. Evidence: Missing.
+Fake: the tap is asked for the named process, mixed to mono with playback
+unmuted, and its tone is read back. Real: the muted `afplay` tone is read
+back above the noise floor. Evidence: Missing.
 
-## S-2 A helper the call app opens later is heard
+## S-2 Newly named processes are heard in the same capture
 
-Fake: a helper with its own tone appears in the process list; on the next
-choice its tone comes out of the same audio, with no new start. A refused
-update keeps the first process's tone coming. Evidence: Missing.
+Fake: a second process is named mid-capture; its tone follows in the same
+audio with no new start. Evidence: Missing.
 
-## S-3 Sound keeps its time after a quiet start
+## S-5 A new output device keeps the sound heard
 
-Fake: the first buffer arrives 3 s of tap time after the start, and the
-track opens with 3 s of silence. Evidence: Missing.
-
-## S-4 Sound keeps its time after a quiet stretch
-
-Fake: the buffers' timestamps jump by 2 s, and 2 s of silence fill the gap.
-Evidence: Missing.
-
-## S-5 A new output device keeps the call heard
-
-Fake: the output device changes and its format reads 24 kHz instead of
-48; the tone after the change comes out at 24 kHz, and the time before it
-is unchanged. Evidence: Missing.
+Fake: the device changes and the format reads 24 kHz instead of 48; the
+pieces after it carry 24 kHz. Evidence: Missing.
 
 ## S-6 A capture that cannot start fails
 
-Fake: each starting step in turn (tap, format, device, callback, device
-start) refuses; the capture fails, and nothing it made is left behind.
-Evidence: Missing.
+Fake: each starting step in turn refuses; the capture fails, and what it
+made is released. Evidence: Missing.
 
 ## S-7 A capture the system stops fails
 
-Fake: the device stops after some buffers; the capture reports the failure.
-Evidence: Missing.
+Fake: the device stops after some buffers; the capture reports the
+failure. Evidence: Missing.
 
 ## S-8 A failed capture keeps what it heard
 
-Fake: the buffers before the device stopped are all read before the audio
-ends. Evidence: Missing.
+Fake: every buffer before the stop is read before the audio ends. Evidence:
+Missing.
 
-## S-9 Stopping ends the track
+## S-9 Stopping ends the capture
 
 Fake: stopping ends the audio and releases the tap and device. Real: a
 muted `afplay` capture stopped. Evidence: Missing.
 
 ## S-10 A capture can follow a stopped one
 
-Fake: after the first is stopped, a second capture's tone is read back.
-Real: two muted `afplay` captures in a row, each tone read back. Evidence:
-Missing.
+Fake and real: after the first is stopped, a second capture's tone is read
+back. Evidence: Missing.
 
 ## S-11 A capture that heard nothing ends cleanly
 
-Fake: a tap that never delivers a buffer is stopped; the audio ends with
-no samples and no failure. Evidence: Missing.
+Fake: a tap that never delivers is stopped; the audio ends with no pieces
+and no failure. Evidence: Missing.
+
+## S-12 A process I did not name is left out
+
+Fake: the tap is asked for the named process only; another process's tone
+is absent. Evidence: Missing.
+
+## S-13 A process I left out is not heard
+
+Fake: the tap is asked for "all but" the left-out process; its tone is
+absent. Evidence: Missing.
+
+## S-14 A process that starts later is heard
+
+Fake: under "all but", a process added after the start plays; its tone is
+read back. Evidence: Missing.
+
+## S-15 A naming the system refuses keeps the old one
+
+Fake: a new naming is refused; the first process's tone keeps coming and
+the capture does not fail. Evidence: Missing.
+
+## S-17 Sound is read without muting it
+
+Fake: the tap is asked to leave playback unmuted. The real Zoom call of the
+user spec hears the far side while recording. Evidence: Missing.

@@ -2,6 +2,12 @@
 
 ## 2026-10-22
 
+- Session, automatic recording and timed track are gone, after the owner's
+  audit: files are decorators on the captures, when a recording runs waits
+  for the app's main shape, and a tap on this Mac leaves no gaps to time
+  ([measured](research/system-audio.md#measured-on-this-mac)). Audio
+  processes and call watch are one Core Audio wrapper that streams calls
+  from Core Audio's own notifications instead of re-reading a list.
 - The call's audio has two specs: call app processes picks Amanu's
   processes to tap (the call app and its helpers, else every app but
   Audelin), and system audio capture taps them, keeps call time through

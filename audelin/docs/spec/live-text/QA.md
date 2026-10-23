@@ -1,6 +1,6 @@
 # Live text — QA
 
-Live text is a Core: every row drives it through a fake recogniser and a
+Live text is no adapter: every row drives it through a fake recogniser and a
 fake audio source, and reads the segments it publishes.
 
 ## S-1 Words appear while they are spoken

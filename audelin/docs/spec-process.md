@@ -48,12 +48,18 @@ before writing on (owner, 2026-10-22).
   Each such decision is one line in `## Decided`, above the scenarios, with
   its grounds, so the owner can overturn it. A gap is never handed to the
   owner as an open question (owner, 2026-10-22).
-- **Prior art before a decision.** Read how the closest open-source app does
-  it, from its source: Amanu first, then the others in `docs/research/`.
-  Follow it, and say so in the line. A line that departs from it names the
-  evidence that it is wrong for Audelin; a preference is not evidence
-  (owner, 2026-10-22: "do grounding first", "why do you think amanu is doing
-  it wrong?").
+- **The shape comes from [ARCHITECTURE.md](../ARCHITECTURE.md),** not from
+  another app. Before drafting, check the component against its rules: it
+  owns the interfaces it depends on and names no other component, only an
+  adapter touches the outside world, only the root wires, and retries and
+  logging are decorators at the root (owner, 2026-10-22: "amanu is not an
+  oracle, my approach is").
+- **Prior art is evidence, read before a decision.** Read how the open-source
+  apps in `docs/research/` do it, from their source, for facts about the
+  platform and its failures: what an API does, what broke and why. Cite
+  them in the line. They never decide a component's structure or wiring,
+  and a departure from them needs evidence, not a preference (owner,
+  2026-10-22: "do grounding first").
 - **Every `## Decided` line is challenged by Codex** before the spec is
   committed, including lines added to a spec already done. Repeat until a
   round finds nothing new.
@@ -66,7 +72,8 @@ before writing on (owner, 2026-10-22).
 ## QA.md
 
 One row per scenario, headed by its id and name from `SPEC.md`: how the
-scenario is driven and what evidence proves it. Cores are driven through
+scenario is driven and what evidence proves it. Components that are not
+adapters are driven through
 fake ports and recorded fixtures, adapters for real on this Mac or through
 a fake of their system binding (§ Building), and the user spec on a real
 call. A row has evidence or reads Missing. Verdicts go
@@ -84,6 +91,12 @@ the red runs, and its review finds the missing tests afterwards (six on
 
 A review runs on a detached worktree at the candidate commit, and nothing
 is committed to the reviewed branch while it runs.
+
+A run left unattended goes through `scripts/agister-retry.sh`: it runs again
+only after capacity or a rate limit, stops on any other end, and prints a
+line per try for a watcher. A run that completes without committing is
+read, not run again: the build's own sandbox may fail what the test step
+passes (2026-10-23).
 
 A hands-on trial, such as a preview app, states before it runs what it can
 and cannot show: the live text preview heard only the microphone, which

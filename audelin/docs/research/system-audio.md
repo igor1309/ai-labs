@@ -78,12 +78,39 @@ A Core Audio process tap, because:
 - it needs the narrower permission;
 - it is what Amanu, the app the owner liked most, does.
 
-Amanu's tap is the default to follow. Nothing read shows it wrong for its
-case: the scope and auto-start differ in Muesli because Muesli records
-everything from a calendar event, which Amanu does not. The one gap is the
-restart, which Amanu names itself. Audelin's 30 s files would let a rebuilt
-tap start a new file, so the capture fails and leaves retrying to the
-recorder ([spec](../spec/system-audio-capture/SPEC.md)).
+Nothing read shows Amanu's tap wrong for the call: Muesli's scope and
+start differ because it records everything from a calendar event. The one
+gap is the restart, which Amanu names itself. How Audelin splits the work
+follows its own architecture, not Amanu's classes: the tap is one adapter,
+the process list another, and choosing the call's processes is a component
+of its own
+([specs](../spec/system-audio-capture/SPEC.md)).
 
-The adapter maps tap buffers to `AudioChunk`. Recording to disk is Session's
-job, not the adapter's.
+The adapter maps tap buffers to `AudioChunk`. Writing them to disk is a
+decorator on the capture, wired at the composition root.
+
+## Measured on this Mac
+
+2026-10-22, macOS 26 (Darwin 25.6), with the probes in [probes](probes/),
+each on a muted `afplay` child it starts itself:
+
+- **A tap leaves no gaps** (`tap-silence.swift`). A tap on `afplay`, with
+  2 s of digital silence in the file, the process frozen 2 s by `SIGSTOP`,
+  and 2 s after it quit, gave 47 callbacks and about 48,000 frames a
+  second throughout, sample times without a break, zeros in each quiet
+  stretch. Muesli's "a tap delivers nothing while nothing plays" does not
+  hold here, so a track needs no gap filling.
+- **Process changes are told** (`process-notifications.swift`). The
+  process list's change fires when a process appears and when it leaves.
+  On a process, `IsRunning` (`pir?`) and its device list fire when it
+  starts playing; `IsRunningOutput` changed (0 to 1) but was never told on
+  its own, so it is re-read when `IsRunning` fires. A frozen process stays
+  running.
+- **Microphone use is told** (`mic-notifications.swift`, the owner driving
+  the apps). Voice Memos, a Safari tab (`com.apple.WebKit.GPU`) and Amanu
+  each starting and stopping were all told, the recording flag
+  (`IsRunningInput`) re-read on the notification: a start came on
+  `IsRunning` (`pir?`) or the device list (`pdv#`), a stop on the device
+  list. Voice Memos' flag flickered on, off and on within 70 ms of its
+  start. One change went untold: Siri's always-on listener
+  (`com.apple.CoreSpeech`) stopping, seen only by sampling every 0.5 s.

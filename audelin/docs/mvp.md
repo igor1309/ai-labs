@@ -23,10 +23,11 @@ Taken from the spike ([tests.md](research/tests.md) run 3) and from the chat sur
 ([chat-khakhalev-2026-10-21.md](research/chat-khakhalev-2026-10-21.md) § 3–4).
 
 1. **Record first.** Mic and call audio go to disk as two separate tracks, in
-   short pieces, before anything reads them. The live text is a view over
-   that audio, so a crash, a network switch or an ASR stall does not lose the
-   call. Granola lost the other side after a Wi-Fi/VPN switch and kept no
-   audio to redo it.
+   short pieces, whatever recognition does. Live text hears the same audio
+   as it comes, and recognition failing or lagging never costs the call; a
+   crash, a network switch or an ASR stall does not lose it (owner,
+   2026-10-22: live text need not read the files). Granola lost the other
+   side after a Wi-Fi/VPN switch and kept no audio to redo it.
 2. **Two tracks give speakers for free:** mic is «я», call audio is «они».
    Splitting the remote side into people comes later.
 3. **Only convert to mono 16 kHz PCM before ASR.** No gain, compression or
@@ -111,8 +112,12 @@ Screen decisions (owner, 2026-10-21, after the design review):
 Controls (owner, 2026-10-21), following Amanu's two checkboxes:
 
 - «Записывать звонки автоматически»: when on, recording starts when a
-  call starts and stops when it ends. A recording started by hand is
-  stopped by hand. This is v1, not v3.
+  call starts and stops when it ends. A recording started by hand during
+  a call stops when that call ends, because Audelin may not have been
+  running when the call started; one started with no call on runs until
+  stopped (owner, 2026-10-22, correcting "a recording started by hand is
+  stopped by hand").
+  This is v1, not v3.
 - «Живой текст»: when off, the call is only recorded; its text comes from
   the final pass (v3). Switching it on mid-call starts live text and fills
   the minutes already recorded from the audio on disk, marked «дописано
