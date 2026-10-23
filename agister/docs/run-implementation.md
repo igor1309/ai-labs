@@ -1630,7 +1630,9 @@ or a repeat's body.
   sequence does.
 - A **repeat** binds its state from its `state`, then runs its body;
   after each pass that completes it binds its next state from `next`,
-  reading the pass's outputs and the state before it, and then reads
+  reading the pass's outputs and the state before it, a name `next`
+  does not bind keeping its value; a body sees the state of the repeats
+  around it, its own over theirs; and then reads
   `until`: where it holds, or where the body has run `max` times, the
   repeat ends, else the next pass starts. The condition is never read
   before the first pass. A body item that does not complete ends the
@@ -1658,12 +1660,13 @@ or a repeat's body.
 
 **The composition** builds core's items from resolve's, every arm and
 body step planned as a step in sequence is: every step is planned,
-those of arms a run may not take too. `notRunOf` no longer
-names a branch or a repeat; it still names a workflow item wherever it
-is, an item of a parallel that is not a step, and a field read within a
-parallel's outputs. `agister check` follows, as it shares that list.
-A call's id is `<run id>/<step>/<pass>` in a repeat; its
-progress lines name it so; three lines more: `· <branch>: took <arm>`,
+those of arms a run may not take too. `notRunOf` no longer names a
+branch or a repeat; it still names a workflow item wherever it is, an
+item of a parallel that is not a step, a field read within a parallel's
+outputs, a step's session read as a value, and an item named as a pass
+is, ending in `/<n>`, whose call id a pass could share. `agister check`
+follows, as it shares that list. A call's id is
+`<run id>/<step>/<pass>` in a repeat; its progress lines name it so; three lines more: `· <branch>: took <arm>`,
 `· <repeat>: ended pass <n>`, `· <repeat>: stopped <why> after <n> passes`.
 `events.jsonl` gains the kinds `branch`, `pass` and `stopped`:
 
