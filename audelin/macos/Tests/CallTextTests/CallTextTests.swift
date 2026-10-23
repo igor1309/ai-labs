@@ -88,8 +88,10 @@ struct CallTextTests {
         await rig.listening()
         await rig.microphone.send(tone(0, sampleRate: sampleRate))
         await rig.other.send(tone(100, at: 0, sampleRate: sampleRate))
-        await rig.microphoneWritten.append(tone(0, sampleRate: sampleRate))
-        await rig.otherWritten.append(tone(100, at: 0, sampleRate: sampleRate))
+        for range in [0...2, 3...5, 6...9] {
+            await rig.microphoneWritten.append(tones(range, at: Double(range.lowerBound) / sampleRate, sampleRate: sampleRate))
+            await rig.otherWritten.append(tones((range.lowerBound + 100)...(range.upperBound + 100), at: Double(range.lowerBound) / sampleRate, sampleRate: sampleRate))
+        }
         let before = await rig.call.state
         #expect(before.entries.map(\.text.pending) == ["word0", "word100"])
         await rig.microphoneText.holdNextHearing()
@@ -98,8 +100,6 @@ struct CallTextTests {
         await rig.call.setEnabled(false)
         await inFlight.value
         for index in 1..<8 {
-            await rig.microphoneWritten.append(tone(index, sampleRate: sampleRate))
-            await rig.otherWritten.append(tone(index + 100, at: Double(index) / sampleRate, sampleRate: sampleRate))
             await rig.microphone.send(tone(index, sampleRate: sampleRate))
             await rig.other.send(tone(index + 100, at: Double(index) / sampleRate, sampleRate: sampleRate))
         }
@@ -115,10 +115,10 @@ struct CallTextTests {
         #expect(resumed.entries.filter { $0.text.start > 0 }.allSatisfy { $0.writtenLater })
         #expect(await rig.microphoneWritten.reads == [(2 / sampleRate)..<(7 / sampleRate + 1 / sampleRate)])
         #expect(await rig.otherWritten.reads == [(1 / sampleRate)..<(7 / sampleRate + 1 / sampleRate)])
-        await rig.microphone.send(tone(8, sampleRate: sampleRate))
+        await rig.microphone.send(tones(8...9, at: 8 / sampleRate, sampleRate: sampleRate))
         let live = await rig.call.state
-        #expect(live.entries.last?.text.pending == "word8")
-        #expect(live.entries.last?.writtenLater == false)
+        #expect(live.entries.map(\.text.pending) == (0...7).flatMap { ["word\($0)", "word\($0 + 100)"] } + ["word8", "word9"])
+        #expect(live.entries.suffix(2).allSatisfy { !$0.writtenLater })
         await rig.call.stop()
     }
 
@@ -148,20 +148,87 @@ struct CallTextTests {
         await rig.call.stop()
     }
 
-    @Test func liveTextFailureIsReportedAndKeepsTheTextSoFar() async throws {
+    @Test(arguments: [false, true])
+    func liveTextFailureIsReportedAndKeepsTheTextSoFar(onCallTrack: Bool) async throws {
 
         let rig = Rig()
         await rig.call.start()
         await rig.listening()
         await rig.microphone.send(tone(0))
+        await rig.other.send(tone(100, at: 0))
         let before = await rig.call.state
-        await rig.microphone.send(tone(-1, at: 1))
+        let failing = onCallTrack ? rig.other : rig.microphone
+        await failing.send(tone(-1, at: 1))
         let after = await rig.call.state
         #expect(after.status == .failed("Live text failed"))
-        #expect(after.entries.map(\.text.pending) == ["word0"])
+        #expect(after.entries.map(\.text.pending) == ["word0", "word100"])
         #expect(after.entries == before.entries)
+        var final: State?
+        for await state in rig.call.updates { final = state }
+        #expect(final == State(status: .failed("Live text failed"), entries: before.entries))
         await rig.other.send(tone(100, at: 2))
         #expect(await rig.call.state == after)
+        await rig.call.stop()
+    }
+
+    @Test(arguments: [false, true], Finishing.allCases.flatMap { finishing in
+        [1.0, 3.0, 44_100.0, 48_000.0].map { (finishing, $0) }
+    })
+    private func endingWhileTextIsOffCatchesUpAndFinishes(
+        initiallyEnabled: Bool, ending: (Finishing, Double)
+    ) async throws {
+
+        let (finishing, sampleRate) = ending
+        let rig = Rig(finishing: finishing)
+        await rig.call.start(enabled: initiallyEnabled)
+        if initiallyEnabled { await rig.listening() }
+        let sources = [rig.microphone, rig.other]
+        let written = [rig.microphoneWritten, rig.otherWritten]
+        for index in sources.indices {
+            let offset = index * 100
+            await written[index].append(tones(offset...(offset + 3), at: 0, sampleRate: sampleRate))
+            await written[index].append(tones((offset + 4)...(offset + 6), at: 4 / sampleRate, sampleRate: sampleRate))
+            await sources[index].send(tones(offset...(offset + 2), at: 0, sampleRate: sampleRate))
+        }
+        if initiallyEnabled { await rig.call.setEnabled(false) }
+        let frozen = await rig.call.state.entries
+        for index in sources.indices {
+            let offset = index * 100
+            await sources[index].send(tones((offset + 3)...(offset + 5), at: 3 / sampleRate, sampleRate: sampleRate))
+            await sources[index].send(tone(offset + 6, at: 6 / sampleRate, sampleRate: sampleRate))
+            sources[index].end()
+        }
+        await rig.call.waitForAudioEnd()
+        #expect(await rig.call.state == State(status: .off, entries: frozen))
+        await rig.call.setEnabled(true)
+        await rig.call.waitForAudioEnd()
+        let expected = (0...6).flatMap { word in
+            [State.Speaker.mine, .theirs].enumerated().map { index, speaker in
+                let value = "word\(index * 100 + word)"
+                let start = word < 4 ? Double(word) / sampleRate : 4 / sampleRate + Double(word - 4) / sampleRate
+                return State.Entry(
+                    speaker: speaker,
+                    text: Text(
+                        id: word, start: start, end: start + 1 / sampleRate,
+                        settled: finishing == .revised ? "\(value) revised" : "",
+                        pending: finishing == .buffered ? value : ""
+                    ),
+                    writtenLater: !initiallyEnabled || word >= 3
+                )
+            }
+        }
+        let state = await rig.call.state
+        #expect(state.entries == expected)
+        #expect(await rig.microphoneWritten.reads == [(initiallyEnabled ? 3 / sampleRate : 0)..<(6 / sampleRate + 1 / sampleRate)])
+        #expect(await rig.otherWritten.reads == [(initiallyEnabled ? 3 / sampleRate : 0)..<(6 / sampleRate + 1 / sampleRate)])
+        guard state.status == .finished else {
+            Issue.record("Text did not finish after catching up")
+            await rig.call.stop()
+            return
+        }
+        var final: State?
+        for await update in rig.call.updates { final = update }
+        #expect(final == State(status: .finished, entries: expected))
         await rig.call.stop()
     }
 
@@ -187,9 +254,19 @@ private func tone(_ word: Int, at start: Double? = nil, sampleRate: Double = 1) 
     Audio(start: start ?? Double(word) / sampleRate, samples: [Float(word)], sampleRate: sampleRate)
 }
 
+private func tones(_ words: ClosedRange<Int>, at start: Double, sampleRate: Double) -> Audio {
+
+    Audio(start: start, samples: words.map { Float($0) }, sampleRate: sampleRate)
+}
+
 private func words(_ range: ClosedRange<Int>) -> [String] {
 
     range.map { "word\($0)" }
+}
+
+private enum Finishing: CaseIterable, Sendable {
+
+    case buffered, revised
 }
 
 private struct Rig: Sendable {
@@ -202,10 +279,10 @@ private struct Rig: Sendable {
     let otherText: ToneText
     let call: CallText
 
-    init(loading: Bool = false) {
+    init(loading: Bool = false, finishing: Finishing? = nil) {
 
-        microphoneText = ToneText(loading: loading)
-        otherText = ToneText(loading: loading)
+        microphoneText = ToneText(loading: loading, finishing: finishing)
+        otherText = ToneText(loading: loading, finishing: finishing)
         call = CallText(
             microphone: Track(audio: microphone, written: microphoneWritten, text: microphoneText),
             call: Track(audio: other, written: otherWritten, text: otherText)
@@ -285,15 +362,17 @@ private actor ToneText: TrackText {
     }
 
     private var loading: Bool
+    private let finishing: Finishing?
     private var waiting: CheckedContinuation<Void, Never>?
     private var text: [Text] = []
     private var holdsNextHearing = false
     nonisolated let hearingBegan: AsyncStream<Void>
     private let hearingContinuation: AsyncStream<Void>.Continuation
 
-    init(loading: Bool) {
+    init(loading: Bool, finishing: Finishing?) {
 
         self.loading = loading
+        self.finishing = finishing
         (hearingBegan, hearingContinuation) = AsyncStream.makeStream()
     }
 
@@ -342,8 +421,14 @@ private actor ToneText: TrackText {
             hearingContinuation.yield(())
             await waitForRelease()
         }
-        return text
+        return finishing == nil ? text : Array(text.dropLast())
     }
 
-    func finish() -> [Text] { text }
+    func finish() -> [Text] {
+
+        if finishing == .revised {
+            return text.map { Text(id: $0.id, start: $0.start, end: $0.end, settled: "\($0.pending) revised") }
+        }
+        return text
+    }
 }

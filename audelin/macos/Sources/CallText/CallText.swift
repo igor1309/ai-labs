@@ -22,6 +22,7 @@ public actor CallText {
     private struct Progress {
 
         var phase = Phase.loading
+        var audioEnded = false
         var receivedThrough = 0.0
         var heardThrough = 0.0
         var heardSampleRate = 1.0
@@ -77,11 +78,17 @@ public actor CallText {
         generation += 1
         for task in listeners { task.cancel() }
         for track in tracks { track.operation?.cancel() }
-        for task in listeners { await task.value }
-        for track in tracks { await track.operation?.value }
+        await waitForAudioEnd()
         if case .failed = state.status {} else { state.status = .finished }
         publish()
         continuation.finish()
+    }
+
+    /// Joins subscribed audio and queued text without switching text off.
+    func waitForAudioEnd() async {
+
+        for task in listeners { await task.value }
+        for track in tracks { await track.operation?.value }
     }
 
     private func activate(writtenLater: Bool) {
@@ -135,6 +142,10 @@ public actor CallText {
                 guard missing.rounded() <= 0 else { throw IncompleteTrack() }
             }
             guard current(turn) else { return }
+            if tracks[index].audioEnded {
+                await finish(index, turn: turn)
+                return
+            }
             tracks[index].phase = .listening
             show(index)
             updateStatus()
@@ -220,6 +231,7 @@ public actor CallText {
 
     private func audioEnded(on index: Int) async {
 
+        tracks[index].audioEnded = true
         guard enabled, !ended else { return }
         let turn = generation
         let previous = tracks[index].operation
@@ -237,7 +249,7 @@ public actor CallText {
 
     private func finish(_ index: Int, turn: Int) async {
 
-        guard current(turn) else { return }
+        guard current(turn), tracks[index].phase != .finished else { return }
         do {
             let text = try await inputs[index].text.finish()
             guard current(turn) else { return }
