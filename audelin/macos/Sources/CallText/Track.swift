@@ -17,6 +17,9 @@ public struct Audio: Equatable, Sendable {
 /// Streams a track in order. Capture can buffer independently of its reader.
 public protocol LiveAudio: Sendable {
 
+    /// The end of captured audio in call time, including undelivered buffers.
+    var capturedThrough: Double { get }
+
     /// Awaits each delivery; cancellation ends the subscription, not capture.
     func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async
 }

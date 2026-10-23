@@ -7,8 +7,11 @@ public actor CallText {
 
     private let continuation: AsyncStream<State>.Continuation
     private let inputs: [Track]
+    private let inputQueued: @Sendable (Int) -> Void
     private var tracks = [Progress(), Progress()]
     private var listeners: [Task<Void, Never>] = []
+    private var endings: [Task<Void, Never>] = []
+    private var stopping: Task<Void, Never>?
     private var started = false
     private var enabled = false
     private var ended = false
@@ -35,6 +38,12 @@ public actor CallText {
 
     public init(microphone: Track, call: Track) {
 
+        self.init(microphone: microphone, call: call, inputQueued: { _ in })
+    }
+
+    init(microphone: Track, call: Track, inputQueued: @escaping @Sendable (Int) -> Void) {
+
+        self.inputQueued = inputQueued
         inputs = [microphone, call]
         (updates, continuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
@@ -42,13 +51,18 @@ public actor CallText {
     /// Subscribes once, including while text is off, to retain call position.
     public func start(enabled: Bool = true) {
 
-        guard !started, !ended else { return }
+        guard !started, !ended, stopping == nil else { return }
         started = true
         listeners = inputs.enumerated().map { index, input in
             Task { [weak self] in
                 await input.audio.listen { [weak self] audio in
                     await self?.receive(audio, on: index)
                 }
+            }
+        }
+        endings = listeners.enumerated().map { index, listener in
+            Task { [weak self] in
+                await listener.value
                 await self?.audioEnded(on: index)
             }
         }
@@ -58,7 +72,7 @@ public actor CallText {
     /// Switching off freezes the client text; it does not stop capture.
     public func setEnabled(_ enabled: Bool) {
 
-        guard started, !ended, enabled != self.enabled else { return }
+        guard started, !ended, stopping == nil, enabled != self.enabled else { return }
         if enabled {
             activate(writtenLater: true)
         } else {
@@ -73,12 +87,22 @@ public actor CallText {
     /// Ends subscriptions and waits for this reader's work to finish.
     public func stop() async {
 
+        if let stopping {
+            await stopping.value
+            return
+        }
+        let operation = Task { await self.end() }
+        stopping = operation
+        await operation.value
+    }
+
+    private func end() async {
+
+        for task in listeners { task.cancel() }
+        await waitForAudioEnd()
         ended = true
         enabled = false
         generation += 1
-        for task in listeners { task.cancel() }
-        for track in tracks { track.operation?.cancel() }
-        await waitForAudioEnd()
         if case .failed = state.status {} else { state.status = .finished }
         publish()
         continuation.finish()
@@ -88,6 +112,7 @@ public actor CallText {
     func waitForAudioEnd() async {
 
         for task in listeners { await task.value }
+        for task in endings { await task.value }
         for track in tracks { await track.operation?.value }
     }
 
@@ -98,12 +123,16 @@ public actor CallText {
         let turn = generation
         state.status = .gettingReady
         for index in inputs.indices {
+            let boundary = inputs[index].audio.capturedThrough
+            if writtenLater, tracks[index].shownThrough < boundary {
+                tracks[index].later.append(tracks[index].shownThrough..<boundary)
+            }
             tracks[index].phase = .loading
             let previous = tracks[index].operation
             tracks[index].operation = Task { [weak self] in
                 await withTaskCancellationHandler {
                     await previous?.value
-                    await self?.prepare(index, turn: turn, writtenLater: writtenLater)
+                    await self?.prepare(index, turn: turn)
                 } onCancel: {
                     previous?.cancel()
                 }
@@ -117,7 +146,7 @@ public actor CallText {
         enabled && !ended && turn == generation
     }
 
-    private func prepare(_ index: Int, turn: Int, writtenLater: Bool) async {
+    private func prepare(_ index: Int, turn: Int) async {
 
         guard current(turn) else { return }
         do {
@@ -125,9 +154,6 @@ public actor CallText {
             guard current(turn) else { return }
             let boundary = tracks[index].receivedThrough
             let from = tracks[index].heardThrough
-            if writtenLater, tracks[index].shownThrough < boundary {
-                tracks[index].later.append(tracks[index].shownThrough..<boundary)
-            }
             // Deliveries during the read queue behind this operation. The
             // written prefix ends at this boundary, so they cannot overlap it.
             tracks[index].phase = .catchingUp
@@ -170,6 +196,7 @@ public actor CallText {
             }
         }
         tracks[index].operation = operation
+        inputQueued(index)
         await operation.value
     }
 
