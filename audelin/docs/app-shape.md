@@ -47,23 +47,36 @@ No source knows the machine, and no machine knows a source.
 
 ### Recording
 
-Decides whether a recording runs, why, and what the user is told about it.
+Decides whether a recording runs and why.
 
 - **Events, from merged sources:** a call starting and ending (from Core
-  Audio processes); the user's start, stop and live text switch (from the
-  panel and menu bar); automatic recording on or off (from Settings);
-  conditions (models, access, the calls folder), each from an adapter's
-  stream of its lifecycle; the results of its own effects.
-- **Effects:** each step of bringing a call's pieces up and down: pick the
-  call app's processes, start or stop the captures, open or close the
-  track files, start or stop call text, open or close the transcript file;
-  switch live text. The reducer orders the steps.
-- **Handler:** dispatches each effect to the dependency given for it: call
-  app processes, system audio capture, microphone capture, the track file,
-  call text, the transcript file. It owns none of their behaviour.
+  Audio processes); the user's start and stop (from the panel and menu
+  bar); automatic recording on or off (from Settings); conditions (access,
+  the calls folder), each from an adapter's stream of its lifecycle; the
+  state of the running Session.
+- **Effects:** begin a Session, end it. Compose carries both out.
 
-User scenarios: S-1, S-2, S-7, S-8, S-9, S-15, S-16, S-17.
-Closes LAB-506, LAB-426, LAB-510.
+User scenarios: S-1, S-2, S-7, S-17, setup and the launch blocker.
+Closes LAB-506, LAB-426.
+
+### Session
+
+Brings one recording's pieces up and down and says how each is doing. A
+Session lives for one recording, like Reading.
+
+- **Events:** end (from Recording, through compose); each side's access;
+  the live text switch
+  (the panel's, and the Settings preference); the results of its own
+  effects, including a piece failing.
+- **Effects:** each step of bringing the pieces up and down: create the
+  call's folder, pick the call app's processes, start or stop the captures,
+  open or close the track files, start or stop call text, open or close
+  the transcript file; switch live text. The reducer orders the steps.
+- **Handler:** dispatches each effect to the dependency given for it. It
+  owns none of their behaviour.
+
+User scenarios: S-8, S-9, S-15, S-16, and the keeping in S-7 and S-17.
+Closes LAB-510.
 
 ### Reading
 
@@ -84,10 +97,9 @@ automatic recording, live text on or off, the calls folder's location.
 - **Events:** the choices from the settings screen and the menu bar; the
   results of its effects.
 - **Effects:** store a preference; ask Recordings to move the calls folder.
-- Its state feeds Recording (automatic recording, live text) and call
-  text's recognizer choice, through compose. Recording applies the live
-  text preference to the running recording; the panel's switch acts on
-  that recording only.
+- Its state feeds Recording (automatic recording), the running Session
+  (live text) and call text's recognizer choice, through compose. The
+  panel's switch acts on that Session only.
 
 ### Recordings
 
@@ -105,8 +117,8 @@ User scenario: S-10. Closes LAB-407.
 The panel, the menu bar item (LAB-509), the settings screen, setup and the
 launch blocker (LAB-406) and the error screens (LAB-510) draw a machine's
 state and send its user events. They decide nothing. Setup and the launch
-blocker draw the conditions as Recording holds them; readiness is no
-machine of its own.
+blocker draw the conditions as their merge mapping combines them;
+readiness is no machine of its own.
 
 ## Data flow
 
@@ -117,7 +129,7 @@ types between them:
 - Each track file is read back as call text's written track.
 - Call text's updates feed that recording's Reading and its transcript file.
 
-Recording only starts and stops these pieces; audio and text never pass
+Session only starts and stops these pieces; audio and text never pass
 through a machine.
 
 ## Components already built
@@ -125,9 +137,9 @@ through a machine.
 | Component | Role in this shape |
 |---|---|
 | Core Audio processes | Source of call start and end for Recording |
-| Call app processes | Dependency of Recording's handler: which processes to capture |
-| System audio capture | Dependency of Recording's handler: the call's track |
-| Call text | Dependency of Recording's handler; its updates feed Reading |
+| Call app processes | Dependency of Session's handler: which processes to capture |
+| System audio capture | Dependency of Session's handler: the call's track |
+| Call text | Dependency of Session's handler; its updates feed Reading |
 | Live text, the recognizers, model loading | Inside call text, behind its ports; model loading also feeds the conditions | The UI targets (`PanelUI`,
 `SettingsUI`, a menu bar target) stay renderers.
 
@@ -152,9 +164,13 @@ compose only builds and subscribes.
 Each line can be overturned by the owner.
 
 - **Machines talk only through compose.** Compose subscribes one machine's
-  state stream to another's events, as Reading receives Recording's state,
+  state stream to another's events, as Reading receives its Session's state,
   and translates between their types (`ARCHITECTURE.md` rule 3). There are
   no shared streams between machines.
 - **Reading lives for one recording.** Compose builds a new Reading when a
   recording begins, on that recording's call text only, so one call's text
   can never reach another call's panel.
+- **Recording decides when, Session decides how.** Recording asks for a
+  recording to begin or end; the Session it began brings the pieces up and
+  down, keeps what they recorded, and tells Recording when it has ended.
+  Recording never names a piece, and a Session never decides to stop.
