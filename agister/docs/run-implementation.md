@@ -1666,7 +1666,8 @@ item of a parallel that is not a step, a field read within a parallel's
 outputs, a step's session read as a value, and an item named as a pass
 is, ending in `/<n>`, whose call id a pass could share. `agister check`
 follows, as it shares that list. A call's id is
-`<run id>/<step>/<pass>` in a repeat; its progress lines name it so; three lines more: `· <branch>: took <arm>`,
+`<run id>/<step>/<pass>` in a repeat; its progress lines name it so;
+three lines more: `· <branch>: took <arm>`,
 `· <repeat>: ended pass <n>`, `· <repeat>: stopped <why> after <n> passes`.
 `events.jsonl` gains the kinds `branch`, `pass` and `stopped`:
 
