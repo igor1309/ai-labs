@@ -4,7 +4,53 @@ import LiveText
 import Testing
 @testable import NemotronRecognizer
 
+/// One test at a time: a test replaces the process-wide decoder builder.
+@Suite(.serialized)
 struct NemotronRecognizerTests {
+
+    @Test func recognizersBuiltTogetherShareOneModelLoad() async throws {
+
+        let load = ControlledModelLoad()
+        let makeDecoder = NemotronRecognizer.sharedDecoders(
+            load: { await load.load() },
+            makeDecoder: { model in
+                ScriptedDecoder([[DecodedToken("▁\(model)", start: 0.1, end: 0.4)]])
+            }
+        )
+        let original = NemotronRecognizer.decoders.withLock { $0 }
+        defer { NemotronRecognizer.decoders.withLock { $0 = original } }
+        let (building, arrivals) = AsyncStream<Void>.makeStream()
+        defer { arrivals.finish() }
+        NemotronRecognizer.decoders.withLock {
+            $0 = {
+                arrivals.yield(())
+                return try await makeDecoder()
+            }
+        }
+        let recognizers = 4
+
+        let built = try await withThrowingTaskGroup(of: NemotronRecognizer.self) { group in
+            for _ in 0..<recognizers {
+                group.addTask { try await NemotronRecognizer() }
+            }
+            var entries = building.makeAsyncIterator()
+            for _ in 0..<recognizers { await entries.next() }
+            var starts = load.started.makeAsyncIterator()
+            await starts.next()
+
+            await load.finish(42)
+            var built: [NemotronRecognizer] = []
+            for try await recognizer in group { built.append(recognizer) }
+            return built
+        }
+
+        #expect(built.count == recognizers)
+        #expect(await load.calls == 1)
+        for recognizer in built {
+            let hearing = try await recognizer.hear(silence(1.12))
+            #expect(hearing.words == [Word("42", start: 0.1, end: 0.4)])
+        }
+    }
 
     @Test func nothingIsHeardBeforeAChunksAudioIsIn() async throws {
 
@@ -292,6 +338,38 @@ struct NemotronRecognizerTests {
         try file.read(into: buffer)
         try #require(buffer.frameLength > 0)
         return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
+    }
+}
+
+/// Holds every load until the test finishes it; a load after that returns
+/// at once, so a recognizer that loads on its own is counted, not stuck.
+private actor ControlledModelLoad {
+
+    let started: AsyncStream<Void>
+    private let starts: AsyncStream<Void>.Continuation
+    private var model: Int?
+    private var waiters: [CheckedContinuation<Int, Never>] = []
+    private(set) var calls = 0
+
+    init() {
+
+        (started, starts) = AsyncStream<Void>.makeStream()
+    }
+
+    func load() async -> Int {
+
+        calls += 1
+        starts.yield(())
+        if let model { return model }
+        return await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func finish(_ model: Int) {
+
+        self.model = model
+        for waiter in waiters { waiter.resume(returning: model) }
+        waiters.removeAll()
+        starts.finish()
     }
 }
 
