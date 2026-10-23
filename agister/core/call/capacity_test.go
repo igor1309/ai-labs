@@ -36,6 +36,27 @@ func calling(ctx context.Context, c *call.Caller, step call.Step, report func(ca
 	return done
 }
 
+// capacityStep is a model step continuing session, "" for none, whose
+// model, effort, options, instruction and schema are each nonempty and
+// distinct, so that a retry that drops or swaps one is told apart.
+func capacityStep(session string) call.Step {
+	return call.Step{
+		Session: session,
+		Inputs:  []call.Named{{Name: "goal", Text: "g"}}, Environment: map[string]string{"A": "1"},
+		Instruction: "test instruction", Model: "test model", Effort: "test effort", Options: []string{"test option"}, Schema: []byte("test schema"),
+	}
+}
+
+// capacityTurn is the turn step gives, its message prompt, resuming
+// session, its earlier cost before.
+func capacityTurn(step call.Step, prompt, session string, before *float64) call.Turn {
+	return call.Turn{
+		Prompt: prompt, Dir: "/r", Env: []string{"PATH=/bin", "A=1"},
+		Instruction: step.Instruction, Model: step.Model, Effort: step.Effort, Options: step.Options, Schema: step.Schema,
+		Session: session, SessionCostBefore: before,
+	}
+}
+
 // capacity.feature, "A turn at capacity is told to go on in its session
 // after a wait": only its message and session change, once the wait passes.
 func TestATurnAtCapacityIsToldToGoOnInItsSessionAfterAWait(t *testing.T) {
@@ -46,12 +67,8 @@ func TestATurnAtCapacityIsToldToGoOnInItsSessionAfterAWait(t *testing.T) {
 			clock := clocktest.NewClock(start)
 			staleness := &stalenessSpy{}
 			spy := &runtimeSpy{turn: inOrder(atCapacity("s1"), replies(call.Reply{Output: []byte(`{"text":"done"}`), Session: "s1"}))}
-			step := call.Step{
-				Session: session,
-				Inputs:  []call.Named{{Name: "goal", Text: "g"}}, Environment: map[string]string{"A": "1"},
-				Instruction: "i", Model: "opus", Effort: "high", Options: []string{"Read"}, Schema: []byte("s"),
-				Staleness: limits, Recovery: recovery,
-			}
+			step := capacityStep(session)
+			step.Staleness, step.Recovery = limits, recovery
 			var reported capacityTurns
 			done := calling(context.Background(), recoveringCaller(t, spy, staleness, clock), step, reported.report)
 			clock.Started(30 * time.Second)
@@ -64,8 +81,7 @@ func TestATurnAtCapacityIsToldToGoOnInItsSessionAfterAWait(t *testing.T) {
 			if session != "" {
 				before = nil
 			}
-			first := call.Turn{Session: session, SessionCostBefore: before, Prompt: "## goal\n\ng", Dir: "/r", Env: []string{"PATH=/bin", "A=1"},
-				Instruction: "i", Model: "opus", Effort: "high", Options: []string{"Read"}, Schema: []byte("s")}
+			first := capacityTurn(step, "## goal\n\ng", session, before)
 			second := first
 			second.SessionCostBefore = nil
 			second.Session, second.Prompt = "s1", "Go on."
@@ -93,14 +109,21 @@ func TestATurnAtCapacityWithNoSessionRunsAgainInItsOwn(t *testing.T) {
 		t.Run("session="+session, func(t *testing.T) {
 			t.Parallel()
 			clock := clocktest.NewClock(start)
-			spy := &runtimeSpy{turn: inOrder(atCapacity(""), replies(call.Reply{Text: "done", Session: session}))}
-			step := call.Step{Session: session, Inputs: []call.Named{{Name: "goal", Text: "g"}}}
+			spy := &runtimeSpy{turn: inOrder(atCapacity(""), replies(call.Reply{Output: []byte(`{"text":"done"}`), Session: session}))}
+			step := capacityStep(session)
 			done := calling(context.Background(), recoveringCaller(t, spy, &stalenessSpy{}, clock), step, discard)
 			clock.Started(30 * time.Second)
 			clock.Advance(30 * time.Second)
 			got := <-done
-			if len(spy.given) != 2 || spy.given[1].Session != session || spy.given[1].Prompt != "## goal\n\ng" {
-				t.Errorf("turns %+v, want two, the second given the session %q and the original message", spy.given, session)
+			before := dollars(0)
+			if session != "" {
+				before = nil
+			}
+			first := capacityTurn(step, "## goal\n\ng", session, before)
+			second := first
+			second.SessionCostBefore = nil
+			if want := []call.Turn{first, second}; !reflect.DeepEqual(spy.given, want) {
+				t.Errorf("turns\n got %+v\nwant %+v", spy.given, want)
 			}
 			if got.Status != call.Completed {
 				t.Errorf("ended %q, class %q, reason %q; want completed", got.Status, got.Class, got.Reason)
@@ -117,22 +140,24 @@ func TestFiveTurnsAtCapacityEndTheCall(t *testing.T) {
 	clock := clocktest.NewClock(start)
 	spy := &runtimeSpy{turn: atCapacity("s1")}
 	var reported capacityTurns
-	done := calling(context.Background(), recoveringCaller(t, spy, &stalenessSpy{}, clock), call.Step{}, reported.report)
+	step := capacityStep("")
+	done := calling(context.Background(), recoveringCaller(t, spy, &stalenessSpy{}, clock), step, reported.report)
 	waits := []time.Duration{30 * time.Second, time.Minute, 3 * time.Minute, 5 * time.Minute}
 	for _, wait := range waits {
 		clock.Started(wait)
 		clock.Advance(wait)
 	}
 	got := <-done
-	var sessions []string
-	for i, turn := range spy.given {
-		if i > 0 && turn.Prompt != "Go on." {
-			t.Errorf("retry message %q, want Go on.", turn.Prompt)
-		}
-		sessions = append(sessions, turn.Session)
+	first := capacityTurn(step, "## goal\n\ng", "", dollars(0))
+	turnsWant := []call.Turn{first}
+	for range 4 {
+		retry := first
+		retry.SessionCostBefore = nil
+		retry.Session, retry.Prompt = "s1", "Go on."
+		turnsWant = append(turnsWant, retry)
 	}
-	if want := []string{"", "s1", "s1", "s1", "s1"}; !reflect.DeepEqual(sessions, want) {
-		t.Errorf("turns given the sessions %q, want %q", sessions, want)
+	if !reflect.DeepEqual(spy.given, turnsWant) {
+		t.Errorf("turns\n got %+v\nwant %+v", spy.given, turnsWant)
 	}
 	if got := clock.Waits(); !reflect.DeepEqual(got, waits) {
 		t.Errorf("timers %v, want %v", got, waits)
@@ -239,13 +264,21 @@ func TestACapacityRetryKeepsOrNudgesTheRecoveryMessage(t *testing.T) {
 			t.Parallel()
 			clock := clocktest.NewClock(start)
 			staleness := &stalenessSpy{}
-			spy := &runtimeSpy{turn: inOrder(goesStale(staleness, noEvent, "s1"), atCapacity(c.session), replies(call.Reply{Text: "done", Session: "s1"}))}
-			done := calling(context.Background(), recoveringCaller(t, spy, staleness, clock), call.Step{Staleness: limits, Recovery: recovery}, discard)
+			spy := &runtimeSpy{turn: inOrder(goesStale(staleness, noEvent, "s1"), atCapacity(c.session), replies(call.Reply{Output: []byte(`{"text":"done"}`), Session: "s1"}))}
+			step := capacityStep("")
+			step.Staleness, step.Recovery = limits, recovery
+			done := calling(context.Background(), recoveringCaller(t, spy, staleness, clock), step, discard)
 			clock.Started(30 * time.Second)
 			clock.Advance(30 * time.Second)
 			got := <-done
-			if len(spy.given) != 3 || spy.given[2].Session != "s1" || spy.given[2].Prompt != c.message {
-				t.Errorf("turns %+v, want three, the third given the session s1 and the message %q", spy.given, c.message)
+			first := capacityTurn(step, "## goal\n\ng", "", dollars(0))
+			second := first
+			second.SessionCostBefore = nil
+			second.Session, second.Prompt = "s1", "Go on.\n\nno event for 21m"
+			third := second
+			third.Session, third.Prompt = "s1", c.message
+			if want := []call.Turn{first, second, third}; !reflect.DeepEqual(spy.given, want) {
+				t.Errorf("turns\n got %+v\nwant %+v", spy.given, want)
 			}
 			if got.Status != call.Completed || !reflect.DeepEqual(got.Output, map[string]any{"text": "done"}) {
 				t.Errorf("result %+v, want completed with text done", got)
@@ -259,13 +292,20 @@ func TestARetrySpendsNoneOfTheRecovery(t *testing.T) {
 	t.Parallel()
 	clock := clocktest.NewClock(start)
 	staleness := &stalenessSpy{}
-	spy := &runtimeSpy{turn: inOrder(atCapacity(""), goesStale(staleness, noEvent, "s1"), replies(call.Reply{Text: "done", Session: "s1"}))}
-	done := calling(context.Background(), recoveringCaller(t, spy, staleness, clock), call.Step{Staleness: limits, Recovery: recovery}, discard)
+	spy := &runtimeSpy{turn: inOrder(atCapacity(""), goesStale(staleness, noEvent, "s1"), replies(call.Reply{Output: []byte(`{"text":"done"}`), Session: "s1"}))}
+	step := capacityStep("")
+	step.Staleness, step.Recovery = limits, recovery
+	done := calling(context.Background(), recoveringCaller(t, spy, staleness, clock), step, discard)
 	clock.Started(30 * time.Second)
 	clock.Advance(30 * time.Second)
 	got := <-done
-	if len(spy.given) != 3 || spy.given[2].Session != "s1" || spy.given[2].Prompt != "Go on.\n\nno event for 21m" {
-		t.Errorf("turns %+v, want three, the third a recovery turn resuming s1", spy.given)
+	first := capacityTurn(step, "## goal\n\ng", "", dollars(0))
+	second := first
+	second.SessionCostBefore = nil
+	third := second
+	third.Session, third.Prompt = "s1", "Go on.\n\nno event for 21m"
+	if want := []call.Turn{first, second, third}; !reflect.DeepEqual(spy.given, want) {
+		t.Errorf("turns\n got %+v\nwant %+v", spy.given, want)
 	}
 	if got.Status != call.Completed {
 		t.Errorf("ended %q, class %q, reason %q; want completed", got.Status, got.Class, got.Reason)
