@@ -28,8 +28,9 @@ window.
   (user spec S-15, S-16). Both models hear audio at about 4% of real time
   (run 8).
 - Switched on mid-call, it reads the call from its start and marks that
-  text as written later; switched off, it keeps the text so far (the
-  owner's wish, mvp.md Controls).
+  text as written later (the design's Added late group,
+  `HIqfu`, Screen 3);
+  switched off, it keeps the text so far (user spec S-8).
 - Live text failing ends the text and is told; the recording is not call
   text's (user spec S-9).
 
