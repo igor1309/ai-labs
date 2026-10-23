@@ -1,5 +1,10 @@
 # Log
 
+## 2026-10-23
+
+- Core Audio lists audio processes and tells calls in Zoom, Telemost and
+  browsers, keeping a call through microphone silences under 30 s (LAB-473).
+
 ## 2026-10-22
 
 - Session, automatic recording and timed track are gone, after the owner's
