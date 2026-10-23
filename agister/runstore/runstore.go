@@ -421,19 +421,11 @@ func (s *Store) WritePatch(id, step string, patch []byte) (string, error) {
 		return "", err
 	}
 	parts := strings.Split(step, "/")
-	for i, part := range parts {
+	// The step's name is opaque here: a declared name or a pass's may hold
+	// '/', and each part need only stay in the patches folder.
+	for _, part := range parts {
 		if part == "" || part == "." || part == ".." || strings.ContainsAny(part, `\`) {
 			return "", fmt.Errorf("runstore: %q is no step's name", step)
-		}
-		if i > 0 {
-			for _, digit := range part {
-				if digit < '0' || digit > '9' {
-					return "", fmt.Errorf("runstore: %q is no step's pass", step)
-				}
-			}
-			if part[0] == '0' {
-				return "", fmt.Errorf("runstore: %q is no step's pass", step)
-			}
 		}
 	}
 	path := filepath.Join("patches", step+".patch")
