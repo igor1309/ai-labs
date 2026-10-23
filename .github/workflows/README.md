@@ -13,6 +13,8 @@ Workflows are organized into four categories:
 - **Release** — tag-triggered pipelines for per-unit and legacy Oracle releases.
 - **Scheduled & Independent** — health checks, dashboards, deployments, and housekeeping that run on cron or trunk push.
 
+`update-behind-prs.yml` runs on each trunk push. It updates every open PR that has auto-merge armed and has fallen behind trunk, so it is tested again and lands without a hand update. Branch protection requires up-to-date branches. A PR that conflicts fails the run, naming the PR. It pushes with `PR_UPDATE_TOKEN`, because an update pushed with `GITHUB_TOKEN` would start no CI.
+
 ## Path Filtering Policy
 
 `ci.yml` does **not** use top-level `paths-ignore`. All path filtering happens inside the workflow via `dorny/paths-filter` in the `changes` job, which gates per-project jobs with `if:` conditions.
