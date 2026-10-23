@@ -36,7 +36,8 @@ jobs:
 
       - name: Run tests
         working-directory: rexlab
-        run: npm test
+        # The runner has four cores; Vitest keeps one for itself by default.
+        run: npm test -- --maxWorkers=4
 
       - name: Build
         working-directory: rexlab
