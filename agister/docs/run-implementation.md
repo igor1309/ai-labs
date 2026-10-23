@@ -1685,6 +1685,10 @@ Decisions, each with its reason:
   and `passes`: a state may be named anything, and nothing it is named
   shadows them.
 - The condition's values are kept in `events.jsonl`, not the record:
-  the record keeps calls, and the branch's facts are of no call.
+  the record keeps calls, and the branch's facts are of no call. ADR-011
+  rule 6 asks the run to record them; `events.jsonl` sits in the run's
+  directory beside the record, so the run still records them.
+- A branch's and a repeat's events name it under the `step` key, as a
+  parallel's do: a reader of `events.jsonl` finds every item by one key.
 - Conditions stay ADR-011's starting set; settings already type them.
 - A workflow item stays not run: nothing needs one yet.

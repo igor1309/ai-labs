@@ -46,3 +46,10 @@ Feature: A branch runs one arm
     When the workflow runs
     Then the events are told the branch "b" took "other", the arm
       "zero"'s condition false, having read the value 1
+
+  Scenario: A branch whose arm is a repeat gives the repeat's state
+    Given the arm "other" is a repeat "fix" whose state "review" ends
+      {"done": true}, the branch's outputs summary from
+      steps.fix.outputs.state.review
+    When the workflow runs with "a" exiting 1
+    Then the branch's outputs are {"summary": {"done": true}}

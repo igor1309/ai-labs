@@ -47,16 +47,18 @@ Feature: A workflow's branch and repeat run
     Given bash's test script exits 1, then 0
     When "agister run tested --param brief=b.md" runs in "/r"
     Then stderr has a line "repair_tests/1" started on "codex-sol-61",
-      a line the branch "fix" took "repair", and a line "repair" stopped
-      "until" after 1 pass
+      a line the branch "fix" took "repair", a line "repair" began pass 1,
+      and a line "repair" stopped "until" after 1 pass
 
   Scenario: A run reusing an earlier one does not take a later pass's call for an earlier one
-    Given a run of "tested" whose test script exited 1, then 0
+    Given a run of "tested" whose test script exited 1, 1, then 0
     When "agister run tested --param brief=b.md --reuse <that run>" runs
-      in "/r", the worktree as that run left it
-    Then each call taken is the earlier run's call of the same name and
-      pass, and "retest/1" is not taken for "test"
+      in "/r", the worktree as that run left it, the script now exiting 0
+    Then "retest/1" takes the earlier "retest/1", exit 1, and "retest/2"
+      the earlier "retest/2", exit 0, neither taken for the other
+    And "repair_tests/1" and "repair_tests/2", continuing a session, are
+      made anew
 
   Scenario: Check passes the workflow
     When "agister check" runs in "/r"
-    Then it reports no problem of the workflow "tested"
+    Then it refuses nothing of the workflow "tested"

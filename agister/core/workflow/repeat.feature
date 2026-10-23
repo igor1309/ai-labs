@@ -52,3 +52,17 @@ Feature: A repeat runs its body until its condition holds, at most max times
     When the workflow runs with start "1"
     Then the events are told pass 1 of "r" left the state {"code": 1},
       pass 2 left {"code": 0}, and "r" stopped "until" after 2 passes
+
+  Scenario: A step in a repeat inside a repeat is told by both passes
+    Given the body of "r" holds, after "test", the repeat "inner" of the
+      step "lint", max 2, until it has run twice
+    And "test" completes with the exit codes 1, then 0
+    When the workflow runs with start "1"
+    Then the caller is asked for "lint/1/1", "lint/1/2", then "lint/2/1"
+      and "lint/2/2"
+
+  Scenario: The run's cost and usage count every pass
+    Given "fix" costs 0.5 and uses 10 tokens a call
+    And "test" completes with the exit codes 1, then 0
+    When the workflow runs with start "1"
+    Then the run's cost is 1.0 and its usage 20 tokens
