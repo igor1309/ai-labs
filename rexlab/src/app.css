@@ -7699,6 +7699,43 @@ html[data-size="tall"] .skeleton-guess-choices {
   outline-offset: -1px;
 }
 
+/* Upright, the finished skeleton stands over its reward: the board as
+   wide as the screen, or as the room above the reward's 560 allows, the
+   reward under it with its fact a little smaller and its two ways on a
+   little lower, one over the other, so their words keep their size. */
+html[data-size="tall"] .skeleton-result .skeleton-reveal {
+  flex-direction: column;
+  container-type: size;
+}
+
+html[data-size="tall"] .skeleton-result .skeleton-reveal-board {
+  flex: none;
+  align-self: center;
+  width: min(100cqw, (100cqh - 28px - 560px) * var(--frame-width) / var(--frame-height));
+  max-height: none;
+}
+
+html[data-size="tall"] .skeleton-reward {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  padding: 24px;
+  gap: 16px;
+}
+
+html[data-size="tall"] .skeleton-fact {
+  font-size: 20px;
+}
+
+html[data-size="tall"] .skeleton-actions {
+  gap: 12px;
+}
+
+html[data-size="tall"] .skeleton-build-another,
+html[data-size="tall"] .skeleton-actions .home-button {
+  height: 60px;
+}
+
 /* The museum: a hall of one stand for each dinosaur, rising in one after
    the other, each its name and star over its exhibit and its button. A
    skeleton not on its stand shows as its faint silhouette; one knocked
