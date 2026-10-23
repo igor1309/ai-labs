@@ -1645,12 +1645,13 @@ or a repeat's body.
 - A step in a repeat's body is called, and told to the events, by its
   **name and pass**, `<step>/<pass>`, outer passes first where repeats
   nest (`fix/2/1`); elsewhere by its name. A branch or repeat inside a
-  repeat's body is told to the events the same way (`inner/2`). The caller, the events, the
-  record, progress and reuse take that name as they take a step's.
+  repeat's body is told to the events the same way (`inner/2`). The
+  caller, the events, the record, progress and reuse take that name as
+  they take a step's.
 - The **events port** grows three: a branch's arm taken, with each
   condition read before it, whether it held and the values it read; a
-  pass's end, with the state it bound; and a repeat's stop, why and after how many
-  passes.
+  pass's end, with the state it bound; and a repeat's stop, why and
+  after how many passes.
 - Cost, usage, warnings and sessions count every call made, each pass's
   too; a session continued in a body goes on from its latest call
   ("A binding continuing a session"), so each pass continues the one
