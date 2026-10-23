@@ -159,7 +159,7 @@ export function board(): HTMLElement {
 export const pairCards = () => within(board()).getAllByRole("button");
 
 const cardAt = (place: number) => {
-  const card = pairCards()[place];
+  const card = board().querySelectorAll<HTMLElement>(".pair-card")[place];
   if (!card) throw new Error(`No card at ${place}`);
   return card;
 };
