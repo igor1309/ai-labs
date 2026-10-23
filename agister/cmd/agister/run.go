@@ -1304,12 +1304,12 @@ func newStepCalls(inputs declaredResolver, admits admission, callers map[string]
 	return &stepCalls{inputs: inputs, admits: admits, callers: maps.Clone(callers), clock: clock, calls: calls, records: records, daily: daily}, nil
 }
 
-func (s *stepCalls) Call(ctx context.Context, name string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
-	planned := s.calls[stepDefinition(name)]
+func (s *stepCalls) Call(ctx context.Context, name, declared string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
+	planned := s.calls[declared]
 	ended := endedCall{step: name, process: planned.process, agent: planned.agent, continues: planned.continues,
 		definitions: planned.definitions, definitionBytes: planned.definitionBytes, permissions: planned.permissions,
 		environment: []runstore.Variable{}}
-	ended.result = s.call(ctx, name, params, session, report, &ended)
+	ended.result = s.call(ctx, name, declared, params, session, report, &ended)
 	s.records.Called(ended)
 	return ended.result
 }
@@ -1319,8 +1319,8 @@ func (s *stepCalls) Call(ctx context.Context, name string, params map[string]str
 // facts kept in ended where they are known. A call taken from the run
 // reused reports Reused and keeps the call it took in ended; any other
 // reports Started.
-func (s *stepCalls) call(ctx context.Context, name string, params map[string]string, session string, report func(workflow.Report), ended *endedCall) workflow.Result {
-	planned, ok := s.calls[stepDefinition(name)]
+func (s *stepCalls) call(ctx context.Context, name, declared string, params map[string]string, session string, report func(workflow.Report), ended *endedCall) workflow.Result {
+	planned, ok := s.calls[declared]
 	if !ok {
 		report(workflow.Report{Started: true})
 		return s.refused(fmt.Sprintf("no step %q is planned", name), nil)
@@ -1799,12 +1799,6 @@ func (p groupProcess) Wait() supervisor.Exit {
 		ended.Code = *exit.Code
 	}
 	return ended
-}
-
-// stepDefinition removes the execution passes from a step's declared name.
-func stepDefinition(name string) string {
-	name, _, _ = strings.Cut(name, "/")
-	return name
 }
 
 func workflowReference(read documents.Reference) (workflow.Reference, error) {

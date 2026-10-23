@@ -63,6 +63,32 @@ func TestConditionsKeepTypesAndQueryCollections(t *testing.T) {
 	}
 }
 
+func TestAndOrNotFollowTheirTruthTables(t *testing.T) {
+	t.Parallel()
+	yes, no := compare(outputs("t", "code"), 0), compare(outputs("t", "code"), 1)
+	of := func(operator string, conditions ...workflow.Condition) workflow.Condition {
+		return workflow.Condition{Operator: operator, Of: conditions}
+	}
+	cases := []struct {
+		condition workflow.Condition
+		holds     bool
+	}{
+		{of("not", yes), false}, {of("not", no), true},
+		{of("and", yes, yes), true}, {of("and", yes, no), false}, {of("and", no, yes), false}, {of("and", no, no), false},
+		{of("or", yes, yes), true}, {of("or", yes, no), true}, {of("or", no, yes), true}, {of("or", no, no), false},
+	}
+	for i, c := range cases {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			t.Parallel()
+			assertCondition(t, workflow.Boundary{}, []workflow.Step{{Name: "t"}}, map[string]func() workflow.Result{
+				"t": func() workflow.Result {
+					return workflow.Result{Status: workflow.Completed, Output: map[string]any{"code": 0}}
+				},
+			}, c.condition, c.holds)
+		})
+	}
+}
+
 func TestParamsAndInputsAreText(t *testing.T) {
 	t.Parallel()
 	for _, value := range []workflow.Value{param("p"), input("p")} {

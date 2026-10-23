@@ -120,7 +120,7 @@ func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 		t.Fatal(err)
 	}
 	var reported []workflow.Report
-	steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, "", func(r workflow.Report) { reported = append(reported, r) })
+	steps.Call(context.Background(), "a", "a", map[string]string{"what": "hi"}, "", func(r workflow.Report) { reported = append(reported, r) })
 	want := []workflow.Report{{Started: true},
 		{Tool: &workflow.Tool{Name: "Bash", Input: "ls"}}, {Stale: &workflow.Stale{What: "no event for 1m", Recovering: true}},
 		{Tool: &workflow.Tool{Name: "Read", Input: "a.go"}}, {Stale: &workflow.Stale{What: "no event for 1m"}},

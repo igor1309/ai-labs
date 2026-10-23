@@ -118,6 +118,46 @@ func TestNestedRepeatsNameEveryPassAndKeepTheirOutputsLocal(t *testing.T) {
 			t.Errorf("events %v", f.events.told)
 		}
 	}
+	if f.caller.declared["lint/1/2"] != "lint" || f.caller.declared["fix/2"] != "fix" {
+		t.Errorf("declared %v", f.caller.declared)
+	}
+}
+
+func TestAnInnerRepeatReadsTheStateOfTheRepeatAroundIt(t *testing.T) {
+	t.Parallel()
+	outer := repairRepeat()
+	outer.Repeat.Steps = append(outer.Repeat.Steps, workflow.Step{Name: "inner", Repeat: &workflow.Repeat{
+		State: []workflow.Binding{bind("n", text("x"))},
+		Steps: []workflow.Step{{Name: "lint", Bindings: []workflow.Binding{bind("c", state("code")), bind("n", state("n"))}}},
+		Next:  []workflow.Binding{bind("n", state("n"))}, Until: compare(state("code"), "1"), Max: 2,
+	}})
+	f := newFixture(t, workflow.Boundary{Params: map[string]string{"start": "1"}}, map[string]func() workflow.Result{
+		"fix/1": completes(0), "test/1": completes(0), "lint/1/1": completes(0),
+	})
+	result := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{outer}, Outputs: []workflow.Binding{bind("inner", outputs("r", "state"))}}, nil)
+	if result.Status != workflow.Completed || f.caller.bound["lint/1/1"]["c"] != "1" || f.caller.bound["lint/1/1"]["n"] != "x" {
+		t.Fatalf("result %+v, bound %v", result, f.caller.bound)
+	}
+	if !slices.Contains(f.events.told, "inner/1 stopped until after 1") || !slices.Contains(f.events.told, "inner/1 pass 1 map[n:x]") {
+		t.Errorf("events %v", f.events.told)
+	}
+}
+
+func TestARepeatWhoseConditionHoldsOnEntryStillRunsItsBodyOnce(t *testing.T) {
+	t.Parallel()
+	repeat := repairRepeat()
+	repeat.Repeat.State = []workflow.Binding{bind("code", outputs("probe", "exit_code"))}
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
+		"probe": completes(0), "fix/1": completes(0), "test/1": completes(0),
+	})
+	result := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{{Name: "probe"}, repeat}, Outputs: []workflow.Binding{bind("r", outputs("r", ""))}}, nil)
+	want := map[string]any{"r": map[string]any{"state": map[string]any{"code": 0}, "stopped": "until", "passes": 1}}
+	if result.Status != workflow.Completed || !reflect.DeepEqual(result.Output, want) || !slices.Equal([]string(f.trail), []string{"resolve", "probe", "fix/1", "test/1"}) {
+		t.Fatalf("result %+v, calls %v", result, f.trail)
+	}
+	if f.caller.bound["fix/1"]["c"] != "0" {
+		t.Errorf("bound %v", f.caller.bound)
+	}
 }
 
 func TestRepeatCanRunABranchAndAParallel(t *testing.T) {

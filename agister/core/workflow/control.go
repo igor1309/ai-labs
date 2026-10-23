@@ -89,7 +89,7 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 		}
 		for pass := 1; pass <= repeat.Max; pass++ {
 			inner := read
-			inner.state, inner.outputs = state, maps.Clone(read.outputs)
+			inner.state, inner.outputs = layered(read.state, state), maps.Clone(read.outputs)
 			inner.sessions = maps.Clone(read.sessions)
 			result := e.sequence(ctx, repeat.Steps, inner, fmt.Sprintf("%s/%d", suffix, pass))
 			if result.Status != Completed {
@@ -100,7 +100,7 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 				return refused()
 			}
 			e.runner.events.Pass(name, pass, state)
-			inner.state = state
+			inner.state = layered(read.state, state)
 			holds, _ := inner.condition(repeat.Until)
 			why := "max"
 			if holds {
@@ -116,6 +116,7 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 		together := item
 		together.Parallel = append([]Step{}, item.Parallel...)
 		for i := range together.Parallel {
+			together.Parallel[i].declared = item.Parallel[i].Name
 			together.Parallel[i].Name += suffix
 		}
 		calls, reason, ok := e.runner.parallel(ctx, together, read)
@@ -149,10 +150,21 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 			return result
 		}
 		logical := item.Name
-		item.Name = name
+		item.declared, item.Name = logical, name
 		result := e.runner.call(ctx, item, params, session)
 		e.count(name, result)
 		read.sessions[logical] = result.Session
 		return result
 	}
+}
+
+// layered is the state a repeat's body reads: the enclosing repeats'
+// state, own over it.
+func layered(enclosing, own map[string]any) map[string]any {
+	state := maps.Clone(enclosing)
+	if state == nil {
+		state = map[string]any{}
+	}
+	maps.Copy(state, own)
+	return state
 }

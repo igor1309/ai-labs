@@ -66,6 +66,9 @@ type Step struct {
 	If       *Condition
 	Outputs  []Binding
 	Repeat   *Repeat
+	// declared is the name the step is declared by, where Name is that
+	// of one execution of it, a pass of a repeat; "" where they are one.
+	declared string
 }
 
 // Binding is a value given by name.
@@ -121,8 +124,10 @@ type Resolver interface {
 // the agent it is made again on.
 // It is called from many goroutines at once, one for each step of a
 // parallel.
+// The step is named as it is executed, `<step>/<pass>` in a repeat;
+// declared is the name its definition is declared by.
 type Caller interface {
-	Call(ctx context.Context, step string, params map[string]string, session string, report func(Report)) Result
+	Call(ctx context.Context, step, declared string, params map[string]string, session string, report func(Report)) Result
 }
 
 // Report is what a step's call reports: that it starts, where Started;
@@ -385,7 +390,11 @@ func (r *Runner) call(ctx context.Context, step Step, params map[string]string, 
 	// A caller may report from a goroutine of its own, as a turn's tool
 	// calls come from the one reading its program's output.
 	var started atomic.Bool
-	called := r.caller.Call(ctx, step.Name, params, session, func(report Report) {
+	declared := step.declared
+	if declared == "" {
+		declared = step.Name
+	}
+	called := r.caller.Call(ctx, step.Name, declared, params, session, func(report Report) {
 		switch {
 		case report.Started:
 			started.Store(true)
