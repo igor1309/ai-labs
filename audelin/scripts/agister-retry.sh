@@ -8,7 +8,7 @@
 #   capacity    5, 10, 15, then every 30 min (-w overrides; the last repeats).
 #               Agister has already retried after 30 s, 1 min and 3 min.
 #   rate limit  until a minute after the reset its reason names
-#               ("resets 1pm", "resets 13:30"), else 30 min.
+#               ("resets 1pm", "resets 13:30", "try again at 5:35 PM"), else 30 min.
 # A wait that would end past -u stops instead.
 #
 # Prints one line per try, for a watcher:
@@ -59,7 +59,7 @@ reset_wait() {
 
   python3 -I -c '
 import datetime, re, sys
-m = re.search(r"resets\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", sys.argv[1], re.I)
+m = re.search(r"(?:resets|try again at)\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)?", sys.argv[1], re.I)
 if m:
     hour, minute, half = int(m.group(1)), int(m.group(2) or 0), (m.group(3) or "").lower()
     if half == "pm" and hour < 12:
