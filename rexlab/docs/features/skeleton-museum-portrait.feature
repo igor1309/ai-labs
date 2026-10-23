@@ -3,7 +3,7 @@ Feature: The skeleton museum in a tall window
   upright. Its five stands keep their order in rows of two, the last
   centred, each at least 262 CSS pixels wide when scrollbars take no room.
   The hall scrolls when needed rather than shrinking names or exhibits.
-  The hall uses the available width upright.
+  It has 12-pixel column gaps and no horizontal inner padding upright.
   If safe areas or a reserved scrollbar leave too little room for two
   262-pixel stands, it uses one column. Names and action sizes are checked
   by comparison with the rendered 1024 by 768 landscape museum.

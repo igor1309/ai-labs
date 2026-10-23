@@ -40,6 +40,10 @@ function hallLayout(size: WindowSize, scrollbar = 0) {
   const page = at(".skeleton-museum-screen");
   const hall = at(".skeleton-hall");
   const stand = at(".skeleton-stand");
+  const bar = at(".skeleton-bar");
+  const another = at(".skeleton-bar-button");
+  // Its full-width non-shrinking action must take the second row.
+  expect([bar.value("flex-wrap"), bar.value("flex-shrink"), another.value("order"), another.value("flex-basis"), another.value("flex-shrink")]).toEqual(["wrap", "0", "1", "100%", "0"]);
   const width = size[0] - page.px("padding-left") - page.px("padding-right") - hall.px("padding-left") - hall.px("padding-right") - scrollbar;
   expect(stand.value("flex-basis")).toBe("calc(0.5 * (100% - 12px))");
   expect(stand.value("min-width")).toBe("min(262px, 100%)");
@@ -48,9 +52,10 @@ function hallLayout(size: WindowSize, scrollbar = 0) {
   const rows = Math.ceil(stands().length / columns);
   const rowHeight = Math.max(stand.px("min-height"), at(".skeleton-stand-top").px("min-height") + at(".skeleton-exhibit").px("min-height") + at(".skeleton-stand-button").px("height") + 2 * stand.rowGap());
   const contentHeight = rowHeight * rows + hall.rowGap() * (rows - 1) + hall.px("padding-top") + hall.px("padding-bottom");
-  const barHeight = styleAt(part(".skeleton-bar > .home-button"), size).px("height") * 2 + at(".skeleton-bar").rowGap();
+  const barHeight = styleAt(part(".skeleton-bar > .home-button"), size).px("height") + another.px("height") + bar.rowGap();
   const visibleHeight = size[1] - page.px("padding-top") - page.px("padding-bottom") - barHeight - page.rowGap();
-  return { width, cardWidth, columns, rows, contentHeight, visibleHeight, barHeight, page, hall, stand };
+  const actionWidth = size[0] - page.px("padding-left") - page.px("padding-right") - scrollbar;
+  return { width, cardWidth, columns, rows, contentHeight, visibleHeight, barHeight, actionWidth, page, hall, stand };
 }
 
 describe("the upright skeleton museum", () => {
@@ -83,7 +88,7 @@ describe("the upright skeleton museum", () => {
     const baseline = stands().map((stand) => [sizeOf(stand.querySelector("h2")!, baselineWidth), sizeOf(within(stand).getByRole("button"), baselineWidth)]);
     openWindow(600, 800);
     act(() => viewport.resize("tall", true));
-    const width = hallLayout([600, 800]).cardWidth;
+    const { cardWidth: width, actionWidth } = hallLayout([600, 800]);
     stands().forEach((stand, index) => {
       const name = stand.querySelector("h2")!;
       const button = within(stand).getByRole("button");
@@ -98,7 +103,7 @@ describe("the upright skeleton museum", () => {
       expect(getComputedStyle(button).whiteSpace).toBe("nowrap");
     });
     const another = screen.getByRole("button", { name: text.buildAnother });
-    expect(neededBy(another, sizeOf(another))).toBeLessThanOrEqual(536);
+    expect(neededBy(another, sizeOf(another))).toBeLessThanOrEqual(actionWidth);
     const home = screen.getByRole("button", { name: text.home });
     expect([getComputedStyle(home).width, home.querySelector(".upright-hidden")?.textContent, home.querySelector("svg")?.getAttribute("width")]).toEqual(["56px", text.home, "24"]);
     const chips = [...part(".skeleton-bar").querySelectorAll(".skeleton-chip")];
@@ -170,7 +175,7 @@ function collection() {
   };
 }
 
-async function turningMuseum(reduced = false) {
+async function turningMuseum(reduced = false, initialSize: WindowSize = [1180, 820]) {
   type Animation = TurnAnimation & { element: Element; frames: Keyframe[]; options: KeyframeAnimationOptions; cancelled: boolean };
   const animations: Animation[] = [];
   const fades: Array<{ update(): void; finished(): void }> = [];
@@ -188,7 +193,7 @@ async function turningMuseum(reduced = false) {
       else { update(); finished(); }
     }
   };
-  const app = await openMuseum([1180, 820], { layoutMotion, reducedMotion: reduced });
+  const app = await openMuseum(initialSize, { layoutMotion, reducedMotion: reduced });
   act(() => finishLoading(app.pictures));
   holdFade = true;
   return {
@@ -204,6 +209,25 @@ async function turningMuseum(reduced = false) {
 const bounds = (box: Box) => ({ left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
 
 describe("the museum through turns", () => {
+  it("lets fitted copies start smaller than the upright minimums", async () => {
+    const app = await turningMuseum(false, [800, 600]);
+    const oldBoxes = stands().map(museumBox);
+    expect(oldBoxes.every((box) => box.width < 262)).toBe(true);
+    app.resize([600, 800], "tall");
+    const copies = app.animations.filter(({ element, cancelled }) => !cancelled && element.hasAttribute("data-fitted-picture"));
+    expect(copies).toHaveLength(5);
+    copies.forEach(({ element, frames }, index) => {
+      expect(frames[0]).toEqual(bounds(oldBoxes[index]!));
+      // Live layout minima must not clamp the fixed copies' animated boxes.
+      const copy = styleAt(element, [600, 800]);
+      expect([copy.px("min-width"), copy.px("min-height")]).toEqual([0, 0]);
+      expect(styleAt(element.querySelector(".skeleton-exhibit")!, [600, 800]).px("min-height")).toBe(0);
+    });
+    expect(styleAt(stands()[0]!, [600, 800]).value("min-width")).toBe("min(262px, 100%)");
+    app.settle();
+    expect(document.querySelector("[data-fitted-picture]")).toBeNull();
+  });
+
   it("glides fitted stands there and back, keeping collection, badges, focus and actions", async () => {
     const app = await turningMuseum();
     const before = collection();

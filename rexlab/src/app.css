@@ -7849,13 +7849,13 @@ html[data-size="tall"] .skeleton-museum-screen .skeleton-title-words {
   font-size: min(40px, (100cqi - 66px) / (var(--letters) * 0.8));
 }
 
-html[data-size="tall"] .skeleton-stand {
+html[data-size="tall"] .skeleton-hall > .skeleton-stand {
   flex-basis: calc((100% - 12px) / 2);
   min-width: min(262px, 100%);
   min-height: 208px;
 }
 
-html[data-size="tall"] .skeleton-exhibit {
+html[data-size="tall"] .skeleton-hall > .skeleton-stand > .skeleton-exhibit {
   min-height: 96px;
 }
 
