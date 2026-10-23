@@ -40,7 +40,7 @@ export function SkeletonMuseumScreen({ language, stands, score, total, best, onB
       <SkeletonBar language={language} title={text.museum} Mark={Landmark} onHome={onHome}>
         <Button className="home-button skeleton-bar-button" onClick={onBuildAnother}>
           <Bone size={24} aria-hidden="true" />
-          {text.buildAnother}
+          <span className="upright-hidden">{text.buildAnother}</span>
         </Button>
         <p className="skeleton-chip skeleton-stars" aria-label={text.starsEarned}>
           <Star size={20} aria-hidden="true" />
@@ -79,7 +79,7 @@ function StandCard({
   const name = stand.name.toLocaleUpperCase(language);
   const built = stand.state === "built";
   return (
-    <section className="skeleton-stand" aria-label={name} data-state={stand.state} style={{ "--stand": index } as CSSProperties}>
+    <section className="skeleton-stand" aria-label={name} data-turn-part={`skeleton-stand-${stand.id}`} data-state={stand.state} style={{ "--stand": index } as CSSProperties}>
       <div className="skeleton-stand-top">
         <h2 className="skeleton-stand-name">{name}</h2>
         {stand.state !== "empty" && (
