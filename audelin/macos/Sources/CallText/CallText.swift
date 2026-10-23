@@ -99,6 +99,14 @@ public actor CallText {
     private func end() async {
 
         for task in listeners { task.cancel() }
+        for task in listeners { await task.value }
+        // Getting ready and catching up may wait on a collaborator for as
+        // long as it likes; stopping abandons them, while ready tracks
+        // still finish their text.
+        for index in tracks.indices where tracks[index].phase == .loading || tracks[index].phase == .catchingUp {
+            tracks[index].phase = .finished
+            tracks[index].operation?.cancel()
+        }
         await waitForAudioEnd()
         ended = true
         enabled = false
@@ -151,7 +159,7 @@ public actor CallText {
         guard current(turn) else { return }
         do {
             try await inputs[index].text.prepare()
-            guard current(turn) else { return }
+            guard current(turn), tracks[index].phase != .finished else { return }
             let boundary = tracks[index].receivedThrough
             let from = tracks[index].heardThrough
             // Deliveries during the read queue behind this operation. The
@@ -177,6 +185,7 @@ public actor CallText {
             updateStatus()
             publish()
         } catch {
+            guard tracks[index].phase != .finished else { return }
             fail(error, turn: turn)
         }
     }
@@ -202,7 +211,7 @@ public actor CallText {
 
     private func take(_ audio: Audio, on index: Int, turn: Int) async {
 
-        guard current(turn) else { return }
+        guard current(turn), tracks[index].phase != .finished else { return }
         do {
             try await hear(audio, on: index, turn: turn, through: audio.end)
         } catch {

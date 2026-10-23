@@ -52,10 +52,58 @@ struct CallTextTests {
 
         let rig = Rig(loading: true)
         await rig.call.start()
-        let state = await rig.call.state
-        #expect(state.status == .gettingReady)
-        #expect(state.entries.isEmpty)
+        var updates = rig.call.updates.makeAsyncIterator()
+        #expect(await updates.next() == State(status: .gettingReady, entries: []))
+        #expect(await rig.call.state == State(status: .gettingReady, entries: []))
         await rig.release()
+        await rig.call.stop()
+    }
+
+    @Test func stopEndsTextWhilePreparationIsHeld() async {
+
+        let rig = Rig(loading: true)
+        await rig.call.start()
+        await rig.call.stop()
+        var final: State?
+        for await update in rig.call.updates { final = update }
+        #expect(final == State(status: .finished, entries: []))
+    }
+
+    @Test func stopEndsTextWhileACatchUpReadIsHeld() async {
+
+        let rig = Rig(loading: true)
+        await rig.call.start()
+        await rig.microphoneWritten.append(tone(0))
+        await rig.microphone.send(tone(0))
+        await rig.microphoneWritten.holdNextRead()
+        await rig.release()
+        for await _ in rig.microphoneWritten.readBegan { break }
+        await rig.call.stop()
+        var final: State?
+        for await update in rig.call.updates { final = update }
+        #expect(final == State(status: .finished, entries: []))
+    }
+
+    @Test func liveRevisionsReplaceEarlierText() async {
+
+        let rig = Rig()
+        await rig.microphoneText.reviseWhileHearing()
+        await rig.call.start()
+        await rig.listening()
+        var updates = rig.call.updates.makeAsyncIterator()
+        for index in 0..<4 {
+            await rig.microphone.send(tone(index))
+            let expected = entries(0...index, speaker: .mine).map { entry in
+                guard entry.text.id < index else { return entry }
+                let text = entry.text
+                return State.Entry(
+                    speaker: .mine,
+                    text: Text(id: text.id, start: text.start, end: text.end, settled: text.pending),
+                    writtenLater: false
+                )
+            }
+            #expect(await updates.next() == State(status: .listening, entries: expected))
+        }
         await rig.call.stop()
     }
 
@@ -561,6 +609,7 @@ private actor ToneText: TrackText {
     private var waiting: CheckedContinuation<Void, Never>?
     private var text: [Text] = []
     private var holdsNextHearing = false
+    private var revisesWhileHearing = false
     nonisolated let hearingBegan: AsyncStream<Void>
     private let hearingContinuation: AsyncStream<Void>.Continuation
 
@@ -618,9 +667,15 @@ private actor ToneText: TrackText {
 
     func holdNextHearing() { holdsNextHearing = true }
 
+    /// Each hearing settles the words heard before it.
+    func reviseWhileHearing() { revisesWhileHearing = true }
+
     func hear(_ audio: Audio) async throws -> [Text] {
 
         try checkFailure(.hear)
+        if revisesWhileHearing {
+            text = text.map { Text(id: $0.id, start: $0.start, end: $0.end, settled: $0.settled + $0.pending) }
+        }
         for (index, sample) in audio.samples.enumerated() {
             guard sample >= 0 else { throw Failed() }
             let start = audio.start + Double(index) / audio.sampleRate
