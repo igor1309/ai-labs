@@ -6,6 +6,37 @@ import Testing
 
 struct NemotronRecognizerTests {
 
+    @Test func recognizersBuiltTogetherShareOneModelLoad() async throws {
+
+        let load = ControlledModelLoad()
+        let received = ReceivedModels()
+        let makeDecoder = NemotronRecognizer.sharedDecoders(
+            load: { await load.load() },
+            makeDecoder: { model in
+                await received.append(model)
+                return ScriptedDecoder([])
+            }
+        )
+        let recognizers = 4
+
+        let built = try await withThrowingTaskGroup(of: NemotronRecognizer.self) { group in
+            for _ in 0..<recognizers {
+                group.addTask { NemotronRecognizer(decoder: try await makeDecoder()) }
+            }
+            var starts = load.started.makeAsyncIterator()
+            await starts.next()
+
+            await load.finish(42)
+            var built: [NemotronRecognizer] = []
+            for try await recognizer in group { built.append(recognizer) }
+            return built
+        }
+
+        #expect(built.count == recognizers)
+        #expect(await load.calls == 1)
+        #expect(await received.models == Array(repeating: 42, count: recognizers))
+    }
+
     @Test func nothingIsHeardBeforeAChunksAudioIsIn() async throws {
 
         let decoder = ScriptedDecoder([[token("▁слово", 0.2, 0.5)]], minimumSamples: 17_920)
@@ -292,6 +323,49 @@ struct NemotronRecognizerTests {
         try file.read(into: buffer)
         try #require(buffer.frameLength > 0)
         return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
+    }
+}
+
+/// Holds every load until the test finishes it; a load after that returns
+/// at once, so a recognizer that loads on its own is counted, not stuck.
+private actor ControlledModelLoad {
+
+    let started: AsyncStream<Void>
+    private let starts: AsyncStream<Void>.Continuation
+    private var model: Int?
+    private var waiters: [CheckedContinuation<Int, Never>] = []
+    private(set) var calls = 0
+
+    init() {
+
+        (started, starts) = AsyncStream<Void>.makeStream()
+    }
+
+    func load() async -> Int {
+
+        calls += 1
+        starts.yield(())
+        if let model { return model }
+        return await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func finish(_ model: Int) {
+
+        self.model = model
+        for waiter in waiters { waiter.resume(returning: model) }
+        waiters.removeAll()
+        starts.finish()
+    }
+}
+
+/// The model each built recognizer was given.
+private actor ReceivedModels {
+
+    private(set) var models: [Int] = []
+
+    func append(_ model: Int) {
+
+        models.append(model)
     }
 }
 

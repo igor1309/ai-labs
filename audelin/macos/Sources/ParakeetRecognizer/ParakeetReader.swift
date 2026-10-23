@@ -4,10 +4,26 @@ import ModelLoading
 
 extension ParakeetRecognizer {
 
+    /// Every recognizer this process builds reads with the one model load.
+    private static let readers = sharedReaders(
+        load: { try await AsrModels.downloadAndLoad(version: .v3) },
+        makeReader: { try await ParakeetReader(models: $0) }
+    )
+
     /// Loads Parakeet v3, downloading it the first time.
     public init() async throws {
 
-        self.init(reader: try await ParakeetReader())
+        self.init(reader: try await Self.readers())
+    }
+
+    /// Builds readers that all take their model from one load.
+    static func sharedReaders<Model: Sendable>(
+        load: @escaping @Sendable () async throws -> Model,
+        makeReader: @escaping @Sendable (Model) async throws -> any WindowReader
+    ) -> @Sendable () async throws -> any WindowReader {
+
+        let models = SharedModel(load: load)
+        return { try await makeReader(models.load().value) }
     }
 }
 
@@ -15,16 +31,12 @@ extension ParakeetRecognizer {
 /// state.
 private final class ParakeetReader: WindowReader, @unchecked Sendable {
 
-    private static let models = SharedModel {
-        try await AsrModels.downloadAndLoad(version: .v3)
-    }
-
     private let manager: AsrManager
 
-    init() async throws {
+    init(models: AsrModels) async throws {
 
         manager = AsrManager(config: .default)
-        try await manager.loadModels(try await Self.models.load().value)
+        try await manager.loadModels(models)
     }
 
     func read(_ samples: [Float]) async throws -> [WindowWord] {

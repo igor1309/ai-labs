@@ -3,28 +3,41 @@ import ModelLoading
 
 extension NemotronRecognizer {
 
+    /// Every recognizer this process builds decodes with the one model load.
+    private static let decoders = sharedDecoders(
+        load: {
+            try await StreamingNemotronMultilingualAsrManager.downloadAndPreloadShared(languageCode: "auto", chunkMs: 1120)
+        },
+        makeDecoder: { try await NemotronDecoder(models: $0) }
+    )
+
     /// Loads multilingual Nemotron in 1120 ms chunks for Russian speech,
     /// downloading it the first time.
     public init() async throws {
 
-        self.init(decoder: try await NemotronDecoder())
+        self.init(decoder: try await Self.decoders())
+    }
+
+    /// Builds decoders that all take their models from one load.
+    static func sharedDecoders<Model: Sendable>(
+        load: @escaping @Sendable () async throws -> Model,
+        makeDecoder: @escaping @Sendable (Model) async throws -> any TokenDecoder
+    ) -> @Sendable () async throws -> any TokenDecoder {
+
+        let models = SharedModel(load: load)
+        return { try await makeDecoder(models.load().value) }
     }
 }
 
 /// The model's cumulative token stream, without language tags.
 private struct NemotronDecoder: TokenDecoder {
 
-    private static let models = SharedModel {
-        try await StreamingNemotronMultilingualAsrManager.downloadAndPreloadShared(languageCode: "auto", chunkMs: 1120)
-    }
-
     let chunk = 1.12
 
     private let manager: StreamingNemotronMultilingualAsrManager
 
-    init() async throws {
+    init(models: SharedNemotronMultilingualModels) async throws {
 
-        let models = try await Self.models.load().value
         let manager = StreamingNemotronMultilingualAsrManager()
         try await manager.loadFromShared(models)
         await manager.setLanguage("ru")

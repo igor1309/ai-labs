@@ -9,6 +9,37 @@ import Testing
 @Suite(.serialized)
 struct ParakeetRecognizerTests {
 
+    @Test func recognizersBuiltTogetherShareOneModelLoad() async throws {
+
+        let load = ControlledModelLoad()
+        let received = ReceivedModels()
+        let makeReader = ParakeetRecognizer.sharedReaders(
+            load: { await load.load() },
+            makeReader: { model in
+                await received.append(model)
+                return ScriptedReader([])
+            }
+        )
+        let recognizers = 4
+
+        let built = try await withThrowingTaskGroup(of: ParakeetRecognizer.self) { group in
+            for _ in 0..<recognizers {
+                group.addTask { ParakeetRecognizer(reader: try await makeReader()) }
+            }
+            var starts = load.started.makeAsyncIterator()
+            await starts.next()
+
+            await load.finish(42)
+            var built: [ParakeetRecognizer] = []
+            for try await recognizer in group { built.append(recognizer) }
+            return built
+        }
+
+        #expect(built.count == recognizers)
+        #expect(await load.calls == 1)
+        #expect(await received.models == Array(repeating: 42, count: recognizers))
+    }
+
     @Test func nothingIsHeardBeforeAWindowsAudioIsIn() async throws {
 
         let reader = ScriptedReader([[word("слово", 4.1, 4.5)]])
@@ -252,6 +283,49 @@ struct ParakeetRecognizerTests {
         let buffer = try #require(AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)))
         try file.read(into: buffer)
         return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
+    }
+}
+
+/// Holds every load until the test finishes it; a load after that returns
+/// at once, so a recognizer that loads on its own is counted, not stuck.
+private actor ControlledModelLoad {
+
+    let started: AsyncStream<Void>
+    private let starts: AsyncStream<Void>.Continuation
+    private var model: Int?
+    private var waiters: [CheckedContinuation<Int, Never>] = []
+    private(set) var calls = 0
+
+    init() {
+
+        (started, starts) = AsyncStream<Void>.makeStream()
+    }
+
+    func load() async -> Int {
+
+        calls += 1
+        starts.yield(())
+        if let model { return model }
+        return await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func finish(_ model: Int) {
+
+        self.model = model
+        for waiter in waiters { waiter.resume(returning: model) }
+        waiters.removeAll()
+        starts.finish()
+    }
+}
+
+/// The model each built recognizer was given.
+private actor ReceivedModels {
+
+    private(set) var models: [Int] = []
+
+    func append(_ model: Int) {
+
+        models.append(model)
     }
 }
 
