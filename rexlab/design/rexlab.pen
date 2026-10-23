@@ -108884,6 +108884,1244 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "ImWC0",
+      "x": 17864,
+      "y": 35720,
+      "name": "Find the pair board — upright · iPad mini 744×1133 · English · Explorer 6×3 · one pair found, one card turned (LAB-486)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 28,
+      "padding": [
+        40,
+        32,
+        48,
+        32
+      ],
+      "children": [
+        {
+          "type": "rectangle",
+          "id": "DBCmf",
+          "layoutPosition": "absolute",
+          "x": 0,
+          "y": 1093,
+          "name": "Strata 1",
+          "fill": "$fm-strata-1",
+          "width": 744,
+          "height": 40
+        },
+        {
+          "type": "frame",
+          "id": "ot47C",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "wdcDg",
+              "name": "Back Button",
+              "width": 56,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "bfP5Z",
+                  "name": "Back Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "F9Vdjf",
+                  "x": 50,
+                  "y": 15.5,
+                  "name": "Home Text",
+                  "enabled": false,
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iCjgI",
+              "name": "Home Button",
+              "width": 56,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "GMfdJ",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "WEkOA",
+                  "x": 50,
+                  "y": 15.5,
+                  "name": "Home Text",
+                  "enabled": false,
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "wdRDP",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "padding": [
+                0,
+                0,
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "kAjYZ",
+                  "name": "Title Mark",
+                  "width": 56,
+                  "height": 56,
+                  "fill": "$fm-sky",
+                  "cornerRadius": 16,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "i1KMHf",
+                      "name": "Title Icon",
+                      "width": 30,
+                      "height": 30,
+                      "icon": "copy",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "uQKdQ",
+                  "x": 82,
+                  "y": 3,
+                  "name": "Title Text",
+                  "enabled": false,
+                  "fill": "$fm-ink",
+                  "content": "FIND THE PAIR",
+                  "fontFamily": "Lexend",
+                  "fontSize": 40,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "U0Y8R",
+              "name": "Tries Chip",
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "ijPLl",
+                  "name": "Tries Chip Icon",
+                  "width": 26,
+                  "height": 26,
+                  "icon": "hand",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "X0Y4XR",
+                  "name": "Tries Chip Value",
+                  "fill": "$fm-ink",
+                  "content": "7",
+                  "fontFamily": "Lexend",
+                  "fontSize": 26,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "bq5Wz",
+          "name": "Board",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 16,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "QYyU3",
+              "name": "Upright Row 1",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Oo8i2",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "uQiYc",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "EfIuM",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ydWsb",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "BO9Wy",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "zacGM",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "cJRMQ",
+                  "name": "Card Matched TRICERATOPS",
+                  "clip": true,
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 22,
+                  "stroke": "$fm-good",
+                  "strokeWidth": 4,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "HsMX9",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface-2",
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Z2DFK",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/triceratops.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "GocfM",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "padding": [
+                        9,
+                        6
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "woQK0",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "TRICERATOPS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "p7SZf",
+              "name": "Upright Row 2",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wMS62",
+                  "name": "Card Matched STEGOSAURUS",
+                  "clip": true,
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 22,
+                  "stroke": "$fm-good",
+                  "strokeWidth": 4,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Bu3o4",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface-2",
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "fSzU5",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/stegosaurus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kwot0",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "padding": [
+                        9,
+                        6
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "SSPlw",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "STEGOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "khz15",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "p08uqf",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "O4eK6",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "FwPzj",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "rP6Vr",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "qzy6n",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "O7TTw3",
+              "name": "Upright Row 3",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "IGWGU",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "iH08Y",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "WR48L",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "J0269g",
+                  "name": "Card Matched STEGOSAURUS Silhouette",
+                  "clip": true,
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 22,
+                  "stroke": "$fm-good",
+                  "strokeWidth": 4,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "mk6Mj",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface-2",
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "hfmRz",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/silhouette-stegosaurus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "xxe0v",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "padding": [
+                        9,
+                        6
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "xkHsP",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "STEGOSAURUS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "sELcf",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Rmntk",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "vGeL7",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "XnMN6",
+              "name": "Upright Row 4",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "iU4h3",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "t86sW",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "ZKKjh",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "EDbaX",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "C4jaq",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "H0rxb",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "EFjj7",
+                  "name": "Card Open ANKYLOSAURUS Silhouette",
+                  "clip": true,
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 22,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "bbigu",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface-2",
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "UUxuo",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/silhouette-ankylosaurus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SXzUP",
+              "name": "Upright Row 5",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Su4n2",
+                  "name": "Card Matched TRICERATOPS Silhouette",
+                  "clip": true,
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 22,
+                  "stroke": "$fm-good",
+                  "strokeWidth": 4,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "rv6Jx",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface-2",
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "bJI2x",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/silhouette-triceratops.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "VMY6C",
+                      "name": "Footer",
+                      "width": "fill_container",
+                      "padding": [
+                        9,
+                        6
+                      ],
+                      "justifyContent": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "gTGaU",
+                          "name": "Name",
+                          "fill": "$fm-ink",
+                          "content": "TRICERATOPS",
+                          "fontFamily": "Lexend",
+                          "fontSize": 14,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "guHdZ",
+                  "name": "Card Open SPINOSAURUS",
+                  "clip": true,
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-surface",
+                  "cornerRadius": 22,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "X9Ld2C",
+                      "name": "Art",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": "$fm-surface-2",
+                      "padding": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "TxT4u",
+                          "name": "Picture",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/spinosaurus.webp",
+                            "mode": "contain"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "HXK30",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "eI1Cp",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "V0lsQ",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "WtKBU",
+              "name": "Upright Row 6",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wHZRL",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "H6wrn",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "XMyRo",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "vOxkV",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Zdlzg",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "nlk6z",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "NC4S6",
+                  "name": "Card Face Down",
+                  "width": 138,
+                  "height": 147,
+                  "fill": "$fm-base",
+                  "cornerRadius": 22,
+                  "stroke": "#F2B33D66",
+                  "strokeWidth": 2,
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$fm-shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 6
+                    },
+                    "blur": 16
+                  },
+                  "padding": 13,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "TjGtY",
+                      "name": "Card Back",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "cornerRadius": 15,
+                      "stroke": "#F2B33D59",
+                      "strokeWidth": 2,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "jZhIU",
+                          "name": "Back Symbol",
+                          "width": 60,
+                          "height": 60,
+                          "icon": "footprints",
+                          "library": "lucide",
+                          "fill": "$fm-amber"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {

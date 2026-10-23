@@ -225,8 +225,9 @@ export function usePairsGame(
     go({ kind: "welcome" });
   };
 
-  // `welcomeType` is the welcome's upright type in the window.
-  const content = (language: Language, welcomeType: WelcomeType) => {
+  // `welcomeType` is the welcome's upright type in the window, and
+  // `boardWidth` the width a board stands in upright.
+  const content = (language: Language, welcomeType: WelcomeType, boardWidth: number) => {
     switch (screen.kind) {
       case "welcome":
         return (
@@ -250,6 +251,7 @@ export function usePairsGame(
             <PairsBoardScreen
               language={language}
               {...board}
+              width={boardWidth}
               finished={screen.finished}
               onTurn={turnCard}
               onBack={back}

@@ -57,6 +57,9 @@ export type PairsAppOptions<C extends Clock> = {
   settingsStorage?: MemoryStorage;
   // Told each game whose start the app counts.
   startCounter?: AppProps["startCounter"];
+  // How the page's parts are measured and moved as it turns, a page at
+  // rest unless given.
+  layoutMotion?: AppProps["layoutMotion"];
 };
 
 // The age level the climb is played at, so a test about the climb sees it.
@@ -81,7 +84,8 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
   theme = "light",
   ageLevel = PICKED_HATCHLING,
   settingsStorage,
-  startCounter
+  startCounter,
+  layoutMotion
 }: PairsAppOptions<C> = {}) {
   const ageLevels = settingsStorage ?? ageLevelStorage(ageLevel);
   const view = render(
@@ -109,6 +113,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
       {...emptySkeletons()}
       {...emptyDig()}
       {...pageAtRest()}
+      {...(layoutMotion && { layoutMotion })}
       sortables={SHIPPED_SORTABLES}
       sortingProgress={localSortingProgress(() => storage)}
       reducedMotion={() => reducedMotion}

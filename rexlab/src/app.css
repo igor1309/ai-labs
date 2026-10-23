@@ -5180,6 +5180,69 @@ html[data-size="tall"] .level-switch-level {
     wave var(--motion-screen) var(--ease-out) calc(var(--motion-standard) + var(--card) * var(--motion-stagger));
 }
 
+/* Upright, the board stands under the bar with its grid on its side: the
+   landscape rows stand as its columns and the landscape columns as its
+   rows, the cards flowing down each column in turn, so each card keeps
+   its neighbours and the page keeps their order. The screen keeps its
+   landscape padding top and bottom and the bar's gap, and is 32 from each
+   side. The cards stand 16 apart at their 3:3.2, each as wide as the
+   board's width allows, which the screen gives in --card-by-width, and as
+   the height under the bar allows, the padding (88), the bar (56) and its
+   gap (28) taken, 172 in all; never under the board's floor, and below
+   that the whole screen scrolls. */
+html[data-size="tall"] .pairs-board-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(32px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(32px + var(--screen-left));
+  row-gap: 28px;
+}
+
+html[data-size="tall"] .pair-board-room {
+  flex: 1 0 auto;
+  container-type: normal;
+}
+
+html[data-size="tall"] .pair-board {
+  width: auto;
+  aspect-ratio: auto;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(var(--rows), max(var(--card-floor), min(var(--card-by-width), (100vh - (172px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--columns) - 1) * 16px) / var(--columns) * 0.9375)));
+  grid-template-columns: repeat(var(--rows), max(var(--card-floor), min(var(--card-by-width), (100dvh - (172px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--columns) - 1) * 16px) / var(--columns) * 0.9375)));
+  grid-template-rows: repeat(var(--columns), auto);
+  row-gap: 16px;
+  column-gap: 16px;
+}
+
+html[data-size="tall"] .pair-card {
+  aspect-ratio: 3 / 3.2;
+}
+
+/* Upright, the bar keeps one row at the narrowest width: BACK and HOME
+   show their symbols alone, each 56 a side, and the title its mark alone. */
+html[data-size="tall"] .pairs-bar .home-button {
+  flex-shrink: 0;
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+
+/* A name a tall window shows to screen readers alone, kept in the page. */
+html[data-size="tall"] .upright-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 @keyframes flip-in {
   from {
     opacity: 0;
