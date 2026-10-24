@@ -1127,11 +1127,9 @@ body:has(.result) #version {
 [data-size="tall-narrow"] .home-corner {
   top: calc(24px + env(safe-area-inset-top));
   right: calc(20px + var(--screen-right));
-  gap: 8px;
 }
 
 [data-size="tall-narrow"] .home-museum {
-  width: 60px;
   padding: 0;
   justify-content: center;
 }
@@ -1155,10 +1153,6 @@ body:has(.result) #version {
   height: 48px;
 }
 
-[data-size="tall-narrow"] .featured-card-title {
-  font-size: 28px;
-}
-
 [data-size="tall-narrow"] .featured-card-badge {
   top: 16px;
   right: 16px;
@@ -1170,6 +1164,65 @@ body:has(.result) #version {
   height: clamp(320px, 36vh, 420px);
   height: clamp(320px, 36dvh, 420px);
   margin-right: -20px;
+}
+
+/* Under 360 wide (an iPhone with its display zoomed, or a window in
+   Slide Over) the corner closes up, every tap still 44 pixels or more,
+   the large card's name is smaller, the games still to come keep
+   narrower sides, and ANCIENT REPTILES may take two lines in its
+   narrower column. From 360 wide they stand as above. */
+[data-size="tall-narrow"] .home-corner {
+  gap: 6px;
+}
+
+[data-size="tall-narrow"] .home-museum {
+  min-width: 48px;
+  width: 48px;
+}
+
+[data-size="tall-narrow"] .featured-card-title {
+  font-size: 26px;
+}
+
+[data-size="tall-narrow"] .parent-menus {
+  gap: 4px;
+}
+
+[data-size="tall-narrow"] .more-coming {
+  padding: 20px;
+}
+
+[data-size="tall-narrow"] .catalogue-tile-title {
+  white-space: normal;
+  line-height: 1.15;
+}
+
+@media (min-width: 360px) {
+  [data-size="tall-narrow"] .home-corner {
+    gap: 8px;
+  }
+
+  [data-size="tall-narrow"] .home-museum {
+    min-width: 60px;
+    width: 60px;
+  }
+
+  [data-size="tall-narrow"] .featured-card-title {
+    font-size: 28px;
+  }
+
+  [data-size="tall-narrow"] .parent-menus {
+    gap: 8px;
+  }
+
+  [data-size="tall-narrow"] .more-coming {
+    padding: 20px 24px;
+  }
+
+  [data-size="tall-narrow"] .catalogue-tile-title {
+    white-space: nowrap;
+    line-height: normal;
+  }
 }
 
 /* The row stays where the page put it until the motion to the other
