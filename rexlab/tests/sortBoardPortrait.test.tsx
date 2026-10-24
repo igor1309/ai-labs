@@ -181,6 +181,11 @@ describe("sort's board upright on a phone", () => {
       "repeat(var(--upright-columns), max(72px, min(var(--card-by-width), ((100vh - (456px + 0px + 0px) - (var(--upright-rows) - 1) * 8px) / var(--upright-rows) - var(--strip)) / 0.75)))"
     );
     expect(sizes.topPadding + sizes.bottomPadding + sizes.bar + sizes.prompt + 3 * sizes.gap + sizes.basketsMinimum).toBe(456);
+    // The tray takes the rows it needs, each card's picture 4:3 over its
+    // strip, as the sums count them.
+    expect(styleAt(part(".sort-tray-area"), size).value("height")).toBe("auto");
+    expect(styleAt(part(".sort-art"), size).value("aspect-ratio")).toBe("4 / 3");
+    expect(styleAt(part(".sort-footer"), size).value("height")).toBe(expected["--strip"]);
     const room = styleAt(part(".baskets"), size);
     expect([room.value("flex-grow"), room.px("min-height"), room.columnGap()]).toEqual(["1", sizes.basketsMinimum, sizes.basketsGap.two]);
     for (const basket of baskets()) {
