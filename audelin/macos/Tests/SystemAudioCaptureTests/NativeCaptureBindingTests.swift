@@ -6,6 +6,70 @@ import Testing
 
 struct NativeCaptureBindingTests {
 
+    @Test func nativeFormatChangeDuringInstallUsesSubscribedRate() async throws {
+
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
+        calls.state.withLock {
+            var format = $0.format
+            format.mSampleRate = 24_000
+            $0.formatOnRegistration = format
+        }
+        let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
+        defer { capture.stop() }
+        try calls.deliver(samples: [0.25])
+        try calls.deliver(samples: [0.5, 0.75])
+        capture.stop()
+        let pieces = try await drain(capture)
+        #expect(pieces.map(\.samples) == [[0.25], [0.5, 0.75]])
+        #expect(pieces.map(\.sampleRate) == [24_000, 24_000])
+        #expect(calls.state.withLock { $0.subscribedFormatReads } == 1)
+    }
+
+    @Test func nativeFailedFormatReadDuringInstallRemovesListenerWithoutIO() throws {
+
+        try expectInstallFormatFailure(format: .float32MonoLittleEndian, readRefused: true)
+    }
+
+    @Test(arguments: NativeTapFormat.allCases.filter { $0 != .float32MonoLittleEndian })
+    func nativeRefusedFormatDuringInstallRemovesListenerWithoutIO(format: NativeTapFormat) throws {
+
+        try expectInstallFormatFailure(format: format, readRefused: false)
+    }
+
+    private func expectInstallFormatFailure(format: NativeTapFormat, readRefused: Bool) throws {
+
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
+        let (binding, tap, device) = try calls.makeDevice()
+        defer { binding.destroyDevice(device); binding.destroyTap(tap) }
+        calls.state.withLock {
+            $0.formatOnRegistration = format.value
+            $0.refuseFormatOnRegistration = readRefused
+        }
+        let deliveries = Mutex(0)
+        let install = {
+            let io = try binding.installIO(device) { _ in deliveries.withLock { $0 += 1 } }
+            defer { binding.removeIO(device, io) }
+        }
+        if readRefused {
+            #expect(throws: NSError(domain: NSOSStatusErrorDomain, code: -50), performing: install)
+        } else {
+            #expect(throws: CaptureError.unsupportedFormat, performing: install)
+        }
+        let registration = try #require(calls.state.withLock { $0.lastFormatListener })
+        // Listener removal can leave an already queued notification.
+        calls.fire([registration.address], on: tap, through: registration)
+        #expect(deliveries.withLock { $0 } == 0)
+        let resources = calls.state.withLock { ($0.made, $0.released) }
+        #expect(resources.0 == [
+            .tap(tap), .device(device),
+            .listener(tap, ListenerIdentity(registration.address, registration.queue, registration.block)),
+        ])
+        #expect(resources.1 == Array(resources.0.suffix(1)))
+        #expect(calls.state.withLock { $0.io == nil && $0.formatListener == nil })
+        #expect(calls.state.withLock { !$0.events.contains("io") })
+        #expect(calls.state.withLock { $0.subscribedFormatReads } == 1)
+    }
+
     @Test func nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder() async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
@@ -511,6 +575,10 @@ private final class RecordingCaptureCalls: Sendable {
         var released: [NativeResource] = []
         var nativeCalls: [NativeCall] = []
         var formatListener: ListenerRegistration?
+        var lastFormatListener: ListenerRegistration?
+        var formatOnRegistration: AudioStreamBasicDescription?
+        var refuseFormatOnRegistration = false
+        var subscribedFormatReads = 0
         var listener: ListenerRegistration?
         var io: IOBlock?
         var missing: Int32?
@@ -676,7 +744,18 @@ private final class RecordingCaptureCalls: Sendable {
                     data.storeBytes(of: process, as: UInt32.self)
                 case kAudioTapPropertyFormat:
                     #expect(object == 11)
-                    let status = attempt("format")
+                    if let queue = state.withLock({ $0.formatListener?.queue }) {
+                        dispatchPrecondition(condition: .onQueue(queue))
+                    }
+                    // Subscribed reads are separate from the initial startup checks.
+                    let status: OSStatus = state.withLock {
+                        if $0.formatListener != nil {
+                            $0.subscribedFormatReads += 1
+                        } else {
+                            $0.events.append("format")
+                        }
+                        return $0.refuse == "format" ? -50 : noErr
+                    }
                     guard status == noErr else { return status }
                     let format = state.withLock { $0.format }
                     data.storeBytes(of: format, as: AudioStreamBasicDescription.self)
@@ -733,7 +812,12 @@ private final class RecordingCaptureCalls: Sendable {
                 guard status == noErr else { return status }
                 let registration = ListenerRegistration(device: device, address: address, queue: queue, block: block.value)
                 state.withLock {
-                    if device == 11 { $0.formatListener = registration } else { $0.listener = registration }
+                    if device == 11 {
+                        $0.formatListener = registration
+                        $0.lastFormatListener = registration
+                        if let format = $0.formatOnRegistration { $0.format = format }
+                        if $0.refuseFormatOnRegistration { $0.refuse = "format" }
+                    } else { $0.listener = registration }
                     $0.made.append(.listener(device, ListenerIdentity(address, queue, registration.block)))
                 }
                 return noErr

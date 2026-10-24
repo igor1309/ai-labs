@@ -112,6 +112,11 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
                 _ = native.removeListener(tap, &address, queue, block)
             }
         }
+        // Recheck after subscribing, in order with the listener's rate updates.
+        try queue.sync {
+            guard rate.bits.load(ordering: .acquiring) != 0 else { throw CaptureError.unsupportedFormat }
+            rate.bits.store(try sampleRate(tap).bitPattern, ordering: .releasing)
+        }
         var io: AudioDeviceIOProcID?
         try check(native.createIO(&io, device, IOBlock { _, input, _, _, _ in
             let bits = rate.bits.load(ordering: .acquiring)

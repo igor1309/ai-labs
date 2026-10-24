@@ -24,16 +24,16 @@ Native: rename writes a description with the same UUID. Evidence:
 
 ## S-5 A new output device keeps the sound heard
 
-Fake: tones survive an output change. Native: format notifications update the cached rate; IO makes no native calls. A buffer at the switch can carry the previous rate to keep native calls off IO. Input samples stay in delivery order despite different output samples. Evidence:
+Fake: tones survive an output change. Native: a change during install is caught by a second read after subscribing, serialized with format notifications; IO makes no native calls. A buffer at the switch can carry the previous rate to keep native calls off IO. Input samples stay in delivery order despite different output samples. Evidence:
 `SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`, `SystemAudioCaptureTests.anInFlightBufferKeepsItsRateAcrossAnOutputChange`,
-`NativeCaptureBindingTests.nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder`, `NativeCaptureBindingTests.nativeIOCallbackMakesNoNativeCalls`.
+`NativeCaptureBindingTests.nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder`, `NativeCaptureBindingTests.nativeIOCallbackMakesNoNativeCalls`, `NativeCaptureBindingTests.nativeFormatChangeDuringInstallUsesSubscribedRate`.
 
 ## S-6 A capture that cannot start fails
 
 Fake and native: each refused starting step releases only its own handles, removing the format subscription before IO.
-Native: unavailable processes, unsupported formats and refused format subscriptions fail before IO is made. Evidence:
+Native: unavailable processes, unsupported formats and refused format subscriptions fail before IO is made. A refused format or failed read after subscribing removes the listener with its original address and block. Evidence:
 `SystemAudioCaptureTests.eachRefusedStartingStepFailsAndReleasesItsResources`, `NativeCaptureBindingTests.eachRefusedNativeStartingStepReleasesOnlyItsHandles`,
-`NativeCaptureBindingTests.aPIDWithoutANativeProcessObjectIsRefused`, `NativeCaptureBindingTests.nativeTapFormatsAcceptOnlyFloat32MonoLittleEndian`, `NativeCaptureBindingTests.nativeInstallIOChecksFormatBeforeMakingResources`, `NativeCaptureBindingTests.nativeRefusedFormatListenerRegistrationLeavesNoIO`.
+`NativeCaptureBindingTests.aPIDWithoutANativeProcessObjectIsRefused`, `NativeCaptureBindingTests.nativeTapFormatsAcceptOnlyFloat32MonoLittleEndian`, `NativeCaptureBindingTests.nativeInstallIOChecksFormatBeforeMakingResources`, `NativeCaptureBindingTests.nativeRefusedFormatListenerRegistrationLeavesNoIO`, `NativeCaptureBindingTests.nativeRefusedFormatDuringInstallRemovesListenerWithoutIO`, `NativeCaptureBindingTests.nativeFailedFormatReadDuringInstallRemovesListenerWithoutIO`.
 
 ## S-7 A capture the system stops fails
 
