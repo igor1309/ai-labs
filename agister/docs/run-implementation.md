@@ -1722,12 +1722,13 @@ A workflow item runs, in a sequence and in a parallel: home's
 a private debate with a critic, in the slot the lens's one step held.
 
 **`core/workflow`** runs an item that is a workflow wherever an item
-runs, a parallel's children included (ADR-011, rules 2 and 3).
+runs, a parallel's children included.
 
 - The item's **boundary** is the workflow's own: its params bound from
   the item's bindings, read in the caller's scope, a param not bound
   taking its default; its inputs resolved over those params, once,
-  before its first step. Its steps read that boundary and the outputs
+  before its first step, by the resolver the composition built for its
+  workflow and gave its item. Its steps read that boundary and the outputs
   and sessions of its own items, never the caller's; the caller reads
   only the item's outputs, as an item's in sequence.
 - Its **outputs** are its output mapping, read once its steps have
@@ -1746,12 +1747,15 @@ runs, a parallel's children included (ADR-011, rules 2 and 3).
   where it completed, else null, its class the failing step's.
 - Its calls' cost, usage, warnings and sessions count in the run's, as
   a step's in sequence; each call keeps its own limits and the daily
-  budget, as any call does.
-- It is a **child run** (ADR-011, rule 6; ADR-012): core reports its
-  start and end to the record port, and the record keeps it under
-  `children`, by the id `<run id>/<item>`: the item, its workflow, its
-  parent's id, its params and inputs as bound, its status, class and
-  output. Its calls stay in the run's `calls`, by their names.
+  budget, as any call does. No budget of the run's resets at the item:
+  the day's budget is the composition's, kept per call, so a call
+  inside an item meets it as a call outside does.
+- It is a **child run**. The events port grows one kind, a child run's
+  start, with its params and inputs as bound, and its end, with its
+  status, class and output; the record keeps each under `children`,
+  by the id `<run id>/<item>`: the item, its workflow, its parent's
+  id, its params and inputs as bound, its status, class and output.
+  Its calls stay in the run's `calls`, by their names.
 
 **Resolve** reads an item of a workflow whose one output is `output` as
 that value: a field read from the item's outputs is not checked against
@@ -1768,7 +1772,11 @@ run. `agister check` follows, as it shares that list.
 **Home** adds `tests_debate`, the processes `review_critique` and
 `review_revise`, the prompts `code-review-critic` and
 `code-review-revise`, and the schema `critique`; `code_review`'s tests
-slot names the workflow `tests_debate`. The judge's process, prompt and
+slot names the workflow `tests_debate`. Its debate takes the critique
+before the repeat and, in the repeat's body, the revision before the
+next critique, so a critique that converges ends it with no revision
+after it; a first critique that converges skips the repeat by a
+branch. The judge's process, prompt and
 input do not change.
 
 This section runs what "Branch and repeat" left not run: a workflow
@@ -1783,14 +1791,15 @@ Decisions, each with its reason:
 - No workflow budget is added: none exists yet for a run; the item's
   calls are bounded as every call is. One comes with a run's budget.
 - The one output named `output` is given whole, as a step requested
-  alone makes its workflow's (ADR-013): a lens that is a workflow fills
+  alone makes its workflow's: a lens that is a workflow fills
   its slot with a review, as a lens that is a step does; a mapping
   around it would change what the join reads.
 - The item is run by core, not spread into the caller's plan by the
-  composition: the boundary is ADR-011's rule 3, and a spread plan would
-  let a caller's reference reach inside.
-- No event of its own for an item's start and end: its steps' events
-  name it, and a reader of `events.jsonl` finds it by that prefix.
+  composition: a caller has no access inside a child, and a spread plan
+  would let a caller's reference reach inside.
+- The child run is told through the events port, not a record port of
+  core's: core writes no record; the composition keeps records from
+  what the events tell, as it does a call's.
 - A parallel's branch and repeat stay not run: nothing needs one yet;
   a workflow item gives either a slot.
 - Resolve already checks an item's bindings against its workflow's

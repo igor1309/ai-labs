@@ -42,14 +42,20 @@ Feature: A workflow item runs in its caller's place
       "<run id>/tests/critique/1"
     And the record's child runs are one, "<run id>/tests": the workflow
       "lens", its parent "<run id>", its params {"goal": <g.md's
-      text>}, its status "completed" and its output the published
+      text>}, its inputs {}, its status "completed" and its output the published
       review
 
   Scenario: Progress names each call by the item
     Given the critique converges on its first pass
     When "agister run reviewed --param goal=g.md" runs in "/r"
-    And stderr has a line "tests/draft" started on "codex-sol-61", and
+    Then stderr has a line "tests/draft" started on "codex-sol-61", and
       a line "tests/debate" stopped "until" after 1 pass
+
+  Scenario: A call inside the item meets the day's budget as any call
+    Given the day's budget is spent once "arch" has ended
+    When "agister run reviewed --param goal=g.md" runs in "/r"
+    Then "tests/draft" is not made, failed "budget_exhausted", and
+      "judge" is given its slot failed, class "budget_exhausted"
 
   Scenario: Check passes the workflow
     When "agister check" runs in "/r"
