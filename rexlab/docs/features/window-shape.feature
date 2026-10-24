@@ -17,16 +17,12 @@ Feature: The window's shape
     | tall        | portrait, at least 600 CSS pixels wide   | iPad portrait      |
     | tall-narrow | portrait, under 600 CSS pixels wide      | iPhone portrait    |
   Until a screen's own stage builds them, a wide-short window shows the
-  wide layout, and a tall-narrow window the picture a tall one shows for
-  a screen with no portrait layout. A portrait layout is built for one
-  size class at a time: the home page, the catalogue's list, a
-  dinosaur's page, the compare quiz's question and result, and find the
-  pair's welcome, board and result, sort's board and result, and build a
-  skeleton's and DIG's every screen, and care's welcome, visit and
-  friends, have one for a tall window only (each in its own
-  *-portrait.feature), so a tall-narrow window still shows the picture
-  over them. The scenarios below use care's result, which has no
-  portrait layout yet.
+  wide layout, and a tall-narrow window the picture asking to turn or
+  widen. Every screen has a portrait layout for a tall window (each in
+  its own *-portrait.feature); only sand writing has one for a
+  tall-narrow window too, so a tall-narrow window still shows the
+  picture over every other screen. The scenarios below use care's
+  result.
 
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels
@@ -45,8 +41,8 @@ Feature: The window's shape
       | 1000  | 600    | wide        | 1000      | 599        | wide-short  |
 
   Scenario Outline: An upright screen is asked to turn sideways
-    Given the app is in <language> on care's result
-    When the device's screen turns upright, and the window with it
+    Given the app is in <language> on care's result, on a phone
+    When the device's screen turns upright, and the window with it, 393 by 852 CSS pixels
     Then I see a picture of a screen turning from upright to sideways, with "<turn>"
     And under it a small, faded footnote for parents in normal case: "<footnote>"
     When the device's screen turns back to landscape
@@ -69,11 +65,11 @@ Feature: The window's shape
     Examples:
       | language | width | height | wider                 | footnote                                         |
       | English  | 590   | 820    | MAKE THE WINDOW WIDER | A portrait layout for this screen is on its way. |
-      | Russian  | 700   | 900    | СДЕЛАЙ ОКНО ШИРЕ      | Вертикальный вид этого экрана уже в пути.        |
+      | Russian  | 500   | 900    | СДЕЛАЙ ОКНО ШИРЕ      | Вертикальный вид этого экрана уже в пути.        |
 
   Scenario: The picture covers the screen and comes and goes smoothly
     Given I am on care's result
-    When the window becomes portrait
+    When the window becomes 393 by 852 CSS pixels
     Then the picture fades in over the screen with the shared motion tokens, and covers it fully once shown
     And nothing behind it can be tapped or reached by keyboard
     When the window becomes landscape again

@@ -2,11 +2,10 @@ Feature: Care: the friends in a tall window
   In a tall window, portrait and at least 600 CSS pixels wide, care's
   FRIENDS stands upright: BACK and HOME as their symbols, the title and
   the friend count on the bar, NEW VISITOR across the width under it,
-  and the friends' cards two to a row. With no friends yet, the nest and
-  NEW VISITOR stand in the middle. The rest is as
-  dinosaur-care-friends.feature tells. The result still asks to turn,
-  and a tall-narrow window keeps the picture asking to turn or widen
-  (window-shape.feature).
+  and the friends' cards two to a row. With no friends yet, the nest
+  and NEW VISITOR stand in the middle. The rest is as
+  dinosaur-care-friends.feature tells. A tall-narrow window keeps the
+  picture asking to turn or widen (window-shape.feature).
 
   Scenario Outline: The friends stand upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room

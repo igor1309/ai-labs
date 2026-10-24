@@ -1,11 +1,11 @@
 Feature: Care: a visit in a tall window
   In a tall window, portrait and at least 600 CSS pixels wide, a care
   visit stands upright: the bar with HOME as its symbol, the needs and
-  the hearts across the top, the visitor on a stage as wide as the window
-  leaves it, its name above the need's bubble, and the five items to give
-  in one row under it. The rest is as dinosaur-care-visit.feature tells.
-  The result still asks to turn, and a tall-narrow window keeps
-  the picture asking to turn or widen (window-shape.feature).
+  the hearts across the top, the visitor on a stage as wide as the
+  window leaves it, its name above the need's bubble, and the five
+  items to give in one row under it. The rest is as
+  dinosaur-care-visit.feature tells. A tall-narrow window keeps the
+  picture asking to turn or widen (window-shape.feature).
 
   Scenario Outline: A visit stands upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room
