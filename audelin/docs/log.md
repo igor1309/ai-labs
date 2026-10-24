@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Tracks keep mono audio on disk, read stretches while recording, and retain
+  completed writes after a crash or a full disk (LAB-523).
+
 - Recording keeps the latest Session's failure reason visible even when
   its end report arrives first (LAB-506).
 
