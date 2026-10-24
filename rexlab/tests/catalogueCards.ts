@@ -12,19 +12,55 @@ const part = (selector: string, within: ParentNode = document) => {
 // The value a property of `element` takes in a card `cardWidth` wide, the
 // card's container rules applied: jsdom applies none.
 export function inCard(element: Element, cardWidth: number, property: string) {
-  let found = getComputedStyle(element).getPropertyValue(property);
+  let found: { value: string; specificity: Specificity } | undefined;
+  const consider = (rule: CSSStyleRule) => {
+    const value = rule.style.getPropertyValue(property);
+    if (!value) return;
+    const specificity = matchedSpecificity(element, rule.selectorText);
+    // A later rule wins a tie, as in the browser's cascade.
+    if (specificity && (!found || compare(specificity, found.specificity) >= 0)) found = { value, specificity };
+  };
   for (const sheet of document.styleSheets) {
     for (const rule of sheet.cssRules) {
+      if (rule instanceof CSSStyleRule) consider(rule);
       if (!(rule instanceof CSSContainerRule)) continue;
       const [, most] = /^\(max-width: (\d+)px\)$/.exec(rule.conditionText) ?? [];
       if (most === undefined) throw new Error(`No sum for @container ${rule.conditionText}`);
       if (cardWidth > Number(most)) continue;
       for (const inner of rule.cssRules) {
-        if (inner instanceof CSSStyleRule && element.matches(inner.selectorText)) found = inner.style.getPropertyValue(property) || found;
+        if (inner instanceof CSSStyleRule) consider(inner);
       }
     }
   }
-  return found;
+  // A property no rule sets on the element itself is inherited.
+  return found?.value ?? getComputedStyle(element).getPropertyValue(property);
+}
+
+// A selector's specificity: its ids, its classes, attributes and
+// pseudo-classes, and its elements. A pseudo-class taking selectors
+// counts the selectors it takes, not itself.
+type Specificity = [number, number, number];
+
+const compare = (a: Specificity, b: Specificity) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+
+function specificityOf(selector: string): Specificity {
+  const bare = selector.replace(/:(not|is|has)\(/g, " (").replace(/::[\w-]+/g, "").replace(/:where\([^)]*\)/g, "");
+  const ids = bare.match(/#[\w-]+/g)?.length ?? 0;
+  const classes = (bare.match(/\.[\w-]+/g)?.length ?? 0) + (bare.match(/\[[^\]]*\]/g)?.length ?? 0) + (bare.match(/:[\w-]+/g)?.length ?? 0);
+  const elements = bare.replace(/\[[^\]]*\]/g, "").match(/(^|[\s>+~(])[a-z][\w-]*/gi)?.length ?? 0;
+  return [ids, classes, elements];
+}
+
+// The specificity of the most specific of a rule's selectors that matches
+// `element`, or undefined where none does.
+function matchedSpecificity(element: Element, selectorText: string): Specificity | undefined {
+  return selectorText
+    .split(/,(?![^(]*\))/)
+    .map((selector) => selector.trim())
+    .filter((selector) => element.matches(selector))
+    .map(specificityOf)
+    .sort(compare)
+    .at(-1);
 }
 
 // A card's name in a card `cardWidth` wide: its size, by its share of the

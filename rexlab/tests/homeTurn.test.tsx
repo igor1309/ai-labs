@@ -506,9 +506,10 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
     expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([back, 718]);
   });
 
-  // At 375 wide, on 20-pixel sides, the columns are 307 wide: swiped 450,
-  // "SKELETONS", the second column, starts 119 in from the row's left
-  // edge, the first that does not start hidden past it.
+  // At 375 wide, on 20-pixel sides, the columns are 307 wide and 24
+  // apart: swiped 450, "SKELETONS", the second column, has 119 of its 307
+  // hidden past the row's left edge, so most of it shows, and the tall
+  // row, its columns 310 wide, keeps it at its left edge, at 334.
   it("keeps the column swiped to from a tall-narrow window into a tall one, by the narrow row's own columns", () => {
     const app = openTurning(375, 667, "tall-narrow", { narrow: true });
     const row = layOutTilesRow();

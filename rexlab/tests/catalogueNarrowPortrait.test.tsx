@@ -92,10 +92,17 @@ async function openNarrow(width: number, height: number, language: Language = "e
 }
 
 // The width of each card in a window of `size`: the list's row on its
-// 20-pixel sides, shared by its columns 20 apart.
+// 20-pixel sides, shared equally by its columns 20 apart. A grid laid out
+// any other way, or a card sized by any rule of its own, fails here,
+// since this sum would not see it.
 function cardWidth(size: WindowSize, language: Language = "en") {
   const list = grid(language);
   const at = styleAt(list, size);
+  expect([at.value("display"), at.value("grid-template-columns"), at.px("margin-left"), at.px("margin-right")]).toEqual(["grid", "repeat(var(--columns), minmax(0, 1fr))", 0, 0]);
+  for (const card of cards(language).slice(0, 2)) {
+    const cardAt = styleAt(card, size);
+    expect([cardAt.value("width") || "auto", cardAt.value("max-width") || "none", cardAt.px("margin-left"), cardAt.px("margin-right"), cardAt.value("grid-column") || "auto"]).toEqual(["auto", "none", 0, 0, "auto"]);
+  }
   const columns = Number(getComputedStyle(list).getPropertyValue("--columns"));
   const main = getComputedStyle(part(".catalogue"));
   return (size[0] - px(main.paddingLeft) - px(main.paddingRight) - at.px("padding-left") - at.px("padding-right") - at.columnGap() * (columns - 1)) / columns;
@@ -160,8 +167,18 @@ describe("the catalogue in a tall-narrow window", () => {
     const size: WindowSize = [width, height];
     const home = screen.getByRole("button", { name: TEXTS.en.home });
     expect(styleAt(home, size).px("height")).toBeGreaterThanOrEqual(44);
-    expect(chips().map((chip) => styleAt(chip, size).px("height") >= 44)).toEqual(chips().map(() => true));
-    expect(cardWidth(size)).toBeGreaterThanOrEqual(44);
+    // Every button is as wide as its content, no rule narrowing it, and
+    // "ALL", the narrowest, is a 56-pixel circle.
+    for (const button of [home, ...chips()]) {
+      const at = styleAt(button, size);
+      expect([at.px("height") >= 44, at.value("width") || "auto", at.value("max-width") || "none", at.value("flex-shrink")]).toEqual([true, "auto", "none", button === home ? at.value("flex-shrink") : "0"]);
+    }
+    expect(styleAt(part(".food-chip[data-food='all'] .food-chip-face"), size).px("width")).toBe(56);
+    // A card is its picture, 200/317 of its width tall, over its footer.
+    const card = cardWidth(size);
+    expect(card).toBeGreaterThanOrEqual(44);
+    expect(styleAt(part(".catalogue-art", cards()[0]), size).value("aspect-ratio")).toBe("317 / 200");
+    expect((card * 200) / 317).toBeGreaterThanOrEqual(44);
   });
 
   it("goes back to the tall layout, two to a row, when the window grows to 600 by 800", async () => {
