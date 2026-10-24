@@ -41,6 +41,7 @@ function namesFit(size: WindowSize, columns: number, language: "en" | "ru") {
   const grid = styleAt(part(".friends-grid"), size);
   const footer = styleAt(part(".friend-footer"), size);
   const name = styleAt(part(".friend-name"), size);
+  expect(name.value("white-space") || "normal").toBe("normal");
   expect([grid.value("grid-auto-rows"), footer.value("box-sizing"), footer.px("height")]).toEqual(["max-content", "border-box", footer.px("padding-top") + footer.px("padding-bottom") + 2 * name.px("line-height")]);
   const card = (size[0] - page.px("padding-left") - page.px("padding-right") - (columns - 1) * grid.columnGap()) / columns;
   const line = card - footer.px("padding-left") - footer.px("padding-right") - 20 - footer.columnGap();
