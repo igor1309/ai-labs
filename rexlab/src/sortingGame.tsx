@@ -8,6 +8,7 @@ import type { ResultType } from "./compareResultLayout.ts";
 import { LevelResultScreen } from "./LevelResultScreen.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { bestForLevel, boardState, drop, finishBoard, mergeProgress, startBoard, type Dinosaur, type Random, type Sorting, type SortingProgress, type SortingResult } from "./sorting/index.ts";
+import { PORTRAIT_SORT, type SortSizes } from "./sortBoardLayout.ts";
 import { SortScreen, type Basket } from "./SortScreen.tsx";
 
 export type SortingSaved = { progress: SortingProgress; levelChoice: LevelChoice | undefined };
@@ -117,9 +118,9 @@ export function useSortingGame(
     go({ kind: "result", result });
   };
 
-  // `boardWidth` is the width a board stands in upright, and `resultType`
-  // the result's upright sizes in the window.
-  const content = (language: Language, boardWidth: number, resultType: ResultType) => {
+  // `boardWidth` is the width a board stands in upright, `resultType` the
+  // result's upright sizes in the window and `boardSizes` the board's.
+  const content = (language: Language, boardWidth: number, resultType: ResultType, boardSizes: SortSizes = PORTRAIT_SORT) => {
     switch (screen?.kind) {
       case undefined:
         return null;
@@ -133,6 +134,7 @@ export function useSortingGame(
             onHome={onHome}
             onSeeResult={() => seeResult(sorting)}
             width={boardWidth}
+            sizes={boardSizes}
           />
         );
       }

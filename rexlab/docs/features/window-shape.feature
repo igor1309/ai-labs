@@ -20,8 +20,8 @@ Feature: The window's shape
   wide layout, and a tall-narrow window the picture asking to turn or
   widen. Every screen has a portrait layout for a tall window (each in
   its own *-portrait.feature); only the home page, the catalogue, a
-  dinosaur's page, the compare quiz, find the pair and sand writing have
-  one for a tall-narrow window too, so a tall-narrow window still shows the
+  dinosaur's page, the compare quiz, find the pair, sort and sand
+  writing have one for a tall-narrow window too, so a tall-narrow window still shows the
   picture over every other screen. The scenarios below use care's
   result.
 
