@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cacheName, offlineCache, PAGE_WAIT_MS, serveOffline, workerHeader, workerVersion, type OfflineCache, type OfflineCaches, type WorkerScope } from "../src/offline/offlineCache.ts";
+import { cacheName, offlineCache, serveOffline, workerHeader, workerVersion, type OfflineCache, type OfflineCaches, type WorkerScope } from "../src/offline/offlineCache.ts";
 import { registerWorker } from "../src/offline/registerWorker.ts";
 import { releaseFiles, workerCode } from "../src/offline/workerBuild.ts";
 
@@ -24,8 +24,7 @@ function memoryCaches() {
           const wanted = path(request);
           const key = options?.ignoreSearch ? [...entries.keys()].find((kept) => kept.split("?")[0] === wanted.split("?")[0]) : wanted;
           return key === undefined ? undefined : entries.get(key)?.clone();
-        },
-        put: async (request, response) => { entries.set(path(request), response); }
+        }
       };
       return cache;
     },
@@ -78,24 +77,25 @@ describe("the app offline", () => {
     expect(await (await offline.respond(new Request(`${ORIGIN}/assets/tile-def.webp`))!).text()).toBe("cached /assets/tile-def.webp");
   });
 
-  it("takes the network's page while there is one, and keeps it for the next launch offline", async () => {
-    const { caches, stored } = memoryCaches();
-    const online = network(() => new Response("new page"));
-    const offline = release("v1.0.0", { caches, fetch: online.fetch });
-    await offline.install();
-    expect(await (await offline.respond(navigation("/?from=home"))!).text()).toBe("new page");
-    expect(await stored.get("rexlab-v1.0.0")!.get("/")!.text()).toBe("new page");
+  it("takes the network's page while there is one, and keeps the installed page, whose files it holds, for a launch offline", async () => {
+    const { caches } = memoryCaches();
+    const online = network(() => new Response("next release's page"));
+    const installed = release("v1.0.0", { caches, fetch: online.fetch });
+    await installed.install();
+    expect(await (await installed.respond(navigation("/?from=home"))!).text()).toBe("next release's page");
     expect(online.asked).toEqual(["/"]);
+    const offline = release("v1.0.0", { caches, fetch: network().fetch });
+    expect(await (await offline.respond(navigation())!).text()).toBe("cached /");
   });
 
-  it(`opens the cached page when the network takes longer than ${PAGE_WAIT_MS} ms`, async () => {
+  it("opens the cached page when the network takes longer than 3 seconds", async () => {
     const { caches } = memoryCaches();
     const { wait, waiting } = manualWait();
     const offline = release("v1.0.0", { caches, fetch: () => new Promise<Response>(() => {}), wait });
     await offline.install();
     const answer = offline.respond(page())!;
     await Promise.resolve();
-    expect(waiting.map(({ ms }) => ms)).toEqual([PAGE_WAIT_MS]);
+    expect(waiting.map(({ ms }) => ms)).toEqual([3000]);
     waiting[0]!.end();
     expect(await (await answer).text()).toBe("cached /");
   });
@@ -109,13 +109,12 @@ describe("the app offline", () => {
     expect(online.asked).toEqual(["/assets/new.webp"]);
   });
 
-  it("keeps the app's page when another page of the site is opened online, and opens that one from its own cached file", async () => {
-    const { caches, stored } = memoryCaches();
+  it("opens another page of the site from its own cached file, not as the app's page", async () => {
+    const { caches } = memoryCaches();
     const online = network((url) => new Response(`network ${new URL(url).pathname}`));
     const offline = release("v1.0.0", { caches, fetch: online.fetch });
     await offline.install();
     expect(await (await offline.respond(navigation("/prototypes/care-hatch.html"))!).text()).toBe("cached /prototypes/care-hatch.html");
-    expect(await stored.get("rexlab-v1.0.0")!.get("/")!.text()).toBe("cached /");
     expect(online.asked).toEqual([]);
   });
 
@@ -187,14 +186,11 @@ describe("the worker's events", () => {
   // A worker's scope that keeps each listener and what each step did.
   function workerScope() {
     const listeners = new Map<string, (event: never) => void>();
-    const steps: string[] = [];
     const scope: WorkerScope = {
-      skipWaiting: async () => { steps.push("skipWaiting"); },
-      clients: { claim: async () => { steps.push("claim"); } },
       addEventListener: (type: string, listener: (event: never) => void) => { listeners.set(type, listener); }
     };
     const fire = async (type: string, event: object) => { listeners.get(type)!(event as never); };
-    return { scope, steps, fire };
+    return { scope, fire };
   }
 
   const lifecycle = () => {
@@ -202,21 +198,21 @@ describe("the worker's events", () => {
     return { event: { waitUntil: (done: Promise<unknown>) => work.push(done) }, done: () => Promise.all(work) };
   };
 
-  it("keeps the release before it takes over at once, then drops the older cache and takes the open pages", async () => {
+  it("keeps the release on install and leaves the older cache to its open pages, then drops it once the release is active", async () => {
     const { caches, stored } = memoryCaches();
-    await caches.open("rexlab-v0.9.0");
-    const { scope, steps, fire } = workerScope();
+    const older = release("v0.9.0", { caches });
+    await older.install();
+    const { scope, fire } = workerScope();
     serveOffline(scope, release("v1.0.0", { caches }));
     const install = lifecycle();
     await fire("install", install.event);
     await install.done();
     expect([...stored.get("rexlab-v1.0.0")!.keys()].sort()).toEqual([...FILES].sort());
-    expect(steps).toEqual(["skipWaiting"]);
+    expect(await (await older.respond(new Request(`${ORIGIN}/assets/tile-def.webp`))!).text()).toBe("cached /assets/tile-def.webp");
     const activate = lifecycle();
     await fire("activate", activate.event);
     await activate.done();
     expect([...stored.keys()]).toEqual(["rexlab-v1.0.0"]);
-    expect(steps).toEqual(["skipWaiting", "claim"]);
   });
 
   it("answers a request of the release from the cache and leaves another site's to the browser", async () => {

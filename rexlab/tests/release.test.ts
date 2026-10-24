@@ -4,6 +4,7 @@ import { workerHeader, workerVersion } from "../src/offline/offlineCache.ts";
 import {
   expectedVersion,
   pageVersion,
+  smokeDeployment,
   stampVersion,
   verifyDeployedVersion,
   verifyRelease,
@@ -104,6 +105,21 @@ describe("verifyDeployedVersion", () => {
     const { smoke } = deps([page("v0.1.0"), ...Array(12).fill({ status: 200, body: workerHeader("v0.0.9") })]);
 
     await expect(verifyRelease("https://rexlab.test/", "v0.1.0", smoke)).rejects.toThrow(/sw\.js, got version v0\.0\.9/);
+  });
+
+  it("smokes the release the environment names: its page and then its worker", async () => {
+    const { smoke, fetched } = deps([page("v0.2.0"), { status: 200, body: workerHeader("v0.2.0") }]);
+
+    await smokeDeployment({ REXLAB_URL: "https://rexlab.test/", GITHUB_REF_NAME: "rexlab_v0.2.0", GITHUB_REF_TYPE: "tag" }, "0.1.0", smoke);
+
+    expect(fetched).toEqual(["https://rexlab.test/", "https://rexlab.test/sw.js"]);
+  });
+
+  it("fails a smoke whose page is current but whose worker is stale, and one with no URL", async () => {
+    const { smoke } = deps([page("v0.1.0"), ...Array(12).fill({ status: 200, body: workerHeader("v0.0.9") })]);
+
+    await expect(smokeDeployment({ REXLAB_URL: "https://rexlab.test/" }, "0.1.0", smoke)).rejects.toThrow(/sw\.js, got version v0\.0\.9/);
+    await expect(smokeDeployment({ REXLAB_URL: " " }, "0.1.0", smoke)).rejects.toThrow("Missing required environment variable: REXLAB_URL");
   });
 
   it("fails with the last observation once attempts run out", async () => {

@@ -74,3 +74,14 @@ export async function verifyRelease(url: string, expected: string, deps: SmokeDe
   await verifyDeployedVersion(url, expected, deps);
   await verifyDeployedVersion(new URL(WORKER_FILE, url).href, expected, { ...deps, read: workerVersion });
 }
+
+// The deploy smoke check: the release the environment names, at the URL it
+// names, page and worker both.
+export async function smokeDeployment(env: Record<string, string | undefined>, packageVersion: string, deps: SmokeDeps): Promise<void> {
+  const url = env.REXLAB_URL;
+  if (!url?.trim()) {
+    throw new Error("Missing required environment variable: REXLAB_URL");
+  }
+  const expected = expectedVersion({ name: env.GITHUB_REF_NAME, type: env.GITHUB_REF_TYPE }, packageVersion);
+  await verifyRelease(url, expected, deps);
+}

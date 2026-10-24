@@ -1,6 +1,9 @@
-import { readFileSync } from "node:fs";
-import type { Plugin } from "vite";
-import { describe, expect, it } from "vitest";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+import { build, type Plugin } from "vite";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { workerVersion } from "../src/offline/offlineCache.ts";
 import config from "../vite.config.ts";
 
@@ -47,22 +50,49 @@ describe("the build's worker", () => {
     expect([output.entryFileNames({ name: "sw" }), output.entryFileNames({ name: "main" })]).toEqual(["sw.js", "assets/[name]-[hash].js"]);
   });
 
-  it("heads the worker with the release's version and fills in every file built and public", () => {
-    const worker = chunk('const v="%REXLAB_VERSION%",f=JSON.parse("%REXLAB_FILES%");');
-    generate({ "sw.js": worker, "index.html": {}, "assets/main-abc.js": chunk(""), "prototypes/care-hatch.html": {} });
-    expect(workerVersion(worker.code)).toBe(VERSION);
-    const files = new Function(`${worker.code}; return f;`)() as string[];
-    expect(files).toEqual(expect.arrayContaining(["/", "/assets/main-abc.js", "/prototypes/care-hatch.html", "/manifest.webmanifest", "/icons/icon-180.png", "/icons/icon-192.png", "/icons/icon-512.png"]));
-    expect(files).not.toContain("/sw.js");
-    expect(files).not.toContain("/_headers");
-  });
-
-  it("runs after Vite has added the pages to the bundle", () => {
-    expect(plugin.enforce).toBe("post");
-  });
-
   it("fails a build with no worker, or a worker split into files", () => {
     expect(() => generate({ "index.html": {} })).toThrow(/no sw\.js/);
     expect(() => generate({ "sw.js": chunk("", ["assets/shared.js"]) })).toThrow(/must be one file/);
+  });
+});
+
+describe("the worker the build writes", () => {
+  const out = mkdtempSync(join(tmpdir(), "rexlab-build-"));
+  let code = "";
+
+  beforeAll(async () => {
+    await build({ root: fileURLToPath(new URL("..", import.meta.url)), logLevel: "silent", build: { outDir: out, emptyOutDir: true } });
+    code = readFileSync(join(out, "sw.js"), "utf8");
+  }, 60_000);
+
+  afterAll(() => rmSync(out, { recursive: true, force: true }));
+
+  // The written worker run on its own, in a scope that keeps its listeners
+  // and a cache that keeps what it is told to.
+  function run() {
+    const listeners = new Map<string, (event: unknown) => unknown>();
+    const kept: string[] = [];
+    const self = { location: { origin: "https://rexlab.enoa.ai" }, addEventListener: (type: string, listener: (event: unknown) => unknown) => listeners.set(type, listener) };
+    const caches = { open: async () => ({ addAll: async (urls: string[]) => { kept.push(...urls); }, match: async () => undefined }), keys: async () => [], delete: async () => true };
+    new Function("self", "caches", "fetch", "setTimeout", code)(self, caches, () => Promise.reject(new TypeError("offline")), () => 0);
+    return { listeners, kept };
+  }
+
+  it("is headed with the release's version", () => {
+    expect(workerVersion(code)).toBe(VERSION);
+  });
+
+  it("runs as one file and keeps every page and file of the release on install", async () => {
+    const { listeners, kept } = run();
+    expect([...listeners.keys()].sort()).toEqual(["activate", "fetch", "install"]);
+    const work: Promise<unknown>[] = [];
+    listeners.get("install")!({ waitUntil: (done: Promise<unknown>) => work.push(done) });
+    await Promise.all(work);
+    const built = readdirSync(out, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => `/${relative(out, join(entry.parentPath, entry.name))}`)
+      .filter((file) => !["/sw.js", "/_headers", "/index.html"].includes(file) && !file.endsWith(".map"));
+    expect(kept.sort()).toEqual(["/", ...built].sort());
+    expect(kept).toContain("/prototypes/care-hatch.html");
   });
 });

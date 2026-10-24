@@ -1,16 +1,16 @@
 // How the installed app works without Wi-Fi: each release keeps every
-// file it is built of in a cache of its own, named for its version. The
-// page itself comes from the network while there is one, so a new release
-// shows on the next launch, and from the cache when there is none; every
-// other file has its hash in its name, so the cached copy is always the
-// right one.
+// file it is built of in a cache of its own, named for its version, and
+// only installing a release fills its cache. The page comes from the
+// network while there is one, so a new release shows on the next launch,
+// and from the cache when there is none, with the files of the same
+// release beside it. A new release takes over the cache only once every
+// page of the old one has closed, so an open page never loses its files.
 
 // The parts of the Cache Storage API the worker uses, so a test can hand
 // it a cache of its own.
 export type OfflineCache = {
   addAll: (urls: string[]) => Promise<void>;
   match: (request: Request | string, options?: { ignoreSearch?: boolean }) => Promise<Response | undefined>;
-  put: (request: Request | string, response: Response) => Promise<void>;
 };
 
 export type OfflineCaches = {
@@ -68,14 +68,12 @@ export function offlineCache({ version, files, caches, fetch, origin, wait }: Of
     }
   };
 
-  // The page from the network, kept for the next launch offline; the cached
-  // page where the network fails or is slower than PAGE_WAIT_MS.
+  // The page from the network; the installed page where the network fails
+  // or is slower than PAGE_WAIT_MS. The network's page is never kept: it
+  // may be a newer release's, whose files this cache does not hold.
   const page = async (request: Request) => {
     const cache = await caches.open(name);
-    const network = fetch(request).then(async (response) => {
-      if (response.ok) await cache.put(PAGE, response.clone());
-      return response;
-    });
+    const network = fetch(request);
     const late = wait(PAGE_WAIT_MS).then(() => undefined);
     const first = await Promise.race([network.catch(() => undefined), late]);
     if (first) return first;
@@ -108,20 +106,19 @@ type FetchEvent = WorkerEvent & { request: Request; respondWith: (response: Prom
 
 // The parts of the worker's global scope it is wired to.
 export type WorkerScope = {
-  skipWaiting: () => Promise<void>;
-  clients: { claim: () => Promise<void> };
   addEventListener(type: "install" | "activate", listener: (event: WorkerEvent) => void): void;
   addEventListener(type: "fetch", listener: (event: FetchEvent) => void): void;
 };
 
-// Wires the cache to the worker's events. A new release takes over at
-// once: its page names only its own files.
+// Wires the cache to the worker's events. The browser activates a new
+// release once no page of the old one is open, so the old cache goes only
+// when nothing uses it.
 export function serveOffline(scope: WorkerScope, cache: ReturnType<typeof offlineCache>) {
   scope.addEventListener("install", (event) => {
-    event.waitUntil(cache.install().then(() => scope.skipWaiting()));
+    event.waitUntil(cache.install());
   });
   scope.addEventListener("activate", (event) => {
-    event.waitUntil(cache.activate().then(() => scope.clients.claim()));
+    event.waitUntil(cache.activate());
   });
   scope.addEventListener("fetch", (event) => {
     const response = cache.respond(event.request);

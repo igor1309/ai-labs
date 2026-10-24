@@ -19,7 +19,12 @@ Feature: RexLab as an app on the home screen
     Given a new release is out
     When RexLab is opened online
     Then it shows the new release
-    And opened later with no network, it shows the new release
+    And once the app has been closed, opened with no network it shows the new release
+
+  Scenario: An open app keeps working while a new release arrives
+    Given RexLab is open and a new release is out
+    When the network drops
+    Then the open app goes on playing with every file of its own release
 
   Scenario: A slow network does not keep the child waiting
     Given RexLab has been opened once online
