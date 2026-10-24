@@ -96,7 +96,6 @@ struct TextTests {
         let recognizer = ScriptRecognizer(hearings: [
             .success(.init(words: [.init("earlier", start: 0, end: 1)], finalThrough: 1)),
             .success(.init(words: [.init("later", start: 1, end: 2)], from: 1)),
-            .success(.init(words: [.init("revised", start: 1, end: 2)], from: 1)),
         ], endings: [.success(.init(words: []))], blocked: began, release: release)
         let microphone = TextAudio()
         let other = TextAudio()
@@ -133,9 +132,13 @@ struct TextTests {
         let resumed = await call.state
         #expect(resumed.status == .listening)
         #expect(resumed.entries.map(\.text) == [
-            .init(id: 0, start: 0, end: 2, settled: "earlier", pending: "revised"),
+            .init(id: 0, start: 0, end: 2, settled: "earlier", pending: "later"),
         ])
         await call.stop()
+        #expect(await recognizer.chunks == [
+            .init(samples: [0.25], sampleRate: 1),
+            .init(samples: [0.5], sampleRate: 1),
+        ])
     }
 
     @Test func releasingAPreparedAdapterCompletesItsListeningWork() async throws {
@@ -154,12 +157,59 @@ struct TextTests {
         #expect(finishes.all == [true])
     }
 
+    @Test func replayAcknowledgesAcceptedAudioAndHearsOnlyTheUnheardSuffix() async throws {
+
+        let original = Audio(start: 3, samples: [0.25, 0.5], sampleRate: 2)
+        let suffix = AudioChunk(samples: [-0.25, -0.5], sampleRate: 4)
+        let cases: [([Audio], [AudioChunk], Double)] = [
+            ([original], [], 4),
+            ([.init(start: 3, samples: [0.25, 0.25, 0.5, 0.5, -0.25, -0.5], sampleRate: 4)], [suffix], 4.5),
+            ([
+                .init(start: 3, samples: [0.25], sampleRate: 2),
+                .init(start: 3.5, samples: [0.5], sampleRate: 2),
+                .init(start: 4, samples: suffix.samples, sampleRate: suffix.sampleRate),
+            ], [suffix], 4.5),
+            ([.init(start: 3.5, samples: [0.5, 0.5, -0.25, -0.5], sampleRate: 4)], [suffix], 4.5),
+        ]
+        for (replay, extraChunks, end) in cases {
+            let began = Signal()
+            let release = Signal()
+            let recognizer = ScriptRecognizer(
+                hearings: [.success(.init(words: [.init("accepted", start: 3, end: 4)]))]
+                    + extraChunks.map { _ in .success(.init(words: [.init("suffix", start: 4, end: 4.5)], from: 4)) },
+                endings: [.success(.init(words: []))], blocked: began, release: release
+            )
+            let adapter = Compose.TrackText(recognizer: recognizer)
+            try await adapter.prepare()
+            let hearing = Task { try await adapter.hear(original) }
+            defer { hearing.cancel(); release.end() }
+            await began.next()
+            hearing.cancel()
+            await #expect(throws: CancellationError.self) { try await hearing.value }
+            // A cancelled retry must leave the same reply available.
+            let retry = Task { try await adapter.hear(original) }
+            retry.cancel()
+            await #expect(throws: CancellationError.self) { try await retry.value }
+            release.end()
+            try await adapter.prepare()
+            var text: [Text] = []
+            for audio in replay { text = try await adapter.hear(audio) }
+            #expect(text.last?.end == end)
+            #expect(text.first?.pending == (extraChunks.isEmpty ? "accepted" : "accepted suffix"))
+            _ = try await adapter.finish()
+            #expect(await recognizer.chunks == [.init(samples: original.samples, sampleRate: original.sampleRate)] + extraChunks)
+            #expect(await recognizer.finishes == 1)
+        }
+    }
+
     @Test func cancellingHearingEndsOnlyTheWait() async throws {
 
         let began = Signal()
         let release = Signal()
         let recognizer = ScriptRecognizer(
-            hearings: [.success(.init(words: []))], endings: [.success(.init(words: []))], blocked: began, release: release
+            hearings: [.success(.init(words: [.init("pending", start: 0, end: 1)]))],
+            endings: [.success(.init(words: [.init("final", start: 0, end: 1)]))],
+            blocked: began, release: release
         )
         let adapter = Compose.TrackText(recognizer: recognizer)
         try await adapter.prepare()
@@ -171,7 +221,7 @@ struct TextTests {
         #expect(await recognizer.chunks == [.init(samples: [0.25], sampleRate: 1)])
         #expect(await recognizer.finishes == 0)
         release.end()
-        #expect(try await adapter.finish() == [])
+        #expect(try await adapter.finish() == [.init(id: 0, start: 0, end: 1, settled: "final")])
         #expect(await recognizer.finishes == 1)
     }
 
@@ -190,5 +240,26 @@ struct TextTests {
         finishing.cancel()
         await #expect(throws: CancellationError.self) { try await finishing.value }
         #expect(await recognizer.finishes == 1)
+    }
+
+    @Test func replaySurfacesTheCancelledHearingsFailureWithoutRefeeding() async throws {
+
+        let began = Signal()
+        let release = Signal()
+        let recognizer = ScriptRecognizer(
+            hearings: [.failure(.failed)], endings: [.success(.init(words: []))],
+            blocked: began, release: release
+        )
+        let adapter = Compose.TrackText(recognizer: recognizer)
+        try await adapter.prepare()
+        let audio = Audio(start: 0, samples: [0.25], sampleRate: 1)
+        let hearing = Task { try await adapter.hear(audio) }
+        defer { hearing.cancel(); release.end() }
+        await began.next()
+        hearing.cancel()
+        await #expect(throws: CancellationError.self) { try await hearing.value }
+        release.end()
+        await #expect(throws: Compose.TrackText.Failure.updateFailed) { try await adapter.hear(audio) }
+        #expect(await recognizer.chunks == [.init(samples: audio.samples, sampleRate: audio.sampleRate)])
     }
 }

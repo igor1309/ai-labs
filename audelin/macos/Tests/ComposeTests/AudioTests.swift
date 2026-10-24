@@ -136,8 +136,28 @@ struct AudioTests {
             let received = Values<Audio>()
             await feed.listen { received.append($0) }
             #expect(received.all == [Audio(start: 0, samples: [0.25], sampleRate: 48_000)])
+            #expect(feed.capturedThrough == Double(writeFails ? 2 : 1) / 48_000)
             try await track.close()
             #expect(try await track.read(from: 0, to: 2 / 48_000) == [0.25])
+        }
+    }
+
+    @Test func validAudioRejectedByAClosedTrackIsNeverDelivered() async throws {
+
+        try await withComposeFolder { folder in
+            let track = try TrackFile(url: folder.appendingPathComponent("track.caf"))
+            try await track.close()
+            let source = AsyncThrowingStream<MicrophoneCapture.AudioPiece, any Error>.makeStream()
+            let feed = CaptureFeed(stream: source.stream, track: track)
+            defer { source.continuation.finish(); feed.cancel() }
+            source.continuation.yield(.init(samples: [0.25, -0.5], sampleRate: 48_000))
+            source.continuation.finish()
+            await #expect(throws: TrackFile.Failure.writingEnded) { try await feed.wait() }
+            let received = Values<Audio>()
+            await feed.listen { received.append($0) }
+            #expect(received.all.isEmpty)
+            #expect(feed.capturedThrough == 2 / 48_000.0)
+            #expect(try await track.read(from: 0, to: 2 / 48_000) == [])
         }
     }
 

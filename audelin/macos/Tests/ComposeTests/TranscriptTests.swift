@@ -34,7 +34,9 @@ struct TranscriptTests {
 
         try await withComposeFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let file = try TranscriptFile(url: url)
+            let binding = RecordingTranscriptBinding()
+            defer { binding.end() }
+            let file = try TranscriptFile(url: url, binding: binding)
             let snapshots = [
                 (State(status: .listening, entries: [
                     .init(speaker: .mine, text: .init(id: 0, start: 2, end: 3, pending: "first"), writtenLater: false),
@@ -44,18 +46,19 @@ struct TranscriptTests {
                 ]), "# Transcript\n\n**Them** 00:00:04 (filled in later)\nfinal words\n"),
                 (State(status: .off, entries: []), "# Transcript\n\nNo text was heard.\n"),
             ]
+            let source = AsyncStream<State>.makeStream()
+            let feed = Task { try await Transcript.feed(source.stream, to: file) }
+            defer { feed.cancel(); source.continuation.finish() }
+            var writes = binding.writes.makeAsyncIterator()
             for (state, expected) in snapshots {
-                let source = AsyncStream<State>.makeStream()
                 source.continuation.yield(state)
-                source.continuation.finish()
-                try await Transcript.feed(source.stream, to: file)
+                #expect(await writes.next() == expected)
                 #expect(try String(contentsOf: url, encoding: .utf8) == expected)
             }
-            let source = AsyncStream<State>.makeStream()
-            for (state, _) in snapshots { source.continuation.yield(state) }
             source.continuation.finish()
-            try await Transcript.feed(source.stream, to: file)
-            #expect(try String(contentsOf: url, encoding: .utf8) == snapshots.last?.1)
+            try await feed.value
+            binding.end()
+            #expect(await writes.next() == nil)
             await file.close()
         }
     }
@@ -86,4 +89,30 @@ struct TranscriptTests {
             await file.close()
         }
     }
+}
+
+private final class RecordingTranscriptBinding: TranscriptFileBinding {
+
+    let writes: AsyncStream<String>
+    private let continuation: AsyncStream<String>.Continuation
+    private let disk = DiskTranscriptBinding()
+
+    init() {
+
+        (writes, continuation) = AsyncStream.makeStream()
+    }
+
+    func create(at url: URL) throws -> any TranscriptFileHandle {
+
+        try disk.create(at: url)
+    }
+
+    func rename(from source: URL, to target: URL) throws {
+
+        try disk.rename(from: source, to: target)
+        continuation.yield(try String(contentsOf: target, encoding: .utf8))
+    }
+
+    func remove(at url: URL) { disk.remove(at: url) }
+    func end() { continuation.finish() }
 }

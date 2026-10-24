@@ -24,7 +24,7 @@ public actor TrackText: CallText.TrackText {
         let live: LiveText
         let source: AsyncStream<AudioChunk>.Continuation
         let task: Task<Void, Never>
-        let requests: AsyncStream<AsyncStream<Segments>.Continuation>.Continuation
+        let requests: AsyncStream<Reply>.Continuation
         let reading: Task<Void, Never>
 
         func stop() {
@@ -37,9 +37,46 @@ public actor TrackText: CallText.TrackText {
         }
     }
 
+    private actor Reply {
+
+        private var completed = false
+        private var result: Segments?
+        private var waiting: [Int: AsyncStream<Segments>.Continuation] = [:]
+        private var nextID = 0
+
+        func complete(_ update: Segments?) {
+
+            result = update
+            completed = true
+            for continuation in waiting.values {
+                if let update { continuation.yield(update) }
+                continuation.finish()
+            }
+            waiting.removeAll()
+        }
+
+        func update() async -> Segments? {
+
+            if completed { return result }
+            let id = nextID
+            nextID += 1
+            let reply = AsyncStream<Segments>.makeStream()
+            waiting[id] = reply.continuation
+            defer { waiting[id] = nil }
+            var iterator = reply.stream.makeAsyncIterator()
+            return await iterator.next()
+        }
+    }
+
+    private struct Accepted {
+
+        let audio: Audio
+        let reply: Reply
+    }
+
     private let recognizer: any Recognizer
     private var listening: Listening?
-    private var heardThrough = 0.0
+    private var accepted: Accepted?
 
     public init(recognizer: any Recognizer) {
 
@@ -53,14 +90,13 @@ public actor TrackText: CallText.TrackText {
         let live = LiveText(recognizer: recognizer)
         let source = AsyncStream<AudioChunk>.makeStream()
         let task = Task { await live.listen(to: Source(stream: source.stream)) }
-        let requests = AsyncStream<AsyncStream<Segments>.Continuation>.makeStream()
-        // One reader owns the update iterator for the whole session. Each
-        // caller waits on its own reply, so cancellation leaves LiveText intact.
+        let requests = AsyncStream<Reply>.makeStream()
+        // The session owns replies; cancelling a caller leaves its accepted
+        // interval and update available when call text replays that interval.
         let reading = Task {
             var updates = live.updates.makeAsyncIterator()
             for await reply in requests.stream {
-                if let update = await updates.next() { reply.yield(update) }
-                reply.finish()
+                await reply.complete(await updates.next())
             }
         }
         listening = Listening(
@@ -73,9 +109,23 @@ public actor TrackText: CallText.TrackText {
 
         try Task.checkCancellation()
         guard let listening else { throw Failure.notPrepared }
-        heardThrough = audio.end
-        listening.source.yield(AudioChunk(samples: audio.samples, sampleRate: audio.sampleRate))
-        return try await nextUpdate()
+        var lower = 0
+        if let accepted {
+            let text = try await nextUpdate(accepted.reply, through: accepted.audio.end)
+            lower = Int(min(Double(audio.samples.count), max(
+                0, ((accepted.audio.end - audio.start) * audio.sampleRate).rounded()
+            )))
+            if lower == audio.samples.count { return text }
+        }
+        let unheard = Audio(
+            start: audio.start + Double(lower) / audio.sampleRate,
+            samples: Array(audio.samples[lower...]), sampleRate: audio.sampleRate
+        )
+        let reply = Reply()
+        accepted = Accepted(audio: unheard, reply: reply)
+        listening.requests.yield(reply)
+        listening.source.yield(AudioChunk(samples: unheard.samples, sampleRate: unheard.sampleRate))
+        return try await nextUpdate(reply, through: unheard.end)
     }
 
     public func finish() async throws -> [Text] {
@@ -83,10 +133,15 @@ public actor TrackText: CallText.TrackText {
         try Task.checkCancellation()
         guard let session = listening else { throw Failure.notPrepared }
         session.source.finish()
-        defer { listening = nil }
+        defer { listening = nil; accepted = nil }
         return try await withTaskCancellationHandler {
             do {
-                let text = try await nextUpdate()
+                if let accepted {
+                    _ = try await nextUpdate(accepted.reply, through: accepted.audio.end)
+                }
+                let reply = Reply()
+                session.requests.yield(reply)
+                let text = try await nextUpdate(reply, through: accepted?.audio.end ?? 0)
                 session.requests.finish()
                 await session.reading.value
                 await session.task.value
@@ -102,23 +157,21 @@ public actor TrackText: CallText.TrackText {
         }
     }
 
-    private func nextUpdate() async throws -> [Text] {
+    private func nextUpdate(_ reply: Reply, through end: Double) async throws -> [Text] {
 
         guard let session = listening else { throw Failure.notPrepared }
-        let reply = AsyncStream<Segments>.makeStream()
-        session.requests.yield(reply.continuation)
-        var updates = reply.stream.makeAsyncIterator()
-        let update = await updates.next()
+        let update = await reply.update()
         try Task.checkCancellation()
         do {
             guard let update else { throw Failure.updatesEnded }
             guard update.ending != .failed else { throw Failure.updateFailed }
-            return Self.text(from: update.all, through: heardThrough)
+            return Self.text(from: update.all, through: end)
         } catch {
             session.stop()
             await session.reading.value
             await session.task.value
             listening = nil
+            accepted = nil
             throw error
         }
     }
