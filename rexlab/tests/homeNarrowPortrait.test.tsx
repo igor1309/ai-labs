@@ -5,7 +5,7 @@ import type { HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
-import { NARROW_ROW_START, tileColumnWidth } from "../src/tileColumns.ts";
+import { NARROW_ROW_START, PEEK, TILE_GAP, tileColumnWidth } from "../src/tileColumns.ts";
 import { topLine } from "./homeCorner.ts";
 import { TITLE_EMS, linesOf, roomFor, tileTitles, widthOf } from "./homeTitles.ts";
 import {
@@ -29,7 +29,7 @@ import {
   tilesRow,
   unsetAgeLevel
 } from "./support.ts";
-import { openWindow } from "./windowSizes.ts";
+import { openWindow, styleAt } from "./windowSizes.ts";
 
 // The home page's tiles and the games still to come, in columns of two.
 const COLUMNS = 4;
@@ -103,8 +103,16 @@ describe("the home page in a tall-narrow window", () => {
     expect(document.querySelector(".orientation-gate[data-shown]")).toBeNull();
     const home = getComputedStyle(part(".home"));
     expect([home.paddingLeft, home.paddingRight].map(px)).toEqual([20, 20]);
-    expect(featuredCard()).toBeTruthy();
-    expect(tilesRow()).toBeTruthy();
+    // The large card over the row, each across the page's whole width.
+    const games = part(".games");
+    expect([getComputedStyle(games).display, getComputedStyle(games).flexDirection, getComputedStyle(games).width, getComputedStyle(games).maxWidth]).toEqual(["flex", "column", "auto", "none"]);
+    expect([...games.children]).toEqual([featuredCard(), part(".games-tiles")]);
+    for (const child of games.children) {
+      const style = getComputedStyle(child);
+      expect([style.width, style.maxWidth, style.alignSelf || "auto", px(style.marginLeft), px(style.marginRight)]).toEqual(["auto", "none", "auto", 0, child === featuredCard() ? 0 : -20]);
+    }
+    expect(getComputedStyle(games).alignItems || "normal").toMatch(/^(normal|stretch)$/);
+    expect([getComputedStyle(part(".home")).maxWidth, getComputedStyle(part(".home")).width]).toEqual(["none", "auto"]);
   });
 
   it("names RexLab and the museum for screen readers while showing their symbols alone", () => {
@@ -133,10 +141,21 @@ describe("the home page in a tall-narrow window", () => {
 
   it.each(PHONES)("sizes the tiles' columns from the 20-pixel side in a %i by %i window, the next column peeking in", (width, height) => {
     openNarrow(width, height);
+    const row = tilesRow();
     const column = tileColumnWidth(width, COLUMNS, NARROW_ROW_START);
-    expect(tilesRow().style.getPropertyValue("--tile-column")).toBe(`${column}px`);
-    expect(column).toBeLessThan(width - NARROW_ROW_START);
-    expect(getComputedStyle(part(".games-tiles")).marginRight).toBe("-20px");
+    expect(row.style.getPropertyValue("--tile-column")).toBe(`${column}px`);
+    // The width the grid gives each column, and the gap it leaves.
+    const at = styleAt(row, [width, height]);
+    expect(at.px("grid-auto-columns")).toBe(column);
+    expect(at.columnGap()).toBe(TILE_GAP);
+    expect(at.px("margin-right")).toBe(-20);
+    // From the row's start at the page's side to the window's right edge.
+    const shown = width - NARROW_ROW_START;
+    const whole = Math.floor((shown + TILE_GAP) / (column + TILE_GAP));
+    const peek = shown - whole * (column + TILE_GAP);
+    expect(whole).toBeGreaterThanOrEqual(1);
+    expect(peek).toBeGreaterThanOrEqual(PEEK);
+    expect(peek).toBeLessThan(column);
   });
 
   it.each((["en", "ru"] as const).flatMap((language) => GAMES.map((featured) => [language, featured] as const)))("fits every word at 375 wide in %s, featuring %s", (language, featured) => {
@@ -146,6 +165,7 @@ describe("the home page in a tall-narrow window", () => {
     const title = featuredCard().querySelector(".featured-card-title");
     if (!title?.textContent) throw new Error("No name on the large card");
     const style = getComputedStyle(title);
+    expect(style.whiteSpace).not.toBe("nowrap");
     const size = px(style.fontSize);
     const room = roomFor(title, () => cardWidth);
     const lines = linesOf(title.textContent, size, px(style.letterSpacing), room);
@@ -158,13 +178,16 @@ describe("the home page in a tall-narrow window", () => {
       const words = tile.textContent ?? "";
       const needed = (TITLE_EMS[words] ?? Number.NaN) * px(tileStyle.fontSize) + px(tileStyle.letterSpacing) * words.length;
       const tileRoom = roomFor(tile, () => column);
+      if (tileStyle.whiteSpace !== "nowrap") return [`${words}: may wrap`];
       return needed <= tileRoom ? [] : [`${words}: ${needed.toFixed(1)}px in ${tileRoom.toFixed(1)}px`];
     });
     expect(overflowing).toEqual([]);
     for (const tile of tilesRow().querySelectorAll(".pairs-tile-title, .sand-writing-tile-title")) {
       const tileStyle = getComputedStyle(tile);
+      expect(tileStyle.whiteSpace).not.toBe("nowrap");
       const tileLines = linesOf(tile.textContent ?? "", px(tileStyle.fontSize), px(tileStyle.letterSpacing), roomFor(tile, () => column));
-      expect(Array.isArray(tileLines) && tileLines.length <= 2).toBe(true);
+      const tileRoom = roomFor(tile, () => column);
+      expect(Array.isArray(tileLines) && tileLines.length <= 2 && tileLines.every((line) => widthOf(line, px(tileStyle.fontSize), px(tileStyle.letterSpacing)) <= tileRoom)).toBe(true);
     }
   });
 

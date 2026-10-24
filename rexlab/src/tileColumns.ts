@@ -11,7 +11,7 @@ export const TILE_COLUMN = 310;
 export const TILE_GAP = 24;
 // The least of the next column that shows at the row's edge, and the
 // least of it that hides there.
-const PEEK = 24;
+export const PEEK = 24;
 
 // The width of each column of tiles, in whole CSS pixels, on the upright
 // home page in a window `windowWidth` wide, its row starting `rowStart`
