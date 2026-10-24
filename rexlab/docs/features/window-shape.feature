@@ -20,10 +20,10 @@ Feature: The window's shape
   wide layout, and a tall-narrow window the picture asking to turn or
   widen. Every screen has a portrait layout for a tall window (each in
   its own *-portrait.feature); only the home page, the catalogue, a
-  dinosaur's page and sand writing have one for a tall-narrow window
-  too, so a tall-narrow window still shows the picture over every other
-  screen. The scenarios
-  below use care's result.
+  dinosaur's page, the compare quiz and sand writing have one for a
+  tall-narrow window too, so a tall-narrow window still shows the
+  picture over every other screen. The scenarios below use care's
+  result.
 
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels

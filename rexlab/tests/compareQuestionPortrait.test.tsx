@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { addTransitionType } from "react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type PortraitLayouts, type Viewport } from "../src/App.tsx";
-import { compareQuestionGeometry, compareQuestionType, compareQuestionWidth, PORTRAIT_QUESTION } from "../src/compareQuestionLayout.ts";
+import { compareQuestionGeometry, compareQuestionType, compareQuestionWidth, NARROW_QUESTION, PORTRAIT_QUESTION, type QuestionSizes } from "../src/compareQuestionLayout.ts";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { NEXT_QUESTION } from "../src/QuestionScreen.tsx";
@@ -48,8 +48,8 @@ const cards = () => within(screen.getByRole("group", { name: TEXTS.en.creatures 
 const progress = () => screen.getByLabelText(TEXTS.en.progress).textContent;
 
 async function openQuestion(size: WindowSize, {
-  language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets)
-}: { language?: Language; insets?: SafeArea; viewport?: Viewport } = {}) {
+  language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets), layouts = PORTRAIT_LAYOUTS
+}: { language?: Language; insets?: SafeArea; viewport?: Viewport; layouts?: PortraitLayouts } = {}) {
   openWindow(...size);
   const user = userEvent.setup();
   render(<App
@@ -58,7 +58,7 @@ async function openQuestion(size: WindowSize, {
     catalogue={SHIPPED_CATALOGUE}
     bodyPicture={fakeBodyPicture}
     random={seededRandom(11)}
-    portraitLayouts={PORTRAIT_LAYOUTS}
+    portraitLayouts={layouts}
     viewport={viewport}
     progress={emptyProgress()}
     deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
@@ -79,7 +79,7 @@ const shownType = () => {
 };
 const px = (size: number) => `${size}px`;
 
-const { textLineHeight, footerVerticalPadding, artPadding, minimumPicture } = PORTRAIT_QUESTION;
+const { textLineHeight, footerVerticalPadding } = PORTRAIT_QUESTION;
 
 // The pixels a rule of the form calc(var(--name-size) * ratio + N px)
 // gives, with the names' type the screen sets, as a browser resolves it.
@@ -99,8 +99,8 @@ function aboveFooter(value: string) {
 
 // The CSS contracts under which the geometry's sums hold. jsdom does not
 // lay out boxes, so every structural assumption is checked here.
-function uprightRules(size: WindowSize, width: number) {
-  const sizes = PORTRAIT_QUESTION;
+function uprightRules(size: WindowSize, width: number, sizes: QuestionSizes = PORTRAIT_QUESTION) {
+  const { artPadding, minimumPicture } = sizes;
   const at = (selector: string) => styleAt(part(selector), size);
   const question = at(".question");
   expect([...part(".question").children].map((element) => element.className)).toEqual(["stratum stratum-1", "question-bar", "prompt", "dinosaur-cards", "next-row"]);
@@ -110,7 +110,7 @@ function uprightRules(size: WindowSize, width: number) {
   expect([question.px("min-height"), question.value("height"), question.value("overflow-y"), question.value("overscroll-behavior")]).toEqual([size[1], "auto", "auto", "none"]);
   expect(at(".home-button").px("height")).toBe(sizes.barHeight);
   // One type for the window, as the geometry gives it.
-  expect(shownType()).toEqual({ prompt: px(compareQuestionType(width).prompt), name: px(compareQuestionType(width).name) });
+  expect(shownType()).toEqual({ prompt: px(compareQuestionType(width, sizes).prompt), name: px(compareQuestionType(width, sizes).name) });
   const prompt = at(".prompt");
   expect([prompt.value("font-size"), prompt.value("line-height"), prompt.value("white-space"), prompt.columnGap()]).toEqual([shownType().prompt, String(textLineHeight), "nowrap", sizes.promptGap]);
   expect([at(".prompt-symbol").px("width"), at(".prompt-symbol").px("height"), at(".prompt-symbol").value("flex-shrink")]).toEqual([sizes.promptSymbol, sizes.promptSymbol, "0"]);
@@ -119,7 +119,7 @@ function uprightRules(size: WindowSize, width: number) {
   expect([group.value("flex-direction"), group.value("align-items"), group.rowGap(), group.value("flex-grow"), group.value("flex-shrink"), group.value("position")]).toEqual(["column", "stretch", sizes.cardsGap, "1", "0", "relative"]);
   // A card's footer: its name's line and the padding above and below.
   const footer = footerHeight(question.value("--card-footer"));
-  expect(footer).toBeCloseTo(2 * footerVerticalPadding + compareQuestionType(width).name * textLineHeight, 6);
+  expect(footer).toBeCloseTo(2 * footerVerticalPadding + compareQuestionType(width, sizes).name * textLineHeight, 6);
   for (const card of cards()) {
     const style = styleAt(card, size);
     expect([style.value("flex-grow"), style.value("flex-shrink"), style.value("flex-basis"), style.value("position")]).toEqual(["1", "0", "0px", "relative"]);
@@ -264,5 +264,53 @@ describe("the compare quiz's question upright", () => {
     expect(part(".next-row")).toBe(part(".question").lastElementChild);
     expect([getComputedStyle(document.body).margin, getComputedStyle(document.body).backgroundColor]).toEqual(["0px", "rgb(242, 239, 232)"]);
     expect(gateShown()).toBe(false);
+  });
+});
+
+// The question in a tall-narrow window: an iPhone upright.
+const NARROW_LAYOUTS: PortraitLayouts = { ...PORTRAIT_LAYOUTS, home: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"] };
+const narrowViewport = () => {
+  const viewport = manualViewport("portrait");
+  viewport.resize("tall-narrow", true);
+  return viewport;
+};
+
+// Each phone's window, its cards' height, their pictures' height and
+// whether the screen scrolls.
+const PHONES = [
+  [320, 568, 206, 110, true],
+  [375, 667, 211, 110, true],
+  [393, 759, 222, 119, false],
+  [393, 852, 268, 165, false],
+  [430, 932, 308, 202, false]
+] as const;
+
+describe("the compare quiz's question in a tall-narrow window", () => {
+  it.each(PHONES)("stands upright at %i by %i, its cards %i tall, their pictures %i tall, scrolling %s", async (width, height, card, pictureHeight, scrolls) => {
+    await openQuestion([width, height], { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+    expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
+    const geometry = compareQuestionGeometry(width, height, 0, 0, 0, NARROW_QUESTION);
+    expect(Math.abs(geometry.cardHeight - card)).toBeLessThanOrEqual(1);
+    expect(Math.abs(geometry.picture.height - pictureHeight)).toBeLessThanOrEqual(1);
+    expect(geometry.scrolls).toBe(scrolls);
+    uprightRules([width, height], compareQuestionWidth(width, 0, 0, 0, NARROW_QUESTION), NARROW_QUESTION);
+  });
+
+  it("shows HOME as its symbol, a 56-pixel square still named for screen readers, so the steps keep their room", async () => {
+    await openQuestion([393, 852], { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    const home = part(".question-bar .home-button");
+    expect(screen.getByRole("button", { name: TEXTS.en.home })).toBe(home);
+    expect(styleAt(part(".narrow-hidden", home), [393, 852]).value("position")).toBe("absolute");
+    const style = styleAt(home, [393, 852]);
+    expect([style.px("width"), style.px("height"), style.px("padding-left"), style.px("padding-right")]).toEqual([56, 56, 16, 16]);
+    expect(styleAt(part(".question-bar"), [393, 852]).columnGap()).toBe(16);
+  });
+
+  it.each([["en"], ["ru"]] as const)("gives every prompt and name in %s one type at 320 by 568, the names at least 18", async (language) => {
+    await openQuestion([320, 568], { language, viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    const type = compareQuestionType(compareQuestionWidth(320, 0, 0, 0, NARROW_QUESTION), NARROW_QUESTION);
+    expect(shownType()).toEqual({ prompt: px(type.prompt), name: px(type.name) });
+    expect(type.name).toBeGreaterThanOrEqual(18);
   });
 });

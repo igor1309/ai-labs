@@ -2104,7 +2104,8 @@ body:has(.result) #version {
    QuestionScreen gives in --prompt-size and --name-size, one for the
    window, and a value stands at the bottom right of its picture's area,
    so no card grows or moves as the values show. */
-html[data-size="tall"] .question {
+html[data-size="tall"] .question,
+html[data-size="tall-narrow"] .question {
   --card-footer: calc(var(--name-size) * 1.25 + 40px);
   min-height: 100vh;
   min-height: 100dvh;
@@ -2113,50 +2114,96 @@ html[data-size="tall"] .question {
   overscroll-behavior: none;
 }
 
-html[data-size="tall"] .prompt {
+html[data-size="tall"] .prompt,
+html[data-size="tall-narrow"] .prompt {
   font-size: var(--prompt-size);
   line-height: 1.25;
   white-space: nowrap;
 }
 
-html[data-size="tall"] .dinosaur-cards {
+html[data-size="tall"] .dinosaur-cards,
+html[data-size="tall-narrow"] .dinosaur-cards {
   position: relative;
   flex: 1 0 auto;
   flex-direction: column;
   align-items: stretch;
 }
 
-html[data-size="tall"] .dinosaur-card {
+html[data-size="tall"] .dinosaur-card,
+html[data-size="tall-narrow"] .dinosaur-card {
   position: relative;
   flex: 1 0 0;
   min-height: calc(198px + var(--card-footer));
 }
 
-html[data-size="tall"] .dinosaur-footer {
+html[data-size="tall"] .dinosaur-footer,
+html[data-size="tall-narrow"] .dinosaur-footer {
   flex: none;
   height: var(--card-footer);
   box-sizing: border-box;
   flex-wrap: nowrap;
 }
 
-html[data-size="tall"] .dinosaur-name {
+html[data-size="tall"] .dinosaur-name,
+html[data-size="tall-narrow"] .dinosaur-name {
   font-size: var(--name-size);
   line-height: 1.25;
   white-space: nowrap;
   overflow-wrap: normal;
 }
 
-html[data-size="tall"] .dinosaur-value-chip {
+html[data-size="tall"] .dinosaur-value-chip,
+html[data-size="tall-narrow"] .dinosaur-value-chip {
   position: absolute;
   right: 24px;
   bottom: calc(var(--card-footer) + 24px);
 }
 
-html[data-size="tall"] .versus {
+html[data-size="tall"] .versus,
+html[data-size="tall-narrow"] .versus {
   position: absolute;
   inset: 0;
   z-index: 1;
   margin: auto;
+}
+
+/* In a tall-narrow window, an iPhone upright, the question stands as in
+   a tall one on 20-pixel sides and with less room between its parts:
+   "HOME" is its symbol alone, a 56-pixel square, so the steps keep their
+   room, and a card's picture may be as short as 110 pixels before the
+   screen scrolls. */
+html[data-size="tall-narrow"] .question {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .question-bar {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .question .home-button {
+  width: 56px;
+  padding: 0 16px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-cards {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-card {
+  min-height: calc(142px + var(--card-footer));
+}
+
+html[data-size="tall-narrow"] .dinosaur-art {
+  padding: 16px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-footer {
+  padding: 20px;
 }
 
 /* The catalogue: its bar stays at the top while the cards, as many to a
@@ -3252,7 +3299,8 @@ html[data-size="tall-narrow"] .dinosaur-description {
    200: below that the whole screen scrolls. The score is 15% of the
    window's height, at most 180, and the stars as large as ResultScreen
    gives in --star-size, so ten fit the width. */
-html[data-size="tall"] .result {
+html[data-size="tall"] .result,
+html[data-size="tall-narrow"] .result {
   min-height: 100vh;
   min-height: 100dvh;
   height: auto;
@@ -3268,25 +3316,79 @@ html[data-size="tall"] .result {
   gap: 20px;
 }
 
-html[data-size="tall"] .result-hero {
+html[data-size="tall"] .result-hero,
+html[data-size="tall-narrow"] .result-hero {
   flex: 1 0 0;
   align-self: stretch;
   min-height: 200px;
   max-height: var(--hero-maximum);
 }
 
-html[data-size="tall"] .result-content {
+html[data-size="tall"] .result-content,
+html[data-size="tall-narrow"] .result-content {
   align-self: stretch;
   gap: 16px;
 }
 
-html[data-size="tall"] .result-score-value {
+html[data-size="tall"] .result-score-value,
+html[data-size="tall-narrow"] .result-score-value {
   font-size: min(180px, 15vh);
   font-size: min(180px, 15dvh);
 }
 
-html[data-size="tall"] .result-stars {
+html[data-size="tall"] .result-stars,
+html[data-size="tall-narrow"] .result-stars {
   font-size: var(--star-size);
+}
+
+/* In a tall-narrow window, an iPhone upright, the result stands as in a
+   tall one on 20-pixel padding, its parts 12 apart: the score is 12% of
+   the window's height, the celebration and "WELL DONE!" in smaller type,
+   the level switch shows each level's picture alone, its name kept for
+   screen readers, and PLAY AGAIN stands over HOME, each 64 tall and
+   across the column. The dinosaur is never under 120: below that the
+   whole screen scrolls. */
+html[data-size="tall-narrow"] .result {
+  padding:
+    calc(20px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(20px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+}
+
+html[data-size="tall-narrow"] .result-hero {
+  min-height: 120px;
+}
+
+html[data-size="tall-narrow"] .result-content {
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .result-score-value {
+  font-size: min(180px, 12vh);
+  font-size: min(180px, 12dvh);
+}
+
+html[data-size="tall-narrow"] .celebration {
+  padding: 0 20px 0 16px;
+  font-size: 18px;
+}
+
+html[data-size="tall-narrow"] .result-title {
+  font-size: 34px;
+}
+
+html[data-size="tall-narrow"] .result-actions {
+  align-self: stretch;
+  flex-direction: column;
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .play-again-button,
+html[data-size="tall-narrow"] .result-actions .home-button {
+  height: 64px;
+  padding: 0 20px;
+  justify-content: center;
 }
 
 /* Dinosaur care's tile, amber, under the catalogue's, in its shape. The
@@ -5423,7 +5525,8 @@ html[data-size="tall"] .pairs-title {
    64 tall, its picture above its name, the names in the one type its
    screen gives in --level-name-size. Its edge is drawn inside it, so the
    switch is its padding and a level tall. */
-html[data-size="tall"] .level-switch {
+html[data-size="tall"] .level-switch,
+html[data-size="tall-narrow"] .level-switch {
   align-self: center;
   width: 100%;
   max-width: 648px;
@@ -5431,18 +5534,24 @@ html[data-size="tall"] .level-switch {
   box-shadow: inset 0 0 0 1px #1d27421f;
 }
 
-html[data-size="tall"][data-theme="dark"] .level-switch {
+html[data-size="tall"][data-theme="dark"] .level-switch,
+html[data-size="tall-narrow"][data-theme="dark"] .level-switch {
   box-shadow: inset 0 0 0 1px #ece8de1f;
 }
 
 html[data-size="tall"] .result-with-levels .level-switch,
+html[data-size="tall-narrow"] .result-with-levels .level-switch,
 html[data-size="tall"][data-theme="dark"] .result-with-levels .level-switch,
+html[data-size="tall-narrow"][data-theme="dark"] .result-with-levels .level-switch,
 html[data-size="tall"] .dig-reveal-screen .level-switch,
-html[data-size="tall"][data-theme="dark"] .dig-reveal-screen .level-switch {
+html[data-size="tall-narrow"] .dig-reveal-screen .level-switch,
+html[data-size="tall"][data-theme="dark"] .dig-reveal-screen .level-switch,
+html[data-size="tall-narrow"][data-theme="dark"] .dig-reveal-screen .level-switch {
   box-shadow: inset 0 0 0 1px #ffffff40;
 }
 
-html[data-size="tall"] .level-switch-level {
+html[data-size="tall"] .level-switch-level,
+html[data-size="tall-narrow"] .level-switch-level {
   height: 64px;
   flex-direction: column;
   gap: 4px;
@@ -6079,25 +6188,57 @@ html[data-size="tall"] .pairs-result .result-actions button {
 /* In a tall window the offer is the window less 24 a side, at most 710
    wide, its question in 32-pixel type, and YES and NOT NOW stand one
    above the other, each across the offer. */
-html[data-size="tall"] .pairs-offer-scrim {
+html[data-size="tall"] .pairs-offer-scrim,
+html[data-size="tall-narrow"] .pairs-offer-scrim {
   grid-template-columns: minmax(0, 710px);
   justify-content: center;
 }
 
-html[data-size="tall"] .pairs-offer {
+html[data-size="tall"] .pairs-offer,
+html[data-size="tall-narrow"] .pairs-offer {
   width: 100%;
 }
 
-html[data-size="tall"] .pairs-offer-question {
+html[data-size="tall"] .pairs-offer-question,
+html[data-size="tall-narrow"] .pairs-offer-question {
   font-size: 32px;
 }
 
-html[data-size="tall"] .pairs-offer-answers {
+html[data-size="tall"] .pairs-offer-answers,
+html[data-size="tall-narrow"] .pairs-offer-answers {
   flex-direction: column;
 }
 
-html[data-size="tall"] .pairs-offer-answers button {
+html[data-size="tall"] .pairs-offer-answers button,
+html[data-size="tall-narrow"] .pairs-offer-answers button {
   flex: none;
+}
+
+/* In a tall-narrow window the offer is the window less 16 a side, its
+   padding 32 at the top and 24 elsewhere, its picture 96, its question
+   in 22-pixel type and YES and NOT NOW in 22. */
+html[data-size="tall-narrow"] .pairs-offer-scrim {
+  padding: 16px;
+}
+
+html[data-size="tall-narrow"] .pairs-offer {
+  padding: 32px 24px 24px;
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .pairs-offer-picture {
+  width: 96px;
+  height: 96px;
+  font-size: 52px;
+}
+
+html[data-size="tall-narrow"] .pairs-offer-question {
+  font-size: 22px;
+}
+
+html[data-size="tall-narrow"] .pairs-offer-answers button {
+  height: 64px;
+  font-size: 22px;
 }
 
 /* The skeleton game's screens fill the screen under a bar like find the
