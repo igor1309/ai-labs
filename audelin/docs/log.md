@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Each call gets its own folder named by when it is made, with separate
+  places for both tracks and the transcript (LAB-524).
+
 - A transcript file keeps the call's latest words as readable Markdown,
   preserving a whole transcript through write failures and app crashes (LAB-508).
 

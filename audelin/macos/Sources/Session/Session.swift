@@ -1,4 +1,5 @@
 import Machine
+import Synchronization
 
 /// The two destinations in one recording.
 public enum SessionSide: Hashable, Sendable {
@@ -18,9 +19,20 @@ public struct SessionProcessSelection: Equatable, Sendable {
     }
 }
 
+/// An opaque destination passed from folder creation to each file opener.
+public struct SessionCallFolder: Equatable, Sendable {
+
+    public let id: String
+
+    public init(id: String) {
+
+        self.id = id
+    }
+}
+
 public protocol SessionFolder: Sendable {
 
-    func create() async throws
+    func create() async throws -> SessionCallFolder
 }
 
 public protocol SessionProcesses: Sendable {
@@ -43,7 +55,7 @@ public protocol SessionCallCapture: Sendable {
 
 public protocol SessionTrackFile: Sendable {
 
-    func open() async throws
+    func open(in folder: SessionCallFolder) async throws
     func close() async throws
 }
 
@@ -56,7 +68,7 @@ public protocol SessionCallText: Sendable {
 
 public protocol SessionTranscript: Sendable {
 
-    func open() async throws
+    func open(in folder: SessionCallFolder) async throws
     func close() async throws
 }
 
@@ -523,6 +535,7 @@ public final class SessionEffectHandler: Sendable {
     private let callTrack: any SessionTrackFile
     private let callText: any SessionCallText
     private let transcript: any SessionTranscript
+    private let madeFolder = Mutex<SessionCallFolder?>(nil)
 
     public init(
         folder: any SessionFolder,
@@ -549,15 +562,18 @@ public final class SessionEffectHandler: Sendable {
 
         switch effect {
         case .createFolder:
-            return await result { try await self.folder.create() }.map(SessionEvent.folderFinished)
+            return await result {
+                let made = try await self.folder.create()
+                self.madeFolder.withLock { $0 = made }
+            }.map(SessionEvent.folderFinished)
         case .selectProcesses:
             do { return .processesFinished(selection: try await processes.select(), error: nil) }
             catch { return .processesFinished(selection: nil, error: String(describing: error)) }
         case let .openTrack(side):
-            let result = await result { try await self.track(for: side).open() }
+            let result = await result { try await self.track(for: side).open(in: self.callFolder()) }
             return .trackFinished(side, error: result)
         case .openTranscript:
-            return await result { try await self.transcript.open() }.map(SessionEvent.transcriptFinished)
+            return await result { try await self.transcript.open(in: self.callFolder()) }.map(SessionEvent.transcriptFinished)
         case let .startCallText(enabled):
             return await result { try await self.callText.start(enabled: enabled) }.map(SessionEvent.callTextFinished)
         case .startMicrophoneCapture:
@@ -591,6 +607,14 @@ public final class SessionEffectHandler: Sendable {
         return Machine(initial: initial, reduce: SessionReducer.reduce, handle: { effect in
             await handler.handle(effect)
         })
+    }
+
+    private func callFolder() throws -> SessionCallFolder {
+
+        guard let folder = madeFolder.withLock({ $0 }) else {
+            throw SessionFailure(piece: "folder", message: "folder has not been created")
+        }
+        return folder
     }
 
     private func track(for side: SessionSide) -> any SessionTrackFile {
