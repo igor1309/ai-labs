@@ -72,10 +72,20 @@ describe("the worker the build writes", () => {
   function run() {
     const listeners = new Map<string, (event: unknown) => unknown>();
     const kept: string[] = [];
+    const timers: { ms: number; fire: () => void }[] = [];
     const self = { location: { origin: "https://rexlab.enoa.ai" }, addEventListener: (type: string, listener: (event: unknown) => unknown) => listeners.set(type, listener) };
-    const caches = { open: async () => ({ addAll: async (urls: string[]) => { kept.push(...urls); }, match: async () => undefined }), keys: async () => [], delete: async () => true };
-    new Function("self", "caches", "fetch", "setTimeout", code)(self, caches, () => Promise.reject(new TypeError("offline")), () => 0);
-    return { listeners, kept };
+    const caches = {
+      open: async () => ({
+        addAll: async (urls: string[]) => { kept.push(...urls); },
+        match: async (request: Request | string) => (new URL(typeof request === "string" ? request : request.url, self.location.origin).pathname === "/" ? new Response("cached page") : undefined)
+      }),
+      keys: async () => [],
+      delete: async () => true
+    };
+    const stalled = () => new Promise<Response>(() => {});
+    const setTimeout = (fire: () => void, ms: number) => timers.push({ ms, fire });
+    new Function("self", "caches", "fetch", "setTimeout", code)(self, caches, stalled, setTimeout);
+    return { listeners, kept, timers };
   }
 
   it("is headed with the release's version", () => {
@@ -94,5 +104,16 @@ describe("the worker the build writes", () => {
       .filter((file) => !["/sw.js", "/_headers", "/index.html"].includes(file) && !file.endsWith(".map"));
     expect(kept.sort()).toEqual(["/", ...built].sort());
     expect(kept).toContain("/prototypes/care-hatch.html");
+  });
+
+  it("opens the cached page once a stalled network has taken 3 seconds", async () => {
+    const { listeners, timers } = run();
+    let answer: Promise<Response> | undefined;
+    listeners.get("fetch")!({ request: new Request("https://rexlab.enoa.ai/"), respondWith: (response: Promise<Response>) => { answer = response; } });
+    await new Promise<void>((settled) => queueMicrotask(settled));
+    await Promise.resolve();
+    expect(timers.map(({ ms }) => ms)).toEqual([3000]);
+    timers[0]!.fire();
+    expect(await (await answer!).text()).toBe("cached page");
   });
 });

@@ -118,6 +118,21 @@ describe("the app offline", () => {
     expect(online.asked).toEqual([]);
   });
 
+  it("finds a newer release's file in that release's cache while the older release is still active and the network is gone", async () => {
+    const { caches } = memoryCaches();
+    const active = release("v1.0.0", { caches });
+    await active.install();
+    await offlineCache({ version: "v1.1.0", files: ["/", "/assets/tile-new.webp", "/icons/icon-180.png"], caches, fetch: network().fetch, origin: ORIGIN, wait: manualWait().wait }).install();
+    expect(await (await active.respond(new Request(`${ORIGIN}/assets/tile-new.webp`))!).text()).toBe("cached /assets/tile-new.webp");
+  });
+
+  it("asks the network for a file no installed release holds", async () => {
+    const online = network((url) => new Response(`network ${new URL(url).pathname}`));
+    const offline = release("v1.0.0", { fetch: online.fetch });
+    await offline.install();
+    expect(await (await offline.respond(new Request(`${ORIGIN}/assets/elsewhere.webp`))!).text()).toBe("network /assets/elsewhere.webp");
+  });
+
   it("leaves what it does not keep to the browser: other sites and anything but a read", () => {
     const offline = release("v1.0.0");
     expect(offline.respond(new Request("https://example.com/picture.webp"))).toBeUndefined();
@@ -213,6 +228,19 @@ describe("the worker's events", () => {
     await fire("activate", activate.event);
     await activate.done();
     expect([...stored.keys()]).toEqual(["rexlab-v1.0.0"]);
+  });
+
+  it("hands the browser each step's work, so it waits for it", async () => {
+    const { scope, fire } = workerScope();
+    const installing = Promise.resolve();
+    const activating = Promise.resolve();
+    serveOffline(scope, { install: () => installing, activate: () => activating, respond: () => undefined });
+    const handed: Promise<unknown>[] = [];
+    await fire("install", { waitUntil: (work: Promise<unknown>) => handed.push(work) });
+    await fire("activate", { waitUntil: (work: Promise<unknown>) => handed.push(work) });
+    expect(handed).toHaveLength(2);
+    expect(handed[0]).toBe(installing);
+    expect(handed[1]).toBe(activating);
   });
 
   it("answers a request of the release from the cache and leaves another site's to the browser", async () => {

@@ -41,6 +41,9 @@ export const PAGE_WAIT_MS = 3000;
 
 const PREFIX = "rexlab-";
 
+// Where the build writes the files whose names carry their content's hash.
+const HASHED = "/assets/";
+
 export const cacheName = (version: string) => `${PREFIX}${version}`;
 
 // The build heads the worker's code with its version, so the release
@@ -81,10 +84,21 @@ export function offlineCache({ version, files, caches, fetch, origin, wait }: Of
     return cached ?? network;
   };
 
-  // A file of the release from the cache, else from the network.
+  // A file of the release from the cache, else from the network. Online,
+  // a newer release's page may be open before that release takes over;
+  // its files, each with its hash in its name, are found in its own
+  // installed cache, so the page goes on playing when the network drops.
   const file = async (request: Request) => {
-    const cache = await caches.open(name);
-    return (await cache.match(request, { ignoreSearch: true })) ?? fetch(request);
+    const kept = await (await caches.open(name)).match(request, { ignoreSearch: true });
+    if (kept) return kept;
+    if (new URL(request.url).pathname.startsWith(HASHED)) {
+      for (const key of await caches.keys()) {
+        if (!key.startsWith(PREFIX) || key === name) continue;
+        const other = await (await caches.open(key)).match(request, { ignoreSearch: true });
+        if (other) return other;
+      }
+    }
+    return fetch(request);
   };
 
   // What answers `request`: undefined leaves it to the browser. Only the
