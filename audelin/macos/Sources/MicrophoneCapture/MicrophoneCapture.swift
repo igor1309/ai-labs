@@ -50,10 +50,8 @@ private final class CaptureLifetime: @unchecked Sendable {
     private let queue = DispatchQueue(label: "audelin.microphone-capture")
     private let delivery: Mutex<Delivery>
     private var ended = false
-    private var currentInput: UInt32 = 0
+    private var following = DeviceFollowing(input: 0)
     private var generation = 0
-    private var settleVersion = 0
-    private var pendingInput: UInt32?
     private var cancelSettle: (@Sendable () -> Void)?
 
     init(binding: any MicrophoneBinding, continuation: AsyncThrowingStream<AudioPiece, any Error>.Continuation) {
@@ -71,9 +69,9 @@ private final class CaptureLifetime: @unchecked Sendable {
                     let time = binding.now
                     queue.async { [self] in defaultChanged(input, at: time) }
                 }
-                currentInput = try binding.defaultInput()
+                following = DeviceFollowing(input: try binding.defaultInput())
                 delivery.withLock { $0.lastEnd = binding.now }
-                try startEngine()
+                try startEngine(input: following.input)
             } catch {
                 finish(error)
                 throw error
@@ -93,70 +91,79 @@ private final class CaptureLifetime: @unchecked Sendable {
         for await _ in signal.stream {}
     }
 
-    private func startEngine() throws {
+    private func startEngine(input: UInt32) throws {
 
-        guard currentInput != 0 else { throw CaptureError.noInput }
+        guard input != 0 else { throw CaptureError.noInput }
         generation += 1
         let startedGeneration = generation
-        try binding.start(input: currentInput, receive: { [weak self] in self?.receive($0) }) { [weak self] in
+        try binding.start(input: input, receive: { [weak self] in self?.receive($0) }) { [weak self] in
             guard let self else { return }
             queue.async { [self] in
                 guard !ended, generation == startedGeneration else { return }
-                rebuild(input: currentInput)
-            }
-        }
-    }
-
-    private func defaultChanged(_ input: UInt32, at time: Double) {
-
-        guard !ended else { return }
-        if input == currentInput {
-            clearSettle()
-            return
-        }
-        guard pendingInput != input else { return }
-        clearSettle()
-        pendingInput = input
-        let version = settleVersion
-        cancelSettle = binding.schedule(at: time + 1.5) { [weak self] in
-            guard let self else { return }
-            queue.async { [self] in
-                guard !ended, settleVersion == version else { return }
                 do {
-                    let latest = try binding.defaultInput()
-                    if latest == input {
-                        clearSettle()
-                        rebuild(input: input)
-                    } else {
-                        defaultChanged(latest, at: binding.now)
-                    }
+                    let latest = try readDefault()
+                    handle(.configurationChanged(
+                        currentAvailable: binding.inputAvailable(following.input), defaultInput: latest
+                    ))
                 } catch { finish(error) }
             }
         }
     }
 
-    private func clearSettle() {
+    private func readDefault() throws -> UInt32? {
 
-        settleVersion += 1
-        cancelSettle?()
-        cancelSettle = nil
-        pendingInput = nil
+        do { return try binding.defaultInput() }
+        catch CaptureError.noInput { return nil }
+    }
+
+    private func defaultChanged(_ input: UInt32, at time: Double) {
+
+        handle(.defaultChanged(input == 0 ? nil : input, at: time))
+    }
+
+    private func handle(_ event: DeviceFollowing.Event, failure: (any Error)? = nil) {
+
+        guard !ended else { return }
+        let previous = following.pending
+        let result = following.transition(event)
+        following = result.state
+        if previous != following.pending {
+            cancelSettle?()
+            cancelSettle = nil
+            if let settle = following.pending {
+                cancelSettle = binding.schedule(at: settle.deadline) { [weak self] in
+                    guard let self else { return }
+                    queue.async { [self] in
+                        guard !ended, following.pending == settle else { return }
+                        do {
+                            handle(.defaultChanged(try readDefault(), at: binding.now))
+                            handle(.settleReached(settle, at: binding.now))
+                        } catch { finish(error) }
+                    }
+                }
+            }
+        }
+        switch result.action {
+        case .none: break
+        case let .rebuild(input): rebuild(input: input)
+        case .fail: finish(failure ?? CaptureError.noInput)
+        }
     }
 
     private func rebuild(input: UInt32) {
 
         binding.stop()
         do {
-            currentInput = input
-            try startEngine()
-        } catch { finish(error) }
+            try startEngine(input: input)
+        } catch { handle(.rebuildRefused, failure: error) }
     }
 
     private func finish(_ error: (any Error)?) {
 
         guard !ended else { return }
         ended = true
-        clearSettle()
+        cancelSettle?()
+        cancelSettle = nil
         binding.unwatchDefaultInput()
         binding.stop()
         delivery.withLock {
@@ -201,7 +208,11 @@ private final class CaptureLifetime: @unchecked Sendable {
                 return error
             }
         }
-        if let failure { queue.async { [self] in finish(failure) } }
+        if let failure {
+            queue.async { [self] in finish(failure) }
+        } else {
+            queue.async { [self] in handle(.currentInputDelivering) }
+        }
     }
 }
 

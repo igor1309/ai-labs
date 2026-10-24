@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Microphone capture recovers immediately when its input disappears, waits
+  through brief missing defaults, and keeps delayed callbacks in time (LAB-532).
+
 - Microphone capture fills every gap up to ten minutes with silence and
   fails on longer gaps, including when the engine has not rebuilt (LAB-532).
 

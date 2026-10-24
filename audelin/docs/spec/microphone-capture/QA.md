@@ -17,6 +17,8 @@ processing off and audio is read. Evidence:
 `nativeChannelLayoutsProduceTheExactMonoMean`,
 `nativeDeliveryPreservesSamplesRateAndFirstSampleTime`,
 `theDefaultInputDeliversLiveAudioWithoutVoiceProcessing`.
+The channel-count fixtures sound each channel alone in turn, checking its
+share of the mean for both native buffer layouts.
 
 ## S-2 A new input device keeps the user heard
 
@@ -24,7 +26,11 @@ Fake: a system default-input change that holds for 1.5 s rebuilds on the new
 device, and its buffers are read at its rate. Evidence:
 `aHeldDefaultInputRebuildsOnlyAfterSettling`,
 `aDifferentCandidateMustSettleForItsOwnFullInterval`,
-`aSettledRebuildUsesThatInputWhenTheDefaultChangesDuringStop`.
+`aSettledRebuildUsesThatInputWhenTheDefaultChangesDuringStop`,
+`deviceFollowingObeysEachRule`,
+`aConfigurationChangeRecoversOntoTheDefaultWhileItSettles`.
+When a configuration change finds the current input gone, it moves to the
+current default immediately, including while that default is still settling.
 
 ## S-3 A device change keeps the track in time
 
@@ -37,7 +43,11 @@ Evidence: `aConfigurationGapIsPaddedWholeAtTheNewRate`,
 `aGapWithoutARebuildIsPaddedWhole`,
 `aRebuildBeforeTheFirstBufferPadsFromTheCaptureStart`,
 `nativeDeliveryPreservesSamplesRateAndFirstSampleTime`,
-`nativeBufferTimesIncludeSleepAndPreserveTheFirstSampleTime`.
+`nativeBufferTimesIncludeSleepAndPreserveTheFirstSampleTime`,
+`aDelayedClockReadingKeepsContiguousBuffersContiguous`,
+`nativeClockReadingContainsBothMonotonicClocks`.
+The native clock seam delays its paired reading by 100 ms on each of two
+contiguous buffers; no silence is inserted between them.
 
 ## S-11 A gap too long to keep in time fails
 
@@ -55,7 +65,12 @@ Evidence: `aRefusedStartCleansEveryInstalledResource`.
 
 Fake: a refused rebuild after a change ends the audio with a failure.
 Evidence: `aRefusedRebuildFailsAfterEveryEarlierPiece`,
-`aConfigurationRebuildFailsIfTheCurrentInputIsGoneWhileTheDefaultSettles`.
+`aHeldMissingDefaultFailsOnlyAfterSettling`,
+`aGoneInputWithNoDefaultFailsOnConfigurationChange`,
+`deviceFollowingObeysEachRule`.
+A missing default throws on the fake binding's read, as on the native
+binding; it fails only after holding for 1.5 s, unless a configuration
+change finds the current input gone with no replacement.
 
 ## S-6 A failed capture keeps what it heard
 
@@ -87,4 +102,10 @@ input keeps delivering a known ramp, rebuilds nothing, and the ramp is
 read back whole with no padding. Evidence:
 `aRevertedDefaultInputKeepsTheWholeRampWithoutPadding`,
 `aConfigurationRebuildPreservesThePendingDefaultSettle`,
-`aCancelledSettleCallbackCannotRebuildAfterReversionOrStop`.
+`aCancelledSettleCallbackCannotRebuildAfterReversionOrStop`,
+`aMissingDefaultFor110MillisecondsDuringSettlingKeepsCapturing`,
+`aReturningCandidateCannotUseItsOldSettleCallback`,
+`deviceFollowingObeysEachRule`.
+A candidate seen again starts a new full wait, and its older settle callback
+cannot move the capture. A default missing for 110 ms during settling keeps
+the current input heard.

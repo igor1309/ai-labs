@@ -30,6 +30,18 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         try Self.readDefaultInput()
     }
 
+    func inputAvailable(_ input: UInt32) -> Bool {
+
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceIsAlive,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var alive: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        return AudioObjectGetPropertyData(input, &address, 0, nil, &size, &alive) == noErr && alive != 0
+    }
+
     func watchDefaultInput(_ changed: @escaping @Sendable (UInt32) -> Void) throws {
 
         var address = Self.defaultInputAddress
@@ -76,14 +88,10 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate.isFinite, format.sampleRate > 0, format.channelCount > 0,
               format.commonFormat == .pcmFormatFloat32 else { throw CaptureError.unsupportedFormat }
-        let tap = NativeTap(receive: receive)
+        let tap = NativeTap(receive: receive, readClock: Self.readClock)
         self.tap = tap
         input.installTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, time in
-            tap.deliver(
-                buffer, time: time,
-                hostNow: AVAudioTime.seconds(forHostTime: mach_absolute_time()),
-                clockNow: Self.clockSeconds
-            )
+            tap.deliver(buffer, time: time)
         }
         try engine.start()
     }
@@ -135,6 +143,17 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         AVAudioTime.seconds(forHostTime: mach_continuous_time())
     }
 
+    static func readClock() throws -> MicrophoneClockReading {
+
+        var host: UInt64 = 0
+        var continuous: UInt64 = 0
+        try check(microphoneGetTimes(&host, &continuous, nil))
+        return MicrophoneClockReading(
+            host: AVAudioTime.seconds(forHostTime: host),
+            continuous: AVAudioTime.seconds(forHostTime: continuous)
+        )
+    }
+
     static func timestamp(hostTime: Double?, hostNow: Double, clockNow: Double, duration: Double) -> Double {
 
         // Audio host time pauses during sleep. Translate into the continuous
@@ -177,27 +196,34 @@ private struct NativeMicrophoneError: Error {
 
 final class NativeTap: Sendable {
 
+    private let readClock: @Sendable () throws -> MicrophoneClockReading
     private let receive: Mutex<(@Sendable (Result<InputBuffer, any Error>) -> Void)?>
 
-    init(receive: @escaping @Sendable (Result<InputBuffer, any Error>) -> Void) {
+    init(
+        receive: @escaping @Sendable (Result<InputBuffer, any Error>) -> Void,
+        readClock: @escaping @Sendable () throws -> MicrophoneClockReading
+    ) {
 
         self.receive = Mutex(receive)
+        self.readClock = readClock
     }
 
-    func deliver(_ buffer: AVAudioPCMBuffer, time: AVAudioTime, hostNow: Double, clockNow: Double) {
+    func deliver(_ buffer: AVAudioPCMBuffer, time: AVAudioTime) {
 
         receive.withLock { receive in
             guard let receive else { return }
-            let frames = Int(buffer.frameLength)
-            let rate = buffer.format.sampleRate
-            let firstSample = NativeMicrophoneBinding.timestamp(
-                hostTime: time.isHostTimeValid ? AVAudioTime.seconds(forHostTime: time.hostTime) : nil,
-                hostNow: hostNow,
-                clockNow: clockNow,
-                duration: Double(frames) / rate
-            )
             receive(Result {
-                try InputBuffer(channels: NativeMicrophoneBinding.channels(from: buffer), sampleRate: rate, time: firstSample)
+                let clock = try readClock()
+                let rate = buffer.format.sampleRate
+                let firstSample = NativeMicrophoneBinding.timestamp(
+                    hostTime: time.isHostTimeValid ? AVAudioTime.seconds(forHostTime: time.hostTime) : nil,
+                    hostNow: clock.host,
+                    clockNow: clock.continuous,
+                    duration: Double(buffer.frameLength) / rate
+                )
+                return try InputBuffer(
+                    channels: NativeMicrophoneBinding.channels(from: buffer), sampleRate: rate, time: firstSample
+                )
             })
         }
     }
@@ -207,3 +233,17 @@ final class NativeTap: Sendable {
         receive.withLock { $0 = nil }
     }
 }
+
+struct MicrophoneClockReading: Sendable {
+
+    let host: Double
+    let continuous: Double
+}
+
+// The SDK hides this declaration; the system function samples both clocks together.
+@_silgen_name("mach_get_times")
+private func microphoneGetTimes(
+    _ host: UnsafeMutablePointer<UInt64>,
+    _ continuous: UnsafeMutablePointer<UInt64>,
+    _ calendar: UnsafeMutablePointer<timespec>?
+) -> kern_return_t

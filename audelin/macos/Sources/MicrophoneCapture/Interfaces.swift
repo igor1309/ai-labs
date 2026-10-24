@@ -33,6 +33,7 @@ protocol MicrophoneBinding: Sendable {
 
     var now: Double { get }
     func defaultInput() throws -> UInt32
+    func inputAvailable(_ input: UInt32) -> Bool
     func watchDefaultInput(_ changed: @escaping @Sendable (UInt32) -> Void) throws
     func unwatchDefaultInput()
     func start(

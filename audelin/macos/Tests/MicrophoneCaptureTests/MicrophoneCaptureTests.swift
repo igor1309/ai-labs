@@ -36,16 +36,21 @@ struct MicrophoneCaptureTests {
         #expect(try await audio.next() == nil)
     }
 
-    @Test(arguments: [1, 3, 6])
+    @Test(arguments: [1, 2, 3, 6])
     func theMeanIncludesEveryChannel(channelCount: Int) async throws {
 
         let binding = FakeMicrophoneBinding()
         let capture = try MicrophoneCapture(binding: binding)
         defer { capture.stop() }
-        binding.send((1...channelCount).map { [Float($0), -Float($0)] })
+        for soundingChannel in 0..<channelCount {
+            var channels = Array(repeating: [Float(0), 0], count: channelCount)
+            channels[soundingChannel] = [Float(channelCount), -Float(channelCount)]
+            binding.send(channels)
+        }
         capture.stop()
-        let mean = Float(channelCount + 1) / 2
-        #expect(try await drain(capture) == [AudioPiece(samples: [mean, -mean], sampleRate: 8)])
+        #expect(try await drain(capture) == Array(
+            repeating: AudioPiece(samples: [1, -1], sampleRate: 8), count: channelCount
+        ))
     }
 
     @Test func aHeldDefaultInputRebuildsOnlyAfterSettling() async throws {
@@ -64,7 +69,6 @@ struct MicrophoneCaptureTests {
         await capture.synchronize()
         #expect(binding.state.withLock { $0.starts } == [1])
         binding.send([[13, 14]])
-        binding.state.withLock { $0.rate = 4 }
         binding.advance(0)
         await capture.synchronize()
         #expect(binding.state.withLock { $0.starts } == [1, 2])
@@ -89,6 +93,7 @@ struct MicrophoneCaptureTests {
         defer { capture.stop() }
         binding.send([[1, 2]])
         let rate = gap == 2 ? 24_000.0 : 4.0
+        binding.state.withLock { $0.unavailableInputs = [1] }
         binding.configure(rate: rate)
         await capture.synchronize()
         binding.advance(gap)
@@ -112,7 +117,7 @@ struct MicrophoneCaptureTests {
         binding.changeDefault(to: 2)
         await capture.synchronize()
         binding.advance(0.5)
-        binding.configure(rate: 8)
+        binding.configure()
         await capture.synchronize()
         #expect(binding.state.withLock { $0.starts } == [1, 1])
         #expect(binding.state.withLock { $0.timers.values.map(\.0) } == [1.5])
@@ -127,9 +132,10 @@ struct MicrophoneCaptureTests {
         #expect(binding.state.withLock { $0.timers.isEmpty })
         binding.send([[7, 8]])
         capture.stop()
+        let rate = reverts ? 8.0 : 4.0
         #expect(try await drain(capture) == [
-            AudioPiece(samples: Array(repeating: 0, count: 12), sampleRate: 8),
-            AudioPiece(samples: [7, 8], sampleRate: 8),
+            AudioPiece(samples: Array(repeating: 0, count: Int(1.5 * rate)), sampleRate: rate),
+            AudioPiece(samples: [7, 8], sampleRate: rate),
         ])
     }
 
@@ -147,7 +153,7 @@ struct MicrophoneCaptureTests {
         #expect(binding.state.withLock { $0.starts } == [1, 2])
         #expect(binding.state.withLock { $0.timers.values.map(\.0) } == [3])
         binding.send([[2, 4]])
-        binding.advance(1)
+        binding.advance(0.75)
         await capture.synchronize()
         #expect(binding.state.withLock { $0.starts } == [1, 2])
         binding.advance(0.25)
@@ -156,14 +162,14 @@ struct MicrophoneCaptureTests {
         binding.send([[6, 8]])
         capture.stop()
         #expect(try await drain(capture) == [
-            AudioPiece(samples: Array(repeating: 0, count: 12), sampleRate: 8),
-            AudioPiece(samples: [2, 4], sampleRate: 8),
-            AudioPiece(samples: Array(repeating: 0, count: 10), sampleRate: 8),
-            AudioPiece(samples: [6, 8], sampleRate: 8),
+            AudioPiece(samples: Array(repeating: 0, count: 6), sampleRate: 4),
+            AudioPiece(samples: [2, 4], sampleRate: 4),
+            AudioPiece(samples: Array(repeating: 0, count: 16), sampleRate: 16),
+            AudioPiece(samples: [6, 8], sampleRate: 16),
         ])
     }
 
-    @Test func aConfigurationRebuildFailsIfTheCurrentInputIsGoneWhileTheDefaultSettles() async throws {
+    @Test func aConfigurationChangeRecoversOntoTheDefaultWhileItSettles() async throws {
 
         let binding = FakeMicrophoneBinding()
         let capture = try MicrophoneCapture(binding: binding)
@@ -174,11 +180,13 @@ struct MicrophoneCaptureTests {
         binding.state.withLock { $0.unavailableInputs = [1] }
         binding.configure()
         await capture.synchronize()
+        binding.send([[3, 4]])
         capture.stop()
-        let result = await readUntilFailure(capture)
-        #expect(result.pieces == [AudioPiece(samples: [1, 2], sampleRate: 8)])
-        #expect(result.error is Refusal)
-        #expect(binding.state.withLock { $0.starts } == [1, 1])
+        #expect(try await drain(capture) == [
+            AudioPiece(samples: [1, 2], sampleRate: 8),
+            AudioPiece(samples: [3, 4], sampleRate: 4),
+        ])
+        #expect(binding.state.withLock { $0.starts } == [1, 2])
         #expect(binding.state.withLock { $0.receive == nil && $0.defaultChanged == nil && $0.timers.isEmpty })
     }
 
@@ -208,6 +216,7 @@ struct MicrophoneCaptureTests {
         let capture = try MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.advance(0.5)
+        binding.state.withLock { $0.unavailableInputs = [1] }
         binding.configure(rate: 4)
         await capture.synchronize()
         binding.advance(1.5)
@@ -355,7 +364,7 @@ struct MicrophoneCaptureTests {
         #expect(binding.state.withLock { $0.starts } == [1, 3])
         binding.send([[7]])
         capture.stop()
-        #expect(try await drain(capture).last == AudioPiece(samples: [7], sampleRate: 8))
+        #expect(try await drain(capture).last == AudioPiece(samples: [7], sampleRate: 16))
     }
 
     @Test func aCancelledSettleCallbackCannotRebuildAfterReversionOrStop() async throws {
@@ -375,6 +384,92 @@ struct MicrophoneCaptureTests {
         callback()
         await capture.synchronize()
         #expect(binding.state.withLock { $0.starts } == [1])
+    }
+
+    @Test(arguments: [false, true])
+    func aMissingDefaultFor110MillisecondsDuringSettlingKeepsCapturing(notifies: Bool) async throws {
+
+        let binding = FakeMicrophoneBinding()
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.changeDefault(to: 2)
+        await capture.synchronize()
+        binding.advance(1.4)
+        if notifies { binding.changeDefault(to: 0) }
+        else { binding.state.withLock { $0.input = 0 } }
+        await capture.synchronize()
+        #expect(throws: CaptureError.noInput) { try binding.defaultInput() }
+        binding.advance(0.1)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1])
+        binding.advance(0.01)
+        binding.changeDefault(to: 2)
+        await capture.synchronize()
+        binding.send([[7, 8]])
+        capture.stop()
+        let pieces = try await drain(capture)
+        #expect(pieces.last == AudioPiece(samples: [7, 8], sampleRate: 8))
+        #expect(binding.state.withLock { $0.starts } == [1])
+    }
+
+    @Test func aHeldMissingDefaultFailsOnlyAfterSettling() async throws {
+
+        let binding = FakeMicrophoneBinding()
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.send([[1, 2]])
+        binding.changeDefault(to: 0)
+        await capture.synchronize()
+        binding.advance(1.49)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.receive != nil })
+        binding.advance(0.01)
+        await capture.synchronize()
+        let result = await readUntilFailure(capture)
+        #expect(result.pieces == [AudioPiece(samples: [1, 2], sampleRate: 8)])
+        #expect(result.error as? CaptureError == .noInput)
+    }
+
+    @Test func aGoneInputWithNoDefaultFailsOnConfigurationChange() async throws {
+
+        let binding = FakeMicrophoneBinding()
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.send([[1, 2]])
+        binding.state.withLock { $0.unavailableInputs = [1] }
+        binding.configure(input: 0)
+        await capture.synchronize()
+        let result = await readUntilFailure(capture)
+        #expect(result.pieces == [AudioPiece(samples: [1, 2], sampleRate: 8)])
+        #expect(result.error as? CaptureError == .noInput)
+        #expect(binding.state.withLock { $0.starts } == [1])
+    }
+
+    @Test func aReturningCandidateCannotUseItsOldSettleCallback() async throws {
+
+        let binding = FakeMicrophoneBinding()
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.changeDefault(to: 2)
+        await capture.synchronize()
+        let oldSettle = try #require(binding.state.withLock { $0.timers.values.first?.1 })
+        binding.advance(1)
+        binding.changeDefault(to: 1)
+        await capture.synchronize()
+        binding.advance(0.25)
+        binding.changeDefault(to: 2)
+        await capture.synchronize()
+        binding.advance(0.25)
+        oldSettle()
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1])
+        #expect(binding.state.withLock { $0.timers.values.map(\.0) } == [2.75])
+        binding.advance(1.25)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1, 2])
+        binding.send([[9]])
+        capture.stop()
+        #expect(try await drain(capture).last == AudioPiece(samples: [9], sampleRate: 4))
     }
 
     @Test func anOldEngineNotificationCannotRebuildItsReplacement() async throws {
