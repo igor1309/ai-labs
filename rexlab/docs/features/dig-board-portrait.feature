@@ -5,7 +5,7 @@ Feature: DIG: the board at Hatchling in a tall window
   shape. A stroke on the sand brushes it and never scrolls the page. The
   rest is as dig-brush.feature tells. A board that asks WHO IS IT?, the
   reveal and the field guide still ask to turn, and a tall-narrow window
-  keeps the picture asking to turn or widen (window-shape.feature).
+  has its own sizes (dig-narrow-portrait.feature).
 
   Scenario Outline: The board stands upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room

@@ -58,11 +58,4 @@ describe("DIG's board upright", () => {
     openBoard([820, 1180], "explorer");
     expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
   });
-
-  it("asks to turn as a tall window narrows over the board", () => {
-    const { viewport } = openBoard([820, 1180]);
-    openWindow(393, 852);
-    act(() => viewport.resize("tall-narrow", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-  });
 });
