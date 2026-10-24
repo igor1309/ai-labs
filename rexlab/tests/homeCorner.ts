@@ -1,7 +1,7 @@
 import { expect } from "vitest";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { styleAt } from "./windowSizes.ts";
+import { sizedStyle } from "./windowSizes.ts";
 
 // jsdom lays nothing out, so the width of each word in the top corners
 // is given here in ems of its face, rounded up: Lexend's at the weight
@@ -15,12 +15,8 @@ const wordWidth = (words: string, style: CSSStyleDeclaration) => (WORD_EMS[words
 
 const sides = (style: CSSStyleDeclaration) => px(style.paddingLeft) + px(style.paddingRight);
 
-// An element's style in the window as it is, its media rules included,
-// read as a computed style is.
-const styleOf = (element: Element) => {
-  const at = styleAt(element, [window.innerWidth, window.innerHeight]);
-  return new Proxy({} as CSSStyleDeclaration, { get: (_, name: string) => at.value(name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)) });
-};
+// An element's style in the window as it is, its media rules included.
+const styleOf = (element: Element) => sizedStyle(element, [window.innerWidth, window.innerHeight]);
 
 // A row's width: its sides, its parts and the gaps between them.
 const rowWidth = (row: Element, parts: number[]) => {

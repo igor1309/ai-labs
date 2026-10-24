@@ -1,9 +1,9 @@
 Feature: The home page in a tall-narrow window
   In a tall-narrow window, portrait and under 600 CSS pixels wide (an
-  iPhone upright), the home page stands upright as in a tall window
-  (home-portrait.feature), on 20-pixel sides instead of 56: the corner
-  and the greeting at the top, the large card under them, and the row of
-  tiles under it, scrolling sideways to the window's right edge. Under
+  iPhone upright), the home page stands upright as in a tall window, on
+  20-pixel sides instead of 56: the corner and the greeting at the top,
+  the large card under them, and the row of tiles under it, scrolling
+  sideways to the window's right edge. Under
   360 wide (an iPhone with its display zoomed, or a window in Slide Over)
   the corner closes up, the large card's name is a little smaller, and
   ANCIENT REPTILES may take two lines.

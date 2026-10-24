@@ -5,8 +5,8 @@ Feature: The home page in a tall window
   large card under them, and under it the row of tiles in the same
   columns of two, order and sideways scroll as in landscape
   (home-tiles.feature). Nothing else changes. A tall-narrow window has
-  its own layout (home-narrow-portrait.feature). Turning
-  glides to the other layout (turn-motion.feature).
+  its own layout. Turning glides to the other layout
+  (turn-motion.feature).
 
   The padding, the greeting's 48-pixel line and the gaps keep their
   landscape sizes, 292 CSS pixels in all. The tiles' row takes 36% of

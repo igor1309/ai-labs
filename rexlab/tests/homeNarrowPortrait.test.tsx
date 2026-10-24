@@ -30,7 +30,7 @@ import {
   unsetAgeLevel,
   type MemoryStorage
 } from "./support.ts";
-import { openWindow, styleAt } from "./windowSizes.ts";
+import { openWindow, sizedStyle, styleAt } from "./windowSizes.ts";
 
 // The home page's tiles and the games still to come, in columns of two.
 const COLUMNS = 4;
@@ -173,19 +173,21 @@ describe("the home page in a tall-narrow window", () => {
     const peek = shown - whole * (column + TILE_GAP);
     expect(whole).toBeGreaterThanOrEqual(1);
     expect(peek).toBeGreaterThanOrEqual(PEEK);
-    expect(peek).toBeLessThan(column);
+    expect(peek).toBeLessThanOrEqual(column - PEEK);
   });
 
   it.each((["en", "ru"] as const).flatMap((language) => [320, 375].flatMap((width) => GAMES.map((featured) => [language, width, featured] as const))))("fits every word in %s at %i wide, featuring %s", (language, width, featured) => {
     openNarrow(width, 667, { language, featured });
-    const home = getComputedStyle(part(".home"));
+    // Every style as the window's media rules leave it.
+    const styleOf = (element: Element) => sizedStyle(element, [width, 667]);
+    const home = styleOf(part(".home"));
     const cardWidth = width - px(home.paddingLeft) - px(home.paddingRight);
     const title = featuredCard().querySelector(".featured-card-title");
     if (!title?.textContent) throw new Error("No name on the large card");
-    const style = getComputedStyle(title);
+    const style = styleOf(title);
     expect(style.whiteSpace).not.toBe("nowrap");
     const size = px(style.fontSize);
-    const room = roomFor(title, () => cardWidth);
+    const room = roomFor(title, () => cardWidth, styleOf);
     const lines = linesOf(title.textContent, size, px(style.letterSpacing), room);
     if (!Array.isArray(lines)) throw new Error(`${lines.missing}: no width in ems`);
     expect(lines.filter((line) => widthOf(line, size, px(style.letterSpacing)) > room)).toEqual([]);
@@ -194,19 +196,19 @@ describe("the home page in a tall-narrow window", () => {
     // Under 360 wide ANCIENT REPTILES may wrap with the two longer names.
     const wrapping = [".pairs-tile-title", ".sand-writing-tile-title", ...(width < 360 ? [".catalogue-tile-title"] : [])].join(", ");
     const overflowing = tileTitles().filter((tile) => !tile.matches(wrapping)).flatMap((tile) => {
-      const tileStyle = getComputedStyle(tile);
+      const tileStyle = styleOf(tile);
       const words = tile.textContent ?? "";
       const needed = (TITLE_EMS[words] ?? Number.NaN) * px(tileStyle.fontSize) + px(tileStyle.letterSpacing) * words.length;
-      const tileRoom = roomFor(tile, () => column);
-      if (styleAt(tile, [width, 667]).value("white-space") !== "nowrap") return [`${words}: may wrap`];
+      const tileRoom = roomFor(tile, () => column, styleOf);
+      if (tileStyle.whiteSpace !== "nowrap") return [`${words}: may wrap`];
       return needed <= tileRoom ? [] : [`${words}: ${needed.toFixed(1)}px in ${tileRoom.toFixed(1)}px`];
     });
     expect(overflowing).toEqual([]);
     for (const tile of tilesRow().querySelectorAll(wrapping)) {
-      const tileStyle = getComputedStyle(tile);
-      expect(styleAt(tile, [width, 667]).value("white-space")).not.toBe("nowrap");
-      const tileLines = linesOf(tile.textContent ?? "", px(tileStyle.fontSize), px(tileStyle.letterSpacing), roomFor(tile, () => column));
-      const tileRoom = roomFor(tile, () => column);
+      const tileStyle = styleOf(tile);
+      expect(tileStyle.whiteSpace).not.toBe("nowrap");
+      const tileRoom = roomFor(tile, () => column, styleOf);
+      const tileLines = linesOf(tile.textContent ?? "", px(tileStyle.fontSize), px(tileStyle.letterSpacing), tileRoom);
       expect(Array.isArray(tileLines) && tileLines.length <= 2 && tileLines.every((line) => widthOf(line, px(tileStyle.fontSize), px(tileStyle.letterSpacing)) <= tileRoom)).toBe(true);
     }
   });
