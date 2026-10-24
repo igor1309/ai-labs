@@ -4631,8 +4631,9 @@ html[data-size="tall"] .friends-grid {
   height: 252px;
 }
 
+/* An upright window sizes the tray by its rows instead. */
 @media (min-height: 860px) {
-  .sort[data-rows="2"] .sort-tray-area {
+  html:not([data-size^="tall"]) .sort[data-rows="2"] .sort-tray-area {
     height: 292px;
   }
 }
