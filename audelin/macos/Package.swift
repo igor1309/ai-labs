@@ -14,6 +14,7 @@ let package = Package(
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
+        .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Session", targets: ["Session"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
@@ -70,6 +71,10 @@ let package = Package(
             ]
         ),
         .target(
+            name: "Recording",
+            dependencies: ["Machine"]
+        ),
+        .target(
             name: "SettingsUI",
             dependencies: ["GlassLedger"]
         ),
@@ -116,6 +121,10 @@ let package = Package(
         .testTarget(
             name: "ParakeetRecognizerTests",
             dependencies: ["ParakeetRecognizer"]
+        ),
+        .testTarget(
+            name: "RecordingTests",
+            dependencies: ["Recording", "Machine"]
         ),
         .testTarget(
             name: "SettingsUITests",

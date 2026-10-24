@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Recording now begins and ends Sessions for calls and manual controls, holds
+  starts for missing conditions, and keeps failure reasons visible (LAB-506).
+
 - Session keeps pending starts and stops through failures and access loss,
   and follows call text's reported status while settling switches before ending (LAB-506).
 
