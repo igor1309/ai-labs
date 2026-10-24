@@ -36,6 +36,21 @@ struct MicrophoneCaptureTests {
         #expect(try await audio.next() == nil)
     }
 
+    @Test(arguments: [
+        ([[Float(2), 4], [6, 8]], [Float(4), 6]),
+        ([[3, -3], [-1, 5], [4, 1]], [2, 1]),
+        ([[1, 1], [-1, -1]], [0, 0]),
+    ])
+    func channelsSoundingTogetherAreMixedToTheirMean(channels: [[Float]], expected: [Float]) async throws {
+
+        let binding = FakeMicrophoneBinding()
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.send(channels)
+        capture.stop()
+        #expect(try await drain(capture) == [AudioPiece(samples: expected, sampleRate: 8)])
+    }
+
     @Test(arguments: [1, 2, 3, 6])
     func theMeanIncludesEveryChannel(channelCount: Int) async throws {
 
