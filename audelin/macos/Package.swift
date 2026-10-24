@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "CallAppProcesses", targets: ["CallAppProcesses"]),
         .library(name: "CallFolder", targets: ["CallFolder"]),
         .library(name: "CallText", targets: ["CallText"]),
+        .library(name: "Compose", targets: ["Compose"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveText", targets: ["LiveText"]),
@@ -39,6 +40,10 @@ let package = Package(
         ),
         .target(
             name: "CallText"
+        ),
+        .target(
+            name: "Compose",
+            dependencies: ["CallText", "LiveText", "TrackFile", "TranscriptFile", "MicrophoneCapture", "SystemAudioCapture"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -126,6 +131,10 @@ let package = Package(
         .testTarget(
             name: "CallTextTests",
             dependencies: ["CallText"]
+        ),
+        .testTarget(
+            name: "ComposeTests",
+            dependencies: ["Compose"]
         ),
         .testTarget(
             name: "CoreAudioProcessesTests",

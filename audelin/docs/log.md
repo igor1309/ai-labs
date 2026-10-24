@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Compose translates a recording's captured audio, written tracks and live
+  text into call text, and keeps its transcript updates on disk (LAB-535).
+
 - Microphone capture recovers immediately when its input disappears, waits
   through brief missing defaults, and keeps delayed callbacks in time (LAB-532).
 
