@@ -2104,7 +2104,8 @@ body:has(.result) #version {
    QuestionScreen gives in --prompt-size and --name-size, one for the
    window, and a value stands at the bottom right of its picture's area,
    so no card grows or moves as the values show. */
-html[data-size="tall"] .question {
+html[data-size="tall"] .question,
+html[data-size="tall-narrow"] .question {
   --card-footer: calc(var(--name-size) * 1.25 + 40px);
   min-height: 100vh;
   min-height: 100dvh;
@@ -2113,50 +2114,96 @@ html[data-size="tall"] .question {
   overscroll-behavior: none;
 }
 
-html[data-size="tall"] .prompt {
+html[data-size="tall"] .prompt,
+html[data-size="tall-narrow"] .prompt {
   font-size: var(--prompt-size);
   line-height: 1.25;
   white-space: nowrap;
 }
 
-html[data-size="tall"] .dinosaur-cards {
+html[data-size="tall"] .dinosaur-cards,
+html[data-size="tall-narrow"] .dinosaur-cards {
   position: relative;
   flex: 1 0 auto;
   flex-direction: column;
   align-items: stretch;
 }
 
-html[data-size="tall"] .dinosaur-card {
+html[data-size="tall"] .dinosaur-card,
+html[data-size="tall-narrow"] .dinosaur-card {
   position: relative;
   flex: 1 0 0;
   min-height: calc(198px + var(--card-footer));
 }
 
-html[data-size="tall"] .dinosaur-footer {
+html[data-size="tall"] .dinosaur-footer,
+html[data-size="tall-narrow"] .dinosaur-footer {
   flex: none;
   height: var(--card-footer);
   box-sizing: border-box;
   flex-wrap: nowrap;
 }
 
-html[data-size="tall"] .dinosaur-name {
+html[data-size="tall"] .dinosaur-name,
+html[data-size="tall-narrow"] .dinosaur-name {
   font-size: var(--name-size);
   line-height: 1.25;
   white-space: nowrap;
   overflow-wrap: normal;
 }
 
-html[data-size="tall"] .dinosaur-value-chip {
+html[data-size="tall"] .dinosaur-value-chip,
+html[data-size="tall-narrow"] .dinosaur-value-chip {
   position: absolute;
   right: 24px;
   bottom: calc(var(--card-footer) + 24px);
 }
 
-html[data-size="tall"] .versus {
+html[data-size="tall"] .versus,
+html[data-size="tall-narrow"] .versus {
   position: absolute;
   inset: 0;
   z-index: 1;
   margin: auto;
+}
+
+/* In a tall-narrow window, an iPhone upright, the question stands as in
+   a tall one on 20-pixel sides and with less room between its parts:
+   "HOME" is its symbol alone, a 56-pixel square, so the steps keep their
+   room, and a card's picture may be as short as 110 pixels before the
+   screen scrolls. */
+html[data-size="tall-narrow"] .question {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .question-bar {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .question .home-button {
+  width: 56px;
+  padding: 0 16px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-cards {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-card {
+  min-height: calc(142px + var(--card-footer));
+}
+
+html[data-size="tall-narrow"] .dinosaur-art {
+  padding: 16px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-footer {
+  padding: 20px;
 }
 
 /* The catalogue: its bar stays at the top while the cards, as many to a

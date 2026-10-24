@@ -6,7 +6,7 @@ import { catalogueColumns, catalogueRow } from "./catalogueColumns.ts";
 import { CatalogueScreen, type CatalogueLayout } from "./CatalogueScreen.tsx";
 import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
 import { closingPicture, refitPicture, type PictureMotion } from "./closingPicture.ts";
-import { compareQuestionType, compareQuestionWidth } from "./compareQuestionLayout.ts";
+import { compareQuestionType, compareQuestionWidth, NARROW_QUESTION, PORTRAIT_QUESTION } from "./compareQuestionLayout.ts";
 import { compareResultType, compareResultWidth } from "./compareResultLayout.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps, type DigPhase } from "./digGame.tsx";
@@ -415,7 +415,7 @@ export function App({
   // reads only upright.
   const questionWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return compareQuestionWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    return compareQuestionWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_QUESTION : PORTRAIT_QUESTION);
   });
   // And one size for the result's stars, level names and dinosaur.
   const resultWidth = useSyncExternalStore(viewport.subscribe, () => {
@@ -589,7 +589,7 @@ export function App({
   const content = () => {
     switch (screen.kind) {
       case "compare":
-        return quiz.content(language, compareQuestionType(questionWidth), compareResultType(resultWidth));
+        return quiz.content(language, compareQuestionType(questionWidth, size === "tall-narrow" ? NARROW_QUESTION : PORTRAIT_QUESTION), compareResultType(resultWidth));
       case "catalogue":
         return (
           <CatalogueScreen

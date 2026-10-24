@@ -8,8 +8,7 @@ Feature: Compare dinosaurs quiz: a question in a tall window
   the cards would leave a name too little room: one above the other,
   a name keeps its landscape type or close to it. The rest is as
   compare-dinosaurs-answer.feature and the other compare-dinosaurs
-  features tell. A tall-narrow window keeps the picture asking to turn
-  or widen (window-shape.feature).
+  features tell. A tall-narrow window has its own upright question.
 
   The page's padding, the bar, the gaps between the bar, the prompt, the
   cards and the row (32), the prompt's symbol, the cards' look, their
