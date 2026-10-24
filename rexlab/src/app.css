@@ -1014,41 +1014,50 @@ body:has(.result) #version {
    rather than the window, which is the same where it does not scroll.
    HomePage gives the columns' width, narrowed so the next one peeks in. */
 [data-size="tall"] .wordmark,
-[data-size="tall"] .home-corner {
+[data-size="tall"] .home-corner,
+[data-size="tall-narrow"] .wordmark,
+[data-size="tall-narrow"] .home-corner {
   position: absolute;
 }
 
 /* The bands of rock lie against the page, and their holder takes no
    place, nor a gap, in its column. */
-[data-size="tall"] .home .strata {
+[data-size="tall"] .home .strata,
+[data-size="tall-narrow"] .home .strata {
   display: contents;
 }
 
-[data-size="tall"] body:has(.home) {
+[data-size="tall"] body:has(.home),
+[data-size="tall-narrow"] body:has(.home) {
   position: relative;
 }
 
-[data-size="tall"] body:has(.home) #version {
+[data-size="tall"] body:has(.home) #version,
+[data-size="tall-narrow"] body:has(.home) #version {
   position: absolute;
 }
 
-[data-size="tall"] .greeting {
+[data-size="tall"] .greeting,
+[data-size="tall-narrow"] .greeting {
   line-height: 48px;
 }
 
 /* In a window 600 pixels wide the corner would run into "RexLab", so the
    museum's sides narrow, keeping its word and its tap's height. */
-[data-size="tall"] .home-museum {
+[data-size="tall"] .home-museum,
+[data-size="tall-narrow"] .home-museum {
   padding: 0 16px 0 12px;
 }
 
-[data-size="tall"] .games {
+[data-size="tall"] .games,
+[data-size="tall-narrow"] .games {
   flex: 1 0 auto;
   height: auto;
   flex-direction: column;
 }
 
-[data-size="tall"] .featured-card {
+[data-size="tall"] .featured-card,
+[data-size="tall-narrow"] .featured-card {
   flex: 1 0 0;
   min-height: 280px;
   container-type: inline-size;
@@ -1061,33 +1070,159 @@ body:has(.result) #version {
    width allows. DIG's sand keeps its 4:3 at no more than the width the
    card leaves it, centred in the room it leaves: the card's padding and
    the footer's margin keep its least room above and below it. */
-[data-size="tall"] .featured-card .pairs-tile-art {
+[data-size="tall"] .featured-card .pairs-tile-art,
+[data-size="tall-narrow"] .featured-card .pairs-tile-art {
   container-type: size;
 }
 
-[data-size="tall"] .featured-card .pairs-tile-card {
+[data-size="tall"] .featured-card .pairs-tile-card,
+[data-size="tall-narrow"] .featured-card .pairs-tile-card {
   height: min(84cqh, 40cqw);
 }
 
-[data-size="tall"] .featured-card[data-game="dig"] {
+[data-size="tall"] .featured-card[data-game="dig"],
+[data-size="tall-narrow"] .featured-card[data-game="dig"] {
   padding-top: 36px;
 }
 
-[data-size="tall"] .featured-card .dig-tile-picture {
+[data-size="tall"] .featured-card .dig-tile-picture,
+[data-size="tall-narrow"] .featured-card .dig-tile-picture {
   max-height: calc((100cqw - 64px) * 3 / 4);
   margin: auto 32px;
 }
 
-[data-size="tall"] .featured-card[data-game="dig"] .featured-card-footer {
+[data-size="tall"] .featured-card[data-game="dig"] .featured-card-footer,
+[data-size="tall-narrow"] .featured-card[data-game="dig"] .featured-card-footer {
   margin-top: 8px;
 }
 
-[data-size="tall"] .games-tiles {
+[data-size="tall"] .games-tiles,
+[data-size="tall-narrow"] .games-tiles {
   flex: none;
   height: clamp(360px, 36vh, 520px);
   height: clamp(360px, 36dvh, 520px);
   margin-right: -56px;
   grid-auto-columns: var(--tile-column);
+}
+
+/* In a tall-narrow window, an iPhone upright, the page stands as in a
+   tall one with 20-pixel sides. "RexLab" and the museum show their
+   symbols alone, named for screen readers, so the corner keeps one line
+   beside the wordmark. The greeting, the large card's words and the
+   tiles' row are smaller for the narrower page. */
+[data-size="tall-narrow"] .home {
+  padding:
+    calc(100px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 20px;
+}
+
+[data-size="tall-narrow"] .wordmark {
+  top: calc(28px + env(safe-area-inset-top));
+  left: calc(20px + var(--screen-left));
+}
+
+[data-size="tall-narrow"] .home-corner {
+  top: calc(24px + env(safe-area-inset-top));
+  right: calc(20px + var(--screen-right));
+}
+
+[data-size="tall-narrow"] .home-museum {
+  padding: 0;
+  justify-content: center;
+}
+
+[data-size="tall-narrow"] .greeting {
+  font-size: 30px;
+  line-height: 36px;
+}
+
+[data-size="tall-narrow"] .featured-card {
+  min-height: 240px;
+}
+
+[data-size="tall-narrow"] .featured-card-footer {
+  padding: 18px 18px 22px;
+  gap: 12px;
+}
+
+[data-size="tall-narrow"] .featured-card-symbol {
+  width: 48px;
+  height: 48px;
+}
+
+[data-size="tall-narrow"] .featured-card-badge {
+  top: 16px;
+  right: 16px;
+  padding: 8px 14px;
+  font-size: 22px;
+}
+
+[data-size="tall-narrow"] .games-tiles {
+  height: clamp(320px, 36vh, 420px);
+  height: clamp(320px, 36dvh, 420px);
+  margin-right: -20px;
+}
+
+/* Under 360 wide (an iPhone with its display zoomed, or a window in
+   Slide Over) the corner closes up, every tap still 44 pixels or more,
+   the large card's name is smaller, the games still to come keep
+   narrower sides, and ANCIENT REPTILES may take two lines in its
+   narrower column. From 360 wide they stand as above. */
+[data-size="tall-narrow"] .home-corner {
+  gap: 6px;
+}
+
+[data-size="tall-narrow"] .home-museum {
+  min-width: 48px;
+  width: 48px;
+}
+
+[data-size="tall-narrow"] .featured-card-title {
+  font-size: 26px;
+}
+
+[data-size="tall-narrow"] .parent-menus {
+  gap: 4px;
+}
+
+[data-size="tall-narrow"] .more-coming {
+  padding: 20px;
+}
+
+[data-size="tall-narrow"] .catalogue-tile-title {
+  white-space: normal;
+  line-height: 1.15;
+}
+
+@media (min-width: 360px) {
+  [data-size="tall-narrow"] .home-corner {
+    gap: 8px;
+  }
+
+  [data-size="tall-narrow"] .home-museum {
+    min-width: 60px;
+    width: 60px;
+  }
+
+  [data-size="tall-narrow"] .featured-card-title {
+    font-size: 28px;
+  }
+
+  [data-size="tall-narrow"] .parent-menus {
+    gap: 8px;
+  }
+
+  [data-size="tall-narrow"] .more-coming {
+    padding: 20px 24px;
+  }
+
+  [data-size="tall-narrow"] .catalogue-tile-title {
+    white-space: nowrap;
+    line-height: normal;
+  }
 }
 
 /* The row stays where the page put it until the motion to the other
@@ -5466,7 +5601,18 @@ html[data-size="tall"] .pairs-bar .home-button {
   justify-content: center;
 }
 
-/* A name a tall window shows to screen readers alone, kept in the page. */
+/* A name a tall-narrow window shows to screen readers alone, kept in the page. */
+html[data-size="tall-narrow"] .narrow-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 html[data-size="tall"] .upright-hidden {
   position: absolute;
   width: 1px;
