@@ -2,6 +2,10 @@
 
 ## 2026-10-24
 
+- Audelin captures the processes it is told, or every process but those
+  left out, as mono audio at the device's rate, leaving playback unmuted
+  (LAB-471).
+
 - Recording keeps the latest Session's failure reason visible even when
   its end report arrives first (LAB-506).
 
