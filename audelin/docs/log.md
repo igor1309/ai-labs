@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Session now reports runtime piece failures, preserves retained audio and text,
+  and closes the Session review gaps (LAB-506).
+
 - Session now brings one recording's folder, tracks, text and captures up
   and down through a tested reducer and effect handler (LAB-506).
 

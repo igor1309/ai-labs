@@ -41,7 +41,11 @@ state is not ended until the output shows that capture down. Evidence:
 The call's folder failing at bring-up; both captures failing at bring-up;
 both track files, then both captures, failing while recording: the state
 says it cannot record and names the failure, nothing is brought down until
-ended, what was kept stays, and no later piece comes up. Evidence: `folderFailureSaysCannotRecordAndWaitsForEnd`, `bothTrackFailuresSayCannotRecord`, `bothCaptureFailuresSayCannotRecord`.
+ended, what was kept stays, and no later piece comes up. Evidence:
+`folderFailureSaysCannotRecordAndWaitsForEnd`, `bothTrackFailuresSayCannotRecord`,
+`bothCaptureFailuresSayCannotRecord`,
+`runtimeTrackFailureAndAccessLossSaysCannotRecord`,
+`bothRuntimeCaptureFailuresSayCannotRecord`.
 
 ## S-6 Any other failure keeps the rest
 
@@ -50,7 +54,9 @@ file, call text, the transcript, and each side's access lost with no
 capture failure), failing once at bring-up and once while recording with
 audio and text already kept: the state names it and shows
 the rest recording; what it kept stays in the output, and audio and text
-sent after reach every other piece. Evidence: `eachOtherBringUpFailureKeepsAnotherTrack`, `lostAccessIsNamedWhileTheOtherSideRecords`.
+sent after reach every other piece. Evidence:
+`eachOtherBringUpFailureKeepsAnotherTrack`, `lostAccessIsNamedWhileTheOtherSideRecords`,
+`runtimeFailureKeepsOtherSideAndNamesThePiece`.
 
 ## S-7 Live text gets ready while the call records
 

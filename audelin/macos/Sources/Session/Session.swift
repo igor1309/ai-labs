@@ -8,14 +8,10 @@ public enum SessionSide: Equatable, Sendable {
 }
 
 /// The process choice passed from the call-app adapter to a capture.
-public struct SessionProcessSelection: Equatable, Sendable {
+public enum SessionProcessSelection: Equatable, Sendable {
 
-    public let processIDs: [Int32]
-
-    public init(processIDs: [Int32]) {
-
-        self.processIDs = processIDs
-    }
+    case only([Int32])
+    case allExcept([Int32])
 }
 
 public protocol SessionFolder: Sendable {
@@ -51,6 +47,12 @@ public protocol SessionTranscript: Sendable {
 
     func open() async throws
     func close() async throws
+}
+
+/// Carries lifecycle failures from composed pieces into the Session loop.
+public protocol SessionEventSource: Sendable {
+
+    var events: AsyncStream<SessionEvent> { get }
 }
 
 /// A failure named in the session state.
@@ -174,6 +176,7 @@ public enum SessionEvent: Equatable, Sendable {
     case transcriptClosed(error: String?)
     case callTextStopped(error: String?)
     case liveTextSet(enabled: Bool, error: String?)
+    case pieceFailed(SessionState.Piece, error: String)
 }
 
 public enum SessionEffect: Equatable, Sendable {
@@ -206,7 +209,7 @@ public enum SessionReducer {
             return (state, .createFolder)
 
         case .end:
-            guard state.phase != .ended else { return (state, nil) }
+            guard state.phase != .ended && state.phase != .ending else { return (state, nil) }
             state.phase = .ending
             return nextDown(&state)
 
@@ -218,7 +221,13 @@ public enum SessionReducer {
             guard !available else { return (state, nil) }
             addFailure(&state, .init(piece: side.name + " access", message: "access lost"))
             setCapture(&state, side, .failed("access lost"))
-            if bothUnavailable(state) { state.cannotRecord = "both sides are unavailable" }
+            updateRecordability(&state)
+            return (state, nil)
+
+        case let .pieceFailed(piece, error):
+            setStatus(&state, piece, .failed(error))
+            addFailure(&state, .init(piece: piece.name, message: error))
+            updateRecordability(&state)
             return (state, nil)
 
         case let .folderFinished(error):
@@ -264,20 +273,24 @@ public enum SessionReducer {
             if let error { addFailure(&state, .init(piece: "call text", message: error)) }
             if state.phase == .ending { return nextDown(&state) }
             state.microphoneCapture = .starting
-            return (state, .startCapture(.microphone, selection: state.processSelection ?? .init(processIDs: [])))
+            return (state, .startCapture(.microphone, selection: state.processSelection ?? .only([])))
 
         case let .captureFinished(side, error):
-            setCapture(&state, side, error == nil ? .up : .failed(error!))
+            let prior = state.capture(for: side)
+            if error == nil && prior == .failed("access lost") {
+                // Access loss wins over a late completion from the old start.
+                setCapture(&state, side, prior)
+            } else {
+                setCapture(&state, side, error == nil ? .up : .failed(error!))
+            }
             if let error { addFailure(&state, .init(piece: side.captureName, message: error)) }
             if side == .microphone {
                 if state.phase == .ending { return nextDown(&state) }
                 state.callCapture = .starting
-                return (state, .startCapture(.call, selection: state.processSelection ?? .init(processIDs: [])))
+                return (state, .startCapture(.call, selection: state.processSelection ?? .only([])))
             }
             if state.phase == .ending { return nextDown(&state) }
-            let canRecord = (state.microphoneTrack.isUp && state.microphoneCapture.isUp)
-                || (state.callTrack.isUp && state.callCapture.isUp)
-            if canRecord {
+            if hasUsableTrack(state) {
                 state.phase = .recording
             } else {
                 state.cannotRecord = "no track can record"
@@ -343,9 +356,18 @@ public enum SessionReducer {
         if cannotRecord { state.cannotRecord = "\(piece): \(error)" }
     }
 
-    private static func bothUnavailable(_ state: SessionState) -> Bool {
+    private static func hasUsableTrack(_ state: SessionState) -> Bool {
 
-        state.microphoneCapture == .failed("access lost") && state.callCapture == .failed("access lost")
+        (state.microphoneTrack.isUp && state.microphoneCapture.isUp)
+            || (state.callTrack.isUp && state.callCapture.isUp)
+    }
+
+    private static func updateRecordability(_ state: inout SessionState) {
+
+        if !hasUsableTrack(state) && state.phase == .recording {
+            state.cannotRecord = "no track can record"
+            state.phase = .bringingUp
+        }
     }
 
     private static func setTrack(_ state: inout SessionState, _ side: SessionSide, _ status: SessionState.PieceStatus) {
@@ -356,6 +378,19 @@ public enum SessionReducer {
     private static func setCapture(_ state: inout SessionState, _ side: SessionSide, _ status: SessionState.PieceStatus) {
 
         if side == .microphone { state.microphoneCapture = status } else { state.callCapture = status }
+    }
+
+    private static func setStatus(_ state: inout SessionState, _ piece: SessionState.Piece, _ status: SessionState.PieceStatus) {
+
+        switch piece {
+        case .folder: state.folder = status
+        case .processes: state.processes = status
+        case let .track(side): setTrack(&state, side, status)
+        case .transcript: state.transcript = status
+        case .callText: state.callText = status
+        case let .capture(side): setCapture(&state, side, status)
+        case .access: break
+        }
     }
 }
 
@@ -377,6 +412,29 @@ private extension SessionSide {
     var name: String { self == .microphone ? "microphone" : "call" }
     var trackName: String { name + " track" }
     var captureName: String { name + " capture" }
+}
+
+private extension SessionState.Piece {
+
+    var name: String {
+        switch self {
+        case .folder: "folder"
+        case .processes: "processes"
+        case let .track(side): side.trackName
+        case .transcript: "transcript"
+        case .callText: "call text"
+        case let .capture(side): side.captureName
+        case let .access(side): side.name + " access"
+        }
+    }
+}
+
+private extension SessionState {
+
+    func capture(for side: SessionSide) -> PieceStatus {
+
+        side == .microphone ? microphoneCapture : callCapture
+    }
 }
 
 /// Dispatches effects to exactly one supplied dependency and maps its result.
@@ -475,10 +533,28 @@ public final class SessionEffectHandler: Sendable {
 public final class Session: Sendable {
 
     public let machine: Machine<SessionState, SessionEvent, SessionEffect>
+    private let eventTask: Task<Void, Never>?
 
     public init(handler: SessionEffectHandler, initial: SessionState = .init()) {
 
         machine = handler.machine(initial: initial)
+        eventTask = nil
+    }
+
+    public init(handler: SessionEffectHandler, events: any SessionEventSource, initial: SessionState = .init()) {
+
+        let machine = handler.machine(initial: initial)
+        self.machine = machine
+        eventTask = Task {
+            for await event in events.events {
+                machine.send(event)
+            }
+        }
+    }
+
+    deinit {
+
+        eventTask?.cancel()
     }
 
     public nonisolated func send(_ event: SessionEvent) {
