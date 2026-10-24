@@ -97,4 +97,4 @@ throws. Evidence: `SystemAudioCaptureTests.aRefusedNamingKeepsTheFirstNaming`,
 
 Fake and native: the unmuted request retains the named tone. Evidence:
 `SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback`,
-`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`. Real: pending the user's Zoom call with audible far-side playback.
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`. Real: pending the user spec's call.
