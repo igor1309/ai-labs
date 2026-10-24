@@ -9,27 +9,69 @@ const part = (selector: string, within: ParentNode = document) => {
   return found;
 };
 
+// A style rule of the stylesheet: its selectors, each with its
+// specificity, and the widest card its container rule holds for, if any.
+type Rule = { style: CSSStyleDeclaration; selectors: Array<{ selector: string; specificity: Specificity; classes: string[] }>; most: number };
+type Candidate = Rule & { value: string };
+
+// Each stylesheet's rules, read once, and those setting each property, as
+// it is first asked for: a card's sums ask for many properties of many
+// parts.
+const indexed = new WeakMap<CSSStyleSheet, { rules: Rule[]; byProperty: Map<string, Candidate[]> }>();
+
+function rulesSetting(sheet: CSSStyleSheet, property: string) {
+  let index = indexed.get(sheet);
+  if (!index) {
+    const rules: Rule[] = [];
+    const add = (rule: CSSStyleRule, most: number) => rules.push({
+      style: rule.style,
+      selectors: rule.selectorText.split(/,(?![^(]*\))/).map((selector) => selector.trim()).map((selector) => ({ selector, specificity: specificityOf(selector), classes: subjectClasses(selector) })),
+      most
+    });
+    for (const rule of sheet.cssRules) {
+      if (rule instanceof CSSStyleRule) add(rule, Number.POSITIVE_INFINITY);
+      if (!(rule instanceof CSSContainerRule)) continue;
+      const [, most] = /^\(max-width: (\d+)px\)$/.exec(rule.conditionText) ?? [];
+      if (most === undefined) throw new Error(`No sum for @container ${rule.conditionText}`);
+      for (const inner of rule.cssRules) {
+        if (inner instanceof CSSStyleRule) add(inner, Number(most));
+      }
+    }
+    index = { rules, byProperty: new Map() };
+    indexed.set(sheet, index);
+  }
+  let setting = index.byProperty.get(property);
+  if (!setting) {
+    setting = index.rules.map((rule) => ({ ...rule, value: rule.style.getPropertyValue(property) })).filter(({ value }) => value);
+    index.byProperty.set(property, setting);
+  }
+  return setting;
+}
+
+// The classes a selector's last compound names outside any parentheses:
+// an element lacking one cannot match it, so it is not asked to.
+function subjectClasses(selector: string) {
+  let depth = 0;
+  let start = 0;
+  for (let at = 0; at < selector.length; at++) {
+    const character = selector[at]!;
+    if (character === "(") depth++;
+    else if (character === ")") depth--;
+    else if (depth === 0 && /[\s>+~]/.test(character)) start = at + 1;
+  }
+  return selector.slice(start).replace(/\([^)]*\)/g, "").replace(/\[[^\]]*\]/g, "").match(/\.[\w-]+/g)?.map((name) => name.slice(1)) ?? [];
+}
+
 // The value a property of `element` takes in a card `cardWidth` wide, the
 // card's container rules applied: jsdom applies none.
 export function inCard(element: Element, cardWidth: number, property: string) {
   let found: { value: string; specificity: Specificity } | undefined;
-  const consider = (rule: CSSStyleRule) => {
-    const value = rule.style.getPropertyValue(property);
-    if (!value) return;
-    const specificity = matchedSpecificity(element, rule.selectorText);
-    // A later rule wins a tie, as in the browser's cascade.
-    if (specificity && (!found || compare(specificity, found.specificity) >= 0)) found = { value, specificity };
-  };
   for (const sheet of document.styleSheets) {
-    for (const rule of sheet.cssRules) {
-      if (rule instanceof CSSStyleRule) consider(rule);
-      if (!(rule instanceof CSSContainerRule)) continue;
-      const [, most] = /^\(max-width: (\d+)px\)$/.exec(rule.conditionText) ?? [];
-      if (most === undefined) throw new Error(`No sum for @container ${rule.conditionText}`);
-      if (cardWidth > Number(most)) continue;
-      for (const inner of rule.cssRules) {
-        if (inner instanceof CSSStyleRule) consider(inner);
-      }
+    for (const { selectors, value, most } of rulesSetting(sheet, property)) {
+      if (cardWidth > most) continue;
+      const specificity = selectors.filter(({ selector, classes }) => classes.every((name) => element.classList.contains(name)) && element.matches(selector)).map((each) => each.specificity).sort(compare).at(-1);
+      // A later rule wins a tie, as in the browser's cascade.
+      if (specificity && (!found || compare(specificity, found.specificity) >= 0)) found = { value, specificity };
     }
   }
   // A property no rule sets on the element itself is inherited.
@@ -49,18 +91,6 @@ function specificityOf(selector: string): Specificity {
   const classes = (bare.match(/\.[\w-]+/g)?.length ?? 0) + (bare.match(/\[[^\]]*\]/g)?.length ?? 0) + (bare.match(/:[\w-]+/g)?.length ?? 0);
   const elements = bare.replace(/\[[^\]]*\]/g, "").match(/(^|[\s>+~(])[a-z][\w-]*/gi)?.length ?? 0;
   return [ids, classes, elements];
-}
-
-// The specificity of the most specific of a rule's selectors that matches
-// `element`, or undefined where none does.
-function matchedSpecificity(element: Element, selectorText: string): Specificity | undefined {
-  return selectorText
-    .split(/,(?![^(]*\))/)
-    .map((selector) => selector.trim())
-    .filter((selector) => element.matches(selector))
-    .map(specificityOf)
-    .sort(compare)
-    .at(-1);
 }
 
 // A card's name in a card `cardWidth` wide: its size, by its share of the
