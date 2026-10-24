@@ -34,14 +34,14 @@ export function FriendsScreen({ language, friends, nestPicture, onFriend, onNewV
       <header className="friends-bar">
         <Button className="home-button" onClick={onBack}>
           <ArrowLeft size={24} aria-hidden="true" />
-          {text.back}
+          <span className="upright-hidden">{text.back}</span>
         </Button>
         {/* With no friends yet the way on is the big NEW VISITOR below,
             and BACK is the only other choice. */}
         {!empty && (
           <Button className="home-button" onClick={onHome}>
             <House size={24} aria-hidden="true" />
-            {text.home}
+            <span className="upright-hidden">{text.home}</span>
           </Button>
         )}
         <h1 className="friends-title">
@@ -78,7 +78,7 @@ export function FriendsScreen({ language, friends, nestPicture, onFriend, onNewV
           </Button>
         </div>
       ) : (
-        <div className="friends-grid" role="group" aria-label={text.friends}>
+        <div className="friends-grid" data-turn-part="care-friends-grid" role="group" aria-label={text.friends}>
           {friends.map((friend, index) => (
             <FriendCard key={friend.id} friend={friend} language={language} place={Math.min(index, COLUMNS - 1)} onFriend={onFriend} />
           ))}

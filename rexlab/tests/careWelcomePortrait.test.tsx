@@ -75,13 +75,6 @@ describe("care's welcome upright", () => {
     expect([part(".new-visitor-card").dataset.turnPart, part(".friends-card").dataset.turnPart]).toEqual(["care-new-visitor", "care-friends"]);
   });
 
-  it("still asks to turn over FRIENDS", () => {
-    openWelcome([820, 1180]);
-    fireEvent.click(screen.getByRole("button", { name: TEXTS.en.friends }));
-    expect(document.querySelector(".friends")).not.toBeNull();
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-  });
-
   it("still asks to turn over the result", async () => {
     openWindow(1180, 820);
     const viewport = manualViewport("landscape");
