@@ -10,10 +10,13 @@ let package = Package(
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveText", targets: ["LiveText"]),
+        .library(name: "Machine", targets: ["Machine"]),
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
+        .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
+        .library(name: "Session", targets: ["Session"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
@@ -41,6 +44,9 @@ let package = Package(
             name: "LiveText"
         ),
         .target(
+            name: "Machine"
+        ),
+        .target(
             name: "ModelLoading"
         ),
         .target(
@@ -66,8 +72,16 @@ let package = Package(
             ]
         ),
         .target(
+            name: "Recording",
+            dependencies: ["Machine"]
+        ),
+        .target(
             name: "SettingsUI",
             dependencies: ["GlassLedger"]
+        ),
+        .target(
+            name: "Session",
+            dependencies: ["Machine"]
         ),
         .target(
             name: "SystemAudioCapture"
@@ -93,6 +107,10 @@ let package = Package(
             dependencies: ["LiveText"]
         ),
         .testTarget(
+            name: "MachineTests",
+            dependencies: ["Machine"]
+        ),
+        .testTarget(
             name: "ModelLoadingTests",
             dependencies: ["ModelLoading"]
         ),
@@ -109,8 +127,16 @@ let package = Package(
             dependencies: ["ParakeetRecognizer"]
         ),
         .testTarget(
+            name: "RecordingTests",
+            dependencies: ["Recording", "Machine"]
+        ),
+        .testTarget(
             name: "SettingsUITests",
             dependencies: ["SettingsUI"]
+        ),
+        .testTarget(
+            name: "SessionTests",
+            dependencies: ["Session", "Machine"]
         ),
         .testTarget(
             name: "SystemAudioCaptureTests",

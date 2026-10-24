@@ -18,8 +18,9 @@ designing, specifying or building anything.
    Components with similar types keep their own, and the composition root
    translates between them.
 4. **Only the composition root knows concrete pieces.** It builds every
-   component and adapter and decides what answers each interface. When two
-   features must coordinate, the root hands both the same answer;
-   coordination is wiring, not a shared component.
+   component and adapter and decides what answers each interface. It
+   decides nothing else: coordination that decides anything is a state
+   machine with its own tests, and the root only builds and subscribes
+   (`docs/app-shape.md`).
 5. **Cross-cutting concerns are decorators at the root.** Logging, metrics
    and retries wrap interfaces in the composition root. No component logs.

@@ -1,10 +1,30 @@
 # Log
 
-## 2026-10-23
+## 2026-10-24
 
 - Audelin captures the processes it is told, or every process but those
   left out, as mono audio at the device's rate, leaving playback unmuted
   (LAB-471).
+
+- Recording keeps the latest Session's failure reason visible even when
+  its end report arrives first (LAB-506).
+
+- Recording now begins and ends Sessions for calls and manual controls, holds
+  starts for missing conditions, and keeps failure reasons visible (LAB-506).
+
+- Session keeps pending starts and stops through failures and access loss,
+  and follows call text's reported status while settling switches before ending (LAB-506).
+
+- Session now reports runtime piece failures, preserves retained audio and text,
+  and closes the Session review gaps (LAB-506).
+
+- Session now brings one recording's folder, tracks, text and captures up
+  and down through a tested reducer and effect handler (LAB-506).
+
+## 2026-10-23
+
+- Machines take events in order, run effects independently and tell every
+  subscriber each state change (LAB-517).
 
 - Call text switched on after audio ends catches up and includes the final
   words and revisions before finishing (LAB-476).
