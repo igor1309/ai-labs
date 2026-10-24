@@ -6,6 +6,7 @@ import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { LANDSCAPE_NAME, cardDetails, cardName } from "./catalogueCards.ts";
+import { expectCompactControls } from "./compactCatalogueControls.ts";
 import { emChipWidths } from "./chipWidths.ts";
 import {
   SHIPPED_CATALOGUE,
@@ -113,24 +114,8 @@ function cardWidth(size: WindowSize, language: Language = "en") {
   return (size[0] - px(main.paddingLeft) - px(main.paddingRight) - at.px("padding-left") - at.px("padding-right") - at.columnGap() * (columns - 1)) / columns;
 }
 
-// How far the chosen chip's shadow reaches above and below it, the most
-// of the light and dark themes: its offset taken from its blur.
-function shadowReach(): [number, number] {
-  const chosen = part(".food-chip[aria-pressed='true']");
-  const root = document.documentElement;
-  const theme = root.dataset.theme;
-  const reach = (["light", "dark"] as const).reduce<[number, number]>(([above, below], each) => {
-    root.dataset.theme = each;
-    const [, y = NaN, blur = NaN] = getComputedStyle(chosen).boxShadow.split(/\s+/).map((word) => parseFloat(word));
-    return [Math.max(above, blur - y), Math.max(below, blur + y)];
-  }, [0, 0]);
-  if (theme === undefined) delete root.dataset.theme;
-  else root.dataset.theme = theme;
-  return reach;
-}
-
 describe("the catalogue in a tall-narrow window", () => {
-  it.each(PHONES)("stands upright in a %i by %i window: HOME over the chips, the cards under them one to a row on 20-pixel sides", async (width, height) => {
+  it.each(PHONES)("stands upright in a %i by %i window: HOME beside the food symbols, the cards under them one to a row on 20-pixel sides", async (width, height) => {
     await openNarrow(width, height);
     const size: WindowSize = [width, height];
     expect(document.documentElement.dataset.size).toBe("tall-narrow");
@@ -143,36 +128,29 @@ describe("the catalogue in a tall-narrow window", () => {
     expect([...bar.children]).toEqual([home, chipGroup()]);
     const at = (element: Element, properties: string[]) => properties.map((property) => styleAt(element, size).value(property));
     expect(at(main, ["flex-direction", "gap"])).toEqual(["column", "20px"]);
-    expect(at(bar, ["flex-direction", "align-items", "padding-left", "padding-right", "gap"])).toEqual(["column", "flex-start", "20px", "20px", "16px"]);
+    expect(at(bar, ["flex-direction", "align-items", "padding-left", "padding-right", "gap"])).toEqual(["row", "center", "20px", "20px", "8px"]);
     expect(at(grid(), ["padding-left", "padding-right", "padding-bottom"])).toEqual(["20px", "20px", "48px"]);
     expect(getComputedStyle(grid()).getPropertyValue("--columns")).toBe("1");
     expect(cardWidth(size)).toBe(width - 40);
   });
 
-  it.each(PHONES)("keeps the chips at their landscape look in a %i by %i window, in one row that scrolls sideways from edge to edge", async (width, height) => {
-    await openNarrow(width, height);
-    const size: WindowSize = [width, height];
-    const group = chipGroup();
-    expect(group.dataset.arrangement).toBeUndefined();
-    const style = styleAt(group, size);
-    expect(["display", "flex-direction", "flex-wrap", "overflow-x", "overscroll-behavior", "scrollbar-width", "align-self"].map((property) => style.value(property) || "")).toEqual(["flex", "row", "nowrap", "auto", "none", "none", "stretch"]);
-    // From the window's left edge to its right: the bar's 20-pixel sides
-    // given back, and the chips' first and last 20 in from the edges.
-    expect(["margin-left", "margin-right", "padding-left", "padding-right"].map((property) => style.px(property))).toEqual([-20, -20, 20, 20]);
-    // Room for the chosen chip's shadow above and below, in either theme,
-    // given back: a scroller clips what overflows its padding.
-    const [above, below] = shadowReach();
-    expect([style.px("padding-top") >= above, style.px("padding-bottom") >= below]).toEqual([true, true]);
-    expect([style.px("margin-top"), style.px("margin-bottom")]).toEqual([-style.px("padding-top"), -style.px("padding-bottom")]);
-    expect(style.columnGap()).toBe(12);
-    for (const chip of chips()) {
-      const chipStyle = styleAt(chip, size);
-      expect([chipStyle.value("flex-shrink"), chipStyle.value("white-space"), chipStyle.px("height")]).toEqual(["0", "nowrap", 56]);
+  it.each((["en", "ru"] as const).flatMap((language) => PHONES.map(([width, height]) => [language, width, height] as const)))("fits symbol filters beside HOME in %s at %i by %i without scrolling", async (language, width, height) => {
+    await openNarrow(width, height, language);
+    expectCompactControls([width, height], language);
+  });
+
+  it.each(["en", "ru"] as const)("keeps localized names, pressed state, filtering and HOME working in %s at 320 wide", async (language) => {
+    const { user } = await openNarrow(320, 568, language);
+    for (const food of ["meat", "plants", "both", "all"] as const) {
+      const name = food === "all" ? TEXTS[language].everyFood : TEXTS[language].diets[food];
+      await user.click(within(chipGroup(language)).getByRole("button", { name }));
+      expect(chips(language).map((chip) => chip.getAttribute("aria-pressed"))).toEqual(["all", "meat", "plants", "both"].map((value) => String(value === food)));
+      expect(cards(language).map((card) => card.getAttribute("aria-label"))).toEqual(SHIPPED_CATALOGUE.filter(({ diet }) => food === "all" || diet === food).map(({ name }) => name[language]));
+      expectCompactControls([320, 568], language);
     }
-    for (const face of [...group.querySelectorAll(".food-chip:not([data-food='all']) .food-chip-face")]) {
-      const faceStyle = styleAt(face, size);
-      expect([faceStyle.px("padding-left"), faceStyle.px("padding-right"), faceStyle.columnGap()]).toEqual([20, 10, 10]);
-    }
+    await user.click(screen.getByRole("button", { name: TEXTS[language].home }));
+    expect(screen.queryByRole("group", { name: TEXTS[language].foodChoice })).toBeNull();
+    expect(screen.getByRole("button", { name: TEXTS[language].catalogueTile })).toBeDefined();
   });
 
   it.each((["en", "ru"] as const).flatMap((language) => [320, 375].map((width) => [language, width] as const)))("fits every word in %s at %i wide: every card's name on one line as large as in landscape, and its height, weight and food tag", async (language, width) => {
@@ -189,15 +167,7 @@ describe("the catalogue in a tall-narrow window", () => {
   it.each(PHONES)("keeps every tap at least 44 pixels in a %i by %i window", async (width, height) => {
     await openNarrow(width, height);
     const size: WindowSize = [width, height];
-    const home = screen.getByRole("button", { name: TEXTS.en.home });
-    expect(styleAt(home, size).px("height")).toBeGreaterThanOrEqual(44);
-    // Every button is as wide as its content, no rule narrowing it, and
-    // "ALL", the narrowest, is a 56-pixel circle.
-    for (const button of [home, ...chips()]) {
-      const at = styleAt(button, size);
-      expect([at.px("height") >= 44, at.value("width") || "auto", at.value("max-width") || "none", at.value("flex-shrink")]).toEqual([true, "auto", "none", button === home ? at.value("flex-shrink") : "0"]);
-    }
-    expect(styleAt(part(".food-chip[data-food='all'] .food-chip-face"), size).px("width")).toBe(56);
+    expectCompactControls(size);
     // A card is its picture, 200/317 of its width tall, over its footer.
     const card = cardWidth(size);
     expect(card).toBeGreaterThanOrEqual(44);

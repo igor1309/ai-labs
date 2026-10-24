@@ -82,7 +82,7 @@ export function QuestionScreen({ language, prompt, number, total, left, right, a
       <header className="question-bar" data-turn-part="question-bar">
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
+          <span className="narrow-hidden">{text.home}</span>
         </Button>
         {/* One step per question: those done, the one on screen, and those
             still to come. */}

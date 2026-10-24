@@ -4,7 +4,7 @@ import type { PortraitLayouts } from "../src/App.tsx";
 import type { AgeLevel } from "../src/ageLevel.ts";
 import { refitPicture } from "../src/closingPicture.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { PORTRAIT_SORT, sortBoardStyle, sortBoardWidth } from "../src/sortBoardLayout.ts";
+import { NARROW_SORT, PORTRAIT_SORT, sortBoardGeometry, sortBoardStyle, sortBoardWidth } from "../src/sortBoardLayout.ts";
 import { openPairsApp } from "./pairsApp.tsx";
 import { appStylesheet, NO_SAFE_AREA, type SafeArea } from "./stylesheet.ts";
 import { gameDoor, manualViewport, type ManualViewport } from "./support.ts";
@@ -14,6 +14,13 @@ import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 // sortBoardLayout.test.ts's.
 
 const PORTRAIT_LAYOUTS: PortraitLayouts = { home: ["tall"], "sorting-board": ["tall"] };
+const NARROW_LAYOUTS: PortraitLayouts = { home: ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"] };
+
+const narrowViewport = () => {
+  const viewport = manualViewport("portrait");
+  viewport.resize("tall-narrow", true);
+  return viewport;
+};
 
 const part = (selector: string) => {
   const found = document.querySelector<HTMLElement>(selector);
@@ -25,9 +32,9 @@ const trayCards = () => [...document.querySelectorAll<HTMLElement>(".sort-card")
 const baskets = () => [...document.querySelectorAll<HTMLElement>(".basket")];
 
 // A board at `level` in a window of `size`.
-async function openSort(size: WindowSize, level: AgeLevel, { insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets) }: { insets?: SafeArea; viewport?: ManualViewport } = {}) {
+async function openSort(size: WindowSize, level: AgeLevel, { insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets), layouts = PORTRAIT_LAYOUTS }: { insets?: SafeArea; viewport?: ManualViewport; layouts?: PortraitLayouts } = {}) {
   openWindow(...size);
-  const app = openPairsApp({ viewport, portraitLayouts: PORTRAIT_LAYOUTS, ageLevel: { level, revision: `picked-${level}` } });
+  const app = openPairsApp({ viewport, portraitLayouts: layouts, ageLevel: { level, revision: `picked-${level}` } });
   await app.user.click(gameDoor(TEXTS.en.sort));
   return { ...app, viewport };
 }
@@ -85,13 +92,14 @@ describe("sort's board upright", () => {
     expect(document.querySelectorAll(".sort-card[aria-pressed='true']")).toHaveLength(0);
   });
 
-  it("asks to turn as a tall window narrows over the board", async () => {
+  it("takes the phone's sizes as a tall window narrows over the board, asking nothing", async () => {
     const viewport = manualViewport("portrait");
-    await openSort([820, 1180], "hatchling", { viewport });
+    await openSort([820, 1180], "hatchling", { viewport, layouts: NARROW_LAYOUTS });
+    const board = part(".sort");
     openWindow(393, 852);
     act(() => viewport.resize("tall-narrow", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-    expect(screen.getByRole("img", { name: TEXTS.en.turnSideways })).toBeDefined();
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert"), part(".sort")]).toEqual(["tall-narrow", false, false, board]);
+    expect(part(".sort").style.getPropertyValue("--card-by-width")).toBe(sortBoardStyle(sortBoardWidth(393, 0, 0, 0, NARROW_SORT), trayCards().length, baskets().length, NARROW_SORT)["--card-by-width"]);
   });
 
   it("keeps the landscape board as it was", async () => {
@@ -135,5 +143,59 @@ describe("sort's board upright", () => {
       copy!.remove();
     }
     expect(refitPicture(baskets()[0]!, box)).toBeUndefined();
+  });
+});
+
+// "The board stands upright on a phone": the window, the level, the
+// tray's rows and columns, each card's width and whether it scrolls.
+const PHONES = [
+  [[320, 568], "hatchling", 2, 3, 72, true],
+  [[393, 852], "hatchling", 2, 3, 112, false],
+  [[393, 852], "explorer", 2, 4, 82, false],
+  [[393, 852], "paleontologist", 3, 4, 82, false],
+  [[430, 932], "paleontologist", 3, 4, 92, false]
+] as const;
+
+describe("sort's board upright on a phone", () => {
+  it.each(PHONES)("stands upright at %j for a %s board, %i rows of %i, each card %i wide, scrolling %s", async (size, level, rows, columns, card, scrolls) => {
+    await openSort(size, level, { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+    const sizes = NARROW_SORT;
+    const sort = part(".sort");
+    const expected = sortBoardStyle(sortBoardWidth(size[0], 0, 0, 0, sizes), trayCards().length, baskets().length, sizes);
+    for (const [name, value] of Object.entries(expected)) expect(sort.style.getPropertyValue(name), name).toBe(value);
+    const page = styleAt(sort, size);
+    expect([page.px("padding-top"), page.px("padding-bottom"), page.px("padding-left"), page.px("padding-right"), page.rowGap()]).toEqual([
+      sizes.topPadding, sizes.bottomPadding, sizes.sidePadding, sizes.sidePadding, sizes.gap
+    ]);
+    expect([page.px("min-height"), page.value("height")]).toEqual([size[1], "auto"]);
+    // HOME is its house alone, 56 square.
+    const home = styleAt(part(".sort-bar .home-button"), size);
+    expect([home.px("width"), home.value("flex-shrink"), styleAt(part(".sort-bar .home-button .narrow-hidden"), size).value("position")]).toEqual([56, "0", "absolute"]);
+    expect(styleAt(part(".sort-bar"), size).columnGap()).toBe(16);
+    expect(styleAt(part(".sort .prompt"), size).px("font-size")).toBe(22);
+    const tray = styleAt(part(".sort-tray"), size);
+    expect([tray.rowGap(), tray.columnGap(), tray.value("justify-content")]).toEqual([sizes.cardsDown, sizes.cardsAcross, "center"]);
+    // 456: the padding, the bar, the prompt, three gaps and the baskets' least.
+    expect(tray.value("grid-template-columns")).toBe(
+      "repeat(var(--upright-columns), max(72px, min(var(--card-by-width), ((100vh - (456px + 0px + 0px) - (var(--upright-rows) - 1) * 8px) / var(--upright-rows) - var(--strip)) / 0.75)))"
+    );
+    expect(sizes.topPadding + sizes.bottomPadding + sizes.bar + sizes.prompt + 3 * sizes.gap + sizes.basketsMinimum).toBe(456);
+    // The tray takes the rows it needs, each card's picture 4:3 over its
+    // strip, as the sums count them.
+    expect(styleAt(part(".sort-tray-area"), size).value("height")).toBe("auto");
+    expect(styleAt(part(".sort-art"), size).value("aspect-ratio")).toBe("4 / 3");
+    expect(styleAt(part(".sort-footer"), size).value("height")).toBe(expected["--strip"]);
+    const room = styleAt(part(".baskets"), size);
+    expect([room.value("flex-grow"), room.px("min-height"), room.columnGap()]).toEqual(["1", sizes.basketsMinimum, sizes.basketsGap.two]);
+    for (const basket of baskets()) {
+      const own = styleAt(basket, size);
+      expect([own.px("padding-top"), own.px("padding-left")]).toEqual([sizes.basketPadding, sizes.basketPadding]);
+      // Each basket its mark alone, its name kept for screen readers.
+      const name = basket.querySelector(".basket-name")!;
+      expect([styleAt(name, size).value("position"), styleAt(name, size).px("width"), basket.getAttribute("aria-label")]).toEqual(["absolute", 1, name.textContent]);
+    }
+    const geometry = sortBoardGeometry(trayCards().length, baskets().length, size[0], size[1], 0, 0, 0, sizes);
+    expect([geometry.rows, geometry.columns, Math.abs(geometry.card - card) <= 2, geometry.scrolls]).toEqual([rows, columns, true, scrolls]);
   });
 });

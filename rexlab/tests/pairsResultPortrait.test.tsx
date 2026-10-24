@@ -5,7 +5,7 @@ import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { shapeOf, type BoardLevel } from "../src/pairs/index.ts";
-import { pairsResultColumns, pairsResultGeometry, pairsResultType, pairsResultWidth, PORTRAIT_PAIRS_RESULT, type UprightResult } from "../src/pairsResultLayout.ts";
+import { NARROW_PAIRS_RESULT, pairsResultColumns, pairsResultGeometry, pairsResultType, pairsResultWidth, PORTRAIT_PAIRS_RESULT, type PairsResultSizes, type UprightResult } from "../src/pairsResultLayout.ts";
 import { dealt, endWave, namesOf, openPairsApp, pairCards, pairsRecord, PICKED_HATCHLING, placesOf, playBoard } from "./pairsApp.tsx";
 import { appStylesheet, NO_SAFE_AREA, type SafeArea } from "./stylesheet.ts";
 import { gameDoor, manualPictures, manualViewport, memoryStorage, type ManualViewport } from "./support.ts";
@@ -57,14 +57,14 @@ const classesOf = (element: Element) => [...element.children].map((child) => chi
 
 // The board of `name`, played to its result in a window of `size`.
 async function openResult(size: WindowSize, name: BoardName, {
-  language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets), firstBest = false
-}: { language?: Language; insets?: SafeArea; viewport?: ManualViewport; firstBest?: boolean } = {}) {
+  language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets), firstBest = false, layouts = PORTRAIT_LAYOUTS
+}: { language?: Language; insets?: SafeArea; viewport?: ManualViewport; firstBest?: boolean; layouts?: PortraitLayouts } = {}) {
   openWindow(...size);
   const level: BoardLevel = BOARDS[name];
   const climbing = "climbLevel" in level;
   const storage = memoryStorage(climbing ? { [PROGRESS_KEY]: pairsRecord({ stars: 1, level: level.climbLevel, boardsOnLevel: 1, best: firstBest ? {} : { [level.climbLevel]: 99 }, found: [] }) } : {});
   const ageLevel = climbing ? PICKED_HATCHLING : { level: level.large, revision: `picked-${level.large}` };
-  const app = openPairsApp({ storage, viewport, portraitLayouts: PORTRAIT_LAYOUTS, deviceLanguage: DEVICES[language], ageLevel });
+  const app = openPairsApp({ storage, viewport, portraitLayouts: layouts, deviceLanguage: DEVICES[language], ageLevel });
   await app.user.click(gameDoor(TEXTS[language].pairs));
   await app.user.click(screen.getByRole("button", { name: TEXTS[language].play }));
   await playBoard(app.user, app.clock);
@@ -77,26 +77,25 @@ const shownType = () => {
   const { style } = part(".pairs-result");
   return { cardMaximum: style.getPropertyValue("--card-maximum"), action: style.getPropertyValue("--action-size") };
 };
-const typeOf = (width: number, count: number) => {
-  const type = pairsResultType(width, count);
+const typeOf = (width: number, count: number, sizes: PairsResultSizes = PORTRAIT_PAIRS_RESULT) => {
+  const type = pairsResultType(width, count, sizes);
   return { cardMaximum: `${type.cardMaximum}px`, action: `${type.action}px` };
 };
 
 // The CSS contracts under which the geometry's sums hold. jsdom does not
 // lay out boxes, so every structural assumption is checked here, and the
 // column and the dinosaurs' rows are summed from the stylesheet.
-function uprightRules(size: WindowSize, width: number, result: UprightResult) {
-  const sizes = PORTRAIT_PAIRS_RESULT;
+function uprightRules(size: WindowSize, width: number, result: UprightResult, sizes: PairsResultSizes = PORTRAIT_PAIRS_RESULT) {
   const at = (selector: string) => styleAt(part(selector), size);
   const page = at(".pairs-result");
   expect(classesOf(part(".pairs-result"))).toEqual(["festivity", "stratum result-stratum", "pairs-found", "result-content"]);
   expect([page.value("display"), page.value("flex-direction"), page.value("align-items"), page.value("justify-content"), page.rowGap()]).toEqual(["flex", "column", "center", "center", sizes.foundGap]);
-  expect([page.px("padding-top"), page.px("padding-bottom"), page.px("padding-left"), page.px("padding-right"), page.value("box-sizing")]).toEqual([32, 32, 32, 32, "border-box"]);
+  expect([page.px("padding-top"), page.px("padding-bottom"), page.px("padding-left"), page.px("padding-right"), page.value("box-sizing")]).toEqual([sizes.padding, sizes.padding, sizes.padding, sizes.padding, "border-box"]);
   expect([page.px("min-height"), page.value("height")]).toEqual([size[1], "auto"]);
-  expect(shownType()).toEqual(typeOf(width, result.count));
-  const type = pairsResultType(width, result.count);
+  expect(shownType()).toEqual(typeOf(width, result.count, sizes));
+  const type = pairsResultType(width, result.count, sizes);
   const scrollbar = size[0] - 2 * sizes.padding - width;
-  const geometry = pairsResultGeometry(result, size[0], size[1], 0, 0, scrollbar);
+  const geometry = pairsResultGeometry(result, size[0], size[1], 0, 0, scrollbar, sizes);
 
   // The dinosaurs: three across, two for four, the width wide, at most
   // 648, their rows sharing what the grid grows to between its least and
@@ -129,7 +128,8 @@ function uprightRules(size: WindowSize, width: number, result: UprightResult) {
   for (const badge of part(".pairs-badges").children) expect(styleAt(badge, size).px("height")).toBe(sizes.badge);
   const tries = at(".pairs-result-tries-value").px("font-size");
   expect(tries).toBeCloseTo(geometry.tries, 6);
-  expect([at(".pairs-result-tries").value("line-height"), Number(part(".pairs-result-hand").getAttribute("height"))]).toEqual(["1", sizes.hand]);
+  const hand = sizes.hand === PORTRAIT_PAIRS_RESULT.hand ? Number(part(".pairs-result-hand").getAttribute("height")) : styleAt(part(".pairs-result-hand"), size).px("height");
+  expect([at(".pairs-result-tries").value("line-height"), hand]).toEqual(["1", sizes.hand]);
   const stars = at(".pairs-result-stars");
   expect([stars.px("font-size"), stars.value("line-height")]).toEqual([sizes.stars, "1"]);
   const title = at(".result-title");
@@ -137,10 +137,18 @@ function uprightRules(size: WindowSize, width: number, result: UprightResult) {
   expect(at(".best-score").px("height")).toBe(sizes.best);
   const actions = at(".result-actions");
   expect([actions.px("padding-top"), actions.columnGap()]).toEqual([0, sizes.actionsGap]);
+  // On a phone PLAY AGAIN takes a row of its own, BACK and HOME the next.
+  if (sizes.stackedActions) {
+    expect([actions.value("flex-direction"), actions.value("flex-wrap"), actions.rowGap()]).toEqual(["row", "wrap", sizes.actionsGap]);
+    const [play, ...pair] = [...part(".result-actions").children].map((button) => styleAt(button, size));
+    expect([play!.value("flex-grow"), play!.value("flex-basis")]).toEqual(["1", "100%"]);
+    for (const own of pair) expect([own.value("flex-grow"), own.value("flex-shrink"), own.value("flex-basis"), own.px("min-width")]).toEqual(["1", "1", "0px", 0]);
+  }
+  const actionRow = sizes.stackedActions ? (sizes.actions - sizes.actionsGap) / 2 : sizes.actions;
   for (const button of part(".result-actions").children) {
     const own = styleAt(button, size);
     expect([own.px("height"), own.px("padding-left"), own.px("padding-right"), own.columnGap(), own.px("font-size"), own.value("white-space")]).toEqual([
-      sizes.actions, sizes.actionSidePadding, sizes.actionSidePadding, sizes.actionInnerGap, type.action, "nowrap"
+      actionRow, sizes.actionSidePadding, sizes.actionSidePadding, sizes.actionInnerGap, type.action, "nowrap"
     ]);
   }
   const badgeRows = result.badgeRows * sizes.badge + (result.badgeRows - 1) * badges.rowGap();
@@ -191,14 +199,14 @@ describe("find the pair's result upright", () => {
     expect(shownType()).toEqual(typeOf(744 - 19 - 13 - 64 - 16, 12));
   });
 
-  it("fades the picture asking to turn over the result as a tall window narrows", async () => {
+  it("takes the phone's sizes as a tall window narrows, asking nothing", async () => {
     const viewport = manualViewport("portrait");
-    await openResult([820, 1180], "explorer", { viewport });
+    await openResult([820, 1180], "explorer", { viewport, layouts: NARROW_LAYOUTS });
     const result = part(".pairs-result");
     openWindow(393, 852);
     act(() => viewport.resize("tall-narrow", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert"), part(".pairs-result")]).toEqual([true, true, result]);
-    expect(screen.getByRole("img", { name: TEXTS.en.turnSideways })).toBeDefined();
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert"), part(".pairs-result")]).toEqual(["tall-narrow", false, false, result]);
+    expect(shownType()).toEqual(typeOf(pairsResultWidth(393, 0, 0, 0, NARROW_PAIRS_RESULT), 9, NARROW_PAIRS_RESULT));
   });
 
   it("keeps the landscape result as it was", async () => {
@@ -224,6 +232,42 @@ describe("find the pair's result upright", () => {
     expect(shownType()).toEqual(typeOf(744 - 19 - 13 - 64, 12));
     expect(getComputedStyle(document.body).margin).toBe("0px");
     expect(gateShown()).toBe(false);
+  });
+});
+
+// The screens with a portrait layout, find the pair's upright on a phone.
+const NARROW_LAYOUTS: PortraitLayouts = { ...PORTRAIT_LAYOUTS, home: ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"] };
+
+const narrowViewport = () => {
+  const viewport = manualViewport("portrait");
+  viewport.resize("tall-narrow", true);
+  return viewport;
+};
+
+// "The result stands upright on a phone": the window, the board, its
+// card's height and whether the screen scrolls.
+const PHONES = [
+  [320, 568, "climb 1", 64, true],
+  [375, 667, "climb 2", 64, true],
+  [393, 852, "climb 2", 149, false],
+  [393, 852, "paleontologist", 71, false],
+  [430, 932, "explorer", 120, false]
+] as const;
+
+describe("find the pair's result upright on a phone", () => {
+  it.each(PHONES)("stands upright at %i by %i, a board of %s, each card %i tall, scrolling %s", async (width, height, name, card, scrolls) => {
+    const { count } = await openResult([width, height], name, { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+    const geometry = uprightRules([width, height], pairsResultWidth(width, 0, 0, 0, NARROW_PAIRS_RESULT), { count, badgeRows: name.startsWith("climb") && width < 393 ? 2 : 1 }, NARROW_PAIRS_RESULT);
+    expect(Math.abs(geometry.card.height - card)).toBeLessThanOrEqual(4);
+    expect(geometry.scrolls).toBe(scrolls);
+  });
+
+  it.each(["en", "ru"] as const)("gives the actions in %s at least 18 at 320 wide", async (language) => {
+    await openResult([320, 568], "climb 1", { language, viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    const width = pairsResultWidth(320, 0, 0, 0, NARROW_PAIRS_RESULT);
+    expect(shownType()).toEqual(typeOf(width, 3, NARROW_PAIRS_RESULT));
+    expect(pairsResultType(width, 3, NARROW_PAIRS_RESULT).action).toBeGreaterThanOrEqual(18);
   });
 });
 

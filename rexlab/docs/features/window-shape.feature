@@ -18,12 +18,11 @@ Feature: The window's shape
     | tall-narrow | portrait, under 600 CSS pixels wide      | iPhone portrait    |
   Until a screen's own stage builds them, a wide-short window shows the
   wide layout, and a tall-narrow window the picture asking to turn or
-  widen. Every screen has a portrait layout for a tall window (each in
-  its own *-portrait.feature); only the home page, the catalogue, a
-  dinosaur's page and sand writing have one for a tall-narrow window
-  too, so a tall-narrow window still shows the picture over every other
-  screen. The scenarios
-  below use care's result.
+  widen. Every screen now has a portrait layout for a tall window and one
+  for a tall-narrow window (each in its own *-portrait.feature), so the
+  picture shows only over a screen given no layout for the window's
+  shape. The scenarios below use care's result given a tall layout
+  alone.
 
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels

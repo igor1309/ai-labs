@@ -31,6 +31,7 @@ import {
   type StoredPairs
 } from "./pairsApp.tsx";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
+import { openWindow, styleAt } from "./windowSizes.ts";
 import { SHIPPED_PALS, countedStarts, fakeBodyPicture, fakeSkeletonPicture, manualViewport, manualPictures, memoryStorage, seededRandom, symbolOf, type ManualPictures, type ManualTimers } from "./support.ts";
 
 // The name of every symbol an element shows, in order.
@@ -499,6 +500,41 @@ describe.each(LEVEL_BOARDS)("turning cards at %s", (_, options, dealtBoard) => {
       ["failed", null, names[at]],
       ["failed", null, names[at]]
     ]);
+  });
+
+});
+
+describe("found cards on a phone", () => {
+  it("keeps a failed pair's names on a phone, where a found card's caption is left to its label", async () => {
+    openWindow(393, 852);
+    const pictures = manualPictures();
+    const { user } = openPairsApp({ storage: stored({ level: 3 }), clock: pictures });
+    await playPairs(user);
+    document.documentElement.dataset.size = "tall-narrow";
+    const dealtBoard = dealt(3);
+    const names = namesOf(dealtBoard);
+    const failing = dealtBoard.cards.findIndex(({ pal }) => pictures.loading().includes(fakeBodyPicture(pal.id)));
+    const failed = placesOf(names, names[failing] ?? "");
+    for (const place of failed) {
+      await turnCard(user, place);
+      act(() => pictures.fail(pictureOn(dealtBoard, place)));
+    }
+    const loading = dealtBoard.cards.findIndex(({ pal }, place) => !failed.includes(place) && pictures.loading().includes(fakeBodyPicture(pal.id)));
+    const shown = placesOf(names, names[loading] ?? "");
+    for (const place of shown) {
+      await turnCard(user, place);
+      act(() => pictures.finish(pictureOn(dealtBoard, place)));
+    }
+    const nameOf = (place: number) => pairCards()[place]!.querySelector<HTMLElement>(".pair-card-name")!;
+    for (const place of [...failed, ...shown]) expect(stateAt(place)).toBe("found");
+    for (const place of failed) {
+      expect(nameOf(place).textContent).toBe(names[failing]);
+      expect(styleAt(nameOf(place), [393, 852]).value("display")).not.toBe("none");
+    }
+    for (const place of shown) {
+      expect(styleAt(nameOf(place), [393, 852]).value("display")).toBe("none");
+      expect(labelAt(place)).toContain(pal(dealtBoard.cards[place]!.pal.id).name.en);
+    }
   });
 });
 

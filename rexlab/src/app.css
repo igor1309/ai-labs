@@ -2104,7 +2104,8 @@ body:has(.result) #version {
    QuestionScreen gives in --prompt-size and --name-size, one for the
    window, and a value stands at the bottom right of its picture's area,
    so no card grows or moves as the values show. */
-html[data-size="tall"] .question {
+html[data-size="tall"] .question,
+html[data-size="tall-narrow"] .question {
   --card-footer: calc(var(--name-size) * 1.25 + 40px);
   min-height: 100vh;
   min-height: 100dvh;
@@ -2113,50 +2114,96 @@ html[data-size="tall"] .question {
   overscroll-behavior: none;
 }
 
-html[data-size="tall"] .prompt {
+html[data-size="tall"] .prompt,
+html[data-size="tall-narrow"] .prompt {
   font-size: var(--prompt-size);
   line-height: 1.25;
   white-space: nowrap;
 }
 
-html[data-size="tall"] .dinosaur-cards {
+html[data-size="tall"] .dinosaur-cards,
+html[data-size="tall-narrow"] .dinosaur-cards {
   position: relative;
   flex: 1 0 auto;
   flex-direction: column;
   align-items: stretch;
 }
 
-html[data-size="tall"] .dinosaur-card {
+html[data-size="tall"] .dinosaur-card,
+html[data-size="tall-narrow"] .dinosaur-card {
   position: relative;
   flex: 1 0 0;
   min-height: calc(198px + var(--card-footer));
 }
 
-html[data-size="tall"] .dinosaur-footer {
+html[data-size="tall"] .dinosaur-footer,
+html[data-size="tall-narrow"] .dinosaur-footer {
   flex: none;
   height: var(--card-footer);
   box-sizing: border-box;
   flex-wrap: nowrap;
 }
 
-html[data-size="tall"] .dinosaur-name {
+html[data-size="tall"] .dinosaur-name,
+html[data-size="tall-narrow"] .dinosaur-name {
   font-size: var(--name-size);
   line-height: 1.25;
   white-space: nowrap;
   overflow-wrap: normal;
 }
 
-html[data-size="tall"] .dinosaur-value-chip {
+html[data-size="tall"] .dinosaur-value-chip,
+html[data-size="tall-narrow"] .dinosaur-value-chip {
   position: absolute;
   right: 24px;
   bottom: calc(var(--card-footer) + 24px);
 }
 
-html[data-size="tall"] .versus {
+html[data-size="tall"] .versus,
+html[data-size="tall-narrow"] .versus {
   position: absolute;
   inset: 0;
   z-index: 1;
   margin: auto;
+}
+
+/* In a tall-narrow window, an iPhone upright, the question stands as in
+   a tall one on 20-pixel sides and with less room between its parts:
+   "HOME" is its symbol alone, a 56-pixel square, so the steps keep their
+   room, and a card's picture may be as short as 110 pixels before the
+   screen scrolls. */
+html[data-size="tall-narrow"] .question {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .question-bar {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .question .home-button {
+  width: 56px;
+  padding: 0 16px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-cards {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-card {
+  min-height: calc(142px + var(--card-footer));
+}
+
+html[data-size="tall-narrow"] .dinosaur-art {
+  padding: 16px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-footer {
+  padding: 20px;
 }
 
 /* The catalogue: its bar stays at the top while the cards, as many to a
@@ -2303,77 +2350,69 @@ html[data-size="tall"] .versus {
   background: #ffffff33;
 }
 
-/* In a tall window the catalogue stands upright: "HOME" alone at the top
-   left, the chips on their own row 24 pixels under it, at their landscape
-   look, and the cards 28 under them. Each food chip is as wide as its
-   content, its content centred, and the three share out equally what the
-   row leaves. Where the row is too narrow, FoodChips closes every food
-   chip up at once, and where even that is too narrow, stands them two by
-   two at their landscape spacing, each food chip sharing its row the
-   same way. "ALL" stays round in every arrangement. */
-html[data-size="tall"] .catalogue-bar {
-  flex-direction: column;
-  align-items: flex-start;
+/* Portrait keeps HOME and all four food symbols on one row. Fixed chip
+   sizes keep the row independent of words, counts and measured arrangements. */
+html[data-size="tall"] .catalogue-bar,
+html[data-size="tall-narrow"] .catalogue-bar {
+  flex-direction: row;
+  align-items: center;
 }
 
-html[data-size="tall"] .food-chips {
-  align-self: stretch;
+html[data-size="tall"] .food-chips,
+html[data-size="tall-narrow"] .food-chips {
+  flex-direction: row;
+  flex-shrink: 0;
 }
 
-html[data-size="tall"] .food-chip:not([data-food="all"]),
-html[data-size="tall"] .food-chip:not([data-food="all"]) .food-chip-face {
-  flex: 1 0 auto;
+html[data-size="tall"] .food-chip,
+html[data-size="tall-narrow"] .food-chip {
+  flex-shrink: 0;
 }
 
-html[data-size="tall"] .food-chip:not([data-food="all"]) .food-chip-face {
+html[data-size="tall"] .food-chip .food-chip-face,
+html[data-size="tall-narrow"] .food-chip .food-chip-face {
+  width: 56px;
+  padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .food-chips[data-arrangement="closed"] {
-  gap: 8px;
+html[data-size="tall"] .food-chip-word,
+html[data-size="tall"] .food-chip-count,
+html[data-size="tall-narrow"] .food-chip-word,
+html[data-size="tall-narrow"] .food-chip-count {
+  display: none;
 }
 
-html[data-size="tall"] .food-chips[data-arrangement="closed"] .food-chip:not([data-food="all"]) .food-chip-face {
-  padding: 0 8px 0 14px;
-  gap: 8px;
-}
-
-html[data-size="tall"] .food-chips[data-arrangement="stacked"] {
-  flex-direction: column;
-}
-
-html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
-  display: flex;
-  gap: 12px;
-}
-
-/* In a tall-narrow window, an iPhone upright, the catalogue stands as in
-   a tall one on 20-pixel sides: "HOME" at the top left, and under it the
-   chips at their landscape look in one row that scrolls sideways, from
-   the window's left edge to its right, room kept above and below for the
-   chosen chip's shadow. The cards stand under the chips. */
 html[data-size="tall-narrow"] .catalogue {
   gap: 20px;
 }
 
+/* Five 48-pixel targets and four 8-pixel gaps fit inside 320-pixel
+   portrait's 20-pixel sides, including BOTH's pair of food symbols. */
 html[data-size="tall-narrow"] .catalogue-bar {
   padding: 0 20px;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 16px;
+  gap: 8px;
 }
 
 html[data-size="tall-narrow"] .food-chips {
-  align-self: stretch;
-  margin: -10px -20px -22px;
-  padding: 10px 20px 22px;
-  overflow-x: auto;
-  overscroll-behavior: none;
-  scrollbar-width: none;
+  gap: 8px;
 }
 
+html[data-size="tall-narrow"] .catalogue-bar .home-button,
 html[data-size="tall-narrow"] .food-chip {
+  width: 48px;
+  height: 48px;
+  padding: 0;
   flex-shrink: 0;
+  justify-content: center;
+}
+
+html[data-size="tall-narrow"] .food-chip .food-chip-face {
+  width: 48px;
+}
+
+html[data-size="tall-narrow"] .catalogue-home-word {
+  display: none;
 }
 
 html[data-size="tall-narrow"] .catalogue-grid {
@@ -3260,7 +3299,8 @@ html[data-size="tall-narrow"] .dinosaur-description {
    200: below that the whole screen scrolls. The score is 15% of the
    window's height, at most 180, and the stars as large as ResultScreen
    gives in --star-size, so ten fit the width. */
-html[data-size="tall"] .result {
+html[data-size="tall"] .result,
+html[data-size="tall-narrow"] .result {
   min-height: 100vh;
   min-height: 100dvh;
   height: auto;
@@ -3276,25 +3316,79 @@ html[data-size="tall"] .result {
   gap: 20px;
 }
 
-html[data-size="tall"] .result-hero {
+html[data-size="tall"] .result-hero,
+html[data-size="tall-narrow"] .result-hero {
   flex: 1 0 0;
   align-self: stretch;
   min-height: 200px;
   max-height: var(--hero-maximum);
 }
 
-html[data-size="tall"] .result-content {
+html[data-size="tall"] .result-content,
+html[data-size="tall-narrow"] .result-content {
   align-self: stretch;
   gap: 16px;
 }
 
-html[data-size="tall"] .result-score-value {
+html[data-size="tall"] .result-score-value,
+html[data-size="tall-narrow"] .result-score-value {
   font-size: min(180px, 15vh);
   font-size: min(180px, 15dvh);
 }
 
-html[data-size="tall"] .result-stars {
+html[data-size="tall"] .result-stars,
+html[data-size="tall-narrow"] .result-stars {
   font-size: var(--star-size);
+}
+
+/* In a tall-narrow window, an iPhone upright, the result stands as in a
+   tall one on 20-pixel padding, its parts 12 apart: the score is 12% of
+   the window's height, the celebration and "WELL DONE!" in smaller type,
+   the level switch shows each level's picture alone, its name kept for
+   screen readers, and PLAY AGAIN stands over HOME, each 64 tall and
+   across the column. The dinosaur is never under 120: below that the
+   whole screen scrolls. */
+html[data-size="tall-narrow"] .result {
+  padding:
+    calc(20px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(20px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+}
+
+html[data-size="tall-narrow"] .result-hero {
+  min-height: 120px;
+}
+
+html[data-size="tall-narrow"] .result-content {
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .result-score-value {
+  font-size: min(180px, 12vh);
+  font-size: min(180px, 12dvh);
+}
+
+html[data-size="tall-narrow"] .celebration {
+  padding: 0 20px 0 16px;
+  font-size: 18px;
+}
+
+html[data-size="tall-narrow"] .result-title {
+  font-size: 34px;
+}
+
+html[data-size="tall-narrow"] .result-actions {
+  align-self: stretch;
+  flex-direction: column;
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .play-again-button,
+html[data-size="tall-narrow"] .result-actions .home-button {
+  height: 64px;
+  padding: 0 20px;
+  justify-content: center;
 }
 
 /* Dinosaur care's tile, amber, under the catalogue's, in its shape. The
@@ -3608,37 +3702,44 @@ html[data-size="tall"] .result-stars {
    upright screens, its bar keeps one row with HOME as its symbol, and NEW
    VISITOR stands over FRIENDS across the width, its words a size that fits
    in either language. */
-html[data-size="tall"] .care-welcome {
+html[data-size="tall"] .care-welcome,
+html[data-size="tall-narrow"] .care-welcome {
   padding-right: calc(32px + var(--screen-right));
   padding-left: calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .care-bar {
+html[data-size="tall"] .care-bar,
+html[data-size="tall-narrow"] .care-bar {
   gap: 16px;
 }
 
-html[data-size="tall"] .care-bar .home-button {
+html[data-size="tall"] .care-bar .home-button,
+html[data-size="tall-narrow"] .care-bar .home-button {
   width: 56px;
   padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .care-choices {
+html[data-size="tall"] .care-choices,
+html[data-size="tall-narrow"] .care-choices {
   flex-direction: column;
   gap: 24px;
 }
 
-html[data-size="tall"] .new-visitor-card {
+html[data-size="tall"] .new-visitor-card,
+html[data-size="tall-narrow"] .new-visitor-card {
   flex: 3 1 0;
   min-height: 0;
 }
 
-html[data-size="tall"] .friends-card {
+html[data-size="tall"] .friends-card,
+html[data-size="tall-narrow"] .friends-card {
   flex: 2 1 0;
   min-height: 0;
 }
 
-html[data-size="tall"] .new-visitor-title {
+html[data-size="tall"] .new-visitor-title,
+html[data-size="tall-narrow"] .new-visitor-title {
   font-size: 40px;
   white-space: nowrap;
 }
@@ -3648,51 +3749,60 @@ html[data-size="tall"] .new-visitor-title {
    the visitor larger and lower and the bubble under the name, and the
    five items share one row, their words a size that fits in either
    language. */
-html[data-size="tall"] .visit {
+html[data-size="tall"] .visit,
+html[data-size="tall-narrow"] .visit {
   padding-right: calc(32px + var(--screen-right));
   padding-left: calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .visit-bar .home-button {
+html[data-size="tall"] .visit-bar .home-button,
+html[data-size="tall-narrow"] .visit-bar .home-button {
   width: 56px;
   padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .visitor-name {
+html[data-size="tall"] .visitor-name,
+html[data-size="tall-narrow"] .visitor-name {
   left: 32px;
   top: 28px;
   font-size: 28px;
   white-space: nowrap;
 }
 
-html[data-size="tall"] .visitor {
+html[data-size="tall"] .visitor,
+html[data-size="tall-narrow"] .visitor {
   left: 8%;
   top: 30%;
   width: 84%;
   height: 62%;
 }
 
-html[data-size="tall"] .need-bubble {
+html[data-size="tall"] .need-bubble,
+html[data-size="tall-narrow"] .need-bubble {
   left: 55%;
   top: 14%;
 }
 
-html[data-size="tall"] .tray {
+html[data-size="tall"] .tray,
+html[data-size="tall-narrow"] .tray {
   gap: 10px;
 }
 
-html[data-size="tall"] .tray-item {
+html[data-size="tall"] .tray-item,
+html[data-size="tall-narrow"] .tray-item {
   min-width: 0;
   height: 150px;
   padding: 8px 4px 12px;
 }
 
-html[data-size="tall"] .tray-picture {
+html[data-size="tall"] .tray-picture,
+html[data-size="tall-narrow"] .tray-picture {
   height: 96px;
 }
 
-html[data-size="tall"] .tray-label {
+html[data-size="tall"] .tray-label,
+html[data-size="tall-narrow"] .tray-label {
   font-size: 14px;
   white-space: nowrap;
 }
@@ -4260,22 +4370,27 @@ html[data-size="tall"] .tray-label {
    visitor, fitted whole at its 4:3, at most 480 or as tall as the width
    allows, then the hearts in one row, and NEW VISITOR, FRIENDS and HOME
    stacked across the width. */
-html[data-size="tall"] .care-result .result-hero {
+html[data-size="tall"] .care-result .result-hero,
+html[data-size="tall-narrow"] .care-result .result-hero {
   max-height: min(480px, (100vw - 64px) * 3 / 4);
 }
 
-html[data-size="tall"] .care-result .result-hearts {
+html[data-size="tall"] .care-result .result-hearts,
+html[data-size="tall-narrow"] .care-result .result-hearts {
   flex-wrap: nowrap;
 }
 
-html[data-size="tall"] .care-result .result-actions {
+html[data-size="tall"] .care-result .result-actions,
+html[data-size="tall-narrow"] .care-result .result-actions {
   align-self: stretch;
   padding-top: 0;
   flex-direction: column;
 }
 
 html[data-size="tall"] .care-result .play-again-button,
-html[data-size="tall"] .care-result .result-actions .home-button {
+html[data-size="tall-narrow"] .care-result .play-again-button,
+html[data-size="tall"] .care-result .result-actions .home-button,
+html[data-size="tall-narrow"] .care-result .result-actions .home-button {
   justify-content: center;
 }
 
@@ -4443,34 +4558,311 @@ html[data-size="tall"] .care-result .result-actions .home-button {
 /* Upright, the friends take the narrower side padding, BACK and HOME
    are their symbols, NEW VISITOR takes its own row across the width
    under the bar, and the cards stand two to a row. */
-html[data-size="tall"] .friends {
+html[data-size="tall"] .friends,
+html[data-size="tall-narrow"] .friends {
   padding-right: calc(32px + var(--screen-right));
   padding-left: calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .friends-bar {
+html[data-size="tall"] .friends-bar,
+html[data-size="tall-narrow"] .friends-bar {
   flex-wrap: wrap;
   row-gap: 20px;
 }
 
-html[data-size="tall"] .friends-bar .home-button {
+html[data-size="tall"] .friends-bar .home-button,
+html[data-size="tall-narrow"] .friends-bar .home-button {
   width: 56px;
   padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .friends-bar .friends-title {
+html[data-size="tall"] .friends-bar .friends-title,
+html[data-size="tall-narrow"] .friends-bar .friends-title {
   padding-left: 0;
   font-size: 34px;
 }
 
-html[data-size="tall"] .friends-bar .new-visitor-button {
+html[data-size="tall"] .friends-bar .new-visitor-button,
+html[data-size="tall-narrow"] .friends-bar .new-visitor-button {
   flex-basis: 100%;
   justify-content: center;
 }
 
-html[data-size="tall"] .friends-grid {
+html[data-size="tall"] .friends-grid,
+html[data-size="tall-narrow"] .friends-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* On a phone care's screens take 24 pixels above, 32 below and 20 at the
+   sides, their parts 16 apart, HOME and BACK as 48-pixel symbols, the
+   titles at 24 pixels. */
+html[data-size="tall-narrow"] .care-welcome,
+html[data-size="tall-narrow"] .visit {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .friends {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    env(safe-area-inset-bottom)
+    calc(20px + var(--screen-left));
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .care-bar,
+html[data-size="tall-narrow"] .friends-bar,
+html[data-size="tall-narrow"] .visit-bar {
+  gap: 12px 8px;
+}
+
+html[data-size="tall-narrow"] .care-bar .home-button,
+html[data-size="tall-narrow"] .visit-bar .home-button,
+html[data-size="tall-narrow"] .friends-bar .home-button {
+  width: 48px;
+}
+
+html[data-size="tall-narrow"] .care-title,
+html[data-size="tall-narrow"] .friends-bar .friends-title {
+  gap: 8px;
+  font-size: 24px;
+}
+
+/* The bars' titles are their words alone, beside HOME, BACK and the
+   best score. */
+html[data-size="tall-narrow"] .care-bar .care-mark,
+html[data-size="tall-narrow"] .friends-bar .friends-mark {
+  display: none;
+}
+
+html[data-size="tall-narrow"] .care-best,
+html[data-size="tall-narrow"] .friend-count {
+  padding: 0 10px;
+  gap: 6px;
+  font-size: 16px;
+}
+
+/* FRIENDS' bar keeps BACK, HOME and the count of friends on its first
+   row: its title stays for screen readers alone. */
+html[data-size="tall-narrow"] .friends-bar .friends-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* With no friends yet, the nest as wide as the screen, its words and
+   NEW VISITOR smaller. */
+html[data-size="tall-narrow"] .no-friends {
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .no-friends-picture {
+  width: 100%;
+  height: min(200px, 28vh);
+  height: min(200px, 28dvh);
+}
+
+html[data-size="tall-narrow"] .no-friends-bubble {
+  width: 88px;
+  height: 88px;
+}
+
+html[data-size="tall-narrow"] .no-friends-text {
+  font-size: 24px;
+}
+
+html[data-size="tall-narrow"] .no-friends-button {
+  padding: 0 20px 0 16px;
+  font-size: 20px;
+}
+
+/* The welcome's NEW VISITOR over FRIENDS, their footers smaller. */
+html[data-size="tall-narrow"] .care-choices {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .new-visitor-card,
+html[data-size="tall-narrow"] .friends-card {
+  border-radius: 24px;
+}
+
+html[data-size="tall-narrow"] .knock-bubble {
+  width: 64px;
+  height: 64px;
+}
+
+html[data-size="tall-narrow"] .new-visitor-footer {
+  padding: 12px 16px 16px;
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .new-visitor-symbol {
+  width: 48px;
+  height: 48px;
+}
+
+html[data-size="tall-narrow"] .new-visitor-title {
+  font-size: 20px;
+}
+
+html[data-size="tall-narrow"] .friends-card {
+  padding: 16px;
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .friend-faces {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .friends-row {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .friends-symbol {
+  width: 40px;
+  height: 40px;
+}
+
+html[data-size="tall-narrow"] .friends-row .friends-title {
+  font-size: 20px;
+}
+
+/* A visit's bar puts HOME and the hearts on its first row and the needs
+   across the second; the visitor's name is smaller, and the five items
+   share one row as their pictures alone, their words kept for screen
+   readers. */
+html[data-size="tall-narrow"] .visit-bar {
+  flex-wrap: wrap;
+}
+
+html[data-size="tall-narrow"] .needs {
+  order: 1;
+  flex: 1 0 100%;
+  box-sizing: border-box;
+  padding: 4px;
+  justify-content: space-around;
+}
+
+html[data-size="tall-narrow"] .need {
+  width: 48px;
+  height: 48px;
+}
+
+html[data-size="tall-narrow"] .hearts-counter {
+  height: 48px;
+  padding: 0 14px 0 12px;
+  gap: 6px;
+  font-size: 20px;
+}
+
+/* The stage keeps at least 200 pixels for the visitor: a window too
+   short for that scrolls. */
+html[data-size="tall-narrow"] .visit {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+html[data-size="tall-narrow"] .stage {
+  flex: 1 0 200px;
+  border-radius: 24px;
+}
+
+html[data-size="tall-narrow"] .visitor-name {
+  left: 16px;
+  top: 14px;
+  font-size: 22px;
+}
+
+html[data-size="tall-narrow"] .tray {
+  gap: 6px;
+}
+
+html[data-size="tall-narrow"] .tray-item {
+  height: 72px;
+  padding: 6px 2px;
+  border-radius: 16px;
+}
+
+html[data-size="tall-narrow"] .tray-item[data-suggested]::after {
+  border-radius: 21px;
+}
+
+html[data-size="tall-narrow"] .tray-picture {
+  height: 100%;
+}
+
+html[data-size="tall-narrow"] .tray-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* FRIENDS keeps its cards two to a row, closer together. */
+html[data-size="tall-narrow"] .friends-grid {
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .friend-art {
+  padding: 10px;
+}
+
+/* A name takes up to three lines of 14-pixel type, so the longest fits
+   a card half the narrowest phone's width. */
+html[data-size="tall-narrow"] .friend-footer {
+  height: 76px;
+  padding: 10px 12px 12px;
+  gap: 6px;
+}
+
+html[data-size="tall-narrow"] .friend-name {
+  font-size: 14px;
+  line-height: 18px;
+}
+
+/* A care result's visitor as wide as the column, its eight hearts at 28
+   on one row, and its three ways one over another. */
+html[data-size="tall-narrow"] .care-result .result-hero {
+  max-height: min(480px, (100vw - 40px) * 3 / 4);
+}
+
+html[data-size="tall-narrow"] .result-hearts {
+  gap: 4px;
+}
+
+html[data-size="tall-narrow"] .result-heart svg {
+  width: 28px;
+  height: 28px;
+}
+
+html[data-size="tall-narrow"] .friend-chip {
+  height: 44px;
+  padding: 0 16px;
+  font-size: 18px;
+}
+
+html[data-size="tall-narrow"] .care-result .result-actions {
+  gap: 10px;
+}
+
+html[data-size="tall-narrow"] .care-result .play-again-button,
+html[data-size="tall-narrow"] .care-result .result-actions .home-button {
+  height: 64px;
+  padding: 0 16px;
+  font-size: 20px;
 }
 
 /* The sorting board: the prompt, a tray of six to ten cards and the two or
@@ -4529,8 +4921,9 @@ html[data-size="tall"] .friends-grid {
   height: 252px;
 }
 
+/* An upright window sizes the tray by its rows instead. */
 @media (min-height: 860px) {
-  .sort[data-rows="2"] .sort-tray-area {
+  html:not([data-size^="tall"]) .sort[data-rows="2"] .sort-tray-area {
     height: 292px;
   }
 }
@@ -4965,7 +5358,8 @@ html[data-size="tall"] .friends-grid {
    and as leaves the baskets 320 of the height: the padding (88), the bar
    and the prompt (112) and three gaps (84) taken, 604 in all with the
    baskets; never under 120, and below that the whole screen scrolls. */
-html[data-size="tall"] .sort {
+html[data-size="tall"] .sort,
+html[data-size="tall-narrow"] .sort {
   min-height: 100vh;
   min-height: 100dvh;
   height: auto;
@@ -4977,11 +5371,13 @@ html[data-size="tall"] .sort {
   row-gap: 28px;
 }
 
-html[data-size="tall"] .sort[data-rows] .sort-tray-area {
+html[data-size="tall"] .sort[data-rows] .sort-tray-area,
+html[data-size="tall-narrow"] .sort[data-rows] .sort-tray-area {
   height: auto;
 }
 
-html[data-size="tall"] .sort-tray {
+html[data-size="tall"] .sort-tray,
+html[data-size="tall-narrow"] .sort-tray {
   height: auto;
   grid-template-columns: repeat(var(--upright-columns), max(120px, min(var(--card-by-width), ((100vh - (604px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--upright-rows) - 1) * 12px) / var(--upright-rows) - var(--strip)) / 0.75)));
   grid-template-columns: repeat(var(--upright-columns), max(120px, min(var(--card-by-width), ((100dvh - (604px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--upright-rows) - 1) * 12px) / var(--upright-rows) - var(--strip)) / 0.75)));
@@ -4989,12 +5385,14 @@ html[data-size="tall"] .sort-tray {
   justify-content: center;
 }
 
-html[data-size="tall"] .sort-art {
+html[data-size="tall"] .sort-art,
+html[data-size="tall-narrow"] .sort-art {
   flex: none;
   aspect-ratio: 4 / 3;
 }
 
-html[data-size="tall"] .sort[data-rows] .sort-footer {
+html[data-size="tall"] .sort[data-rows] .sort-footer,
+html[data-size="tall-narrow"] .sort[data-rows] .sort-footer {
   box-sizing: border-box;
   height: var(--strip);
   padding-block: 0;
@@ -5005,32 +5403,116 @@ html[data-size="tall"] .sort[data-rows] .sort-footer {
    inside: its mark above its name, and its cards below them. The names
    take the type the screen gives in --basket-type, one for the window,
    and break only between their words. */
-html[data-size="tall"] .baskets {
+html[data-size="tall"] .baskets,
+html[data-size="tall-narrow"] .baskets {
   flex: 1 0 auto;
   min-height: 320px;
 }
 
-html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket {
+html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket,
+html[data-size="tall-narrow"] .sort[data-rows] .baskets[data-count] .basket {
   padding: 20px;
   gap: 14px;
 }
 
-html[data-size="tall"] .basket-label {
+html[data-size="tall"] .basket-label,
+html[data-size="tall-narrow"] .basket-label {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
 }
 
-html[data-size="tall"] .sort[data-rows] .basket-mark {
+html[data-size="tall"] .sort[data-rows] .basket-mark,
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark {
   min-width: 56px;
   height: 56px;
 }
 
-html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket-name {
+html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket-name,
+html[data-size="tall-narrow"] .sort[data-rows] .baskets[data-count] .basket-name {
   font-size: var(--basket-type);
   line-height: 1.1;
   white-space: normal;
   text-wrap: balance;
+}
+
+/* In a tall-narrow window, an iPhone upright, sort's board stands as in
+   a tall one on 24-pixel padding at the top, 32 at the bottom and 20 a
+   side, its parts 16 apart. HOME shows its house alone and the prompt is
+   22. The tray's cards stand 8 apart, as wide as the width allows and as
+   leaves the baskets 240 of the height: the padding (56), the bar and
+   the prompt (112) and three gaps (48) taken, 456 in all with the
+   baskets; never under 72, and below that the whole screen scrolls. The
+   baskets stand 8 apart, each 12 inside and showing its mark alone, its
+   name kept for screen readers. */
+html[data-size="tall-narrow"] .sort {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  row-gap: 16px;
+}
+
+html[data-size="tall-narrow"] .sort-bar {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .sort-bar .home-button {
+  flex-shrink: 0;
+  width: 56px;
+  padding: 0 16px;
+  justify-content: center;
+}
+
+html[data-size="tall-narrow"] .sort .prompt {
+  font-size: 22px;
+}
+
+html[data-size="tall-narrow"] .sort-tray {
+  grid-template-columns: repeat(var(--upright-columns), max(72px, min(var(--card-by-width), ((100vh - (456px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--upright-rows) - 1) * 8px) / var(--upright-rows) - var(--strip)) / 0.75)));
+  grid-template-columns: repeat(var(--upright-columns), max(72px, min(var(--card-by-width), ((100dvh - (456px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--upright-rows) - 1) * 8px) / var(--upright-rows) - var(--strip)) / 0.75)));
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .baskets {
+  min-height: 240px;
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .sort[data-rows] .baskets[data-count] .basket {
+  padding: 12px;
+  gap: 8px;
+}
+
+/* A mark is 44 tall, its symbol 22 and its type 16, so the widest, both
+   leg counts beside footprints, fits a third of a 320 phone. */
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 6px;
+  gap: 2px;
+}
+
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Size keeps its big and its small footprint. */
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark[data-basket="big"] svg {
+  width: 29px;
+  height: 29px;
+}
+
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark[data-basket="small"] svg {
+  width: 13px;
+  height: 13px;
+}
+
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .legs-count,
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .mark-question {
+  font-size: 16px;
 }
 
 /* Find the pair's welcome and board fill the screen under a bar like the
@@ -5245,7 +5727,8 @@ html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket-name {
    (32) and the column (416) leave, 620 in all; it is never under 120
    wide, and below that the whole screen scrolls. The title takes the one
    type the screen gives in --pairs-title-size. */
-html[data-size="tall"] .pairs-welcome {
+html[data-size="tall"] .pairs-welcome,
+html[data-size="tall-narrow"] .pairs-welcome {
   min-height: 100vh;
   min-height: 100dvh;
   height: auto;
@@ -5256,34 +5739,106 @@ html[data-size="tall"] .pairs-welcome {
     calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .pairs-welcome-body {
+html[data-size="tall"] .pairs-welcome-body,
+html[data-size="tall-narrow"] .pairs-welcome-body {
   flex: 1 0 auto;
   flex-direction: column;
   justify-content: center;
   gap: 32px;
 }
 
-html[data-size="tall"] .pairs-hero {
+html[data-size="tall"] .pairs-hero,
+html[data-size="tall-narrow"] .pairs-hero {
   flex: 0 0 auto;
   align-self: stretch;
 }
 
-html[data-size="tall"] .pairs-hero-card {
+html[data-size="tall"] .pairs-hero-card,
+html[data-size="tall-narrow"] .pairs-hero-card {
   width: max(120px, min(280px, 32%, (100vh - (620px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
   width: max(120px, min(280px, 32%, (100dvh - (620px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
   max-height: none;
 }
 
-html[data-size="tall"] .pairs-start {
+html[data-size="tall"] .pairs-start,
+html[data-size="tall-narrow"] .pairs-start {
   width: 100%;
   max-width: 648px;
   align-items: center;
 }
 
-html[data-size="tall"] .pairs-title {
+html[data-size="tall"] .pairs-title,
+html[data-size="tall-narrow"] .pairs-title {
   flex-wrap: nowrap;
   white-space: nowrap;
   font-size: var(--pairs-title-size);
+}
+
+/* In a tall-narrow window, an iPhone upright, the welcome stands as in a
+   tall one on 20-pixel sides, 24 at the top and 32 at the bottom, its
+   parts 20 apart and the cards 24 over the column: "HOME" is its house
+   alone, a 56-pixel square; the mark is 64, the chips 52 tall in 22-pixel
+   type and PLAY 80 tall in 30. A card keeps its 32% of the width and
+   shrinks to the height the padding (56), the bar (56) and its gap (20),
+   the cards' gap (24) and the column (332) leave, 488 in all; it is never
+   under 80 wide, and below that the whole screen scrolls. */
+html[data-size="tall-narrow"] .pairs-welcome {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .pairs-welcome-bar .home-button {
+  width: 56px;
+  padding: 0 16px;
+}
+
+html[data-size="tall-narrow"] .pairs-welcome-body {
+  gap: 24px;
+}
+
+html[data-size="tall-narrow"] .pairs-hero-card {
+  width: max(80px, min(280px, 32%, (100vh - (488px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
+  width: max(80px, min(280px, 32%, (100dvh - (488px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
+  padding: 10px;
+  border-radius: 20px;
+}
+
+html[data-size="tall-narrow"] .pairs-start {
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .pairs-title {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .pairs-mark {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+}
+
+html[data-size="tall-narrow"] .pairs-chips {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .pairs-climb:not([data-shown]) {
+  margin-right: -8px;
+}
+
+html[data-size="tall-narrow"] .pairs-chip {
+  height: 52px;
+  padding: 0 16px;
+  font-size: 22px;
+}
+
+html[data-size="tall-narrow"] .pairs-play-button {
+  height: 80px;
+  padding: 0 32px 0 28px;
+  font-size: 30px;
 }
 
 /* A game's level switch, find the pair's and the skeleton game's: the age
@@ -5431,7 +5986,8 @@ html[data-size="tall"] .pairs-title {
    64 tall, its picture above its name, the names in the one type its
    screen gives in --level-name-size. Its edge is drawn inside it, so the
    switch is its padding and a level tall. */
-html[data-size="tall"] .level-switch {
+html[data-size="tall"] .level-switch,
+html[data-size="tall-narrow"] .level-switch {
   align-self: center;
   width: 100%;
   max-width: 648px;
@@ -5439,18 +5995,24 @@ html[data-size="tall"] .level-switch {
   box-shadow: inset 0 0 0 1px #1d27421f;
 }
 
-html[data-size="tall"][data-theme="dark"] .level-switch {
+html[data-size="tall"][data-theme="dark"] .level-switch,
+html[data-size="tall-narrow"][data-theme="dark"] .level-switch {
   box-shadow: inset 0 0 0 1px #ece8de1f;
 }
 
 html[data-size="tall"] .result-with-levels .level-switch,
+html[data-size="tall-narrow"] .result-with-levels .level-switch,
 html[data-size="tall"][data-theme="dark"] .result-with-levels .level-switch,
+html[data-size="tall-narrow"][data-theme="dark"] .result-with-levels .level-switch,
 html[data-size="tall"] .dig-reveal-screen .level-switch,
-html[data-size="tall"][data-theme="dark"] .dig-reveal-screen .level-switch {
+html[data-size="tall-narrow"] .dig-reveal-screen .level-switch,
+html[data-size="tall"][data-theme="dark"] .dig-reveal-screen .level-switch,
+html[data-size="tall-narrow"][data-theme="dark"] .dig-reveal-screen .level-switch {
   box-shadow: inset 0 0 0 1px #ffffff40;
 }
 
-html[data-size="tall"] .level-switch-level {
+html[data-size="tall"] .level-switch-level,
+html[data-size="tall-narrow"] .level-switch-level {
   height: 64px;
   flex-direction: column;
   gap: 4px;
@@ -5662,7 +6224,8 @@ html[data-size="tall"] .level-switch-level {
    the height under the bar allows, the padding (88), the bar (56) and its
    gap (28) taken, 172 in all; never under the board's floor, and below
    that the whole screen scrolls. */
-html[data-size="tall"] .pairs-board-screen {
+html[data-size="tall"] .pairs-board-screen,
+html[data-size="tall-narrow"] .pairs-board-screen {
   min-height: 100vh;
   min-height: 100dvh;
   height: auto;
@@ -5674,12 +6237,14 @@ html[data-size="tall"] .pairs-board-screen {
   row-gap: 28px;
 }
 
-html[data-size="tall"] .pair-board-room {
+html[data-size="tall"] .pair-board-room,
+html[data-size="tall-narrow"] .pair-board-room {
   flex: 1 0 auto;
   container-type: normal;
 }
 
-html[data-size="tall"] .pair-board {
+html[data-size="tall"] .pair-board,
+html[data-size="tall-narrow"] .pair-board {
   width: auto;
   aspect-ratio: auto;
   grid-auto-flow: column;
@@ -5690,8 +6255,76 @@ html[data-size="tall"] .pair-board {
   column-gap: 16px;
 }
 
-html[data-size="tall"] .pair-card {
+html[data-size="tall"] .pair-card,
+html[data-size="tall-narrow"] .pair-card {
   aspect-ratio: 3 / 3.2;
+}
+
+/* In a tall-narrow window, an iPhone upright, the board stands as in a
+   tall one on 20-pixel sides, 24 at the top and 32 at the bottom, 20
+   under the bar, the cards 8 apart. A card is as wide as the height
+   under the bar allows, the padding (56), the bar (56) and its gap (20)
+   taken, 132 in all, and at least 56, the board's own floor set aside,
+   but never wider than the width lets the grid be: below that the whole
+   screen scrolls.
+   A found card's name, too small there, is left to its label; a name
+   shown while its picture is not keeps telling the pair apart. */
+html[data-size="tall-narrow"] .pairs-board-screen {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  row-gap: 20px;
+}
+
+html[data-size="tall-narrow"] .pair-board {
+  grid-template-columns: repeat(var(--rows), min(var(--card-by-width), max(56px, (100vh - (132px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--columns) - 1) * 8px) / var(--columns) * 0.9375)));
+  grid-template-columns: repeat(var(--rows), min(var(--card-by-width), max(56px, (100dvh - (132px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--columns) - 1) * 8px) / var(--columns) * 0.9375)));
+  row-gap: 8px;
+  column-gap: 8px;
+}
+
+html[data-size="tall-narrow"] .pair-card-name[data-caption] {
+  display: none;
+}
+
+/* The bar keeps one row on a phone: BACK and HOME are 48 wide, the title
+   is left to screen readers, and the climb level and the tries stand at
+   the right in 20-pixel type. */
+html[data-size="tall-narrow"] .pairs-bar {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .pairs-bar .home-button {
+  flex-shrink: 0;
+  width: 48px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall-narrow"] .pairs-bar-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+html[data-size="tall-narrow"] .pairs-bar-title + .pairs-bar-chip {
+  margin-left: auto;
+}
+
+html[data-size="tall-narrow"] .pairs-bar-chip {
+  padding: 0 10px;
+  gap: 6px;
+  font-size: 20px;
+}
+
+html[data-size="tall-narrow"] .pairs-bar-chip svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* Upright, the bar keeps one row at the narrowest width: BACK and HOME
@@ -5715,7 +6348,8 @@ html[data-size="tall-narrow"] .narrow-hidden {
   white-space: nowrap;
 }
 
-html[data-size="tall"] .upright-hidden {
+html[data-size="tall"] .upright-hidden,
+html[data-size="tall-narrow"] .upright-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -5941,7 +6575,8 @@ html[data-size="tall"] .upright-hidden {
    screen gives in --card-maximum, and never under 90 tall, its art
    yielding as on a large landscape result. Below that the whole screen
    scrolls. */
-html[data-size="tall"] .pairs-result .pairs-found {
+html[data-size="tall"] .pairs-result .pairs-found,
+html[data-size="tall-narrow"] .pairs-result .pairs-found {
   flex: 1 0 0;
   align-self: center;
   width: 100%;
@@ -5953,24 +6588,28 @@ html[data-size="tall"] .pairs-result .pairs-found {
   gap: 16px;
 }
 
-html[data-size="tall"] .pairs-result .pairs-found-art {
+html[data-size="tall"] .pairs-result .pairs-found-art,
+html[data-size="tall-narrow"] .pairs-result .pairs-found-art {
   flex: 1 1 0;
   min-height: 0;
   aspect-ratio: auto;
 }
 
-html[data-size="tall"] .pairs-result .result-content {
+html[data-size="tall"] .pairs-result .result-content,
+html[data-size="tall-narrow"] .pairs-result .result-content {
   gap: 16px;
 }
 
 /* The tries are 15% of the window's height, at most 180, beside the
    hand; "WELL DONE!" is 40 on a 48 line. */
-html[data-size="tall"] .pairs-result-tries-value {
+html[data-size="tall"] .pairs-result-tries-value,
+html[data-size="tall-narrow"] .pairs-result-tries-value {
   font-size: min(180px, 15vh);
   font-size: min(180px, 15dvh);
 }
 
-html[data-size="tall"] .pairs-result .result-title {
+html[data-size="tall"] .pairs-result .result-title,
+html[data-size="tall-narrow"] .pairs-result .result-title {
   font-size: 40px;
   line-height: 1.2;
 }
@@ -5978,14 +6617,84 @@ html[data-size="tall"] .pairs-result .result-title {
 /* PLAY AGAIN, BACK and HOME stand 72 tall in one row, in the one type
    the screen gives in --action-size, so the three fit the width in
    either language. */
-html[data-size="tall"] .pairs-result .result-actions {
+html[data-size="tall"] .pairs-result .result-actions,
+html[data-size="tall-narrow"] .pairs-result .result-actions {
   padding-top: 0;
 }
 
-html[data-size="tall"] .pairs-result .result-actions button {
+html[data-size="tall"] .pairs-result .result-actions button,
+html[data-size="tall-narrow"] .pairs-result .result-actions button {
   height: 72px;
   padding: 0 12px;
   font-size: var(--action-size);
+}
+
+/* In a tall-narrow window, an iPhone upright, the result stands on
+   20-pixel padding, the dinosaurs 16 above the column and 8 apart, never
+   under 64 tall, the column 12 apart: the tries are 12% of the window's
+   height beside a 64 hand, the stars 40 and "WELL DONE!" 34. PLAY AGAIN
+   stands across the column over BACK and HOME, which share a row, each
+   64 tall and 10 apart, in the type the screen gives in --action-size. */
+html[data-size="tall-narrow"] .pairs-result {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .pairs-result .pairs-found {
+  min-height: calc(var(--found-rows) * 64px + (var(--found-rows) - 1) * 8px);
+  max-height: calc(var(--found-rows) * var(--card-maximum) + (var(--found-rows) - 1) * 8px);
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .pairs-result .result-content {
+  gap: 12px;
+}
+
+/* NEW is its sparkle alone on a card 88 wide, the word kept for screen
+   readers. */
+html[data-size="tall-narrow"] .pairs-new-badge {
+  top: 6px;
+  right: 6px;
+  padding: 0 6px;
+}
+
+html[data-size="tall-narrow"] .pairs-badges {
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .pairs-result-tries-value {
+  font-size: min(180px, 12vh);
+  font-size: min(180px, 12dvh);
+}
+
+html[data-size="tall-narrow"] .pairs-result-hand {
+  width: 64px;
+  height: 64px;
+}
+
+html[data-size="tall-narrow"] .pairs-result-stars {
+  font-size: 40px;
+}
+
+html[data-size="tall-narrow"] .pairs-result .result-title {
+  font-size: 34px;
+}
+
+html[data-size="tall-narrow"] .pairs-result .result-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+html[data-size="tall-narrow"] .pairs-result .result-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 64px;
+  padding: 0 12px;
+  justify-content: center;
+}
+
+html[data-size="tall-narrow"] .pairs-result .result-actions .play-again-button {
+  flex-basis: 100%;
 }
 
 /* The next level is offered over the completed result. The scrim keeps
@@ -6087,25 +6796,57 @@ html[data-size="tall"] .pairs-result .result-actions button {
 /* In a tall window the offer is the window less 24 a side, at most 710
    wide, its question in 32-pixel type, and YES and NOT NOW stand one
    above the other, each across the offer. */
-html[data-size="tall"] .pairs-offer-scrim {
+html[data-size="tall"] .pairs-offer-scrim,
+html[data-size="tall-narrow"] .pairs-offer-scrim {
   grid-template-columns: minmax(0, 710px);
   justify-content: center;
 }
 
-html[data-size="tall"] .pairs-offer {
+html[data-size="tall"] .pairs-offer,
+html[data-size="tall-narrow"] .pairs-offer {
   width: 100%;
 }
 
-html[data-size="tall"] .pairs-offer-question {
+html[data-size="tall"] .pairs-offer-question,
+html[data-size="tall-narrow"] .pairs-offer-question {
   font-size: 32px;
 }
 
-html[data-size="tall"] .pairs-offer-answers {
+html[data-size="tall"] .pairs-offer-answers,
+html[data-size="tall-narrow"] .pairs-offer-answers {
   flex-direction: column;
 }
 
-html[data-size="tall"] .pairs-offer-answers button {
+html[data-size="tall"] .pairs-offer-answers button,
+html[data-size="tall-narrow"] .pairs-offer-answers button {
   flex: none;
+}
+
+/* In a tall-narrow window the offer is the window less 16 a side, its
+   padding 32 at the top and 24 elsewhere, its picture 96, its question
+   in 22-pixel type and YES and NOT NOW in 22. */
+html[data-size="tall-narrow"] .pairs-offer-scrim {
+  padding: 16px;
+}
+
+html[data-size="tall-narrow"] .pairs-offer {
+  padding: 32px 24px 24px;
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .pairs-offer-picture {
+  width: 96px;
+  height: 96px;
+  font-size: 52px;
+}
+
+html[data-size="tall-narrow"] .pairs-offer-question {
+  font-size: 22px;
+}
+
+html[data-size="tall-narrow"] .pairs-offer-answers button {
+  height: 64px;
+  font-size: 22px;
 }
 
 /* The skeleton game's screens fill the screen under a bar like find the
@@ -7299,22 +8040,26 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
    upright screens, its bar keeps one row with HOME and BACK as their
    symbols, and its five cards stand in rows of two that share the height
    left, the last one centred. */
-html[data-size="tall"] .dig-field-guide-screen {
+html[data-size="tall"] .dig-field-guide-screen,
+html[data-size="tall-narrow"] .dig-field-guide-screen {
   padding-right: calc(32px + var(--screen-right));
   padding-left: calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .dig-field-guide-screen .dig-bar {
+html[data-size="tall"] .dig-field-guide-screen .dig-bar,
+html[data-size="tall-narrow"] .dig-field-guide-screen .dig-bar {
   gap: 16px;
 }
 
-html[data-size="tall"] .dig-guide-cards {
+html[data-size="tall"] .dig-guide-cards,
+html[data-size="tall-narrow"] .dig-guide-cards {
   flex-wrap: wrap;
   align-content: stretch;
   justify-content: center;
 }
 
-html[data-size="tall"] .dig-guide-card {
+html[data-size="tall"] .dig-guide-card,
+html[data-size="tall-narrow"] .dig-guide-card {
   flex: 0 0 calc((100% - 16px) / 2);
   height: auto;
   min-height: 0;
@@ -7323,7 +8068,9 @@ html[data-size="tall"] .dig-guide-card {
 }
 
 html[data-size="tall"] .dig-guide-picture,
-html[data-size="tall"] .dig-guide-outline {
+html[data-size="tall-narrow"] .dig-guide-picture,
+html[data-size="tall"] .dig-guide-outline,
+html[data-size="tall-narrow"] .dig-guide-outline {
   flex-shrink: 1;
   min-height: 0;
 }
@@ -7331,37 +8078,45 @@ html[data-size="tall"] .dig-guide-outline {
 /* Upright, the dinosaur dug up takes the room the reward leaves over it,
    the reward as wide as the screen under it, and DIG AGAIN stands over
    HOME, each the reward's width, so either language's words fit. */
-html[data-size="tall"] .dig-reveal {
+html[data-size="tall"] .dig-reveal,
+html[data-size="tall-narrow"] .dig-reveal {
   flex-direction: column;
   align-items: stretch;
 }
 
-html[data-size="tall"] .dig-reveal-art {
+html[data-size="tall"] .dig-reveal-art,
+html[data-size="tall-narrow"] .dig-reveal-art {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
   height: auto;
 }
 
-html[data-size="tall"] .dig-reveal-picture {
+html[data-size="tall"] .dig-reveal-picture,
+html[data-size="tall-narrow"] .dig-reveal-picture {
   height: 100%;
 }
 
-html[data-size="tall"] .dig-reward {
+html[data-size="tall"] .dig-reward,
+html[data-size="tall-narrow"] .dig-reward {
   flex: 0 0 auto;
 }
 
-html[data-size="tall"] .dig-reveal-ways {
+html[data-size="tall"] .dig-reveal-ways,
+html[data-size="tall-narrow"] .dig-reveal-ways {
   align-items: stretch;
 }
 
-html[data-size="tall"] .dig-reveal-screen .result-actions {
+html[data-size="tall"] .dig-reveal-screen .result-actions,
+html[data-size="tall-narrow"] .dig-reveal-screen .result-actions {
   flex-direction: column;
   gap: 12px;
 }
 
 html[data-size="tall"] .dig-reveal-screen .play-again-button,
-html[data-size="tall"] .dig-reveal-screen .result-actions .home-button {
+html[data-size="tall-narrow"] .dig-reveal-screen .play-again-button,
+html[data-size="tall"] .dig-reveal-screen .result-actions .home-button,
+html[data-size="tall-narrow"] .dig-reveal-screen .result-actions .home-button {
   width: 100%;
   justify-content: center;
 }
@@ -7443,26 +8198,31 @@ body:has(.dig-board-screen) {
 
 /* Upright, the board takes the whole width under the bar, as tall as its
    frame lets it, with 32 pixels at each side to keep it off the edges. */
-html[data-size="tall"] .dig-board-screen {
+html[data-size="tall"] .dig-board-screen,
+html[data-size="tall-narrow"] .dig-board-screen {
   padding-right: calc(32px + var(--screen-right));
   padding-left: calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .dig-board-screen .dig-bar {
+html[data-size="tall"] .dig-board-screen .dig-bar,
+html[data-size="tall-narrow"] .dig-board-screen .dig-bar {
   gap: 16px;
 }
 
-html[data-size="tall"] .dig-bar .home-button {
+html[data-size="tall"] .dig-bar .home-button,
+html[data-size="tall-narrow"] .dig-bar .home-button {
   width: 56px;
   padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .dig-board-screen .dig-body {
+html[data-size="tall"] .dig-board-screen .dig-body,
+html[data-size="tall-narrow"] .dig-board-screen .dig-body {
   container-type: size;
 }
 
-html[data-size="tall"] .dig-board-screen .dig-board {
+html[data-size="tall"] .dig-board-screen .dig-board,
+html[data-size="tall-narrow"] .dig-board-screen .dig-board {
   width: min(100cqw, 100cqh * var(--frame-width) / var(--frame-height));
   height: auto;
 }
@@ -7470,34 +8230,276 @@ html[data-size="tall"] .dig-board-screen .dig-board {
 /* Upright, a board that asks WHO IS IT? keeps 198 pixels under it from
    the round's start for its cards, side by side in one row 170 high, so
    the board stays in one place, at one size, through the whole round. */
-html[data-size="tall"] .dig-board-screen .dig-body[data-asks] {
+html[data-size="tall"] .dig-board-screen .dig-body[data-asks],
+html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] {
   flex-direction: column;
 }
 
-html[data-size="tall"] .dig-board-screen .dig-body[data-asks] .dig-board {
+html[data-size="tall"] .dig-board-screen .dig-body[data-asks] .dig-board,
+html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] .dig-board {
   flex: 0 0 auto;
   width: min(100cqw, (100cqh - 198px) * var(--frame-width) / var(--frame-height));
   height: auto;
   max-height: none;
 }
 
-html[data-size="tall"] .dig-board-screen .dig-choice-cards {
+html[data-size="tall"] .dig-board-screen .dig-choice-cards,
+html[data-size="tall-narrow"] .dig-board-screen .dig-choice-cards {
   flex: 0 0 170px;
   align-self: stretch;
   flex-direction: row;
   gap: 16px;
 }
 
-html[data-size="tall"] .dig-board-screen .dig-choice-slot {
+html[data-size="tall"] .dig-board-screen .dig-choice-slot,
+html[data-size="tall-narrow"] .dig-board-screen .dig-choice-slot {
   max-height: none;
   min-width: 0;
+}
+
+/* On a phone DIG's screens take 24 pixels above, 32 below and 20 at the
+   sides, their parts 16 apart, HOME and BACK as 48-pixel symbols. */
+html[data-size="tall-narrow"] .dig-screen,
+html[data-size="tall-narrow"] .dig-board-screen {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  row-gap: 16px;
+}
+
+html[data-size="tall-narrow"] .dig-bar,
+html[data-size="tall-narrow"] .dig-board-screen .dig-bar,
+html[data-size="tall-narrow"] .dig-field-guide-screen .dig-bar {
+  gap: 12px 8px;
+}
+
+html[data-size="tall-narrow"] .dig-bar .home-button {
+  width: 48px;
+}
+
+html[data-size="tall-narrow"] .dig-title {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .dig-mark {
+  width: 44px;
+  height: 44px;
+}
+
+html[data-size="tall-narrow"] .dig-board-screen .dig-title-words {
+  font-size: min(28px, (100cqi - 52px) / (var(--letters) * 0.75));
+}
+
+/* The board's bar takes two rows: HOME beside the title, then the brush
+   picker, the FIELD GUIDE and DUG UP across the width, each 52 tall. */
+html[data-size="tall-narrow"] .dig-board-screen .dig-bar {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+html[data-size="tall-narrow"] .dig-board-screen .dig-title {
+  flex: 1 0 calc(100% - 56px);
+}
+
+html[data-size="tall-narrow"] .dig-brush-picker {
+  height: 52px;
+  padding: 4px 3px;
+}
+
+html[data-size="tall-narrow"] .dig-brush-option {
+  width: 44px;
+  height: 44px;
+}
+
+html[data-size="tall-narrow"] .dig-field-guide-button {
+  min-width: 52px;
+  height: 52px;
+  padding: 0 6px;
+  gap: 4px;
+  font-size: 18px;
+}
+
+html[data-size="tall-narrow"] .dig-chip {
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 14px;
+}
+
+/* The question's names one over another, each a 52-pixel row of its
+   picture beside its name, which stays as large as the row allows; the
+   board takes what three or four rows leave. */
+html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] .dig-board {
+  width: min(100cqw, (100cqh - 16px - 172px) * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks]:has(.dig-choice-slot:nth-child(4)) .dig-board {
+  width: min(100cqw, (100cqh - 16px - 232px) * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall-narrow"] .dig-board-screen .dig-choice-cards {
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .dig-board-screen .dig-choice-slot {
+  flex: 0 0 52px;
+}
+
+html[data-size="tall-narrow"] .dig-choice-card {
+  padding: 4px 10px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  border-radius: 16px;
+}
+
+html[data-size="tall-narrow"] .dig-choice-picture {
+  flex: 0 0 64px;
+  width: 64px;
+  height: 100%;
+}
+
+html[data-size="tall-narrow"] .dig-choice-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: min(20px, calc((100cqi - 72px) / (var(--letters) * 0.75)));
+  text-align: left;
+}
+
+html[data-size="tall-narrow"] .dig-empty-card {
+  border-radius: 16px;
+  font-size: 32px;
+}
+
+/* The FIELD GUIDE's title is its book alone, its words kept for screen
+   readers, and its five cards one over another, each a row of its
+   picture, its name and its count. */
+html[data-size="tall-narrow"] .dig-field-guide-screen .dig-title-words {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+html[data-size="tall-narrow"] .dig-guide-cards {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .dig-guide-card {
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 8px 12px;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 12px;
+  border-radius: 18px;
+}
+
+html[data-size="tall-narrow"] .dig-guide-picture,
+html[data-size="tall-narrow"] .dig-guide-outline {
+  width: auto;
+  height: min(100%, 72px);
+  flex-shrink: 0;
+}
+
+html[data-size="tall-narrow"] .dig-guide-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: min(22px, (100cqi - 152px) / 8.4);
+  text-align: left;
+}
+
+html[data-size="tall-narrow"] .dig-guide-count {
+  font-size: 24px;
+}
+
+html[data-size="tall-narrow"] .dig-guide-unknown {
+  flex: 1 1 0;
+  font-size: 36px;
+}
+
+/* The reveal scrolls on a short phone rather than shrink its dinosaur
+   under 140 pixels; DUG UP, the celebration and both ways take less
+   room. */
+html[data-size="tall-narrow"] .dig-reveal-screen {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+html[data-size="tall-narrow"] .dig-reveal {
+  flex: 1 0 auto;
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .dig-reveal-art {
+  flex: 1 0 140px;
+}
+
+html[data-size="tall-narrow"] .dig-reward {
+  gap: 12px;
+}
+
+/* DUG UP wraps: what its first row of the star, the words and the count
+   leaves no room for, NEW!, the trophy and the badge, goes to a second. */
+html[data-size="tall-narrow"] .dig-card {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 60px;
+  padding: 8px 12px 8px 8px;
+  gap: 4px 8px;
+  border-radius: 30px;
+  font-size: 18px;
+}
+
+html[data-size="tall-narrow"] .dig-card-star {
+  width: 44px;
+  height: 44px;
+}
+
+html[data-size="tall-narrow"] .dig-card-count {
+  font-size: 22px;
+}
+
+html[data-size="tall-narrow"] .dig-reveal-screen .celebration {
+  height: 44px;
+  font-size: 18px;
+}
+
+html[data-size="tall-narrow"] .dig-reveal-ways {
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .dig-reveal-screen .result-actions {
+  gap: 10px;
+}
+
+html[data-size="tall-narrow"] .dig-reveal-screen .play-again-button,
+html[data-size="tall-narrow"] .dig-reveal-screen .result-actions .home-button {
+  height: 64px;
 }
 
 /* Upright, the choice takes the narrower side padding of the other
    upright boards, its bar keeps one row with BACK, HOME and MUSEUM as
    their symbols alone, each 56 a side, and its dinosaurs stand in rows of
    two. */
-html[data-size="tall"] .skeleton-screen {
+html[data-size="tall"] .skeleton-screen,
+html[data-size="tall-narrow"] .skeleton-screen {
   padding:
     calc(40px + env(safe-area-inset-top))
     calc(32px + var(--screen-right))
@@ -7505,32 +8507,38 @@ html[data-size="tall"] .skeleton-screen {
     calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .skeleton-bar {
+html[data-size="tall"] .skeleton-bar,
+html[data-size="tall-narrow"] .skeleton-bar {
   gap: 16px;
 }
 
-html[data-size="tall"] .skeleton-bar .home-button {
+html[data-size="tall"] .skeleton-bar .home-button,
+html[data-size="tall-narrow"] .skeleton-bar .home-button {
   width: 56px;
   padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .skeleton-choices {
+html[data-size="tall"] .skeleton-choices,
+html[data-size="tall-narrow"] .skeleton-choices {
   align-content: stretch;
   gap: 20px;
 }
 
-html[data-size="tall"] .skeleton-choice {
+html[data-size="tall"] .skeleton-choice,
+html[data-size="tall-narrow"] .skeleton-choice {
   flex-basis: calc((100% - 20px) / 2);
 }
 
 /* Upright, the museum's hall stands its stands in rows of two. */
-html[data-size="tall"] .skeleton-hall {
+html[data-size="tall"] .skeleton-hall,
+html[data-size="tall-narrow"] .skeleton-hall {
   padding: 24px;
   gap: 16px 24px;
 }
 
-html[data-size="tall"] .skeleton-stand {
+html[data-size="tall"] .skeleton-stand,
+html[data-size="tall-narrow"] .skeleton-stand {
   flex-basis: calc((100% - 24px) / 2);
 }
 
@@ -7568,15 +8576,18 @@ html[data-size="tall"] .skeleton-stand {
 /* Upright, the board stands over the tray: as wide as the puzzle, or as
    six tenths of its height under the gap allow, and the tray takes the
    rest. */
-html[data-size="tall"] .skeleton-puzzle {
+html[data-size="tall"] .skeleton-puzzle,
+html[data-size="tall-narrow"] .skeleton-puzzle {
   flex-direction: column;
 }
 
-html[data-size="tall"] .skeleton-puzzle .skeleton-board {
+html[data-size="tall"] .skeleton-puzzle .skeleton-board,
+html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-board {
   width: min(100cqw, (100cqh - 28px) * 0.6 * var(--frame-width) / var(--frame-height));
 }
 
-html[data-size="tall"] .skeleton-puzzle .skeleton-tray {
+html[data-size="tall"] .skeleton-puzzle .skeleton-tray,
+html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
   min-height: 0;
 }
 
@@ -8134,19 +9145,22 @@ html[data-size="tall"] .skeleton-puzzle .skeleton-tray {
 /* Upright, the mystery's skeleton stands over the guess: the board as
    wide as the screen, or as the room above the guess's least allows, and
    the guess's three cards side by side under it, the clue below them. */
-html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal {
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal,
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal {
   flex-direction: column;
   container-type: size;
 }
 
-html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal-board {
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal-board,
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal-board {
   flex: none;
   align-self: center;
   width: min(100cqw, (100cqh - 28px - 340px) * var(--frame-width) / var(--frame-height));
   max-height: none;
 }
 
-html[data-size="tall"] .skeleton-guess {
+html[data-size="tall"] .skeleton-guess,
+html[data-size="tall-narrow"] .skeleton-guess {
   flex: 1 1 0;
   min-width: 0;
   min-height: 340px;
@@ -8154,7 +9168,8 @@ html[data-size="tall"] .skeleton-guess {
   gap: 12px;
 }
 
-html[data-size="tall"] .skeleton-guess-choices {
+html[data-size="tall"] .skeleton-guess-choices,
+html[data-size="tall-narrow"] .skeleton-guess-choices {
   flex-direction: row;
   gap: 12px;
 }
@@ -8239,19 +9254,22 @@ html[data-size="tall"] .skeleton-guess-choices {
    wide as the screen, or as the room above the reward's 560 allows, the
    reward under it with its fact a little smaller and its two ways on a
    little lower, one over the other, so their words keep their size. */
-html[data-size="tall"] .skeleton-result .skeleton-reveal {
+html[data-size="tall"] .skeleton-result .skeleton-reveal,
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal {
   flex-direction: column;
   container-type: size;
 }
 
-html[data-size="tall"] .skeleton-result .skeleton-reveal-board {
+html[data-size="tall"] .skeleton-result .skeleton-reveal-board,
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal-board {
   flex: none;
   align-self: center;
   width: min(100cqw, (100cqh - 28px - 560px) * var(--frame-width) / var(--frame-height));
   max-height: none;
 }
 
-html[data-size="tall"] .skeleton-reward {
+html[data-size="tall"] .skeleton-reward,
+html[data-size="tall-narrow"] .skeleton-reward {
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
@@ -8259,17 +9277,184 @@ html[data-size="tall"] .skeleton-reward {
   gap: 16px;
 }
 
-html[data-size="tall"] .skeleton-fact {
+html[data-size="tall"] .skeleton-fact,
+html[data-size="tall-narrow"] .skeleton-fact {
   font-size: 20px;
 }
 
-html[data-size="tall"] .skeleton-actions {
+html[data-size="tall"] .skeleton-actions,
+html[data-size="tall-narrow"] .skeleton-actions {
   gap: 12px;
 }
 
 html[data-size="tall"] .skeleton-build-another,
-html[data-size="tall"] .skeleton-actions .home-button {
+html[data-size="tall-narrow"] .skeleton-build-another,
+html[data-size="tall"] .skeleton-actions .home-button,
+html[data-size="tall-narrow"] .skeleton-actions .home-button {
   height: 60px;
+}
+
+/* In a tall-narrow window, an iPhone upright, every skeleton screen
+   stands as in a tall one on 24-pixel padding at the top, 32 at the
+   bottom and 20 a side, its parts 16 apart. The bar keeps one row, BACK,
+   HOME and MUSEUM 48 a side and 8 apart. The choice and the museum keep
+   rows of two, 12 apart. The puzzle's board stands 16 over the tray,
+   whose spots are 8 apart on 12 inside. The guess's three cards stand
+   one over another, each its picture beside its name, so a long name
+   keeps its size; the board takes the room above the guess's least,
+   300. The result's reward is 16 inside, its parts 12 apart, the fact 18
+   and its two ways 56 tall in 17-pixel type, so the board takes the room
+   above the reward's 440. The bar is 56 tall, so the padding, the bar
+   and the gap under it take 128. */
+html[data-size="tall-narrow"] .skeleton-screen {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  row-gap: 16px;
+}
+
+html[data-size="tall-narrow"] .skeleton-bar {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .skeleton-bar .home-button {
+  flex-shrink: 0;
+  width: 48px;
+}
+
+/* A phone's bar keeps its chips in 17-pixel type, 8 in from their edges.
+   The museum's bar holds two buttons and two chips, which leave no room
+   for its title: the title stays for screen readers alone. */
+html[data-size="tall-narrow"] .skeleton-chip {
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 17px;
+}
+
+html[data-size="tall-narrow"] .skeleton-museum-screen .skeleton-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+html[data-size="tall-narrow"] .skeleton-choices {
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .skeleton-choice {
+  flex-basis: calc((100% - 12px) / 2);
+}
+
+html[data-size="tall-narrow"] .skeleton-hall {
+  padding: 12px;
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .skeleton-stand {
+  flex-basis: calc((100% - 12px) / 2);
+}
+
+html[data-size="tall-narrow"] .skeleton-puzzle {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-board {
+  width: min(100cqw, (100cqh - 16px) * 0.6 * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
+  --spot-gap: 8px;
+  padding: 12px;
+}
+
+html[data-size="tall-narrow"] .skeleton-reveal {
+  gap: 16px;
+}
+
+/* On a phone too short for the skeleton over its guess or its reward,
+   the whole screen scrolls rather than lose the skeleton: the reveal
+   takes the room under the bar, never less than leaves the board 160
+   wide. */
+html[data-size="tall-narrow"] .skeleton-guess-screen,
+html[data-size="tall-narrow"] .skeleton-result {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal {
+  flex: 1 0 auto;
+  height: max(436px, 100vh - (128px + env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+  height: max(436px, 100dvh - (128px + env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+}
+
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal {
+  flex: 1 0 auto;
+  height: max(576px, 100vh - (128px + env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+  height: max(576px, 100dvh - (128px + env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal-board {
+  width: min(100cqw, (100cqh - 16px - 300px) * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall-narrow"] .skeleton-guess {
+  min-height: 300px;
+  padding: 16px;
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-choices {
+  flex-direction: column;
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-picture {
+  flex: none;
+  width: 80px;
+  height: 100%;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: min(20px, calc((100cqi - 88px) / (var(--letters) * 0.75)));
+  text-align: left;
+}
+
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal-board {
+  width: min(100cqw, (100cqh - 16px - 440px) * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall-narrow"] .skeleton-reward {
+  padding: 16px;
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .skeleton-fact {
+  font-size: 18px;
+}
+
+html[data-size="tall-narrow"] .skeleton-actions {
+  gap: 10px;
+}
+
+html[data-size="tall-narrow"] .skeleton-build-another,
+html[data-size="tall-narrow"] .skeleton-actions .home-button {
+  height: 56px;
+  padding: 0 8px;
+  gap: 8px;
+  font-size: 17px;
 }
 
 /* The museum: a hall of one stand for each dinosaur, rising in one after

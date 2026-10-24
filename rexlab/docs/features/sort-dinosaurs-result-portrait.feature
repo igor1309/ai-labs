@@ -6,7 +6,7 @@ Feature: Sort dinosaurs: the result in a tall window
   "PLAY AGAIN" and "HOME" side by side. Its parts take the shared result
   parts' upright sizes (compare-dinosaurs-result-portrait.feature); the
   rest is as sort-dinosaurs-result.feature tells. A tall-narrow window
-  keeps the picture asking to turn or widen (window-shape.feature).
+  has its own sizes (sort-dinosaurs-result-narrow-portrait.feature).
 
   Scenario Outline: The result stands upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room

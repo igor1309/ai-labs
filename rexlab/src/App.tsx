@@ -6,8 +6,8 @@ import { catalogueColumns, catalogueRow } from "./catalogueColumns.ts";
 import { CatalogueScreen, type CatalogueLayout } from "./CatalogueScreen.tsx";
 import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
 import { closingPicture, refitPicture, type PictureMotion } from "./closingPicture.ts";
-import { compareQuestionType, compareQuestionWidth } from "./compareQuestionLayout.ts";
-import { compareResultType, compareResultWidth } from "./compareResultLayout.ts";
+import { compareQuestionType, compareQuestionWidth, NARROW_QUESTION, PORTRAIT_QUESTION } from "./compareQuestionLayout.ts";
+import { compareResultType, compareResultWidth, NARROW_RESULT, PORTRAIT_RESULT } from "./compareResultLayout.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps, type DigPhase } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
@@ -21,10 +21,10 @@ import { TEXTS } from "./language/texts.ts";
 import { useLayoutTurns } from "./layoutTurns.ts";
 import { OrientationGate } from "./OrientationGate.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
-import { pairsBoardWidth } from "./pairsBoardLayout.ts";
+import { NARROW_BOARD, pairsBoardWidth, PORTRAIT_BOARD } from "./pairsBoardLayout.ts";
 import { usePairsGame, type PairsGameProps, type PairsPhase } from "./pairsGame.tsx";
-import { pairsResultWidth } from "./pairsResultLayout.ts";
-import { pairsWelcomeType, pairsWelcomeWidth } from "./pairsWelcomeLayout.ts";
+import { NARROW_PAIRS_RESULT, pairsResultWidth, PORTRAIT_PAIRS_RESULT } from "./pairsResultLayout.ts";
+import { NARROW_WELCOME, pairsWelcomeType, pairsWelcomeWidth, PORTRAIT_WELCOME } from "./pairsWelcomeLayout.ts";
 import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
 import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
 import { useQuizGame, type QuizGameProps, type QuizPhase } from "./quizGame.tsx";
@@ -33,7 +33,7 @@ import { SandWritingScreen } from "./SandWritingScreen.tsx";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR, type PictureTransition } from "./SharedPicture.tsx";
 import { useSkeletonGame, type SkeletonGameProps, type SkeletonPhase } from "./skeletonGame.tsx";
 import { SILENT, type SkeletonSounds } from "./skeletonSounds.ts";
-import { sortBoardWidth } from "./sortBoardLayout.ts";
+import { NARROW_SORT, PORTRAIT_SORT, sortBoardWidth } from "./sortBoardLayout.ts";
 import { useSortingGame, type SortingGameProps, type SortingPhase } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 import { turnMotion, type TurnMotion, type TurnMotionSeams } from "./turnMotion.ts";
@@ -382,10 +382,11 @@ export function App({
     counting("dig")
   );
 
-  // In a tall window FRIENDS stands two cards to a row, four otherwise.
+  // Upright, tall or tall-narrow, FRIENDS stands two cards to a row, four
+  // otherwise.
   const care = useCareGame({ ...careProps, bodyPicture, random, startTimer }, home, counting("care"), {
     keeping: turns,
-    columns: () => (viewport.sizeClass() === "tall" ? 2 : 4)
+    columns: () => (viewport.sizeClass().startsWith("tall") ? 2 : 4)
   });
 
   // Each game's phase is its own: the gate and the turns read it as the
@@ -415,32 +416,33 @@ export function App({
   // reads only upright.
   const questionWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return compareQuestionWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    return compareQuestionWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_QUESTION : PORTRAIT_QUESTION);
   });
   // And one size for the result's stars, level names and dinosaur.
   const resultWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return compareResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    return compareResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_RESULT : PORTRAIT_RESULT);
   });
   // And one type for find the pair's welcome's title and level names.
   const welcomeWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return pairsWelcomeWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    return pairsWelcomeWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_WELCOME : PORTRAIT_WELCOME);
   });
   // And the width its board stands in.
   const boardWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return pairsBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    return pairsBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_BOARD : PORTRAIT_BOARD);
   });
   // And the width sort's board stands in.
   const sortWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return sortBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    return sortBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_SORT : PORTRAIT_SORT);
   });
   // And the width find the pair's result stands in.
   const pairsResultRoom = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return pairsResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    const sizes = viewport.sizeClass() === "tall-narrow" ? NARROW_PAIRS_RESULT : PORTRAIT_PAIRS_RESULT;
+    return pairsResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, sizes);
   });
 
   // A round starts at once from the tile, with no welcome screen.
@@ -589,7 +591,7 @@ export function App({
   const content = () => {
     switch (screen.kind) {
       case "compare":
-        return quiz.content(language, compareQuestionType(questionWidth), compareResultType(resultWidth));
+        return quiz.content(language, compareQuestionType(questionWidth, size === "tall-narrow" ? NARROW_QUESTION : PORTRAIT_QUESTION), compareResultType(resultWidth, size === "tall-narrow" ? NARROW_RESULT : PORTRAIT_RESULT));
       case "catalogue":
         return (
           <CatalogueScreen
@@ -634,9 +636,9 @@ export function App({
       case "care":
         return care.content(language);
       case "sorting":
-        return sorting.content(language, sortWidth, compareResultType(resultWidth));
+        return sorting.content(language, sortWidth, compareResultType(resultWidth, size === "tall-narrow" ? NARROW_RESULT : PORTRAIT_RESULT), size === "tall-narrow" ? NARROW_SORT : PORTRAIT_SORT);
       case "pairs":
-        return pairs.content(language, pairsWelcomeType(welcomeWidth), boardWidth, pairsResultRoom);
+        return pairs.content(language, pairsWelcomeType(welcomeWidth, size === "tall-narrow" ? NARROW_WELCOME : PORTRAIT_WELCOME), boardWidth, pairsResultRoom, size === "tall-narrow" ? NARROW_BOARD : PORTRAIT_BOARD, size === "tall-narrow" ? NARROW_PAIRS_RESULT : PORTRAIT_PAIRS_RESULT);
       case "skeletons":
         return skeletonGame.content(language);
       case "dig":

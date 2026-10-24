@@ -43,7 +43,7 @@ export function PairsWelcomeScreen({ language, level, climbLevel, stars, heroPic
       <header className="pairs-welcome-bar">
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
+          <span className="narrow-hidden">{text.home}</span>
         </Button>
       </header>
       <div className="pairs-welcome-body">

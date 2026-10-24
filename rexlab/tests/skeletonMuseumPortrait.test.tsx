@@ -58,13 +58,6 @@ describe("the museum upright", () => {
     expect([(stand - 50) / 9.4, (stand - 54) / 9.8].map((type) => type >= 18)).toEqual([true, true]);
   });
 
-  it("asks to turn as a tall window narrows over the museum", async () => {
-    const { viewport } = await openMuseum([820, 1180]);
-    openWindow(393, 852);
-    act(() => viewport.resize("tall-narrow", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-  });
-
   it("keeps the landscape hall as it was", async () => {
     await openMuseum([1180, 820], { viewport: manualViewport("landscape") });
     expect([document.documentElement.dataset.size, gateShown()]).toEqual(["wide", false]);

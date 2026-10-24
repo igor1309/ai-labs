@@ -5,8 +5,8 @@ Feature: Build a skeleton: the result in a tall window
   screen or the room above the reward allows, and under it the reward:
   the star, the celebration, the badge, the name, the fact, the best and
   BUILD ANOTHER over MUSEUM. The rest is as skeleton-assembly.feature
-  tells. A tall-narrow window keeps the picture asking to turn or widen
-  (window-shape.feature).
+  tells. A tall-narrow window has its own sizes
+  (skeleton-result-narrow-portrait.feature).
 
   Scenario Outline: The result stands upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room
