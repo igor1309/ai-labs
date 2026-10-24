@@ -204,6 +204,12 @@ struct RecordingTests {
             try await rig.start(.call, id: 2)
             #expect(await rig.recording.snapshot().session?.origin == .call)
             #expect(await rig.session.values() == [.begin(1), .end(1), .begin(2)])
+            try await rig.stop(id: 2)
+            #expect(await rig.recording.snapshot().session == .init(id: 2, origin: .call))
+            #expect(await rig.session.values() == [.begin(1), .end(1), .begin(2), .end(2)])
+            let ended = try await rig.finish(2)
+            #expect(ended.phase == .idle)
+            #expect(ended.session == nil)
         }
     }
 }

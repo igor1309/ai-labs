@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Recording keeps the latest Session's failure reason visible even when
+  its end report arrives first (LAB-506).
+
 - Recording now begins and ends Sessions for calls and manual controls, holds
   starts for missing conditions, and keeps failure reasons visible (LAB-506).
 

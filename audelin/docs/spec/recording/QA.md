@@ -71,6 +71,14 @@ stays named through a condition change and the user's live text switch,
 and clears when the next recording begins.
 Evidence: `cannotRecordEndsSessionAndKeepsReasonUntilNextBegin(_:)`.
 
+When a stop ends the Session before its failure report arrives, the state
+stays idle with no Session and names the reason without another end. The
+reason survives condition and automatic changes until the next begin;
+reports from older or unknown Sessions are ignored.
+Evidence: `failureAfterSessionEndsStaysNamedUntilNextBegin(_:)`,
+`idleRetainsOnlyTheLatestSessionsFailure(_:)`,
+`lateBeginAndFailureReportsCannotChangeTheNextSession()`.
+
 ## S-11 A stop while a recording begins ends it
 
 For the user's stop and the call's end in turn, a Session held while
@@ -95,4 +103,11 @@ Evidence: `folderOrRoomLossEndsRecordingButAccessLossDoesNot(_:)`.
 
 For each condition, missing then back, then the user starts, the Session
 ends, and a call starts with automatic on: a recording runs each time.
+The later Session's stop names its own end in the output; it stays ending
+until that Session completes, then becomes idle.
 Evidence: `restoredConditionAllowsManualAndAutomaticStarts(_:)`.
+
+For every pair of missing conditions, recovering one leaves the other
+named and blocks both manual and automatic starts. Recovering the last
+condition allows either start.
+Evidence: `partialRecoveryKeepsOtherConditionsBlockingStarts(_:)`.

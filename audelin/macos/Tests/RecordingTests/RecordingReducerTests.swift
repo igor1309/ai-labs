@@ -85,6 +85,52 @@ struct RecordingReducerTests {
         #expect(next == state)
         #expect(effect == nil)
     }
+
+    @Test(arguments: [UInt64(1), 7])
+    func idleRetainsOnlyTheLatestSessionsFailure(_ id: UInt64) {
+
+        let idle = changed(RecordingState(missing: [])) { $0.lastSessionID = id }
+        let failed = changed(idle) { $0.cannotRecord = "cannot keep audio" }
+        let cases: [(RecordingState, RecordingEvent, RecordingState)] = [
+            (idle, .sessionReported(id: id, .cannotRecord("cannot keep audio")), failed),
+            (idle, .sessionReported(id: id, .ready), idle),
+            (failed, .sessionReported(id: id, .ended), failed),
+            (idle, .sessionReported(id: id - 1, .cannotRecord("old failure")), idle),
+            (idle, .sessionReported(id: id + 1, .cannotRecord("unknown failure")), idle),
+            (RecordingState(), .sessionReported(id: 0, .cannotRecord("no Session")), RecordingState()),
+        ]
+        for (state, event, expected) in cases {
+            let (next, effect) = RecordingReducer.reduce(state, event)
+            #expect(next == expected, "Event: \(event)")
+            #expect(effect == nil, "Event: \(event)")
+        }
+    }
+
+    @Test(arguments: RecordingCondition.allCases)
+    func partialRecoveryKeepsOtherConditionsBlockingStarts(_ recovered: RecordingCondition) {
+
+        for remaining in RecordingCondition.allCases where remaining != recovered {
+            let blocked = RecordingState(automatic: true, missing: [recovered, remaining])
+            let (partial, recoveryEffect) = RecordingReducer.reduce(blocked, .conditionChanged(recovered, available: true))
+            #expect(partial == changed(blocked) { $0.missing = [remaining] })
+            #expect(recoveryEffect == nil)
+            for start in [RecordingEvent.userStart, .callStarted] {
+                let (held, startEffect) = RecordingReducer.reduce(partial, start)
+                #expect(held == changed(partial) { $0.callOn = start == .callStarted })
+                #expect(startEffect == nil)
+            }
+
+            let (ready, finalRecoveryEffect) = RecordingReducer.reduce(partial, .conditionChanged(remaining, available: true))
+            #expect(ready == RecordingState(automatic: true, missing: []))
+            #expect(finalRecoveryEffect == nil)
+            for start in [RecordingEvent.userStart, .callStarted] {
+                let (begun, startEffect) = RecordingReducer.reduce(ready, start)
+                #expect(begun.phase == .beginning)
+                #expect(begun.session == .init(id: 1, origin: start == .callStarted ? .call : .hand))
+                #expect(startEffect == .beginSession(id: 1))
+            }
+        }
+    }
 }
 
 private func changed(_ state: RecordingState, _ edit: (inout RecordingState) -> Void) -> RecordingState {

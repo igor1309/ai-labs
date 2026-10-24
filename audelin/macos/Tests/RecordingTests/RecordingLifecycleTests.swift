@@ -51,6 +51,33 @@ struct RecordingLifecycleTests {
         }
     }
 
+    @Test(arguments: [false, true])
+    func failureAfterSessionEndsStaysNamedUntilNextBegin(_ ready: Bool) async throws {
+
+        try await withRecording { rig in
+            try await rig.start(.hand, ready: ready)
+            try await rig.stop()
+            let idle = try await rig.finish()
+            await rig.session.fail(1, reason: "cannot keep audio")
+            await rig.settleEffects()
+            let failed = await rig.recording.snapshot()
+            #expect(failed.phase == .idle)
+            #expect(failed.session == nil)
+            #expect(failed.cannotRecord == "cannot keep audio")
+            var expected = idle
+            expected.cannotRecord = "cannot keep audio"
+            #expect(failed == expected)
+            #expect(await rig.session.values() == [.begin(1), .end(1)])
+            rig.recording.send(.conditionChanged(.microphoneAccess, available: false))
+            rig.recording.send(.automaticChanged(false))
+            #expect(await rig.recording.snapshot().cannotRecord == "cannot keep audio")
+            rig.recording.send(.conditionChanged(.microphoneAccess, available: true))
+            try await rig.start(.hand, id: 2)
+            #expect(await rig.recording.snapshot().cannotRecord == nil)
+            #expect(await rig.session.values() == [.begin(1), .end(1), .begin(2)])
+        }
+    }
+
     @Test(arguments: RecordingCondition.allCases)
     func deferredCallRechecksConditionsBeforeBeginning(_ condition: RecordingCondition) async throws {
 

@@ -132,7 +132,13 @@ public enum RecordingReducer {
             return (state, nil)
 
         case let .sessionReported(id, report):
-            guard state.session?.id == id else { return (state, nil) }
+            guard state.session?.id == id else {
+                if state.phase == .idle, id != 0, id == state.lastSessionID,
+                   case let .cannotRecord(reason) = report {
+                    state.cannotRecord = reason
+                }
+                return (state, nil)
+            }
             switch report {
             case .ready:
                 if state.phase == .beginning { state.phase = .recording }
