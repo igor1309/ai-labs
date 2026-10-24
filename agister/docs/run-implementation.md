@@ -1714,3 +1714,63 @@ Decisions, each with its reason:
 - Conditions stay the starting set (equals, present, all, any, and,
   or, not); settings already type them.
 - A workflow item stays not run: nothing needs one yet.
+
+## A workflow as an item
+
+A workflow item runs, in a sequence and in a parallel: home's
+`code_review`, its tests lens the workflow `tests_debate`, a draft and
+a private debate with a critic, in the slot the lens's one step held.
+
+**`core/workflow`** runs an item that is a workflow wherever an item
+runs, a parallel's children included (ADR-011, rules 2 and 3).
+
+- The item's **boundary** is the workflow's own: its params bound from
+  the item's bindings, read in the caller's scope, a param not bound
+  taking its default; its inputs resolved over those params, once,
+  before its first step. Its steps read that boundary and the outputs
+  and sessions of its own items, never the caller's; the caller reads
+  only the item's outputs, as an item's in sequence.
+- Its **outputs** are its output mapping, read once its steps have
+  completed. A workflow whose one output is named `output` gives that
+  value whole; any other gives the mapping. A step of it that does not
+  complete ends the item, as it ends a run.
+- A step inside is called, and told to the events, by the **item's
+  name, then its own**, `<item>/<step>`, a pass after it where it is in
+  a repeat (`tests/revise/1`); a branch or repeat inside is told the
+  same way (`tests/debate`). Its declared name to the caller is
+  `<item>/<step>`, so the composition's plan tells it from a caller's
+  step of the same name. Items nest: `<outer>/<item>/<step>`.
+- In a **parallel**, a workflow item runs its steps in sequence beside
+  the parallel's other children, counting as one toward `max`. Its slot
+  is `{"status", "class", "output"}` as a step's: the item's outputs
+  where it completed, else null, its class the failing step's.
+- Its calls' cost, usage, warnings and sessions count in the run's, as
+  a step's in sequence.
+
+**The composition** plans a workflow item's steps as it plans any step,
+each under its `<item>/<step>` name, and gives core the workflow's
+resolver of params and inputs, as it gives the run's. `notRunOf` no
+longer names a workflow item; a parallel's branch or repeat stays not
+run. `agister check` follows, as it shares that list.
+
+**Home** adds `tests_debate`, the processes `review_critique` and
+`review_revise`, the prompts `code-review-critic` and
+`code-review-revise`, and the schema `critique`; `code_review`'s tests
+slot names the workflow `tests_debate`. The judge's process, prompt and
+input do not change.
+
+Decisions, each with its reason:
+
+- The one output named `output` is given whole, as a step requested
+  alone makes its workflow's (ADR-013): a lens that is a workflow fills
+  its slot with a review, as a lens that is a step does; a mapping
+  around it would change what the join reads.
+- The item is run by core, not spread into the caller's plan by the
+  composition: the boundary is ADR-011's rule 3, and a spread plan would
+  let a caller's reference reach inside.
+- No event of its own for an item's start and end: its steps' events
+  name it, and a reader of `events.jsonl` finds it by that prefix.
+- A parallel's branch and repeat stay not run: nothing needs one yet;
+  a workflow item gives either a slot.
+- Resolve already checks an item's bindings against its workflow's
+  params, and refuses a cycle of named workflows; neither changes.
