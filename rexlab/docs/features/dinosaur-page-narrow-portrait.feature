@@ -33,7 +33,7 @@ Feature: A dinosaur's page in a tall-narrow window
       | 320   | 568    | 8           | 8    | iPhone SE      |
       | 375   | 667    | 6           | 6    | iPhone 8       |
       | 393   | 852    | 6           | 6    | iPhone 15      |
-      | 430   | 932    | 5           | 5    | iPhone 15 Plus |
+      | 430   | 932    | 5           | 6    | iPhone 15 Plus |
 
   Scenario Outline: Every word fits a phone's width
     Given the app is in <language>

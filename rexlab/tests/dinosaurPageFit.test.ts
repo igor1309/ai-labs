@@ -182,8 +182,9 @@ describe("portrait dinosaur words fit the kept bands", () => {
   });
 });
 
-// At 18 px, weight 600: the shipped Lexend advances for the English
-// labels, and the macOS system face's for the Russian, rounded up.
+// Each fact label's width in ems at weight 600, rounded up: in Lexend
+// for the English labels, and in the system face, which Lexend has no
+// Cyrillic for, for the Russian.
 const LABEL_EMS: Record<string, number> = {
   TALL: 2.54, WINGS: 3.74, LONG: 2.99, HEAVY: 3.5,
   РОСТ: 2.68, КРЫЛЬЯ: 4.12, ДЛИНА: 3.59, ВЕС: 1.93

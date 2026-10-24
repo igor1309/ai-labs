@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App, type Viewport } from "../src/App.tsx";
@@ -21,7 +21,8 @@ const PHONES = [
   [430, 932]
 ] as const;
 
-// At 20 px, weight 600: the shipped Lexend advances, rounded up.
+// Each glyph's advance in ems in the position's face, Lexend at weight
+// 600, rounded up.
 const POSITION_EMS: Record<string, number> = {
   "0": 0.66, "1": 0.55, "2": 0.55, "3": 0.58, "4": 0.65,
   "5": 0.59, "6": 0.58, "7": 0.55, "8": 0.6, "9": 0.57,
@@ -137,12 +138,15 @@ describe("a dinosaur's page in a tall-narrow window", () => {
     }
   });
 
-  it.each(["en", "ru"] as const)("keeps the same lines on every page in %s at 375 by 667", async (language) => {
-    const { user } = await openPage([375, 667], { language, id: SHIPPED_CATALOGUE[0]!.id });
-    for (const creature of SHIPPED_CATALOGUE.slice(0, 6)) {
+  it.each(["en", "ru"] as const)("keeps the same lines on all 52 pages in %s at 375 by 667", async (language) => {
+    // fireEvent drives the arrows through every creature without
+    // user-event's pointer machinery.
+    await openPage([375, 667], { language, id: SHIPPED_CATALOGUE[0]!.id });
+    expect(SHIPPED_CATALOGUE).toHaveLength(52);
+    for (const creature of SHIPPED_CATALOGUE) {
       expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(creature.name[language].toLocaleUpperCase(language));
       expect(pageLines()).toEqual({ description: 6, note: 6 });
-      await user.click(screen.getByRole("button", { name: TEXTS[language].nextDinosaur }));
+      fireEvent.click(screen.getByRole("button", { name: TEXTS[language].nextDinosaur }));
     }
   });
 
