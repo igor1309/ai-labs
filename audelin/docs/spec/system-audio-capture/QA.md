@@ -26,7 +26,7 @@ Native: rename writes a description with the same UUID. Evidence:
 
 Fake: tones survive an output change. Native: a change during install is caught by a second read after subscribing, serialized with format notifications; IO makes no native calls. A buffer at the switch can carry the previous rate to keep native calls off IO. Input samples stay in delivery order despite different output samples. Evidence:
 `SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`, `SystemAudioCaptureTests.anInFlightBufferKeepsItsRateAcrossAnOutputChange`,
-`NativeCaptureBindingTests.nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder`, `NativeCaptureBindingTests.nativeIOCallbackMakesNoNativeCalls`, `NativeCaptureBindingTests.nativeFormatChangeDuringInstallUsesSubscribedRate`.
+`NativeCaptureBindingTests.nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder`, `NativeCaptureBindingTests.nativeIOCallbackMakesNoNativeCalls`, `NativeCaptureBindingTests.nativeFormatChangeDuringInstallUsesSubscribedRate`, `NativeCaptureBindingTests.nativeHeldBufferSurvivesFormatFailure`.
 
 ## S-6 A capture that cannot start fails
 
@@ -39,13 +39,14 @@ Native: unavailable processes, unsupported formats and refused format subscripti
 
 Fake and native: stopped devices and unreadable formats fail after cleanup;
 the first failure survives a later stop. Native notifications require a matching subscription and read alive and running independently. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`, `NativeCaptureBindingTests.nativeStopNotificationsReadTheirOwnDeviceState`, `NativeCaptureBindingTests.nativeStopNotificationsRequireMatchingSubscriptions`,
-`SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`, `NativeCaptureBindingTests.nativeFormatFailuresKeepEarlierAudio`, `NativeCaptureBindingTests.nativeRefusedFormatNotificationsFailOnceAndSuppressLaterBuffers`, `NativeCaptureBindingTests.nativeFailedFormatReadNotificationFailsOnceAndSuppressesLaterBuffers`.
+`SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`, `NativeCaptureBindingTests.nativeFormatFailuresKeepEarlierAudio`, `NativeCaptureBindingTests.nativeRefusedFormatNotificationsFailOnceAndSuppressLaterBuffers`, `NativeCaptureBindingTests.nativeFailedFormatReadNotificationFailsOnceAndSuppressesLaterBuffers`, `NativeCaptureBindingTests.nativeHeldBufferSurvivesFormatFailure`.
 
 ## S-8 A failed capture keeps what it heard
 
-Fake: earlier pieces and IO held across a system stop precede the error. Evidence:
+Fake: earlier pieces and IO held across a system stop precede the error. Native: a buffer copied before a format failure survives it, and later buffers are suppressed. Evidence:
 `SystemAudioCaptureTests.aFailedCaptureKeepsEveryPieceItHeard`,
-`SystemAudioCaptureTests.anInFlightBufferPrecedesTheSystemStopError`.
+`SystemAudioCaptureTests.anInFlightBufferPrecedesTheSystemStopError`,
+`NativeCaptureBindingTests.nativeHeldBufferSurvivesFormatFailure`.
 
 ## S-9 Stopping ends the capture
 
@@ -96,5 +97,4 @@ throws. Evidence: `SystemAudioCaptureTests.aRefusedNamingKeepsTheFirstNaming`,
 
 Fake and native: the unmuted request retains the named tone. Evidence:
 `SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback`,
-`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`.
-Real: pending the user's Zoom call with audible far-side playback.
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`. Real: pending the user's Zoom call with audible far-side playback.

@@ -9,15 +9,17 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
     private let queue = DispatchQueue(label: "audelin.system-audio-events")
 
     private let native: CoreAudioCalls
+    private let afterIOBufferCopy: @Sendable () -> Void
 
     public convenience init() {
 
-        self.init(native: .system)
+        self.init(native: .system, afterIOBufferCopy: {})
     }
 
-    init(native: CoreAudioCalls) {
+    init(native: CoreAudioCalls, afterIOBufferCopy: @escaping @Sendable () -> Void = {}) {
 
         self.native = native
+        self.afterIOBufferCopy = afterIOBufferCopy
     }
 
     public func createTap(_ request: TapRequest) throws -> UInt32 {
@@ -118,7 +120,7 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
             rate.bits.store(try sampleRate(tap).bitPattern, ordering: .releasing)
         }
         var io: AudioDeviceIOProcID?
-        try check(native.createIO(&io, device, IOBlock { _, input, _, _, _ in
+        try check(native.createIO(&io, device, IOBlock { [afterIOBufferCopy] _, input, _, _, _ in
             let bits = rate.bits.load(ordering: .acquiring)
             guard bits != 0 else { return }
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
@@ -126,7 +128,7 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
                   buffer.mNumberChannels == 1, let data = buffer.mData else { return }
             let count = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size
             let samples = Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self), count: count))
-            guard rate.bits.load(ordering: .acquiring) != 0 else { return }
+            afterIOBufferCopy()
             receive(.success(AudioPiece(samples: samples, sampleRate: Double(bitPattern: bits))))
         }))
         guard let io else { throw CaptureError.stopped }

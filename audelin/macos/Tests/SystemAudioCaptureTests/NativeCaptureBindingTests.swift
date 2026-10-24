@@ -123,6 +123,63 @@ struct NativeCaptureBindingTests {
         try expectFormatFailure(format: .float32MonoLittleEndian, readRefused: true)
     }
 
+    @Test(arguments: [false, true])
+    func nativeHeldBufferSurvivesFormatFailure(readRefused: Bool) async throws {
+
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
+        let copied = AsyncStream<Void>.makeStream()
+        let release = DispatchSemaphore(value: 0)
+        defer { release.signal() }
+        let firstCopy = Mutex(true)
+        let binding = CoreAudioBinding(native: calls.native, afterIOBufferCopy: {
+            let hold = firstCopy.withLock {
+                guard $0 else { return false }
+                $0 = false
+                return true
+            }
+            guard hold else { return }
+            copied.continuation.yield(())
+            release.wait()
+        })
+        let tap = try binding.createTap(TapRequest(selection: .only([10]), mono: true, unmuted: true, isPrivate: true))
+        let device = try binding.createDevice(DeviceRequest(tap: tap, isPrivate: true, autoStart: false))
+        defer { binding.destroyDevice(device); binding.destroyTap(tap) }
+        let results = Mutex<[(Result<AudioPiece, any Error>, NativeThreadRole)]>([])
+        let io = try binding.installIO(device) { result in
+            results.withLock { $0.append((result, NativeThreadRole.current)) }
+        }
+        defer { binding.removeIO(device, io) }
+        let held = Task {
+            try calls.deliver(samples: [0.25])
+        }
+        var copiedIterator = copied.stream.makeAsyncIterator()
+        _ = await copiedIterator.next()
+        calls.state.withLock {
+            if readRefused {
+                $0.refuse = "format"
+            } else {
+                $0.format.mSampleRate = 0
+            }
+        }
+        try calls.notifyFormat()
+        try calls.notifyFormat()
+        try calls.deliver(samples: [0.5])
+        #expect(results.withLock { $0.count } == 1)
+        let failure = try #require(results.withLock { $0.first })
+        if case .failure(let error) = failure.0 {
+            #expect(error as? CaptureError == .unsupportedFormat)
+            #expect(failure.1 == .event)
+        } else {
+            Issue.record("The format notification must fail capture")
+        }
+        release.signal()
+        try await held.value
+        let delivered = results.withLock { $0 }
+        #expect(delivered.count == 2)
+        #expect(try delivered.last?.0.get().samples == [0.25])
+        #expect(try delivered.last?.0.get().sampleRate == 48_000)
+    }
+
     @Test func nativeFormatListenerIsRemovedBeforeIOAndIgnoresLateNotifications() throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
@@ -241,6 +298,7 @@ struct NativeCaptureBindingTests {
         } else {
             #expect(throws: CaptureError.unsupportedFormat) { try binding.sampleRate(11) }
         }
+        #expect(calls.state.withLock { $0.propertyReads } == [NativeAddress(kAudioTapPropertyFormat)])
     }
 
     @Test func nativeAggregateContainsOnlyItsPrivateManualTap() async throws {
@@ -268,6 +326,9 @@ struct NativeCaptureBindingTests {
         let watch = try binding.watchDevice(22) { stops.withLock { $0 += 1 } }
         defer { binding.unwatchDevice(22, watch) }
         let registration = try #require(calls.state.withLock { $0.listener })
+        #expect(registration.address.mSelector == kAudioObjectPropertySelectorWildcard)
+        #expect(registration.address.mScope == kAudioObjectPropertyScopeWildcard)
+        #expect(registration.address.mElement == kAudioObjectPropertyElementWildcard)
         calls.state.withLock {
             $0.alive = deviceState == .runningOnly ? 0 : 1
             $0.running = deviceState == .aliveOnly ? 0 : 1
@@ -368,6 +429,7 @@ struct NativeCaptureBindingTests {
         case .allExcept(let excluded): pids = excluded; exclusive = true
         }
         #expect(calls.state.withLock { $0.translated } == pids)
+        #expect(calls.state.withLock { $0.propertyReads } == pids.map { _ in NativeAddress(kAudioHardwarePropertyTranslatePIDToProcessObject) })
         #expect(description.processes == pids.map { UInt32($0 + 100) })
         #expect(description.exclusive == exclusive)
         #expect(description.mixdown && description.mono && description.unmuted && description.isPrivate)
@@ -385,6 +447,7 @@ struct NativeCaptureBindingTests {
         #expect(written.uuid == created.uuid)
         #expect(written.processes == [130, 140])
         #expect(written.exclusive && written.mixdown && written.mono && written.unmuted && written.isPrivate)
+        #expect(calls.state.withLock { $0.writeAddresses } == [NativeAddress(kAudioTapPropertyDescription)])
         #expect(calls.state.withLock { $0.events } == ["tap", "device", "format", "format", "format watch", "io", "watch", "start", "write", "stop", "unwatch", "format unwatch", "remove io", "destroy device", "destroy tap"])
     }
 
@@ -430,10 +493,10 @@ enum StopNotification: CaseIterable, Sendable {
         }
     }
 
-    var expectedReads: [AudioObjectPropertySelector] {
+    fileprivate var expectedReads: [NativeAddress] {
 
         switch self {
-        case .alive, .running: [selector]
+        case .alive, .running: [NativeAddress(selector)]
         case .abnormal, .unrelated, .afterUnwatch: []
         }
     }
@@ -522,6 +585,28 @@ private struct ListenerIdentity: Equatable, Sendable {
     }
 }
 
+fileprivate struct NativeAddress: Equatable, Sendable {
+
+    let selector: UInt32
+    let scope: UInt32
+    let element: UInt32
+
+    init(_ address: AudioObjectPropertyAddress) {
+
+        selector = address.mSelector
+        scope = address.mScope
+        element = address.mElement
+    }
+
+    init(_ selector: AudioObjectPropertySelector) {
+
+        self.init(AudioObjectPropertyAddress(
+            mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        ))
+    }
+}
+
 private enum NativeResource: Equatable, Sendable {
 
     case tap(UInt32)
@@ -587,7 +672,8 @@ private final class RecordingCaptureCalls: Sendable {
         var running: UInt32 = 1
         var aliveStatus: Int32 = 0
         var runningStatus: Int32 = 0
-        var propertyReads: [AudioObjectPropertySelector] = []
+        var propertyReads: [NativeAddress] = []
+        var writeAddresses: [NativeAddress] = []
         var writeStatus: Int32 = 0
         var format: AudioStreamBasicDescription
     }
@@ -732,6 +818,7 @@ private final class RecordingCaptureCalls: Sendable {
             destroyDevice: { [self] in release(.device($0), "destroy device") },
             read: { [self] object, address, qualifierSize, qualifier, size, data in
                 record("read")
+                state.withLock { $0.propertyReads.append(NativeAddress(address)) }
                 switch address.mSelector {
                 case kAudioHardwarePropertyTranslatePIDToProcessObject:
                     #expect(object == kAudioObjectSystemObject)
@@ -762,7 +849,6 @@ private final class RecordingCaptureCalls: Sendable {
                 case kAudioDevicePropertyDeviceIsAlive, kAudioDevicePropertyDeviceIsRunning:
                     #expect(object == 22)
                     let result = state.withLock {
-                        $0.propertyReads.append(address.mSelector)
                         return address.mSelector == kAudioDevicePropertyDeviceIsAlive
                             ? ($0.alive, $0.aliveStatus) : ($0.running, $0.runningStatus)
                     }
@@ -775,12 +861,14 @@ private final class RecordingCaptureCalls: Sendable {
             },
             write: { [self] tap, address, size, data in
                 record("write")
-                #expect(tap == 11 && address.mSelector == kAudioTapPropertyDescription)
+                #expect(tap == 11)
+                #expect(NativeAddress(address) == NativeAddress(kAudioTapPropertyDescription))
                 #expect(size == MemoryLayout<UnsafeMutableRawPointer>.size)
                 let pointer = data.load(as: UnsafeMutableRawPointer.self)
                 let description = Unmanaged<CATapDescription>.fromOpaque(pointer).takeUnretainedValue()
                 return state.withLock {
                     $0.events.append("write")
+                    $0.writeAddresses.append(NativeAddress(address))
                     $0.written.append(TapSnapshot(description))
                     return $0.writeStatus
                 }
