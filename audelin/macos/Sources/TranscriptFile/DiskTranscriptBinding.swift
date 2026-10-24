@@ -17,14 +17,19 @@ package protocol TranscriptFileHandle: Sendable {
 
 package struct DiskTranscriptBinding: TranscriptFileBinding {
 
-    package init() {}
+    /// Returns zero or sets `errno`, as `fsync` does.
+    package typealias Sync = @Sendable (Int32) -> Int32
+
+    private let sync: Sync
+
+    package init(sync: @escaping Sync = { fsync($0) }) { self.sync = sync }
 
     package func create(at url: URL) throws -> any TranscriptFileHandle {
 
         guard url.isFileURL else { throw POSIXError(.EINVAL) }
         let descriptor = Darwin.open(url.path, O_CREAT | O_EXCL | O_NOFOLLOW | O_WRONLY | O_CLOEXEC, 0o600)
         guard descriptor >= 0 else { throw currentError() }
-        return DiskTranscriptHandle(descriptor: descriptor)
+        return DiskTranscriptHandle(descriptor: descriptor, sync: sync)
     }
 
     package func rename(from source: URL, to target: URL) throws {
@@ -38,8 +43,13 @@ package struct DiskTranscriptBinding: TranscriptFileBinding {
 private final class DiskTranscriptHandle: TranscriptFileHandle {
 
     private let descriptor: Int32
+    private let sync: DiskTranscriptBinding.Sync
 
-    init(descriptor: Int32) { self.descriptor = descriptor }
+    init(descriptor: Int32, sync: @escaping DiskTranscriptBinding.Sync) {
+
+        self.descriptor = descriptor
+        self.sync = sync
+    }
 
     deinit { Darwin.close(descriptor) }
 
@@ -61,7 +71,7 @@ private final class DiskTranscriptHandle: TranscriptFileHandle {
 
     func flush() throws {
 
-        while fsync(descriptor) != 0 {
+        while sync(descriptor) != 0 {
             if errno == EINTR { continue }
             throw currentError()
         }
