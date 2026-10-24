@@ -4,6 +4,29 @@ import Testing
 
 struct SystemAudioCaptureTests {
 
+    @Test func silentBuffersBeforeBetweenAndAfterTonesReachTheStream() async throws {
+
+        let binding = FakeCaptureBinding()
+        let capture = try SystemAudioCapture(binding: binding, processes: .only([10, 20]))
+        binding.play([])
+        binding.play([10])
+        binding.changeRate(to: 24_000)
+        binding.play([])
+        binding.play([20])
+        binding.changeRate(to: 16_000)
+        binding.play([])
+        capture.stop()
+        let pieces = try await drain(capture)
+        #expect(pieces.map(\.samples) == [
+            [Float](repeating: 0, count: 480),
+            (0..<480).map { tone(10, frame: $0, rate: 48_000) },
+            [Float](repeating: 0, count: 240),
+            (0..<240).map { tone(20, frame: $0, rate: 24_000) },
+            [Float](repeating: 0, count: 160),
+        ])
+        #expect(pieces.map(\.sampleRate) == [48_000, 48_000, 24_000, 24_000, 16_000])
+    }
+
     @Test func anInFlightBufferPrecedesTheSystemStopError() async throws {
 
         let binding = FakeCaptureBinding()

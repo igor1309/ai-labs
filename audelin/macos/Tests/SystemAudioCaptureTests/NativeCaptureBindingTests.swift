@@ -821,6 +821,7 @@ private final class RecordingCaptureCalls: Sendable {
                 state.withLock { $0.propertyReads.append(NativeAddress(address)) }
                 switch address.mSelector {
                 case kAudioHardwarePropertyTranslatePIDToProcessObject:
+                    #expect(size == MemoryLayout<AudioObjectID>.size)
                     #expect(object == kAudioObjectSystemObject)
                     #expect(qualifierSize == MemoryLayout<Int32>.size)
                     let pid = qualifier!.load(as: Int32.self)
@@ -830,6 +831,7 @@ private final class RecordingCaptureCalls: Sendable {
                     }
                     data.storeBytes(of: process, as: UInt32.self)
                 case kAudioTapPropertyFormat:
+                    #expect(size == MemoryLayout<AudioStreamBasicDescription>.size)
                     #expect(object == 11)
                     if let queue = state.withLock({ $0.formatListener?.queue }) {
                         dispatchPrecondition(condition: .onQueue(queue))
@@ -847,6 +849,7 @@ private final class RecordingCaptureCalls: Sendable {
                     let format = state.withLock { $0.format }
                     data.storeBytes(of: format, as: AudioStreamBasicDescription.self)
                 case kAudioDevicePropertyDeviceIsAlive, kAudioDevicePropertyDeviceIsRunning:
+                    #expect(size == MemoryLayout<UInt32>.size)
                     #expect(object == 22)
                     let result = state.withLock {
                         return address.mSelector == kAudioDevicePropertyDeviceIsAlive
