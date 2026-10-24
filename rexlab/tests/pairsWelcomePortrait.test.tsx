@@ -5,7 +5,7 @@ import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { UPRIGHT_LEVEL_SWITCH } from "../src/levelSwitchLayout.ts";
-import { pairsWelcomeGeometry, pairsWelcomeType, pairsWelcomeWidth, PORTRAIT_WELCOME } from "../src/pairsWelcomeLayout.ts";
+import { NARROW_WELCOME, pairsWelcomeGeometry, pairsWelcomeType, pairsWelcomeWidth, PORTRAIT_WELCOME, type WelcomeSizes } from "../src/pairsWelcomeLayout.ts";
 import { endWave, openPairsApp, pairsRecord, PICKED_HATCHLING, playBoard } from "./pairsApp.tsx";
 import { appStylesheet, NO_SAFE_AREA, type SafeArea } from "./stylesheet.ts";
 import { gameDoor, manualViewport, memoryStorage, type ManualViewport } from "./support.ts";
@@ -44,11 +44,11 @@ const classesOf = (element: Element) => [...element.children].map((child) => chi
 // Find the pair opened at Hatchling on its climb's second level, five
 // stars earned.
 async function openWelcome(size: WindowSize, {
-  language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets)
-}: { language?: Language; insets?: SafeArea; viewport?: ManualViewport } = {}) {
+  language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets), layouts = PORTRAIT_LAYOUTS
+}: { language?: Language; insets?: SafeArea; viewport?: ManualViewport; layouts?: PortraitLayouts } = {}) {
   openWindow(...size);
   const storage = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 5, level: 2, boardsOnLevel: 0, best: {}, found: [] }) });
-  const app = openPairsApp({ storage, viewport, portraitLayouts: PORTRAIT_LAYOUTS, deviceLanguage: DEVICES[language], ageLevel: PICKED_HATCHLING });
+  const app = openPairsApp({ storage, viewport, portraitLayouts: layouts, deviceLanguage: DEVICES[language], ageLevel: PICKED_HATCHLING });
   await app.user.click(gameDoor(TEXTS[language].pairs));
   return { ...app, viewport };
 }
@@ -58,8 +58,8 @@ const shownType = () => {
   const { style } = part(".pairs-welcome");
   return { title: style.getPropertyValue("--pairs-title-size"), levelName: style.getPropertyValue("--level-name-size") };
 };
-const typeOf = (width: number) => {
-  const type = pairsWelcomeType(width);
+const typeOf = (width: number, sizes: WelcomeSizes = PORTRAIT_WELCOME) => {
+  const type = pairsWelcomeType(width, sizes);
   return { title: `${type.title}px`, levelName: `${type.levelName}px` };
 };
 
@@ -78,8 +78,7 @@ function cardRule(size: WindowSize) {
 // The CSS contracts under which the geometry's sums hold. jsdom does not
 // lay out boxes, so every structural assumption is checked here, and what
 // the cards' rule takes from the height is summed from the stylesheet.
-function uprightRules(size: WindowSize, width: number) {
-  const sizes = PORTRAIT_WELCOME;
+function uprightRules(size: WindowSize, width: number, sizes: WelcomeSizes = PORTRAIT_WELCOME) {
   const at = (selector: string) => styleAt(part(selector), size);
   const welcome = at(".pairs-welcome");
   expect(classesOf(part(".pairs-welcome"))).toEqual(["stratum stratum-1", "pairs-welcome-bar", "pairs-welcome-body"]);
@@ -87,8 +86,8 @@ function uprightRules(size: WindowSize, width: number) {
   expect([welcome.px("padding-top"), welcome.px("padding-bottom"), welcome.px("padding-left"), welcome.px("padding-right")]).toEqual([sizes.topPadding, sizes.bottomPadding, sizes.sidePadding, sizes.sidePadding]);
   expect([welcome.px("min-height"), welcome.value("height"), welcome.value("overflow")]).toEqual([size[1], "auto", "hidden"]);
   // The type for the window, as the geometry gives it.
-  expect(shownType()).toEqual(typeOf(width));
-  const type = pairsWelcomeType(width);
+  expect(shownType()).toEqual(typeOf(width, sizes));
+  const type = pairsWelcomeType(width, sizes);
   const bar = at(".home-button");
   const body = at(".pairs-welcome-body");
   expect(classesOf(part(".pairs-welcome-body"))).toEqual(["pairs-hero", "pairs-start"]);
@@ -132,7 +131,7 @@ function uprightRules(size: WindowSize, width: number) {
   // the bar and its gap, the cards' gap and the column, as the stylesheet
   // sizes them, and the geometry's stack is that column.
   const stack = mark.px("height") + chips[0]! + levels.px("padding-top") + switchSizes.level + levels.px("padding-bottom") + play.px("height") + 3 * start.rowGap();
-  const geometry = pairsWelcomeGeometry(size[0], size[1], 0, 0, size[0] - 2 * sizes.sidePadding - width);
+  const geometry = pairsWelcomeGeometry(size[0], size[1], 0, 0, size[0] - 2 * sizes.sidePadding - width, sizes);
   expect(stack).toBe(geometry.stack);
   const card = cardRule(size);
   expect(card.taken).toBe(welcome.px("padding-top") + welcome.px("padding-bottom") + bar.px("height") + welcome.rowGap() + body.rowGap() + stack);
@@ -210,15 +209,14 @@ describe("find the pair's welcome upright", () => {
     expect([part(".pairs-welcome").isConnected, gateShown()]).toEqual([true, false]);
   });
 
-  it("fades the picture asking to turn over the welcome as a tall window narrows", async () => {
+  it("takes the phone's sizes as a tall window narrows, asking nothing", async () => {
     const viewport = manualViewport("portrait");
-    await openWelcome([820, 1180], { viewport });
+    await openWelcome([820, 1180], { viewport, layouts: NARROW_LAYOUTS });
     const welcome = part(".pairs-welcome");
     openWindow(393, 852);
     act(() => viewport.resize("tall-narrow", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-    expect(screen.getByRole("img", { name: TEXTS.en.turnSideways })).toBeDefined();
-    expect(part(".pairs-welcome")).toBe(welcome);
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert"), part(".pairs-welcome")]).toEqual(["tall-narrow", false, false, welcome]);
+    expect(shownType()).toEqual(typeOf(pairsWelcomeWidth(393, 0, 0, 0, NARROW_WELCOME), NARROW_WELCOME));
   });
 
   it("keeps the landscape welcome as it was", async () => {
@@ -248,5 +246,48 @@ describe("find the pair's welcome upright", () => {
     expect(card.at(pairsWelcomeWidth(744, 19, 13))).toBeCloseTo(Math.min(280, 0.32 * 648, 0.75 * (1133 - 620 - 44)), 6);
     expect(getComputedStyle(document.body).margin).toBe("0px");
     expect(gateShown()).toBe(false);
+  });
+});
+
+// find-the-pair-welcome-narrow-portrait.feature: an iPhone upright.
+const NARROW_LAYOUTS: PortraitLayouts = { ...PORTRAIT_LAYOUTS, home: ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"] };
+const narrowViewport = () => {
+  const viewport = manualViewport("portrait");
+  viewport.resize("tall-narrow", true);
+  return viewport;
+};
+
+// Each phone's window, its cards' width and whether the screen scrolls.
+const PHONES = [
+  [320, 568, 80, true],
+  [375, 667, 107, false],
+  [393, 759, 113, false],
+  [393, 852, 113, false],
+  [430, 932, 125, false]
+] as const;
+
+describe("find the pair's welcome in a tall-narrow window", () => {
+  it.each(PHONES)("stands upright at %i by %i, its cards %i wide, scrolling %s", async (width, height, card, scrolls) => {
+    await openWelcome([width, height], { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+    expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
+    const geometry = pairsWelcomeGeometry(width, height, 0, 0, 0, NARROW_WELCOME);
+    expect(Math.abs(geometry.card.width - card)).toBeLessThanOrEqual(1);
+    expect(geometry.scrolls).toBe(scrolls);
+    uprightRules([width, height], pairsWelcomeWidth(width, 0, 0, 0, NARROW_WELCOME), NARROW_WELCOME);
+  });
+
+  it("shows HOME as its house, a 56-pixel square still named for screen readers", async () => {
+    await openWelcome([393, 852], { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    const home = screen.getByRole("button", { name: TEXTS.en.home });
+    expect(styleAt(part(".narrow-hidden", home), [393, 852]).value("position")).toBe("absolute");
+    const style = styleAt(home, [393, 852]);
+    expect([style.px("width"), style.px("height"), style.px("padding-left"), style.px("padding-right")]).toEqual([56, 56, 16, 16]);
+  });
+
+  it("folds the climb level away with the chips' 8-pixel gap", async () => {
+    const { user } = await openWelcome([393, 852], { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    await user.click(within(levelSwitch()).getByRole("button", { name: TEXTS.en.ageLevels.explorer.name }));
+    expect([styleAt(part(".pairs-climb"), [393, 852]).value("margin-right"), styleAt(part(".pairs-chips"), [393, 852]).columnGap()]).toEqual(["-8px", 8]);
   });
 });

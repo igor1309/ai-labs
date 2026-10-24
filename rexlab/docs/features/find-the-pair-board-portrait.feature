@@ -3,8 +3,8 @@ Feature: Find the pair: the board in a tall window
   upright, a Stage Manager or tall Mac window), find the pair's board
   stands upright: the bar on top, the board under it, centred, its grid
   turned on its side. The rest is as find-the-pair-board.feature and
-  find-the-pair-levels.feature tell. A tall-narrow window keeps the
-  picture asking to turn or widen (window-shape.feature).
+  find-the-pair-levels.feature tell. A tall-narrow window has its
+  own sizes (find-the-pair-board-narrow-portrait.feature).
 
   The grid turns on its side: a board of R rows and C columns stands in
   C rows and R columns, each card keeping its neighbours, so the top

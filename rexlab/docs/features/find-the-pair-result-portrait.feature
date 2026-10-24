@@ -6,8 +6,8 @@ Feature: Find the pair: the result in a tall window
   earned, "WELL DONE!", the best and the actions, "PLAY AGAIN", "BACK"
   and "HOME" side by side. The rest is as find-the-pair-result.feature,
   find-the-pair-level-offer-result.feature and
-  find-the-pair-collection.feature tell. A tall-narrow window keeps the
-  picture asking to turn or widen (window-shape.feature).
+  find-the-pair-collection.feature tell. A tall-narrow window has its
+  own sizes (find-the-pair-result-narrow-portrait.feature).
 
   The result's padding is 32 and its parts stand 16 apart, the
   dinosaurs 20 above the rest. "The width" is the window's less its side

@@ -28,8 +28,35 @@ export const PORTRAIT_PAIRS_RESULT = {
   // PLAY AGAIN, BACK and HOME together in ems of their bold face, the
   // wider of either language: Russian's, as the result's fit test
   // measures them. One type per window fits both.
-  actionsEms: 13.6
-} as const;
+  actionsEms: 13.6,
+  // Upright on a phone PLAY AGAIN stands over BACK and HOME, which share
+  // a row: the wider of either language's words in ems, as the result's
+  // fit test measures them.
+  stackedActions: false as boolean,
+  playEms: 7.2,
+  pairEms: 4.1
+};
+
+// In a tall-narrow window, an iPhone upright: 20 a side, the column 12
+// apart, a smaller hand, stars and title, the cards down to 64 tall and
+// 8 apart, and the actions on two rows of 64, at most 22.
+export const NARROW_PAIRS_RESULT = {
+  ...PORTRAIT_PAIRS_RESULT,
+  padding: 20,
+  foundGap: 16,
+  gap: 12,
+  cardsGap: 8,
+  cardMinimum: 64,
+  triesShare: 0.12,
+  hand: 64,
+  stars: 40,
+  title: 34 * 1.2,
+  actions: 2 * 64 + 10,
+  actionMaximum: 22,
+  stackedActions: true
+};
+
+export type PairsResultSizes = typeof PORTRAIT_PAIRS_RESULT;
 
 // What the stylesheet cannot work out itself, as each depends on the
 // width the window leaves: the tallest a card may stand, its landscape
@@ -41,9 +68,9 @@ export type PairsResultType = { cardMaximum: number; action: number };
 export type UprightResult = { count: number; badgeRows: 0 | 1 | 2 };
 
 // The result's width is the window less safe-area insets, the screen's
-// 32px padding a side and any scrollbar reserved by the layout viewport.
-export function pairsResultWidth(windowWidth: number, leftInset: number, rightInset: number, scrollbar = 0): number {
-  return Math.max(0, windowWidth - leftInset - rightInset - 2 * PORTRAIT_PAIRS_RESULT.padding - scrollbar);
+// padding a side and any scrollbar reserved by the layout viewport.
+export function pairsResultWidth(windowWidth: number, leftInset: number, rightInset: number, scrollbar = 0, sizes: PairsResultSizes = PORTRAIT_PAIRS_RESULT): number {
+  return Math.max(0, windowWidth - leftInset - rightInset - 2 * sizes.padding - scrollbar);
 }
 
 // The dinosaurs stand three across, two across for four.
@@ -51,8 +78,7 @@ export const pairsResultColumns = (count: number) => (count === 4 ? 2 : 3);
 
 // A card's width when `count` dinosaurs stand across a result `width`
 // wide, the grid at most its maximum.
-function cardWidth(width: number, count: number): number {
-  const sizes = PORTRAIT_PAIRS_RESULT;
+function cardWidth(width: number, count: number, sizes: PairsResultSizes): number {
   const columns = pairsResultColumns(count);
   return Math.max(0, Math.min(sizes.foundMaximum, width) - (columns - 1) * sizes.cardsGap) / columns;
 }
@@ -62,14 +88,16 @@ function cardWidth(width: number, count: number): number {
 // width as app.css sizes it; and the type that lets the three actions,
 // their symbols, gaps and sides fit the width in either language, at
 // most its maximum.
-export function pairsResultType(width: number, count: number): PairsResultType {
-  const sizes = PORTRAIT_PAIRS_RESULT;
-  const card = cardWidth(width, count);
+export function pairsResultType(width: number, count: number, sizes: PairsResultSizes = PORTRAIT_PAIRS_RESULT): PairsResultType {
+  const card = cardWidth(width, count, sizes);
   const name = Math.min(sizes.nameMaximum, Math.max(0, card - 2 * sizes.namePadding) / sizes.nameEms);
-  const actionsRoom = width - 3 * (sizes.actionIcon + sizes.actionInnerGap + 2 * sizes.actionSidePadding) - 2 * sizes.actionsGap;
+  const chrome = sizes.actionIcon + sizes.actionInnerGap + 2 * sizes.actionSidePadding;
+  const action = sizes.stackedActions
+    ? Math.min(Math.max(0, width - chrome) / sizes.playEms, Math.max(0, (width - sizes.actionsGap) / 2 - chrome) / sizes.pairEms)
+    : Math.max(0, width - 3 * chrome - 2 * sizes.actionsGap) / sizes.actionsEms;
   return {
     cardMaximum: card / sizes.artRatio + 2 * sizes.namePadding + sizes.nameLineHeight * name,
-    action: Math.min(sizes.actionMaximum, Math.max(0, actionsRoom) / sizes.actionsEms)
+    action: Math.min(sizes.actionMaximum, action)
   };
 }
 
@@ -80,10 +108,9 @@ export function pairsResultType(width: number, count: number): PairsResultType {
 // "WELL DONE!", the best and the actions; the cards' rows share the height
 // it leaves, each card within its landscape shape and never under its
 // minimum: below that the whole screen scrolls.
-export function pairsResultGeometry(result: UprightResult, windowWidth: number, windowHeight: number, leftInset: number, rightInset: number, scrollbar = 0) {
-  const sizes = PORTRAIT_PAIRS_RESULT;
-  const width = pairsResultWidth(windowWidth, leftInset, rightInset, scrollbar);
-  const type = pairsResultType(width, result.count);
+export function pairsResultGeometry(result: UprightResult, windowWidth: number, windowHeight: number, leftInset: number, rightInset: number, scrollbar = 0, sizes: PairsResultSizes = PORTRAIT_PAIRS_RESULT) {
+  const width = pairsResultWidth(windowWidth, leftInset, rightInset, scrollbar, sizes);
+  const type = pairsResultType(width, result.count, sizes);
   const columns = pairsResultColumns(result.count);
   const rows = Math.ceil(result.count / columns);
   const tries = Math.min(sizes.triesMaximum, sizes.triesShare * windowHeight);
@@ -93,7 +120,7 @@ export function pairsResultGeometry(result: UprightResult, windowWidth: number, 
   const byHeight = (available - (rows - 1) * sizes.cardsGap) / rows;
   return {
     width, type, columns, rows, tries, column,
-    card: { width: cardWidth(width, result.count), height: Math.max(sizes.cardMinimum, Math.min(type.cardMaximum, byHeight)) },
+    card: { width: cardWidth(width, result.count, sizes), height: Math.max(sizes.cardMinimum, Math.min(type.cardMaximum, byHeight)) },
     scrolls: byHeight < sizes.cardMinimum
   };
 }
