@@ -12,8 +12,8 @@ Feature: The dinosaur catalogue in a tall window
   sizes. The rest is as catalogue.feature and
   catalogue-food-filter.feature tell; a turn is in
   catalogue-turn.feature, and a dinosaur's page upright in
-  dinosaur-page-portrait.feature. A tall-narrow window keeps the picture
-  asking to turn or widen (window-shape.feature).
+  dinosaur-page-portrait.feature. A tall-narrow window, under 600 wide,
+  has its own layout.
 
   The chips keep their landscape look: 56 pixels tall, "ALL" a round
   button, each food chip's symbols, word and count on one line at their
@@ -77,10 +77,11 @@ Feature: The dinosaur catalogue in a tall window
     When I tap "ALL"
     Then I see all 52 cards
 
-  Scenario: A tall-narrow window still shows the picture over the list
+  Scenario: A tall-narrow window stands the list one card to a row
     Given a window of 820 by 1180 CSS pixels on the list of every dinosaur, the device's screen upright
     When the window becomes 393 by 852 CSS pixels
-    Then the picture asking to turn sideways fades in over the list
+    Then no picture asks me to turn or widen the window
+    And the cards stand one to a row
 
   Scenario: Safe areas stay clear upright
     Given a window of 744 by 1133 CSS pixels on a device with rounded corners and a home indicator

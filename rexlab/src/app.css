@@ -2365,8 +2365,8 @@ html[data-size="tall-narrow"] .catalogue-bar {
 
 html[data-size="tall-narrow"] .food-chips {
   align-self: stretch;
-  margin: -8px -20px;
-  padding: 8px 20px;
+  margin: -10px -20px -22px;
+  padding: 10px 20px 22px;
   overflow-x: auto;
   overscroll-behavior: none;
   scrollbar-width: none;

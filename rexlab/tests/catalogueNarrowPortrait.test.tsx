@@ -98,6 +98,11 @@ async function openNarrow(width: number, height: number, language: Language = "e
 function cardWidth(size: WindowSize, language: Language = "en") {
   const list = grid(language);
   const at = styleAt(list, size);
+  // The page and its list fill the window across, no rule sizing them.
+  for (const box of [part(".catalogue"), list]) {
+    const boxAt = styleAt(box, size);
+    expect([boxAt.value("width") || "auto", boxAt.value("max-width") || "none", boxAt.px("margin-left"), boxAt.px("margin-right")]).toEqual(["auto", "none", 0, 0]);
+  }
   expect([at.value("display"), at.value("grid-template-columns"), at.px("margin-left"), at.px("margin-right")]).toEqual(["grid", "repeat(var(--columns), minmax(0, 1fr))", 0, 0]);
   for (const card of cards(language).slice(0, 2)) {
     const cardAt = styleAt(card, size);
@@ -106,6 +111,22 @@ function cardWidth(size: WindowSize, language: Language = "en") {
   const columns = Number(getComputedStyle(list).getPropertyValue("--columns"));
   const main = getComputedStyle(part(".catalogue"));
   return (size[0] - px(main.paddingLeft) - px(main.paddingRight) - at.px("padding-left") - at.px("padding-right") - at.columnGap() * (columns - 1)) / columns;
+}
+
+// How far the chosen chip's shadow reaches above and below it, the most
+// of the light and dark themes: its offset taken from its blur.
+function shadowReach(): [number, number] {
+  const chosen = part(".food-chip[aria-pressed='true']");
+  const root = document.documentElement;
+  const theme = root.dataset.theme;
+  const reach = (["light", "dark"] as const).reduce<[number, number]>(([above, below], each) => {
+    root.dataset.theme = each;
+    const [, y = NaN, blur = NaN] = getComputedStyle(chosen).boxShadow.split(/\s+/).map((word) => parseFloat(word));
+    return [Math.max(above, blur - y), Math.max(below, blur + y)];
+  }, [0, 0]);
+  if (theme === undefined) delete root.dataset.theme;
+  else root.dataset.theme = theme;
+  return reach;
 }
 
 describe("the catalogue in a tall-narrow window", () => {
@@ -138,8 +159,11 @@ describe("the catalogue in a tall-narrow window", () => {
     // From the window's left edge to its right: the bar's 20-pixel sides
     // given back, and the chips' first and last 20 in from the edges.
     expect(["margin-left", "margin-right", "padding-left", "padding-right"].map((property) => style.px(property))).toEqual([-20, -20, 20, 20]);
-    // Room for the chosen chip's shadow above and below, given back.
-    expect(["margin-top", "margin-bottom", "padding-top", "padding-bottom"].map((property) => style.px(property))).toEqual([-8, -8, 8, 8]);
+    // Room for the chosen chip's shadow above and below, in either theme,
+    // given back: a scroller clips what overflows its padding.
+    const [above, below] = shadowReach();
+    expect([style.px("padding-top") >= above, style.px("padding-bottom") >= below]).toEqual([true, true]);
+    expect([style.px("margin-top"), style.px("margin-bottom")]).toEqual([-style.px("padding-top"), -style.px("padding-bottom")]);
     expect(style.columnGap()).toBe(12);
     for (const chip of chips()) {
       const chipStyle = styleAt(chip, size);

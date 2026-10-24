@@ -125,7 +125,7 @@ function boxFor(element: Element, width: number, height: number, size: SizeClass
   const list = listGeometry(width, height, size, document.querySelectorAll(".catalogue-card").length || IDS.length);
   if (name === "catalogue-home") return size === "tall" ? { left: 40, top: 40, width: 130, height: 56 } : size === "tall-narrow" ? { left: 20, top: 40, width: 130, height: 56 } : { left: 56, top: 40, width: 130, height: 56 };
   if (name === "catalogue-chips") {
-    if (size === "tall-narrow") return { left: 0, top: 112, width, height: 72 };
+    if (size === "tall-narrow") return { left: 0, top: 102, width, height: 88 };
     if (size !== "tall") return { left: 200, top: 40, width: width - 256, height: 56 };
     const arrangement = (element as HTMLElement).dataset.arrangement;
     return { left: 56, top: 120, width: width - 112, height: arrangement === "stacked" ? 124 : 56 };
