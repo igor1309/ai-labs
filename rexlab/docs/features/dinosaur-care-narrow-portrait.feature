@@ -11,6 +11,7 @@ Feature: Dinosaur care in a tall-narrow window
     When I open care
     Then I see no picture asking to turn sideways or to make the window wider
     And NEW VISITOR stands over FRIENDS, every word on one line
+    And FRIENDS' count of friends fits beside its title, even at two digits
 
     Examples:
       | width | height | language |
@@ -25,6 +26,7 @@ Feature: Dinosaur care in a tall-narrow window
     Then HOME and the hearts share the bar's first row, the four needs its second
     And the five items stand in one row as their pictures alone, each at least 44 wide
     And the stage keeps at least 200 pixels of height for the visitor
+    And a window too short for that scrolls
 
     Examples:
       | width | height | language |
@@ -37,6 +39,7 @@ Feature: Dinosaur care in a tall-narrow window
     And a window of <width> by <height> CSS pixels
     When I open FRIENDS
     Then the cards stand two to a row
+    And BACK, HOME and the count of friends share the bar's first row, the title kept for screen readers
     And every shipped name fits its card's three lines
 
     Examples:
@@ -62,3 +65,14 @@ Feature: Dinosaur care in a tall-narrow window
     Given a visit upright in a tall window
     When the window narrows to 393 by 852
     Then the visit stays, in the phone's sizes, with no picture asking to turn
+
+  Scenario: FRIENDS with no friends yet fits a phone
+    Given a child with no friends yet
+    And a window of 320 by 568 CSS pixels
+    When I open FRIENDS
+    Then the empty nest, its words and NEW VISITOR fit inside the screen
+
+  Scenario: FRIENDS keeps its place as the window narrows to a phone
+    Given FRIENDS scrolled to the row of the 21st friend in a wide or tall window
+    When the window narrows to 393 by 852
+    Then the list stands at the 21st friend's row, two cards to a row

@@ -4,8 +4,7 @@ Feature: Care: a visit in a tall window
   the hearts across the top, the visitor on a stage as wide as the
   window leaves it, its name above the need's bubble, and the five
   items to give in one row under it. The rest is as
-  dinosaur-care-visit.feature tells. A tall-narrow window has its own sizes
-  (dinosaur-care-narrow-portrait.feature).
+  dinosaur-care-visit.feature tells. A tall-narrow window has its own sizes.
 
   Scenario Outline: A visit stands upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room

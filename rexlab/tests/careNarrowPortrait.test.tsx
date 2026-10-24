@@ -30,6 +30,8 @@ const gateShown = () => part(".orientation-gate").hasAttribute("data-shown");
 // jsdom does not lay out: capitals at a conservative 0.8 em with their
 // spacing.
 const capitalsWidth = (words: string, style: ReturnType<typeof styleAt>) => words.length * (style.px("font-size") * 0.8 + style.px("letter-spacing"));
+// A count of friends with its 20-pixel heart, as many as two digits.
+const countWidth = (count: ReturnType<typeof styleAt>) => count.px("padding-left") + count.px("padding-right") + 20 + count.columnGap() + 2 * 0.8 * count.px("font-size");
 
 const narrowViewport = () => {
   const viewport = manualViewport("portrait");
@@ -37,9 +39,9 @@ const narrowViewport = () => {
   return viewport;
 };
 
-function openCare(size: WindowSize, language: "en" | "ru", viewport = narrowViewport()) {
+function openCare(size: WindowSize, language: "en" | "ru", viewport = narrowViewport(), friends = FRIENDS) {
   openWindow(...size);
-  const storage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 6, visitsFinished: FRIENDS.length, friends: FRIENDS }) });
+  const storage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 6, visitsFinished: friends.length, friends }) });
   const app = openCareApp({ storage, viewport, portraitLayouts: NARROW_LAYOUTS, deviceLanguage: language === "ru" ? "ru-RU" : "en-GB" });
   fireEvent.click(screen.getByRole("button", { name: TEXTS[language].care }));
   return app;
@@ -70,13 +72,16 @@ describe("care upright on a phone", () => {
     const best = styleAt(part(".care-best"), size);
     expect(styleAt(part(".care-bar .care-mark"), size).value("display")).toBe("none");
     expect(48 + 8 + capitalsWidth(text.care, title) + 8 + best.px("padding-left") + best.px("padding-right") + 20 + best.columnGap() + 3 * 0.8 * best.px("font-size")).toBeLessThanOrEqual(width - 40);
-    // NEW VISITOR beside its symbol, FRIENDS beside its own.
+    // NEW VISITOR beside its symbol, FRIENDS beside its own and the count.
     const footer = styleAt(part(".new-visitor-footer"), size);
     const words = styleAt(part(".new-visitor-title"), size);
     expect(footer.px("padding-left") + footer.px("padding-right") + 48 + footer.columnGap() + capitalsWidth(text.newVisitor, words)).toBeLessThanOrEqual(width - 40);
     const card = styleAt(part(".friends-card"), size);
+    const row = styleAt(part(".friends-row"), size);
+    const symbol = styleAt(part(".friends-symbol"), size);
     const friends = styleAt(part(".friends-row .friends-title"), size);
-    expect(card.px("padding-left") + card.px("padding-right") + 48 + 12 + capitalsWidth(text.friends, friends)).toBeLessThanOrEqual(width - 40);
+    const count = styleAt(part(".friends-row .friend-count"), size);
+    expect(card.px("padding-left") + card.px("padding-right") + symbol.px("width") + capitalsWidth(text.friends, friends) + countWidth(count) + 2 * row.columnGap()).toBeLessThanOrEqual(width - 40);
   });
 
   it.each(BOTH)("stands a visit upright at %i by %i in %s, the needs under HOME and the hearts, the items in one row", (width, height, language) => {
@@ -94,20 +99,35 @@ describe("care upright on a phone", () => {
     expect(2 * 4 + 4 * 48).toBeLessThanOrEqual(width - 40);
     const hearts = styleAt(part(".hearts-counter"), size);
     expect(48 + 8 + hearts.px("padding-left") + hearts.px("padding-right") + 24 + hearts.columnGap() + 2 * 0.8 * hearts.px("font-size")).toBeLessThanOrEqual(width - 40);
-    // Five items, 6 apart, each at least 44 wide and 72 tall, its word
-    // kept for screen readers.
+    // Five items, 6 apart, sharing the row and each at least 44 wide and
+    // 72 tall, its word hidden from sight and naming it for screen readers.
     const tray = styleAt(part(".tray"), size);
-    const items = all(".tray-item");
-    expect(items).toHaveLength(5);
+    expect(all(".tray-item")).toHaveLength(5);
     expect((width - 40 - 4 * tray.columnGap()) / 5).toBeGreaterThanOrEqual(44);
-    for (const item of items) {
-      expect([styleAt(item, size).px("height"), styleAt(item.querySelector<HTMLElement>(".tray-label")!, size).value("position")]).toEqual([72, "absolute"]);
-      expect(item.textContent).not.toBe("");
+    for (const label of Object.values(TEXTS[language].items)) {
+      const item = styleAt(screen.getByRole("button", { name: label }), size);
+      expect([item.value("flex-basis"), item.value("flex-grow"), item.px("min-width"), item.px("height")]).toEqual(["0px", "1", 0, 72]);
+      const words = styleAt(screen.getByRole("button", { name: label }).querySelector<HTMLElement>(".tray-label")!, size);
+      expect([words.value("position"), words.px("width"), words.value("overflow"), words.value("clip-path"), words.value("display")]).toEqual(["absolute", 1, "hidden", "inset(50%)", "inline"]);
     }
     const name = styleAt(part(".visitor-name"), size);
     expect([name.px("left"), name.px("font-size")]).toEqual([16, 22]);
-    // The stage keeps at least 200 pixels of height for the visitor.
-    expect(height - 24 - 32 - (48 + 12 + 56) - 72 - 2 * 16).toBeGreaterThanOrEqual(200);
+    // The stage keeps at least 200 pixels of height for the visitor, the
+    // screen scrolling where the window is too short.
+    const stage = styleAt(part(".stage"), size);
+    expect([stage.value("flex-grow"), stage.value("flex-shrink"), stage.value("flex-basis")]).toEqual(["1", "0", "200px"]);
+    const visit = styleAt(part(".visit"), size);
+    expect([visit.value("height"), visit.px("min-height")]).toEqual(["auto", height]);
+  });
+
+  it.each(LANGUAGES)("keeps a visit's stage 200 tall in a short window in %s, the screen scrolling", (language) => {
+    const size: WindowSize = [320, 420];
+    openCare(size, language);
+    fireEvent.click(screen.getByRole("button", { name: TEXTS[language].newVisitor }));
+    phoneScreen(".visit", size);
+    expect(styleAt(part(".stage"), size).value("flex-basis")).toBe("200px");
+    expect(styleAt(part(".stage"), size).value("flex-shrink")).toBe("0");
+    expect(styleAt(part(".visit"), size).value("height")).toBe("auto");
   });
 
   it.each(BOTH)("stands FRIENDS upright at %i by %i in %s, the cards two to a row", (width, height, language) => {
@@ -118,16 +138,36 @@ describe("care upright on a phone", () => {
     const text = TEXTS[language];
     const grid = styleAt(part(".friends-grid"), size);
     expect([grid.value("grid-template-columns"), grid.columnGap()]).toEqual(["repeat(2, minmax(0, 1fr))", 12]);
-    // BACK, HOME and the title's words on the first row.
+    // BACK, HOME and the count on the first row, the title for screen
+    // readers alone.
     const title = styleAt(part(".friends-bar .friends-title"), size);
-    expect(styleAt(part(".friends-bar .friends-mark"), size).value("display")).toBe("none");
-    expect(48 + 8 + 48 + 8 + capitalsWidth(text.friends, title)).toBeLessThanOrEqual(width - 40);
+    expect([title.value("position"), title.px("width"), title.value("clip-path")]).toEqual(["absolute", 1, "inset(50%)"]);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain(text.friends);
+    const bar = styleAt(part(".friends-bar"), size);
+    expect(48 + 48 + countWidth(styleAt(part(".friends-bar .friend-count"), size)) + 2 * bar.columnGap()).toBeLessThanOrEqual(width - 40);
     // Every shipped name in its card's three lines.
     const footer = styleAt(part(".friend-footer"), size);
     const name = styleAt(part(".friend-name"), size);
     expect(footer.px("height")).toBe(footer.px("padding-top") + footer.px("padding-bottom") + 3 * name.px("line-height"));
     const line = (width - 40 - grid.columnGap()) / 2 - footer.px("padding-left") - footer.px("padding-right") - 20 - footer.columnGap();
     for (const visitor of SHIPPED_VISITORS) expect(capitalsWidth(visitor.name[language], name), visitor.name[language]).toBeLessThanOrEqual(3 * line);
+  });
+
+  it.each(BOTH)("stands FRIENDS upright at %i by %i in %s with no friends yet, the nest inside the width", (width, height, language) => {
+    const size: WindowSize = [width, height];
+    openCare(size, language, narrowViewport(), []);
+    fireEvent.click(screen.getByRole("button", { name: TEXTS[language].friends }));
+    phoneScreen(".friends", size);
+    const text = TEXTS[language];
+    const room = width - 40;
+    const picture = styleAt(part(".no-friends-picture"), size);
+    const bubble = styleAt(part(".no-friends-bubble"), size);
+    expect(picture.value("width")).toBe("100%");
+    expect(0.6 * room + bubble.px("width")).toBeLessThanOrEqual(room);
+    const words = styleAt(part(".no-friends-text"), size);
+    expect(Math.max(...text.noFriends.split(" ").map((word) => capitalsWidth(word, words)))).toBeLessThanOrEqual(room);
+    const button = styleAt(part(".no-friends-button"), size);
+    expect(button.px("padding-left") + 30 + button.columnGap() + capitalsWidth(text.newVisitor, button) + button.px("padding-right")).toBeLessThanOrEqual(room);
   });
 
   it.each(BOTH)("stands the result upright at %i by %i in %s, its eight hearts on one row", async (width, height, language) => {

@@ -4651,9 +4651,45 @@ html[data-size="tall-narrow"] .friends-bar .friends-mark {
 
 html[data-size="tall-narrow"] .care-best,
 html[data-size="tall-narrow"] .friend-count {
-  padding: 0 12px;
+  padding: 0 10px;
   gap: 6px;
-  font-size: 18px;
+  font-size: 16px;
+}
+
+/* FRIENDS' bar keeps BACK, HOME and the count of friends on its first
+   row: its title stays for screen readers alone. */
+html[data-size="tall-narrow"] .friends-bar .friends-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* With no friends yet, the nest as wide as the screen, its words and
+   NEW VISITOR smaller. */
+html[data-size="tall-narrow"] .no-friends {
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .no-friends-picture {
+  width: 100%;
+  height: min(200px, 28vh);
+  height: min(200px, 28dvh);
+}
+
+html[data-size="tall-narrow"] .no-friends-bubble {
+  width: 88px;
+  height: 88px;
+}
+
+html[data-size="tall-narrow"] .no-friends-text {
+  font-size: 24px;
+}
+
+html[data-size="tall-narrow"] .no-friends-button {
+  padding: 0 20px 0 16px;
+  font-size: 20px;
 }
 
 /* The welcome's NEW VISITOR over FRIENDS, their footers smaller. */
@@ -4686,7 +4722,7 @@ html[data-size="tall-narrow"] .new-visitor-title {
 }
 
 html[data-size="tall-narrow"] .friends-card {
-  padding: 16px 20px;
+  padding: 16px;
   gap: 12px;
 }
 
@@ -4695,16 +4731,16 @@ html[data-size="tall-narrow"] .friend-faces {
 }
 
 html[data-size="tall-narrow"] .friends-row {
-  gap: 12px;
+  gap: 8px;
 }
 
 html[data-size="tall-narrow"] .friends-symbol {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
 }
 
 html[data-size="tall-narrow"] .friends-row .friends-title {
-  font-size: 24px;
+  font-size: 20px;
 }
 
 /* A visit's bar puts HOME and the hearts on its first row and the needs
@@ -4735,7 +4771,16 @@ html[data-size="tall-narrow"] .hearts-counter {
   font-size: 20px;
 }
 
+/* The stage keeps at least 200 pixels for the visitor: a window too
+   short for that scrolls. */
+html[data-size="tall-narrow"] .visit {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
 html[data-size="tall-narrow"] .stage {
+  flex: 1 0 200px;
   border-radius: 24px;
 }
 

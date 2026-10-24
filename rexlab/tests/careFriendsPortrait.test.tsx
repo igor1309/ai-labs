@@ -10,6 +10,7 @@ import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 // dinosaur-care-friends-portrait.feature in the app.
 
 const PORTRAIT_LAYOUTS: PortraitLayouts = { home: ["tall"], "care-welcome": ["tall"], "care-friends": ["tall"] };
+const NARROW_LAYOUTS: PortraitLayouts = { home: ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"] };
 
 const part = (selector: string) => {
   const found = document.querySelector<HTMLElement>(selector);
@@ -20,10 +21,10 @@ const gateShown = () => part(".orientation-gate").hasAttribute("data-shown");
 const FRIENDS = SHIPPED_VISITORS.slice(0, 3).map(({ id }) => id);
 
 // FRIENDS with `friends` in a window of `size`.
-function openFriends(size: WindowSize, { language = "en", friends = FRIENDS, viewport = manualViewport("portrait") }: { language?: "en" | "ru"; friends?: string[]; viewport?: ReturnType<typeof manualViewport> } = {}) {
+function openFriends(size: WindowSize, { language = "en", friends = FRIENDS, viewport = manualViewport("portrait"), layouts = PORTRAIT_LAYOUTS }: { language?: "en" | "ru"; friends?: string[]; viewport?: ReturnType<typeof manualViewport>; layouts?: PortraitLayouts } = {}) {
   openWindow(...size);
   const storage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 6, visitsFinished: friends.length, friends }) });
-  openCareApp({ storage, viewport, portraitLayouts: PORTRAIT_LAYOUTS, deviceLanguage: language === "ru" ? "ru-RU" : "en-GB" });
+  openCareApp({ storage, viewport, portraitLayouts: layouts, deviceLanguage: language === "ru" ? "ru-RU" : "en-GB" });
   fireEvent.click(screen.getByRole("button", { name: TEXTS[language].care }));
   fireEvent.click(screen.getByRole("button", { name: TEXTS[language].friends }));
 }
@@ -127,14 +128,16 @@ describe("care's friends upright", () => {
   });
 
   // jsdom does not lay out: the list as a browser lays it out, four
-  // cards to a row in landscape and two upright.
+  // cards to a row in landscape and two upright, on a phone too.
   const ROW_GAP = 20;
+  const ROWS = { tall: 330, "tall-narrow": 250 } as Record<string, number>;
   const geometry = () => {
-    const tall = document.documentElement.dataset.size === "tall";
-    const columns = tall ? 2 : 4;
-    const row = tall ? 330 : 260;
+    const upright = ROWS[document.documentElement.dataset.size ?? ""];
+    const columns = upright ? 2 : 4;
+    const row = upright ?? 260;
     const rows = Math.ceil(SHIPPED_VISITORS.length / columns);
-    return { row, height: tall ? 900 : 600, scrollHeight: rows * row + (rows - 1) * ROW_GAP + 48 };
+    const height = { tall: 900, "tall-narrow": 400 }[document.documentElement.dataset.size ?? ""] ?? 600;
+    return { row, height, scrollHeight: rows * row + (rows - 1) * ROW_GAP + 48 };
   };
   const laidOut = () => {
     const grid = part(".friends-grid");
@@ -166,5 +169,22 @@ describe("care's friends upright", () => {
     expect(part(".friends-grid")).toBe(grid);
     expect(within(grid).getAllByRole("button")).toEqual(cards);
     expect(grid.scrollTop).toBe(upright(geometry().scrollHeight, geometry().height));
+  });
+
+  it.each([
+    ["landscape", "wide", [1180, 820], 5 * (260 + ROW_GAP)],
+    ["a tall window", "tall", [820, 1180], 10 * (330 + ROW_GAP)]
+  ] as const)("keeps the list at the row of the 21st friend as %s narrows to a phone, two cards to a row", (_, from, size, scrolled) => {
+    const viewport = manualViewport(from === "wide" ? "landscape" : "portrait");
+    openFriends(size, { viewport, friends: SHIPPED_VISITORS.map(({ id }) => id), layouts: NARROW_LAYOUTS });
+    expect(document.documentElement.dataset.size).toBe(from);
+    const grid = laidOut();
+    grid.scrollTop = scrolled;
+    fireEvent.scroll(grid);
+    openWindow(393, 852);
+    act(() => viewport.resize("tall-narrow", true));
+    expect([document.documentElement.dataset.size, gateShown(), part(".friends-grid")]).toEqual(["tall-narrow", false, grid]);
+    // The 21st friend's row, the tenth, its rows the phone's 12 apart.
+    expect(grid.scrollTop).toBe(10 * (250 + 12));
   });
 });
