@@ -8773,6 +8773,23 @@ html[data-size="tall-narrow"] .skeleton-bar .home-button {
   width: 48px;
 }
 
+/* A phone's bar keeps its chips in 17-pixel type, 8 in from their edges.
+   The museum's bar holds two buttons and two chips, which leave no room
+   for its title: the title stays for screen readers alone. */
+html[data-size="tall-narrow"] .skeleton-chip {
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 17px;
+}
+
+html[data-size="tall-narrow"] .skeleton-museum-screen .skeleton-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
 html[data-size="tall-narrow"] .skeleton-choices {
   gap: 12px;
 }
