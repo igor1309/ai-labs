@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { workerHeader, workerVersion } from "../src/offline/offlineCache.ts";
 import {
   expectedVersion,
   pageVersion,
@@ -78,6 +79,14 @@ describe("verifyDeployedVersion", () => {
     await verifyDeployedVersion("https://rexlab.test", "v0.1.0", smoke, 5, 10);
 
     expect(sleeps).toEqual([10, 10, 10]);
+  });
+
+  it("reads the version where it is told to, as the worker's header", async () => {
+    const { smoke, sleeps } = deps([{ status: 200, body: workerHeader("v0.0.9") }, { status: 200, body: `${workerHeader("v0.1.0")}self.x=1;` }]);
+
+    await verifyDeployedVersion("https://rexlab.test/sw.js", "v0.1.0", { ...smoke, read: workerVersion }, 5, 10);
+
+    expect(sleeps).toEqual([10]);
   });
 
   it("fails with the last observation once attempts run out", async () => {

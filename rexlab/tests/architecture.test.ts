@@ -301,8 +301,10 @@ const TAP_SAFETY = "docs/tap-safety.md";
 // The modules that keep screens, each with useScreens.
 const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "digGame.tsx", "pairsGame.tsx", "skeletonGame.tsx", "sortingGame.tsx"];
 
-// The module that alone reads the browser's clock and timers.
+// The module that alone reads the browser's clock and timers, and the
+// service worker's own root, which runs apart from the app and its taps.
 const ROOT = "root.ts";
+const WORKER_ROOT = "offline/sw.ts";
 
 // Each way of reading the clock or starting a timer.
 const CLOCKS = /\b(setTimeout|setInterval|Date\.now\(\)|performance\.now\(\)|new Date\(\s*\)|timeStamp)/g;
@@ -333,7 +335,7 @@ function tapSafetyBreaks(root: string): string[] {
           return [];
         })
       : [];
-    const clocks = file === ROOT ? [] : [...source.matchAll(CLOCKS)].map(([name]) => `${file}: ${name} outside src/${ROOT}, see ${TAP_SAFETY}`);
+    const clocks = file === ROOT || file === WORKER_ROOT ? [] : [...source.matchAll(CLOCKS)].map(([name]) => `${file}: ${name} outside src/${ROOT}, see ${TAP_SAFETY}`);
     const waits = [...source.matchAll(/\bwaitForPictures\b/g)].map(([name]) => `${file}: ${name}, a wait for pictures, see ${TAP_SAFETY}`);
     const loaders = file === PICTURES ? [] : [...source.matchAll(/\bLoadPicture\b/g)].map(([name]) => `${file}: ${name} outside src/${PICTURES}, see ${TAP_SAFETY}`);
     return [...transitions, ...states, ...clocks, ...waits, ...loaders];
@@ -369,6 +371,7 @@ describe("tap safety in the source", () => {
     ["pairsGame.tsx", "window.setInterval(tick, 100);", `pairsGame.tsx: setInterval outside src/root.ts, see ${TAP_SAFETY}`],
     ["SortScreen.tsx", "const pressedAt = Date.now();", `SortScreen.tsx: Date.now() outside src/root.ts, see ${TAP_SAFETY}`],
     ["tapFilter.ts", "const at = performance.now();", `tapFilter.ts: performance.now() outside src/root.ts, see ${TAP_SAFETY}`],
+    ["offline/offlineCache.ts", "await new Promise((resolve) => setTimeout(resolve, 3000));", `offline/offlineCache.ts: setTimeout outside src/root.ts, see ${TAP_SAFETY}`],
     ["HomePage.tsx", "const today = new Date();", `HomePage.tsx: new Date() outside src/root.ts, see ${TAP_SAFETY}`],
     ["skeletons/drag.ts", "const time = event.timeStamp;", `skeletons/drag.ts: timeStamp outside src/root.ts, see ${TAP_SAFETY}`],
     ["skeletonGame.tsx", "waitForPictures(urls, clock, start);", `skeletonGame.tsx: waitForPictures, a wait for pictures, see ${TAP_SAFETY}`],
@@ -379,9 +382,10 @@ describe("tap safety in the source", () => {
     expect(tapSafetyBreaks(sourceTree({ [file]: source }))).toEqual([broken]);
   });
 
-  it("allows transitions in the screen state, typed state in the modules that keep screens, any state elsewhere, the clock and timers in the composition root, a date made from a time, and the picture loader in the picture store", () => {
+  it("allows transitions in the screen state, typed state in the modules that keep screens, any state elsewhere, the clock and timers in the composition root and the worker's, a date made from a time, and the picture loader in the picture store", () => {
     const root = sourceTree({
       "root.ts": "setTimeout(fire, ms);\nconst now = () => new Date(Date.now());\nconst time = event.timeStamp;",
+      "offline/sw.ts": "wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms))",
       "featured.ts": "const day = new Date(now.getFullYear(), now.getMonth(), now.getDate());",
       "screens.ts": 'import { addTransitionType, startTransition } from "react";\nstartTransition(() => addTransitionType(type));',
       "App.tsx": "const [settling, setSettling] = useState<boolean>(false);\nconst [play, setPlay] = useState<Play>();",

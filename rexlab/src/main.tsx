@@ -6,6 +6,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import "./app.css";
+import { registerWorker } from "./offline/registerWorker.ts";
 import { appProps, filterDoubleTaps } from "./root.ts";
 
 const root = document.getElementById("root");
@@ -14,6 +15,7 @@ if (!root) {
 }
 
 filterDoubleTaps(window);
+registerWorker(navigator, import.meta.env.PROD, (error) => console.warn("RexLab will not work offline:", error));
 
 createRoot(root).render(
   <StrictMode>

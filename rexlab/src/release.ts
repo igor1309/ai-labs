@@ -28,6 +28,9 @@ export function expectedVersion(
 
 export type SmokeDeps = {
   fetchPage: (url: string) => Promise<{ status: number; body: string }>;
+  // Where the fetched file names its version: the page's meta tag unless
+  // told otherwise.
+  read?: (body: string) => string | undefined;
   sleep: (ms: number) => Promise<void>;
   log: (line: string) => void;
 };
@@ -45,7 +48,7 @@ export async function verifyDeployedVersion(
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
       const { status, body } = await deps.fetchPage(url);
-      const found = status === 200 ? pageVersion(body) : undefined;
+      const found = status === 200 ? (deps.read ?? pageVersion)(body) : undefined;
       if (found === expected) {
         deps.log(`Verified deployed RexLab version ${expected} at ${url}`);
         return;
