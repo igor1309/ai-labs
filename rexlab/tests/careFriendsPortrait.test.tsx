@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
@@ -33,6 +33,8 @@ function openFriends(size: WindowSize, { language = "en", friends = FRIENDS, vie
 const capitalsWidth = (words: string, style: ReturnType<typeof styleAt>) => words.length * (style.px("font-size") * 0.8 + style.px("letter-spacing"));
 
 describe("care's friends upright", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it.each([[744, 1133], [820, 1180], [600, 1000]] as const)("stands upright at %j, the cards two to a row under NEW VISITOR", (...size) => {
     openFriends(size);
     expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall", false, false]);
@@ -96,18 +98,45 @@ describe("care's friends upright", () => {
     expect(getComputedStyle(part(".friends-bar")).flexWrap || "nowrap").toBe("nowrap");
   });
 
-  it("keeps the friends and the scroll as the device turns, the cards a part a turn glides", () => {
+  // jsdom does not lay out: the list as a browser lays it out, four
+  // cards to a row in landscape and two upright.
+  const ROW_GAP = 20;
+  const geometry = () => {
+    const tall = document.documentElement.dataset.size === "tall";
+    const columns = tall ? 2 : 4;
+    const row = tall ? 330 : 260;
+    const rows = Math.ceil(SHIPPED_VISITORS.length / columns);
+    return { row, height: tall ? 900 : 600, scrollHeight: rows * row + (rows - 1) * ROW_GAP + 48 };
+  };
+  const laidOut = () => {
+    const grid = part(".friends-grid");
+    Object.defineProperties(grid, {
+      clientHeight: { configurable: true, get: () => geometry().height },
+      scrollHeight: { configurable: true, get: () => geometry().scrollHeight }
+    });
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const height = this.classList.contains("friend-card") ? geometry().row : 0;
+      return { x: 0, y: 0, left: 0, top: 0, right: 0, bottom: height, width: 0, height, toJSON: () => ({}) } as DOMRect;
+    });
+    return grid;
+  };
+
+  it.each([
+    ["its end", (scrollHeight: number, height: number) => scrollHeight - height, (scrollHeight: number, height: number) => scrollHeight - height],
+    ["the row of the 21st friend", () => 5 * (260 + ROW_GAP), () => 10 * (330 + ROW_GAP)]
+  ] as const)("keeps the friends and the list at %s as the device turns, each card a part a turn glides", (_, landscape, upright) => {
     const viewport = manualViewport("landscape");
     openFriends([1180, 820], { viewport, friends: SHIPPED_VISITORS.map(({ id }) => id) });
-    const grid = part(".friends-grid");
+    const grid = laidOut();
     const cards = within(grid).getAllByRole("button");
-    grid.scrollTop = 400;
+    expect(cards.map((card) => card.dataset.turnPart)).toEqual(SHIPPED_VISITORS.map(({ id }) => `care-friend-${id}`));
+    grid.scrollTop = landscape(geometry().scrollHeight, geometry().height);
+    fireEvent.scroll(grid);
     openWindow(820, 1180);
     act(() => viewport.resize("tall", true));
     expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall", false, false]);
     expect(part(".friends-grid")).toBe(grid);
     expect(within(grid).getAllByRole("button")).toEqual(cards);
-    expect(grid.scrollTop).toBe(400);
-    expect(grid.dataset.turnPart).toBe("care-friends-grid");
+    expect(grid.scrollTop).toBe(upright(geometry().scrollHeight, geometry().height));
   });
 });

@@ -4,6 +4,8 @@ import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
+import { useKeptList } from "./useKeptList.ts";
+import type { LayoutKeeping } from "./useKeptRow.ts";
 
 // The cards in a row of friends.
 const COLUMNS = 4;
@@ -24,10 +26,15 @@ export type FriendsScreenProps = {
   onNewVisitor: () => void;
   onBack: () => void;
   onHome: () => void;
+  // Keeps where the list stands as a turn changes its columns, which
+  // `columns` gives as the page now lays them out.
+  layoutKeeping: LayoutKeeping;
+  columns: () => number;
 };
 
-export function FriendsScreen({ language, friends, nestPicture, onFriend, onNewVisitor, onBack, onHome }: FriendsScreenProps) {
+export function FriendsScreen({ language, friends, nestPicture, onFriend, onNewVisitor, onBack, onHome, layoutKeeping, columns }: FriendsScreenProps) {
   const text = TEXTS[language];
+  const list = useKeptList(layoutKeeping, columns);
   const empty = friends.length === 0;
   return (
     <main className="friends">
@@ -78,7 +85,7 @@ export function FriendsScreen({ language, friends, nestPicture, onFriend, onNewV
           </Button>
         </div>
       ) : (
-        <div className="friends-grid" data-turn-part="care-friends-grid" role="group" aria-label={text.friends}>
+        <div ref={list.ref} onScroll={list.onScroll} className="friends-grid" data-turn-part="care-friends-grid" role="group" aria-label={text.friends}>
           {friends.map((friend, index) => (
             <FriendCard key={friend.id} friend={friend} language={language} place={Math.min(index, COLUMNS - 1)} onFriend={onFriend} />
           ))}
@@ -99,7 +106,7 @@ type FriendCardProps = {
 
 function FriendCard({ friend: { id, name, picture }, language, place, onFriend }: FriendCardProps) {
   return (
-    <Button className="card friend-card" aria-label={name} style={{ "--card": place } as CSSProperties} onClick={() => onFriend(id)}>
+    <Button className="card friend-card" aria-label={name} data-turn-part={`care-friend-${id}`} style={{ "--card": place } as CSSProperties} onClick={() => onFriend(id)}>
       <span className="friend-art">
         <Picture className="friend-picture" src={picture} alt="" width={800} height={600} />
       </span>

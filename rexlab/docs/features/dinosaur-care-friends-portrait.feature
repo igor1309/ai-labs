@@ -33,7 +33,14 @@ Feature: Care: the friends in a tall window
       | English  |
       | Russian  |
 
-  Scenario: Turning keeps the friends
-    Given I am on FRIENDS in landscape, scrolled to my last friend
+  Scenario Outline: Turning keeps the friends and the list's place
+    Given all the dinosaurs are my friends
+    And I am on FRIENDS in landscape, scrolled to <place>
     When the device turns upright
-    Then I see the same friends, and the cards glide to their new places
+    Then I see the same friends, each card gliding to its new place
+    And the list stands at <place>, two cards to a row
+
+    Examples:
+      | place                      |
+      | its end                    |
+      | the row of the 21st friend |
