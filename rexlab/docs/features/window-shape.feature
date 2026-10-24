@@ -19,10 +19,10 @@ Feature: The window's shape
   Until a screen's own stage builds them, a wide-short window shows the
   wide layout, and a tall-narrow window the picture asking to turn or
   widen. Every screen has a portrait layout for a tall window (each in
-  its own *-portrait.feature); only the home page and sand writing
-  have one for a tall-narrow window too, so a tall-narrow window still
-  shows the picture over every other screen. The scenarios below use care's
-  result.
+  its own *-portrait.feature); only the home page, the catalogue and
+  sand writing have one for a tall-narrow window too, so a tall-narrow
+  window still shows the picture over every other screen. The scenarios
+  below use care's result.
 
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels
@@ -76,12 +76,12 @@ Feature: The window's shape
     Then the picture fades out and care's result is as it was
 
   Scenario Outline: A screen shows its portrait layout only in the size class it is built for
-    Given I am on the catalogue
+    Given I am on a dinosaur's page
     And the device's screen is upright
     When the window becomes <width> by <height> CSS pixels
     Then <shown>
 
     Examples:
-      | width | height | shown                                                                   |
-      | 820   | 1180   | the catalogue shows its upright layout, with no picture asking to turn |
-      | 393   | 852    | I see the picture asking to turn sideways                              |
+      | width | height | shown                                                                       |
+      | 820   | 1180   | the dinosaur's page shows its upright layout, with no picture asking to turn |
+      | 393   | 852    | I see the picture asking to turn sideways                                    |
