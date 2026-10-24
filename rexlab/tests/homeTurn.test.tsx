@@ -35,7 +35,7 @@ import {
   unsetAgeLevel
 } from "./support.ts";
 import { clickOf, filterTaps, pressAt, releaseAt, tapAt } from "./taps.ts";
-import { openWindow } from "./windowSizes.ts";
+import { openWindow, styleAt } from "./windowSizes.ts";
 
 // turn-motion.feature, on the home page, and home-portrait.feature's
 // "Turning the window keeps the open menu and the large card" beside
@@ -104,7 +104,8 @@ type OwnDrawing = { y: number; opacity: number; running: boolean };
 // The home page in a window `width` by `height` of `size`, under
 // index.html's version footer, a screen `upright` or not, `featured` on
 // its large card, its pictures loaded, its timers fired by hand, and the
-// device asking for reduced motion when `reduced`. A part is measured
+// device asking for reduced motion when `reduced`, and a layout for a
+// tall-narrow window as well when `narrow`. A part is measured
 // where the test lays it out, moved as `own` says the page's own
 // animations draw it, its frame drawn and its window widened by the
 // browser's own means, and its animations recorded; a view transition's
@@ -113,7 +114,7 @@ function openTurning(
   width: number,
   height: number,
   size: SizeClass,
-  { upright = size.startsWith("tall"), reduced = false, featured = "compare" as HomeGame, own = new Map<string, OwnDrawing>() } = {}
+  { upright = size.startsWith("tall"), reduced = false, featured = "compare" as HomeGame, own = new Map<string, OwnDrawing>(), narrow = false } = {}
 ) {
   openWindow(width, height);
   const viewport = manualViewport("landscape");
@@ -144,7 +145,7 @@ function openTurning(
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(7)}
-      portraitLayouts={{ home: ["tall"] }}
+      portraitLayouts={{ home: narrow ? ["tall", "tall-narrow"] : ["tall"] }}
       viewport={viewport}
       progress={emptyProgress()}
       {...englishDevice()}
@@ -503,6 +504,20 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
     app.resize([1180, 820, "wide"]);
 
     expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([back, 718]);
+  });
+
+  // At 375 wide, on 20-pixel sides, the columns are 307 wide: swiped 450,
+  // "SKELETONS", the second column, starts 119 in from the row's left
+  // edge, the first that does not start hidden past it.
+  it("keeps the column swiped to from a tall-narrow window into a tall one, by the narrow row's own columns", () => {
+    const app = openTurning(375, 667, "tall-narrow", { narrow: true });
+    const row = layOutTilesRow();
+    expect(styleAt(row, [375, 667]).px("grid-auto-columns")).toBe(307);
+    swipeTiles(row, 450);
+
+    app.resize([768, 1024, "tall"]);
+
+    expect(row.scrollLeft).toBe(334);
   });
 
   it("judges where the row stands from before the motion began, through every change that cuts it short", () => {

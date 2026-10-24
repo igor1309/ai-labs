@@ -789,7 +789,7 @@ export function tilesRow(): HTMLElement {
 export function layOutTilesRow(): HTMLElement {
   const row = tilesRow();
   const style = () => styleAt(row, [window.innerWidth, window.innerHeight]);
-  const width = () => (document.documentElement.dataset.size === "tall" ? window.innerWidth - 56 : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
+  const width = () => (document.documentElement.dataset.size === "tall" ? window.innerWidth - 56 : document.documentElement.dataset.size === "tall-narrow" ? window.innerWidth - 20 : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
   const scrollWidth = () => {
     const columns = Math.ceil([...row.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);
     return columns * style().px("grid-auto-columns") + (columns - 1) * style().columnGap();
