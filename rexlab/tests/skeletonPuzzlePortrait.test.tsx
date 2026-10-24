@@ -58,13 +58,6 @@ describe("the puzzle upright", () => {
     expect([part(".skeleton-board").getAttribute("data-turn-part"), part(".skeleton-tray").getAttribute("data-turn-part")]).toEqual(["skeleton-board", "skeleton-tray"]);
   });
 
-  it("asks to turn as a tall window narrows over the puzzle", async () => {
-    const { viewport } = await openUpright([820, 1180]);
-    openWindow(393, 852);
-    act(() => viewport.resize("tall-narrow", true));
-    expect(gateShown()).toBe(true);
-  });
-
   it("keeps the landscape puzzle as it was", async () => {
     await openUpright([1180, 820], "hatchling", manualViewport("landscape"));
     expect(gateShown()).toBe(false);

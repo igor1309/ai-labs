@@ -2,9 +2,8 @@ Feature: Build a skeleton: the museum in a tall window
   In a tall window, portrait and at least 600 CSS pixels wide, the
   museum stands upright: the bar across the top, with HOME and BUILD
   ANOTHER as their symbols, and under it the hall, its stands in rows of
-  two. The rest is as skeleton-assembly-museum.feature tells. A
-  tall-narrow window keeps the picture asking to turn or widen
-  (window-shape.feature).
+  two. The rest is as skeleton-assembly-museum.feature tells. A tall-narrow window has its own sizes
+  (skeleton-museum-narrow-portrait.feature).
 
   Scenario Outline: The museum stands upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room

@@ -7940,7 +7940,8 @@ html[data-size="tall"] .dig-board-screen .dig-choice-slot {
    upright boards, its bar keeps one row with BACK, HOME and MUSEUM as
    their symbols alone, each 56 a side, and its dinosaurs stand in rows of
    two. */
-html[data-size="tall"] .skeleton-screen {
+html[data-size="tall"] .skeleton-screen,
+html[data-size="tall-narrow"] .skeleton-screen {
   padding:
     calc(40px + env(safe-area-inset-top))
     calc(32px + var(--screen-right))
@@ -7948,32 +7949,38 @@ html[data-size="tall"] .skeleton-screen {
     calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .skeleton-bar {
+html[data-size="tall"] .skeleton-bar,
+html[data-size="tall-narrow"] .skeleton-bar {
   gap: 16px;
 }
 
-html[data-size="tall"] .skeleton-bar .home-button {
+html[data-size="tall"] .skeleton-bar .home-button,
+html[data-size="tall-narrow"] .skeleton-bar .home-button {
   width: 56px;
   padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .skeleton-choices {
+html[data-size="tall"] .skeleton-choices,
+html[data-size="tall-narrow"] .skeleton-choices {
   align-content: stretch;
   gap: 20px;
 }
 
-html[data-size="tall"] .skeleton-choice {
+html[data-size="tall"] .skeleton-choice,
+html[data-size="tall-narrow"] .skeleton-choice {
   flex-basis: calc((100% - 20px) / 2);
 }
 
 /* Upright, the museum's hall stands its stands in rows of two. */
-html[data-size="tall"] .skeleton-hall {
+html[data-size="tall"] .skeleton-hall,
+html[data-size="tall-narrow"] .skeleton-hall {
   padding: 24px;
   gap: 16px 24px;
 }
 
-html[data-size="tall"] .skeleton-stand {
+html[data-size="tall"] .skeleton-stand,
+html[data-size="tall-narrow"] .skeleton-stand {
   flex-basis: calc((100% - 24px) / 2);
 }
 
@@ -8011,15 +8018,18 @@ html[data-size="tall"] .skeleton-stand {
 /* Upright, the board stands over the tray: as wide as the puzzle, or as
    six tenths of its height under the gap allow, and the tray takes the
    rest. */
-html[data-size="tall"] .skeleton-puzzle {
+html[data-size="tall"] .skeleton-puzzle,
+html[data-size="tall-narrow"] .skeleton-puzzle {
   flex-direction: column;
 }
 
-html[data-size="tall"] .skeleton-puzzle .skeleton-board {
+html[data-size="tall"] .skeleton-puzzle .skeleton-board,
+html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-board {
   width: min(100cqw, (100cqh - 28px) * 0.6 * var(--frame-width) / var(--frame-height));
 }
 
-html[data-size="tall"] .skeleton-puzzle .skeleton-tray {
+html[data-size="tall"] .skeleton-puzzle .skeleton-tray,
+html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
   min-height: 0;
 }
 
@@ -8577,19 +8587,22 @@ html[data-size="tall"] .skeleton-puzzle .skeleton-tray {
 /* Upright, the mystery's skeleton stands over the guess: the board as
    wide as the screen, or as the room above the guess's least allows, and
    the guess's three cards side by side under it, the clue below them. */
-html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal {
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal,
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal {
   flex-direction: column;
   container-type: size;
 }
 
-html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal-board {
+html[data-size="tall"] .skeleton-guess-screen .skeleton-reveal-board,
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal-board {
   flex: none;
   align-self: center;
   width: min(100cqw, (100cqh - 28px - 340px) * var(--frame-width) / var(--frame-height));
   max-height: none;
 }
 
-html[data-size="tall"] .skeleton-guess {
+html[data-size="tall"] .skeleton-guess,
+html[data-size="tall-narrow"] .skeleton-guess {
   flex: 1 1 0;
   min-width: 0;
   min-height: 340px;
@@ -8597,7 +8610,8 @@ html[data-size="tall"] .skeleton-guess {
   gap: 12px;
 }
 
-html[data-size="tall"] .skeleton-guess-choices {
+html[data-size="tall"] .skeleton-guess-choices,
+html[data-size="tall-narrow"] .skeleton-guess-choices {
   flex-direction: row;
   gap: 12px;
 }
@@ -8682,19 +8696,22 @@ html[data-size="tall"] .skeleton-guess-choices {
    wide as the screen, or as the room above the reward's 560 allows, the
    reward under it with its fact a little smaller and its two ways on a
    little lower, one over the other, so their words keep their size. */
-html[data-size="tall"] .skeleton-result .skeleton-reveal {
+html[data-size="tall"] .skeleton-result .skeleton-reveal,
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal {
   flex-direction: column;
   container-type: size;
 }
 
-html[data-size="tall"] .skeleton-result .skeleton-reveal-board {
+html[data-size="tall"] .skeleton-result .skeleton-reveal-board,
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal-board {
   flex: none;
   align-self: center;
   width: min(100cqw, (100cqh - 28px - 560px) * var(--frame-width) / var(--frame-height));
   max-height: none;
 }
 
-html[data-size="tall"] .skeleton-reward {
+html[data-size="tall"] .skeleton-reward,
+html[data-size="tall-narrow"] .skeleton-reward {
   flex: 1 1 0;
   min-width: 0;
   min-height: 0;
@@ -8702,17 +8719,184 @@ html[data-size="tall"] .skeleton-reward {
   gap: 16px;
 }
 
-html[data-size="tall"] .skeleton-fact {
+html[data-size="tall"] .skeleton-fact,
+html[data-size="tall-narrow"] .skeleton-fact {
   font-size: 20px;
 }
 
-html[data-size="tall"] .skeleton-actions {
+html[data-size="tall"] .skeleton-actions,
+html[data-size="tall-narrow"] .skeleton-actions {
   gap: 12px;
 }
 
 html[data-size="tall"] .skeleton-build-another,
-html[data-size="tall"] .skeleton-actions .home-button {
+html[data-size="tall-narrow"] .skeleton-build-another,
+html[data-size="tall"] .skeleton-actions .home-button,
+html[data-size="tall-narrow"] .skeleton-actions .home-button {
   height: 60px;
+}
+
+/* In a tall-narrow window, an iPhone upright, every skeleton screen
+   stands as in a tall one on 24-pixel padding at the top, 32 at the
+   bottom and 20 a side, its parts 16 apart. The bar keeps one row, BACK,
+   HOME and MUSEUM 48 a side and 8 apart. The choice and the museum keep
+   rows of two, 12 apart. The puzzle's board stands 16 over the tray,
+   whose spots are 8 apart on 12 inside. The guess's three cards stand
+   one over another, each its picture beside its name, so a long name
+   keeps its size; the board takes the room above the guess's least,
+   300. The result's reward is 16 inside, its parts 12 apart, the fact 18
+   and its two ways 56 tall in 17-pixel type, so the board takes the room
+   above the reward's 440. The bar is 56 tall, so the padding, the bar
+   and the gap under it take 128. */
+html[data-size="tall-narrow"] .skeleton-screen {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  row-gap: 16px;
+}
+
+html[data-size="tall-narrow"] .skeleton-bar {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .skeleton-bar .home-button {
+  flex-shrink: 0;
+  width: 48px;
+}
+
+/* A phone's bar keeps its chips in 17-pixel type, 8 in from their edges.
+   The museum's bar holds two buttons and two chips, which leave no room
+   for its title: the title stays for screen readers alone. */
+html[data-size="tall-narrow"] .skeleton-chip {
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 17px;
+}
+
+html[data-size="tall-narrow"] .skeleton-museum-screen .skeleton-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+html[data-size="tall-narrow"] .skeleton-choices {
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .skeleton-choice {
+  flex-basis: calc((100% - 12px) / 2);
+}
+
+html[data-size="tall-narrow"] .skeleton-hall {
+  padding: 12px;
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .skeleton-stand {
+  flex-basis: calc((100% - 12px) / 2);
+}
+
+html[data-size="tall-narrow"] .skeleton-puzzle {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-board {
+  width: min(100cqw, (100cqh - 16px) * 0.6 * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
+  --spot-gap: 8px;
+  padding: 12px;
+}
+
+html[data-size="tall-narrow"] .skeleton-reveal {
+  gap: 16px;
+}
+
+/* On a phone too short for the skeleton over its guess or its reward,
+   the whole screen scrolls rather than lose the skeleton: the reveal
+   takes the room under the bar, never less than leaves the board 160
+   wide. */
+html[data-size="tall-narrow"] .skeleton-guess-screen,
+html[data-size="tall-narrow"] .skeleton-result {
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: auto;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal {
+  flex: 1 0 auto;
+  height: max(436px, 100vh - (128px + env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+  height: max(436px, 100dvh - (128px + env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+}
+
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal {
+  flex: 1 0 auto;
+  height: max(576px, 100vh - (128px + env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+  height: max(576px, 100dvh - (128px + env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-screen .skeleton-reveal-board {
+  width: min(100cqw, (100cqh - 16px - 300px) * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall-narrow"] .skeleton-guess {
+  min-height: 300px;
+  padding: 16px;
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-choices {
+  flex-direction: column;
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-picture {
+  flex: none;
+  width: 80px;
+  height: 100%;
+}
+
+html[data-size="tall-narrow"] .skeleton-guess-name {
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: min(20px, calc((100cqi - 88px) / (var(--letters) * 0.75)));
+  text-align: left;
+}
+
+html[data-size="tall-narrow"] .skeleton-result .skeleton-reveal-board {
+  width: min(100cqw, (100cqh - 16px - 440px) * var(--frame-width) / var(--frame-height));
+}
+
+html[data-size="tall-narrow"] .skeleton-reward {
+  padding: 16px;
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .skeleton-fact {
+  font-size: 18px;
+}
+
+html[data-size="tall-narrow"] .skeleton-actions {
+  gap: 10px;
+}
+
+html[data-size="tall-narrow"] .skeleton-build-another,
+html[data-size="tall-narrow"] .skeleton-actions .home-button {
+  height: 56px;
+  padding: 0 8px;
+  gap: 8px;
+  font-size: 17px;
 }
 
 /* The museum: a hall of one stand for each dinosaur, rising in one after

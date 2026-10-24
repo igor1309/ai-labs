@@ -3,9 +3,8 @@ Feature: Build a skeleton: the mystery's guess in a tall window
   mystery's guess stands upright: the bar across the top, the finished
   skeleton under it as wide as the screen lets it be, and under the
   skeleton the three dinosaurs' cards side by side, with the clue below
-  them. The rest is as skeleton-assembly-mystery.feature tells. A
-  tall-narrow window keeps the picture asking to turn or widen
-  (window-shape.feature).
+  them. The rest is as skeleton-assembly-mystery.feature tells. A tall-narrow window has its own sizes
+  (skeleton-guess-narrow-portrait.feature).
 
   Scenario Outline: The guess stands upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room

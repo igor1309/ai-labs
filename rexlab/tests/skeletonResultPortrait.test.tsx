@@ -69,13 +69,6 @@ describe("the skeleton's result upright", () => {
     expect([part(".skeleton-reveal-board").getAttribute("data-turn-part"), part(".skeleton-reward").getAttribute("data-turn-part")]).toEqual(["skeleton-result-board", "skeleton-reward"]);
   });
 
-  it("asks to turn as a tall window narrows over the result", async () => {
-    const { viewport } = await openResult([820, 1180]);
-    openWindow(393, 852);
-    act(() => viewport.resize("tall-narrow", true));
-    expect(gateShown()).toBe(true);
-  });
-
   it("keeps the landscape result as it was", async () => {
     await openResult([1180, 820], { viewport: manualViewport("landscape") });
     expect(gateShown()).toBe(false);

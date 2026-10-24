@@ -2,6 +2,7 @@
 
 ## 2026-10-24
 
+- Skeleton assembly plays whole upright on an iPhone instead of asking to turn. The choice and the museum go two to a row, the puzzle board spans the screen over its tray, the guess stacks its names as rows beside their pictures, and BUILD ANOTHER and MUSEUM each fit one line from 320 wide in English and Russian. On a short phone the guess and the result scroll (LAB-498).
 - Sort plays whole upright on an iPhone instead of asking to turn. The board has HOME as its house, a smaller prompt, the tray's cards 8 apart and down to 72 wide, and the baskets side by side, each showing its mark alone. The result is laid out as the compare quiz's on a phone (LAB-528).
 - Find the pair plays whole upright on an iPhone instead of asking to turn. The welcome has smaller chips and PLAY and HOME as its house. The board has cards down to 56 wide, BACK and HOME as their symbols, and found cards showing the dinosaur alone. The result has PLAY AGAIN over BACK and HOME and NEW as its sparkle. Every word fits in English and Russian from 320 wide (LAB-526).
 - The compare quiz's result stands upright on an iPhone instead of asking to turn: 20-pixel padding, the level switch as its three pictures, PLAY AGAIN over HOME across the column, and the offer of a level fitted to the phone, every word fitting in English and Russian from 320 wide. The compare quiz now plays whole upright on an iPhone (LAB-525).
