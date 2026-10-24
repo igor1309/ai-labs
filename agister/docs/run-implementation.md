@@ -1774,9 +1774,10 @@ run. `agister check` follows, as it shares that list.
 `code-review-revise`, and the schema `critique`; `code_review`'s tests
 slot names the workflow `tests_debate`. Its debate takes the critique
 before the repeat and, in the repeat's body, the revision before the
-next critique, so a critique that converges ends it with no revision
-after it; a first critique that converges skips the repeat by a
-branch. The judge's process, prompt and
+next critique, so a later critique that converges ends it with no
+revision after it; a first critique that converges still gets one
+revision, which returns the review as it stands, as a branch would
+need a step for its arm that does nothing. The judge's process, prompt and
 input do not change.
 
 This section runs what "Branch and repeat" left not run: a workflow
