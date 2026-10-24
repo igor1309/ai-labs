@@ -4,7 +4,7 @@ Feature: Care: a visit in a tall window
   the hearts across the top, the visitor on a stage as wide as the window
   leaves it, its name above the need's bubble, and the five items to give
   in one row under it. The rest is as dinosaur-care-visit.feature tells.
-  FRIENDS and the result still ask to turn, and a tall-narrow window keeps
+  The result still asks to turn, and a tall-narrow window keeps
   the picture asking to turn or widen (window-shape.feature).
 
   Scenario Outline: A visit stands upright
