@@ -1,3 +1,6 @@
+import { workerVersion } from "./offline/offlineCache.ts";
+import { WORKER_FILE } from "./offline/registerWorker.ts";
+
 const PLACEHOLDER = /%REXLAB_VERSION%/g;
 const RELEASE_TAG = /^rexlab_(v.+)$/;
 const VERSION_META = /<meta\s+name="rexlab-version"\s+content="([^"]*)"/;
@@ -63,4 +66,11 @@ export async function verifyDeployedVersion(
     }
   }
   throw new Error(`Expected deployed version ${expected} at ${url}, got ${last}`);
+}
+
+// The deployed release: its page, and its service worker beside it, since
+// the installed app updates through the worker.
+export async function verifyRelease(url: string, expected: string, deps: SmokeDeps): Promise<void> {
+  await verifyDeployedVersion(url, expected, deps);
+  await verifyDeployedVersion(new URL(WORKER_FILE, url).href, expected, { ...deps, read: workerVersion });
 }

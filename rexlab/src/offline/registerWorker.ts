@@ -8,7 +8,7 @@ type Registering = { serviceWorker?: { register: (url: string) => Promise<unknow
 // The released app keeps itself offline; a development build does not,
 // so a change shows at once. A browser that cannot keep it, or refuses,
 // runs the app as before.
-export function registerWorker(navigator: Registering, released: boolean, log: (error: unknown) => void = () => {}) {
-  if (!released || !navigator.serviceWorker) return;
-  navigator.serviceWorker.register(`/${WORKER_FILE}`).catch(log);
+export function registerWorker(navigator: Registering, released: boolean, log: (error: unknown) => void = () => {}): Promise<void> {
+  if (!released || !navigator.serviceWorker) return Promise.resolve();
+  return navigator.serviceWorker.register(`/${WORKER_FILE}`).then(() => {}, log);
 }

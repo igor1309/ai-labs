@@ -41,10 +41,12 @@ export default defineConfig({
       transformIndexHtml: (html) => stampVersion(html, VERSION)
     },
     // The service worker learns the release's version and every file it
-    // keeps offline once the build has named them.
+    // keeps offline once the build has named them, its pages among them,
+    // which Vite adds late.
     {
       name: "rexlab-offline",
       apply: "build",
+      enforce: "post",
       generateBundle(_, bundle) {
         const worker = bundle[WORKER_FILE];
         if (worker?.type !== "chunk") throw new Error(`The build wrote no ${WORKER_FILE}`);

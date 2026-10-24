@@ -2,11 +2,11 @@ import { workerHeader } from "./offlineCache.ts";
 import { WORKER_FILE } from "./registerWorker.ts";
 
 // The files a release keeps offline: everything the build wrote and the
-// public files copied beside it, but the worker itself and the
-// prototypes, which no child opens.
+// public files copied beside it, but the worker itself, source maps and
+// the host's own settings files.
 export function releaseFiles(written: readonly string[]): string[] {
   return written
-    .filter((file) => file !== WORKER_FILE && !file.startsWith("prototypes/") && !file.startsWith("_") && !file.endsWith(".map"))
+    .filter((file) => file !== WORKER_FILE && !file.startsWith("_") && !file.endsWith(".map"))
     .map((file) => (file === "index.html" ? "/" : `/${file}`))
     .sort();
 }

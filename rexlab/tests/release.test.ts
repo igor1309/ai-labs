@@ -6,6 +6,7 @@ import {
   pageVersion,
   stampVersion,
   verifyDeployedVersion,
+  verifyRelease,
   type SmokeDeps
 } from "../src/release";
 
@@ -48,8 +49,10 @@ describe("verifyDeployedVersion", () => {
   function deps(responses: Array<{ status: number; body: string } | Error>) {
     const sleeps: number[] = [];
     const logs: string[] = [];
+    const fetched: string[] = [];
     const smoke: SmokeDeps = {
-      fetchPage: async () => {
+      fetchPage: async (target) => {
+        fetched.push(target);
         const next = responses.shift();
         if (!next) throw new Error("no more responses");
         if (next instanceof Error) throw next;
@@ -60,7 +63,7 @@ describe("verifyDeployedVersion", () => {
       },
       log: (line) => logs.push(line)
     };
-    return { smoke, sleeps, logs };
+    return { smoke, sleeps, logs, fetched };
   }
 
   const page = (version: string) => ({ status: 200, body: stampVersion(INDEX_HTML, version) });
@@ -87,6 +90,20 @@ describe("verifyDeployedVersion", () => {
     await verifyDeployedVersion("https://rexlab.test/sw.js", "v0.1.0", { ...smoke, read: workerVersion }, 5, 10);
 
     expect(sleeps).toEqual([10]);
+  });
+
+  it("checks a release's page and then the worker beside it", async () => {
+    const { smoke, fetched } = deps([page("v0.1.0"), { status: 200, body: `${workerHeader("v0.1.0")}self.x=1;` }]);
+
+    await verifyRelease("https://rexlab.test/", "v0.1.0", smoke);
+
+    expect(fetched).toEqual(["https://rexlab.test/", "https://rexlab.test/sw.js"]);
+  });
+
+  it("fails a release whose worker is an older one", async () => {
+    const { smoke } = deps([page("v0.1.0"), ...Array(12).fill({ status: 200, body: workerHeader("v0.0.9") })]);
+
+    await expect(verifyRelease("https://rexlab.test/", "v0.1.0", smoke)).rejects.toThrow(/sw\.js, got version v0\.0\.9/);
   });
 
   it("fails with the last observation once attempts run out", async () => {

@@ -89,14 +89,42 @@ export function offlineCache({ version, files, caches, fetch, origin, wait }: Of
     return (await cache.match(request, { ignoreSearch: true })) ?? fetch(request);
   };
 
-  // What answers `request`: undefined leaves it to the browser.
+  // What answers `request`: undefined leaves it to the browser. Only the
+  // app's own page is kept fresh; any other page of the site, such as a
+  // prototype, is a file of the release like the rest.
   const respond = (request: Request): Promise<Response> | undefined => {
     if (request.method !== "GET") return undefined;
     const url = new URL(request.url);
     if (url.origin !== origin) return undefined;
-    if (request.mode === "navigate" || url.pathname === PAGE || url.pathname === "/index.html") return page(request);
+    if (url.pathname === PAGE || url.pathname === "/index.html") return page(request);
     return file(request);
   };
 
   return { install, activate, respond };
+}
+
+type WorkerEvent = { waitUntil: (work: Promise<unknown>) => void };
+type FetchEvent = WorkerEvent & { request: Request; respondWith: (response: Promise<Response>) => void };
+
+// The parts of the worker's global scope it is wired to.
+export type WorkerScope = {
+  skipWaiting: () => Promise<void>;
+  clients: { claim: () => Promise<void> };
+  addEventListener(type: "install" | "activate", listener: (event: WorkerEvent) => void): void;
+  addEventListener(type: "fetch", listener: (event: FetchEvent) => void): void;
+};
+
+// Wires the cache to the worker's events. A new release takes over at
+// once: its page names only its own files.
+export function serveOffline(scope: WorkerScope, cache: ReturnType<typeof offlineCache>) {
+  scope.addEventListener("install", (event) => {
+    event.waitUntil(cache.install().then(() => scope.skipWaiting()));
+  });
+  scope.addEventListener("activate", (event) => {
+    event.waitUntil(cache.activate().then(() => scope.clients.claim()));
+  });
+  scope.addEventListener("fetch", (event) => {
+    const response = cache.respond(event.request);
+    if (response) event.respondWith(response);
+  });
 }

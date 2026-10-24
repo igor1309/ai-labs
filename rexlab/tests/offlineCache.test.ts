@@ -1,22 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { cacheName, offlineCache, PAGE_WAIT_MS, workerHeader, workerVersion, type OfflineCache, type OfflineCaches } from "../src/offline/offlineCache.ts";
+import { cacheName, offlineCache, PAGE_WAIT_MS, serveOffline, workerHeader, workerVersion, type OfflineCache, type OfflineCaches, type WorkerScope } from "../src/offline/offlineCache.ts";
 import { registerWorker } from "../src/offline/registerWorker.ts";
 import { releaseFiles, workerCode } from "../src/offline/workerBuild.ts";
 
 const ORIGIN = "https://rexlab.enoa.ai";
-const FILES = ["/", "/assets/main-abc.js", "/assets/tile-def.webp", "/manifest.webmanifest"];
+const FILES = ["/", "/assets/main-abc.js", "/assets/tile-def.webp", "/manifest.webmanifest", "/prototypes/care-hatch.html"];
 
-// Cache Storage held in maps, each cache its responses by path.
+// Cache Storage held in maps, each cache its responses by path and query,
+// matched without the query only when asked to.
 function memoryCaches() {
   const stored = new Map<string, Map<string, Response>>();
-  const path = (request: Request | string) => new URL(typeof request === "string" ? request : request.url, ORIGIN).pathname;
+  const path = (request: Request | string) => {
+    const url = new URL(typeof request === "string" ? request : request.url, ORIGIN);
+    return url.pathname + url.search;
+  };
   const caches: OfflineCaches = {
     open: async (name) => {
       const entries = stored.get(name) ?? new Map<string, Response>();
       stored.set(name, entries);
       const cache: OfflineCache = {
         addAll: async (urls) => { for (const url of urls) entries.set(path(url), new Response(`cached ${url}`)); },
-        match: async (request) => entries.get(path(request))?.clone(),
+        match: async (request, options) => {
+          const wanted = path(request);
+          const key = options?.ignoreSearch ? [...entries.keys()].find((kept) => kept.split("?")[0] === wanted.split("?")[0]) : wanted;
+          return key === undefined ? undefined : entries.get(key)?.clone();
+        },
         put: async (request, response) => { entries.set(path(request), response); }
       };
       return cache;
@@ -101,6 +109,16 @@ describe("the app offline", () => {
     expect(online.asked).toEqual(["/assets/new.webp"]);
   });
 
+  it("keeps the app's page when another page of the site is opened online, and opens that one from its own cached file", async () => {
+    const { caches, stored } = memoryCaches();
+    const online = network((url) => new Response(`network ${new URL(url).pathname}`));
+    const offline = release("v1.0.0", { caches, fetch: online.fetch });
+    await offline.install();
+    expect(await (await offline.respond(navigation("/prototypes/care-hatch.html"))!).text()).toBe("cached /prototypes/care-hatch.html");
+    expect(await stored.get("rexlab-v1.0.0")!.get("/")!.text()).toBe("cached /");
+    expect(online.asked).toEqual([]);
+  });
+
   it("leaves what it does not keep to the browser: other sites and anything but a read", () => {
     const offline = release("v1.0.0");
     expect(offline.respond(new Request("https://example.com/picture.webp"))).toBeUndefined();
@@ -119,9 +137,9 @@ describe("the app offline", () => {
 });
 
 describe("the worker's build", () => {
-  it("keeps the files a child opens, the page as the root, and leaves out the worker, the prototypes, maps and Pages' own files", () => {
+  it("keeps every page and file the release serves, the page as the root, and leaves out the worker, maps and Pages' own files", () => {
     expect(releaseFiles(["index.html", "sw.js", "assets/main-abc.js", "assets/main-abc.js.map", "prototypes/care-hatch.html", "_headers", "manifest.webmanifest", "icons/icon-180.png"]))
-      .toEqual(["/", "/assets/main-abc.js", "/icons/icon-180.png", "/manifest.webmanifest"]);
+      .toEqual(["/", "/assets/main-abc.js", "/icons/icon-180.png", "/manifest.webmanifest", "/prototypes/care-hatch.html"]);
   });
 
   it("writes the version and the files in place of the worker's marks, headed with the version", () => {
@@ -160,8 +178,58 @@ describe("registering the worker", () => {
   it("logs a refusal and goes on", async () => {
     const logged: unknown[] = [];
     const refusal = new Error("SecurityError");
-    registerWorker(navigatorWith(() => Promise.reject(refusal)), true, (error) => logged.push(error));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await registerWorker(navigatorWith(() => Promise.reject(refusal)), true, (error) => logged.push(error));
     expect(logged).toEqual([refusal]);
+  });
+});
+
+describe("the worker's events", () => {
+  // A worker's scope that keeps each listener and what each step did.
+  function workerScope() {
+    const listeners = new Map<string, (event: never) => void>();
+    const steps: string[] = [];
+    const scope: WorkerScope = {
+      skipWaiting: async () => { steps.push("skipWaiting"); },
+      clients: { claim: async () => { steps.push("claim"); } },
+      addEventListener: (type: string, listener: (event: never) => void) => { listeners.set(type, listener); }
+    };
+    const fire = async (type: string, event: object) => { listeners.get(type)!(event as never); };
+    return { scope, steps, fire };
+  }
+
+  const lifecycle = () => {
+    const work: Promise<unknown>[] = [];
+    return { event: { waitUntil: (done: Promise<unknown>) => work.push(done) }, done: () => Promise.all(work) };
+  };
+
+  it("keeps the release before it takes over at once, then drops the older cache and takes the open pages", async () => {
+    const { caches, stored } = memoryCaches();
+    await caches.open("rexlab-v0.9.0");
+    const { scope, steps, fire } = workerScope();
+    serveOffline(scope, release("v1.0.0", { caches }));
+    const install = lifecycle();
+    await fire("install", install.event);
+    await install.done();
+    expect([...stored.get("rexlab-v1.0.0")!.keys()].sort()).toEqual([...FILES].sort());
+    expect(steps).toEqual(["skipWaiting"]);
+    const activate = lifecycle();
+    await fire("activate", activate.event);
+    await activate.done();
+    expect([...stored.keys()]).toEqual(["rexlab-v1.0.0"]);
+    expect(steps).toEqual(["skipWaiting", "claim"]);
+  });
+
+  it("answers a request of the release from the cache and leaves another site's to the browser", async () => {
+    const { caches } = memoryCaches();
+    const { scope, fire } = workerScope();
+    const offline = release("v1.0.0", { caches });
+    await offline.install();
+    serveOffline(scope, offline);
+    const answers: Promise<Response>[] = [];
+    const fetchEvent = (url: string) => ({ request: new Request(url), waitUntil: () => {}, respondWith: (answer: Promise<Response>) => answers.push(answer) });
+    await fire("fetch", fetchEvent(`${ORIGIN}/assets/tile-def.webp`));
+    await fire("fetch", fetchEvent("https://example.com/picture.webp"));
+    expect(answers).toHaveLength(1);
+    expect(await (await answers[0]!).text()).toBe("cached /assets/tile-def.webp");
   });
 });
