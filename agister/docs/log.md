@@ -1,6 +1,7 @@
 # Changes
 
-- LAB-534: workflow items run as child runs in their caller, with qualified calls, private child outputs and tests debate settings in home.
+- LAB-534: a workflow runs as an item of another, as a child run in its record;
+  home's tests lens debates its review in private before the judge.
 
 - LAB-467: workflows branch on results and repeat repairs with explicit state
   and a pass limit; failed tests can return to the builder's session.
