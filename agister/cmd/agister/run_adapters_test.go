@@ -127,7 +127,7 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, "", discard)
+	got := steps.Call(context.Background(), "a", "a", map[string]string{"what": "hi"}, "", discard)
 	want := workflow.Result{Status: workflow.Completed, Output: map[string]any{"exit_code": 0},
 		Timing: workflow.Timing{Started: runStart, Ended: runStart.Add(time.Second), Duration: time.Second}, Cost: &cost, Warnings: []string{"w"}}
 	if !reflect.DeepEqual(got, want) {
@@ -140,7 +140,7 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 		t.Errorf("called %+v, want %+v", spy.steps, wantStep)
 	}
 
-	got = steps.Call(context.Background(), "b", map[string]string{"what": "hi"}, "", discard)
+	got = steps.Call(context.Background(), "b", "b", map[string]string{"what": "hi"}, "", discard)
 	want = workflow.Result{Status: workflow.Failed, Class: workflow.Refused, Timing: workflow.Timing{Started: runStart, Ended: runStart},
 		Reason: `input "what": no source "git.revision" is plugged in`, Warnings: []string{"w"}}
 	if !reflect.DeepEqual(got, want) {
@@ -166,7 +166,7 @@ func TestAStepsCallGivesItsUsageSessionAndReason(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, "", discard)
+	got := steps.Call(context.Background(), "a", "a", map[string]string{"what": "hi"}, "", discard)
 	want := workflow.Result{Status: "lost", Class: "no_result", Session: "s1", Reason: "exited 0",
 		Usage: workflow.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}}
 	if !reflect.DeepEqual(got, want) {

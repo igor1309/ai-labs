@@ -45,6 +45,29 @@ const holds = (condition: string, [width, height]: WindowSize) => {
   return feature === "min-width" ? width >= Number(least) : feature === "min-height" ? height >= Number(least) : false;
 };
 
+// Each sheet's style rules under a media rule that holds for a size, in
+// order. A sheet's rules do not change once a test document has it, and
+// reading them through jsdom's rule lists costs more than the match.
+const sizedRules = new WeakMap<CSSStyleSheet, Map<string, { selector: string; style: CSSStyleDeclaration }[]>>();
+
+const rulesAt = (sheet: CSSStyleSheet, size: WindowSize) => {
+  const bySize = sizedRules.get(sheet) ?? new Map();
+  sizedRules.set(sheet, bySize);
+  const key = size.join("x");
+  let rules = bySize.get(key);
+  if (!rules) {
+    rules = [];
+    for (const rule of sheet.cssRules) {
+      if (!(rule instanceof CSSMediaRule) || !holds(rule.conditionText, size)) continue;
+      for (const inner of rule.cssRules) {
+        if (inner instanceof CSSStyleRule) rules.push({ selector: inner.selectorText, style: inner.style });
+      }
+    }
+    bySize.set(key, rules);
+  }
+  return rules;
+};
+
 const px = (value: string) => Number.parseFloat(value) || 0;
 
 // An element's style in a window of `size`. jsdom applies no media query, so the
@@ -56,11 +79,8 @@ export function styleAt(element: Element, size: WindowSize) {
   const value = (property: string) => {
     let found = computed.getPropertyValue(property);
     for (const sheet of document.styleSheets) {
-      for (const rule of sheet.cssRules) {
-        if (!(rule instanceof CSSMediaRule) || !holds(rule.conditionText, size)) continue;
-        for (const inner of rule.cssRules) {
-          if (inner instanceof CSSStyleRule && element.matches(inner.selectorText)) found = inner.style.getPropertyValue(property) || found;
-        }
+      for (const { selector, style } of rulesAt(sheet, size)) {
+        if (element.matches(selector)) found = style.getPropertyValue(property) || found;
       }
     }
     const variable = /^var\((--[\w-]+)\)$/.exec(found)?.[1];

@@ -22,10 +22,10 @@ Feature: The window's shape
   size class at a time: the home page, the catalogue's list, a
   dinosaur's page, the compare quiz's question and result, and find the
   pair's welcome, board and result, sort's board and result, and build a
-  skeleton's every screen and DIG's board and reveal have one for a
+  skeleton's and DIG's every screen, and care's welcome and visit, have one for a
   tall window only (each in its own *-portrait.feature), so a tall-narrow window
   still shows the picture over them. The scenarios
-  below use the care welcome screen, which has no portrait layout yet.
+  below use care's FRIENDS, which has no portrait layout yet.
 
   Scenario Outline: The size class follows the window
     Given a window of <width> by <height> CSS pixels
@@ -44,12 +44,12 @@ Feature: The window's shape
       | 1000  | 600    | wide        | 1000      | 599        | wide-short  |
 
   Scenario Outline: An upright screen is asked to turn sideways
-    Given the app is in <language> on the care welcome screen
+    Given the app is in <language> on care's FRIENDS
     When the device's screen turns upright, and the window with it
     Then I see a picture of a screen turning from upright to sideways, with "<turn>"
     And under it a small, faded footnote for parents in normal case: "<footnote>"
     When the device's screen turns back to landscape
-    Then I am on the care welcome screen again
+    Then I am back on care's FRIENDS
 
     Examples:
       | language | turn          | footnote                                          |
@@ -57,13 +57,13 @@ Feature: The window's shape
       | Russian  | ПОВЕРНИ БОКОМ | Вертикальный вид этого экрана уже в пути.         |
 
   Scenario Outline: A portrait window on a sideways screen is asked to be wider
-    Given the app is in <language> on the care welcome screen
+    Given the app is in <language> on care's FRIENDS
     And the device's screen is sideways, as an iPad in landscape or a Mac
     When the app's window becomes <width> by <height> CSS pixels
     Then I see a picture of a window growing wider, with "<wider>"
     And under it the same footnote for parents: "<footnote>"
     When the window becomes 1200 by 800 CSS pixels
-    Then I am on the care welcome screen again
+    Then I am back on care's FRIENDS
 
     Examples:
       | language | width | height | wider                 | footnote                                         |
@@ -71,12 +71,12 @@ Feature: The window's shape
       | Russian  | 700   | 900    | СДЕЛАЙ ОКНО ШИРЕ      | Вертикальный вид этого экрана уже в пути.        |
 
   Scenario: The picture covers the screen and comes and goes smoothly
-    Given I am on the care welcome screen
+    Given I am on care's FRIENDS
     When the window becomes portrait
     Then the picture fades in over the screen with the shared motion tokens, and covers it fully once shown
     And nothing behind it can be tapped or reached by keyboard
     When the window becomes landscape again
-    Then the picture fades out and the care welcome screen is as it was
+    Then the picture fades out and care's FRIENDS is as it was
 
   Scenario Outline: A screen shows its portrait layout only in the size class it is built for
     Given I am on the home page

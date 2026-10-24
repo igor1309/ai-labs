@@ -32,7 +32,7 @@ export function CareWelcomeScreen({ language, best, total, visitorPicture, frien
       <header className="care-bar">
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
+          <span className="upright-hidden">{text.home}</span>
         </Button>
         <h1 className="care-title">
           <span className="care-mark" aria-hidden="true">
@@ -48,7 +48,7 @@ export function CareWelcomeScreen({ language, best, total, visitorPicture, frien
         )}
       </header>
       <div className="care-choices">
-        <Button className="card new-visitor-card" aria-label={text.newVisitor} onClick={onNewVisitor}>
+        <Button className="card new-visitor-card" aria-label={text.newVisitor} data-turn-part="care-new-visitor" onClick={onNewVisitor}>
           <span className="new-visitor-art" aria-hidden="true">
             <span className="new-visitor-glow" />
             <Picture className="new-visitor-picture" src={visitorPicture} alt="" width={800} height={600} />
@@ -63,7 +63,7 @@ export function CareWelcomeScreen({ language, best, total, visitorPicture, frien
             <span className="new-visitor-title">{text.newVisitor}</span>
           </span>
         </Button>
-        <Button className="card friends-card" aria-label={text.friends} onClick={onFriends}>
+        <Button className="card friends-card" aria-label={text.friends} data-turn-part="care-friends" onClick={onFriends}>
           <span className="friend-faces" aria-hidden="true">
             {faces.map((picture, at) => (
               <span key={at} className="friend-face" style={{ "--face": at } as CSSProperties}>

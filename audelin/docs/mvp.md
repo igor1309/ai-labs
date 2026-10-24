@@ -1,6 +1,9 @@
 # MVP draft
 
-Status: draft.
+Status: the product vision, true when it was written. It is not an
+oracle: no spec, detail or technical choice rests on it (owner,
+2026-10-23), and neither is a ruling recorded only here. The specs under
+`spec/` and the owner's later rulings decide.
 
 ## Shape
 

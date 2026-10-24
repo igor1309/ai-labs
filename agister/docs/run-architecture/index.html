@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agister's run architecture</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ground:#08080A; --surface:#17171A; --surface-2:#1E1E22;
+    --line:#2A2A2F; --line-soft:#232327; --line-strong:#3C3C43;
+    --text:#F5F5F7; --text-dim:#8A8A96; --text-faint:#68686F;
+    --text-body:#D9D9DF; --text-sub:#B4B4C0;
+    --workflow:#F28DB0; --step:#C8A2FF; --process:#8DB8FF; --agent:#5FE0BC;
+    --runtime:#FFC24D; --doc:#B4B4C0; --run:#F5E6B0; --rule:#FF8F6B;
+    --display:"Iowan Old Style","Palatino Linotype",Palatino,"Hoefler Text",Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--text-body); overflow-wrap: break-word;
+    font: 16px/1.6 var(--sans); -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 44rem; margin: 0 auto; padding: 0 16px 48px; }
+  header { padding: 40px 0 20px; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    margin: 0 0 .75rem; font-family: var(--mono); font-size: .72rem;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--text-faint);
+  }
+  h1, h2 { font-family: var(--display); font-weight: 400; }
+  h1 { margin: 0; font-size: clamp(2rem, 5vw, 2.6rem); line-height: 1.08; letter-spacing: -.01em; }
+  h2 { margin: 2.25rem 0 .5rem; font-size: 1.5rem; line-height: 1.25; }
+  p { margin: 0 0 12px; }
+  .intro { font-size: 1.05rem; }
+  .src { color: var(--text-faint); font-size: .85rem; }
+  code {
+    font-family: var(--mono); font-size: .85em; padding: 1px 5px; border-radius: 2px;
+    background: var(--surface); border: 1px solid var(--line-soft);
+  }
+  a { color: var(--text-dim); text-underline-offset: 3px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: .92rem; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line-soft); }
+  th { font-family: var(--mono); font-weight: 400; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); }
+  figure { margin: 16px 0 20px; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+  figcaption { margin-top: 8px; font-size: .85rem; color: var(--text-dim); }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font-family: var(--sans); font-size: 13px; fill: var(--text-body); }
+  svg .label { font-size: 11px; fill: var(--text-dim); }
+  svg .box { fill: var(--surface-2); stroke-width: 1.5; }
+  svg .edge { stroke: var(--line-strong); stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+  .k-workflow { color: var(--workflow); } .k-step { color: var(--step); }
+  .k-process { color: var(--process); } .k-agent { color: var(--agent); }
+  .k-runtime { color: var(--runtime); } .k-run { color: var(--run); }
+  svg .box.k { stroke: var(--line-strong); }
+  pre { margin: 8px 0 16px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--line-soft); border-radius: 4px; overflow-x: auto; font: .8rem/1.5 var(--mono); color: var(--text-sub); }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <p class="eyebrow">Agister · runs</p>
+  <h1>Agister's run architecture</h1>
+</header>
+
+<p class="intro">A run is what <code>agister run</code> leaves: a request that
+resolved, every step called on its runtime in a worktree Agister holds, and a
+record of who did what with what. Settings say what may run; this page says
+how it runs. The <a href="../settings-architecture/index.html">settings
+architecture</a> is the half before it; the facts behind each part are in
+<a href="../run-implementation.md">run-implementation.md</a>.</p>
+
+<h2>From a command to a record</h2>
+<figure>
+<svg viewBox="0 0 670 330" role="img" aria-label="The path of a run">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3C3C43"/>
+    </marker>
+  </defs>
+  <rect class="box" x="10" y="20" width="130" height="44" rx="4" stroke="#B4B4C0"/>
+  <text x="75" y="47" text-anchor="middle">cli</text>
+  <rect class="box" x="180" y="20" width="150" height="44" rx="4" stroke="#8DB8FF"/>
+  <text x="255" y="47" text-anchor="middle">settings/resolve</text>
+  <rect class="box" x="370" y="20" width="150" height="44" rx="4" stroke="#F28DB0"/>
+  <text x="445" y="40" text-anchor="middle">composition</text>
+  <text class="label" x="445" y="56" text-anchor="middle">plan · what is not run</text>
+  <rect class="box" x="370" y="110" width="150" height="44" rx="4" stroke="#F28DB0"/>
+  <text x="445" y="137" text-anchor="middle">core/workflow</text>
+  <rect class="box" x="370" y="200" width="150" height="44" rx="4" stroke="#C8A2FF"/>
+  <text x="445" y="227" text-anchor="middle">core/call · admit</text>
+  <rect class="box" x="180" y="200" width="150" height="44" rx="4" stroke="#FFC24D"/>
+  <text x="255" y="220" text-anchor="middle">runtime wrappers</text>
+  <text class="label" x="255" y="236" text-anchor="middle">bash · claude-code · codex</text>
+  <rect class="box" x="10" y="200" width="130" height="44" rx="4" stroke="#FFC24D"/>
+  <text x="75" y="227" text-anchor="middle">supervisor</text>
+  <rect class="box" x="560" y="110" width="100" height="44" rx="4" stroke="#F5E6B0"/>
+  <text x="610" y="137" text-anchor="middle">runstore</text>
+  <rect class="box" x="370" y="280" width="150" height="40" rx="4" stroke="#B4B4C0"/>
+  <text x="445" y="305" text-anchor="middle">git · the worktree</text>
+  <path class="edge" d="M140,42 L178,42"/>
+  <path class="edge" d="M330,42 L368,42"/>
+  <path class="edge" d="M445,64 L445,108"/>
+  <text class="label" x="452" y="90">items, plans</text>
+  <path class="edge" d="M445,154 L445,198"/>
+  <text class="label" x="452" y="180">a step's call</text>
+  <path class="edge" d="M370,222 L332,222"/>
+  <path class="edge" d="M180,222 L142,222"/>
+  <path class="edge" d="M445,244 L445,278"/>
+  <text class="label" x="452" y="266">hold, HEAD, content</text>
+  <path class="edge" d="M520,132 L558,132"/>
+  <path class="edge" d="M520,42 L610,42 L610,108"/>
+  <text class="label" x="530" y="122">events</text>
+  <text class="label" x="560" y="80">record</text>
+</svg>
+<figcaption>An arrow is a call through a port; the composition, in
+<code>cmd/agister</code>, wires every one. Core knows no settings file, no git
+and no runtime: it is given a workflow of items and a caller, and tells what
+happens to an events port.</figcaption>
+</figure>
+
+<p>A run starts from a request: a workflow with its params, or a process on
+an agent, with <code>--continue</code> or <code>--reuse</code> naming an
+earlier run. Resolve turns it into definitions or a refusal. The composition
+plans every step, those in branch arms a run may not take included, and lists
+what this Agister does not run yet; a refusal of either kind ends the command
+before anything runs and before any record. <code>agister check</code> shares
+that list, so it refuses exactly what a run would.</p>
+
+<h2>What a workflow's items do</h2>
+<table>
+  <tr><th>Item</th><th>Runs</th><th>Its outputs</th></tr>
+  <tr><td><span class="k-step">step</span></td><td>one call of its process on its agent</td><td>the call's output, checked against the process's schema</td></tr>
+  <tr><td>parallel</td><td>its steps at once, or <code>max</code> at a time; one that fails does not stop the next; at least one must complete</td><td>a list, in declared order, of each step's status, class and output</td></tr>
+  <tr><td>branch</td><td>the first arm whose <code>if</code> holds, else the arm with none</td><td>the arm's output mapping</td></tr>
+  <tr><td>repeat</td><td>its body, then binds <code>next</code> over its state, then reads <code>until</code>; again until it holds or <code>max</code> passes have run; never reads <code>until</code> before the first pass</td><td><code>{"state", "stopped", "passes"}</code>: the last state, <code>until</code> or <code>max</code>, and how many passes ran</td></tr>
+</table>
+<p>Items sit anywhere an item may: in the workflow's steps, an arm, a
+repeat's body; a parallel holds steps alone. A condition is pure: it reads
+params, inputs, a repeat's state and the outputs of items already ended, with
+<code>equals</code>, <code>present</code>, <code>all</code>, <code>any</code>,
+<code>and</code>, <code>or</code> and <code>not</code>. A number never equals
+a string, and params and inputs are strings. A repeat's body sees the state of
+the repeats around it, its own over theirs; a name <code>next</code> does not
+bind keeps its value.</p>
+<p>A step in a repeat is named by its pass, <code>&lt;step&gt;/&lt;pass&gt;</code>,
+outer passes first where repeats nest (<code>fix/2/1</code>); the call, its
+record entry, its progress line, its events and reuse all use that name, and
+its plan is found by the name it is declared by.</p>
+
+<h2>A call</h2>
+<p>A call is one step executed. <code>core/admit</code> holds its worktree
+first, as a reader or a writer, checks a pinned revision and a clean worktree
+where the process asks, and keeps the call to its limits and the day's budget.
+<code>core/call</code> then makes turns on the runtime through its wrapper and
+the supervisor, which starts the program, keeps the ends of its output and
+ends its whole group:</p>
+<ul>
+  <li>a turn at capacity is made again, after 30 s, 1, 3 and 5 minutes, each
+  telling the session to go on; then the call starts fresh on its agent's
+  <code>fallback</code>, if it names one;</li>
+  <li>a turn that goes stale is followed by a recovery turn in its session,
+  where the process allows a resume;</li>
+  <li>a call may continue an earlier step's session, by a binding; it goes on
+  from where that session's latest call left the worktree;</li>
+  <li>each turn counts its own cost, claude-code's as reported, codex's
+  priced through ccusage, against the process's limit and the daily
+  budget.</li>
+</ul>
+<p>At its end a call keeps the HEAD and content it left, and, where it pinned
+a revision, its changes as a patch.</p>
+
+<h2>What a run leaves</h2>
+<p>Each run is a folder under <code>~/.agister/runs</code>, named by its id,
+its start's UTC time and six random hex characters:</p>
+<table>
+  <tr><th>File</th><th>Holds</th></tr>
+  <tr><td><code>record.json</code></td><td>the request, status and result; every call ended, as <code>&lt;run id&gt;/&lt;step&gt;</code>, with its process, agent, inputs, permission plan, environment, definition files by digest, HEAD and content, cost and result; written whole as each call ends, <code>lost</code> until the run ends</td></tr>
+  <tr><td><code>events.jsonl</code></td><td>a line per event as it happens: a step started, reused, a tool call, a stale turn, a turn at capacity, a fallback, a step ended; a branch's arm with each condition read, its values and whether it held; a repeat's pass with its state; why a repeat stopped</td></tr>
+  <tr><td><code>definitions/</code></td><td>the bytes of every settings file a call was made from, by digest</td></tr>
+  <tr><td><code>patches/</code></td><td>each pinned call's changes, by its name</td></tr>
+</table>
+<p>Progress goes to stderr as it happens: a line per step started and ended,
+<code>· &lt;branch&gt;: took &lt;arm&gt;</code>,
+<code>· &lt;repeat&gt;: ended pass &lt;n&gt;</code> and
+<code>· &lt;repeat&gt;: stopped &lt;why&gt; after &lt;n&gt; passes</code>; the
+result, on stdout, is JSON. <code>agister runs export</code> copies a run out.</p>
+
+<h2>Running again</h2>
+<p><code>--reuse &lt;run id&gt;</code> runs a request again and takes an
+earlier call of the same name, and pass, in place of making it, where its
+process, agent, inputs, definitions and environment are the same and the
+worktree is as that call left it. A call that continues a session, or whose
+session is continued, is made again. <code>--continue &lt;run id&gt;</code>
+goes on in the session of a one-step run's call.</p>
+
+<h2>What Agister does not do</h2>
+<p>Agister runs what settings define and records it. Committing, pushing,
+deciding what a review's findings mean and asking the owner stay with whoever
+calls it. It does not yet run a workflow inside a workflow, a branch or repeat
+inside a parallel, or a turn on pi; <code>check</code> and <code>run</code>
+refuse them alike.</p>
+
+<h2>The parts</h2>
+<table>
+  <tr><th>Package</th><th>Owns</th><th>Ports</th></tr>
+  <tr><td><code>cli</code></td><td>the command line to a request</td><td>none</td></tr>
+  <tr><td><code>core/workflow</code></td><td>items in order: steps, parallels, branches, repeats, conditions, bindings, pass names</td><td>resolver; caller; events; clock</td></tr>
+  <tr><td><code>core/call</code></td><td>a call's turns: capacity, recovery, fallback, cost, schema</td><td>runtime turn; clock</td></tr>
+  <tr><td><code>core/admit</code></td><td>holding a worktree, a pin, a clean worktree, limits and the daily budget</td><td>git facts; spend</td></tr>
+  <tr><td><code>core/inputs</code></td><td>a process's inputs from their sources: a file, a revision, changed files, a brief</td><td>files; git</td></tr>
+  <tr><td><code>core/watch</code></td><td>whether a turn has gone stale: a tool call repeated, a tool command or the whole turn silent too long</td><td>clock; timer</td></tr>
+  <tr><td><code>runtime/*</code></td><td>one turn on bash, claude-code or codex</td><td>supervisor</td></tr>
+  <tr><td><code>supervisor</code></td><td>a program's group: start, output, end</td><td>starter; timer</td></tr>
+  <tr><td><code>runstore</code></td><td>runs on disk: record, events, definitions, patches, export</td><td>filesystem</td></tr>
+  <tr><td><code>git</code></td><td>a worktree's root, HEAD, content, revisions and diffs</td><td>git</td></tr>
+  <tr><td><code>cmd/agister</code></td><td>the composition: settings to core's items, plans, what is not run, the caller, the record</td><td>all of the above</td></tr>
+</table>
+</main>
+</body>
+</html>

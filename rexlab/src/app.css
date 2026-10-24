@@ -3367,6 +3367,99 @@ html[data-size="tall"] .result-stars {
   font-size: 34px;
 }
 
+/* Upright, the welcome takes the narrower side padding of the other
+   upright screens, its bar keeps one row with HOME as its symbol, and NEW
+   VISITOR stands over FRIENDS across the width, its words a size that fits
+   in either language. */
+html[data-size="tall"] .care-welcome {
+  padding-right: calc(32px + var(--screen-right));
+  padding-left: calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .care-bar {
+  gap: 16px;
+}
+
+html[data-size="tall"] .care-bar .home-button {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall"] .care-choices {
+  flex-direction: column;
+  gap: 24px;
+}
+
+html[data-size="tall"] .new-visitor-card {
+  flex: 3 1 0;
+  min-height: 0;
+}
+
+html[data-size="tall"] .friends-card {
+  flex: 2 1 0;
+  min-height: 0;
+}
+
+html[data-size="tall"] .new-visitor-title {
+  font-size: 40px;
+  white-space: nowrap;
+}
+
+/* Upright, a visit takes the narrower side padding, its bar keeps one
+   row with HOME as its symbol, the stage stands taller than wide with
+   the visitor larger and lower and the bubble under the name, and the
+   five items share one row, their words a size that fits in either
+   language. */
+html[data-size="tall"] .visit {
+  padding-right: calc(32px + var(--screen-right));
+  padding-left: calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .visit-bar .home-button {
+  width: 56px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall"] .visitor-name {
+  left: 32px;
+  top: 28px;
+  font-size: 28px;
+  white-space: nowrap;
+}
+
+html[data-size="tall"] .visitor {
+  left: 8%;
+  top: 30%;
+  width: 84%;
+  height: 62%;
+}
+
+html[data-size="tall"] .need-bubble {
+  left: 55%;
+  top: 14%;
+}
+
+html[data-size="tall"] .tray {
+  gap: 10px;
+}
+
+html[data-size="tall"] .tray-item {
+  min-width: 0;
+  height: 150px;
+  padding: 8px 4px 12px;
+}
+
+html[data-size="tall"] .tray-picture {
+  height: 96px;
+}
+
+html[data-size="tall"] .tray-label {
+  font-size: 14px;
+  white-space: nowrap;
+}
+
 /* A visit: the needs and hearts above, the visitor on its stage, and the
    items below. */
 .visit {
@@ -6890,6 +6983,39 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 .dig-reveal-screen .result-actions .home-button {
   height: 72px;
   white-space: nowrap;
+}
+
+/* Upright, the FIELD GUIDE takes the narrower side padding of the other
+   upright screens, its bar keeps one row with HOME and BACK as their
+   symbols, and its five cards stand in rows of two that share the height
+   left, the last one centred. */
+html[data-size="tall"] .dig-field-guide-screen {
+  padding-right: calc(32px + var(--screen-right));
+  padding-left: calc(32px + var(--screen-left));
+}
+
+html[data-size="tall"] .dig-field-guide-screen .dig-bar {
+  gap: 16px;
+}
+
+html[data-size="tall"] .dig-guide-cards {
+  flex-wrap: wrap;
+  align-content: stretch;
+  justify-content: center;
+}
+
+html[data-size="tall"] .dig-guide-card {
+  flex: 0 0 calc((100% - 16px) / 2);
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding: 16px 12px;
+}
+
+html[data-size="tall"] .dig-guide-picture,
+html[data-size="tall"] .dig-guide-outline {
+  flex-shrink: 1;
+  min-height: 0;
 }
 
 /* Upright, the dinosaur dug up takes the room the reward leaves over it,

@@ -120,7 +120,7 @@ func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 		t.Fatal(err)
 	}
 	var reported []workflow.Report
-	steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, "", func(r workflow.Report) { reported = append(reported, r) })
+	steps.Call(context.Background(), "a", "a", map[string]string{"what": "hi"}, "", func(r workflow.Report) { reported = append(reported, r) })
 	want := []workflow.Report{{Started: true},
 		{Tool: &workflow.Tool{Name: "Bash", Input: "ls"}}, {Stale: &workflow.Stale{What: "no event for 1m", Recovering: true}},
 		{Tool: &workflow.Tool{Name: "Read", Input: "a.go"}}, {Stale: &workflow.Stale{What: "no event for 1m"}},
@@ -249,4 +249,16 @@ func TestTheProgressNeedsAWriter(t *testing.T) {
 	if _, err := newProgress(nil); err == nil {
 		t.Error("progress built with no writer, want an error")
 	}
+}
+
+func (s *eventsSpy) Branch(step, arm string, conditions []workflow.ConditionRead) {
+	s.told = append(s.told, fmt.Sprintf("%s took %s %v", step, arm, conditions))
+}
+
+func (s *eventsSpy) Pass(step string, pass int, state map[string]any) {
+	s.told = append(s.told, fmt.Sprintf("%s pass %d %v", step, pass, state))
+}
+
+func (s *eventsSpy) Stopped(step, why string, passes int) {
+	s.told = append(s.told, fmt.Sprintf("%s stopped %s after %d", step, why, passes))
 }

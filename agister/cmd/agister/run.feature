@@ -60,7 +60,7 @@ Feature: The composition runs a request
 
     Examples:
       | holding                                 | what                                      |
-      | of "say" and a branch "b"               | the item "b", a branch,                   |
+      | of "say" and a repeat "r"               | the item "r", a repeat,                   |
       | of two "say", read by steps.p.outputs.x | a field within the parallel "p"'s outputs |
 
   Scenario: A step reaches core with its process's time limit, as layered
