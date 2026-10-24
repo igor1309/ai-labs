@@ -229,7 +229,7 @@ describe("the compare quiz's result upright", () => {
   });
 });
 
-// compare-dinosaurs-result-narrow-portrait.feature: an iPhone upright.
+// The result in a tall-narrow window: an iPhone upright.
 const NARROW_LAYOUTS: PortraitLayouts = { ...PORTRAIT_LAYOUTS, home: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"] };
 const narrowViewport = () => {
   const viewport = manualViewport("portrait");

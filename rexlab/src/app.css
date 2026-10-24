@@ -2350,77 +2350,69 @@ html[data-size="tall-narrow"] .dinosaur-footer {
   background: #ffffff33;
 }
 
-/* In a tall window the catalogue stands upright: "HOME" alone at the top
-   left, the chips on their own row 24 pixels under it, at their landscape
-   look, and the cards 28 under them. Each food chip is as wide as its
-   content, its content centred, and the three share out equally what the
-   row leaves. Where the row is too narrow, FoodChips closes every food
-   chip up at once, and where even that is too narrow, stands them two by
-   two at their landscape spacing, each food chip sharing its row the
-   same way. "ALL" stays round in every arrangement. */
-html[data-size="tall"] .catalogue-bar {
-  flex-direction: column;
-  align-items: flex-start;
+/* Portrait keeps HOME and all four food symbols on one row. Fixed chip
+   sizes keep the row independent of words, counts and measured arrangements. */
+html[data-size="tall"] .catalogue-bar,
+html[data-size="tall-narrow"] .catalogue-bar {
+  flex-direction: row;
+  align-items: center;
 }
 
-html[data-size="tall"] .food-chips {
-  align-self: stretch;
+html[data-size="tall"] .food-chips,
+html[data-size="tall-narrow"] .food-chips {
+  flex-direction: row;
+  flex-shrink: 0;
 }
 
-html[data-size="tall"] .food-chip:not([data-food="all"]),
-html[data-size="tall"] .food-chip:not([data-food="all"]) .food-chip-face {
-  flex: 1 0 auto;
+html[data-size="tall"] .food-chip,
+html[data-size="tall-narrow"] .food-chip {
+  flex-shrink: 0;
 }
 
-html[data-size="tall"] .food-chip:not([data-food="all"]) .food-chip-face {
+html[data-size="tall"] .food-chip .food-chip-face,
+html[data-size="tall-narrow"] .food-chip .food-chip-face {
+  width: 56px;
+  padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .food-chips[data-arrangement="closed"] {
-  gap: 8px;
+html[data-size="tall"] .food-chip-word,
+html[data-size="tall"] .food-chip-count,
+html[data-size="tall-narrow"] .food-chip-word,
+html[data-size="tall-narrow"] .food-chip-count {
+  display: none;
 }
 
-html[data-size="tall"] .food-chips[data-arrangement="closed"] .food-chip:not([data-food="all"]) .food-chip-face {
-  padding: 0 8px 0 14px;
-  gap: 8px;
-}
-
-html[data-size="tall"] .food-chips[data-arrangement="stacked"] {
-  flex-direction: column;
-}
-
-html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
-  display: flex;
-  gap: 12px;
-}
-
-/* In a tall-narrow window, an iPhone upright, the catalogue stands as in
-   a tall one on 20-pixel sides: "HOME" at the top left, and under it the
-   chips at their landscape look in one row that scrolls sideways, from
-   the window's left edge to its right, room kept above and below for the
-   chosen chip's shadow. The cards stand under the chips. */
 html[data-size="tall-narrow"] .catalogue {
   gap: 20px;
 }
 
+/* Five 48-pixel targets and four 8-pixel gaps fit inside 320-pixel
+   portrait's 20-pixel sides, including BOTH's pair of food symbols. */
 html[data-size="tall-narrow"] .catalogue-bar {
   padding: 0 20px;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 16px;
+  gap: 8px;
 }
 
 html[data-size="tall-narrow"] .food-chips {
-  align-self: stretch;
-  margin: -10px -20px -22px;
-  padding: 10px 20px 22px;
-  overflow-x: auto;
-  overscroll-behavior: none;
-  scrollbar-width: none;
+  gap: 8px;
 }
 
+html[data-size="tall-narrow"] .catalogue-bar .home-button,
 html[data-size="tall-narrow"] .food-chip {
+  width: 48px;
+  height: 48px;
+  padding: 0;
   flex-shrink: 0;
+  justify-content: center;
+}
+
+html[data-size="tall-narrow"] .food-chip .food-chip-face {
+  width: 48px;
+}
+
+html[data-size="tall-narrow"] .catalogue-home-word {
+  display: none;
 }
 
 html[data-size="tall-narrow"] .catalogue-grid {
