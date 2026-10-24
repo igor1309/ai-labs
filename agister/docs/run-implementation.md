@@ -1713,7 +1713,7 @@ Decisions, each with its reason:
   parallel's do: a reader of `events.jsonl` finds every item by one key.
 - Conditions stay the starting set (equals, present, all, any, and,
   or, not); settings already type them.
-- A workflow item stays not run: nothing needs one yet.
+- A workflow item stayed not run here; "A workflow as an item" runs it.
 
 ## A workflow as an item
 
@@ -1739,13 +1739,25 @@ runs, a parallel's children included (ADR-011, rules 2 and 3).
   a repeat (`tests/revise/1`); a branch or repeat inside is told the
   same way (`tests/debate`). Its declared name to the caller is
   `<item>/<step>`, so the composition's plan tells it from a caller's
-  step of the same name. Items nest: `<outer>/<item>/<step>`.
+  step of the same name.
 - In a **parallel**, a workflow item runs its steps in sequence beside
   the parallel's other children, counting as one toward `max`. Its slot
   is `{"status", "class", "output"}` as a step's: the item's outputs
   where it completed, else null, its class the failing step's.
 - Its calls' cost, usage, warnings and sessions count in the run's, as
-  a step's in sequence.
+  a step's in sequence; each call keeps its own limits and the daily
+  budget, as any call does.
+- It is a **child run** (ADR-011, rule 6; ADR-012): core reports its
+  start and end to the record port, and the record keeps it under
+  `children`, by the id `<run id>/<item>`: the item, its workflow, its
+  parent's id, its params and inputs as bound, its status, class and
+  output. Its calls stay in the run's `calls`, by their names.
+
+**Resolve** reads an item of a workflow whose one output is `output` as
+that value: a field read from the item's outputs is not checked against
+the workflow's output names, as a step's fields are not;
+`steps.<item>.outputs.output` is refused. A workflow of other outputs is
+read through their names, as now.
 
 **The composition** plans a workflow item's steps as it plans any step,
 each under its `<item>/<step>` name, and gives core the workflow's
@@ -1759,8 +1771,17 @@ run. `agister check` follows, as it shares that list.
 slot names the workflow `tests_debate`. The judge's process, prompt and
 input do not change.
 
+This section runs what "Branch and repeat" left not run: a workflow
+item.
+
 Decisions, each with its reason:
 
+- An item's own inputs resolve when it starts, not with the parallel's
+  shared inputs: they are its own, over params only it binds. A caller
+  that needs one snapshot binds its resolved revisions into the item's
+  params, as `code_review` does.
+- No workflow budget is added: none exists yet for a run; the item's
+  calls are bounded as every call is. One comes with a run's budget.
 - The one output named `output` is given whole, as a step requested
   alone makes its workflow's (ADR-013): a lens that is a workflow fills
   its slot with a review, as a lens that is a step does; a mapping
@@ -1773,4 +1794,5 @@ Decisions, each with its reason:
 - A parallel's branch and repeat stay not run: nothing needs one yet;
   a workflow item gives either a slot.
 - Resolve already checks an item's bindings against its workflow's
-  params, and refuses a cycle of named workflows; neither changes.
+  params, refuses a cycle of named workflows, and refuses a caller's
+  read of an item's session or of a step inside it; none changes.

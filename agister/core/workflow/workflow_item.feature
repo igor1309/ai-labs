@@ -34,6 +34,14 @@ Feature: A workflow runs as an item of its caller
     Then "judge" is called with reviews {"verdict": "approve", "text":
       "t"}
 
+  Scenario: The item's inputs resolve over the params it bound
+    Given "lens" declares the input "rev" of the param "goal", which its
+      resolver gives as "rev-of-<goal>"
+    And "draft" binds "g" from inputs.rev
+    When "w" runs with goal "ship"
+    Then the item's resolver is asked once, with goal "ship" and depth
+      "2", before "tests/draft" is called with g "rev-of-ship"
+
   Scenario: The item's steps read only its own boundary and outputs
     Given "w" has, before "tests", the step "draft" completing with
       {"text": "outer"}
@@ -53,8 +61,8 @@ Feature: A workflow runs as an item of its caller
       "revise", max 2, until steps.revise.outputs.done equals true
     And "revise" completes with {"done": false}, then {"done": true}
     When "w" runs with goal "ship"
-    Then the caller is asked for "tests/draft", "tests/revise/1", then
-      "tests/revise/2"
+    Then the caller is asked for "tests/draft", "tests/revise/1",
+      "tests/revise/2", then "tests/polish"
     And the events are told "tests/debate" stopped "until" after 2 passes
 
   Scenario: An item step that does not complete ends the run
@@ -87,4 +95,4 @@ Feature: A workflow runs as an item of its caller
   Scenario: The run's cost and usage count the item's calls
     Given "draft" and "polish" each cost 0.5 and use 10 tokens
     When "w" runs with goal "ship"
-    Then the run's cost counts 1.0 and 20 tokens for the item
+    Then the run's cost is 1.0 and its usage 20 tokens
