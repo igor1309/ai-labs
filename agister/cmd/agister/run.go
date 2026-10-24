@@ -295,7 +295,30 @@ func (r *runs) runner(built plan, id, launch, dir string, record *runRecord, reu
 	}
 	steps.run = id
 	steps.reuse = reusable{calls: reused.Calls, root: dir, facts: r.holding.facts}
+	attachWorkflowResolvers(&built.workflow, built.boundaries, resolver)
 	return workflow.New(boundary{inputs: resolver, declared: built.boundary, records: record}, steps, bothEvents{r.events, record}, r.host.clock)
+}
+
+func attachWorkflowResolvers(w *workflow.Workflow, boundaries map[string]inputs.Declared, resolver declaredResolver) {
+	var attachItems func([]workflow.Step, string)
+	attachItems = func(items []workflow.Step, prefix string) {
+		for i := range items {
+			step := &items[i]
+			path := prefix + step.Name
+			if step.Workflow != nil {
+				if declared, ok := boundaries[path]; ok {
+					step.Resolver = boundary{inputs: resolver, declared: declared}
+				}
+				attachItems(step.Workflow.Steps, path+"/")
+			}
+			attachItems(step.Parallel, prefix)
+			attachItems(step.Branch, prefix)
+			if step.Repeat != nil {
+				attachItems(step.Repeat.Steps, prefix)
+			}
+		}
+	}
+	attachItems(w.Steps, "")
 }
 
 // cancelled is the host's context, ended once a signal arrives; stop ends
@@ -413,6 +436,8 @@ type plan struct {
 	boundary        inputs.Declared
 	workflow        workflow.Workflow
 	calls           map[string]plannedCall
+	boundaries      map[string]inputs.Declared
+	sessionSteps    []string
 }
 
 // plannedCall is a step's call: its process and agent, by name; the
@@ -460,27 +485,42 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 
 	// A workflow made of a step declares its process's params.
 	var params []documents.Field[documents.Param]
-	documentsByName := map[string]documents.Item{}
-	var outputs []documents.Field[documents.Binding]
 	sources := map[string]string{}
+	documentsByWorkflow := map[string]map[string]documents.Item{}
+	collect := func(definition documents.WorkflowDefinition) map[string]documents.Item {
+		items := map[string]documents.Item{}
+		var walk func([]documents.Field[documents.Item])
+		walk = func(fields []documents.Field[documents.Item]) {
+			for _, field := range fields {
+				item := field.Value
+				items[item.Name] = item
+				walk(item.Parallel.Value)
+				walk(item.Branch.Value)
+				walk(item.Repeat.Value.Steps.Value)
+			}
+		}
+		walk(definition.Steps.Value)
+		return items
+	}
+	docsFor := func(workflowName string) (map[string]documents.Item, error) {
+		if items, ok := documentsByWorkflow[workflowName]; ok {
+			return items, nil
+		}
+		definition, problems := docs.Workflow(workflowName)
+		if len(problems) > 0 {
+			return nil, documentProblems(problems)
+		}
+		items := collect(definition)
+		documentsByWorkflow[workflowName] = items
+		return items, nil
+	}
 	if name != "" {
 		definition, problems := docs.Workflow(name)
 		if len(problems) > 0 {
 			return plan{}, nil, documentProblems(problems)
 		}
 		params = definition.Params.Value
-		var collect func([]documents.Field[documents.Item])
-		collect = func(items []documents.Field[documents.Item]) {
-			for _, field := range items {
-				item := field.Value
-				documentsByName[item.Name] = item
-				collect(item.Parallel.Value)
-				collect(item.Branch.Value)
-				collect(item.Repeat.Value.Steps.Value)
-			}
-		}
-		collect(definition.Steps.Value)
-		outputs = definition.Outputs.Value
+		documentsByWorkflow[name] = collect(definition)
 		for _, input := range definition.Inputs.Value {
 			sources[input.Value.Name] = input.Value.Source.Value
 		}
@@ -491,7 +531,7 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 		}
 		params = definition.Params.Value
 	}
-	built := plan{calls: map[string]plannedCall{}, definitions: []runstore.Definition{}}
+	built := plan{calls: map[string]plannedCall{}, definitions: []runstore.Definition{}, boundaries: map[string]inputs.Declared{}}
 	if name != "" {
 		named := []runstore.Definition{{Kind: "workflow", Name: name}}
 		for _, input := range w.Inputs {
@@ -519,105 +559,177 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 		}
 		built.boundary.Inputs = append(built.boundary.Inputs, inputs.Input{Name: input.Name, Source: sources[input.Name], Arguments: arguments, Forms: forms})
 	}
+	declaredOf := func(w resolve.Workflow, definition documents.WorkflowDefinition) (inputs.Declared, error) {
+		declared := inputs.Declared{}
+		defaults := declaredParams(definition.Params.Value)
+		for _, param := range w.Params {
+			declared.Params = append(declared.Params, inputs.Param{Name: param.Name, Default: defaults[param.Name]})
+		}
+		for _, input := range w.Inputs {
+			arguments, err := inputsArguments(input.Arguments)
+			if err != nil {
+				return inputs.Declared{}, err
+			}
+			forms, err := formsOf(input.Forms, docs)
+			if err != nil {
+				return inputs.Declared{}, err
+			}
+			source := ""
+			for _, field := range definition.Inputs.Value {
+				if field.Value.Name == input.Name {
+					source = field.Value.Source.Value
+					break
+				}
+			}
+			declared.Inputs = append(declared.Inputs, inputs.Input{Name: input.Name, Source: source, Arguments: arguments, Forms: forms})
+		}
+		return declared, nil
+	}
 	// Every leaf is planned, including arms execution may never select.
-	stepOf := func(item resolve.Item) (workflow.Step, error) {
-		planned, err := plannedCallOf(name, item, item.Agent.Value, resolved, docs, takes)
-		if err != nil {
-			return workflow.Step{}, err
-		}
-		if fallback := resolved.Agents[item.Agent.Value].Fallback.Value; fallback != "" {
-			if planned, err = withFallback(planned, name, item, fallback, resolved, docs, takes); err != nil {
-				return workflow.Step{}, err
+	var buildWorkflow func(string, resolve.Workflow, string) (workflow.Workflow, error)
+	buildWorkflow = func(workflowName string, current resolve.Workflow, prefix string) (workflow.Workflow, error) {
+		itemDocs := documentsByWorkflow[workflowName]
+		if itemDocs == nil && workflowName != "" {
+			var err error
+			itemDocs, err = docsFor(workflowName)
+			if err != nil {
+				return workflow.Workflow{}, err
 			}
 		}
-		var bindings []workflow.Binding
-		if name == "" {
-			bindings, err = workflowBindings(item.Inputs)
+		var builtWorkflow workflow.Workflow
+		var buildItem func(resolve.Item, string) (workflow.Step, error)
+		stepOf := func(item resolve.Item, path string) (workflow.Step, error) {
+			planned, err := plannedCallOf(workflowName, item, item.Agent.Value, resolved, docs, takes)
+			if err != nil {
+				return workflow.Step{}, err
+			}
+			if fallback := resolved.Agents[item.Agent.Value].Fallback.Value; fallback != "" {
+				if planned, err = withFallback(planned, workflowName, item, fallback, resolved, docs, takes); err != nil {
+					return workflow.Step{}, err
+				}
+			}
+			var bindings []workflow.Binding
+			if workflowName == "" {
+				bindings, err = workflowBindings(item.Inputs)
+			} else {
+				bindings, err = documentWorkflowBindings(itemDocs[item.Name].Inputs.Value)
+			}
+			if err != nil {
+				return workflow.Step{}, err
+			}
+			built.calls[path] = planned
+			step := workflow.Step{Name: item.Name, Agent: item.Agent.Value, Bindings: bindings}
+			if session := item.Session; session != nil {
+				step.Session = session.Name
+			}
+			return step, nil
+		}
+		buildItem = func(item resolve.Item, prefix string) (workflow.Step, error) {
+			path := prefix + item.Name
+			if itemKind(item) == "" {
+				return stepOf(item, path)
+			}
+			definition := itemDocs[item.Name]
+			if item.Workflow.Value != "" {
+				child, ok := resolved.Workflows[item.Workflow.Value]
+				if !ok {
+					return workflow.Step{}, fmt.Errorf("workflow %q is not resolved", item.Workflow.Value)
+				}
+				childWorkflow, err := buildWorkflow(item.Workflow.Value, child, path+"/")
+				if err != nil {
+					return workflow.Step{}, err
+				}
+				bindings, err := documentWorkflowBindings(definition.Inputs.Value)
+				if err != nil {
+					return workflow.Step{}, err
+				}
+				childDefinition, problems := docs.Workflow(item.Workflow.Value)
+				if len(problems) > 0 {
+					return workflow.Step{}, documentProblems(problems)
+				}
+				declared, err := declaredOf(child, childDefinition)
+				if err != nil {
+					return workflow.Step{}, err
+				}
+				built.boundaries[path] = declared
+				return workflow.Step{Name: item.Name, Bindings: bindings, Workflow: &childWorkflow, WorkflowName: item.Workflow.Value}, nil
+			}
+			builtItem := workflow.Step{Name: item.Name, Max: item.Max}
+			children := item.Parallel
+			if item.Branch != nil {
+				children = item.Branch
+			}
+			if item.Repeat != nil {
+				children = item.Repeat.Steps
+			}
+			var steps []workflow.Step
+			for _, child := range children {
+				step, err := buildItem(child, prefix)
+				if err != nil {
+					return workflow.Step{}, err
+				}
+				childDefinition := itemDocs[child.Name]
+				if childDefinition.If.Given {
+					condition := workflowCondition(childDefinition.If.Value)
+					step.If = &condition
+				}
+				step.Outputs, err = documentWorkflowBindings(childDefinition.Outputs.Value)
+				if err != nil {
+					return workflow.Step{}, err
+				}
+				steps = append(steps, step)
+			}
+			switch {
+			case item.Parallel != nil:
+				builtItem.Parallel = steps
+			case item.Branch != nil:
+				builtItem.Branch = steps
+			case item.Repeat != nil:
+				repeat := definition.Repeat.Value
+				state, err := documentWorkflowBindings(repeat.State.Value)
+				if err != nil {
+					return workflow.Step{}, err
+				}
+				next, err := documentWorkflowBindings(repeat.Next.Value)
+				if err != nil {
+					return workflow.Step{}, err
+				}
+				builtItem.Repeat = &workflow.Repeat{State: state, Next: next, Steps: steps, Until: workflowCondition(repeat.Until.Value), Max: repeat.Max.Value}
+			}
+			return builtItem, nil
+		}
+		for _, item := range current.Steps {
+			step, err := buildItem(item, prefix)
+			if err != nil {
+				return workflow.Workflow{}, err
+			}
+			builtWorkflow.Steps = append(builtWorkflow.Steps, step)
+		}
+		var err error
+		if workflowName == "" {
+			builtWorkflow.Outputs, err = workflowBindings(current.Outputs)
 		} else {
-			bindings, err = documentWorkflowBindings(documentsByName[item.Name].Inputs.Value)
+			definition, problems := docs.Workflow(workflowName)
+			if len(problems) > 0 {
+				return workflow.Workflow{}, documentProblems(problems)
+			}
+			builtWorkflow.Outputs, err = documentWorkflowBindings(definition.Outputs.Value)
 		}
 		if err != nil {
-			return workflow.Step{}, err
+			return workflow.Workflow{}, err
 		}
-		built.calls[item.Name] = planned
-		step := workflow.Step{Name: item.Name, Agent: item.Agent.Value, Bindings: bindings}
-		if session := item.Session; session != nil {
-			step.Session = session.Name
-		}
-		return step, nil
+		return builtWorkflow, nil
 	}
-	var buildItem func(resolve.Item) (workflow.Step, error)
-	buildItem = func(item resolve.Item) (workflow.Step, error) {
-		if itemKind(item) == "" {
-			return stepOf(item)
-		}
-		definition := documentsByName[item.Name]
-		builtItem := workflow.Step{Name: item.Name, Max: item.Max}
-		children := item.Parallel
-		if item.Branch != nil {
-			children = item.Branch
-		}
-		if item.Repeat != nil {
-			children = item.Repeat.Steps
-		}
-		var steps []workflow.Step
-		for _, child := range children {
-			step, err := buildItem(child)
-			if err != nil {
-				return workflow.Step{}, err
-			}
-			childDefinition := documentsByName[child.Name]
-			if childDefinition.If.Given {
-				condition := workflowCondition(childDefinition.If.Value)
-				step.If = &condition
-			}
-			step.Outputs, err = documentWorkflowBindings(childDefinition.Outputs.Value)
-			if err != nil {
-				return workflow.Step{}, err
-			}
-			steps = append(steps, step)
-		}
-		switch {
-		case item.Parallel != nil:
-			builtItem.Parallel = steps
-		case item.Branch != nil:
-			builtItem.Branch = steps
-		case item.Repeat != nil:
-			repeat := definition.Repeat.Value
-			state, err := documentWorkflowBindings(repeat.State.Value)
-			if err != nil {
-				return workflow.Step{}, err
-			}
-			next, err := documentWorkflowBindings(repeat.Next.Value)
-			if err != nil {
-				return workflow.Step{}, err
-			}
-			builtItem.Repeat = &workflow.Repeat{State: state, Next: next, Steps: steps, Until: workflowCondition(repeat.Until.Value), Max: repeat.Max.Value}
-		}
-		return builtItem, nil
-	}
-	for _, item := range w.Steps {
-		step, err := buildItem(item)
-		if err != nil {
-			return plan{}, nil, err
-		}
-		built.workflow.Steps = append(built.workflow.Steps, step)
-	}
-	if name == "" {
-		built.workflow.Outputs, err = workflowBindings(w.Outputs)
-	} else {
-		built.workflow.Outputs, err = documentWorkflowBindings(outputs)
-	}
+	built.workflow, err = buildWorkflow(name, w, "")
 	if err != nil {
 		return plan{}, nil, err
 	}
-	for _, item := range stepsOf(w.Steps) {
-		if session := item.Session; session != nil {
-			for _, name := range []string{item.Name, session.Name} {
-				planned := built.calls[name]
-				planned.chained = true
-				built.calls[name] = planned
-			}
+	for _, item := range sessionsOfResolved(w.Steps, resolved, "") {
+		built.sessionSteps = append(built.sessionSteps, item.name)
+		for _, callName := range []string{item.name, item.session} {
+			planned := built.calls[callName]
+			planned.chained = true
+			built.calls[callName] = planned
 		}
 	}
 	return built, nil, nil
@@ -663,10 +775,15 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 					unrun.add(document, owner, fmt.Sprintf("the item %q, named as a pass,", item.Name))
 				}
 				switch {
+				case item.Workflow.Value != "":
+					// A child workflow is executed by core as one item; its
+					// internal control items are therefore part of that run.
 				case item.Parallel != nil:
 					parallels[item.Name] = true
 					for _, child := range item.Parallel {
-						notStep(child)
+						if child.Workflow.Value == "" {
+							notStep(child)
+						}
 					}
 					inspect(item.Parallel)
 				case item.Branch != nil:
@@ -688,7 +805,7 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 			}
 		}
 	}
-	for _, item := range stepsOf(w.Steps) {
+	for _, item := range stepsOfResolved(w.Steps, resolved) {
 		definition, problems := docs.Process(item.Process.Value)
 		if len(problems) > 0 {
 			return nil, documentProblems(problems)
@@ -753,6 +870,55 @@ func stepsOf(items []resolve.Item) []resolve.Item {
 		}
 	}
 	return steps
+}
+
+// stepsOfResolved visits every leaf in a workflow, including the leaves of a
+// workflow item. Its child definitions are already part of the resolved
+// snapshot, so planning and the not-run check use the same traversal.
+func stepsOfResolved(items []resolve.Item, resolved resolve.Resolved) []resolve.Item {
+	var steps []resolve.Item
+	for _, item := range items {
+		switch {
+		case item.Workflow.Value != "":
+			if child, ok := resolved.Workflows[item.Workflow.Value]; ok {
+				steps = append(steps, stepsOfResolved(child.Steps, resolved)...)
+			}
+		case item.Parallel != nil:
+			steps = append(steps, stepsOfResolved(item.Parallel, resolved)...)
+		case item.Branch != nil:
+			steps = append(steps, stepsOfResolved(item.Branch, resolved)...)
+		case item.Repeat != nil:
+			steps = append(steps, stepsOfResolved(item.Repeat.Steps, resolved)...)
+		default:
+			steps = append(steps, item)
+		}
+	}
+	return steps
+}
+
+type sessionStep struct{ name, session string }
+
+func sessionsOfResolved(items []resolve.Item, resolved resolve.Resolved, prefix string) []sessionStep {
+	var found []sessionStep
+	for _, item := range items {
+		switch {
+		case item.Workflow.Value != "":
+			if child, ok := resolved.Workflows[item.Workflow.Value]; ok {
+				found = append(found, sessionsOfResolved(child.Steps, resolved, prefix+item.Name+"/")...)
+			}
+		case item.Parallel != nil:
+			found = append(found, sessionsOfResolved(item.Parallel, resolved, prefix)...)
+		case item.Branch != nil:
+			found = append(found, sessionsOfResolved(item.Branch, resolved, prefix)...)
+		case item.Repeat != nil:
+			found = append(found, sessionsOfResolved(item.Repeat.Steps, resolved, prefix)...)
+		default:
+			if item.Session != nil {
+				found = append(found, sessionStep{name: prefix + item.Name, session: prefix + item.Session.Name})
+			}
+		}
+	}
+	return found
 }
 
 // referencesOf collects bindings and condition reads at every depth.
@@ -1168,7 +1334,9 @@ func (b boundary) Resolve(ctx context.Context, given map[string]string) (workflo
 	if err != nil {
 		return workflow.Boundary{}, err
 	}
-	b.records.Resolved(givenInputs(b.declared.Inputs, resolved.Inputs))
+	if b.records != nil {
+		b.records.Resolved(givenInputs(b.declared.Inputs, resolved.Inputs))
+	}
 	return workflow.Boundary{Params: resolved.Params, Inputs: values(resolved.Inputs)}, nil
 }
 

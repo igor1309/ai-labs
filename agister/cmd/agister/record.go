@@ -255,6 +255,7 @@ func (r *runRecord) end(result workflow.Result) cli.Result {
 func (r *runRecord) written() runstore.Record {
 	record := r.record
 	record.Calls = slices.Clone(r.record.Calls)
+	record.Children = slices.Clone(r.record.Children)
 	return record
 }
 
@@ -299,6 +300,47 @@ func (r *runRecord) Ended(step string, ended workflow.Ended) {
 		Duration: ended.Duration})
 }
 
+func (r *runRecord) ChildStarted(step, workflowName string, params, inputs map[string]string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	keptInputs := childInputs(inputs)
+	r.record.Children = append(r.record.Children, runstore.Child{
+		ID: callID(r.record.ID, step), Workflow: workflowName, Parent: r.record.ID,
+		Params: maps.Clone(params), Inputs: keptInputs, Status: string(workflow.Failed),
+	})
+	if err := r.store.Append(r.record.ID, runstore.Event{At: r.clock.Now(), Step: step, Kind: runstore.ChildStarted, Workflow: workflowName, Params: maps.Clone(params), Inputs: keptInputs}); err != nil {
+		r.warn("an event of the run could not be recorded: " + err.Error())
+	}
+	if err := r.store.Write(r.written()); err != nil {
+		r.warn("the run's record could not be written: " + err.Error())
+	}
+}
+
+func (r *runRecord) ChildEnded(step string, ended workflow.ChildEnd) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i := range r.record.Children {
+		if r.record.Children[i].ID != callID(r.record.ID, step) {
+			continue
+		}
+		child := &r.record.Children[i]
+		child.Status, child.Output = string(ended.Status), ended.Output
+		if ended.Class == "" {
+			child.Class = nil
+		} else {
+			class := string(ended.Class)
+			child.Class = &class
+		}
+		break
+	}
+	if err := r.store.Append(r.record.ID, runstore.Event{At: r.clock.Now(), Step: step, Kind: runstore.ChildEnded, Status: string(ended.Status), Class: string(ended.Class), Output: ended.Output}); err != nil {
+		r.warn("an event of the run could not be recorded: " + err.Error())
+	}
+	if err := r.store.Write(r.written()); err != nil {
+		r.warn("the run's record could not be written: " + err.Error())
+	}
+}
+
 func (r *runRecord) append(event runstore.Event) {
 	event.At = r.clock.Now()
 	if err := r.store.Append(r.record.ID, event); err != nil {
@@ -326,6 +368,15 @@ func recordInputs(given []givenInput) []runstore.Input {
 	var kept []runstore.Input
 	for _, input := range given {
 		kept = append(kept, runstore.Input{Name: input.name, Value: input.Value, Identity: input.Identity})
+	}
+	return kept
+}
+
+func childInputs(given map[string]string) []runstore.Input {
+	names := slices.Sorted(maps.Keys(given))
+	kept := make([]runstore.Input, 0, len(names))
+	for _, name := range names {
+		kept = append(kept, runstore.Input{Name: name, Value: given[name]})
 	}
 	return kept
 }
@@ -392,6 +443,18 @@ func (b bothEvents) Reused(step, call string) {
 func (b bothEvents) Ended(step string, ended workflow.Ended) {
 	for _, events := range b {
 		events.Ended(step, ended)
+	}
+}
+
+func (b bothEvents) ChildStarted(step, workflowName string, params, inputs map[string]string) {
+	for _, events := range b {
+		events.ChildStarted(step, workflowName, params, inputs)
+	}
+}
+
+func (b bothEvents) ChildEnded(step string, ended workflow.ChildEnd) {
+	for _, events := range b {
+		events.ChildEnded(step, ended)
 	}
 }
 

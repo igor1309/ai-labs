@@ -66,6 +66,12 @@ type Step struct {
 	If       *Condition
 	Outputs  []Binding
 	Repeat   *Repeat
+	// Workflow is the child workflow run by this item. Resolver resolves its
+	// boundary from the item's bindings. WorkflowName is its declared name,
+	// for child-run events.
+	Workflow     *Workflow
+	Resolver     Resolver
+	WorkflowName string
 	// declared is the name the step is declared by, where Name is that
 	// of one execution of it, a pass of a repeat; "" where they are one.
 	declared string
@@ -183,6 +189,15 @@ type Events interface {
 	Branch(step, arm string, conditions []ConditionRead)
 	Pass(step string, pass int, state map[string]any)
 	Stopped(step, why string, passes int)
+	ChildStarted(step, workflow string, params, inputs map[string]string)
+	ChildEnded(step string, ended ChildEnd)
+}
+
+// ChildEnd is how a workflow item ended.
+type ChildEnd struct {
+	Status Status
+	Class  Class
+	Output map[string]any
 }
 
 // Ended is how a step's call ended: its status and class, and how long it
@@ -214,6 +229,7 @@ type Result struct {
 	Sessions map[string]string
 	Reason   string
 	Warnings []string
+	value    any
 }
 
 // Usage is the tokens a call or a run used, each nil where not reported.
@@ -321,7 +337,7 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 		return refuse()
 	}
 	read := reader{boundary: boundary, outputs: map[string]any{}, sessions: map[string]string{}}
-	execution := execution{runner: r, count: count}
+	execution := execution{runner: r, count: count, mu: &sync.Mutex{}}
 	ended := execution.sequence(ctx, w.Steps, read, "")
 	if ended.Status != Completed {
 		result.Status, result.Class, result.Reason = ended.Status, ended.Class, ended.Reason
@@ -426,7 +442,11 @@ func endOf(called Result) map[string]any {
 		end["class"] = string(called.Class)
 	}
 	if called.Status == Completed {
-		end["output"] = called.Output
+		if called.value != nil {
+			end["output"] = called.value
+		} else {
+			end["output"] = called.Output
+		}
 	}
 	return end
 }

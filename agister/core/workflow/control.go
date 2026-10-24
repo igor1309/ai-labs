@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"sync"
 )
 
 // Repeat runs Steps with explicit state, binding Next after each pass.
@@ -18,16 +19,31 @@ type Repeat struct {
 type execution struct {
 	runner *Runner
 	count  func(string, Result)
+	mu     *sync.Mutex
+}
+
+func (e execution) counted(step string, result Result) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.count(step, result)
 }
 
 func (e execution) sequence(ctx context.Context, steps []Step, read reader, suffix string) Result {
+	return e.sequenceAt(ctx, steps, read, "", suffix)
+}
+
+func (e execution) sequenceAt(ctx context.Context, steps []Step, read reader, prefix, suffix string) Result {
 	for _, step := range steps {
-		result := e.item(ctx, step, read, suffix)
+		result := e.itemAt(ctx, step, read, prefix, suffix, true)
 		if result.Status != Completed {
 			return result
 		}
 		if step.Parallel == nil {
-			read.outputs[step.Name] = result.Output
+			if step.Workflow != nil && result.value != nil {
+				read.outputs[step.Name] = result.value
+			} else {
+				read.outputs[step.Name] = result.Output
+			}
 		}
 	}
 	return Result{Status: Completed}
@@ -48,10 +64,14 @@ func (r reader) bindings(bindings []Binding) (map[string]any, bool) {
 }
 
 func (e execution) item(ctx context.Context, item Step, read reader, suffix string) Result {
+	return e.itemAt(ctx, item, read, "", suffix, true)
+}
+
+func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, suffix string, count bool) Result {
 	if ctx.Err() != nil {
 		return Result{Status: Interrupted, Class: Cancelled}
 	}
-	name := item.Name + suffix
+	name := prefix + item.Name + suffix
 	switch {
 	case item.Branch != nil:
 		var conditions []ConditionRead
@@ -67,7 +87,7 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 			inner := read
 			inner.outputs = maps.Clone(read.outputs)
 			inner.sessions = maps.Clone(read.sessions)
-			result := e.item(ctx, arm, inner, suffix)
+			result := e.itemAt(ctx, arm, inner, prefix, suffix, true)
 			if result.Status != Completed {
 				return result
 			}
@@ -93,7 +113,7 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 			inner := read
 			inner.state, inner.outputs = layered(read.state, state), maps.Clone(read.outputs)
 			inner.sessions = maps.Clone(read.sessions)
-			result := e.sequence(ctx, repeat.Steps, inner, fmt.Sprintf("%s/%d", suffix, pass))
+			result := e.sequenceAt(ctx, repeat.Steps, inner, prefix, fmt.Sprintf("%s/%d", suffix, pass))
 			if result.Status != Completed {
 				return result
 			}
@@ -119,13 +139,7 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 		}
 		return refused()
 	case item.Parallel != nil:
-		together := item
-		together.Parallel = append([]Step{}, item.Parallel...)
-		for i := range together.Parallel {
-			together.Parallel[i].declared = item.Parallel[i].Name
-			together.Parallel[i].Name += suffix
-		}
-		calls, reason, ok := e.runner.parallel(ctx, together, read)
+		calls, reason, ok := e.parallel(ctx, item, read, prefix, suffix)
 		if !ok {
 			result := refused()
 			result.Reason = reason
@@ -134,7 +148,10 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 		ends := make([]any, len(calls))
 		completed := false
 		for i, call := range calls {
-			e.count(together.Parallel[i].Name, call)
+			child := item.Parallel[i]
+			if child.Workflow == nil && child.Parallel == nil && child.Branch == nil && child.Repeat == nil {
+				e.counted(prefix+child.Name+suffix, call)
+			}
 			read.sessions[item.Parallel[i].Name] = call.Session
 			ends[i] = endOf(call)
 			completed = completed || call.Status == Completed
@@ -148,6 +165,54 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 		// Parallel outputs are a list, while a call's output is a mapping.
 		read.outputs[item.Name] = ends
 		return Result{Status: Completed}
+	case item.Workflow != nil:
+		if item.Resolver == nil {
+			result := refused()
+			result.Reason = fmt.Sprintf("the workflow item %q has no resolver", name)
+			return result
+		}
+		params, ok := read.params(item.Bindings)
+		if !ok {
+			result := refused()
+			result.Reason = fmt.Sprintf("the workflow item %q's inputs read nothing", name)
+			return result
+		}
+		boundary, err := item.Resolver.Resolve(ctx, params)
+		if err != nil {
+			result := refused()
+			result.Reason = err.Error()
+			return result
+		}
+		e.runner.events.ChildStarted(name, item.WorkflowName, maps.Clone(boundary.Params), maps.Clone(boundary.Inputs))
+		inner := reader{boundary: boundary, outputs: map[string]any{}, sessions: map[string]string{}}
+		result := e.sequenceAt(ctx, item.Workflow.Steps, inner, name+"/", "")
+		if result.Status == Completed {
+			output := map[string]any{}
+			for _, binding := range item.Workflow.Outputs {
+				value, found := inner.value(binding.Value)
+				if !found {
+					result = refused()
+					break
+				}
+				output[binding.Name] = value
+			}
+			if result.Status == Completed && len(item.Workflow.Outputs) == 1 && item.Workflow.Outputs[0].Name == "output" {
+				result.value = output["output"]
+				if whole, mapped := output["output"].(map[string]any); mapped {
+					result.Output = whole
+				} else {
+					result.Output = map[string]any{"output": output["output"]}
+				}
+			} else if result.Status == Completed {
+				result.Output = output
+			}
+		}
+		end := ChildEnd{Status: result.Status, Class: result.Class}
+		if result.Status == Completed {
+			end.Output = result.Output
+		}
+		e.runner.events.ChildEnded(name, end)
+		return result
 	default:
 		params, session, reason, ok := read.call(item)
 		if !ok {
@@ -156,12 +221,63 @@ func (e execution) item(ctx context.Context, item Step, read reader, suffix stri
 			return result
 		}
 		logical := item.Name
-		item.declared, item.Name = logical, name
+		item.declared, item.Name = prefix+logical, name
 		result := e.runner.call(ctx, item, params, session)
-		e.count(name, result)
+		if count {
+			e.counted(name, result)
+		}
 		read.sessions[logical] = result.Session
 		return result
 	}
+}
+
+// parallel runs arbitrary items in declaration order, bounded by Max. Each
+// child gets its own view of the parent's boundary and completed outputs.
+func (e execution) parallel(ctx context.Context, together Step, read reader, prefix, suffix string) ([]Result, string, bool) {
+	items := together.Parallel
+	params := len(items)
+	if params == 0 {
+		return nil, "", true
+	}
+	for _, child := range items {
+		if child.Workflow != nil {
+			if _, ok := read.params(child.Bindings); !ok {
+				return nil, "", false
+			}
+			continue
+		}
+		if _, _, reason, ok := read.call(child); !ok {
+			return nil, reason, false
+		}
+	}
+	running := params
+	if together.Max > 0 && together.Max < running {
+		running = together.Max
+	}
+	slots := make(chan struct{}, running)
+	results := make([]Result, params)
+	var all sync.WaitGroup
+	for i, child := range items {
+		select {
+		case slots <- struct{}{}:
+		case <-ctx.Done():
+		}
+		if ctx.Err() != nil {
+			results[i] = Result{Status: Interrupted, Class: Cancelled, Cost: new(float64)}
+			continue
+		}
+		all.Add(1)
+		go func(i int, child Step) {
+			defer all.Done()
+			defer func() { <-slots }()
+			inner := read
+			inner.outputs = maps.Clone(read.outputs)
+			inner.sessions = maps.Clone(read.sessions)
+			results[i] = e.itemAt(ctx, child, inner, prefix, suffix, false)
+		}(i, child)
+	}
+	all.Wait()
+	return results, "", true
 }
 
 // layered is the state a repeat's body reads: the enclosing repeats'

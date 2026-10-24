@@ -25,15 +25,28 @@ const Schema = "agister.record/v1alpha1"
 // has not, its status, each of its calls ended so far, and its result, nil
 // until it ends.
 type Record struct {
-	Schema  string     `json:"schema"`
-	ID      string     `json:"id"`
-	Request Request    `json:"request"`
-	Inputs  []Input    `json:"inputs"`
-	Started time.Time  `json:"started"`
-	Ended   *time.Time `json:"ended"`
-	Status  string     `json:"status"`
-	Calls   []Call     `json:"calls"`
-	Result  *Result    `json:"result"`
+	Schema   string     `json:"schema"`
+	ID       string     `json:"id"`
+	Request  Request    `json:"request"`
+	Inputs   []Input    `json:"inputs"`
+	Started  time.Time  `json:"started"`
+	Ended    *time.Time `json:"ended"`
+	Status   string     `json:"status"`
+	Calls    []Call     `json:"calls"`
+	Children []Child    `json:"children,omitempty"`
+	Result   *Result    `json:"result"`
+}
+
+// Child is a workflow item run inside its parent run.
+type Child struct {
+	ID       string            `json:"id"`
+	Workflow string            `json:"workflow"`
+	Parent   string            `json:"parent"`
+	Params   map[string]string `json:"params"`
+	Inputs   []Input           `json:"inputs"`
+	Status   string            `json:"status"`
+	Class    *string           `json:"class"`
+	Output   map[string]any    `json:"output"`
 }
 
 // Request is what a run was asked: a workflow, or a process on an agent;
@@ -184,16 +197,18 @@ type Timing struct {
 type Kind string
 
 const (
-	Started  Kind = "started"  // the step started, on its agent
-	Reused   Kind = "reused"   // the step took an earlier call in place of making one
-	Tool     Kind = "tool"     // the step called a tool
-	Stale    Kind = "stale"    // the step's turn went stale
-	Capacity Kind = "capacity" // the step's turn failed at capacity
-	Fallback Kind = "fallback" // the step's call is made again on its agent's fallback
-	Branch   Kind = "branch"   // a branch selected an arm
-	Pass     Kind = "pass"     // a repeat bound its next state
-	Stopped  Kind = "stopped"  // a repeat stopped
-	Ended    Kind = "ended"    // the step ended
+	Started      Kind = "started"  // the step started, on its agent
+	Reused       Kind = "reused"   // the step took an earlier call in place of making one
+	Tool         Kind = "tool"     // the step called a tool
+	Stale        Kind = "stale"    // the step's turn went stale
+	Capacity     Kind = "capacity" // the step's turn failed at capacity
+	Fallback     Kind = "fallback" // the step's call is made again on its agent's fallback
+	Branch       Kind = "branch"   // a branch selected an arm
+	Pass         Kind = "pass"     // a repeat bound its next state
+	Stopped      Kind = "stopped"  // a repeat stopped
+	Ended        Kind = "ended"    // the step ended
+	ChildStarted Kind = "child_started"
+	ChildEnded   Kind = "child_ended"
 )
 
 // Event is what a step did, at a time. Of the rest, each kind has its
@@ -225,6 +240,10 @@ type Event struct {
 	State      map[string]any
 	Stopped    string
 	Passes     int
+	Workflow   string
+	Params     map[string]string
+	Inputs     []Input
+	Output     map[string]any
 }
 
 // Condition is an evaluated branch arm and the values it read.
@@ -238,6 +257,28 @@ type Condition struct {
 // alone, a class that is none as null.
 func (e Event) MarshalJSON() ([]byte, error) {
 	switch e.Kind {
+	case ChildStarted:
+		return json.Marshal(struct {
+			At       time.Time         `json:"at"`
+			Step     string            `json:"step"`
+			Kind     Kind              `json:"kind"`
+			Workflow string            `json:"workflow"`
+			Params   map[string]string `json:"params"`
+			Inputs   []Input           `json:"inputs"`
+		}{e.At, e.Step, e.Kind, e.Workflow, e.Params, e.Inputs})
+	case ChildEnded:
+		var class any
+		if e.Class != "" {
+			class = e.Class
+		}
+		return json.Marshal(struct {
+			At     time.Time      `json:"at"`
+			Step   string         `json:"step"`
+			Kind   Kind           `json:"kind"`
+			Status string         `json:"status"`
+			Class  any            `json:"class"`
+			Output map[string]any `json:"output"`
+		}{e.At, e.Step, e.Kind, e.Status, class, e.Output})
 	case Branch:
 		return json.Marshal(struct {
 			At         time.Time   `json:"at"`

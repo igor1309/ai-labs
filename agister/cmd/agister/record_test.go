@@ -274,7 +274,7 @@ func TestCallsSideBySideThatEndTogetherAreBothKept(t *testing.T) {
 		steps = append(steps, call.Step)
 	}
 	slices.Sort(steps)
-	if want := []string{"adversarial", "architecture", "clarity", "intent", "judge", "tests"}; !slices.Equal(steps, want) {
+	if want := []string{"adversarial", "architecture", "clarity", "intent", "judge", "tests/critique", "tests/draft", "tests/recheck/1", "tests/revise/1"}; !slices.Equal(steps, want) {
 		t.Errorf("the last record holds the calls of %q, want each of %q once", steps, want)
 	}
 }
