@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import records from "../src/data/dinosaurs.json";
 import { readCatalogue } from "../src/dinosaurs.ts";
-import { dinosaurWordsWidth, keptLines } from "../src/dinosaurPageLayout.ts";
+import { dinosaurWordsWidth, keptLines, NARROW_PAGE } from "../src/dinosaurPageLayout.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { formatLength, formatMass } from "../src/formatValue.ts";
 import { NAME_EMS } from "./nameWidths.ts";
@@ -179,5 +179,56 @@ describe("portrait dinosaur words fit the kept bands", () => {
       for (const language of ["en", "ru"] as const) expect(lineCount(TEXTS[language].sourceNote, width, 13, NOTE_EMS)).toBeLessThanOrEqual(3);
     }
     expect(lineCount(TEXTS.ru.sourceNote, 520, 13, NOTE_EMS)).toBe(4);
+  });
+});
+
+// Each fact label's width in ems at weight 600, rounded up: in Lexend
+// for the English labels, and in the system face, which Lexend has no
+// Cyrillic for, for the Russian.
+const LABEL_EMS: Record<string, number> = {
+  TALL: 2.54, WINGS: 3.74, LONG: 2.99, HEAVY: 3.5,
+  РОСТ: 2.68, КРЫЛЬЯ: 4.12, ДЛИНА: 3.59, ВЕС: 1.93
+};
+
+// The words' width in every tall-narrow window, 320 to 599 wide, on its
+// 20-pixel sides.
+const NARROW_WIDTHS = Array.from({ length: 280 }, (_, step) => dinosaurWordsWidth(320 + step, 0, 0, 0, NARROW_PAGE.sidePadding));
+
+describe("narrow dinosaur words fit their kept bands", () => {
+  it("fits all 52 English and Russian descriptions in 24-pixel type, and both notes, at every narrow width", () => {
+    expect([NARROW_WIDTHS[0], NARROW_WIDTHS.at(-1)]).toEqual([280, 559]);
+    for (const width of NARROW_WIDTHS) {
+      const kept = keptLines(width, true);
+      for (const language of ["en", "ru"] as const) {
+        for (const dinosaur of catalogue) {
+          expect(lineCount(dinosaur.description[language], width, NARROW_PAGE.descriptionSize, DESCRIPTION_EMS), `${dinosaur.id} ${language} at ${width}`).toBeLessThanOrEqual(kept.description);
+        }
+        expect(lineCount(TEXTS[language].sourceNote, width, 13, NOTE_EMS), `${language} at ${width}`).toBeLessThanOrEqual(kept.note);
+      }
+    }
+  });
+
+  it("keeps no more lines than the longest takes at the narrowest width of each band", () => {
+    const most = (width: number) => Math.max(...catalogue.flatMap((dinosaur) => (["en", "ru"] as const).map((language) => lineCount(dinosaur.description[language], width, NARROW_PAGE.descriptionSize, DESCRIPTION_EMS))));
+    expect([280, 295, 311, 357, 429].map((width) => [keptLines(width, true).description, most(width)])).toEqual([[8, 8], [7, 7], [6, 6], [5, 5], [4, 4]]);
+  });
+
+  it.each(NARROW_WIDTHS.filter((width) => width % 20 === 0 || width === 280 || width === 335))("fits every name, and each fact's label and value with the facts one over the other, at %i pixels", (width) => {
+    // A fact as wide as the words has 24-pixel side padding; its value is
+    // 26% of the content width, at most 44 pixels, and its label a
+    // 22-pixel symbol 8 from the word.
+    const content = width - 48;
+    const size = Math.min(44, content * 0.26);
+    for (const language of ["en", "ru"] as const) {
+      const texts = TEXTS[language];
+      for (const label of [...Object.values(texts.measures), texts.heavy]) expect(22 + 8 + LABEL_EMS[label]! * 18, label).toBeLessThanOrEqual(content);
+      for (const dinosaur of catalogue) {
+        const name = dinosaur.name[language].toLocaleUpperCase(language);
+        expect(NAME_EMS[name]! * Math.min(64, width * 0.078), name).toBeLessThanOrEqual(width);
+        for (const value of [formatLength(dinosaur.size.metres, language), formatMass(dinosaur.mass, language)]) {
+          expect(emWidth(value, FACT_EMS) * size, `${dinosaur.id} ${language}: ${value}`).toBeLessThanOrEqual(content);
+        }
+      }
+    }
   });
 });

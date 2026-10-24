@@ -2347,6 +2347,39 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   gap: 12px;
 }
 
+/* In a tall-narrow window, an iPhone upright, the catalogue stands as in
+   a tall one on 20-pixel sides: "HOME" at the top left, and under it the
+   chips at their landscape look in one row that scrolls sideways, from
+   the window's left edge to its right, room kept above and below for the
+   chosen chip's shadow. The cards stand under the chips. */
+html[data-size="tall-narrow"] .catalogue {
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .catalogue-bar {
+  padding: 0 20px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .food-chips {
+  align-self: stretch;
+  margin: -10px -20px -22px;
+  padding: 10px 20px 22px;
+  overflow-x: auto;
+  overscroll-behavior: none;
+  scrollbar-width: none;
+}
+
+html[data-size="tall-narrow"] .food-chip {
+  flex-shrink: 0;
+}
+
+html[data-size="tall-narrow"] .catalogue-grid {
+  padding: 0 20px 48px;
+}
+
 .catalogue-grid {
   flex: 1 1 0;
   min-height: 0;
@@ -2727,9 +2760,11 @@ html[data-size="tall"] .food-chips[data-arrangement="stacked"] .food-chips-row {
   color: #5c647a;
 }
 
-/* Upright dinosaur pages put the full-width stage above words whose bands
-   are sized by the width-derived custom properties. */
-html[data-size="tall"] .dinosaur-page {
+/* Upright dinosaur pages, tall and tall-narrow, put the full-width stage
+   above words whose bands are sized by the width-derived custom
+   properties. */
+html[data-size="tall"] .dinosaur-page,
+html[data-size="tall-narrow"] .dinosaur-page {
   min-height: 100vh;
   min-height: 100dvh;
   height: auto;
@@ -2737,14 +2772,16 @@ html[data-size="tall"] .dinosaur-page {
   overscroll-behavior: none;
 }
 
-html[data-size="tall"] .dinosaur-body {
+html[data-size="tall"] .dinosaur-body,
+html[data-size="tall-narrow"] .dinosaur-body {
   flex: 1 0 auto;
   min-height: 0;
   flex-direction: column;
   gap: 32px;
 }
 
-html[data-size="tall"] .dinosaur-stage {
+html[data-size="tall"] .dinosaur-stage,
+html[data-size="tall-narrow"] .dinosaur-stage {
   flex: 1 0 248px;
   min-height: 248px;
   display: grid;
@@ -2753,7 +2790,8 @@ html[data-size="tall"] .dinosaur-stage {
   align-items: center;
 }
 
-html[data-size="tall"] .dinosaur-stage-art {
+html[data-size="tall"] .dinosaur-stage-art,
+html[data-size="tall-narrow"] .dinosaur-stage-art {
   width: 100%;
   aspect-ratio: 4 / 3;
   max-height: 100%;
@@ -2761,63 +2799,127 @@ html[data-size="tall"] .dinosaur-stage-art {
   justify-self: center;
 }
 
-html[data-size="tall"] .dinosaur-steps {
+html[data-size="tall"] .dinosaur-steps,
+html[data-size="tall-narrow"] .dinosaur-steps {
   display: contents;
 }
 
-html[data-size="tall"] .dinosaur-step:first-child {
+html[data-size="tall"] .dinosaur-step:first-child,
+html[data-size="tall-narrow"] .dinosaur-step:first-child {
   grid-column: 1;
   grid-row: 1;
 }
 
-html[data-size="tall"] .dinosaur-step:last-child {
+html[data-size="tall"] .dinosaur-step:last-child,
+html[data-size="tall-narrow"] .dinosaur-step:last-child {
   grid-column: 3;
   grid-row: 1;
 }
 
-html[data-size="tall"] .dinosaur-stage-art {
+html[data-size="tall"] .dinosaur-stage-art,
+html[data-size="tall-narrow"] .dinosaur-stage-art {
   grid-column: 2;
   grid-row: 1;
 }
 
-html[data-size="tall"] .dinosaur-info {
+html[data-size="tall"] .dinosaur-info,
+html[data-size="tall-narrow"] .dinosaur-info {
   flex: none;
   gap: 24px;
   container-type: inline-size;
 }
 
-html[data-size="tall"] .dinosaur-about {
+html[data-size="tall"] .dinosaur-about,
+html[data-size="tall-narrow"] .dinosaur-about {
   gap: 24px;
 }
 
-html[data-size="tall"] .dinosaur-page-name {
+html[data-size="tall"] .dinosaur-page-name,
+html[data-size="tall-narrow"] .dinosaur-page-name {
   font-size: min(64px, 7.8cqi);
   line-height: 1.25;
 }
 
 html[data-size="tall"] .dinosaur-bar .home-button,
+html[data-size="tall-narrow"] .dinosaur-bar .home-button,
 html[data-size="tall"] .dinosaur-position,
+html[data-size="tall-narrow"] .dinosaur-position,
 html[data-size="tall"] .dinosaur-info .diet-tag,
+html[data-size="tall-narrow"] .dinosaur-info .diet-tag,
 html[data-size="tall"] .dinosaur-fact-label,
-html[data-size="tall"] .dinosaur-fact-value {
+html[data-size="tall-narrow"] .dinosaur-fact-label,
+html[data-size="tall"] .dinosaur-fact-value,
+html[data-size="tall-narrow"] .dinosaur-fact-value {
   line-height: 1.25;
 }
 
-html[data-size="tall"] .dinosaur-group {
+html[data-size="tall"] .dinosaur-group,
+html[data-size="tall-narrow"] .dinosaur-group {
   display: block;
   min-height: 22px;
   line-height: 22px;
 }
 
-html[data-size="tall"] .dinosaur-description {
+html[data-size="tall"] .dinosaur-description,
+html[data-size="tall-narrow"] .dinosaur-description {
   height: calc(var(--description-lines, 3) * 41px);
   overflow: hidden;
 }
 
-html[data-size="tall"] .source-note {
+html[data-size="tall"] .source-note,
+html[data-size="tall-narrow"] .source-note {
   height: calc(var(--note-lines, 3) * 16.5px);
   line-height: 16.5px;
   overflow: hidden;
+}
+
+/* In a tall-narrow window, an iPhone upright, the page stands on 20-pixel
+   sides. The bar's button shows its book alone. The picture spans the
+   stage, the ← and → buttons in a row under it at the stage's left and
+   right; the stage is as tall as these, and the page scrolls. The two
+   facts stand one over the other, and the description is in smaller
+   type, so that its longest word fits a 320-pixel window. */
+html[data-size="tall-narrow"] .dinosaur-page {
+  padding:
+    calc(40px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(48px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+}
+
+html[data-size="tall-narrow"] .dinosaur-bar .home-button {
+  padding: 0 16px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-stage {
+  flex: none;
+  min-height: 0;
+  padding: 20px;
+  grid-template-rows: auto 72px;
+}
+
+html[data-size="tall-narrow"] .dinosaur-stage-art {
+  grid-column: 1 / -1;
+  max-height: none;
+}
+
+html[data-size="tall-narrow"] .dinosaur-step:first-child,
+html[data-size="tall-narrow"] .dinosaur-step:last-child {
+  grid-row: 2;
+}
+
+html[data-size="tall-narrow"] .dinosaur-facts {
+  flex-direction: column;
+}
+
+html[data-size="tall-narrow"] .dinosaur-fact {
+  flex: none;
+}
+
+html[data-size="tall-narrow"] .dinosaur-description {
+  font-size: 24px;
+  line-height: 35px;
+  height: calc(var(--description-lines, 8) * 35px);
 }
 
 .gated-screen {
