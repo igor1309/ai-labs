@@ -3,7 +3,9 @@ import Foundation
 import Testing
 @testable import SystemAudioCapture
 
-@Suite(.serialized)
+// A hosted CI runner cannot be granted the permission to tap system audio, so
+// these run where the tests' own machine can: the local test step.
+@Suite(.serialized, .disabled(if: ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil, "needs a Mac that may tap system audio"))
 struct CoreAudioBindingTests {
 
     /// Contract test: a Core Audio tap hears a faint afplay child's tone.
@@ -44,7 +46,9 @@ struct CoreAudioBindingTests {
     private func start(_ pid: Int32, binding: CoreAudioBinding = CoreAudioBinding()) async throws -> SystemAudioCapture {
 
         // The child has no audio process object until afplay opens the file.
-        let deadline = ContinuousClock.now + .seconds(5)
+        // The deadline only guards a hang: on a loaded machine afplay can take
+        // well over five seconds to open its file.
+        let deadline = ContinuousClock.now + .seconds(30)
         var object: UInt32?
         repeat {
             object = try? binding.processObject(pid)
@@ -71,7 +75,7 @@ struct CoreAudioBindingTests {
                 #expect(heard, "The captured 440 Hz tone must be above the noise floor")
             }
             group.addTask {
-                try await Task.sleep(for: .seconds(12))
+                try await Task.sleep(for: .seconds(30))
                 throw ToneTimedOut()
             }
             defer { group.cancelAll() }

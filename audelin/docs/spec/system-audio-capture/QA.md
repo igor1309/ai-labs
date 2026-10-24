@@ -1,8 +1,8 @@
 # System audio capture — QA
 
-Fake tests mix tones, change rate, refuse requests and hold IO. Native spies
-check tap and aggregate settings, IO, listeners and teardown. Real rows use
-`afplay -v 0.02` on a tone in a temp dir; denied permission can give silence.
+Fake tests mix tones, change rate, refuse requests and hold IO. Native spies check
+tap and aggregate settings, IO, listeners and teardown. Real rows use `afplay -v 0.02`
+on a tone in a temp dir, run locally only (hosted CI may not tap audio).
 
 ## S-1 A named process is heard
 
