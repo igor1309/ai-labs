@@ -1,7 +1,8 @@
 # Resolve the packages' dependencies, implement, then run Audelin's tests
 # outside the implementer's sandbox: the test step's exit code, not the
-# implementer's report, says whether they pass. Agister runs no branch or
-# repeat yet, so a failure is repaired by a further run, not by this one.
+# implementer's report, says whether they pass. A failure goes back to the
+# builder's session with the tests' output, and the tests run again, at
+# most three times.
 schema: agister.workflow/v1alpha1
 params:
   brief: {}
@@ -10,8 +11,40 @@ steps:
   - {name: resolve, process: audelin_resolve, agent: bash}
   - {name: build, process: implement, agent: codex-sol-61, inputs: {brief: {from: params.brief}}}
   - {name: test, process: audelin_tests, agent: bash}
+  - name: fix
+    branch:
+      - name: passed
+        if: {equals: [{from: steps.test.outputs.exit_code}, 0]}
+        parallel:
+          - {name: passed_first, process: audelin_passed, agent: bash}
+        outputs:
+          exit_code: {from: steps.test.outputs.exit_code}
+          test_output: {from: steps.test.outputs.stdout.tail}
+          repairs: "0"
+      - name: repair
+        repeat:
+          state:
+            code: {from: steps.test.outputs.exit_code}
+            tail: {from: steps.test.outputs.stdout.tail}
+          steps:
+            - name: repair_tests
+              process: repair_tests
+              agent: codex-sol-61
+              session: {from: steps.build.session}
+              inputs: {test_output: {from: state.tail}}
+            - {name: retest, process: audelin_tests, agent: bash}
+          next:
+            code: {from: steps.retest.outputs.exit_code}
+            tail: {from: steps.retest.outputs.stdout.tail}
+          until: {equals: [{from: state.code}, 0]}
+          max: 3
+        outputs:
+          exit_code: {from: steps.repair.outputs.state.code}
+          test_output: {from: steps.repair.outputs.state.tail}
+          repairs: {from: steps.repair.outputs.passes}
 
 outputs:
   implementation: {from: steps.build.outputs}
-  exit_code: {from: steps.test.outputs.exit_code}
-  test_output: {from: steps.test.outputs.stdout.tail}
+  exit_code: {from: steps.fix.outputs.exit_code}
+  test_output: {from: steps.fix.outputs.test_output}
+  repairs: {from: steps.fix.outputs.repairs}
