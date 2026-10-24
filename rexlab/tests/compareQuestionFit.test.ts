@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareQuestionType, compareQuestionWidth, PORTRAIT_QUESTION } from "../src/compareQuestionLayout.ts";
+import { compareQuestionType, compareQuestionWidth, NARROW_QUESTION, PORTRAIT_QUESTION } from "../src/compareQuestionLayout.ts";
 import { formatLength, formatMass } from "../src/formatValue.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { NAME_EMS } from "./nameWidths.ts";
@@ -83,5 +83,20 @@ describe("an upright question's words fit", () => {
     // The chip stands 24 pixels from the area's right edge, and leaves the
     // area's 24-pixel padding at its left.
     for (const value of values) expect(chipWidth(emWidth(value, VALUE_EMS)), value).toBeLessThanOrEqual(width - 2 * 24);
+  });
+});
+
+// A phone's widths, the narrowest 320 with no scrollbar.
+const NARROW_WIDTHS = [320, 375, 393, 430].map((width) => compareQuestionWidth(width, 0, 0, 0, NARROW_QUESTION));
+
+describe("a phone question's words fit", () => {
+  it.each(NARROW_WIDTHS)("fits every English and Russian prompt on one line beside its symbol at %i pixels", (width) => {
+    const { prompt } = compareQuestionType(width, NARROW_QUESTION);
+    for (const text of prompts) expect(emWidth(text, PROMPT_EMS) * prompt, text).toBeLessThanOrEqual(width - 56 - 16);
+  });
+
+  it.each(NARROW_WIDTHS)("fits every English and Russian name on one line in its 20-pixel-padded footer at %i pixels", (width) => {
+    const { name } = compareQuestionType(width, NARROW_QUESTION);
+    for (const text of names) expect(nameEms(text) * name, text).toBeLessThanOrEqual(width - 2 * 20);
   });
 });

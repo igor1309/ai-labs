@@ -277,7 +277,10 @@ describe("an upright result's words fit a 320-wide phone", () => {
       expect(own.px("height")).toBeGreaterThanOrEqual(44);
       expect(glyphs(button.textContent ?? "", own.px("font-size")) + 30 + own.columnGap() + own.px("padding-left") + own.px("padding-right")).toBeLessThanOrEqual(inner);
     }
+    // YES and NOT NOW one above the other, each across the offer.
     const answers = styleAt(element(".pairs-offer-answers", dialog), size);
+    expect([answers.value("display"), answers.value("flex-direction")]).toEqual(["flex", "column"]);
+    for (const button of buttons) expect(styleAt(button, size).value("flex-shrink")).toBe("0");
     const picture = styleAt(element(".pairs-offer-picture", dialog), size);
     const height = card.px("padding-top") + picture.px("height") + 2 * card.rowGap() + lines * type * Number(question.value("line-height"))
       + 2 * styleAt(buttons[0]!, size).px("height") + answers.rowGap() + card.px("padding-bottom");
