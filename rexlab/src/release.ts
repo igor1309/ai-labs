@@ -1,4 +1,4 @@
-import { workerVersion } from "./offline/offlineCache.ts";
+import { workerVersion } from "./offline/workerBuild.ts";
 import { WORKER_FILE } from "./offline/registerWorker.ts";
 
 const PLACEHOLDER = /%REXLAB_VERSION%/g;
@@ -30,16 +30,16 @@ export function expectedVersion(
 }
 
 export type SmokeDeps = {
-  fetchPage: (url: string) => Promise<{ status: number; body: string }>;
-  // Where the fetched file names its version: the page's meta tag unless
-  // told otherwise.
+  fetchFile: (url: string) => Promise<{ status: number; body: string }>;
+  // How to read the version from the fetched file: the page's meta tag
+  // unless told otherwise, as the worker's header is read.
   read?: (body: string) => string | undefined;
   sleep: (ms: number) => Promise<void>;
   log: (line: string) => void;
 };
 
 // A fresh Pages deployment can take a little while to reach the custom
-// domain, so the check retries until the page reports the version.
+// domain, so the check retries until the file reports the version.
 export async function verifyDeployedVersion(
   url: string,
   expected: string,
@@ -50,7 +50,7 @@ export async function verifyDeployedVersion(
   let last = "no response";
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const { status, body } = await deps.fetchPage(url);
+      const { status, body } = await deps.fetchFile(url);
       const found = status === 200 ? (deps.read ?? pageVersion)(body) : undefined;
       if (found === expected) {
         deps.log(`Verified deployed RexLab version ${expected} at ${url}`);

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { cacheName, offlineCache, serveOffline, workerHeader, workerVersion, type OfflineCache, type OfflineCaches, type WorkerScope } from "../src/offline/offlineCache.ts";
+import { cacheName, offlineWorker, serveOffline, type OfflineCache, type OfflineCaches, type WorkerScope } from "../src/offline/offlineWorker.ts";
 import { registerWorker } from "../src/offline/registerWorker.ts";
-import { releaseFiles, workerCode } from "../src/offline/workerBuild.ts";
+import { releaseFiles, workerCode, workerHeader, workerVersion } from "../src/offline/workerBuild.ts";
 
 const ORIGIN = "https://rexlab.enoa.ai";
-const FILES = ["/", "/assets/main-abc.js", "/assets/tile-def.webp", "/manifest.webmanifest", "/prototypes/care-hatch.html"];
+const FILES = ["/", "/assets/main-abc.js", "/assets/tile-def.webp", "/manifest.webmanifest", "/prototypes/care-hatch"];
 
 // Cache Storage held in maps, each cache its responses by path and query,
 // matched without the query only when asked to.
@@ -58,7 +58,7 @@ const page = () => new Request(`${ORIGIN}/`, { mode: "same-origin" });
 const navigation = (path = "/") => ({ method: "GET", url: `${ORIGIN}${path}`, mode: "navigate" }) as Request;
 
 function release(version: string, { caches = memoryCaches().caches, fetch = network().fetch, wait = manualWait().wait } = {}) {
-  return offlineCache({ version, files: FILES, caches, fetch, origin: ORIGIN, wait });
+  return offlineWorker({ version, files: FILES, caches, fetch, origin: ORIGIN, wait });
 }
 
 describe("the app offline", () => {
@@ -114,7 +114,8 @@ describe("the app offline", () => {
     const online = network((url) => new Response(`network ${new URL(url).pathname}`));
     const offline = release("v1.0.0", { caches, fetch: online.fetch });
     await offline.install();
-    expect(await (await offline.respond(navigation("/prototypes/care-hatch.html"))!).text()).toBe("cached /prototypes/care-hatch.html");
+    expect(await (await offline.respond(navigation("/prototypes/care-hatch.html"))!).text()).toBe("cached /prototypes/care-hatch");
+    expect(await (await offline.respond(navigation("/prototypes/care-hatch"))!).text()).toBe("cached /prototypes/care-hatch");
     expect(online.asked).toEqual([]);
   });
 
@@ -122,7 +123,7 @@ describe("the app offline", () => {
     const { caches } = memoryCaches();
     const active = release("v1.0.0", { caches });
     await active.install();
-    await offlineCache({ version: "v1.1.0", files: ["/", "/assets/tile-new.webp", "/icons/icon-180.png"], caches, fetch: network().fetch, origin: ORIGIN, wait: manualWait().wait }).install();
+    await offlineWorker({ version: "v1.1.0", files: ["/", "/assets/tile-new.webp", "/icons/icon-180.png"], caches, fetch: network().fetch, origin: ORIGIN, wait: manualWait().wait }).install();
     expect(await (await active.respond(new Request(`${ORIGIN}/assets/tile-new.webp`))!).text()).toBe("cached /assets/tile-new.webp");
   });
 
@@ -131,6 +132,34 @@ describe("the app offline", () => {
     const offline = release("v1.0.0", { fetch: online.fetch });
     await offline.install();
     expect(await (await offline.respond(new Request(`${ORIGIN}/assets/elsewhere.webp`))!).text()).toBe("network /assets/elsewhere.webp");
+  });
+
+  it.each([
+    ["a host's error", () => new Response("bad gateway", { status: 502 })],
+    ["a missing page", () => new Response("not found", { status: 404 })]
+  ])("opens the cached page when the network answers with %s", async (_, answer) => {
+    const offline = release("v1.0.0", { fetch: network(answer).fetch });
+    await offline.install();
+    expect(await (await offline.respond(navigation())!).text()).toBe("cached /");
+  });
+
+  it.each([
+    ["the app's page", "/", "cached /"],
+    ["the app's page by its file", "/index.html", "cached /"],
+    ["a hashed file only a newer release holds", "/assets/tile-new.webp", "cached /assets/tile-new.webp"],
+    ["a file outside the hashed ones only a newer release holds", "/icons/icon-new.png", "network /icons/icon-new.png"],
+    ["a hashed file only another site's cache holds", "/assets/theirs.webp", "network /assets/theirs.webp"]
+  ])("answers %s from where it belongs", async (_, path, expected) => {
+    const { caches } = memoryCaches();
+    const fetch = network((url) => {
+      if (["/", "/index.html"].includes(new URL(url).pathname)) throw new TypeError("Load failed");
+      return new Response(`network ${new URL(url).pathname}`);
+    }).fetch;
+    const active = release("v1.0.0", { caches, fetch });
+    await active.install();
+    await offlineWorker({ version: "v1.1.0", files: ["/assets/tile-new.webp", "/icons/icon-new.png"], caches, fetch, origin: ORIGIN, wait: manualWait().wait }).install();
+    await (await caches.open("someone-else")).addAll(["/assets/theirs.webp"]);
+    expect(await (await active.respond(navigation(path))!).text()).toBe(expected);
   });
 
   it("leaves what it does not keep to the browser: other sites and anything but a read", () => {
@@ -151,9 +180,9 @@ describe("the app offline", () => {
 });
 
 describe("the worker's build", () => {
-  it("keeps every page and file the release serves, the page as the root, and leaves out the worker, maps and Pages' own files", () => {
+  it("keeps every page and file the release serves, each page at its path without .html and the app's as the root, and leaves out the worker, maps and Pages' own files", () => {
     expect(releaseFiles(["index.html", "sw.js", "assets/main-abc.js", "assets/main-abc.js.map", "prototypes/care-hatch.html", "_headers", "manifest.webmanifest", "icons/icon-180.png"]))
-      .toEqual(["/", "/assets/main-abc.js", "/icons/icon-180.png", "/manifest.webmanifest", "/prototypes/care-hatch.html"]);
+      .toEqual(["/", "/assets/main-abc.js", "/icons/icon-180.png", "/manifest.webmanifest", "/prototypes/care-hatch"]);
   });
 
   it("writes the version and the files in place of the worker's marks, headed with the version", () => {

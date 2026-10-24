@@ -4,7 +4,8 @@ import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build, type Plugin } from "vite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { workerVersion } from "../src/offline/offlineCache.ts";
+import { pagePath } from "../src/offline/offlineWorker.ts";
+import { workerVersion } from "../src/offline/workerBuild.ts";
 import config from "../vite.config.ts";
 
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url));
@@ -22,7 +23,7 @@ describe("RexLab on the home screen", () => {
   it("is named RexLab and opens full screen from the root, in the app's colour", () => {
     expect(manifest).toMatchObject({ name: "RexLab", short_name: "RexLab", start_url: "/", scope: "/", display: "fullscreen", background_color: "#F2EFE8", theme_color: "#F2EFE8" });
     expect(link("manifest")).toBe("/manifest.webmanifest");
-    expect([meta("theme-color"), meta("apple-mobile-web-app-capable"), meta("mobile-web-app-capable"), meta("apple-mobile-web-app-title")]).toEqual(["#F2EFE8", "yes", "yes", "RexLab"]);
+    expect([meta("theme-color"), meta("apple-mobile-web-app-capable"), meta("mobile-web-app-capable"), meta("apple-mobile-web-app-title"), meta("apple-mobile-web-app-status-bar-style")]).toEqual(["#F2EFE8", "yes", "yes", "RexLab", "black-translucent"]);
   });
 
   it("has its icon at every size it names", () => {
@@ -100,10 +101,10 @@ describe("the worker the build writes", () => {
     await Promise.all(work);
     const built = readdirSync(out, { recursive: true, withFileTypes: true })
       .filter((entry) => entry.isFile())
-      .map((entry) => `/${relative(out, join(entry.parentPath, entry.name))}`)
-      .filter((file) => !["/sw.js", "/_headers", "/index.html"].includes(file) && !file.endsWith(".map"));
+      .map((entry) => pagePath(`/${relative(out, join(entry.parentPath, entry.name))}`))
+      .filter((file) => !["/sw.js", "/_headers", "/index"].includes(file) && !file.endsWith(".map"));
     expect(kept.sort()).toEqual(["/", ...built].sort());
-    expect(kept).toContain("/prototypes/care-hatch.html");
+    expect(kept).toContain("/prototypes/care-hatch");
   });
 
   it("opens the cached page once a stalled network has taken 3 seconds", async () => {

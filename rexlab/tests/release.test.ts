@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { workerHeader, workerVersion } from "../src/offline/offlineCache.ts";
+import { workerHeader, workerVersion } from "../src/offline/workerBuild.ts";
 import {
   expectedVersion,
   pageVersion,
@@ -52,7 +52,7 @@ describe("verifyDeployedVersion", () => {
     const logs: string[] = [];
     const fetched: string[] = [];
     const smoke: SmokeDeps = {
-      fetchPage: async (target) => {
+      fetchFile: async (target) => {
         fetched.push(target);
         const next = responses.shift();
         if (!next) throw new Error("no more responses");

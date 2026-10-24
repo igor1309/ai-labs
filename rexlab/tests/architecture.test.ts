@@ -371,7 +371,7 @@ describe("tap safety in the source", () => {
     ["pairsGame.tsx", "window.setInterval(tick, 100);", `pairsGame.tsx: setInterval outside src/root.ts, see ${TAP_SAFETY}`],
     ["SortScreen.tsx", "const pressedAt = Date.now();", `SortScreen.tsx: Date.now() outside src/root.ts, see ${TAP_SAFETY}`],
     ["tapFilter.ts", "const at = performance.now();", `tapFilter.ts: performance.now() outside src/root.ts, see ${TAP_SAFETY}`],
-    ["offline/offlineCache.ts", "await new Promise((resolve) => setTimeout(resolve, 3000));", `offline/offlineCache.ts: setTimeout outside src/root.ts, see ${TAP_SAFETY}`],
+    ["offline/offlineWorker.ts", "await new Promise((resolve) => setTimeout(resolve, 3000));", `offline/offlineWorker.ts: setTimeout outside src/root.ts, see ${TAP_SAFETY}`],
     ["HomePage.tsx", "const today = new Date();", `HomePage.tsx: new Date() outside src/root.ts, see ${TAP_SAFETY}`],
     ["skeletons/drag.ts", "const time = event.timeStamp;", `skeletons/drag.ts: timeStamp outside src/root.ts, see ${TAP_SAFETY}`],
     ["skeletonGame.tsx", "waitForPictures(urls, clock, start);", `skeletonGame.tsx: waitForPictures, a wait for pictures, see ${TAP_SAFETY}`],

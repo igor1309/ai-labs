@@ -41,20 +41,22 @@ export const PAGE_WAIT_MS = 3000;
 
 const PREFIX = "rexlab-";
 
+// The host serves a page at its path without `.html`, and redirects the
+// `.html` address there; a redirected answer cannot open a page, so a page
+// is kept and found at the path the host serves.
+const HTML = ".html";
+export const pagePath = (file: string) => (file.endsWith(HTML) ? file.slice(0, -HTML.length) : file);
+
 // Where the build writes the files whose names carry their content's hash.
 const HASHED = "/assets/";
 
 export const cacheName = (version: string) => `${PREFIX}${version}`;
 
-// The build heads the worker's code with its version, so the release
-// check can tell the deployed worker is this release's.
-export const workerHeader = (version: string) => `/* rexlab-version ${version} */\n`;
+// What the worker does for one release: fill its cache on install, drop
+// older ones on activate, and answer requests.
+export type OfflineWorker = ReturnType<typeof offlineWorker>;
 
-export function workerVersion(code: string): string | undefined {
-  return /^\/\* rexlab-version (\S+) \*\//.exec(code)?.[1];
-}
-
-export function offlineCache({ version, files, caches, fetch, origin, wait }: OfflineDeps) {
+export function offlineWorker({ version, files, caches, fetch, origin, wait }: OfflineDeps) {
   const name = cacheName(version);
 
   // Every file of the release goes in its cache before the release takes
@@ -71,7 +73,8 @@ export function offlineCache({ version, files, caches, fetch, origin, wait }: Of
     }
   };
 
-  // The page from the network; the installed page where the network fails
+  // The page from the network; the installed page where the network fails,
+  // answers with anything but the page (a host's error, a Wi-Fi's sign-in)
   // or is slower than PAGE_WAIT_MS. The network's page is never kept: it
   // may be a newer release's, whose files this cache does not hold.
   const page = async (request: Request) => {
@@ -79,9 +82,9 @@ export function offlineCache({ version, files, caches, fetch, origin, wait }: Of
     const network = fetch(request);
     const late = wait(PAGE_WAIT_MS).then(() => undefined);
     const first = await Promise.race([network.catch(() => undefined), late]);
-    if (first) return first;
+    if (first?.ok) return first;
     const cached = await cache.match(PAGE);
-    return cached ?? network;
+    return cached ?? first ?? network;
   };
 
   // A file of the release from the cache, else from the network. Online,
@@ -109,6 +112,7 @@ export function offlineCache({ version, files, caches, fetch, origin, wait }: Of
     const url = new URL(request.url);
     if (url.origin !== origin) return undefined;
     if (url.pathname === PAGE || url.pathname === "/index.html") return page(request);
+    if (url.pathname.endsWith(HTML)) return file(new Request(`${url.origin}${pagePath(url.pathname)}`));
     return file(request);
   };
 
@@ -127,15 +131,15 @@ export type WorkerScope = {
 // Wires the cache to the worker's events. The browser activates a new
 // release once no page of the old one is open, so the old cache goes only
 // when nothing uses it.
-export function serveOffline(scope: WorkerScope, cache: ReturnType<typeof offlineCache>) {
+export function serveOffline(scope: WorkerScope, worker: OfflineWorker) {
   scope.addEventListener("install", (event) => {
-    event.waitUntil(cache.install());
+    event.waitUntil(worker.install());
   });
   scope.addEventListener("activate", (event) => {
-    event.waitUntil(cache.activate());
+    event.waitUntil(worker.activate());
   });
   scope.addEventListener("fetch", (event) => {
-    const response = cache.respond(event.request);
+    const response = worker.respond(event.request);
     if (response) event.respondWith(response);
   });
 }
