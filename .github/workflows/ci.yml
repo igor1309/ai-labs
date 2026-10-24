@@ -277,6 +277,7 @@ jobs:
               - "audelin/docs/research/spike/fixtures/**"
             audelin-ci:
               - ".github/workflows/audelin-core.yml"
+              - "audelin/scripts/swift-test-bounded.sh"
             claude-insights:
               - "claude-insights/claude-insights.py"
               - "claude-insights/test_claude_insights.py"
