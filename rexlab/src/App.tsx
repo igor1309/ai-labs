@@ -33,7 +33,7 @@ import { SandWritingScreen } from "./SandWritingScreen.tsx";
 import { CLOSE_DINOSAUR, OPEN_DINOSAUR, type PictureTransition } from "./SharedPicture.tsx";
 import { useSkeletonGame, type SkeletonGameProps, type SkeletonPhase } from "./skeletonGame.tsx";
 import { SILENT, type SkeletonSounds } from "./skeletonSounds.ts";
-import { sortBoardWidth } from "./sortBoardLayout.ts";
+import { NARROW_SORT, PORTRAIT_SORT, sortBoardWidth } from "./sortBoardLayout.ts";
 import { useSortingGame, type SortingGameProps, type SortingPhase } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 import { turnMotion, type TurnMotion, type TurnMotionSeams } from "./turnMotion.ts";
@@ -435,7 +435,7 @@ export function App({
   // And the width sort's board stands in.
   const sortWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return sortBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    return sortBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_SORT : PORTRAIT_SORT);
   });
   // And the width find the pair's result stands in.
   const pairsResultRoom = useSyncExternalStore(viewport.subscribe, () => {
@@ -635,7 +635,7 @@ export function App({
       case "care":
         return care.content(language);
       case "sorting":
-        return sorting.content(language, sortWidth, compareResultType(resultWidth));
+        return sorting.content(language, sortWidth, compareResultType(resultWidth, size === "tall-narrow" ? NARROW_RESULT : PORTRAIT_RESULT), size === "tall-narrow" ? NARROW_SORT : PORTRAIT_SORT);
       case "pairs":
         return pairs.content(language, pairsWelcomeType(welcomeWidth, size === "tall-narrow" ? NARROW_WELCOME : PORTRAIT_WELCOME), boardWidth, pairsResultRoom, size === "tall-narrow" ? NARROW_BOARD : PORTRAIT_BOARD, size === "tall-narrow" ? NARROW_PAIRS_RESULT : PORTRAIT_PAIRS_RESULT);
       case "skeletons":

@@ -4623,8 +4623,9 @@ html[data-size="tall"] .friends-grid {
   height: 252px;
 }
 
+/* An upright window sizes the tray by its rows instead. */
 @media (min-height: 860px) {
-  .sort[data-rows="2"] .sort-tray-area {
+  html:not([data-size^="tall"]) .sort[data-rows="2"] .sort-tray-area {
     height: 292px;
   }
 }
@@ -5059,7 +5060,8 @@ html[data-size="tall"] .friends-grid {
    and as leaves the baskets 320 of the height: the padding (88), the bar
    and the prompt (112) and three gaps (84) taken, 604 in all with the
    baskets; never under 120, and below that the whole screen scrolls. */
-html[data-size="tall"] .sort {
+html[data-size="tall"] .sort,
+html[data-size="tall-narrow"] .sort {
   min-height: 100vh;
   min-height: 100dvh;
   height: auto;
@@ -5071,11 +5073,13 @@ html[data-size="tall"] .sort {
   row-gap: 28px;
 }
 
-html[data-size="tall"] .sort[data-rows] .sort-tray-area {
+html[data-size="tall"] .sort[data-rows] .sort-tray-area,
+html[data-size="tall-narrow"] .sort[data-rows] .sort-tray-area {
   height: auto;
 }
 
-html[data-size="tall"] .sort-tray {
+html[data-size="tall"] .sort-tray,
+html[data-size="tall-narrow"] .sort-tray {
   height: auto;
   grid-template-columns: repeat(var(--upright-columns), max(120px, min(var(--card-by-width), ((100vh - (604px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--upright-rows) - 1) * 12px) / var(--upright-rows) - var(--strip)) / 0.75)));
   grid-template-columns: repeat(var(--upright-columns), max(120px, min(var(--card-by-width), ((100dvh - (604px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--upright-rows) - 1) * 12px) / var(--upright-rows) - var(--strip)) / 0.75)));
@@ -5083,12 +5087,14 @@ html[data-size="tall"] .sort-tray {
   justify-content: center;
 }
 
-html[data-size="tall"] .sort-art {
+html[data-size="tall"] .sort-art,
+html[data-size="tall-narrow"] .sort-art {
   flex: none;
   aspect-ratio: 4 / 3;
 }
 
-html[data-size="tall"] .sort[data-rows] .sort-footer {
+html[data-size="tall"] .sort[data-rows] .sort-footer,
+html[data-size="tall-narrow"] .sort[data-rows] .sort-footer {
   box-sizing: border-box;
   height: var(--strip);
   padding-block: 0;
@@ -5099,32 +5105,116 @@ html[data-size="tall"] .sort[data-rows] .sort-footer {
    inside: its mark above its name, and its cards below them. The names
    take the type the screen gives in --basket-type, one for the window,
    and break only between their words. */
-html[data-size="tall"] .baskets {
+html[data-size="tall"] .baskets,
+html[data-size="tall-narrow"] .baskets {
   flex: 1 0 auto;
   min-height: 320px;
 }
 
-html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket {
+html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket,
+html[data-size="tall-narrow"] .sort[data-rows] .baskets[data-count] .basket {
   padding: 20px;
   gap: 14px;
 }
 
-html[data-size="tall"] .basket-label {
+html[data-size="tall"] .basket-label,
+html[data-size="tall-narrow"] .basket-label {
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
 }
 
-html[data-size="tall"] .sort[data-rows] .basket-mark {
+html[data-size="tall"] .sort[data-rows] .basket-mark,
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark {
   min-width: 56px;
   height: 56px;
 }
 
-html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket-name {
+html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket-name,
+html[data-size="tall-narrow"] .sort[data-rows] .baskets[data-count] .basket-name {
   font-size: var(--basket-type);
   line-height: 1.1;
   white-space: normal;
   text-wrap: balance;
+}
+
+/* In a tall-narrow window, an iPhone upright, sort's board stands as in
+   a tall one on 24-pixel padding at the top, 32 at the bottom and 20 a
+   side, its parts 16 apart. HOME shows its house alone and the prompt is
+   22. The tray's cards stand 8 apart, as wide as the width allows and as
+   leaves the baskets 240 of the height: the padding (56), the bar and
+   the prompt (112) and three gaps (48) taken, 456 in all with the
+   baskets; never under 72, and below that the whole screen scrolls. The
+   baskets stand 8 apart, each 12 inside and showing its mark alone, its
+   name kept for screen readers. */
+html[data-size="tall-narrow"] .sort {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  row-gap: 16px;
+}
+
+html[data-size="tall-narrow"] .sort-bar {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .sort-bar .home-button {
+  flex-shrink: 0;
+  width: 56px;
+  padding: 0 16px;
+  justify-content: center;
+}
+
+html[data-size="tall-narrow"] .sort .prompt {
+  font-size: 22px;
+}
+
+html[data-size="tall-narrow"] .sort-tray {
+  grid-template-columns: repeat(var(--upright-columns), max(72px, min(var(--card-by-width), ((100vh - (456px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--upright-rows) - 1) * 8px) / var(--upright-rows) - var(--strip)) / 0.75)));
+  grid-template-columns: repeat(var(--upright-columns), max(72px, min(var(--card-by-width), ((100dvh - (456px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--upright-rows) - 1) * 8px) / var(--upright-rows) - var(--strip)) / 0.75)));
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .baskets {
+  min-height: 240px;
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .sort[data-rows] .baskets[data-count] .basket {
+  padding: 12px;
+  gap: 8px;
+}
+
+/* A mark is 44 tall, its symbol 22 and its type 16, so the widest, both
+   leg counts beside footprints, fits a third of a 320 phone. */
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark {
+  min-width: 44px;
+  height: 44px;
+  padding: 0 6px;
+  gap: 2px;
+}
+
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Size keeps its big and its small footprint. */
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark[data-basket="big"] svg {
+  width: 29px;
+  height: 29px;
+}
+
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark[data-basket="small"] svg {
+  width: 13px;
+  height: 13px;
+}
+
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .legs-count,
+html[data-size="tall-narrow"] .sort[data-rows] .basket-mark .mark-question {
+  font-size: 16px;
 }
 
 /* Find the pair's welcome and board fill the screen under a bar like the

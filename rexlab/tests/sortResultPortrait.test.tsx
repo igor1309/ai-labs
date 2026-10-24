@@ -3,7 +3,7 @@ import type { UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
 import type { PortraitLayouts } from "../src/App.tsx";
-import { compareResultType, compareResultWidth } from "../src/compareResultLayout.ts";
+import { compareResultType, compareResultWidth, NARROW_RESULT } from "../src/compareResultLayout.ts";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { openPairsApp } from "./pairsApp.tsx";
@@ -15,6 +15,7 @@ import { openWindow, type WindowSize } from "./windowSizes.ts";
 // screen, so here it is shown to take their sizes for the window.
 
 const PORTRAIT_LAYOUTS: PortraitLayouts = { home: ["tall"], "sorting-board": ["tall"], "sorting-result": ["tall"] };
+const NARROW_LAYOUTS: PortraitLayouts = { home: ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"] };
 const DEVICES: Record<Language, string> = { en: "en-GB", ru: "ru-RU" };
 
 const part = (selector: string) => {
@@ -41,9 +42,9 @@ async function playBoard(user: UserEvent, language: Language) {
   await user.click(screen.getByRole("button", { name: TEXTS[language].seeResult }));
 }
 
-async function openResult(size: WindowSize, level: AgeLevel, { language = "en", viewport = manualViewport("portrait") }: { language?: Language; viewport?: ManualViewport } = {}) {
+async function openResult(size: WindowSize, level: AgeLevel, { language = "en", viewport = manualViewport("portrait"), layouts = PORTRAIT_LAYOUTS }: { language?: Language; viewport?: ManualViewport; layouts?: PortraitLayouts } = {}) {
   openWindow(...size);
-  const app = openPairsApp({ viewport, portraitLayouts: PORTRAIT_LAYOUTS, deviceLanguage: DEVICES[language], ageLevel: { level, revision: `picked-${level}` } });
+  const app = openPairsApp({ viewport, portraitLayouts: layouts, deviceLanguage: DEVICES[language], ageLevel: { level, revision: `picked-${level}` } });
   await app.user.click(gameDoor(TEXTS[language].sort));
   await playBoard(app.user, language);
   return { ...app, viewport };
@@ -58,6 +59,28 @@ const typeFor = (width: number) => {
   const type = compareResultType(compareResultWidth(width, 0, 0));
   return [`${type.star}px`, `${type.levelName}px`, `${type.heroMaximum}px`];
 };
+
+const narrowTypeFor = (width: number) => {
+  const type = compareResultType(compareResultWidth(width, 0, 0, 0, NARROW_RESULT), NARROW_RESULT);
+  return [`${type.star}px`, `${type.levelName}px`, `${type.heroMaximum}px`];
+};
+
+describe("sort's result upright on a phone", () => {
+  it.each([
+    [[320, 568], "hatchling", "en"],
+    [[320, 568], "paleontologist", "ru"],
+    [[393, 852], "explorer", "en"],
+    [[430, 932], "paleontologist", "ru"]
+  ] as const)("stands upright at %j after a %s board in %s, at the compare result's phone sizes", async (size, level, language) => {
+    const viewport = manualViewport("portrait");
+    viewport.resize("tall-narrow", true);
+    await openResult(size, level, { language, viewport, layouts: NARROW_LAYOUTS });
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+    expect(shownType()).toEqual(narrowTypeFor(size[0]));
+    // The level switch shows its pictures alone, as the compare result's.
+    for (const name of document.querySelectorAll(".level-switch-name")) expect(name.classList.contains("narrow-hidden")).toBe(true);
+  });
+});
 
 describe("sort's result upright", () => {
   it.each([
@@ -78,12 +101,14 @@ describe("sort's result upright", () => {
     expect(document.querySelectorAll(".result [data-turn-part]").length).toBeGreaterThan(0);
   });
 
-  it("keeps asking to turn in a tall-narrow window", async () => {
+  it("takes the phone's sizes as a tall window narrows, asking nothing", async () => {
     const viewport = manualViewport("portrait");
-    await openResult([820, 1180], "hatchling", { viewport });
+    await openResult([820, 1180], "hatchling", { viewport, layouts: NARROW_LAYOUTS });
+    const result = part(".result");
     openWindow(393, 852);
     act(() => viewport.resize("tall-narrow", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert"), part(".result")]).toEqual(["tall-narrow", false, false, result]);
+    expect(shownType()).toEqual(narrowTypeFor(393));
   });
 
   it("comes upright from landscape as the window turns, and PLAY AGAIN starts a new board", async () => {
