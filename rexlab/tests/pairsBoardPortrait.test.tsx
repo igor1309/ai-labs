@@ -261,31 +261,28 @@ describe("find the pair's board in a tall-narrow window", () => {
     expect(columns * rule.width + (columns - 1) * 8).toBeLessThanOrEqual(width - 40 + 1e-9);
   });
 
-  it("keeps BACK, HOME, the climb level and 100 tries in one row, a found card's name left to its label", async () => {
-    await openBoard([320, 568], "climb 4", { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+  it.each(["en", "ru"] as const)("keeps BACK, HOME, the climb level and 100 tries in one row in %s, BACK and HOME as their symbols", async (language) => {
+    await openBoard([320, 568], "climb 4", { language, viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
     const size: WindowSize = [320, 568];
+    const text = TEXTS[language];
     const bar = styleAt(part(".pairs-bar"), size);
     expect([styleAt(part(".pairs-bar-title"), size).value("position"), styleAt(part(".pairs-bar-title + .pairs-bar-chip"), size).value("margin-left")]).toEqual(["absolute", "auto"]);
-    const buttons = [TEXTS.en.back, TEXTS.en.home].map((name) => styleAt(screen.getByRole("button", { name }), size));
-    for (const button of buttons) expect([button.px("width"), button.px("height")]).toEqual([48, 56]);
+    const buttons = [text.back, text.home].map((name) => screen.getByRole("button", { name }));
+    for (const button of buttons) {
+      expect([styleAt(button, size).px("width"), styleAt(button, size).px("height")]).toEqual([48, 56]);
+      // The word is out of the row, left to screen readers; the symbol
+      // alone takes the button.
+      const word = part(".upright-hidden", button);
+      expect([styleAt(word, size).value("position"), styleAt(word, size).px("width")]).toEqual(["absolute", 1]);
+      expect(styleAt(part("svg", button), size).px("width")).toBeLessThanOrEqual(48 - styleAt(button, size).px("padding-left") - styleAt(button, size).px("padding-right"));
+    }
     const chips = [...document.querySelectorAll(".pairs-bar-chip")].map((chip) => {
       const own = styleAt(chip, size);
       // A symbol, and the level or 100 tries at 0.8 em a glyph.
-      const glyphs = chip.getAttribute("aria-label") === TEXTS.en.tries ? 3 : 1;
+      const glyphs = chip.getAttribute("aria-label") === text.tries ? 3 : 1;
       return own.px("padding-left") + own.px("padding-right") + styleAt(part("svg", chip), size).px("width") + own.columnGap() + 0.8 * glyphs * own.px("font-size");
     });
     expect(chips).toHaveLength(2);
-    expect(buttons.reduce((sum, button) => sum + button.px("width"), 0) + chips[0]! + chips[1]! + 3 * bar.columnGap()).toBeLessThanOrEqual(280);
-    // A found card's name is left to its label; one shown while its
-    // picture is not stays.
-    const card = pairCards()[0]!;
-    const name = document.createElement("span");
-    name.className = "pair-card-name";
-    card.append(name);
-    onTestFinished(() => name.remove());
-    card.dataset.state = "found";
-    expect(styleAt(name, size).value("display")).toBe("none");
-    card.dataset.state = "up";
-    expect(styleAt(name, size).value("display")).not.toBe("none");
+    expect(buttons.reduce((sum, button) => sum + styleAt(button, size).px("width"), 0) + chips[0]! + chips[1]! + 3 * bar.columnGap()).toBeLessThanOrEqual(280);
   });
 });

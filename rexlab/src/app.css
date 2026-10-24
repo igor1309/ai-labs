@@ -5905,7 +5905,7 @@ html[data-size="tall-narrow"] .pair-board {
   column-gap: 8px;
 }
 
-html[data-size="tall-narrow"] .pair-card[data-state="found"] .pair-card-name {
+html[data-size="tall-narrow"] .pair-card-name[data-caption] {
   display: none;
 }
 
