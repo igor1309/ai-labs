@@ -15,6 +15,7 @@ final class FakeMicrophoneBinding: MicrophoneBinding, Sendable {
         var starts: [UInt32] = []
         var stops = 0
         var refuseStart = false
+        var unavailableInputs: Set<UInt32> = []
         var refuseWatch = false
         var onStop: (@Sendable () -> Void)?
     }
@@ -48,7 +49,7 @@ final class FakeMicrophoneBinding: MicrophoneBinding, Sendable {
             $0.starts.append(input)
             $0.receive = receive
             $0.changed = configurationChanged
-            if $0.refuseStart { throw Refusal() }
+            if $0.refuseStart || $0.unavailableInputs.contains(input) { throw Refusal() }
         }
     }
 

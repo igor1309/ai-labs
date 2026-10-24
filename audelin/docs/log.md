@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Microphone configuration changes keep using the current input while a new
+  default settles; each settled switch uses the input that held (LAB-532).
+
 - Audelin captures the default microphone as mono audio at its device's rate,
   following settled input changes and preserving gaps as silence (LAB-532).
 

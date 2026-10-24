@@ -14,6 +14,7 @@ delivered and before any stop. Real: the engine starts on the default input with
 processing off and audio is read. Evidence:
 `allChannelsAreMixedAndReadLiveAtTheDeviceRate`,
 `theMeanIncludesEveryChannel`,
+`nativeChannelLayoutsProduceTheExactMonoMean`,
 `theDefaultInputDeliversLiveAudioWithoutVoiceProcessing`.
 
 ## S-2 A new input device keeps the user heard
@@ -21,14 +22,16 @@ processing off and audio is read. Evidence:
 Fake: a system default-input change that holds for 1.5 s rebuilds on the new
 device, and its buffers are read at its rate. Evidence:
 `aHeldDefaultInputRebuildsOnlyAfterSettling`,
-`aDifferentCandidateMustSettleForItsOwnFullInterval`.
+`aDifferentCandidateMustSettleForItsOwnFullInterval`,
+`aSettledRebuildUsesThatInputWhenTheDefaultChangesDuringStop`.
 
 ## S-3 A device change keeps the track in time
 
 Fake: a configuration change with 2 s before the new engine's first
 buffer reads 2 s of zeros at the new rate before it, so the first new
 sample sits at the elapsed time; a gap of exactly 10 min is padded whole.
-Evidence: `aConfigurationGapIsPaddedWholeAtTheNewRate`.
+Evidence: `aConfigurationGapIsPaddedWholeAtTheNewRate`,
+`nativeBufferTimesIncludeSleepAndPreserveTheFirstSampleTime`.
 
 ## S-11 A gap too long to keep in time fails
 
@@ -44,7 +47,8 @@ Evidence: `aRefusedStartCleansEveryInstalledResource`.
 ## S-5 A capture that cannot follow a change fails
 
 Fake: a refused rebuild after a change ends the audio with a failure.
-Evidence: `aRefusedRebuildFailsAfterEveryEarlierPiece`.
+Evidence: `aRefusedRebuildFailsAfterEveryEarlierPiece`,
+`aConfigurationRebuildFailsIfTheCurrentInputIsGoneWhileTheDefaultSettles`.
 
 ## S-6 A failed capture keeps what it heard
 
@@ -75,4 +79,5 @@ Fake: a default-input change reverted within 1.5 s, while the original
 input keeps delivering a known ramp, rebuilds nothing, and the ramp is
 read back whole with no padding. Evidence:
 `aRevertedDefaultInputKeepsTheWholeRampWithoutPadding`,
+`aConfigurationRebuildPreservesThePendingDefaultSettle`,
 `aCancelledSettleCallbackCannotRebuildAfterReversionOrStop`.

@@ -4,11 +4,21 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct MicrophoneCaptureTests {
 
-    @Test(arguments: [0.0, 7_200.0])
-    func nativeBufferTimesIncludeSleepAndPreserveTheFirstSampleTime(sleep: Double) {
+    @Test(arguments: [
+        (10.0, 10.5, 10.5, 0.25, 10.0),
+        (10.0, 10.5, 7_210.5, 0.25, 7_210.0),
+        (10.0, 10.125, 3_610.125, 0.5, 3_610.0),
+        (nil, 10.5, 10.5, 0.25, 10.25),
+        (nil, 10.5, 7_210.5, 0.25, 7_210.25),
+        (nil, 10.125, 3_610.125, 0.5, 3_609.625),
+    ] as [(Double?, Double, Double, Double, Double)])
+    func nativeBufferTimesIncludeSleepAndPreserveTheFirstSampleTime(
+        hostTime: Double?, hostNow: Double, clockNow: Double, duration: Double, expected: Double
+    ) {
 
-        #expect(NativeMicrophoneBinding.timestamp(hostTime: 10, hostNow: 10.25, clockNow: 10.25 + sleep, duration: 0.25) == 10 + sleep)
-        #expect(NativeMicrophoneBinding.timestamp(hostTime: nil, hostNow: 10.25, clockNow: 10.25 + sleep, duration: 0.25) == 10 + sleep)
+        #expect(NativeMicrophoneBinding.timestamp(
+            hostTime: hostTime, hostNow: hostNow, clockNow: clockNow, duration: duration
+        ) == expected)
     }
 
     @Test func allChannelsAreMixedAndReadLiveAtTheDeviceRate() async throws {
@@ -91,6 +101,85 @@ struct MicrophoneCaptureTests {
         #expect(padding.allSatisfy { $0.sampleRate == rate })
         #expect(padding.flatMap(\.samples) == Array(repeating: Float(0), count: Int(gap * rate)))
         #expect(Double(padding.flatMap(\.samples).count) / rate == gap)
+    }
+
+    @Test(arguments: [false, true])
+    func aConfigurationRebuildPreservesThePendingDefaultSettle(reverts: Bool) async throws {
+
+        let binding = FakeMicrophoneBinding()
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.changeDefault(to: 2)
+        await capture.synchronize()
+        binding.advance(0.5)
+        binding.configure(rate: 8)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1, 1])
+        #expect(binding.state.withLock { $0.timers.values.map(\.0) } == [1.5])
+        binding.advance(0.5)
+        if reverts {
+            binding.changeDefault(to: 1)
+            await capture.synchronize()
+        }
+        binding.advance(0.5)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == (reverts ? [1, 1] : [1, 1, 2]))
+        #expect(binding.state.withLock { $0.timers.isEmpty })
+        binding.send([[7, 8]])
+        capture.stop()
+        #expect(try await drain(capture) == [
+            AudioPiece(samples: Array(repeating: 0, count: 12), sampleRate: 8),
+            AudioPiece(samples: [7, 8], sampleRate: 8),
+        ])
+    }
+
+    @Test func aSettledRebuildUsesThatInputWhenTheDefaultChangesDuringStop() async throws {
+
+        let binding = FakeMicrophoneBinding()
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.changeDefault(to: 2)
+        await capture.synchronize()
+        binding.state.withLock { $0.onStop = { binding.changeDefault(to: 3) } }
+        binding.advance(1.5)
+        await capture.synchronize()
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1, 2])
+        #expect(binding.state.withLock { $0.timers.values.map(\.0) } == [3])
+        binding.send([[2, 4]])
+        binding.advance(1)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1, 2])
+        binding.advance(0.25)
+        await capture.synchronize()
+        #expect(binding.state.withLock { $0.starts } == [1, 2, 3])
+        binding.send([[6, 8]])
+        capture.stop()
+        #expect(try await drain(capture) == [
+            AudioPiece(samples: Array(repeating: 0, count: 12), sampleRate: 8),
+            AudioPiece(samples: [2, 4], sampleRate: 8),
+            AudioPiece(samples: Array(repeating: 0, count: 10), sampleRate: 8),
+            AudioPiece(samples: [6, 8], sampleRate: 8),
+        ])
+    }
+
+    @Test func aConfigurationRebuildFailsIfTheCurrentInputIsGoneWhileTheDefaultSettles() async throws {
+
+        let binding = FakeMicrophoneBinding()
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.send([[1, 2]])
+        binding.changeDefault(to: 2)
+        await capture.synchronize()
+        binding.state.withLock { $0.unavailableInputs = [1] }
+        binding.configure()
+        await capture.synchronize()
+        capture.stop()
+        let result = await readUntilFailure(capture)
+        #expect(result.pieces == [AudioPiece(samples: [1, 2], sampleRate: 8)])
+        #expect(result.error is Refusal)
+        #expect(binding.state.withLock { $0.starts } == [1, 1])
+        #expect(binding.state.withLock { $0.receive == nil && $0.defaultChanged == nil && $0.timers.isEmpty })
     }
 
     @Test func aGapOverTenMinutesFailsWithoutPaddingAfterEarlierAudio() async throws {
@@ -257,7 +346,7 @@ struct MicrophoneCaptureTests {
         await capture.synchronize()
         oldConfiguration()
         await capture.synchronize()
-        #expect(binding.state.withLock { $0.starts } == [1, 2])
+        #expect(binding.state.withLock { $0.starts } == [1, 1])
     }
 
     @Test func cancellingAReaderReleasesTheTapAndPendingTimer() async throws {

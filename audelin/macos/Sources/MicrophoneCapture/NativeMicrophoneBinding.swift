@@ -138,6 +138,19 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         clockNow - (hostTime.map { hostNow - $0 } ?? duration)
     }
 
+    static func channels(from buffer: AVAudioPCMBuffer) throws -> [[Float]] {
+
+        guard let data = buffer.floatChannelData else { throw CaptureError.unsupportedFormat }
+        let count = Int(buffer.format.channelCount)
+        let frames = Int(buffer.frameLength)
+        return (0..<count).map { channel in
+            if buffer.format.isInterleaved {
+                return (0..<frames).map { data[0][$0 * count + channel] }
+            }
+            return Array(UnsafeBufferPointer(start: data[channel], count: frames))
+        }
+    }
+
     private static var defaultInputAddress: AudioObjectPropertyAddress {
 
         AudioObjectPropertyAddress(
@@ -171,18 +184,7 @@ private final class NativeTap: Sendable {
 
         receive.withLock { receive in
             guard let receive else { return }
-            guard let data = buffer.floatChannelData else {
-                receive(.failure(CaptureError.unsupportedFormat))
-                return
-            }
-            let count = Int(buffer.format.channelCount)
             let frames = Int(buffer.frameLength)
-            let channels = (0..<count).map { channel in
-                if buffer.format.isInterleaved {
-                    return (0..<frames).map { data[0][$0 * count + channel] }
-                }
-                return Array(UnsafeBufferPointer(start: data[channel], count: frames))
-            }
             let rate = buffer.format.sampleRate
             let firstSample = NativeMicrophoneBinding.timestamp(
                 hostTime: time.isHostTimeValid ? AVAudioTime.seconds(forHostTime: time.hostTime) : nil,
@@ -190,7 +192,9 @@ private final class NativeTap: Sendable {
                 clockNow: NativeMicrophoneBinding.clockSeconds,
                 duration: Double(frames) / rate
             )
-            receive(.success(InputBuffer(channels: channels, sampleRate: rate, time: firstSample)))
+            receive(Result {
+                try InputBuffer(channels: NativeMicrophoneBinding.channels(from: buffer), sampleRate: rate, time: firstSample)
+            })
         }
     }
 

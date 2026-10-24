@@ -102,7 +102,7 @@ private final class CaptureLifetime: @unchecked Sendable {
             guard let self else { return }
             queue.async { [self] in
                 guard !ended, generation == startedGeneration else { return }
-                rebuild()
+                rebuild(input: currentInput)
             }
         }
     }
@@ -125,7 +125,8 @@ private final class CaptureLifetime: @unchecked Sendable {
                 do {
                     let latest = try binding.defaultInput()
                     if latest == input {
-                        rebuild()
+                        clearSettle()
+                        rebuild(input: input)
                     } else {
                         defaultChanged(latest, at: binding.now)
                     }
@@ -142,13 +143,12 @@ private final class CaptureLifetime: @unchecked Sendable {
         pendingInput = nil
     }
 
-    private func rebuild() {
+    private func rebuild(input: UInt32) {
 
-        clearSettle()
         binding.stop()
         delivery.withLock { $0.needsPadding = true }
         do {
-            currentInput = try binding.defaultInput()
+            currentInput = input
             try startEngine()
         } catch { finish(error) }
     }
