@@ -4,9 +4,10 @@ Driven through a Session on the real machine loop with its real reducer and
 handler, and a fake for each piece the handler is given. Each fake can be
 held, can fail on cue, and adds an entry to an output the test reads when
 it comes up, takes audio or text, and goes down. The call text fake turns
-speech into text only while its live text is on, as call text does. Captures send numbered
-audio and call text sends numbered text on cue, so a row can tell what was
-kept. Rows read back the Session's state and those outputs, never that a
+speech into text only while started and enabled, and reports its live-text
+status on cue. Captures deliver audio only while started; track files and
+the transcript accept output only while open. Captures send numbered audio
+and call text sends numbered text on cue, so a row can tell what was kept. Rows read back the Session's state and those outputs, never that a
 function was called.
 
 ## S-1 Both sides are recorded
@@ -15,14 +16,20 @@ Every piece let up, each capture sending its first audio the moment it
 comes up and call text its first text: the state shows both tracks
 recording; the output shows each destination up before its source, and
 the track files and transcript hold that first audio and text. Evidence:
-`bothSidesComeUpInDestinationOrder`.
+`bothSidesComeUpInDestinationOrder`, `processSelectionReachesOnlyCallCapture`.
+Only the call capture receives the opaque process choice; microphone capture
+starts without one.
 
 ## S-2 Ending keeps everything recorded
 
 Recording, audio and text sent, ended, with call text sending more text as
 it finishes: the state reads ended only after the last piece is down; each
 track file holds all audio sent, the transcript all text including the
-finishing text; the captures went down first. Evidence: `endingKeepsAllOutputAndStopsSourcesFirst`.
+finishing text; the captures went down first. Held starts and stops keep the
+tracks open and the Session ending until their results arrive, even if health
+changes while waiting. Evidence: `endingKeepsAllOutputAndStopsSourcesFirst`,
+`shutdownWaitsForStartsAndStopsBeforeClosingTracks`,
+`healthChangesDuringStopDoNotErasePendingWork`.
 
 ## S-3 Ending during bring-up brings down only what came up
 
@@ -34,7 +41,10 @@ came up down, and no later piece ever up. Evidence: `endingDuringBringUpDoesNotS
 
 The call's capture held coming up, ended, then the capture let up: the
 state is not ended until the output shows that capture down. Evidence:
-`aCaptureThatComesUpAfterEndIsStoppedBeforeEnded`.
+`aCaptureThatComesUpAfterEndIsStoppedBeforeEnded`,
+`healthChangesDuringStartDoNotErasePendingWork`.
+Access loss or failure during any start preserves the pending start and the
+cleanup owed for its eventual success.
 
 ## S-5 A failure that leaves no track is told
 
@@ -45,7 +55,7 @@ ended, what was kept stays, and no later piece comes up. Evidence:
 `folderFailureSaysCannotRecordAndWaitsForEnd`, `bothTrackFailuresSayCannotRecord`,
 `bothCaptureFailuresSayCannotRecord`,
 `runtimeTrackFailureAndAccessLossSaysCannotRecord`,
-`bothRuntimeCaptureFailuresSayCannotRecord`,
+`bothRuntimeCaptureFailuresSayCannotRecord`, `bothRuntimeTrackFailuresSayCannotRecord`,
 `runtimeFailureMatrixRunsThroughSession`.
 
 ## S-6 Any other failure keeps the rest
@@ -58,19 +68,30 @@ the rest recording; what it kept stays in the output, and audio and text
 sent after reach every other piece. Evidence:
 `eachOtherBringUpFailureKeepsAnotherTrack`, `lostAccessIsNamedWhileTheOtherSideRecords`,
 `runtimeFailureKeepsOtherSideAndNamesThePiece`,
-`bringUpAccessLossKeepsTheOtherSide`, `runtimeFailureMatrixRunsThroughSession`.
+`bringUpAccessLossKeepsTheOtherSide`, `runtimeFailureMatrixRunsThroughSession`,
+`healthChangesDuringStartDoNotErasePendingWork`,
+`healthChangesDuringStopDoNotErasePendingWork`.
+The runtime matrix reads retained and later audio from each surviving track
+and retained and later text from the surviving transcript. Access loss leaves
+a started capture owing its stop before the track closes.
 
 ## S-7 Live text gets ready while the call records
 
 Call text's fake reports getting ready, every piece up: the state shows
-both tracks recording and live text getting ready. Evidence: `liveTextIsGettingReadyWhenRecordingStarts`.
+both tracks recording and live text getting ready. Only call text's reports
+move it to on or back to getting ready; starting and switch acknowledgements
+do not infer readiness. Evidence: `liveTextIsGettingReadyWhenRecordingStarts`,
+`switchAcknowledgementDoesNotReportReadiness`.
 
 ## S-8 Live text switched off
 
 Recording with live text on, text sent, switched off, then more speech:
 the state shows live text off and both tracks recording; the transcript
 holds the text before the switch and nothing after; the track files hold
-all audio. Evidence: `liveTextSwitchesOffAndStopsNewText`.
+all audio. A newer request replaces a held switch without concurrent switch
+calls; an old result cannot overwrite it, and end awaits the switch in flight.
+Evidence: `liveTextSwitchesOffAndStopsNewText`,
+`newerLiveTextRequestReplacesHeldSwitch`, `endingWaitsForLiveTextSwitch`.
 
 ## S-9 Live text switched on
 

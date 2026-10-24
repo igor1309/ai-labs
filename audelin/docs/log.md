@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Session keeps pending starts and stops through failures and access loss,
+  and follows call text's reported status while settling switches before ending (LAB-506).
+
 - Session now reports runtime piece failures, preserves retained audio and text,
   and closes the Session review gaps (LAB-506).
 
