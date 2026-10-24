@@ -1,4 +1,5 @@
 import AVFAudio
+import Synchronization
 import Testing
 @testable import MicrophoneCapture
 
@@ -8,8 +9,39 @@ struct NativeMicrophoneConversionTests {
     @Test(arguments: [false, true])
     func nativeChannelLayoutsProduceTheExactMonoMean(interleaved: Bool) async throws {
 
+        let buffer = try makeBuffer(interleaved: interleaved, rate: 8)
+        let binding = FakeMicrophoneBinding()
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.send(try NativeMicrophoneBinding.channels(from: buffer))
+        capture.stop()
+        #expect(try await drain(capture) == [AudioPiece(samples: [1, 2], sampleRate: 8)])
+    }
+
+    @Test(arguments: [false, true], [44_100.0, 48_000.0])
+    func nativeDeliveryPreservesSamplesRateAndFirstSampleTime(interleaved: Bool, rate: Double) throws {
+
+        let buffer = try makeBuffer(interleaved: interleaved, rate: rate)
+        for hasHostTime in [false, true] {
+            let delivery = Mutex<Result<InputBuffer, any Error>?>(nil)
+            let tap = NativeTap { result in delivery.withLock { $0 = result } }
+            let time = hasHostTime
+                ? AVAudioTime(hostTime: AVAudioTime.hostTime(forSeconds: 10))
+                : AVAudioTime(sampleTime: 0, atRate: rate)
+            tap.deliver(buffer, time: time, hostNow: 10.5, clockNow: 7_200.5)
+            tap.close()
+            let input = try #require(delivery.withLock { $0 }).get()
+            #expect(input.channels == [[0, 0], [2, 4]])
+            #expect(input.sampleRate == rate)
+            let expectedTime = hasHostTime ? 7_200 : 7_200.5 - 2 / rate
+            #expect(abs(input.time - expectedTime) < 1e-9)
+        }
+    }
+
+    private func makeBuffer(interleaved: Bool, rate: Double) throws -> AVAudioPCMBuffer {
+
         let format = try #require(AVAudioFormat(
-            commonFormat: .pcmFormatFloat32, sampleRate: 8, channels: 2, interleaved: interleaved
+            commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 2, interleaved: interleaved
         ))
         let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 4))
         buffer.frameLength = 2
@@ -25,11 +57,6 @@ struct NativeMicrophoneConversionTests {
             second[0] = 2
             second[1] = 4
         }
-        let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
-        defer { capture.stop() }
-        binding.send(try NativeMicrophoneBinding.channels(from: buffer))
-        capture.stop()
-        #expect(try await drain(capture) == [AudioPiece(samples: [1, 2], sampleRate: 8)])
+        return buffer
     }
 }

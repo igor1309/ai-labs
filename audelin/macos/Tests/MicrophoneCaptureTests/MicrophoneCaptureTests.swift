@@ -182,21 +182,62 @@ struct MicrophoneCaptureTests {
         #expect(binding.state.withLock { $0.receive == nil && $0.defaultChanged == nil && $0.timers.isEmpty })
     }
 
-    @Test func aGapOverTenMinutesFailsWithoutPaddingAfterEarlierAudio() async throws {
+    @Test(arguments: [2.0, 600.0])
+    func aGapWithoutARebuildIsPaddedWhole(gap: Double) async throws {
+
+        let binding = FakeMicrophoneBinding()
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.send([[1, 2]])
+        binding.advance(gap)
+        binding.send([[9, 10]])
+        capture.stop()
+        let pieces = try await drain(capture)
+        #expect(pieces.first == AudioPiece(samples: [1, 2], sampleRate: 8))
+        #expect(pieces.last == AudioPiece(samples: [9, 10], sampleRate: 8))
+        let padding = pieces.dropFirst().dropLast()
+        #expect(padding.allSatisfy { $0.sampleRate == 8 })
+        #expect(padding.flatMap(\.samples) == Array(repeating: Float(0), count: Int(gap * 8)))
+    }
+
+    @Test(arguments: [0.0, 7_200.0])
+    func aRebuildBeforeTheFirstBufferPadsFromTheCaptureStart(origin: Double) async throws {
+
+        let binding = FakeMicrophoneBinding()
+        binding.state.withLock { $0.time = origin }
+        let capture = try MicrophoneCapture(binding: binding)
+        defer { capture.stop() }
+        binding.advance(0.5)
+        binding.configure(rate: 4)
+        await capture.synchronize()
+        binding.advance(1.5)
+        binding.send([[9, 10]])
+        capture.stop()
+        #expect(try await drain(capture) == [
+            AudioPiece(samples: Array(repeating: 0, count: 8), sampleRate: 4),
+            AudioPiece(samples: [9, 10], sampleRate: 4),
+        ])
+    }
+
+    @Test(arguments: [false, true])
+    func aGapOverTenMinutesFailsWithoutPaddingAfterEarlierAudio(rebuild: Bool) async throws {
 
         let binding = FakeMicrophoneBinding()
         let capture = try MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.send([[1, 2]])
         binding.send([[3, 4]])
-        binding.configure()
-        await capture.synchronize()
+        if rebuild {
+            binding.configure()
+            await capture.synchronize()
+        }
         binding.advance(600.5)
         binding.send([[9, 10]])
+        await capture.synchronize()
+        try #require(binding.state.withLock { $0.receive == nil && $0.defaultChanged == nil })
         let result = await readUntilFailure(capture)
         #expect(result.pieces == [AudioPiece(samples: [1, 2], sampleRate: 8), AudioPiece(samples: [3, 4], sampleRate: 8)])
         #expect(result.error as? CaptureError == .gapTooLong)
-        #expect(binding.state.withLock { $0.receive == nil && $0.defaultChanged == nil })
     }
 
     @Test(arguments: [false, true])

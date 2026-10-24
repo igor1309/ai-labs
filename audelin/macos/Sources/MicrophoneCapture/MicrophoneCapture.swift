@@ -146,7 +146,6 @@ private final class CaptureLifetime: @unchecked Sendable {
     private func rebuild(input: UInt32) {
 
         binding.stop()
-        delivery.withLock { $0.needsPadding = true }
         do {
             currentInput = input
             try startEngine()
@@ -184,18 +183,15 @@ private final class CaptureLifetime: @unchecked Sendable {
                 for channel in buffer.channels {
                     for index in samples.indices { samples[index] += channel[index] / divisor }
                 }
-                if state.needsPadding {
-                    let gap = max(0, buffer.time - state.lastEnd)
-                    guard gap <= 600 else { throw CaptureError.gapTooLong }
-                    let frames = (gap * rate).rounded()
-                    guard frames < Double(Int.max) else { throw CaptureError.unsupportedFormat }
-                    var remaining = Int(frames)
-                    while remaining > 0 {
-                        let count = min(remaining, 16_384)
-                        state.continuation.yield(AudioPiece(samples: Array(repeating: 0, count: count), sampleRate: rate))
-                        remaining -= count
-                    }
-                    state.needsPadding = false
+                let gap = max(0, buffer.time - state.lastEnd)
+                guard gap <= 600 else { throw CaptureError.gapTooLong }
+                let frames = (gap * rate).rounded()
+                guard frames < Double(Int.max) else { throw CaptureError.unsupportedFormat }
+                var remaining = Int(frames)
+                while remaining > 0 {
+                    let count = min(remaining, 16_384)
+                    state.continuation.yield(AudioPiece(samples: Array(repeating: 0, count: count), sampleRate: rate))
+                    remaining -= count
                 }
                 state.continuation.yield(AudioPiece(samples: samples, sampleRate: rate))
                 state.lastEnd = buffer.time + Double(samples.count) / rate
@@ -213,7 +209,6 @@ private struct Delivery {
 
     let continuation: AsyncThrowingStream<AudioPiece, any Error>.Continuation
     var lastEnd = 0.0
-    var needsPadding = false
     var finished = false
     var error: (any Error)?
 }

@@ -15,6 +15,7 @@ processing off and audio is read. Evidence:
 `allChannelsAreMixedAndReadLiveAtTheDeviceRate`,
 `theMeanIncludesEveryChannel`,
 `nativeChannelLayoutsProduceTheExactMonoMean`,
+`nativeDeliveryPreservesSamplesRateAndFirstSampleTime`,
 `theDefaultInputDeliversLiveAudioWithoutVoiceProcessing`.
 
 ## S-2 A new input device keeps the user heard
@@ -30,13 +31,19 @@ device, and its buffers are read at its rate. Evidence:
 Fake: a configuration change with 2 s before the new engine's first
 buffer reads 2 s of zeros at the new rate before it, so the first new
 sample sits at the elapsed time; a gap of exactly 10 min is padded whole.
+The same padding applies without a configuration change and before the
+first buffer, measured from capture start even with a nonzero clock origin.
 Evidence: `aConfigurationGapIsPaddedWholeAtTheNewRate`,
+`aGapWithoutARebuildIsPaddedWhole`,
+`aRebuildBeforeTheFirstBufferPadsFromTheCaptureStart`,
+`nativeDeliveryPreservesSamplesRateAndFirstSampleTime`,
 `nativeBufferTimesIncludeSleepAndPreserveTheFirstSampleTime`.
 
 ## S-11 A gap too long to keep in time fails
 
 Fake: a gap of 10 min and one buffer's length ends the audio with a
 failure after every sample before the gap, and reads no padding.
+The rule applies both with and without a rebuild.
 Evidence: `aGapOverTenMinutesFailsWithoutPaddingAfterEarlierAudio`.
 
 ## S-4 A capture that cannot start fails

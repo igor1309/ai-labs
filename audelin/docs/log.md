@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Microphone capture fills every gap up to ten minutes with silence and
+  fails on longer gaps, including when the engine has not rebuilt (LAB-532).
+
 - Microphone configuration changes keep using the current input while a new
   default settles; each settled switch uses the input that held (LAB-532).
 

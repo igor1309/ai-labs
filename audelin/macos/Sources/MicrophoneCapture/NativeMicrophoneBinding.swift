@@ -79,7 +79,11 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         let tap = NativeTap(receive: receive)
         self.tap = tap
         input.installTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, time in
-            tap.deliver(buffer, time: time)
+            tap.deliver(
+                buffer, time: time,
+                hostNow: AVAudioTime.seconds(forHostTime: mach_absolute_time()),
+                clockNow: Self.clockSeconds
+            )
         }
         try engine.start()
     }
@@ -171,7 +175,7 @@ private struct NativeMicrophoneError: Error {
     let status: OSStatus
 }
 
-private final class NativeTap: Sendable {
+final class NativeTap: Sendable {
 
     private let receive: Mutex<(@Sendable (Result<InputBuffer, any Error>) -> Void)?>
 
@@ -180,7 +184,7 @@ private final class NativeTap: Sendable {
         self.receive = Mutex(receive)
     }
 
-    func deliver(_ buffer: AVAudioPCMBuffer, time: AVAudioTime) {
+    func deliver(_ buffer: AVAudioPCMBuffer, time: AVAudioTime, hostNow: Double, clockNow: Double) {
 
         receive.withLock { receive in
             guard let receive else { return }
@@ -188,8 +192,8 @@ private final class NativeTap: Sendable {
             let rate = buffer.format.sampleRate
             let firstSample = NativeMicrophoneBinding.timestamp(
                 hostTime: time.isHostTimeValid ? AVAudioTime.seconds(forHostTime: time.hostTime) : nil,
-                hostNow: AVAudioTime.seconds(forHostTime: mach_absolute_time()),
-                clockNow: NativeMicrophoneBinding.clockSeconds,
+                hostNow: hostNow,
+                clockNow: clockNow,
                 duration: Double(frames) / rate
             )
             receive(Result {
