@@ -101,3 +101,10 @@ export function styleAt(element: Element, size: WindowSize) {
   };
   return { value, px: (property: string) => px(value(property)), rowGap: () => gap("row-gap", (both) => both[0]), columnGap: () => gap("column-gap", (both) => both.at(-1)) };
 }
+
+// An element's style in a window of `size`, its media rules included,
+// read as a computed style is.
+export const sizedStyle = (element: Element, size: WindowSize) => {
+  const at = styleAt(element, size);
+  return new Proxy({} as CSSStyleDeclaration, { get: (_, name: string) => at.value(name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)) });
+};

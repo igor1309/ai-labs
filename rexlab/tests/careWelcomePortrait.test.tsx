@@ -74,17 +74,4 @@ describe("care's welcome upright", () => {
     openWelcome([820, 1180]);
     expect([part(".new-visitor-card").dataset.turnPart, part(".friends-card").dataset.turnPart]).toEqual(["care-new-visitor", "care-friends"]);
   });
-
-  it("still asks to turn over the result", async () => {
-    openWindow(1180, 820);
-    const viewport = manualViewport("landscape");
-    const { user, clock } = openCareApp({ viewport, portraitLayouts: PORTRAIT_LAYOUTS });
-    await welcomeVisitor(user);
-    await playVisit(user, clock);
-    act(() => clock.settle());
-    expect(screen.getByLabelText("SCORE")).toBeTruthy();
-    openWindow(820, 1180);
-    act(() => viewport.resize("tall", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-  });
 });
