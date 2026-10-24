@@ -44,11 +44,19 @@ describe("care's result upright", () => {
     expect([...part(".care-result").children].map((element) => element.className).filter((name) => name !== "festivity")).toEqual(["stratum result-stratum", "picture result-hero care-result-hero", "result-content"]);
     // The visitor, whole at its 4:3, at most 480 or as tall as the width
     // allows.
-    expect(styleAt(part(".care-result .result-hero"), size).px("max-height")).toBe(Math.min(480, ((size[0] - 64) * 3) / 4));
+    const hero = styleAt(part(".care-result .result-hero"), size);
+    expect([hero.value("object-fit"), hero.value("align-self"), hero.px("max-height")]).toEqual(["contain", "stretch", Math.min(480, ((size[0] - 64) * 3) / 4)]);
+    expect([part(".care-result .result-hero").getAttribute("width"), part(".care-result .result-hero").getAttribute("height")]).toEqual(["800", "600"]);
+    // Under it, in order: the first visit's celebration, the score, the
+    // hearts, the title, the chips and the actions.
+    expect([...part(".result-content").children].map((element) => element.className)).toEqual(["celebration", "result-score", "result-hearts", "result-title", "care-result-chips", "result-actions"]);
     const actions = styleAt(part(".result-actions"), size);
-    expect([actions.value("flex-direction"), actions.value("align-self")]).toEqual(["column", "stretch"]);
+    // The column stretches across the content, and each action across it.
+    expect([actions.value("flex-direction"), actions.value("align-self"), actions.value("align-items") || "stretch"]).toEqual(["column", "stretch", "stretch"]);
+    expect(styleAt(part(".result-content"), size).value("align-self")).toBe("stretch");
     for (const name of [TEXTS.en.newVisitor, TEXTS.en.friends, TEXTS.en.home]) {
-      expect(styleAt(screen.getByRole("button", { name }), size).value("justify-content")).toBe("center");
+      const button = styleAt(screen.getByRole("button", { name }), size);
+      expect([button.value("justify-content"), button.value("align-self") || "auto", button.value("width") || "auto"], name).toEqual(["center", "auto", "auto"]);
     }
   });
 
