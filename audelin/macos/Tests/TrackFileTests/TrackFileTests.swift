@@ -118,7 +118,10 @@ struct TrackFileTests {
             let binding = try FailingBinding(url: url)
             binding.fail(.header)
             #expect(throws: BindingFailure.self) {
-                try TrackFile(url: url, makeBinding: { _ in binding })
+                try TrackFile(
+                    url: url, makeBinding: { _ in binding },
+                    makeConversion: { try CompleteConversion(inputRate: $0) }
+                )
             }
             #expect(!FileManager.default.fileExists(atPath: url.path))
             let track = try TrackFile(url: url)
@@ -148,7 +151,10 @@ struct TrackFileTests {
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
             let binding = try FailingBinding(url: url)
-            let track = try TrackFile(url: url, makeBinding: { _ in binding })
+            let track = try TrackFile(
+                url: url, makeBinding: { _ in binding },
+                makeConversion: { try CompleteConversion(inputRate: $0) }
+            )
             try await track.write(tone(1), sampleRate: 48_000)
             binding.fail(.read)
             await #expect(throws: BindingFailure.self) { try await track.read(from: 0, to: 1) }
@@ -158,15 +164,17 @@ struct TrackFileTests {
         }
     }
 
-    @Test func failedFinalLengthLeavesOpenFilePlayableAndEndsWaitingReads() async throws {
+    @Test(arguments: 0...8)
+    func failedFinalLengthLeavesOpenFilePlayableAndEndsWaitingReads(prefix: Int) async throws {
 
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
-            let binding = try FailingBinding(url: url)
+            let fault = PositionedWriteFault()
+            let binding = try DiskTrackBinding(url: url, positionedWrite: { try fault.write($0, $1, $2) })
             let rig = try TrackRig(folder, binding: binding)
             for number in 1...3 { try await rig.track.write(tone(number), sampleRate: 48_000) }
             try await withPendingRead(rig, from: 2, to: 4) { read in
-                binding.fail(.finalize)
+                fault.arm(after: prefix)
                 await #expect(throws: BindingFailure.self) { try await rig.track.close() }
                 expectSamples(try await read.value, tone(3))
             }

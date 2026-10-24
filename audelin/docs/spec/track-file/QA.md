@@ -31,7 +31,9 @@ written. Evidence: `cancelledReadEndsWithoutAudioAndDoesNotConsumeTheStretch`.
 
 A tone at 24 kHz, then one at 44.1 kHz, is written; each reads back at
 48 kHz with its duration kept and its frequency in place. Evidence:
-`otherRatesKeepDurationAndFrequency`.
+`otherRatesKeepDurationAndFrequency` and
+`successiveVariableChunksKeepDurationAndContinuousAudio`, which writes
+variable chunks at each converted rate and checks audio through their boundaries.
 
 ## S-5 A closed track plays
 
@@ -47,7 +49,7 @@ Evidence: `closingReleasesWaitingReadWithOnlyTheWrittenTail`.
 
 ## S-7 A track left open by a crash keeps its audio
 
-A helper process opens a track, writes numbered tones, and reports each
+A helper process opens a track at native and converted rates, writes numbered tones, and reports each
 tone's number once its write returns; it is killed with SIGKILL without
 closing. The file plays and holds every reported tone, in order and
 intact, followed by none, part or all of the next tone, whose samples
@@ -71,7 +73,12 @@ The track is on a small disk image that fills up while writing, with a
 read waiting past the end. The write fails, later writes are refused, the
 waiting read returns the written tail, every tone whose write returned
 reads back through the track at its place, and the file plays them in
-order and intact. Evidence: `diskFullEndsWritingAndPreservesAcknowledgedTones`.
+order and intact. Conversion failure and a later failed converted write also
+keep the full acknowledged duration; a partial replacement restores the
+acknowledged tail. Evidence: `diskFullEndsWritingAndPreservesAcknowledgedTones`,
+`conversionFailureKeepsAcknowledgedAudioAndEndsWaitingReads`,
+`laterFailedWriteKeepsTheWholeConvertedSecond` and
+`partialConvertedReplacementRestoresAcknowledgedAudio`.
 
 ## S-11 A read that cannot be made fails
 
@@ -81,6 +88,11 @@ succeeds. Evidence: `readFailureIsReportedAndCanBeRetried`.
 
 ## S-12 A failed close is told and keeps what was written
 
-Through the binding fake, writing the final length fails on close; the
+Through a positioned-write fake, writing the final length fails after each
+prefix of its eight bytes on close; the header returns to its open length, the
 close fails, and the file still plays every tone written, read to its end
 as a file left open. Evidence: `failedFinalLengthLeavesOpenFilePlayableAndEndsWaitingReads`.
+
+The disk-image harness is also cancelled immediately after mounting and
+during its body. Detach runs without cancellation and completes before the
+temporary folder is removed. Evidence: `cancellationAwaitsDetachBeforeRemovingFolder`.

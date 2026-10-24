@@ -92,6 +92,7 @@ struct TrackRig {
         track = try TrackFile(
             url: folder.appendingPathComponent("track.caf"),
             makeBinding: { url in try binding ?? DiskTrackBinding(url: url) },
+            makeConversion: { try CompleteConversion(inputRate: $0) },
             readWaiting: { signal.continuation.yield(()) }
         )
     }
@@ -124,7 +125,7 @@ struct BindingFailure: Error {}
 
 final class FailingBinding: TrackFileBinding, Sendable {
 
-    enum Point { case header, read, finalize }
+    enum Point { case header, read, write }
 
     private let disk: DiskTrackBinding
     private let failure = Mutex<Point?>(nil)
@@ -143,7 +144,11 @@ final class FailingBinding: TrackFileBinding, Sendable {
         try disk.initialize()
     }
 
-    func write(_ samples: [Int16], at frame: Int64) throws { try disk.write(samples, at: frame) }
+    func write(_ samples: [Int16], at frame: Int64) throws {
+
+        if failure.withLock({ $0 == .write }) { throw BindingFailure() }
+        try disk.write(samples, at: frame)
+    }
 
     func read(from frame: Int64, count: Int) throws -> [Float] {
 
@@ -153,7 +158,6 @@ final class FailingBinding: TrackFileBinding, Sendable {
 
     func finalize(frames: Int64) throws {
 
-        if failure.withLock({ $0 == .finalize }) { throw BindingFailure() }
         try disk.finalize(frames: frames)
     }
 

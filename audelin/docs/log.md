@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Converted track writes retain their full duration after a later failure or
+  crash, with continuous audio across successive chunks (LAB-523).
+
 - Tracks keep mono audio on disk, read stretches while recording, and retain
   completed writes after a crash or a full disk (LAB-523).
 

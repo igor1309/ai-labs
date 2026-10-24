@@ -15,13 +15,27 @@ final class DiskTrackBinding: TrackFileBinding {
 
     private let descriptor: Int32
     private let url: URL
+    private let positionedWrite: @Sendable (Int32, UnsafeRawBufferPointer, Int64) throws -> Int
     private static let audioOffset: Int64 = 68
 
-    init(url: URL) throws {
+    convenience init(url: URL) throws {
+
+        try self.init(url: url, positionedWrite: { descriptor, bytes, offset in
+            let size = pwrite(descriptor, bytes.baseAddress, bytes.count, offset)
+            guard size >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+            return size
+        })
+    }
+
+    init(
+        url: URL,
+        positionedWrite: @escaping @Sendable (Int32, UnsafeRawBufferPointer, Int64) throws -> Int
+    ) throws {
 
         descriptor = Darwin.open(url.path, O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0o600)
         guard descriptor >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
         self.url = url
+        self.positionedWrite = positionedWrite
     }
 
     deinit { Darwin.close(descriptor) }
@@ -51,10 +65,29 @@ final class DiskTrackBinding: TrackFileBinding {
         guard !samples.isEmpty else { return }
         let offset = Self.audioOffset + frame * 2
         let bytes = samples.map(\.littleEndian).withUnsafeBytes { Data($0) }
+        var info = stat()
+        guard fstat(descriptor, &info) == 0 else { throw currentError() }
+        let originalEnd = info.st_size
+        var saved = Data(count: max(0, Int(min(originalEnd - offset, Int64(bytes.count)))))
+        try saved.withUnsafeMutableBytes { buffer in
+            var done = 0
+            while done < buffer.count {
+                let size = pread(descriptor, buffer.baseAddress!.advanced(by: done), buffer.count - done, offset + Int64(done))
+                if size < 0 {
+                    if errno == EINTR { continue }
+                    throw currentError()
+                }
+                guard size > 0 else { throw POSIXError(.EIO) }
+                done += size
+            }
+        }
         do { try writeAll(bytes, at: offset) }
         catch {
-            // A partial failed append must not expose an incomplete sample or lost piece.
-            guard ftruncate(descriptor, offset) == 0 else { throw currentError() }
+            // Replacing a provisional filter tail must preserve the acknowledged
+            // audio too if the replacement or its following append fails.
+            let restored = Result { try writeAll(saved, at: offset) }
+            guard ftruncate(descriptor, originalEnd) == 0 else { throw currentError() }
+            try restored.get()
             throw error
         }
     }
@@ -99,10 +132,11 @@ final class DiskTrackBinding: TrackFileBinding {
         try bytes.withUnsafeBytes { buffer in
             var done = 0
             while done < buffer.count {
-                let size = pwrite(descriptor, buffer.baseAddress!.advanced(by: done), buffer.count - done, offset + Int64(done))
-                if size < 0 {
-                    if errno == EINTR { continue }
-                    throw currentError()
+                let size: Int
+                do {
+                    size = try positionedWrite(descriptor, UnsafeRawBufferPointer(rebasing: buffer[done...]), offset + Int64(done))
+                } catch let error as POSIXError where error.code == .EINTR {
+                    continue
                 }
                 guard size > 0 else { throw POSIXError(.EIO) }
                 done += size

@@ -6,13 +6,14 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct TrackFileFailureTests {
 
-    @Test func sigkillKeepsEveryAcknowledgedTone() async throws {
+    @Test(arguments: [48_000, 24_000, 44_100])
+    func sigkillKeepsEveryAcknowledgedTone(rate: Int) async throws {
 
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
             let executable = Bundle(for: TrackFileTestBundle.self).bundleURL
                 .deletingLastPathComponent().appendingPathComponent("TrackFileCrashWriter")
-            let command = try TrackCommand(executable.path, [url.path])
+            let command = try TrackCommand(executable.path, [url.path, String(rate)])
             do {
                 try await withTaskCancellationHandler {
                     var text = ""
@@ -34,9 +35,14 @@ struct TrackFileFailureTests {
                     try #require(samples.count >= reported.count * 48_000)
                     #expect(samples.count <= (reported.count + 1) * 48_000)
                     for number in reported {
-                        expectSamples(Array(samples[((number - 1) * 48_000)..<(number * 48_000)]), tone(number))
+                        let stretch = Array(samples[((number - 1) * 48_000)..<(number * 48_000)])
+                        if rate == 48_000 { expectSamples(stretch, tone(number)) }
+                        else { expectConvertedTone(stretch, number: number) }
                     }
-                    expectSamples(Array(samples.dropFirst(3 * 48_000)), Array(tone(4).prefix(samples.count - 3 * 48_000)))
+                    let tail = Array(samples.dropFirst(3 * 48_000))
+                    let expected = Array(tone(4).prefix(tail.count))
+                    if rate == 48_000 { expectSamples(tail, expected) }
+                    else { expectContinuousTone(tail, expected) }
                     #expect(try dataChunkLength(url) == -1)
                     try await expectAfinfo(url, frames: samples.count)
                 } onCancel: {

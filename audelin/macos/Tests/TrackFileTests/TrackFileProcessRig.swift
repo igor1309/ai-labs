@@ -89,30 +89,40 @@ func runCommand(_ executable: String, _ arguments: [String]) async throws -> Com
     }
 }
 
-func requireCommand(_ executable: String, _ arguments: [String]) async throws {
+typealias TrackCommandRunner = @Sendable (String, [String]) async throws -> CommandResult
 
-    let result = try await runCommand(executable, arguments)
-    try #require(result.status == 0, "\(executable) \(arguments): \(result.output)")
-}
-
-func withDiskImage(in folder: URL, _ body: (URL) async throws -> Void) async throws {
+func withDiskImage(
+    in folder: URL, run: @escaping TrackCommandRunner = runCommand,
+    _ body: (URL) async throws -> Void
+) async throws {
 
     let image = folder.appendingPathComponent("small.dmg")
     let mount = folder.appendingPathComponent("volume", isDirectory: true)
     try FileManager.default.createDirectory(at: mount, withIntermediateDirectories: false)
-    try await requireCommand("/usr/bin/hdiutil", [
+    let created = try await run("/usr/bin/hdiutil", [
         "create", "-size", "16m", "-fs", "HFS+", "-type", "UDIF", "-volname", "TrackFileTest", "-o", image.path,
     ])
-    try await requireCommand("/usr/bin/hdiutil", [
-        "attach", "-nobrowse", "-noautoopen", "-mountpoint", mount.path, image.path,
-    ])
-    do { try await body(mount) }
-    catch {
-        do {
-            let result = try await runCommand("/usr/bin/hdiutil", ["detach", mount.path])
-            #expect(result.status == 0, "\(result.output)")
-        } catch { Issue.record(error) }
-        throw error
+    try #require(created.status == 0, "\(created.output)")
+    let outcome: Result<Void, any Error>
+    do {
+        let attached = try await run("/usr/bin/hdiutil", [
+            "attach", "-nobrowse", "-noautoopen", "-mountpoint", mount.path, image.path,
+        ])
+        try #require(attached.status == 0, "\(attached.output)")
+        try Task.checkCancellation()
+        try await body(mount)
+        outcome = .success(())
+    } catch { outcome = .failure(error) }
+    // Attach may mount before reporting cancellation. Detach must finish before
+    // the caller removes the folder, independently of that caller's cancellation.
+    let cleanup = await Task.detached {
+        do { return Result<CommandResult, any Error>.success(try await run("/usr/bin/hdiutil", ["detach", mount.path])) }
+        catch { return .failure(error) }
+    }.value
+    switch cleanup {
+    case .success(let result):
+        #expect(result.status == 0, "detach failed: \(result.output)")
+    case .failure(let error): Issue.record(error)
     }
-    try await requireCommand("/usr/bin/hdiutil", ["detach", mount.path])
+    try outcome.get()
 }

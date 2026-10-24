@@ -1,5 +1,17 @@
-import AudioConversion
 import Foundation
+
+struct ConvertedAudio {
+
+    let samples: [Float]
+    let replacing: Int
+}
+
+/// Each result replaces the previous provisional tail and appends through the
+/// end of the supplied input, so no acknowledged duration remains buffered.
+protocol TrackFileConversion {
+
+    func convert(_ samples: [Float]) throws -> ConvertedAudio
+}
 
 /// One mono recording. Its times are seconds from its first sample.
 public actor TrackFile {
@@ -15,22 +27,19 @@ public actor TrackFile {
     public nonisolated let url: URL
 
     private let binding: any TrackFileBinding
+    private let makeConversion: (Double) throws -> any TrackFileConversion
     private let readWaiting: (@Sendable () -> Void)?
-    private var converter: Converter?
+    private var conversion: (any TrackFileConversion)?
+    private var inputRate: Double?
     private var frames: Int64 = 0
     private var ended = false
     private var closed = false
     private var readers: [UUID: AsyncStream<Void>.Continuation] = [:]
 
-    /// Creates a new file exclusively; an existing path is always an error.
-    public init(url: URL) throws {
-
-        try self.init(url: url, makeBinding: DiskTrackBinding.init)
-    }
-
     init(
         url: URL,
         makeBinding: (URL) throws -> any TrackFileBinding,
+        makeConversion: @escaping (Double) throws -> any TrackFileConversion,
         readWaiting: (@Sendable () -> Void)? = nil
     ) throws {
 
@@ -42,6 +51,7 @@ public actor TrackFile {
         }
         self.url = url
         self.binding = binding
+        self.makeConversion = makeConversion
         self.readWaiting = readWaiting
     }
 
@@ -54,15 +64,14 @@ public actor TrackFile {
                 throw Failure.invalidAudio
             }
             guard !samples.isEmpty else { return }
-            var output: [Float] = []
-            if converter?.inputRate != sampleRate {
-                output = try converter?.flush() ?? []
-                converter = sampleRate == Self.sampleRate ? nil : try Converter(from: sampleRate, to: Self.sampleRate)
+            if inputRate != sampleRate {
+                conversion = sampleRate == Self.sampleRate ? nil : try makeConversion(sampleRate)
+                inputRate = sampleRate
             }
-            output += try converter?.convert(samples) ?? samples
-            try append(output)
+            let output = try conversion?.convert(samples) ?? ConvertedAudio(samples: samples, replacing: 0)
+            try append(output.samples, replacing: output.replacing)
         } catch {
-            converter = nil
+            conversion = nil
             endWriting()
             throw error
         }
@@ -94,16 +103,15 @@ public actor TrackFile {
         return try binding.read(from: first, count: Int(available))
     }
 
-    /// Finishes conversion and seals the file's data length. Reads remain available.
+    /// Seals the file's data length. Reads remain available.
     public func close() throws {
 
         guard !closed else { return }
         closed = true
         defer {
-            converter = nil
+            conversion = nil
             endWriting()
         }
-        if !ended, let converter { try append(converter.flush()) }
         try binding.finalize(frames: frames)
     }
 
@@ -114,13 +122,14 @@ public actor TrackFile {
         return Int64(value.rounded())
     }
 
-    private func append(_ samples: [Float]) throws {
+    private func append(_ samples: [Float], replacing: Int) throws {
 
         let pcm = samples.map { sample in
             Int16(max(-32_768, min(32_767, (Double(sample) * 32_768).rounded())))
         }
-        try binding.write(pcm, at: frames)
-        frames += Int64(pcm.count)
+        let start = frames - Int64(replacing)
+        try binding.write(pcm, at: start)
+        frames = start + Int64(pcm.count)
         for reader in readers.values { reader.yield(()) }
     }
 

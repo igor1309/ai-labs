@@ -24,12 +24,24 @@ public final class Converter {
 
     public func convert(_ samples: [Float]) throws -> [Float] {
 
+        try convert(samples, draining: false)
+    }
+
+    /// Drains available output until the converter needs more input. In particular,
+    /// a tiny chunk must not be lost when buffered output fills the first result.
+    public func convertAvailable(_ samples: [Float]) throws -> [Float] {
+
+        try convert(samples, draining: true)
+    }
+
+    private func convert(_ samples: [Float], draining: Bool) throws -> [Float] {
+
         guard !samples.isEmpty else { return [] }
         guard let buffer = AVAudioPCMBuffer(pcmFormat: input, frameCapacity: AVAudioFrameCount(samples.count))
         else { throw ConversionFailed() }
         buffer.frameLength = buffer.frameCapacity
         samples.withUnsafeBufferPointer { buffer.floatChannelData![0].update(from: $0.baseAddress!, count: $0.count) }
-        return try run(buffer, capacity: samples.count)
+        return try run(buffer, capacity: samples.count, draining: draining)
     }
 
     /// What the filter still holds once the audio has ended.
@@ -39,24 +51,28 @@ public final class Converter {
     }
 
     /// Converts the buffer, or ends the stream when there is none.
-    private func run(_ buffer: AVAudioPCMBuffer?, capacity: Int) throws -> [Float] {
+    private func run(_ buffer: AVAudioPCMBuffer?, capacity: Int, draining: Bool = false) throws -> [Float] {
 
         let frames = AVAudioFrameCount(Double(capacity) * output.sampleRate / input.sampleRate) + 64
         guard let result = AVAudioPCMBuffer(pcmFormat: output, frameCapacity: frames) else { throw ConversionFailed() }
         // The converter asks for input before `convert` returns.
         nonisolated(unsafe) var supplied = false
-        var error: NSError?
-        converter.convert(to: result, error: &error) { _, status in
-            if supplied {
-                status.pointee = .noDataNow
-                return nil
+        var samples: [Float] = []
+        while true {
+            var error: NSError?
+            let status = converter.convert(to: result, error: &error) { _, status in
+                if supplied {
+                    status.pointee = .noDataNow
+                    return nil
+                }
+                supplied = true
+                status.pointee = buffer == nil ? .endOfStream : .haveData
+                return buffer
             }
-            supplied = true
-            status.pointee = buffer == nil ? .endOfStream : .haveData
-            return buffer
+            if let error { throw error }
+            samples += Array(UnsafeBufferPointer(start: result.floatChannelData![0], count: Int(result.frameLength)))
+            if !draining || status != .haveData { return samples }
         }
-        if let error { throw error }
-        return Array(UnsafeBufferPointer(start: result.floatChannelData![0], count: Int(result.frameLength)))
     }
 
     struct ConversionFailed: Error {}
