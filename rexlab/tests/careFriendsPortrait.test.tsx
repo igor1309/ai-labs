@@ -46,6 +46,14 @@ describe("care's friends upright", () => {
     const visitor = styleAt(screen.getByRole("button", { name: TEXTS.en.newVisitor }), size);
     expect([visitor.value("flex-basis"), visitor.value("justify-content")]).toEqual(["100%", "center"]);
     expect(styleAt(part(".friends-bar"), size).value("flex-wrap")).toBe("wrap");
+    // NEW VISITOR comes last on the bar, so it alone wraps to the second
+    // row; nothing is ordered ahead of the rest.
+    const bar = [...part(".friends-bar").children] as HTMLElement[];
+    expect(bar.at(-1)).toBe(screen.getByRole("button", { name: TEXTS.en.newVisitor }));
+    expect(bar.map((each) => styleAt(each, size).value("order") || "0")).toEqual(bar.map(() => "0"));
+    // Every row as tall as the tallest card, so a turn keeps the list's
+    // place by its rows.
+    expect(styleAt(part(".friends-grid"), size).value("grid-auto-rows")).toBe("1fr");
   });
 
   it.each(["en", "ru"] as const)("keeps the bar on one row and every word in its room at 600 wide in %s", (language) => {
@@ -85,7 +93,11 @@ describe("care's friends upright", () => {
     const page = styleAt(part(".friends"), size);
     const width = 600 - page.px("padding-left") - page.px("padding-right");
     expect(styleAt(part(".no-friends-picture"), size).px("width")).toBeLessThanOrEqual(width);
-    expect(styleAt(part(".no-friends-text"), size).value("white-space") || "normal").toBe("normal");
+    // The words wrap between words, the longest word inside the width.
+    const words = styleAt(part(".no-friends-text"), size);
+    expect([words.value("white-space") || "normal", words.value("min-width") || "auto"]).toEqual(["normal", "auto"]);
+    const longest = Math.max(...text.noFriends.split(" ").map((word) => capitalsWidth(word, words)));
+    expect(longest).toBeLessThanOrEqual(width);
     const button = styleAt(part(".no-friends-button"), size);
     expect(button.px("padding-left") + 30 + button.columnGap() + capitalsWidth(text.newVisitor, button) + button.px("padding-right")).toBeLessThanOrEqual(width);
   });
