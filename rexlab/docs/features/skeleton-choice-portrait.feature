@@ -3,8 +3,8 @@ Feature: Build a skeleton: the choice in a tall window
   skeleton choice stands upright: the bar across the top, the level
   switch under it, and the skeletons in rows of two that fill the
   width, the mystery skeleton last once it is open. The rest is as
-  skeleton-choice.feature tells. A tall-narrow window keeps the picture
-  asking to turn or widen (window-shape.feature).
+  skeleton-choice.feature tells. A tall-narrow window has its own sizes
+  (skeleton-choice-narrow-portrait.feature).
 
   Scenario Outline: The choice stands upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room

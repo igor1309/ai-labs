@@ -53,13 +53,6 @@ describe("the skeleton choice upright", () => {
     for (const name of document.querySelectorAll<HTMLElement>(".skeleton-choice-name")) expect(styleAt(name, [600, 1000]).value("white-space")).toBe("nowrap");
   });
 
-  it("asks to turn as a tall window narrows over the choice", () => {
-    const { viewport } = openChoice([820, 1180]);
-    openWindow(393, 852);
-    act(() => viewport.resize("tall-narrow", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-  });
-
   it("keeps the puzzle behind the gate upright when no layout is given for it", async () => {
     const { user } = openChoice([820, 1180]);
     await user.click(choices()[0]!);
