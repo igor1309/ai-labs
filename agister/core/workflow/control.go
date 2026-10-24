@@ -39,11 +39,7 @@ func (e execution) sequenceAt(ctx context.Context, steps []Step, read reader, pr
 			return result
 		}
 		if step.Parallel == nil {
-			if step.Workflow != nil && result.value != nil {
-				read.outputs[step.Name] = result.value
-			} else {
-				read.outputs[step.Name] = result.Output
-			}
+			read.outputs[step.Name] = result.Output
 		}
 	}
 	return Result{Status: Completed}
@@ -185,7 +181,7 @@ func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, s
 		}
 		e.runner.events.ChildStarted(name, item.WorkflowName, maps.Clone(boundary.Params), maps.Clone(boundary.Inputs))
 		inner := reader{boundary: boundary, outputs: map[string]any{}, sessions: map[string]string{}}
-		result := e.sequenceAt(ctx, item.Workflow.Steps, inner, name+"/", "")
+		result := e.sequenceAt(ctx, item.Workflow.Steps, inner, prefix+item.Name+"/", suffix)
 		if result.Status == Completed {
 			output := map[string]any{}
 			for _, binding := range item.Workflow.Outputs {
@@ -197,12 +193,7 @@ func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, s
 				output[binding.Name] = value
 			}
 			if result.Status == Completed && len(item.Workflow.Outputs) == 1 && item.Workflow.Outputs[0].Name == "output" {
-				result.value = output["output"]
-				if whole, mapped := output["output"].(map[string]any); mapped {
-					result.Output = whole
-				} else {
-					result.Output = map[string]any{"output": output["output"]}
-				}
+				result.Output = output["output"]
 			} else if result.Status == Completed {
 				result.Output = output
 			}

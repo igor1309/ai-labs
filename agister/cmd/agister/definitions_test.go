@@ -128,6 +128,8 @@ func TestAWorkflowRecordsItsInputBriefs(t *testing.T) {
 	want := []runstore.Definition{
 		definitionAt(f.settings, "brief", "goal", "home", "/u/.agister/brief-forms/goal.yaml"),
 		definitionAt(f.settings, "workflow", "code_review", "home", "/u/.agister/workflows/code_review.yaml"),
+		// The tests slot runs its own workflow, whose definition belongs to the run too.
+		definitionAt(f.settings, "workflow", "tests_debate", "home", "/u/.agister/workflows/tests_debate.yaml"),
 	}
 	if got := f.store.last(t).Request.Definitions; !reflect.DeepEqual(got, want) {
 		t.Errorf("definitions %+v, want %+v", got, want)

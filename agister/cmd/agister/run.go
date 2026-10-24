@@ -532,18 +532,8 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 		params = definition.Params.Value
 	}
 	built := plan{calls: map[string]plannedCall{}, definitions: []runstore.Definition{}, boundaries: map[string]inputs.Declared{}}
-	if name != "" {
-		named := []runstore.Definition{{Kind: "workflow", Name: name}}
-		for _, input := range w.Inputs {
-			for _, form := range input.Forms {
-				named = append(named, runstore.Definition{Kind: "brief", Name: form.Value})
-			}
-		}
-		built.definitions, built.definitionBytes, err = definitionsOf(docs, named)
-		if err != nil {
-			return plan{}, nil, err
-		}
-	}
+	named := []runstore.Definition{}
+	origins := map[string]string{}
 	defaults := declaredParams(params)
 	for _, param := range w.Params {
 		built.boundary.Params = append(built.boundary.Params, inputs.Param{Name: param.Name, Default: defaults[param.Name]})
@@ -596,9 +586,22 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 				return workflow.Workflow{}, err
 			}
 		}
+		if workflowName != "" {
+			named = append(named, runstore.Definition{Kind: "workflow", Name: workflowName})
+			for _, input := range current.Inputs {
+				for _, form := range input.Forms {
+					named = append(named, runstore.Definition{Kind: "brief", Name: form.Value})
+				}
+			}
+		}
 		var builtWorkflow workflow.Workflow
 		var buildItem func(resolve.Item, string) (workflow.Step, error)
 		stepOf := func(item resolve.Item, path string) (workflow.Step, error) {
+			origin := fmt.Sprintf("the step %q of workflow %q", item.Name, workflowName)
+			if previous, exists := origins[path]; exists {
+				return workflow.Step{}, fmt.Errorf("%s and %s would both be planned as %q", previous, origin, path)
+			}
+			origins[path] = origin
 			planned, err := plannedCallOf(workflowName, item, item.Agent.Value, resolved, docs, takes)
 			if err != nil {
 				return workflow.Step{}, err
@@ -724,6 +727,10 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 	if err != nil {
 		return plan{}, nil, err
 	}
+	built.definitions, built.definitionBytes, err = definitionsOf(docs, named)
+	if err != nil {
+		return plan{}, nil, err
+	}
 	for _, item := range sessionsOfResolved(w.Steps, resolved, "") {
 		built.sessionSteps = append(built.sessionSteps, item.name)
 		for _, callName := range []string{item.name, item.session} {
@@ -737,8 +744,8 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 
 // notRunOf is what this slice does not run of w, the workflow name, ""
 // for one made of a step, in the order its documents give it: the
-// workflow's inputs; workflow items at any depth, and each item a
-// parallel holds that is not a step; a field
+// workflow's inputs and every child workflow's inputs and items; each item
+// a parallel holds that is not a step or workflow; a field
 // read within a parallel's outputs, which are a list; then, for each step,
 // a parallel's included, on its agent and on the agent's fallback, a
 // runtime with no turn, and what its process declares that is not run,
@@ -766,8 +773,8 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 				unrun.add(document, owner, fmt.Sprintf("the item %q, %s,", item.Name, kind))
 			}
 		}
-		var inspect func([]resolve.Item)
-		inspect = func(items []resolve.Item) {
+		var inspect func([]resolve.Item) error
+		inspect = func(items []resolve.Item) error {
 			for _, item := range items {
 				// A pass names its step <step>/<n>; a declared name of that
 				// form would share a pass's call id.
@@ -776,8 +783,16 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 				}
 				switch {
 				case item.Workflow.Value != "":
-					// A child workflow is executed by core as one item; its
-					// internal control items are therefore part of that run.
+					childName := item.Workflow.Value
+					lines, err := notRunOf(childName, resolved.Workflows[childName], resolved, docs, takes)
+					if err != nil {
+						return err
+					}
+					for _, line := range lines {
+						if !slices.Contains(unrun.lines, line) {
+							unrun.lines = append(unrun.lines, line)
+						}
+					}
 				case item.Parallel != nil:
 					parallels[item.Name] = true
 					for _, child := range item.Parallel {
@@ -785,17 +800,26 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 							notStep(child)
 						}
 					}
-					inspect(item.Parallel)
+					if err := inspect(item.Parallel); err != nil {
+						return err
+					}
 				case item.Branch != nil:
-					inspect(item.Branch)
+					if err := inspect(item.Branch); err != nil {
+						return err
+					}
 				case item.Repeat != nil:
-					inspect(item.Repeat.Steps)
+					if err := inspect(item.Repeat.Steps); err != nil {
+						return err
+					}
 				default:
 					notStep(item)
 				}
 			}
+			return nil
 		}
-		inspect(w.Steps)
+		if err := inspect(w.Steps); err != nil {
+			return nil, err
+		}
 		for _, binding := range referencesOf(w) {
 			if read := binding.From; read.Root == resolve.RootOutputs && parallels[read.Name] && read.Field != "" {
 				unrun.add(document, owner, fmt.Sprintf("a field within the parallel %q's outputs", read.Name))
@@ -805,7 +829,7 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 			}
 		}
 	}
-	for _, item := range stepsOfResolved(w.Steps, resolved) {
+	for _, item := range stepsOf(w.Steps) {
 		definition, problems := docs.Process(item.Process.Value)
 		if len(problems) > 0 {
 			return nil, documentProblems(problems)
@@ -866,30 +890,6 @@ func stepsOf(items []resolve.Item) []resolve.Item {
 		case item.Repeat != nil:
 			steps = append(steps, stepsOf(item.Repeat.Steps)...)
 		case itemKind(item) == "":
-			steps = append(steps, item)
-		}
-	}
-	return steps
-}
-
-// stepsOfResolved visits every leaf in a workflow, including the leaves of a
-// workflow item. Its child definitions are already part of the resolved
-// snapshot, so planning and the not-run check use the same traversal.
-func stepsOfResolved(items []resolve.Item, resolved resolve.Resolved) []resolve.Item {
-	var steps []resolve.Item
-	for _, item := range items {
-		switch {
-		case item.Workflow.Value != "":
-			if child, ok := resolved.Workflows[item.Workflow.Value]; ok {
-				steps = append(steps, stepsOfResolved(child.Steps, resolved)...)
-			}
-		case item.Parallel != nil:
-			steps = append(steps, stepsOfResolved(item.Parallel, resolved)...)
-		case item.Branch != nil:
-			steps = append(steps, stepsOfResolved(item.Branch, resolved)...)
-		case item.Repeat != nil:
-			steps = append(steps, stepsOfResolved(item.Repeat.Steps, resolved)...)
-		default:
 			steps = append(steps, item)
 		}
 	}
@@ -1611,10 +1611,14 @@ func workflowResult(called call.Result) workflow.Result {
 	if u := called.Usage; u != nil {
 		usage = workflow.Usage(*u)
 	}
+	var output any
+	if called.Output != nil {
+		output = called.Output
+	}
 	return workflow.Result{
 		Status:   workflow.Status(called.Status),
 		Class:    workflow.Class(called.Class),
-		Output:   called.Output,
+		Output:   output,
 		Timing:   workflow.Timing{Started: called.Timing.Started, Ended: called.Timing.Ended, Duration: called.Timing.Duration},
 		Cost:     called.Cost,
 		Usage:    usage,
@@ -1632,12 +1636,19 @@ func (s *stepCalls) refused(reason string, warnings []string) workflow.Result {
 		Reason: reason, Warnings: slices.Clone(warnings)}
 }
 
+// workflowOutput reads the root workflow's output mapping. Child item values
+// travel through child events instead of the root result adapters.
+func workflowOutput(result workflow.Result) map[string]any {
+	output, _ := result.Output.(map[string]any)
+	return output
+}
+
 // cliResult is a run's result in cli's words.
 func cliResult(result workflow.Result) cli.Result {
 	return cli.Result{
 		Status:   cli.RunStatus(result.Status),
 		Class:    cli.Class(result.Class),
-		Output:   result.Output,
+		Output:   workflowOutput(result),
 		Timing:   cli.Timing{Started: result.Timing.Started, Ended: result.Timing.Ended, Duration: result.Timing.Duration},
 		Cost:     result.Cost,
 		Usage:    cli.Usage(result.Usage),

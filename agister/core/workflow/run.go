@@ -193,11 +193,11 @@ type Events interface {
 	ChildEnded(step string, ended ChildEnd)
 }
 
-// ChildEnd is how a workflow item ended.
+// ChildEnd is how a workflow item ended, with its whole output value.
 type ChildEnd struct {
 	Status Status
 	Class  Class
-	Output map[string]any
+	Output any
 }
 
 // Ended is how a step's call ended: its status and class, and how long it
@@ -214,14 +214,15 @@ type Clock interface {
 }
 
 // Result is the result shape, a call's or a run's: the status and class;
-// the output of a completed one; its timing; its cost, nil when unknown;
+// the output of a completed one (a mapping for calls and root runs, any
+// value for workflow items); its timing; its cost, nil when unknown;
 // its usage; a call's session, empty where none was reported, and a run's
 // sessions, each step's name to its call's session; the reason of one that
 // did not complete, empty where there is none; and its warnings.
 type Result struct {
 	Status   Status
 	Class    Class
-	Output   map[string]any
+	Output   any
 	Timing   Timing
 	Cost     *float64
 	Usage    Usage
@@ -229,7 +230,6 @@ type Result struct {
 	Sessions map[string]string
 	Reason   string
 	Warnings []string
-	value    any
 }
 
 // Usage is the tokens a call or a run used, each nil where not reported.
@@ -343,14 +343,15 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 		result.Status, result.Class, result.Reason = ended.Status, ended.Class, ended.Reason
 		return finish()
 	}
-	result.Output = map[string]any{}
+	outputValues := map[string]any{}
 	for _, output := range w.Outputs {
 		value, ok := read.value(output.Value)
 		if !ok {
 			return refuse()
 		}
-		result.Output[output.Name] = value
+		outputValues[output.Name] = value
 	}
+	result.Output = outputValues
 	return finish()
 }
 
@@ -442,11 +443,7 @@ func endOf(called Result) map[string]any {
 		end["class"] = string(called.Class)
 	}
 	if called.Status == Completed {
-		if called.value != nil {
-			end["output"] = called.value
-		} else {
-			end["output"] = called.Output
-		}
+		end["output"] = called.Output
 	}
 	return end
 }

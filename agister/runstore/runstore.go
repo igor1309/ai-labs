@@ -46,7 +46,7 @@ type Child struct {
 	Inputs   []Input           `json:"inputs"`
 	Status   string            `json:"status"`
 	Class    *string           `json:"class"`
-	Output   map[string]any    `json:"output"`
+	Output   any               `json:"output"`
 }
 
 // Request is what a run was asked: a workflow, or a process on an agent;
@@ -243,7 +243,7 @@ type Event struct {
 	Workflow   string
 	Params     map[string]string
 	Inputs     []Input
-	Output     map[string]any
+	Output     any
 }
 
 // Condition is an evaluated branch arm and the values it read.
@@ -272,12 +272,12 @@ func (e Event) MarshalJSON() ([]byte, error) {
 			class = e.Class
 		}
 		return json.Marshal(struct {
-			At     time.Time      `json:"at"`
-			Step   string         `json:"step"`
-			Kind   Kind           `json:"kind"`
-			Status string         `json:"status"`
-			Class  any            `json:"class"`
-			Output map[string]any `json:"output"`
+			At     time.Time `json:"at"`
+			Step   string    `json:"step"`
+			Kind   Kind      `json:"kind"`
+			Status string    `json:"status"`
+			Class  any       `json:"class"`
+			Output any       `json:"output"`
 		}{e.At, e.Step, e.Kind, e.Status, class, e.Output})
 	case Branch:
 		return json.Marshal(struct {

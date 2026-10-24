@@ -386,7 +386,7 @@ func childInputs(given map[string]string) []runstore.Input {
 func outcomeOf(result workflow.Result) runstore.Outcome {
 	outcome := runstore.Outcome{
 		Status:   string(result.Status),
-		Output:   result.Output,
+		Output:   workflowOutput(result),
 		Timing:   runstore.Timing{Started: result.Timing.Started, Ended: result.Timing.Ended, DurationMS: result.Timing.Duration.Milliseconds()},
 		Cost:     result.Cost,
 		Usage:    runstore.Usage(result.Usage),
