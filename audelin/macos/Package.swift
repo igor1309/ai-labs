@@ -19,6 +19,7 @@ let package = Package(
         .library(name: "Session", targets: ["Session"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
+        .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
     dependencies: [
@@ -96,6 +97,13 @@ let package = Package(
             dependencies: ["TrackFile"]
         ),
         .target(
+            name: "TranscriptFile"
+        ),
+        .executableTarget(
+            name: "TranscriptFileCrashWriter",
+            dependencies: ["TranscriptFile"]
+        ),
+        .target(
             name: "TwoPassRecognizer",
             dependencies: ["LiveText"]
         ),
@@ -154,6 +162,10 @@ let package = Package(
         .testTarget(
             name: "TrackFileTests",
             dependencies: ["TrackFile", "TrackFileCrashWriter", "AudioConversion"]
+        ),
+        .testTarget(
+            name: "TranscriptFileTests",
+            dependencies: ["TranscriptFile", "TranscriptFileCrashWriter"]
         ),
         .testTarget(
             name: "TwoPassRecognizerTests",

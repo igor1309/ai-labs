@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- A transcript file keeps the call's latest words as readable Markdown,
+  preserving a whole transcript through write failures and app crashes (LAB-508).
+
 - Tracks keep mono audio on disk, append-only, read stretches while
   recording, and keep every returned write after a failure, a crash or a
   full disk (LAB-523).
