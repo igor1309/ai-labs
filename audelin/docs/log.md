@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Audelin captures the default microphone as mono audio at its device's rate,
+  following settled input changes and preserving gaps as silence (LAB-532).
+
 - Each call gets its own folder named by when it is made, with separate
   places for both tracks and the transcript (LAB-524).
 
