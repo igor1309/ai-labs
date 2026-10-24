@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import Synchronization
 import Testing
 import TrackFile
 import TranscriptFile
@@ -34,6 +35,18 @@ struct CallFolderTests {
                 #expect(try FileManager.default.attributesOfItem(atPath: place.path)[.type] as? FileAttributeType == .typeRegular)
             }
             #expect(try names(calls) == ["2026.10.24-1405"])
+        }
+    }
+
+    @Test func eachMakeIsNamedByItsOwnTime() async throws {
+
+        try await withCallsFolder { calls in
+            let clock = Mutex(fixedStart)
+            let adapter = CallFolder(callsURL: calls, now: { clock.withLock { $0 } }, timeZone: tokyo)
+            let first = try adapter.make()
+            clock.withLock { $0 = fixedStart.addingTimeInterval(60) }
+            let second = try adapter.make()
+            #expect([first, second].map(\.url.lastPathComponent) == ["2026.10.24-1405", "2026.10.24-1406"])
         }
     }
 
