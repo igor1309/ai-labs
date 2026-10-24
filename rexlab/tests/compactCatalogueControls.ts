@@ -38,12 +38,22 @@ export function expectCompactControls(size: WindowSize, language: Language = "en
     for (const label of chip.querySelectorAll(".food-chip-word, .food-chip-count")) expect(at(label).value("display")).toBe("none");
     chipsWidth += width;
   }
+  let homeWidth: number;
   if (document.documentElement.dataset.size === "tall-narrow") {
     expect(at(home.querySelector(".catalogue-home-word")!).value("display")).toBe("none");
     expect([at(home).px("width"), at(home).px("height"), at(home).value("flex-shrink")]).toEqual([48, 48, "0"]);
-    const main = at(bar.parentElement!);
-    const available = size[0] - main.px("padding-left") - main.px("padding-right") - at(bar).px("padding-left") - at(bar).px("padding-right");
-    expect(at(home).px("width") + at(bar).columnGap() + chipsWidth).toBeLessThanOrEqual(available);
+    homeWidth = at(home).px("width");
+  } else {
+    const word = home.querySelector(".catalogue-home-word")!;
+    expect(at(word).value("display")).not.toBe("none");
+    // Each glyph in shipped Lexend HOME/ДОМОЙ fits within one em.
+    // Budget that upper bound rather than underestimating localized text.
+    const textWidth = [...TEXTS[language].home].length * (at(word).px("font-size") + Math.max(0, at(word).px("letter-spacing")));
+    const icon = home.querySelector("svg")!;
+    homeWidth = Number(icon.getAttribute("width")) + at(home).columnGap() + textWidth + at(home).px("padding-left") + at(home).px("padding-right");
   }
+  const main = at(bar.parentElement!);
+  const available = size[0] - main.px("padding-left") - main.px("padding-right") - at(bar).px("padding-left") - at(bar).px("padding-right");
+  expect(homeWidth + at(bar).columnGap() + chipsWidth).toBeLessThanOrEqual(available);
   return { chipsWidth, height: at(chips[0]!).px("height") };
 }
