@@ -84,12 +84,10 @@ export function CatalogueScreen({ ref, pictureTransition, language, dinosaurs, f
 
   return (
     <main ref={main} className="catalogue" aria-label={text.catalogue}>
-      {/* HOME and the chips in one row, or in a tall window the chips
-          on a row of their own under HOME, and the cards under them. */}
       <header className="catalogue-bar">
-        <Button className="home-button" data-turn-part="catalogue-home" onClick={onHome}>
+        <Button className="home-button" aria-label={text.home} data-turn-part="catalogue-home" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
+          <span className="catalogue-home-word">{text.home}</span>
         </Button>
         <FoodChips language={language} choices={foods} chosen={food} arrangement={chips} widths={chipWidths} onContents={onChipContents} onChoose={onFood} />
       </header>
