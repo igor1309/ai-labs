@@ -1,81 +1,100 @@
 # System audio capture — QA
 
-Most rows run through a fake of the Core Audio binding. The fake records
-what the capture asks of it (the tap's processes or its "all but" list, a
-mono mix, playback unmuted, a device start) and plays a distinct tone per
-process only by what was asked, so a wrong request fails the row. It
-accepts or refuses each request, changes its rate on a device change, and
-stops its device on cue. The binding runs for real over a muted `afplay`
-tone, so the test makes no sound. The real Zoom call of the user spec
-(LAB-408) proves the whole path and that the call stays audible.
+Fake tests mix tones, change rate, refuse requests and hold IO. Native spies check
+tap and aggregate settings, IO, listeners and teardown. Real rows use `afplay -v 0.02`
+on a tone in a temp dir, run locally only (hosted CI may not tap audio).
 
 ## S-1 A named process is heard
 
-Fake: the tap is asked for the named process, mixed to mono with playback
-unmuted, and its tone is read back. Real: the muted `afplay` tone is read
-back above the noise floor. Evidence: Missing.
+Fake: every included tone is read live, unmuted and mono; silence before, between and after tones keeps its samples and rate. Native: PIDs become process objects with checked byte counts.
+Real: the faint tone exceeds the noise floor. Evidence: `SystemAudioCaptureTests.silentBuffersBeforeBetweenAndAfterTonesReachTheStream`,
+`SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback`,
+`SystemAudioCaptureTests.piecesAreReadWhileTheCaptureIsRunning`,
+`SystemAudioCaptureTests.severalProcessesAreSelectedAtStartAndOnRenaming`,
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`, `NativeCaptureBindingTests.nativeAggregateContainsOnlyItsPrivateManualTap`,
+`CoreAudioBindingTests.realFaintAfplayToneIsHeard`.
 
 ## S-2 Newly named processes are heard in the same capture
 
-Fake: a second process is named mid-capture; its tone follows in the same
-audio with no new start. Evidence: Missing.
+Fake: several newly included tones replace the old selection without restarting.
+Native: rename writes a description with the same UUID. Evidence:
+`SystemAudioCaptureTests.newlyNamedProcessesAreHeardInTheSameCapture`,
+`SystemAudioCaptureTests.severalProcessesAreSelectedAtStartAndOnRenaming`,
+`NativeCaptureBindingTests.runningRenameWritesTheNativeTapDescription`.
 
 ## S-5 A new output device keeps the sound heard
 
-Fake: the device changes and the format reads 24 kHz instead of 48; the
-pieces after it carry 24 kHz. Evidence: Missing.
+Fake: tones survive an output change. Native: a change during install is caught by a second read after subscribing, serialized with format notifications; IO makes no native calls. A buffer at the switch can carry the previous rate to keep native calls off IO. Input samples stay in delivery order despite different output samples. Evidence:
+`SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`, `SystemAudioCaptureTests.anInFlightBufferKeepsItsRateAcrossAnOutputChange`,
+`NativeCaptureBindingTests.nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder`, `NativeCaptureBindingTests.nativeIOCallbackMakesNoNativeCalls`, `NativeCaptureBindingTests.nativeFormatChangeDuringInstallUsesSubscribedRate`, `NativeCaptureBindingTests.nativeHeldBufferSurvivesFormatFailure`.
 
 ## S-6 A capture that cannot start fails
 
-Fake: each starting step in turn refuses; the capture fails, and what it
-made is released. Evidence: Missing.
+Fake and native: each refused starting step releases only its own handles, removing the format subscription before IO.
+Native: unavailable processes, unsupported formats and refused format subscriptions fail before IO is made. Format reads check the description's byte count. A refused format or failed read after subscribing removes the listener with its original address and block. Evidence:
+`SystemAudioCaptureTests.eachRefusedStartingStepFailsAndReleasesItsResources`, `NativeCaptureBindingTests.eachRefusedNativeStartingStepReleasesOnlyItsHandles`,
+`NativeCaptureBindingTests.aPIDWithoutANativeProcessObjectIsRefused`, `NativeCaptureBindingTests.nativeTapFormatsAcceptOnlyFloat32MonoLittleEndian`, `NativeCaptureBindingTests.nativeInstallIOChecksFormatBeforeMakingResources`, `NativeCaptureBindingTests.nativeRefusedFormatListenerRegistrationLeavesNoIO`, `NativeCaptureBindingTests.nativeRefusedFormatDuringInstallRemovesListenerWithoutIO`, `NativeCaptureBindingTests.nativeFailedFormatReadDuringInstallRemovesListenerWithoutIO`.
 
 ## S-7 A capture the system stops fails
 
-Fake: the device stops after some buffers; the capture reports the
-failure. Evidence: Missing.
+Fake and native: stopped devices and unreadable formats fail after cleanup;
+the first failure survives a later stop. Native notifications require a matching subscription and read alive and running independently, checking each UInt32 byte count. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`, `NativeCaptureBindingTests.nativeStopNotificationsReadTheirOwnDeviceState`, `NativeCaptureBindingTests.nativeStopNotificationsRequireMatchingSubscriptions`,
+`SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`, `NativeCaptureBindingTests.nativeFormatFailuresKeepEarlierAudio`, `NativeCaptureBindingTests.nativeRefusedFormatNotificationsFailOnceAndSuppressLaterBuffers`, `NativeCaptureBindingTests.nativeFailedFormatReadNotificationFailsOnceAndSuppressesLaterBuffers`, `NativeCaptureBindingTests.nativeHeldBufferSurvivesFormatFailure`.
 
 ## S-8 A failed capture keeps what it heard
 
-Fake: every buffer before the stop is read before the audio ends. Evidence:
-Missing.
+Fake: earlier pieces and IO held across a system stop precede the error. Native: a buffer copied before a format failure survives it, and later buffers are suppressed. Evidence:
+`SystemAudioCaptureTests.aFailedCaptureKeepsEveryPieceItHeard`,
+`SystemAudioCaptureTests.anInFlightBufferPrecedesTheSystemStopError`,
+`NativeCaptureBindingTests.nativeHeldBufferSurvivesFormatFailure`.
 
 ## S-9 Stopping ends the capture
 
-Fake: stopping ends the audio and releases the tap and device. Real: a
-muted `afplay` capture stopped. Evidence: Missing.
+Fake and native: IO drains before completion; the format subscription is removed with its original address and block before IO, and late notifications deliver nothing. Real: hearing the tone stops successfully; a deadline throws a timeout. Evidence:
+`SystemAudioCaptureTests.stoppingEndsAudioAndReleasesInReverseOrder`, `NativeCaptureBindingTests.nativeStopReleasesEveryHandleInTeardownOrder`, `NativeCaptureBindingTests.nativeFormatListenerIsRemovedBeforeIOAndIgnoresLateNotifications`,
+`SystemAudioCaptureTests.anIntentionalStopNotificationDoesNotFailTheStream`,
+`SystemAudioCaptureTests.anInFlightBufferPrecedesAnExplicitStopInOrder`,
+`SystemAudioCaptureTests.anExplicitStopReadsTheBufferAlreadyInFlight`,
+`SystemAudioCaptureTests.releasingTheLastOwnerDuringIOFinishesCleanupAndAudio`,
+`SystemAudioCaptureTests.cancellingTheReaderReleasesTheCaptureResources`,
+`CoreAudioBindingTests.realCaptureStopsAndEndsItsAudio`.
 
 ## S-10 A capture can follow a stopped one
 
-Fake and real: after the first is stopped, a second capture's tone is read
-back. Evidence: Missing.
+Fake and real: a second capture hears its tone after the first ends. Evidence:
+`SystemAudioCaptureTests.anotherCaptureCanFollowAStoppedOne`,
+`CoreAudioBindingTests.realCaptureCanFollowAStoppedCapture`.
 
 ## S-11 A capture that heard nothing ends cleanly
 
-Fake: a tap that never delivers is stopped; the audio ends with no pieces
-and no failure. Evidence: Missing.
+Fake: stopping without delivery ends without pieces or failure. Evidence: `SystemAudioCaptureTests.aCaptureThatHeardNothingEndsCleanly`.
 
 ## S-12 A process I did not name is left out
 
-Fake: the tap is asked for the named process only; another process's tone
-is absent. Evidence: Missing.
+Fake: every excluded tone is absent at start and after rename. Evidence:
+`SystemAudioCaptureTests.anUnnamedProcessIsLeftOut`,
+`SystemAudioCaptureTests.severalProcessesAreSelectedAtStartAndOnRenaming`,
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`.
 
 ## S-13 A process I left out is not heard
 
-Fake: the tap is asked for "all but" the left-out process; its tone is
-absent. Evidence: Missing.
+Fake: every excluded tone under "all but" is absent at start and after rename.
+Evidence: `SystemAudioCaptureTests.anExcludedProcessIsNotHeard`,
+`SystemAudioCaptureTests.severalProcessesAreSelectedAtStartAndOnRenaming`,
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`.
 
 ## S-14 A process that starts later is heard
 
-Fake: under "all but", a process added after the start plays; its tone is
-read back. Evidence: Missing.
+Fake: a later process under "all but" is heard. Evidence: `SystemAudioCaptureTests.aProcessStartingLaterIsHeard`.
 
 ## S-15 A naming the system refuses keeps the old one
 
-Fake: a new naming is refused; the first process's tone keeps coming and
-the capture does not fail. Evidence: Missing.
+Fake: refused naming retains the old tone. Native: a refused description write
+throws. Evidence: `SystemAudioCaptureTests.aRefusedNamingKeepsTheFirstNaming`,
+`NativeCaptureBindingTests.aRefusedNativeDescriptionWriteIsThrown`.
 
 ## S-17 Sound is read without muting it
 
-Fake: the tap is asked to leave playback unmuted. The real Zoom call of the
-user spec hears the far side while recording. Evidence: Missing.
+Fake and native: the unmuted request retains the named tone. Evidence:
+`SystemAudioCaptureTests.aNamedProcessIsHeardWithoutMutingPlayback`,
+`NativeCaptureBindingTests.nativeTapDescriptionTranslatesEveryProcess`. Real: pending the user spec's call.
