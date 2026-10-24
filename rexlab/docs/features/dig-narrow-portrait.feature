@@ -10,7 +10,7 @@ Feature: DIG in a tall-narrow window
     When I open DIG
     Then I see no picture asking to turn sideways or to make the window wider
     And HOME and the title fill the bar's first row
-    And the brush picker, the FIELD GUIDE and DUG UP share its second row
+    And the brush picker, the FIELD GUIDE and DUG UP share its second row, even with three digits of treasures and every dinosaur dug up
 
     Examples:
       | width | height |
@@ -62,7 +62,8 @@ Feature: DIG in a tall-narrow window
     And a window of <width> by <height> CSS pixels
     When I dig up a dinosaur
     Then the dinosaur is at least 140 pixels tall, the screen scrolling if it must
-    And DUG UP, DIG AGAIN and HOME each fit one line
+    And DUG UP fits in two rows, even for the last dinosaur with its trophy and badge
+    And DIG AGAIN and HOME each fit one line
 
     Examples:
       | width | height | language |

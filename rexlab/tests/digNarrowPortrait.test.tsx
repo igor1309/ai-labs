@@ -1,11 +1,13 @@
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
+import { DigRevealScreen } from "../src/DigRevealScreen.tsx";
 import { STAR_LANDS } from "../src/digGame.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { board, brushAll, digUp, finishBoard, openDigApp, placeBoard } from "./digApp.tsx";
-import { homeTile, manualViewport, memoryStorage } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
+import { fakeBodyPicture, homeTile, manualTimers, manualViewport, memoryStorage } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 
 // DIG's screens in a tall-narrow window: an iPhone upright.
@@ -22,7 +24,10 @@ const LANGUAGES = ["en", "ru"] as const;
 beforeEach(() => {
   Object.defineProperty(Element.prototype, "getAnimations", { configurable: true, value: () => [{ currentTime: 0, effect: { getComputedTiming: () => ({ endTime: 0 }) } }] });
 });
-afterEach(() => { Reflect.deleteProperty(Element.prototype, "getAnimations"); });
+afterEach(() => {
+  Reflect.deleteProperty(Element.prototype, "getAnimations");
+  delete document.documentElement.dataset.size;
+});
 
 const part = (selector: string) => {
   const found = document.querySelector<HTMLElement>(selector);
@@ -72,9 +77,9 @@ describe("DIG upright on a phone", () => {
     expect([bar.value("flex-wrap"), bar.rowGap(), bar.value("justify-content")]).toEqual(["wrap", 12, "space-between"]);
     // HOME and the title fill the first row, so the brush picker, the
     // FIELD GUIDE and DUG UP go to the second, side by side on the
-    // narrowest phone: the guide's count of two digits and DUG UP's two of
-    // them each side of its slash, digits at most Lexend's widest 0.68 em
-    // and the slash 0.4.
+    // narrowest phone with the bar's gap between each: the guide's count
+    // of three digits and DUG UP's two of them each side of its slash,
+    // digits at most Lexend's widest 0.68 em and the slash 0.4.
     expect(styleAt(part(".dig-board-screen .dig-title"), size).value("flex-basis")).toBe("calc(100% - 56px)");
     const picker = styleAt(part(".dig-brush-picker"), size);
     const option = styleAt(part(".dig-brush-option"), size);
@@ -83,10 +88,10 @@ describe("DIG upright on a phone", () => {
     expect(pickerWidth).toBe(98);
     const guide = styleAt(part(".dig-field-guide-button"), size);
     expect([guide.px("height"), guide.px("font-size")]).toEqual([52, 18]);
-    const guideWidth = 2 * guide.px("padding-left") + 26 + guide.columnGap() + 2 * 0.68 * 18;
+    const guideWidth = 2 * guide.px("padding-left") + 26 + guide.columnGap() + 3 * 0.68 * 18;
     const chip = styleAt(part(".dig-chip"), size);
     const chipWidth = 2 * chip.px("padding-left") + 20 + chip.columnGap() + (4 * 0.68 + 0.4) * chip.px("font-size");
-    expect(pickerWidth + guideWidth + chipWidth).toBeLessThanOrEqual(size[0] - 40);
+    expect(pickerWidth + guideWidth + chipWidth + 2 * bar.columnGap()).toBeLessThanOrEqual(size[0] - 40);
     expect(styleAt(board(), size).value("touch-action")).toBe("none");
   });
 
@@ -94,15 +99,18 @@ describe("DIG upright on a phone", () => {
     const size: WindowSize = [width, height];
     openDig(size, { level });
     phoneScreen(".dig-board-screen", size);
+    expect(styleAt(part(".dig-board-screen .dig-body[data-asks]"), size).value("flex-direction")).toBe("column");
     const cards = styleAt(part(".dig-choice-cards"), size);
     expect([cards.value("flex-direction"), cards.rowGap()]).toEqual(["column", 8]);
     const count = level === "explorer" ? 3 : 4;
     expect(all(".dig-choice-slot")).toHaveLength(count);
     for (const slot of all(".dig-choice-slot")) expect(styleAt(slot, size).value("flex-basis")).toBe("52px");
-    // The sand keeps at least 160 pixels of width over the rows.
+    // The sand keeps at least 160 pixels of width over the rows, under a
+    // bar of HOME's row and the 52 of the picker's.
     const rows = count * 52 + (count - 1) * 8;
     expect(styleAt(board(), size).value("width")).toBe(`min(100cqw, (100cqh - 16px - ${rows}px) * var(--frame-width) / var(--frame-height))`);
-    const body = height - 24 - 32 - (48 + 12 + 52) - 16;
+    const home = styleAt(part(".dig-bar .home-button"), size).px("height");
+    const body = height - 24 - 32 - (home + 12 + 52) - 16;
     expect(Math.min(width - 40, (body - 16 - rows) * 800 / 600)).toBeGreaterThanOrEqual(160);
   });
 
@@ -155,18 +163,55 @@ describe("DIG upright on a phone", () => {
     phoneScreen(".dig-reveal-screen", size);
     const page = styleAt(part(".dig-reveal-screen"), size);
     expect([page.value("height"), page.px("min-height"), page.value("overflow")]).toEqual(["auto", height, "visible"]);
+    expect(styleAt(part(".dig-reveal"), size).value("flex-direction")).toBe("column");
     expect(styleAt(part(".dig-reveal-art"), size).value("flex-basis")).toBe("140px");
     const text = TEXTS[language];
-    // DUG UP on one line: its star, the words and the count.
-    const card = styleAt(part(".dig-card"), size);
-    expect([card.px("height"), card.px("font-size")]).toEqual([60, 18]);
-    expect(card.px("padding-left") + card.px("padding-right") + 44 + 2 * card.columnGap() + wordWidth(text.dugUp, 18) + 3 * 0.75 * 22).toBeLessThanOrEqual(width - 40);
     for (const name of all(".level-switch-name")) expect(styleAt(name, size).value("position")).toBe("absolute");
     for (const name of [text.digAgain, text.home]) {
       const own = styleAt(screen.getByRole("button", { name }), size);
       expect([own.px("height"), own.value("white-space"), own.value("width")]).toEqual([64, "nowrap", "100%"]);
       expect(own.px("padding-left") + own.px("padding-right") + 28 + own.columnGap() + wordWidth(name, own.px("font-size")), name).toBeLessThanOrEqual(width - 40);
     }
+  });
+
+  // DUG UP as full as it gets: the last dinosaur, new, with the trophy and
+  // the badge. Its parts go in rows, each part where the one before it
+  // leaves room, and take two rows at most.
+  it.each(PHONES.flatMap((size) => LANGUAGES.flatMap((language) => [[...size, language, false], [...size, language, true]] as const)))("fits DUG UP at %i by %i in %s in two rows, the last dinosaur %s", (width, height, language, fullest) => {
+    const size: WindowSize = [width, height];
+    openWindow(...size);
+    document.documentElement.dataset.size = "tall-narrow";
+    const text = TEXTS[language];
+    render(
+      <DigRevealScreen language={language} name="TRICERATOPS" picture={fakeBodyPicture("triceratops")} dugUp={fullest ? 52 : 1} total={52} treasures={128} celebration={null}
+        newStar badge={fullest} landed startTimer={manualTimers().startTimer} landingWait={STAR_LANDS.motion} onLanded={() => {}}
+        level="paleontologist" onLevel={() => {}} onDigAgain={() => {}} onHome={() => {}} />,
+      withPictures
+    );
+    const card = part(".dig-card");
+    const own = styleAt(card, size);
+    expect([own.value("flex-wrap"), own.value("height"), own.px("min-height"), own.px("font-size")]).toEqual(["wrap", "auto", 60, 18]);
+    const widthOf = (item: HTMLElement) => {
+      const style = styleAt(item, size);
+      if (item.matches(".dig-card-star, .level-badge")) return style.px("width");
+      if (item.matches(".dig-card-trophy")) return 30;
+      const letters = item.textContent ?? "";
+      const type = style.px("font-size") || own.px("font-size");
+      return letters.length * (0.75 * type + style.px("letter-spacing"));
+    };
+    const items = [...card.children] as HTMLElement[];
+    expect(items).toHaveLength(fullest ? 6 : 4);
+    const room = width - 40 - own.px("padding-left") - own.px("padding-right");
+    const rows: number[] = [];
+    for (const item of items) {
+      const wide = widthOf(item);
+      expect(wide, item.className).toBeLessThanOrEqual(room);
+      const last = rows.length - 1;
+      if (last >= 0 && rows[last]! + own.columnGap() + wide <= room) rows[last] = rows[last]! + own.columnGap() + wide;
+      else rows.push(wide);
+    }
+    expect(rows.length).toBeLessThanOrEqual(2);
+    expect(card.textContent).toContain(fullest ? "52/52" : "1/52");
   });
 
   it("takes the phone's sizes as a tall window narrows over the board, asking nothing", () => {

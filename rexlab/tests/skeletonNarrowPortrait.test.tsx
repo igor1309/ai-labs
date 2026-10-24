@@ -68,6 +68,19 @@ describe("the skeleton screens upright on a phone", () => {
     expect([hall.px("padding-top"), hall.rowGap(), hall.columnGap()]).toEqual([12, 12, 12]);
     const stands = within(screen.getByRole("group", { name: shownTexts().stands })).getAllByRole("region");
     for (const stand of stands) expect(styleAt(stand, size).value("flex-basis")).toBe("calc(0.5 * (100% - 12px))");
+    // The bar's two buttons and two chips, the title out of the way, fit
+    // inside the 20-pixel sides: each chip its padding, a 20 symbol, a gap
+    // and "n/n" in letters at most 0.75 of the type wide.
+    const title = styleAt(part(".skeleton-museum-screen .skeleton-title"), size);
+    expect([title.value("position"), title.px("width")]).toEqual(["absolute", 1]);
+    const chips = [...part(".skeleton-museum-screen .skeleton-bar").querySelectorAll(".skeleton-chip")];
+    expect(chips).toHaveLength(2);
+    const widths = chips.map((chip) => {
+      const style = styleAt(chip, size);
+      return style.px("padding-left") + style.px("padding-right") + 20 + style.columnGap() + chip.textContent!.length * 0.75 * style.px("font-size");
+    });
+    const bar = styleAt(part(".skeleton-museum-screen .skeleton-bar"), size);
+    expect(2 * 48 + widths.reduce((sum, width) => sum + width, 0) + 3 * bar.columnGap()).toBeLessThanOrEqual(size[0] - 40);
   });
 
   it.each(PHONES)("stands the puzzle upright at %i by %i, the board as wide as the screen over a tray of at least a third", async (...size) => {

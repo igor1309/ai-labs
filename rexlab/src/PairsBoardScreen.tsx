@@ -143,7 +143,8 @@ function PairCard({ card, index, label, language, onTurn }: PairCardProps) {
 
 // A card's face: its picture, silhouette or skeleton, and its name once found or
 // while its picture is not shown, the name then telling the pair apart
-// and fading out as the picture fades in.
+// and fading out as the picture fades in. A found card's name under its
+// loaded picture is a caption, which a phone leaves to the card's label.
 function PairCardFace({ card, name }: { card: PairCardProps["card"]; name: string }) {
   const look = usePicture(card.picture);
   return (
@@ -152,7 +153,8 @@ function PairCardFace({ card, name }: { card: PairCardProps["card"]; name: strin
         <PictureImage look={look} className={card.face === "silhouette" ? "pair-card-picture pair-silhouette" : "pair-card-picture"} src={card.picture} alt="" width={800} height={600} />
       </span>
       {(card.state === "found" || look !== "shown") && (
-        <span className="pair-card-name" data-fading={(card.state !== "found" && look === "appearing") || undefined}>
+        <span className="pair-card-name" data-fading={(card.state !== "found" && look === "appearing") || undefined}
+          data-caption={(card.state === "found" && (look === "appearing" || look === "shown")) || undefined}>
           {name}
         </span>
       )}

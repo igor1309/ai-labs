@@ -67,10 +67,7 @@ function listGeometry(width: number, height: number, size: SizeClass, count = ID
   const columns = catalogueColumns(width, size, 0, 0);
   const card = (width - 2 * sideOf(size) - (columns - 1) * 20) / columns;
   const row = cardHeight(card);
-  const stacked = document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement === "stacked";
-  // In a tall-narrow window the chips' one row stands 16 under HOME, and
-  // the cards 20 under it.
-  const top = size === "tall" ? 40 + 56 + 24 + (stacked ? 124 : 56) + 28 : size === "tall-narrow" ? 40 + 56 + 16 + 56 + 20 : 124;
+  const top = size === "tall" ? 40 + 56 + 28 : size === "tall-narrow" ? 40 + 48 + 20 : 124;
   const listHeight = height - top;
   return { columns, card, row, top, listHeight, scrollHeight: Math.ceil(count / columns) * row + (Math.ceil(count / columns) - 1) * 20 + 48 };
 }
@@ -123,16 +120,19 @@ function boxFor(element: Element, width: number, height: number, size: SizeClass
     return { left: box.left + 16, top: box.top + 16, width: box.width - 32, height: box.width * 200 / 317 - 32 };
   }
   const list = listGeometry(width, height, size, document.querySelectorAll(".catalogue-card").length || IDS.length);
-  if (name === "catalogue-home") return size === "tall" ? { left: 40, top: 40, width: 130, height: 56 } : size === "tall-narrow" ? { left: 20, top: 40, width: 130, height: 56 } : { left: 56, top: 40, width: 130, height: 56 };
-  if (name === "catalogue-chips") {
-    if (size === "tall-narrow") return { left: 0, top: 102, width, height: 88 };
-    if (size !== "tall") return { left: 200, top: 40, width: width - 256, height: 56 };
-    const arrangement = (element as HTMLElement).dataset.arrangement;
-    return { left: 56, top: 120, width: width - 112, height: arrangement === "stacked" ? 124 : 56 };
-  }
+  const narrow = size === "tall-narrow";
+  const portrait = narrow || size === "tall";
+  const target = narrow ? 48 : 56;
+  const chipGap = narrow ? 8 : 12;
+  const chipsLeft = narrow ? 20 + 48 + 8 : 56 + 130 + 24;
+  if (name === "catalogue-home") return { left: sideOf(size), top: 40, width: narrow ? 48 : 130, height: target };
+  if (name === "catalogue-chips") return portrait
+    ? { left: chipsLeft, top: 40, width: 4 * target + 3 * chipGap, height: target }
+    : { left: 200, top: 40, width: width - 256, height: 56 };
   if (name.startsWith("catalogue-chip-")) {
     const chip = element as HTMLElement;
     const food = chip.dataset.food;
+    if (portrait) return { left: chipsLeft + ["all", "meat", "plants", "both"].indexOf(food ?? "") * (target + chipGap), top: 40, width: target, height: target };
     const group = chip.closest<HTMLElement>(".food-chips");
     const arrangement = group?.dataset.arrangement;
     const rowWidth = width - 112;
@@ -513,7 +513,7 @@ describe("catalogue turn styles", () => {
 });
 
 describe("catalogue's shared turn", () => {
-  it("glides HOME, chips, list and all cards together, with MEAT still chosen and 26 cards", async () => {
+  it("keeps HOME still while chips, list and all 26 MEAT cards glide", async () => {
     const app = openCatalogue();
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
     await app.user.click(screen.getByRole("button", { name: "MEAT" }));
@@ -523,6 +523,8 @@ describe("catalogue's shared turn", () => {
     const meat = SHIPPED_CATALOGUE.filter(({ diet }) => diet === "meat").map(({ id }) => id);
     const before = new Map(meat.map((id) => [id, app.measure(card(id))]));
     const listBefore = app.measure(app.grid());
+    const home = screen.getByRole("button", { name: TEXTS.en.home });
+    const homeBefore = app.measure(home);
     app.resize([820, 1180, "tall"]);
 
     expect(document.documentElement.dataset.size).toBe("tall");
@@ -551,8 +553,9 @@ describe("catalogue's shared turn", () => {
     expect(still.every((id) => app.measure(card(id)).left === 56 && app.measure(card(id)).top === listNow.top)).toBe(true);
     expect(still.length).toBeLessThanOrEqual(1);
     expect(chips?.dataset.arrangement).toBe("spaced");
+    // HOME keeps the same box beside the filters in both layouts.
+    expect(app.measure(home)).toEqual(homeBefore);
     expect([...new Set(app.animations.filter(own).map(({ name }) => name))]).toEqual([
-      "catalogue-home",
       "catalogue-chips",
       "catalogue-chip-all",
       "catalogue-chip-meat",
@@ -842,14 +845,15 @@ describe("catalogue's shared turn", () => {
     const moving = new Set(app.animations.filter(({ cancelled }) => !cancelled).filter(own).map(({ name }) => name));
     expect(moving.size > 0).toBe(glides);
     if (glides) {
-      expect(moving).toEqual(new Set(["catalogue-chips", "catalogue-chip-meat", "catalogue-chip-plants", "catalogue-chip-both", "catalogue-list", ...IDS.map((id) => `catalogue-card-${id}`)]));
+      // Fixed portrait symbols stay beside HOME as the card columns resize.
+      expect(moving).toEqual(new Set(["catalogue-list", ...IDS.map((id) => `catalogue-card-${id}`)]));
     } else {
       expect(moving).toEqual(new Set());
     }
-    expect(app.measure(list).top).toBe(from[0] === 700 ? beforeTop - 68 : beforeTop);
+    expect(app.measure(list).top).toBe(beforeTop);
     if (glides) {
       const glide = app.animations.find(({ name, cancelled }) => name === "catalogue-list" && !cancelled)!;
-      expect(glide.keyframes.map(({ translate }) => translate)).toEqual([`0px ${from[0] === 700 ? 68 : 0}px`, "0px 0px"]);
+      expect(glide.keyframes.map(({ translate }) => translate)).toEqual(["0px 0px", "0px 0px"]);
     }
     expect(app.fades).toHaveLength(0);
     expect(app.grid().scrollTop).toBeCloseTo(rowScroll("gallimimus", to[0], to[1], "tall"));
