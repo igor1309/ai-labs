@@ -32,6 +32,21 @@ function openFriends(size: WindowSize, { language = "en", friends = FRIENDS, vie
 // spacing.
 const capitalsWidth = (words: string, style: ReturnType<typeof styleAt>) => words.length * (style.px("font-size") * 0.8 + style.px("letter-spacing"));
 
+// Whether every shipped name fits the two lines a friend card's footer
+// holds, its cards `columns` to a row of the window of `size`: then every
+// card is as tall as the others, and a turn keeps the list's place by its
+// rows.
+function namesFit(size: WindowSize, columns: number, language: "en" | "ru") {
+  const page = styleAt(part(".friends"), size);
+  const grid = styleAt(part(".friends-grid"), size);
+  const footer = styleAt(part(".friend-footer"), size);
+  const name = styleAt(part(".friend-name"), size);
+  expect([grid.value("grid-auto-rows"), footer.value("box-sizing"), footer.px("height")]).toEqual(["max-content", "border-box", footer.px("padding-top") + footer.px("padding-bottom") + 2 * name.px("line-height")]);
+  const card = (size[0] - page.px("padding-left") - page.px("padding-right") - (columns - 1) * grid.columnGap()) / columns;
+  const line = card - footer.px("padding-left") - footer.px("padding-right") - 20 - footer.columnGap();
+  return SHIPPED_VISITORS.every((visitor) => capitalsWidth(visitor.name[language], name) <= 2 * line);
+}
+
 describe("care's friends upright", () => {
   afterEach(() => vi.restoreAllMocks());
 
@@ -51,9 +66,7 @@ describe("care's friends upright", () => {
     const bar = [...part(".friends-bar").children] as HTMLElement[];
     expect(bar.at(-1)).toBe(screen.getByRole("button", { name: TEXTS.en.newVisitor }));
     expect(bar.map((each) => styleAt(each, size).value("order") || "0")).toEqual(bar.map(() => "0"));
-    // Every row as tall as the tallest card, so a turn keeps the list's
-    // place by its rows.
-    expect(styleAt(part(".friends-grid"), size).value("grid-auto-rows")).toBe("1fr");
+    expect(styleAt(part(".friends-bar"), size).value("flex-direction") || "row").toBe("row");
   });
 
   it.each(["en", "ru"] as const)("keeps the bar on one row and every word in its room at 600 wide in %s", (language) => {
@@ -81,8 +94,9 @@ describe("care's friends upright", () => {
     const visitor = styleAt(part(".new-visitor-button"), size);
     expect(visitor.px("padding-left") + 24 + visitor.columnGap() + capitalsWidth(text.newVisitor, visitor) + visitor.px("padding-right")).toBeLessThanOrEqual(width);
 
-    // Every friend's name wraps inside its card, half the row.
+    // Every friend's name in two lines of its card, half the row.
     expect(styleAt(part(".friend-name"), size).value("overflow-wrap")).toBe("anywhere");
+    expect(namesFit(size, 2, language)).toBe(true);
   });
 
   it.each(["en", "ru"] as const)("stands the nest and NEW VISITOR in the middle with no friends at 600 wide in %s", (language) => {
@@ -108,6 +122,7 @@ describe("care's friends upright", () => {
     expect(getComputedStyle(part(".friends")).paddingLeft).toBe("56px");
     expect(getComputedStyle(part(".friends-grid")).gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))");
     expect(getComputedStyle(part(".friends-bar")).flexWrap || "nowrap").toBe("nowrap");
+    for (const language of ["en", "ru"] as const) expect(namesFit([1180, 820], 4, language), language).toBe(true);
   });
 
   // jsdom does not lay out: the list as a browser lays it out, four
