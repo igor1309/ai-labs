@@ -1,5 +1,10 @@
 # Log
 
+## 2026-10-24
+
+- Session now brings one recording's folder, tracks, text and captures up
+  and down through a tested reducer and effect handler (LAB-506).
+
 ## 2026-10-23
 
 - Machines take events in order, run effects independently and tell every

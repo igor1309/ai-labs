@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
+        .library(name: "Session", targets: ["Session"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
     dependencies: [
@@ -73,6 +74,10 @@ let package = Package(
             dependencies: ["GlassLedger"]
         ),
         .target(
+            name: "Session",
+            dependencies: ["Machine"]
+        ),
+        .target(
             name: "TwoPassRecognizer",
             dependencies: ["LiveText"]
         ),
@@ -115,6 +120,10 @@ let package = Package(
         .testTarget(
             name: "SettingsUITests",
             dependencies: ["SettingsUI"]
+        ),
+        .testTarget(
+            name: "SessionTests",
+            dependencies: ["Session", "Machine"]
         ),
         .testTarget(
             name: "TwoPassRecognizerTests",
