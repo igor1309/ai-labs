@@ -69,7 +69,8 @@ item but the last.
   type written, or with a type whose name ends in `Screen` (LAB-298).
 - `setTimeout`, `setInterval`, `Date.now()`, `performance.now()`, an
   argless `new Date()` or an event's `timeStamp` outside `src/root.ts`
-  (LAB-303).
+  (LAB-303), or the service worker's own root, `src/offline/sw.ts`,
+  which runs apart from the app and its taps.
 - `waitForPictures` anywhere in `src/`, or a `LoadPicture` named in
   `src/` outside `src/Picture.tsx`, whose store alone calls the loader
   (LAB-308).

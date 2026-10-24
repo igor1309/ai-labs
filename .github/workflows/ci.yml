@@ -145,6 +145,7 @@ jobs:
               - "rexlab/tests/**"
               - "rexlab/scripts/**"
               - "rexlab/index.html"
+              - "rexlab/public/**"
               - "rexlab/package.json"
               - "rexlab/package-lock.json"
               - "rexlab/tsconfig.json"
