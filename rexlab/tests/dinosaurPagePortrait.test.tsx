@@ -244,18 +244,6 @@ describe("the app's dinosaur page upright", () => {
     expect([document.documentElement.dataset.size, gateShown(), list.hasAttribute("data-rise"), getComputedStyle(list).getPropertyValue("--columns")]).toEqual(["tall", false, false, "3"]);
   });
 
-  it("fades the turn picture over the page as a tall window narrows", async () => {
-    const viewport = manualViewport("portrait");
-    await openPage([820, 1180], { id: "triceratops", viewport });
-    const page = part(".dinosaur-page");
-    openWindow(393, 852);
-    act(() => viewport.resize("tall-narrow", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-    expect(screen.getByRole("img", { name: TEXTS.en.turnSideways })).toBeDefined();
-    expect(part(".dinosaur-page")).toBe(page);
-    expect(getComputedStyle(part(".orientation-gate")).animation).toMatch(/^fade-in /);
-  });
-
   it("keeps the landscape structure and type with no gate", async () => {
     await openPage([1024, 768], { viewport: manualViewport("landscape") });
     expect([document.documentElement.dataset.size, gateShown()]).toEqual(["wide", false]);

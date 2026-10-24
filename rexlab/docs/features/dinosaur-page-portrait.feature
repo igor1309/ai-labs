@@ -10,8 +10,8 @@ Feature: A dinosaur's page in a tall window
   food tag, the description, the two facts side by side, and the note
   for parents. The rest is as catalogue.feature and
   catalogue-creatures.feature tell; a turn is in
-  dinosaur-page-turn.feature. A tall-narrow window keeps the picture
-  asking to turn or widen (window-shape.feature).
+  dinosaur-page-turn.feature. A tall-narrow window, under 600 wide,
+  has its own layout.
 
   The page's padding, the bar, the stage's padding and rounding, the
   buttons, the food tag, the facts' cards and the words' type keep their
@@ -87,10 +87,11 @@ Feature: A dinosaur's page in a tall window
     When I tap the "ANCIENT REPTILES" button
     Then the picture shrinks back into the card of Triceratops, in view in the upright list
 
-  Scenario: A tall-narrow window still shows the picture over the page
+  Scenario: A tall-narrow window stands the page on narrow sides
     Given a window of 820 by 1180 CSS pixels on the page of Triceratops, the device's screen upright
     When the window becomes 393 by 852 CSS pixels
-    Then the picture asking to turn sideways fades in over the page
+    Then no picture asks me to turn or widen the window
+    And the ← and → buttons stand in a row under the picture
 
   Scenario: Safe areas stay clear upright
     Given a window of 744 by 1133 CSS pixels on a device with rounded corners and a home indicator
