@@ -51,8 +51,10 @@ describe("care's result upright", () => {
     // hearts, the title, the chips and the actions.
     expect([...part(".result-content").children].map((element) => element.className)).toEqual(["celebration", "result-score", "result-hearts", "result-title", "care-result-chips", "result-actions"]);
     const actions = styleAt(part(".result-actions"), size);
-    // The column stretches across the content, and each action across it.
-    expect([actions.value("flex-direction"), actions.value("align-self"), actions.value("align-items") || "stretch"]).toEqual(["column", "stretch", "stretch"]);
+    // The column stretches across the content, and each action across it:
+    // a flex column's normal alignment stretches its items.
+    expect([actions.value("flex-direction"), actions.value("align-self")]).toEqual(["column", "stretch"]);
+    expect(["normal", "stretch"]).toContain(actions.value("align-items") || "normal");
     expect(styleAt(part(".result-content"), size).value("align-self")).toBe("stretch");
     for (const name of [TEXTS.en.newVisitor, TEXTS.en.friends, TEXTS.en.home]) {
       const button = styleAt(screen.getByRole("button", { name }), size);
