@@ -59,12 +59,18 @@ function cardHeight(width: number) {
   return (width * 200) / 317 + 14 + 1.25 * Math.min(20, 0.07 * width) + 10 + 32 + 18;
 }
 
+// The list's padding on each side: 20 in a tall-narrow window, 56 in
+// any other.
+const sideOf = (size: SizeClass) => (size === "tall-narrow" ? 20 : 56);
+
 function listGeometry(width: number, height: number, size: SizeClass, count = IDS.length) {
   const columns = catalogueColumns(width, size, 0, 0);
-  const card = (width - 112 - (columns - 1) * 20) / columns;
+  const card = (width - 2 * sideOf(size) - (columns - 1) * 20) / columns;
   const row = cardHeight(card);
   const stacked = document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement === "stacked";
-  const top = size === "tall" ? 40 + 56 + 24 + (stacked ? 124 : 56) + 28 : 124;
+  // In a tall-narrow window the chips' one row stands 16 under HOME, and
+  // the cards 20 under it.
+  const top = size === "tall" ? 40 + 56 + 24 + (stacked ? 124 : 56) + 28 : size === "tall-narrow" ? 40 + 56 + 16 + 56 + 20 : 124;
   const listHeight = height - top;
   return { columns, card, row, top, listHeight, scrollHeight: Math.ceil(count / columns) * row + (Math.ceil(count / columns) - 1) * 20 + 48 };
 }
@@ -101,7 +107,7 @@ function expectedCardBox(id: string, list: HTMLElement, width: number, height: n
   const row = Math.floor(index / layout.columns);
   const column = index % layout.columns;
   return {
-    left: 56 + column * (layout.card + 20),
+    left: sideOf(size) + column * (layout.card + 20),
     top: layout.top + (row * (layout.row + 20) - list.scrollTop),
     width: layout.card,
     height: layout.row
@@ -117,8 +123,9 @@ function boxFor(element: Element, width: number, height: number, size: SizeClass
     return { left: box.left + 16, top: box.top + 16, width: box.width - 32, height: box.width * 200 / 317 - 32 };
   }
   const list = listGeometry(width, height, size, document.querySelectorAll(".catalogue-card").length || IDS.length);
-  if (name === "catalogue-home") return size === "tall" ? { left: 40, top: 40, width: 130, height: 56 } : { left: 56, top: 40, width: 130, height: 56 };
+  if (name === "catalogue-home") return size === "tall" ? { left: 40, top: 40, width: 130, height: 56 } : size === "tall-narrow" ? { left: 20, top: 40, width: 130, height: 56 } : { left: 56, top: 40, width: 130, height: 56 };
   if (name === "catalogue-chips") {
+    if (size === "tall-narrow") return { left: 0, top: 102, width, height: 88 };
     if (size !== "tall") return { left: 200, top: 40, width: width - 256, height: 56 };
     const arrangement = (element as HTMLElement).dataset.arrangement;
     return { left: 56, top: 120, width: width - 112, height: arrangement === "stacked" ? 124 : 56 };
@@ -143,7 +150,7 @@ function boxFor(element: Element, width: number, height: number, size: SizeClass
     const index = IDS.indexOf(name.slice("catalogue-card-".length));
     const row = Math.floor(index / list.columns);
     const column = index % list.columns;
-    return { left: 56 + column * (list.card + 20), top: list.top + (row * (list.row + 20) - ((element.closest(".catalogue-grid") as HTMLElement | null)?.scrollTop ?? 0)), width: list.card, height: list.row };
+    return { left: sideOf(size) + column * (list.card + 20), top: list.top + (row * (list.row + 20) - ((element.closest(".catalogue-grid") as HTMLElement | null)?.scrollTop ?? 0)), width: list.card, height: list.row };
   }
   return { left: 0, top: 0, width: 1, height: 1 };
 }
@@ -665,6 +672,32 @@ describe("catalogue's shared turn", () => {
     const back = app.grid();
     expect(back.scrollTop).toBeCloseTo(scroll === 99999 ? back.scrollHeight - back.clientHeight : rowScroll(backId, 1180, 820, "wide"));
     if (scroll === 99999) expectWholeInList(back, backId);
+    app.settle();
+  });
+
+  it.each([
+    ["Gallimimus", "gallimimus"],
+    ["Parasaurolophus", "parasaurolophus"]
+  ] as const)("keeps the row of %s at its top turning an iPhone from landscape upright and back, one card to a row upright", async (_, id) => {
+    const app = openCatalogue(852, 393, { portraitLayouts: { catalogue: ["tall", "tall-narrow"] } });
+    app.resize([852, 393, "wide-short"]);
+    app.settle();
+    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    const list = app.grid();
+    listMetrics(list);
+    list.scrollTop = rowScroll(id, 852, 393, "wide-short");
+    fireEvent.scroll(list);
+
+    app.resize([393, 852, "tall-narrow"]);
+    const upright = app.grid();
+    expect(upright.style.getPropertyValue("--columns")).toBe("1");
+    expect(upright.scrollTop).toBeCloseTo(rowScroll(id, 393, 852, "tall-narrow"));
+    expect(cardIn(upright, id).getBoundingClientRect().top).toBeCloseTo(upright.getBoundingClientRect().top);
+    app.settle();
+
+    app.resize([852, 393, "wide-short"]);
+    const back = app.grid();
+    expect(back.scrollTop).toBeCloseTo(rowScroll(id, 852, 393, "wide-short"));
     app.settle();
   });
 
