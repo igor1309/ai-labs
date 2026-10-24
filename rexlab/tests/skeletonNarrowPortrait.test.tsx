@@ -80,7 +80,7 @@ describe("the skeleton screens upright on a phone", () => {
       return style.px("padding-left") + style.px("padding-right") + 20 + style.columnGap() + chip.textContent!.length * 0.75 * style.px("font-size");
     });
     const bar = styleAt(part(".skeleton-museum-screen .skeleton-bar"), size);
-    expect(2 * 48 + widths[0] + widths[1] + 3 * bar.columnGap()).toBeLessThanOrEqual(size[0] - 40);
+    expect(2 * 48 + widths.reduce((sum, width) => sum + width, 0) + 3 * bar.columnGap()).toBeLessThanOrEqual(size[0] - 40);
   });
 
   it.each(PHONES)("stands the puzzle upright at %i by %i, the board as wide as the screen over a tray of at least a third", async (...size) => {
