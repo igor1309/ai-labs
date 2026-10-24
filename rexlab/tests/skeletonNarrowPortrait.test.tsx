@@ -7,8 +7,7 @@ import { choices, finishLoading, fitAll, keptSkeletons, layOutPuzzle, openPuzzle
 import { manualViewport, type ManualViewport } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 
-// The skeleton-*-narrow-portrait.feature files in the app: every
-// skeleton screen in a tall-narrow window.
+// Every skeleton screen in a tall-narrow window: an iPhone upright.
 
 const NARROW_LAYOUTS: PortraitLayouts = {
   home: ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"],
