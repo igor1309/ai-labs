@@ -30,6 +30,9 @@ const boxWidth = (box: Element, content: number) => {
 
 const drawnWidth = (symbol: Element | null) => px(symbol?.getAttribute("width") ?? "");
 
+// A word a tall-narrow window hides from sight takes no room in its row.
+const shownWidth = (word: Element | null, words: string, style: CSSStyleDeclaration) => (word && getComputedStyle(word).position === "absolute" ? 0 : wordWidth(words, style));
+
 const partOf = (selector: string) => {
   const part = document.querySelector(selector);
   if (!part) throw new Error(`No ${selector} on the page`);
@@ -44,7 +47,7 @@ const partOf = (selector: string) => {
 export function topLine(width: number, language: Language) {
   const button = partOf(".home-museum");
   const museumStyle = getComputedStyle(button);
-  const museum = boxWidth(button, rowWidth(button, [drawnWidth(button.querySelector("svg")), wordWidth(TEXTS[language].museum, museumStyle)]));
+  const museum = boxWidth(button, rowWidth(button, [drawnWidth(button.querySelector("svg")), shownWidth(button.querySelector(".narrow-hidden"), TEXTS[language].museum, museumStyle)]));
   // Each button shows its face: a symbol or a picture, and at most a code.
   const menuButtons = [...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => {
     const style = getComputedStyle(menuButton);
@@ -67,7 +70,7 @@ export function topLine(width: number, language: Language) {
   const cornerWidth = boxWidth(corner, rowWidth(corner, [museum, boxWidth(partOf(".parent-menus"), rowWidth(partOf(".parent-menus"), menuButtons))]));
   const wordmark = partOf(".wordmark");
   const wordmarkStyle = getComputedStyle(wordmark);
-  const wordmarkWidth = rowWidth(wordmark, [px(getComputedStyle(partOf(".wordmark-mark")).width), wordWidth("RexLab", wordmarkStyle)]);
+  const wordmarkWidth = rowWidth(wordmark, [px(getComputedStyle(partOf(".wordmark-mark")).width), shownWidth(wordmark.querySelector(".narrow-hidden"), "RexLab", wordmarkStyle)]);
   const menusStyle = getComputedStyle(partOf(".parent-menus"));
   const menuHeight = Math.max(...[...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => px(getComputedStyle(menuButton).minHeight)));
   const cornerHeight = Math.max(px(museumStyle.height), px(menusStyle.paddingTop) + menuHeight + px(menusStyle.paddingBottom));

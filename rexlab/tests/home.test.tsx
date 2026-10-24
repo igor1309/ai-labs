@@ -552,7 +552,7 @@ describe("the home page", () => {
   it("shows the RexLab wordmark, small, in the top-left corner", () => {
     const { card } = openHomePage();
 
-    const wordmark = screen.getByText("RexLab");
+    const wordmark = screen.getByText("RexLab").closest<HTMLElement>(".wordmark")!;
     const style = getComputedStyle(wordmark);
     expect(style.position).toBe("fixed");
     expect(style.top).toMatch(/^[\d.]+(px|rem)$/);
