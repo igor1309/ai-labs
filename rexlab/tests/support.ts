@@ -761,6 +761,17 @@ export function words(element: HTMLElement): string {
   return copy.textContent?.trim() ?? "";
 }
 
+// The element `selector` finds, for a helper that only locates a part
+// the screen is known to show. A role query weighs every element's style
+// against the whole stylesheet, so a helper called at each step of play
+// finds its part this way, and a test of the screen's own holds the part
+// to its role and name.
+export function part<T extends Element = HTMLElement>(selector: string, within: ParentNode = document): T {
+  const found = within.querySelector<T>(selector);
+  if (!found) throw new Error(`No ${selector} on the screen`);
+  return found;
+}
+
 // The home page's row of tiles.
 export function tilesRow(): HTMLElement {
   const row = document.querySelector<HTMLElement>(".games-tiles");

@@ -232,7 +232,7 @@ func TestAStepGivenASessionNoCallWentOnInIsRefused(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := steps.Call(context.Background(), "b", map[string]string{"what": "hi"}, "s9", func(workflow.Report) {})
+	got := steps.Call(context.Background(), "b", "b", map[string]string{"what": "hi"}, "s9", func(workflow.Report) {})
 	if got.Class != workflow.Refused || got.Reason != `no call of the run went on in the session "s9"` || len(admits.asked()) > 0 {
 		t.Errorf("ended %q, %q, admission asked %+v; want refused, no call of the run went on in the session \"s9\", none asked",
 			got.Class, got.Reason, admits.asked())
@@ -263,11 +263,11 @@ func TestAStepCannotResumeItsPrimarysFallbackSession(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := steps.Call(context.Background(), "a", map[string]string{"what": "x"}, "", func(workflow.Report) {})
+	got := steps.Call(context.Background(), "a", "a", map[string]string{"what": "x"}, "", func(workflow.Report) {})
 	if got.Status != workflow.Completed || got.Session != "fallback" {
 		t.Fatalf("first call %+v", got)
 	}
-	got = steps.Call(context.Background(), "b", map[string]string{"what": "x"}, got.Session, func(workflow.Report) {})
+	got = steps.Call(context.Background(), "b", "b", map[string]string{"what": "x"}, got.Session, func(workflow.Report) {})
 	if got.Class != workflow.Refused || got.Reason != `the session "fallback" ran on "fallback-agent", not "primary-agent"` || len(primary.steps) != 1 || len(admits.asked()) != 1 {
 		t.Errorf("second call %+v, primary turns %d, admissions %d; want refused before runtime", got, len(primary.steps), len(admits.asked()))
 	}

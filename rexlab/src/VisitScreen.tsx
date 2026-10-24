@@ -55,7 +55,7 @@ export function VisitScreen({ language, visit, itemPicture, onGive, onHome }: Vi
       <header className="visit-bar">
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
+          <span className="upright-hidden">{text.home}</span>
         </Button>
         <ol className="needs" aria-label={text.needsLabel}>
           {needs.map(({ need: each, state }) => {
@@ -75,7 +75,7 @@ export function VisitScreen({ language, visit, itemPicture, onGive, onHome }: Vi
           </span>
         </p>
       </header>
-      <section className="stage" data-reaction={reacting?.reaction} data-item={reacting?.item} data-leaving={leaving || undefined}>
+      <section className="stage" data-turn-part="care-stage" data-reaction={reacting?.reaction} data-item={reacting?.item} data-leaving={leaving || undefined}>
         <span className="stage-glow" aria-hidden="true" />
         <span className="stage-ground" aria-hidden="true" />
         <h1 className="visitor-name" aria-label={name}>
@@ -129,7 +129,7 @@ export function VisitScreen({ language, visit, itemPicture, onGive, onHome }: Vi
           </>
         )}
       </section>
-      <div className="tray" role="group" aria-label={text.care} data-busy={busy || undefined}>
+      <div className="tray" data-turn-part="care-tray" role="group" aria-label={text.care} data-busy={busy || undefined}>
         {CARE_ITEMS.map((item) => (
           <TrayItem
             key={item}

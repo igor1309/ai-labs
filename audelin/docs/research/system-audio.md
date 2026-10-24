@@ -25,8 +25,10 @@ device as well and recorded the audio twice, as an echo.
   (`docs/research/vpio-process-tap-conflict.md`, macOS 15). So it moved to
   ScreenCaptureKit. It later turned voice processing off anyway, because
   that muffled the user's own voice for the other people on the call.
-  Amanu does use voice processing on its mic together with a tap. Audelin's
-  mic is raw (headphones, mvp.md), so this conflict does not arise.
+  Amanu does use voice processing on its mic together with a tap, so the
+  conflict may depend on the macOS version or the setup (not measured
+  here). Audelin leaves voice processing off its mic to stay clear of it;
+  on speakers the far side then leaks into the mic track.
 - **ScreenCaptureKit conflicts with screenshots.** Muesli moved to the tap
   partly because `SCStream` broke its window screenshots during a meeting.
   It also wanted the narrower permission.
@@ -75,7 +77,8 @@ device as well and recorded the audio twice, as an echo.
 
 A Core Audio process tap, because:
 
-- the mic stays raw, so the voice-processing conflict does not apply;
+- the mic has no voice processing, so the conflict MacParakeet hit does
+  not apply;
 - it needs the narrower permission;
 - it is what Amanu, the app the owner liked most, does.
 

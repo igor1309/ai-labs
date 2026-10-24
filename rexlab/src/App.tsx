@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
 import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } from "./ageLevel.ts";
-import { useCareGame, type CareGameProps } from "./careGame.tsx";
+import { useCareGame, type CareGameProps, type CarePhase } from "./careGame.tsx";
 import { FOODS, ofFood, stepFrom, type CatalogueEntry, type Food, type Step } from "./catalogue.ts";
 import { catalogueColumns, catalogueRow } from "./catalogueColumns.ts";
 import { CatalogueScreen, type CatalogueLayout } from "./CatalogueScreen.tsx";
@@ -88,7 +88,7 @@ export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
 // compare quiz's own, a question or its result, and each of find the
 // pair's, its welcome, a board or its result, which each game names as it
 // shows them.
-export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}` | `dig-${DigPhase}`;
+export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}` | `dig-${DigPhase}` | `care-${CarePhase}`;
 
 // Each screen with a portrait layout, named with the size classes its
 // layout is built for; a screen not named has none.
@@ -381,6 +381,8 @@ export function App({
     counting("dig")
   );
 
+  const care = useCareGame({ ...careProps, bodyPicture, random, startTimer }, home, counting("care"));
+
   // Each game's phase is its own: the gate and the turns read it as the
   // game reports it.
   const layoutScreen: LayoutScreen =
@@ -394,7 +396,9 @@ export function App({
             ? `skeletons-${skeletonGame.phase}`
             : screen.kind === "dig"
               ? `dig-${dig.phase}`
-              : screen.kind;
+              : screen.kind === "care"
+                ? `care-${care.phase}`
+                : screen.kind;
   const portraitSizes = portraitLayouts[layoutScreen];
   const gate = useMemo(() => ({
     isShown: () => gateShownFor(layoutScreen),
@@ -438,8 +442,6 @@ export function App({
   const openCompare = () => {
     quiz.start(() => set({ kind: "compare" }));
   };
-
-  const care = useCareGame({ ...careProps, bodyPicture, random, startTimer }, home, counting("care"));
 
   const openCare = () => {
     go({ kind: "care" }, { also: care.open });

@@ -144,25 +144,10 @@ func TestCheckAndRunShareEveryWorkflowNotRunLine(t *testing.T) {
 	cases := []struct {
 		name, workflow, line string
 	}{
-		{"branch", `schema: agister.workflow/v1alpha1
-params: {what: {default: hi}}
+		{"workflow", `schema: agister.workflow/v1alpha1
 steps:
-  - name: b
-    branch:
-      - {name: x, if: {present: {from: params.what}}, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
-      - {name: y, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
-`, `the workflow "w": the item "b", a branch, is not run yet`},
-		{"repeat", `schema: agister.workflow/v1alpha1
-steps:
-  - name: r
-    repeat:
-      state: {last: hi}
-      steps:
-        - {name: s, process: say, agent: bash, inputs: {what: hi}}
-      next: {last: {from: steps.s.outputs.stdout.head}}
-      until: {present: {from: state.last}}
-      max: 1
-`, `the workflow "w": the item "r", a repeat, is not run yet`},
+ - {name: c, workflow: v}
+`, `the workflow "w": the item "c", a workflow, is not run yet`},
 		{"runtime turn", `schema: agister.workflow/v1alpha1
 steps:
   - {name: s, process: say, agent: pi-m3, inputs: {what: hi}}
@@ -181,6 +166,7 @@ steps:
 				"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, "", ""),
 				"/u/.agister/prompts/say.md":     `echo "$what"`,
 				"/u/.agister/workflows/w.yaml":   c.workflow,
+				"/u/.agister/workflows/v.yaml":   pairWorkflow,
 			}
 			checked := compose(t, settings, "check")
 			if checked.code != 1 || checked.stderr != "" || !strings.Contains(checked.stdout, "/u/.agister/workflows/w.yaml: "+c.line) {
@@ -301,17 +287,14 @@ func TestInspectShowsTheWorkflowNotRunRefusalWithoutAPlan(t *testing.T) {
 	settings := map[string]string{
 		"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, "", ""),
 		"/u/.agister/prompts/say.md":     `echo "$what"`,
+		"/u/.agister/workflows/v.yaml":   pairWorkflow,
 		"/u/.agister/workflows/w.yaml": `schema: agister.workflow/v1alpha1
-params: {what: {default: hi}}
 steps:
-  - name: b
-    branch:
-      - {name: x, if: {present: {from: params.what}}, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
-      - {name: y, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
+  - {name: c, workflow: v}
 `,
 	}
 	got := compose(t, settings, "inspect", "workflow", "w")
-	if got.code != 0 || !strings.Contains(got.stdout, `the workflow "w": the item "b", a branch, is not run yet`) || strings.Contains(got.stdout, "plan of ") {
+	if got.code != 0 || !strings.Contains(got.stdout, `the workflow "w": the item "c", a workflow, is not run yet`) || strings.Contains(got.stdout, "plan of ") {
 		t.Fatalf("inspect ran %+v, want refusal and no plan", got)
 	}
 }
