@@ -7,7 +7,7 @@ import { afterResultAnimations } from "./resultAnimation.ts";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
-import { pairsResultType } from "./pairsResultLayout.ts";
+import { pairsResultType, PORTRAIT_PAIRS_RESULT, type PairsResultSizes } from "./pairsResultLayout.ts";
 import { Picture } from "./Picture.tsx";
 
 export type PairsCelebration = keyof Texts["celebrations"];
@@ -43,6 +43,8 @@ export type PairsResultScreenProps = {
   // The width the result stands in upright, one for the window; landscape
   // sizes it itself.
   width?: number;
+  // The sizes it stands by: an iPhone's in a tall-narrow window.
+  sizes?: PairsResultSizes;
 };
 
 // Custom properties the stylesheet staggers by.
@@ -50,13 +52,13 @@ const motion = (properties: Record<`--${string}`, number>) => properties as CSSP
 
 // The tallest a card may stand upright and the actions' type, as the
 // custom properties the stylesheet reads.
-function typeStyle(width: number | undefined, count: number): CSSProperties {
+function typeStyle(width: number | undefined, count: number, sizes: PairsResultSizes): CSSProperties {
   if (width === undefined) return {};
-  const type = pairsResultType(width, count);
+  const type = pairsResultType(width, count, sizes);
   return { "--card-maximum": `${type.cardMaximum}px`, "--action-size": `${type.action}px` } as CSSProperties;
 }
 
-export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onBack, onHome, width }: PairsResultScreenProps) {
+export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onBack, onHome, width, sizes = PORTRAIT_PAIRS_RESULT }: PairsResultScreenProps) {
   const gateShown = useGateShown();
   const text = TEXTS[language];
   const CelebrationSymbol = celebration && CELEBRATION_SYMBOLS[celebration];
@@ -83,7 +85,7 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
   // glides.
   return (
     <>
-      <main ref={result} inert={blocked} className="result pairs-result" data-large={pals.length > 6 || undefined} style={typeStyle(width, pals.length)}>
+      <main ref={result} inert={blocked} className="result pairs-result" data-large={pals.length > 6 || undefined} style={typeStyle(width, pals.length, sizes)}>
         {(celebration || levelUp) && <Festivity />}
         <div className="stratum result-stratum" aria-hidden="true" />
         <ul className="pairs-found" aria-label={text.creatures} data-count={pals.length} style={motion({ "--found-rows": Math.ceil(pals.length / 3) })}>
@@ -96,7 +98,7 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
               {newlyFound && (
                 <span className="pairs-new-badge">
                   <Sparkles size={20} aria-hidden="true" />
-                  {text.newlyFound}
+                  <span className="narrow-hidden">{text.newlyFound}</span>
                 </span>
               )}
             </li>

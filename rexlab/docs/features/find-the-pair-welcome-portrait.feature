@@ -5,8 +5,8 @@ Feature: Find the pair: the welcome in a tall window
   face-down card, the silhouette and the picture, centred, and under
   them, centred, the title, the climb level and stars, the level switch
   and "PLAY". The rest is as find-the-pair-start.feature and
-  find-the-pair-levels.feature tell. A tall-narrow window keeps the
-  picture asking to turn or widen (window-shape.feature).
+  find-the-pair-levels.feature tell. A tall-narrow window has its
+  own sizes (find-the-pair-welcome-narrow-portrait.feature).
 
   The screen keeps its landscape padding top and bottom (40 and 48) and
   is 32 from each side; the bar, the gaps between the column's parts

@@ -25,21 +25,39 @@ export const PORTRAIT_WELCOME = {
   widestTitleEms: 8.1
 } as const;
 
+// A tall-narrow welcome's sizes, an iPhone's upright: 20-pixel sides,
+// less room between the parts, and a smaller mark, chips and PLAY, so the
+// column fits a phone; a card may be as narrow as 80.
+export const NARROW_WELCOME = {
+  ...PORTRAIT_WELCOME,
+  topPadding: 24,
+  bottomPadding: 32,
+  sidePadding: 20,
+  gap: 20,
+  cardsGap: 24,
+  mark: 64,
+  markGap: 16,
+  chips: 52,
+  play: 80,
+  cardMinimum: 80
+} as const;
+
+export type WelcomeSizes = typeof PORTRAIT_WELCOME | typeof NARROW_WELCOME;
+
 // What the stylesheet cannot work out itself, as each depends on the
 // width the window leaves: the title's type and the level names'.
 export type WelcomeType = { title: number; levelName: number };
 
 // The welcome's width is the window less safe-area insets, the screen's
-// 32px padding a side and any scrollbar reserved by the layout viewport.
-export function pairsWelcomeWidth(windowWidth: number, leftInset: number, rightInset: number, scrollbar = 0): number {
-  return Math.max(0, windowWidth - leftInset - rightInset - 2 * PORTRAIT_WELCOME.sidePadding - scrollbar);
+// side padding and any scrollbar reserved by the layout viewport.
+export function pairsWelcomeWidth(windowWidth: number, leftInset: number, rightInset: number, scrollbar = 0, sizes: WelcomeSizes = PORTRAIT_WELCOME): number {
+  return Math.max(0, windowWidth - leftInset - rightInset - 2 * sizes.sidePadding - scrollbar);
 }
 
 // The type for a welcome `width` wide: the title as large as lets the
 // longer one fit the column beside its mark, and the level names as the
 // switch, the column's width, gives them, each at most its maximum.
-export function pairsWelcomeType(width: number): WelcomeType {
-  const sizes = PORTRAIT_WELCOME;
+export function pairsWelcomeType(width: number, sizes: WelcomeSizes = PORTRAIT_WELCOME): WelcomeType {
   const column = Math.min(sizes.columnMaximum, width);
   return {
     title: Math.min(sizes.titleMaximum, Math.max(0, column - sizes.mark - sizes.markGap) / sizes.widestTitleEms),
@@ -53,11 +71,10 @@ export function pairsWelcomeType(width: number): WelcomeType {
 // the width, within its maximum, and shrinks to the height the bar and
 // the stack leave; it is never narrower than its minimum: below that the
 // whole screen scrolls.
-export function pairsWelcomeGeometry(windowWidth: number, windowHeight: number, leftInset: number, rightInset: number, scrollbar = 0) {
-  const sizes = PORTRAIT_WELCOME;
-  const width = pairsWelcomeWidth(windowWidth, leftInset, rightInset, scrollbar);
+export function pairsWelcomeGeometry(windowWidth: number, windowHeight: number, leftInset: number, rightInset: number, scrollbar = 0, sizes: WelcomeSizes = PORTRAIT_WELCOME) {
+  const width = pairsWelcomeWidth(windowWidth, leftInset, rightInset, scrollbar, sizes);
   const column = Math.min(sizes.columnMaximum, width);
-  const type = pairsWelcomeType(width);
+  const type = pairsWelcomeType(width, sizes);
   const levelSwitch = { width: column, height: 2 * UPRIGHT_LEVEL_SWITCH.padding + UPRIGHT_LEVEL_SWITCH.level };
   // The title beside its mark, the chips, the switch and PLAY, three gaps
   // apart.

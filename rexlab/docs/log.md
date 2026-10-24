@@ -2,6 +2,7 @@
 
 ## 2026-10-24
 
+- Find the pair plays whole upright on an iPhone instead of asking to turn. The welcome has smaller chips and PLAY and HOME as its house. The board has cards down to 56 wide, BACK and HOME as their symbols, and found cards showing the dinosaur alone. The result has PLAY AGAIN over BACK and HOME and NEW as its sparkle. Every word fits in English and Russian from 320 wide (LAB-526).
 - The compare quiz's result stands upright on an iPhone instead of asking to turn: 20-pixel padding, the level switch as its three pictures, PLAY AGAIN over HOME across the column, and the offer of a level fitted to the phone, every word fitting in English and Russian from 320 wide. The compare quiz now plays whole upright on an iPhone (LAB-525).
 - A compare quiz question stands upright on an iPhone instead of asking to turn: 20-pixel sides, HOME as its house beside the steps, and the two cards one above the other with less room between the parts, so they fit a phone's height with every prompt and name in English and Russian on one line from 320 wide. (LAB-525).
 - A dinosaur's page stands upright on an iPhone instead of asking to turn: 20-pixel sides, the catalogue button as its book, the picture across the stage with ← and → under it, the facts one over the other and a smaller description, every word fitting in English and Russian from 320 wide. With the home page and the catalogue, the museum now reads whole upright on an iPhone (LAB-522).

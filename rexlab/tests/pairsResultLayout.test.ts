@@ -144,7 +144,7 @@ describe("the upright result's geometry", () => {
       padding: 32, foundGap: 20, gap: 16, foundMaximum: 648, cardsGap: 16, cardMinimum: 90, artRatio: 4 / 3,
       namePadding: 8, nameMaximum: 18, nameEms: 13, nameLineHeight: 1.25, badge: 60, triesShare: 0.15, triesMaximum: 180,
       hand: 96, stars: 48, title: 48, best: 48, actions: 72, actionMaximum: 26, actionIcon: 28, actionInnerGap: 8,
-      actionSidePadding: 12, actionsGap: 10, actionsEms: 13.6
+      actionSidePadding: 12, actionsGap: 10, actionsEms: 13.6, stackedActions: false, playEms: 7.2, pairEms: 4.1
     });
   });
 });

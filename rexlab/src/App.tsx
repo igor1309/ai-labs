@@ -21,10 +21,10 @@ import { TEXTS } from "./language/texts.ts";
 import { useLayoutTurns } from "./layoutTurns.ts";
 import { OrientationGate } from "./OrientationGate.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
-import { pairsBoardWidth } from "./pairsBoardLayout.ts";
+import { NARROW_BOARD, pairsBoardWidth, PORTRAIT_BOARD } from "./pairsBoardLayout.ts";
 import { usePairsGame, type PairsGameProps, type PairsPhase } from "./pairsGame.tsx";
-import { pairsResultWidth } from "./pairsResultLayout.ts";
-import { pairsWelcomeType, pairsWelcomeWidth } from "./pairsWelcomeLayout.ts";
+import { NARROW_PAIRS_RESULT, pairsResultWidth, PORTRAIT_PAIRS_RESULT } from "./pairsResultLayout.ts";
+import { NARROW_WELCOME, pairsWelcomeType, pairsWelcomeWidth, PORTRAIT_WELCOME } from "./pairsWelcomeLayout.ts";
 import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
 import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
 import { useQuizGame, type QuizGameProps, type QuizPhase } from "./quizGame.tsx";
@@ -425,12 +425,12 @@ export function App({
   // And one type for find the pair's welcome's title and level names.
   const welcomeWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return pairsWelcomeWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    return pairsWelcomeWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_WELCOME : PORTRAIT_WELCOME);
   });
   // And the width its board stands in.
   const boardWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return pairsBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    return pairsBoardWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_BOARD : PORTRAIT_BOARD);
   });
   // And the width sort's board stands in.
   const sortWidth = useSyncExternalStore(viewport.subscribe, () => {
@@ -440,7 +440,8 @@ export function App({
   // And the width find the pair's result stands in.
   const pairsResultRoom = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return pairsResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    const sizes = viewport.sizeClass() === "tall-narrow" ? NARROW_PAIRS_RESULT : PORTRAIT_PAIRS_RESULT;
+    return pairsResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, sizes);
   });
 
   // A round starts at once from the tile, with no welcome screen.
@@ -636,7 +637,7 @@ export function App({
       case "sorting":
         return sorting.content(language, sortWidth, compareResultType(resultWidth));
       case "pairs":
-        return pairs.content(language, pairsWelcomeType(welcomeWidth), boardWidth, pairsResultRoom);
+        return pairs.content(language, pairsWelcomeType(welcomeWidth, size === "tall-narrow" ? NARROW_WELCOME : PORTRAIT_WELCOME), boardWidth, pairsResultRoom, size === "tall-narrow" ? NARROW_BOARD : PORTRAIT_BOARD, size === "tall-narrow" ? NARROW_PAIRS_RESULT : PORTRAIT_PAIRS_RESULT);
       case "skeletons":
         return skeletonGame.content(language);
       case "dig":

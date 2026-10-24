@@ -5347,7 +5347,8 @@ html[data-size="tall"] .sort[data-rows] .baskets[data-count] .basket-name {
    (32) and the column (416) leave, 620 in all; it is never under 120
    wide, and below that the whole screen scrolls. The title takes the one
    type the screen gives in --pairs-title-size. */
-html[data-size="tall"] .pairs-welcome {
+html[data-size="tall"] .pairs-welcome,
+html[data-size="tall-narrow"] .pairs-welcome {
   min-height: 100vh;
   min-height: 100dvh;
   height: auto;
@@ -5358,34 +5359,106 @@ html[data-size="tall"] .pairs-welcome {
     calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .pairs-welcome-body {
+html[data-size="tall"] .pairs-welcome-body,
+html[data-size="tall-narrow"] .pairs-welcome-body {
   flex: 1 0 auto;
   flex-direction: column;
   justify-content: center;
   gap: 32px;
 }
 
-html[data-size="tall"] .pairs-hero {
+html[data-size="tall"] .pairs-hero,
+html[data-size="tall-narrow"] .pairs-hero {
   flex: 0 0 auto;
   align-self: stretch;
 }
 
-html[data-size="tall"] .pairs-hero-card {
+html[data-size="tall"] .pairs-hero-card,
+html[data-size="tall-narrow"] .pairs-hero-card {
   width: max(120px, min(280px, 32%, (100vh - (620px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
   width: max(120px, min(280px, 32%, (100dvh - (620px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
   max-height: none;
 }
 
-html[data-size="tall"] .pairs-start {
+html[data-size="tall"] .pairs-start,
+html[data-size="tall-narrow"] .pairs-start {
   width: 100%;
   max-width: 648px;
   align-items: center;
 }
 
-html[data-size="tall"] .pairs-title {
+html[data-size="tall"] .pairs-title,
+html[data-size="tall-narrow"] .pairs-title {
   flex-wrap: nowrap;
   white-space: nowrap;
   font-size: var(--pairs-title-size);
+}
+
+/* In a tall-narrow window, an iPhone upright, the welcome stands as in a
+   tall one on 20-pixel sides, 24 at the top and 32 at the bottom, its
+   parts 20 apart and the cards 24 over the column: "HOME" is its house
+   alone, a 56-pixel square; the mark is 64, the chips 52 tall in 22-pixel
+   type and PLAY 80 tall in 30. A card keeps its 32% of the width and
+   shrinks to the height the padding (56), the bar (56) and its gap (20),
+   the cards' gap (24) and the column (332) leave, 488 in all; it is never
+   under 80 wide, and below that the whole screen scrolls. */
+html[data-size="tall-narrow"] .pairs-welcome {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .pairs-welcome-bar .home-button {
+  width: 56px;
+  padding: 0 16px;
+}
+
+html[data-size="tall-narrow"] .pairs-welcome-body {
+  gap: 24px;
+}
+
+html[data-size="tall-narrow"] .pairs-hero-card {
+  width: max(80px, min(280px, 32%, (100vh - (488px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
+  width: max(80px, min(280px, 32%, (100dvh - (488px + env(safe-area-inset-top) + env(safe-area-inset-bottom))) * 0.75));
+  padding: 10px;
+  border-radius: 20px;
+}
+
+html[data-size="tall-narrow"] .pairs-start {
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .pairs-title {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .pairs-mark {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+}
+
+html[data-size="tall-narrow"] .pairs-chips {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .pairs-climb:not([data-shown]) {
+  margin-right: -8px;
+}
+
+html[data-size="tall-narrow"] .pairs-chip {
+  height: 52px;
+  padding: 0 16px;
+  font-size: 22px;
+}
+
+html[data-size="tall-narrow"] .pairs-play-button {
+  height: 80px;
+  padding: 0 32px 0 28px;
+  font-size: 30px;
 }
 
 /* A game's level switch, find the pair's and the skeleton game's: the age
@@ -5771,7 +5844,8 @@ html[data-size="tall-narrow"] .level-switch-level {
    the height under the bar allows, the padding (88), the bar (56) and its
    gap (28) taken, 172 in all; never under the board's floor, and below
    that the whole screen scrolls. */
-html[data-size="tall"] .pairs-board-screen {
+html[data-size="tall"] .pairs-board-screen,
+html[data-size="tall-narrow"] .pairs-board-screen {
   min-height: 100vh;
   min-height: 100dvh;
   height: auto;
@@ -5783,12 +5857,14 @@ html[data-size="tall"] .pairs-board-screen {
   row-gap: 28px;
 }
 
-html[data-size="tall"] .pair-board-room {
+html[data-size="tall"] .pair-board-room,
+html[data-size="tall-narrow"] .pair-board-room {
   flex: 1 0 auto;
   container-type: normal;
 }
 
-html[data-size="tall"] .pair-board {
+html[data-size="tall"] .pair-board,
+html[data-size="tall-narrow"] .pair-board {
   width: auto;
   aspect-ratio: auto;
   grid-auto-flow: column;
@@ -5799,8 +5875,76 @@ html[data-size="tall"] .pair-board {
   column-gap: 16px;
 }
 
-html[data-size="tall"] .pair-card {
+html[data-size="tall"] .pair-card,
+html[data-size="tall-narrow"] .pair-card {
   aspect-ratio: 3 / 3.2;
+}
+
+/* In a tall-narrow window, an iPhone upright, the board stands as in a
+   tall one on 20-pixel sides, 24 at the top and 32 at the bottom, 20
+   under the bar, the cards 8 apart. A card is as wide as the height
+   under the bar allows, the padding (56), the bar (56) and its gap (20)
+   taken, 132 in all, and at least 56, the board's own floor set aside,
+   but never wider than the width lets the grid be: below that the whole
+   screen scrolls.
+   A found card's name, too small there, is left to its label; a name
+   shown while its picture is not keeps telling the pair apart. */
+html[data-size="tall-narrow"] .pairs-board-screen {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  row-gap: 20px;
+}
+
+html[data-size="tall-narrow"] .pair-board {
+  grid-template-columns: repeat(var(--rows), min(var(--card-by-width), max(56px, (100vh - (132px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--columns) - 1) * 8px) / var(--columns) * 0.9375)));
+  grid-template-columns: repeat(var(--rows), min(var(--card-by-width), max(56px, (100dvh - (132px + env(safe-area-inset-top) + env(safe-area-inset-bottom)) - (var(--columns) - 1) * 8px) / var(--columns) * 0.9375)));
+  row-gap: 8px;
+  column-gap: 8px;
+}
+
+html[data-size="tall-narrow"] .pair-card[data-state="found"] .pair-card-name {
+  display: none;
+}
+
+/* The bar keeps one row on a phone: BACK and HOME are 48 wide, the title
+   is left to screen readers, and the climb level and the tries stand at
+   the right in 20-pixel type. */
+html[data-size="tall-narrow"] .pairs-bar {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .pairs-bar .home-button {
+  flex-shrink: 0;
+  width: 48px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="tall-narrow"] .pairs-bar-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+html[data-size="tall-narrow"] .pairs-bar-title + .pairs-bar-chip {
+  margin-left: auto;
+}
+
+html[data-size="tall-narrow"] .pairs-bar-chip {
+  padding: 0 10px;
+  gap: 6px;
+  font-size: 20px;
+}
+
+html[data-size="tall-narrow"] .pairs-bar-chip svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* Upright, the bar keeps one row at the narrowest width: BACK and HOME
@@ -5824,7 +5968,8 @@ html[data-size="tall-narrow"] .narrow-hidden {
   white-space: nowrap;
 }
 
-html[data-size="tall"] .upright-hidden {
+html[data-size="tall"] .upright-hidden,
+html[data-size="tall-narrow"] .upright-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -6050,7 +6195,8 @@ html[data-size="tall"] .upright-hidden {
    screen gives in --card-maximum, and never under 90 tall, its art
    yielding as on a large landscape result. Below that the whole screen
    scrolls. */
-html[data-size="tall"] .pairs-result .pairs-found {
+html[data-size="tall"] .pairs-result .pairs-found,
+html[data-size="tall-narrow"] .pairs-result .pairs-found {
   flex: 1 0 0;
   align-self: center;
   width: 100%;
@@ -6062,24 +6208,28 @@ html[data-size="tall"] .pairs-result .pairs-found {
   gap: 16px;
 }
 
-html[data-size="tall"] .pairs-result .pairs-found-art {
+html[data-size="tall"] .pairs-result .pairs-found-art,
+html[data-size="tall-narrow"] .pairs-result .pairs-found-art {
   flex: 1 1 0;
   min-height: 0;
   aspect-ratio: auto;
 }
 
-html[data-size="tall"] .pairs-result .result-content {
+html[data-size="tall"] .pairs-result .result-content,
+html[data-size="tall-narrow"] .pairs-result .result-content {
   gap: 16px;
 }
 
 /* The tries are 15% of the window's height, at most 180, beside the
    hand; "WELL DONE!" is 40 on a 48 line. */
-html[data-size="tall"] .pairs-result-tries-value {
+html[data-size="tall"] .pairs-result-tries-value,
+html[data-size="tall-narrow"] .pairs-result-tries-value {
   font-size: min(180px, 15vh);
   font-size: min(180px, 15dvh);
 }
 
-html[data-size="tall"] .pairs-result .result-title {
+html[data-size="tall"] .pairs-result .result-title,
+html[data-size="tall-narrow"] .pairs-result .result-title {
   font-size: 40px;
   line-height: 1.2;
 }
@@ -6087,14 +6237,84 @@ html[data-size="tall"] .pairs-result .result-title {
 /* PLAY AGAIN, BACK and HOME stand 72 tall in one row, in the one type
    the screen gives in --action-size, so the three fit the width in
    either language. */
-html[data-size="tall"] .pairs-result .result-actions {
+html[data-size="tall"] .pairs-result .result-actions,
+html[data-size="tall-narrow"] .pairs-result .result-actions {
   padding-top: 0;
 }
 
-html[data-size="tall"] .pairs-result .result-actions button {
+html[data-size="tall"] .pairs-result .result-actions button,
+html[data-size="tall-narrow"] .pairs-result .result-actions button {
   height: 72px;
   padding: 0 12px;
   font-size: var(--action-size);
+}
+
+/* In a tall-narrow window, an iPhone upright, the result stands on
+   20-pixel padding, the dinosaurs 16 above the column and 8 apart, never
+   under 64 tall, the column 12 apart: the tries are 12% of the window's
+   height beside a 64 hand, the stars 40 and "WELL DONE!" 34. PLAY AGAIN
+   stands across the column over BACK and HOME, which share a row, each
+   64 tall and 10 apart, in the type the screen gives in --action-size. */
+html[data-size="tall-narrow"] .pairs-result {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .pairs-result .pairs-found {
+  min-height: calc(var(--found-rows) * 64px + (var(--found-rows) - 1) * 8px);
+  max-height: calc(var(--found-rows) * var(--card-maximum) + (var(--found-rows) - 1) * 8px);
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .pairs-result .result-content {
+  gap: 12px;
+}
+
+/* NEW is its sparkle alone on a card 88 wide, the word kept for screen
+   readers. */
+html[data-size="tall-narrow"] .pairs-new-badge {
+  top: 6px;
+  right: 6px;
+  padding: 0 6px;
+}
+
+html[data-size="tall-narrow"] .pairs-badges {
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .pairs-result-tries-value {
+  font-size: min(180px, 12vh);
+  font-size: min(180px, 12dvh);
+}
+
+html[data-size="tall-narrow"] .pairs-result-hand {
+  width: 64px;
+  height: 64px;
+}
+
+html[data-size="tall-narrow"] .pairs-result-stars {
+  font-size: 40px;
+}
+
+html[data-size="tall-narrow"] .pairs-result .result-title {
+  font-size: 34px;
+}
+
+html[data-size="tall-narrow"] .pairs-result .result-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+html[data-size="tall-narrow"] .pairs-result .result-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 64px;
+  padding: 0 12px;
+  justify-content: center;
+}
+
+html[data-size="tall-narrow"] .pairs-result .result-actions .play-again-button {
+  flex-basis: 100%;
 }
 
 /* The next level is offered over the completed result. The scrim keeps

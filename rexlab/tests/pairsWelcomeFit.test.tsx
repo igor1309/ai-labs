@@ -3,7 +3,7 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { TOP_CLIMB_LEVEL } from "../src/pairs/index.ts";
-import { pairsWelcomeType, pairsWelcomeWidth, PORTRAIT_WELCOME } from "../src/pairsWelcomeLayout.ts";
+import { NARROW_WELCOME, pairsWelcomeType, pairsWelcomeWidth, PORTRAIT_WELCOME } from "../src/pairsWelcomeLayout.ts";
 import { PairsWelcomeScreen } from "../src/PairsWelcomeScreen.tsx";
 import { TITLE_EMS } from "./homeTitles.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
@@ -107,5 +107,50 @@ describe("an upright welcome's words fit the narrowest width", () => {
     const titles = LANGUAGES.map((language) => TEXTS[language].pairs);
     const widest = titles.reduce((wide, title) => ((TITLE_EMS[title] ?? Infinity) > (TITLE_EMS[wide] ?? Infinity) ? title : wide));
     expect(TITLE_EMS[widest]).toBe(PORTRAIT_WELCOME.widestTitleEms);
+  });
+});
+
+describe("an upright welcome's words fit a 320-wide phone", () => {
+  it.each([["en"], ["ru"]] as const)("keeps every word of a %s welcome on its line", (language) => {
+    const size: WindowSize = [320, 568];
+    openWindow(...size);
+    document.documentElement.dataset.size = "tall-narrow";
+    onTestFinished(() => void delete document.documentElement.dataset.size);
+    const width = pairsWelcomeWidth(320, 0, 0, 0, NARROW_WELCOME);
+    expect(width).toBe(280);
+    const type = pairsWelcomeType(width, NARROW_WELCOME);
+    const text = TEXTS[language];
+    render(
+      <PairsWelcomeScreen
+        language={language} level="hatchling" climbLevel={TOP_CLIMB_LEVEL} stars={999}
+        heroPicture={fakeBodyPicture("triceratops")} onLevel={() => {}} onPlay={() => {}} onHome={() => {}} type={type}
+      />,
+      withPictures
+    );
+    const at = (selector: string) => styleAt(element(selector), size);
+
+    // The title on one line beside its mark.
+    const title = styleAt(screen.getByRole("heading"), size);
+    const ems = TITLE_EMS[text.pairs];
+    if (ems === undefined) throw new Error(`No width for ${text.pairs}`);
+    expect([title.value("white-space"), title.px("font-size")]).toEqual(["nowrap", type.title]);
+    expect(at(".pairs-mark").px("width") + title.columnGap() + ems * title.px("font-size")).toBeLessThanOrEqual(width + 1e-9);
+
+    // Each level its picture alone, the name out of the row.
+    for (const name of document.querySelectorAll(".level-switch-name")) expect(styleAt(name, size).value("position")).toBe("absolute");
+
+    // The climb level and the stars side by side, each on one line.
+    const chips = at(".pairs-chips");
+    const chipsWidth = [screen.getByLabelText(text.level), screen.getByLabelText(text.starsEarned)].reduce((sum, chip) => {
+      const own = styleAt(chip, size);
+      return sum + own.px("padding-left") + own.px("padding-right") + symbolWidth(chip) + own.columnGap() + GLYPH_EMS * (chip.textContent ?? "").length * own.px("font-size");
+    }, chips.columnGap());
+    expect(chipsWidth).toBeLessThanOrEqual(width);
+
+    // PLAY on one line, every tap at least 44.
+    const play = screen.getByRole("button", { name: text.play });
+    const playStyle = styleAt(play, size);
+    expect(playStyle.px("padding-left") + playStyle.px("padding-right") + symbolWidth(play) + playStyle.columnGap() + GLYPH_EMS * text.play.length * playStyle.px("font-size")).toBeLessThanOrEqual(width);
+    for (const button of screen.getAllByRole("button")) expect(styleAt(button, size).px("height")).toBeGreaterThanOrEqual(44);
   });
 });

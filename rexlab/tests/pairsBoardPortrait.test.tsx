@@ -5,7 +5,7 @@ import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import type { BoardLevel } from "../src/pairs/index.ts";
-import { pairsBoardCardWidth, pairsBoardGeometry, pairsBoardWidth, PORTRAIT_BOARD } from "../src/pairsBoardLayout.ts";
+import { NARROW_BOARD, pairsBoardCardWidth, pairsBoardGeometry, pairsBoardWidth, PORTRAIT_BOARD, type BoardSizes } from "../src/pairsBoardLayout.ts";
 import { board, dealt, endWave, labelAt, namesOf, openPairsApp, pairCards, pairsRecord, PICKED_HATCHLING, playBoard, stateAt, triesShown, turnCard } from "./pairsApp.tsx";
 import { appStylesheet, NO_SAFE_AREA, type SafeArea } from "./stylesheet.ts";
 import { gameDoor, manualViewport, memoryStorage, type ManualViewport } from "./support.ts";
@@ -59,14 +59,14 @@ const classesOf = (element: Element) => [...element.children].map((child) => chi
 // A board dealt at `name` in a window of `size`, a climb's at its climb
 // level, a larger level's at that age level.
 async function openBoard(size: WindowSize, name: BoardName, {
-  language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets)
-}: { language?: Language; insets?: SafeArea; viewport?: ManualViewport } = {}) {
+  language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets), layouts = PORTRAIT_LAYOUTS
+}: { language?: Language; insets?: SafeArea; viewport?: ManualViewport; layouts?: PortraitLayouts } = {}) {
   openWindow(...size);
   const level: BoardLevel = BOARDS[name];
   const climbing = "climbLevel" in level;
   const storage = memoryStorage(climbing ? { [PROGRESS_KEY]: pairsRecord({ stars: 0, level: level.climbLevel, boardsOnLevel: 0, best: {}, found: [] }) } : {});
   const ageLevel = climbing ? PICKED_HATCHLING : { level: level.large, revision: `picked-${level.large}` };
-  const app = openPairsApp({ storage, viewport, portraitLayouts: PORTRAIT_LAYOUTS, deviceLanguage: DEVICES[language], ageLevel });
+  const app = openPairsApp({ storage, viewport, portraitLayouts: layouts, deviceLanguage: DEVICES[language], ageLevel });
   await app.user.click(gameDoor(TEXTS[language].pairs));
   await app.user.click(screen.getByRole("button", { name: TEXTS[language].play }));
   return { ...app, viewport, level };
@@ -79,15 +79,21 @@ const property = (name: string) => Number.parseFloat(board().style.getPropertyVa
 // window's height in for the viewport's and none of the board's custom
 // properties: at least the board's floor, and at most the width the
 // screen gives and 3:3.2 of the height the window leaves each row, less
-// what the rest of the screen takes, the insets and the cards' gaps.
+// what the rest of the screen takes, the insets and the cards' gaps. In a
+// tall-narrow window the width holds the card, its floor 56.
 function cardRule(size: WindowSize) {
   const columns = styleAt(board(), size).value("grid-template-columns");
-  const rule = /^repeat\(var\(--rows\), max\(var\(--card-floor\), min\(var\(--card-by-width\), \(([\d.]+)vh - \(([\d.]+)px \+ ([\d.]+)px \+ ([\d.]+)px\) - \(var\(--columns\) - 1\) \* ([\d.]+)px\) \/ var\(--columns\) \* ([\d.]+)\)\)\)$/.exec(columns);
+  const byHeightRule = String.raw`\(([\d.]+)vh - \(([\d.]+)px \+ ([\d.]+)px \+ ([\d.]+)px\) - \(var\(--columns\) - 1\) \* ([\d.]+)px\) \/ var\(--columns\) \* ([\d.]+)`;
+  const floorFirst = new RegExp(String.raw`^repeat\(var\(--rows\), max\(var\(--card-floor\), min\(var\(--card-by-width\), ${byHeightRule}\)\)\)$`).exec(columns);
+  const widthFirst = new RegExp(String.raw`^repeat\(var\(--rows\), min\(var\(--card-by-width\), max\(([\d.]+)px, ${byHeightRule}\)\)\)$`).exec(columns);
+  const rule = floorFirst ?? widthFirst;
   if (!rule) throw new Error(`A card's width the test cannot read: ${columns}`);
-  const [viewport, taken, top, bottom, gap, ratio] = rule.slice(1).map(Number) as [number, number, number, number, number, number];
+  const phoneFloor = widthFirst ? Number(widthFirst[1]) : undefined;
+  const [viewport, taken, top, bottom, gap, ratio] = rule.slice(widthFirst ? 2 : 1).map(Number) as [number, number, number, number, number, number];
   const [rows, floor, byWidth, uprightRows] = [property("--rows"), property("--card-floor"), property("--card-by-width"), property("--columns")];
-  const width = Math.max(floor, Math.min(byWidth, (((viewport / 100) * size[1] - (taken + top + bottom) - (uprightRows - 1) * gap) / uprightRows) * ratio));
-  return { taken, top, bottom, gap, ratio, rows, floor, byWidth, uprightRows, width };
+  const byHeight = (((viewport / 100) * size[1] - (taken + top + bottom) - (uprightRows - 1) * gap) / uprightRows) * ratio;
+  const width = phoneFloor === undefined ? Math.max(floor, Math.min(byWidth, byHeight)) : Math.min(byWidth, Math.max(phoneFloor, byHeight));
+  return { taken, top, bottom, gap, ratio, rows, floor, byWidth, uprightRows, width, phoneFloor };
 }
 
 // Where the grid puts the card at `index`: down each column in turn where
@@ -98,8 +104,7 @@ const placed = (index: number, flow: string, rows: number, columns: number) =>
 // The CSS contracts under which the geometry's sums hold. jsdom does not
 // lay out boxes, so every structural assumption is checked here, and what
 // the cards' rule takes from the height is summed from the stylesheet.
-function uprightRules(size: WindowSize, width: number) {
-  const sizes = PORTRAIT_BOARD;
+function uprightRules(size: WindowSize, width: number, sizes: BoardSizes = PORTRAIT_BOARD) {
   const at = (selector: string) => styleAt(part(selector), size);
   const page = at(".pairs-board-screen");
   expect(classesOf(part(".pairs-board-screen"))).toEqual(["stratum stratum-1", "pairs-bar", "pair-board-room"]);
@@ -118,7 +123,8 @@ function uprightRules(size: WindowSize, width: number) {
     "grid", "auto", "auto", "column", "repeat(var(--columns), auto)", sizes.cardsGap, sizes.cardsGap
   ]);
   const card = cardRule(size);
-  expect(board().style.getPropertyValue("--card-by-width")).toBe(`${pairsBoardCardWidth(width, card.rows)}px`);
+  expect(board().style.getPropertyValue("--card-by-width")).toBe(`${pairsBoardCardWidth(width, card.rows, sizes)}px`);
+  expect(card.phoneFloor).toBe(sizes.phoneFloor);
   expect(pairCards()).toHaveLength(card.rows * card.uprightRows);
   for (const each of pairCards()) expect(styleAt(each, size).value("aspect-ratio")).toBe("3 / 3.2");
   // What the cards' rule takes from the height is the screen's padding,
@@ -127,7 +133,7 @@ function uprightRules(size: WindowSize, width: number) {
   expect([card.gap, card.ratio]).toEqual([grid.rowGap(), 0.9375]);
   expect(card.ratio).toBeCloseTo(sizes.cardRatio, 12);
   const scrollbar = size[0] - 2 * sizes.sidePadding - width;
-  const geometry = pairsBoardGeometry({ rows: card.rows, columns: card.uprightRows, floor: card.floor }, size[0], size[1], 0, 0, scrollbar);
+  const geometry = pairsBoardGeometry({ rows: card.rows, columns: card.uprightRows, floor: card.floor }, size[0], size[1], 0, 0, scrollbar, sizes);
   expect(card.width).toBeCloseTo(geometry.card.width, 6);
   return { card, flow: grid.value("grid-auto-flow"), geometry };
 }
@@ -171,21 +177,17 @@ describe("find the pair's board upright", () => {
     expect(board().style.getPropertyValue("--card-by-width")).toBe(`${pairsBoardCardWidth(744 - 19 - 13 - 64 - 16, 4)}px`);
   });
 
-  it("keeps asking to turn over the result, and as a tall window narrows over the board", async () => {
+  it("takes the phone's sizes as a tall window narrows, and plays on to the result, asking nothing", async () => {
     const viewport = manualViewport("portrait");
-    const { user, clock } = await openBoard([820, 1180], "climb 1", { viewport });
+    const { user, clock } = await openBoard([820, 1180], "climb 1", { viewport, layouts: NARROW_LAYOUTS });
     const shown = board();
     openWindow(393, 852);
     act(() => viewport.resize("tall-narrow", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert"), board()]).toEqual([true, true, shown]);
-    expect(screen.getByRole("img", { name: TEXTS.en.turnSideways })).toBeDefined();
-    openWindow(820, 1180);
-    act(() => viewport.resize("tall", true));
-    expect(gateShown()).toBe(false);
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert"), board()]).toEqual(["tall-narrow", false, false, shown]);
+    expect(board().style.getPropertyValue("--card-by-width")).toBe(`${pairsBoardCardWidth(pairsBoardWidth(393, 0, 0, 0, NARROW_BOARD), 2, NARROW_BOARD)}px`);
     await playBoard(user, clock);
     endWave(clock);
-    expect([part(".pairs-result").isConnected, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true, true]);
-    expect(screen.getAllByRole("img", { name: TEXTS.en.turnSideways })).toHaveLength(1);
+    expect([part(".pairs-result").isConnected, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, false, false]);
   });
 
   it("keeps the landscape board as it was", async () => {
@@ -223,5 +225,67 @@ describe("find the pair's board upright", () => {
     expect(card.width).toBeCloseTo(Math.max(120, Math.min(pairsBoardCardWidth(648, 4), ((1133 - 172 - 44 - 5 * 16) / 6) * (3 / 3.2))), 6);
     expect(getComputedStyle(document.body).margin).toBe("0px");
     expect(gateShown()).toBe(false);
+  });
+});
+
+// find-the-pair-board-narrow-portrait.feature: an iPhone upright.
+const NARROW_LAYOUTS: PortraitLayouts = { ...PORTRAIT_LAYOUTS, home: ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"] };
+const narrowViewport = () => {
+  const viewport = manualViewport("portrait");
+  viewport.resize("tall-narrow", true);
+  return viewport;
+};
+
+// The window, the board, the rows and columns it stands in, its card's
+// width and whether the screen scrolls.
+const PHONES = [
+  [320, 568, "climb 1", 3, 2, 131, false],
+  [320, 568, "climb 2", 4, 2, 97, false],
+  [393, 852, "climb 4", 4, 3, 112, false],
+  [393, 759, "explorer", 6, 3, 92, false],
+  [393, 852, "paleontologist", 6, 4, 82, false],
+  [320, 568, "paleontologist", 6, 4, 62, false],
+  [320, 400, "paleontologist", 6, 4, 56, true]
+] as const;
+
+describe("find the pair's board in a tall-narrow window", () => {
+  it.each(PHONES)("stands upright at %i by %i, a board of %s in %i rows of %i cards each %i wide, scrolling %s", async (width, height, name, rows, columns, card, scrolls) => {
+    await openBoard([width, height], name, { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+    expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
+    const { card: rule, geometry } = uprightRules([width, height], pairsBoardWidth(width, 0, 0, 0, NARROW_BOARD), NARROW_BOARD);
+    expect([geometry.rows, geometry.columns]).toEqual([rows, columns]);
+    expect(Math.abs(rule.width - card)).toBeLessThanOrEqual(1);
+    expect(geometry.scrolls).toBe(scrolls);
+    // The grid never stands wider than the width.
+    expect(columns * rule.width + (columns - 1) * 8).toBeLessThanOrEqual(width - 40 + 1e-9);
+  });
+
+  it("keeps BACK, HOME, the climb level and 100 tries in one row, a found card's name left to its label", async () => {
+    await openBoard([320, 568], "climb 4", { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    const size: WindowSize = [320, 568];
+    const bar = styleAt(part(".pairs-bar"), size);
+    expect([styleAt(part(".pairs-bar-title"), size).value("position"), styleAt(part(".pairs-bar-title + .pairs-bar-chip"), size).value("margin-left")]).toEqual(["absolute", "auto"]);
+    const buttons = [TEXTS.en.back, TEXTS.en.home].map((name) => styleAt(screen.getByRole("button", { name }), size));
+    for (const button of buttons) expect([button.px("width"), button.px("height")]).toEqual([48, 56]);
+    const chips = [...document.querySelectorAll(".pairs-bar-chip")].map((chip) => {
+      const own = styleAt(chip, size);
+      // A symbol, and the level or 100 tries at 0.8 em a glyph.
+      const glyphs = chip.getAttribute("aria-label") === TEXTS.en.tries ? 3 : 1;
+      return own.px("padding-left") + own.px("padding-right") + styleAt(part("svg", chip), size).px("width") + own.columnGap() + 0.8 * glyphs * own.px("font-size");
+    });
+    expect(chips).toHaveLength(2);
+    expect(buttons.reduce((sum, button) => sum + button.px("width"), 0) + chips[0]! + chips[1]! + 3 * bar.columnGap()).toBeLessThanOrEqual(280);
+    // A found card's name is left to its label; one shown while its
+    // picture is not stays.
+    const card = pairCards()[0]!;
+    const name = document.createElement("span");
+    name.className = "pair-card-name";
+    card.append(name);
+    onTestFinished(() => name.remove());
+    card.dataset.state = "found";
+    expect(styleAt(name, size).value("display")).toBe("none");
+    card.dataset.state = "up";
+    expect(styleAt(name, size).value("display")).not.toBe("none");
   });
 });

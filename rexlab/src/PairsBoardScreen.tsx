@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
-import { pairsBoardCardWidth } from "./pairsBoardLayout.ts";
+import { pairsBoardCardWidth, PORTRAIT_BOARD, type BoardSizes } from "./pairsBoardLayout.ts";
 import { PictureImage, usePicture } from "./Picture.tsx";
 
 // A card on the board: face down, turned over, or one of a found pair.
@@ -39,6 +39,8 @@ export type PairsBoardScreenProps = {
   // The width the board stands in upright, one for the window; landscape
   // sizes its cards itself.
   width?: number;
+  // The upright board's sizes for the window.
+  sizes?: BoardSizes;
 };
 
 // A custom property the stylesheet staggers the cards by.
@@ -46,9 +48,9 @@ const place = (index: number) => ({ "--card": index }) as CSSProperties;
 
 // The widest a card may be upright, as the custom property the stylesheet
 // reads.
-const widthStyle = (width: number | undefined, rows: number): Record<string, string> => (width === undefined ? {} : { "--card-by-width": `${pairsBoardCardWidth(width, rows)}px` });
+const widthStyle = (width: number | undefined, rows: number, sizes: BoardSizes): Record<string, string> => (width === undefined ? {} : { "--card-by-width": `${pairsBoardCardWidth(width, rows, sizes)}px` });
 
-export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, cardFloor, cards, finished, onTurn, onBack, onHome, width }: PairsBoardScreenProps) {
+export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, cardFloor, cards, finished, onTurn, onBack, onHome, width, sizes = PORTRAIT_BOARD }: PairsBoardScreenProps) {
   const text = TEXTS[language];
   // Upright, BACK and HOME show their symbols alone and the title its mark
   // alone, each name kept for screen readers.
@@ -90,7 +92,7 @@ export function PairsBoardScreen({ language, climbLevel, tries, rows, columns, c
           role="group"
           aria-label={text.cards}
           data-finished={finished || undefined}
-          style={{ "--rows": rows, "--columns": columns, "--card-floor": `${cardFloor}px`, ...widthStyle(width, rows) } as CSSProperties}
+          style={{ "--rows": rows, "--columns": columns, "--card-floor": `${cardFloor}px`, ...widthStyle(width, rows, sizes) } as CSSProperties}
         >
           {cards.map((card, index) => (
             <PairCard
