@@ -17,7 +17,7 @@ The practical split is between:
 
 The usual pattern is to combine a guide with a prompt when working with a chosen agent.
 
-`CLAUDE.md` is the canonical agent instruction file. `AGENTS.md` is a symlink to it — do not reverse the direction (web-based agents cannot follow symlinks).
+`AGENTS.md` is the repository-level agent instruction file.
 
 ## Structure
 
@@ -86,7 +86,7 @@ Architecture Decision Records (ADRs) live in `docs/adr/`, organized by domain:
 
 ## Releases
 
-Configured release units are trunk-only, semver-based, and tag-driven (`<basename>_v<version>`). See `release-units.config.toml` for discovery paths and `release-units.toml` for the current manifest. Full release policy is in `CLAUDE.md` under "Release Process".
+Configured release units are trunk-only, semver-based, and tag-driven (`<basename>_v<version>`). See `release-units.config.toml` for discovery paths and `release-units.toml` for the current manifest. Release architecture is documented in `docs/adr/release/`.
 
 ## LOC Dashboard
 
