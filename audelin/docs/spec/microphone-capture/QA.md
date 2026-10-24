@@ -13,7 +13,7 @@ as their mono mix at the device's rate, in order, each before the next is
 delivered and before any stop. Real: the engine starts on the default input with voice
 processing off and audio is read. Evidence:
 `allChannelsAreMixedAndReadLiveAtTheDeviceRate`,
-`theMeanIncludesEveryChannel`,
+`theMeanIncludesEveryChannel`, `channelsSoundingTogetherAreMixedToTheirMean`,
 `nativeChannelLayoutsProduceTheExactMonoMean`,
 `nativeDeliveryPreservesSamplesRateAndFirstSampleTime`,
 `theDefaultInputDeliversLiveAudioWithoutVoiceProcessing`.
