@@ -311,16 +311,11 @@ struct SessionTests {
         await rig.begin(liveText: true)
         let state = await rig.waitFor { $0.phase == .recording }
         #expect(state.failures.contains(.init(piece: bringUpFailurePiece(failing), message: "\(failing) failed")))
-        #expect(state.microphoneTrack.isUp || state.callTrack.isUp)
-        let output = await rig.output.values()
-        if failing.contains("microphone") || failing == "processes.select" {
-            #expect(output.contains("call.audio"))
-        } else if failing.contains("call") {
-            #expect(output.contains("microphone.audio"))
-        } else {
-            #expect(output.contains("microphone.audio"))
-            #expect(output.contains("call.audio"))
-        }
+        let piece = String(failing.prefix { $0 != "(" }.split(separator: ".").dropLast().joined(separator: "."))
+        await expectTracksKeepRecording(rig, "after", on: survivingSides(for: piece))
+        await rig.callText.speak("after")
+        let textSurvives = !failing.hasPrefix("transcript") && !failing.hasPrefix("callText")
+        #expect(await rig.transcript.values().contains("after") == textSurvives)
         await end(rig)
     }
 
@@ -668,8 +663,7 @@ struct SessionTests {
         #expect(await rig.output.values().contains("callText.text(before)"))
         #expect(!(await rig.output.values()).contains("callText.text(after)"))
         #expect(await rig.transcript.values() == ["callText-first", "before"])
-        #expect(await rig.microphoneTrack.values() == ["microphone-first"])
-        #expect(await rig.callTrack.values() == ["call-first"])
+        await expectTracksKeepRecording(rig, "after")
         await end(rig)
     }
 
@@ -684,8 +678,7 @@ struct SessionTests {
         await rig.callText.speak("new")
         #expect(await rig.output.values().contains("callText.text(new)"))
         #expect(await rig.transcript.values() == ["new"])
-        #expect(await rig.microphoneTrack.values() == ["microphone-first"])
-        #expect(await rig.callTrack.values() == ["call-first"])
+        await expectTracksKeepRecording(rig, "after")
         await end(rig)
     }
 
@@ -699,12 +692,12 @@ struct SessionTests {
         let before = await rig.transcript.values()
         await rig.callText.speak("ignored while preference off")
         #expect(await rig.transcript.values() == before)
+        await expectTracksKeepRecording(rig, "while off")
         rig.session.send(.preferenceChanged(true))
         #expect((await rig.waitFor { $0.liveText == .on }).liveText == .on)
         await rig.callText.speak("kept")
         #expect(await rig.transcript.values().contains("kept"))
-        #expect(await rig.microphoneTrack.values() == ["microphone-first"])
-        #expect(await rig.callTrack.values() == ["call-first"])
+        await expectTracksKeepRecording(rig, "after")
         await end(rig)
     }
 
@@ -717,8 +710,7 @@ struct SessionTests {
         await rig.callText.speak("ignored")
         #expect(!(await rig.output.values()).contains("callText.text(ignored)"))
         #expect(await rig.transcript.values().isEmpty)
-        #expect(await rig.microphoneTrack.values() == ["microphone-first"])
-        #expect(await rig.callTrack.values() == ["call-first"])
+        await expectTracksKeepRecording(rig, "after")
         await end(rig)
     }
 
@@ -857,6 +849,21 @@ private func nextState(
         if matching(state) { return state }
     }
     throw TestFailure()
+}
+
+// Audio sent now reaches the track of each side named, and no other.
+private func expectTracksKeepRecording(
+    _ rig: Rig,
+    _ audio: String,
+    on sides: [SessionSide] = [.microphone, .call]
+) async {
+
+    await rig.microphoneCapture.sendAudio("microphone-\(audio)")
+    await rig.callCapture.sendAudio("call-\(audio)")
+    let microphoneKept = await rig.microphoneTrack.values().last == "microphone-\(audio)"
+    let callKept = await rig.callTrack.values().last == "call-\(audio)"
+    #expect(microphoneKept == sides.contains(.microphone))
+    #expect(callKept == sides.contains(.call))
 }
 
 private func end(_ rig: Rig) async {
