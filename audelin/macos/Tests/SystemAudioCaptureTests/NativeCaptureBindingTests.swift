@@ -17,12 +17,99 @@ struct NativeCaptureBindingTests {
         try calls.deliver(samples: samples[0])
         try calls.deliver(samples: samples[1])
         calls.state.withLock { $0.format.mSampleRate = 24_000 }
+        try calls.notifyFormat()
         try calls.deliver(samples: samples[2])
         try calls.deliver(samples: samples[3])
         capture.stop()
         let pieces = try await drain(capture)
         #expect(pieces.map(\.samples) == samples)
         #expect(pieces.map(\.sampleRate) == [48_000, 48_000, 24_000, 24_000])
+    }
+
+    @Test func nativeIOCallbackMakesNoNativeCalls() throws {
+
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
+        let (binding, tap, device) = try calls.makeDevice()
+        defer { binding.destroyDevice(device); binding.destroyTap(tap) }
+        let pieces = Mutex<[AudioPiece]>([])
+        let io = try binding.installIO(device) { result in
+            if case .success(let piece) = result { pieces.withLock { $0.append(piece) } }
+        }
+        defer { binding.removeIO(device, io) }
+        calls.state.withLock { $0.format.mSampleRate = 24_000 }
+        try calls.deliver(samples: [0.25])
+        #expect(pieces.withLock { $0.map(\.sampleRate) } == [48_000])
+        #expect(calls.state.withLock { $0.nativeCalls.filter { $0.role == .io } }.isEmpty)
+        #expect(calls.state.withLock { $0.events } == ["tap", "device", "format", "format watch", "io"])
+        try calls.notifyFormat()
+        try calls.deliver(samples: [0.5])
+        #expect(pieces.withLock { $0.map(\.sampleRate) } == [48_000, 24_000])
+        #expect(calls.state.withLock { $0.nativeCalls.filter { $0.role == .io } }.isEmpty)
+        #expect(calls.state.withLock { $0.nativeCalls.filter { $0.role == .event }.map(\.name) } == ["read"])
+    }
+
+    @Test(arguments: NativeTapFormat.allCases.filter { $0 != .float32MonoLittleEndian })
+    func nativeRefusedFormatNotificationsFailOnceAndSuppressLaterBuffers(format: NativeTapFormat) throws {
+
+        try expectFormatFailure(format: format, readRefused: false)
+    }
+
+    @Test func nativeFailedFormatReadNotificationFailsOnceAndSuppressesLaterBuffers() throws {
+
+        try expectFormatFailure(format: .float32MonoLittleEndian, readRefused: true)
+    }
+
+    @Test func nativeFormatListenerIsRemovedBeforeIOAndIgnoresLateNotifications() throws {
+
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
+        let (binding, tap, device) = try calls.makeDevice()
+        defer { binding.destroyDevice(device); binding.destroyTap(tap) }
+        let deliveries = Mutex(0)
+        let io = try binding.installIO(device) { _ in deliveries.withLock { $0 += 1 } }
+        defer { binding.removeIO(device, io) }
+        let registration = try #require(calls.state.withLock { $0.formatListener })
+        #expect(registration.device == tap)
+        #expect(registration.address.mSelector == kAudioTapPropertyFormat)
+        #expect(registration.address.mScope == kAudioObjectPropertyScopeGlobal)
+        #expect(registration.address.mElement == kAudioObjectPropertyElementMain)
+        binding.removeIO(device, io)
+        let before = calls.state.withLock { $0.nativeCalls }
+        calls.state.withLock { $0.refuse = "format" }
+        calls.fire([registration.address], on: tap, through: registration)
+        #expect(deliveries.withLock { $0 } == 0)
+        #expect(calls.state.withLock { $0.nativeCalls } == before)
+        let resources = calls.state.withLock { ($0.made, $0.released) }
+        #expect(resources.1 == Array(resources.0.suffix(2)))
+        #expect(calls.state.withLock { Array($0.events.suffix(2)) } == ["format unwatch", "remove io"])
+    }
+
+    @Test func nativeRefusedFormatListenerRegistrationLeavesNoIO() throws {
+
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
+        let (binding, tap, device) = try calls.makeDevice()
+        defer { binding.destroyDevice(device); binding.destroyTap(tap) }
+        calls.state.withLock { $0.refuse = "format watch" }
+        let deliveries = Mutex(0)
+        #expect(throws: NSError(domain: NSOSStatusErrorDomain, code: -50)) {
+            let io = try binding.installIO(device) { _ in deliveries.withLock { $0 += 1 } }
+            binding.removeIO(device, io)
+        }
+        #expect(calls.state.withLock { $0.made } == [.tap(tap), .device(device)])
+        #expect(calls.state.withLock { $0.released.isEmpty && $0.io == nil && $0.formatListener == nil })
+        #expect(deliveries.withLock { $0 } == 0)
+    }
+
+    @Test(arguments: NativeTapFormat.allCases.filter { $0 != .float32MonoLittleEndian })
+    func nativeInstallIOChecksFormatBeforeMakingResources(format: NativeTapFormat) throws {
+
+        let calls = RecordingCaptureCalls(format: format)
+        let (binding, tap, device) = try calls.makeDevice()
+        defer { binding.destroyDevice(device); binding.destroyTap(tap) }
+        #expect(throws: CaptureError.unsupportedFormat) {
+            let io = try binding.installIO(device) { _ in Issue.record("Unexpected delivery") }
+            binding.removeIO(device, io)
+        }
+        #expect(calls.state.withLock { $0.made } == [.tap(tap), .device(device)])
     }
 
     @Test(arguments: [false, true])
@@ -35,23 +122,49 @@ struct NativeCaptureBindingTests {
         calls.state.withLock {
             if readRefused { $0.refuse = "format" } else { $0.format.mSampleRate = 0 }
         }
-        try calls.deliver(samples: samples)
+        try calls.notifyFormat()
         capture.stop()
         var pieces: [AudioPiece] = []
         var failure: (any Error)?
         do {
             for try await piece in capture.audio { pieces.append(piece) }
         } catch { failure = error }
-        let error = try #require(failure)
-        if readRefused {
-            #expect((error as NSError).domain == NSOSStatusErrorDomain)
-            #expect((error as NSError).code == -50)
-        } else {
-            #expect(error as? CaptureError == .unsupportedFormat)
-        }
+        #expect(failure as? CaptureError == .unsupportedFormat)
         #expect(pieces.count == 1)
         try expectTone(pieces, pid: 10)
-        #expect(calls.state.withLock { $0.released == Array($0.made.reversed()) })
+        #expect(calls.state.withLock { $0.released } == calls.expectedReleases)
+    }
+
+    private func expectFormatFailure(format: NativeTapFormat, readRefused: Bool) throws {
+
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
+        let (binding, tap, device) = try calls.makeDevice()
+        defer { binding.destroyDevice(device); binding.destroyTap(tap) }
+        let results = Mutex<[(Result<AudioPiece, any Error>, NativeThreadRole)]>([])
+        let io = try binding.installIO(device) { result in
+            results.withLock { $0.append((result, NativeThreadRole.current)) }
+        }
+        defer { binding.removeIO(device, io) }
+        try calls.deliver(samples: [0.25])
+        calls.state.withLock {
+            $0.format = format.value
+            if readRefused { $0.refuse = "format" }
+        }
+        try calls.notifyFormat()
+        try calls.notifyFormat()
+        try calls.deliver(samples: [0.5])
+        calls.state.withLock { $0.refuse = nil; $0.format = NativeTapFormat.float32MonoLittleEndian.value }
+        try calls.notifyFormat()
+        try calls.deliver(samples: [0.75])
+        let delivered = results.withLock { $0 }
+        #expect(delivered.count == 2)
+        #expect(try delivered.first?.0.get().samples == [0.25])
+        let last = try #require(delivered.last)
+        if case .failure(let error) = last.0 {
+            #expect(error as? CaptureError == .unsupportedFormat)
+            #expect(last.1 == .event)
+        } else { Issue.record("The format notification must fail capture") }
+        #expect(calls.state.withLock { $0.nativeCalls.filter { $0.role == .io } }.isEmpty)
     }
 
     @Test(arguments: NativeTapFormat.allCases)
@@ -138,7 +251,7 @@ struct NativeCaptureBindingTests {
         }
     }
 
-    @Test func nativeStopReleasesEveryHandleInReverseOrder() async throws {
+    @Test func nativeStopReleasesEveryHandleInTeardownOrder() async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
@@ -146,12 +259,12 @@ struct NativeCaptureBindingTests {
         capture.stop()
         #expect(try await drain(capture).isEmpty)
         let resources = calls.state.withLock { ($0.made, $0.released) }
-        #expect(resources.0.count == 5)
-        #expect(resources.1 == Array(resources.0.reversed()))
-        #expect(calls.state.withLock { $0.events.suffix(5) } == ["stop", "unwatch", "remove io", "destroy device", "destroy tap"])
+        #expect(resources.0.count == 6)
+        #expect(resources.1 == calls.expectedReleases)
+        #expect(calls.state.withLock { $0.events.suffix(6) } == ["stop", "unwatch", "format unwatch", "remove io", "destroy device", "destroy tap"])
     }
 
-    @Test(arguments: ["tap", "device", "format", "io", "watch", "start"])
+    @Test(arguments: ["tap", "device", "format", "format watch", "io", "watch", "start"])
     func eachRefusedNativeStartingStepReleasesOnlyItsHandles(step: String) {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
@@ -159,13 +272,21 @@ struct NativeCaptureBindingTests {
         #expect(throws: NSError(domain: NSOSStatusErrorDomain, code: -50)) {
             _ = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         }
-        let steps = ["tap", "device", "format", "io", "watch", "start"]
+        let steps = ["tap", "device", "format", "format", "format watch", "io", "watch", "start"]
         let index = steps.firstIndex(of: step)!
         let resources = calls.state.withLock { ($0.made, $0.released) }
-        #expect(resources.0.count == [0, 1, 2, 2, 3, 4][index])
-        #expect(resources.1 == Array(resources.0.reversed()))
-        let releases = ["unwatch", "remove io", "destroy device", "destroy tap"]
-        #expect(calls.state.withLock { $0.events } == Array(steps.prefix(index + 1)) + Array(releases.suffix(resources.0.count)))
+        #expect(resources.0.count == [0, 1, 2, 2, 2, 3, 4, 5][index])
+        #expect(resources.1 == calls.expectedReleases)
+        let releases = calls.expectedReleases.map { resource in
+            switch resource {
+            case .tap: "destroy tap"
+            case .device: "destroy device"
+            case .io: "remove io"
+            case .listener(let device, _): device == 11 ? "format unwatch" : "unwatch"
+            case .running: "stop"
+            }
+        }
+        #expect(calls.state.withLock { $0.events } == Array(steps.prefix(index + 1)) + releases)
     }
 
     @Test(arguments: [ProcessSelection.only([10, 20]), .allExcept([30, 40])])
@@ -200,7 +321,7 @@ struct NativeCaptureBindingTests {
         #expect(written.uuid == created.uuid)
         #expect(written.processes == [130, 140])
         #expect(written.exclusive && written.mixdown && written.mono && written.unmuted && written.isPrivate)
-        #expect(calls.state.withLock { $0.events } == ["tap", "device", "format", "io", "watch", "start", "write", "stop", "unwatch", "remove io", "destroy device", "destroy tap"])
+        #expect(calls.state.withLock { $0.events } == ["tap", "device", "format", "format", "format watch", "io", "watch", "start", "write", "stop", "unwatch", "format unwatch", "remove io", "destroy device", "destroy tap"])
     }
 
     @Test func aPIDWithoutANativeProcessObjectIsRefused() throws {
@@ -361,6 +482,22 @@ private struct ListenerRegistration: @unchecked Sendable {
     let block: @convention(block) (UInt32, UnsafePointer<AudioObjectPropertyAddress>) -> Void
 }
 
+private enum NativeThreadRole: String, Sendable {
+
+    case io, event, caller
+
+    static var current: Self {
+
+        (Thread.current.threadDictionary["audelin.native-role"] as? String).flatMap(Self.init(rawValue:)) ?? .caller
+    }
+}
+
+private struct NativeCall: Equatable, Sendable {
+
+    let name: String
+    let role: NativeThreadRole
+}
+
 private final class RecordingCaptureCalls: Sendable {
 
     struct State {
@@ -372,6 +509,8 @@ private final class RecordingCaptureCalls: Sendable {
         var events: [String] = []
         var made: [NativeResource] = []
         var released: [NativeResource] = []
+        var nativeCalls: [NativeCall] = []
+        var formatListener: ListenerRegistration?
         var listener: ListenerRegistration?
         var io: IOBlock?
         var missing: Int32?
@@ -392,6 +531,46 @@ private final class RecordingCaptureCalls: Sendable {
         state = Mutex(State(format: format.value))
     }
 
+    var expectedReleases: [NativeResource] {
+
+        func order(_ resource: NativeResource) -> Int {
+
+            switch resource {
+            case .running: 0
+            case .listener(let device, _): device == 11 ? 2 : 1
+            case .io: 3
+            case .device: 4
+            case .tap: 5
+            }
+        }
+        return state.withLock { $0.made.sorted { order($0) < order($1) } }
+    }
+
+    func makeDevice() throws -> (CoreAudioBinding, UInt32, UInt32) {
+
+        let binding = CoreAudioBinding(native: native)
+        let tap = try binding.createTap(TapRequest(selection: .only([10]), mono: true, unmuted: true, isPrivate: true))
+        do {
+            let device = try binding.createDevice(DeviceRequest(tap: tap, isPrivate: true, autoStart: false))
+            return (binding, tap, device)
+        } catch {
+            binding.destroyTap(tap)
+            throw error
+        }
+    }
+
+    func notifyFormat() throws {
+
+        let registration = try #require(state.withLock { $0.formatListener })
+        fire([registration.address], on: 11, through: registration)
+    }
+
+    private func record(_ name: String) {
+
+        let call = NativeCall(name: name, role: .current)
+        state.withLock { $0.nativeCalls.append(call) }
+    }
+
     func deliver(samples: [Float]) throws {
 
         let block = try #require(state.withLock { $0.io })
@@ -409,6 +588,9 @@ private final class RecordingCaptureCalls: Sendable {
                 )
                 var timestamp = AudioTimeStamp()
                 withUnsafePointer(to: &timestamp) { time in
+                    let previous = Thread.current.threadDictionary["audelin.native-role"]
+                    Thread.current.threadDictionary["audelin.native-role"] = NativeThreadRole.io.rawValue
+                    defer { Thread.current.threadDictionary["audelin.native-role"] = previous }
                     block.value(time, &input, time, &output, time)
                 }
             }
@@ -419,6 +601,9 @@ private final class RecordingCaptureCalls: Sendable {
     func fire(_ addresses: [AudioObjectPropertyAddress], on device: AudioObjectID, through registration: ListenerRegistration) {
 
         registration.queue.sync {
+            let previous = Thread.current.threadDictionary["audelin.native-role"]
+            Thread.current.threadDictionary["audelin.native-role"] = NativeThreadRole.event.rawValue
+            defer { Thread.current.threadDictionary["audelin.native-role"] = previous }
             guard registration.device == device else { return }
             let subscription = registration.address
             let addresses = addresses.filter {
@@ -435,7 +620,8 @@ private final class RecordingCaptureCalls: Sendable {
 
     private func attempt(_ step: String) -> OSStatus {
 
-        state.withLock {
+        if step != "format" { record(step) }
+        return state.withLock {
             $0.events.append(step)
             return $0.refuse == step ? -50 : noErr
         }
@@ -443,6 +629,7 @@ private final class RecordingCaptureCalls: Sendable {
 
     private func release(_ resource: NativeResource, _ event: String) -> OSStatus {
 
+        record(event)
         state.withLock {
             $0.events.append(event)
             $0.released.append(resource)
@@ -476,6 +663,7 @@ private final class RecordingCaptureCalls: Sendable {
             },
             destroyDevice: { [self] in release(.device($0), "destroy device") },
             read: { [self] object, address, qualifierSize, qualifier, size, data in
+                record("read")
                 switch address.mSelector {
                 case kAudioHardwarePropertyTranslatePIDToProcessObject:
                     #expect(object == kAudioObjectSystemObject)
@@ -507,6 +695,7 @@ private final class RecordingCaptureCalls: Sendable {
                 return noErr
             },
             write: { [self] tap, address, size, data in
+                record("write")
                 #expect(tap == 11 && address.mSelector == kAudioTapPropertyDescription)
                 #expect(size == MemoryLayout<UnsafeMutableRawPointer>.size)
                 let pointer = data.load(as: UnsafeMutableRawPointer.self)
@@ -540,19 +729,21 @@ private final class RecordingCaptureCalls: Sendable {
             },
             stop: { [self] in release(.running($0, unsafeBitCast($1, to: UInt.self)), "stop") },
             addListener: { [self] device, address, queue, block in
-                let status = attempt("watch")
+                let status = attempt(device == 11 ? "format watch" : "watch")
                 guard status == noErr else { return status }
                 let registration = ListenerRegistration(device: device, address: address, queue: queue, block: block.value)
                 state.withLock {
-                    $0.listener = registration
+                    if device == 11 { $0.formatListener = registration } else { $0.listener = registration }
                     $0.made.append(.listener(device, ListenerIdentity(address, queue, registration.block)))
                 }
                 return noErr
             },
             removeListener: { [self] device, address, queue, block in
                 let identity = ListenerIdentity(address, queue, block.value)
-                state.withLock { $0.listener = nil }
-                return release(.listener(device, identity), "unwatch")
+                state.withLock {
+                    if device == 11 { $0.formatListener = nil } else { $0.listener = nil }
+                }
+                return release(.listener(device, identity), device == 11 ? "format unwatch" : "unwatch")
             }
         )
     }

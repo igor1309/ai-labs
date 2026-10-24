@@ -24,22 +24,22 @@ Native: rename writes a description with the same UUID. Evidence:
 
 ## S-5 A new output device keeps the sound heard
 
-Fake: tones survive an output change. Native: input samples and rates stay in delivery order despite different output samples. Evidence:
+Fake: tones survive an output change. Native: format notifications update the cached rate; IO makes no native calls. A buffer at the switch can carry the previous rate to keep native calls off IO. Input samples stay in delivery order despite different output samples. Evidence:
 `SystemAudioCaptureTests.aNewOutputDeviceChangesThePiecesRate`, `SystemAudioCaptureTests.anInFlightBufferKeepsItsRateAcrossAnOutputChange`,
-`NativeCaptureBindingTests.nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder`.
+`NativeCaptureBindingTests.nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder`, `NativeCaptureBindingTests.nativeIOCallbackMakesNoNativeCalls`.
 
 ## S-6 A capture that cannot start fails
 
-Fake and native: each refused starting step releases its handles in reverse order.
-Native: an unavailable process object and unsupported tap formats are refused. Evidence:
+Fake and native: each refused starting step releases only its own handles, removing the format subscription before IO.
+Native: unavailable processes, unsupported formats and refused format subscriptions fail before IO is made. Evidence:
 `SystemAudioCaptureTests.eachRefusedStartingStepFailsAndReleasesItsResources`, `NativeCaptureBindingTests.eachRefusedNativeStartingStepReleasesOnlyItsHandles`,
-`NativeCaptureBindingTests.aPIDWithoutANativeProcessObjectIsRefused`, `NativeCaptureBindingTests.nativeTapFormatsAcceptOnlyFloat32MonoLittleEndian`.
+`NativeCaptureBindingTests.aPIDWithoutANativeProcessObjectIsRefused`, `NativeCaptureBindingTests.nativeTapFormatsAcceptOnlyFloat32MonoLittleEndian`, `NativeCaptureBindingTests.nativeInstallIOChecksFormatBeforeMakingResources`, `NativeCaptureBindingTests.nativeRefusedFormatListenerRegistrationLeavesNoIO`.
 
 ## S-7 A capture the system stops fails
 
 Fake and native: stopped devices and unreadable formats fail after cleanup;
 the first failure survives a later stop. Native notifications require a matching subscription and read alive and running independently. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`, `NativeCaptureBindingTests.nativeStopNotificationsReadTheirOwnDeviceState`, `NativeCaptureBindingTests.nativeStopNotificationsRequireMatchingSubscriptions`,
-`SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`, `NativeCaptureBindingTests.nativeFormatFailuresKeepEarlierAudio`.
+`SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`, `NativeCaptureBindingTests.nativeFormatFailuresKeepEarlierAudio`, `NativeCaptureBindingTests.nativeRefusedFormatNotificationsFailOnceAndSuppressLaterBuffers`, `NativeCaptureBindingTests.nativeFailedFormatReadNotificationFailsOnceAndSuppressesLaterBuffers`.
 
 ## S-8 A failed capture keeps what it heard
 
@@ -49,8 +49,8 @@ Fake: earlier pieces and IO held across a system stop precede the error. Evidenc
 
 ## S-9 Stopping ends the capture
 
-Fake and native: teardown releases handles in reverse order; IO drains before completion. Real: hearing the tone stops successfully; a deadline throws a timeout. Evidence:
-`SystemAudioCaptureTests.stoppingEndsAudioAndReleasesInReverseOrder`, `NativeCaptureBindingTests.nativeStopReleasesEveryHandleInReverseOrder`,
+Fake and native: IO drains before completion; the format subscription is removed with its original address and block before IO, and late notifications deliver nothing. Real: hearing the tone stops successfully; a deadline throws a timeout. Evidence:
+`SystemAudioCaptureTests.stoppingEndsAudioAndReleasesInReverseOrder`, `NativeCaptureBindingTests.nativeStopReleasesEveryHandleInTeardownOrder`, `NativeCaptureBindingTests.nativeFormatListenerIsRemovedBeforeIOAndIgnoresLateNotifications`,
 `SystemAudioCaptureTests.anIntentionalStopNotificationDoesNotFailTheStream`,
 `SystemAudioCaptureTests.anInFlightBufferPrecedesAnExplicitStopInOrder`,
 `SystemAudioCaptureTests.anExplicitStopReadsTheBufferAlreadyInFlight`,

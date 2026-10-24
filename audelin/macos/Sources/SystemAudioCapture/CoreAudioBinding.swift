@@ -88,32 +88,58 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
     public func installIO(_ device: UInt32, receive: @escaping @Sendable (Result<AudioPiece, any Error>) -> Void) throws -> UInt64 {
 
         guard let tap = state.withLock({ $0.devices[device] }) else { throw CaptureError.stopped }
+        let rate = IORate(try sampleRate(tap))
+        let block = ListenerBlock(value: { [weak self] _, _ in
+            let previous = rate.bits.load(ordering: .acquiring)
+            guard previous != 0, let self else { return }
+            do {
+                let updated = try sampleRate(tap)
+                _ = rate.bits.compareExchange(
+                    expected: previous, desired: updated.bitPattern, ordering: .acquiringAndReleasing
+                )
+            } catch {
+                if rate.bits.exchange(0, ordering: .acquiringAndReleasing) != 0 {
+                    receive(.failure(CaptureError.unsupportedFormat))
+                }
+            }
+        })
+        var address = address(kAudioTapPropertyFormat)
+        try check(native.addListener(tap, &address, queue, block))
+        var installed = false
+        defer {
+            if !installed {
+                rate.bits.store(0, ordering: .releasing)
+                _ = native.removeListener(tap, &address, queue, block)
+            }
+        }
         var io: AudioDeviceIOProcID?
-        try check(native.createIO(&io, device, IOBlock { [self] _, input, _, _, _ in
+        try check(native.createIO(&io, device, IOBlock { _, input, _, _, _ in
+            let bits = rate.bits.load(ordering: .acquiring)
+            guard bits != 0 else { return }
             let buffers = UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating: input))
             guard buffers.count == 1, let buffer = buffers.first,
                   buffer.mNumberChannels == 1, let data = buffer.mData else { return }
-            do {
-                let rate = try sampleRate(tap)
-                let count = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size
-                let samples = Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self), count: count))
-                receive(.success(AudioPiece(samples: samples, sampleRate: rate)))
-            } catch {
-                receive(.failure(error))
-            }
+            let count = Int(buffer.mDataByteSize) / MemoryLayout<Float>.size
+            let samples = Array(UnsafeBufferPointer(start: data.assumingMemoryBound(to: Float.self), count: count))
+            guard rate.bits.load(ordering: .acquiring) != 0 else { return }
+            receive(.success(AudioPiece(samples: samples, sampleRate: Double(bitPattern: bits))))
         }))
         guard let io else { throw CaptureError.stopped }
+        installed = true
         return state.withLock {
             $0.nextIO += 1
-            $0.ios[$0.nextIO] = io
+            $0.ios[$0.nextIO] = NativeIO(io: io, tap: tap, rate: rate, block: block, address: address)
             return $0.nextIO
         }
     }
 
     public func removeIO(_ device: UInt32, _ io: UInt64) {
 
-        guard let native = state.withLock({ $0.ios.removeValue(forKey: io) }) else { return }
-        _ = self.native.removeIO(device, native)
+        guard let io = state.withLock({ $0.ios.removeValue(forKey: io) }) else { return }
+        io.rate.bits.store(0, ordering: .releasing)
+        var address = io.address
+        _ = native.removeListener(io.tap, &address, queue, io.block)
+        _ = native.removeIO(device, io.io)
     }
 
     public func watchDevice(_ device: UInt32, stopped: @escaping @Sendable () -> Void) throws -> UInt64 {
@@ -162,13 +188,13 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
     public func startDevice(_ device: UInt32, _ io: UInt64) throws {
 
         guard let native = state.withLock({ $0.ios[io] }) else { throw CaptureError.stopped }
-        try check(self.native.start(device, native))
+        try check(self.native.start(device, native.io))
     }
 
     public func stopDevice(_ device: UInt32, _ io: UInt64) {
 
         guard let native = state.withLock({ $0.ios[io] }) else { return }
-        _ = self.native.stop(device, native)
+        _ = self.native.stop(device, native.io)
     }
 
     private func description(_ request: TapRequest, uuid: UUID) throws -> CATapDescription {
@@ -227,11 +253,31 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
 private struct NativeState {
 
     var devices: [UInt32: UInt32] = [:]
-    var ios: [UInt64: AudioDeviceIOProcID] = [:]
+    var ios: [UInt64: NativeIO] = [:]
     var nextIO: UInt64 = 0
     var taps: [UInt32: UUID] = [:]
     var watches: [UInt64: NativeWatch] = [:]
     var nextWatch: UInt64 = 0
+}
+
+private final class IORate: Sendable {
+
+    // Zero ends delivery permanently; native property reads never block IO.
+    let bits: Atomic<UInt64>
+
+    init(_ rate: Double) {
+
+        bits = Atomic(rate.bitPattern)
+    }
+}
+
+private struct NativeIO: Sendable {
+
+    let io: AudioDeviceIOProcID
+    let tap: UInt32
+    let rate: IORate
+    let block: ListenerBlock
+    let address: AudioObjectPropertyAddress
 }
 
 private final class DeviceListener: Sendable {
