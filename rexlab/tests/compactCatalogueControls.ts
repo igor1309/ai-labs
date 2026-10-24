@@ -46,8 +46,8 @@ export function expectCompactControls(size: WindowSize, language: Language = "en
   } else {
     const word = home.querySelector(".catalogue-home-word")!;
     expect(at(word).value("display")).not.toBe("none");
-    // Each glyph in shipped Lexend HOME/ДОМОЙ fits within one em.
-    // Budget that upper bound rather than underestimating localized text.
+    // Reserve one em per localized glyph as a conservative text budget;
+    // jsdom cannot measure the rendered font or its fallback.
     const textWidth = [...TEXTS[language].home].length * (at(word).px("font-size") + Math.max(0, at(word).px("letter-spacing")));
     const icon = home.querySelector("svg")!;
     homeWidth = Number(icon.getAttribute("width")) + at(home).columnGap() + textWidth + at(home).px("padding-left") + at(home).px("padding-right");
