@@ -1,8 +1,8 @@
 import CallText
-import Compose
 import struct MicrophoneCapture.AudioPiece
 import struct SystemAudioCapture.AudioPiece
 import Testing
+@testable import Compose
 @testable import TrackFile
 
 @Suite(.timeLimit(.minutes(1)))
@@ -139,6 +139,64 @@ struct AudioTests {
             #expect(feed.capturedThrough == Double(writeFails ? 2 : 1) / 48_000)
             try await track.close()
             #expect(try await track.read(from: 0, to: 2 / 48_000) == [0.25])
+        }
+    }
+
+    @Test func writeFailureEndsTheFeedWhileTheSourceStaysOpen() async throws {
+
+        try await withComposeFolder { folder in
+            let track = try TrackFile(url: folder.appendingPathComponent("track.caf"))
+            let source = AsyncThrowingStream<MicrophoneCapture.AudioPiece, any Error>.makeStream()
+            let feed = CaptureFeed(stream: source.stream, track: track)
+            defer { source.continuation.finish(); feed.cancel() }
+            let prefix = Audio(start: 0, samples: [0.25, -0.5], sampleRate: 48_000)
+            source.continuation.yield(.init(samples: prefix.samples, sampleRate: prefix.sampleRate))
+            source.continuation.yield(.init(samples: [.nan], sampleRate: 48_000))
+
+            await #expect(throws: TrackFile.Failure.invalidAudio) { try await feed.wait() }
+            let received = Values<Audio>()
+            await feed.listen { received.append($0) }
+            #expect(received.all == [prefix])
+            try await track.close()
+            #expect(try await track.read(from: 0, to: 3 / 48_000) == prefix.samples)
+        }
+    }
+
+    @Test func capturedThroughIncludesAudioWhoseWriteIsHeld() async throws {
+
+        try await withComposeFolder { folder in
+            let track = try TrackFile(url: folder.appendingPathComponent("track.caf"))
+            typealias Piece = (samples: [Float], sampleRate: Double)
+            let source = AsyncThrowingStream<Piece, any Error>.makeStream()
+            let held = Signal()
+            let release = Signal()
+            let feed = CaptureFeed(stream: source.stream, track: track, unpack: { $0 }, beforeWrite: { audio in
+                if audio.start > 0 {
+                    held.send()
+                    await release.next()
+                    try Task.checkCancellation()
+                }
+            })
+            defer { source.continuation.finish(); feed.cancel(); release.end() }
+            let expected = [
+                Audio(start: 0, samples: [0.25, -0.5], sampleRate: 48_000),
+                Audio(start: 2 / 48_000, samples: [0.5], sampleRate: 48_000),
+            ]
+            for audio in expected { source.continuation.yield((audio.samples, audio.sampleRate)) }
+
+            await held.next()
+            try Task.checkCancellation()
+            #expect(feed.capturedThrough == expected.last?.end)
+            #expect(try await track.read(from: 0, to: expected[0].end) == expected[0].samples)
+
+            release.end()
+            source.continuation.finish()
+            try await feed.wait()
+            let received = Values<Audio>()
+            await feed.listen { received.append($0) }
+            #expect(received.all == expected)
+            try await track.close()
+            #expect(try await track.read(from: 0, to: 3 / 48_000) == expected.flatMap(\.samples))
         }
     }
 

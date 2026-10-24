@@ -20,10 +20,20 @@ public final class CaptureFeed: LiveAudio, Sendable {
     public var capturedThrough: Double { position.value.withLock { $0 } }
 
     /// Unpacks either capture's piece without assigning it another clock.
-    public init<Piece: Sendable>(
+    public convenience init<Piece: Sendable>(
         stream: AsyncThrowingStream<Piece, any Error>,
         track: TrackFile,
         unpack: @escaping @Sendable (Piece) -> (samples: [Float], sampleRate: Double)
+    ) {
+
+        self.init(stream: stream, track: track, unpack: unpack, beforeWrite: { _ in })
+    }
+
+    init<Piece: Sendable>(
+        stream: AsyncThrowingStream<Piece, any Error>,
+        track: TrackFile,
+        unpack: @escaping @Sendable (Piece) -> (samples: [Float], sampleRate: Double),
+        beforeWrite: @escaping @Sendable (Audio) async throws -> Void
     ) {
 
         let captured = AsyncStream<Audio>.makeStream()
@@ -50,6 +60,7 @@ public final class CaptureFeed: LiveAudio, Sendable {
             do {
                 for await audio in captured.stream {
                     try Task.checkCancellation()
+                    try await beforeWrite(audio)
                     try await track.write(audio.samples, sampleRate: audio.sampleRate)
                     delivered.continuation.yield(audio)
                 }
