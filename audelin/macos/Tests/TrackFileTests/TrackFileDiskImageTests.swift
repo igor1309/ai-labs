@@ -40,14 +40,20 @@ struct TrackFileDiskImageTests {
         }
     }
 
-    @Test(arguments: [false, true])
-    func failedDetachReportsFailureAndKeepsImage(throwing: Bool) async throws {
+    @Test(arguments: [false, true], [BodyOutcome.succeeds, .throws, .cancelled])
+    func failedDetachReportsFailureAndKeepsImage(throwing: Bool, body: BodyOutcome) async throws {
 
         let commands = FailedDetachCommands(throwing: throwing)
         do {
             try await withTrackFolder { folder in
                 await commands.setFolder(folder)
-                try await withDiskImage(in: folder, run: { try await commands.run($0, $1) }) { _ in }
+                try await withDiskImage(in: folder, run: { try await commands.run($0, $1) }) { _ in
+                    switch body {
+                    case .succeeds: break
+                    case .throws: throw BodyFailure()
+                    case .cancelled: throw CancellationError()
+                    }
+                }
             }
             Issue.record("a failed detach must fail the harness")
         } catch let failure as DiskImageDetachFailure {
@@ -139,6 +145,10 @@ actor DiskImageCommands {
 }
 
 private struct DetachCommandFailure: Error {}
+
+private struct BodyFailure: Error {}
+
+enum BodyOutcome: Sendable { case succeeds, `throws`, cancelled }
 
 private actor FailedDetachCommands {
 
