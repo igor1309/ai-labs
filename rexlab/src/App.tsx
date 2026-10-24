@@ -12,7 +12,7 @@ import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps, type DigPhase } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
 import { dinosaurSlide } from "./dinosaurSlide.ts";
-import { dinosaurWordsWidth, keptLines } from "./dinosaurPageLayout.ts";
+import { dinosaurWordsWidth, keptLines, NARROW_PAGE, PORTRAIT_PAGE } from "./dinosaurPageLayout.ts";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import type { ChipWidths } from "./FoodChips.tsx";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
@@ -256,7 +256,8 @@ export function App({
   }));
   const dinosaurWords = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return dinosaurWordsWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    const side = viewport.sizeClass() === "tall-narrow" ? NARROW_PAGE.sidePadding : PORTRAIT_PAGE.sidePadding;
+    return dinosaurWordsWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, side);
   });
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
@@ -505,7 +506,7 @@ export function App({
   const dinosaur = screen.kind === "dinosaur" ? shown[screen.index] : undefined;
   // The lines a dinosaur's page keeps for its words are its arrangement
   // only upright, where the stylesheet reads them.
-  const { description: descriptionLines, note: noteLines } = keptLines(dinosaurWords);
+  const { description: descriptionLines, note: noteLines } = keptLines(dinosaurWords, size === "tall-narrow");
   const dinosaurArrangement = portrait ? `${descriptionLines}:${noteLines}` : undefined;
   const catalogueLayout = useRef<CatalogueLayout>(null);
   const dinosaurLayout = useRef<DinosaurPageLayout>(null);

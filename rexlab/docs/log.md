@@ -2,6 +2,7 @@
 
 ## 2026-10-24
 
+- A dinosaur's page stands upright on an iPhone instead of asking to turn: 20-pixel sides, the catalogue button as its book, the picture across the stage with ← and → under it, the facts one over the other and a smaller description, every word fitting in English and Russian from 320 wide. With the home page and the catalogue, the museum now reads whole upright on an iPhone (LAB-522).
 - The catalogue stands upright on an iPhone instead of asking to turn: 20-pixel sides, HOME over the food chips in one row that scrolls sideways, and the cards one to a row with their names at full size, every word fitting in English and Russian from 320 wide; turning keeps the list's place (LAB-521).
 - The home page stands upright on an iPhone instead of asking to turn: 20-pixel sides, RexLab and the museum as their symbols so the corner keeps one line, a smaller greeting and large card, and the tiles' row with the next column peeking in, every word fitting in English and Russian from 320 wide (LAB-520).
 - Care's result stands upright in a tall window instead of asking to turn: the visitor over the score and the hearts in one row, and NEW VISITOR, FRIENDS and HOME stacked across the width, every word fitting in English and Russian. Care now plays whole upright, and in a tall window no screen asks to turn any more (LAB-514).
