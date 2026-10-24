@@ -49,12 +49,6 @@ public protocol SessionTranscript: Sendable {
     func close() async throws
 }
 
-/// Carries lifecycle failures from composed pieces into the Session loop.
-public protocol SessionEventSource: Sendable {
-
-    var events: AsyncStream<SessionEvent> { get }
-}
-
 /// A failure named in the session state.
 public struct SessionFailure: Equatable, Sendable, Error, CustomStringConvertible {
 
@@ -214,10 +208,11 @@ public enum SessionReducer {
             return nextDown(&state)
 
         case let .liveTextChanged(enabled), let .preferenceChanged(enabled):
-            guard state.phase == .recording || state.phase == .ending else { return (state, nil) }
+            guard state.phase == .recording else { return (state, nil) }
             return (state, .setLiveText(enabled))
 
         case let .accessChanged(side, available):
+            guard state.phase == .bringingUp || state.phase == .recording else { return (state, nil) }
             guard !available else { return (state, nil) }
             addFailure(&state, .init(piece: side.name + " access", message: "access lost"))
             setCapture(&state, side, .failed("access lost"))
@@ -225,12 +220,18 @@ public enum SessionReducer {
             return (state, nil)
 
         case let .pieceFailed(piece, error):
+            guard state.phase == .bringingUp || state.phase == .recording else { return (state, nil) }
             setStatus(&state, piece, .failed(error))
             addFailure(&state, .init(piece: piece.name, message: error))
-            updateRecordability(&state)
+            if piece == .folder {
+                state.cannotRecord = "folder: \(error)"
+            } else {
+                updateRecordability(&state)
+            }
             return (state, nil)
 
         case let .folderFinished(error):
+            guard state.folder == .starting else { return (state, nil) }
             state.folder = error == nil ? .up : .failed(error!)
             guard let error else {
                 if state.phase == .ending { state.phase = .ended; return (state, nil) }
@@ -242,17 +243,25 @@ public enum SessionReducer {
             return (state, nil)
 
         case let .processesFinished(selection, error):
-            state.processes = error == nil ? .up : .failed(error!)
-            if let error { addFailure(&state, .init(piece: "processes", message: error)) }
-            state.processSelection = selection
+            let prior = state.processes
+            guard prior == .starting || (state.phase == .bringingUp && prior.isFailed) else { return (state, nil) }
+            if prior == .starting {
+                state.processes = error == nil ? .up : .failed(error!)
+                if let error { addFailure(&state, .init(piece: "processes", message: error)) }
+                state.processSelection = selection
+            }
             if state.phase == .ending { state.phase = .ended; return (state, nil) }
             guard state.phase == .bringingUp else { return (state, nil) }
             state.microphoneTrack = .starting
             return (state, .openTrack(.microphone))
 
         case let .trackFinished(side, error):
-            setTrack(&state, side, error == nil ? .up : .failed(error!))
-            if let error { addFailure(&state, .init(piece: side.trackName, message: error)) }
+            let prior = state.track(for: side)
+            guard prior == .starting || (state.phase == .bringingUp && prior.isFailed) else { return (state, nil) }
+            if prior == .starting {
+                setTrack(&state, side, error == nil ? .up : .failed(error!))
+                if let error { addFailure(&state, .init(piece: side.trackName, message: error)) }
+            }
             if state.phase == .ending { return nextDown(&state) }
             if side == .microphone {
                 state.callTrack = .starting
@@ -262,64 +271,72 @@ public enum SessionReducer {
             return (state, .openTranscript)
 
         case let .transcriptFinished(error):
-            state.transcript = error == nil ? .up : .failed(error!)
-            if let error { addFailure(&state, .init(piece: "transcript", message: error)) }
+            let prior = state.transcript
+            guard prior == .starting || (state.phase == .bringingUp && prior.isFailed) else { return (state, nil) }
+            if prior == .starting {
+                state.transcript = error == nil ? .up : .failed(error!)
+                if let error { addFailure(&state, .init(piece: "transcript", message: error)) }
+            }
             if state.phase == .ending { return nextDown(&state) }
             state.callText = .starting
             return (state, .startCallText(enabled: state.liveText != .off))
 
         case let .callTextFinished(error):
-            state.callText = error == nil ? .up : .failed(error!)
-            if let error { addFailure(&state, .init(piece: "call text", message: error)) }
+            let prior = state.callText
+            guard prior == .starting || (state.phase == .bringingUp && prior.isFailed) else { return (state, nil) }
+            if prior == .starting {
+                state.callText = error == nil ? .up : .failed(error!)
+                if let error { addFailure(&state, .init(piece: "call text", message: error)) }
+            }
             if state.phase == .ending { return nextDown(&state) }
+            if state.microphoneCapture.isFailed {
+                return startCallCaptureOrFinish(&state)
+            }
             state.microphoneCapture = .starting
             return (state, .startCapture(.microphone, selection: state.processSelection ?? .only([])))
 
         case let .captureFinished(side, error):
             let prior = state.capture(for: side)
-            if error == nil && prior == .failed("access lost") {
-                // Access loss wins over a late completion from the old start.
-                setCapture(&state, side, prior)
-            } else {
-                setCapture(&state, side, error == nil ? .up : .failed(error!))
+            guard prior == .starting || (state.phase == .bringingUp && prior.isFailed) else { return (state, nil) }
+            guard prior == .starting else {
+                if side == .microphone { return startCallCaptureOrFinish(&state) }
+                return finishCaptureBringUp(&state)
             }
+            setCapture(&state, side, error == nil ? .up : .failed(error!))
             if let error { addFailure(&state, .init(piece: side.captureName, message: error)) }
             if side == .microphone {
                 if state.phase == .ending { return nextDown(&state) }
-                state.callCapture = .starting
-                return (state, .startCapture(.call, selection: state.processSelection ?? .only([])))
+                return startCallCaptureOrFinish(&state)
             }
             if state.phase == .ending { return nextDown(&state) }
-            if hasUsableTrack(state) {
-                state.phase = .recording
-            } else {
-                state.cannotRecord = "no track can record"
-                state.phase = .bringingUp
-            }
-            state.liveText = state.liveText == .gettingReady && state.callText == .up ? .gettingReady : state.liveText
-            return (state, nil)
+            return finishCaptureBringUp(&state)
 
         case let .captureStopped(side, error):
+            guard state.capture(for: side) == .stopping else { return (state, nil) }
             setCapture(&state, side, error == nil ? .closed : .failed(error!))
             if let error { addFailure(&state, .init(piece: side.captureName, message: error)) }
             return nextDown(&state)
 
         case let .trackClosed(side, error):
+            guard state.track(for: side) == .stopping else { return (state, nil) }
             setTrack(&state, side, error == nil ? .closed : .failed(error!))
             if let error { addFailure(&state, .init(piece: side.trackName, message: error)) }
             return nextDown(&state)
 
         case let .callTextStopped(error):
+            guard state.callText == .stopping else { return (state, nil) }
             state.callText = error == nil ? .closed : .failed(error!)
             if let error { addFailure(&state, .init(piece: "call text", message: error)) }
             return nextDown(&state)
 
         case let .transcriptClosed(error):
+            guard state.transcript == .stopping else { return (state, nil) }
             state.transcript = error == nil ? .closed : .failed(error!)
             if let error { addFailure(&state, .init(piece: "transcript", message: error)) }
             return nextDown(&state)
 
         case let .liveTextSet(enabled, error):
+            guard state.phase == .recording else { return (state, nil) }
             if let error { addFailure(&state, .init(piece: "live text", message: error)) }
             else { state.liveText = enabled ? .on : .off }
             return (state, nil)
@@ -329,18 +346,16 @@ public enum SessionReducer {
     private static func nextDown(_ state: inout SessionState) -> (SessionState, SessionEffect?) {
 
         guard state.phase == .ending else { return (state, nil) }
-        if state.microphoneCapture.isRecording { state.microphoneCapture = .stopping; return (state, .stopCapture(.microphone)) }
-        if state.callCapture.isRecording { state.callCapture = .stopping; return (state, .stopCapture(.call)) }
-        if state.microphoneTrack.isUp { state.microphoneTrack = .stopping; return (state, .closeTrack(.microphone)) }
-        if state.callTrack.isUp { state.callTrack = .stopping; return (state, .closeTrack(.call)) }
-        if state.callText.isUp { state.callText = .stopping; return (state, .stopCallText) }
-        if state.transcript.isUp { state.transcript = .stopping; return (state, .closeTranscript) }
-        if state.microphoneCapture == .starting || state.callCapture == .starting
-            || state.microphoneTrack == .starting || state.callTrack == .starting
-            || state.callText == .starting || state.transcript == .starting
-            || state.folder == .starting || state.processes == .starting {
-            return (state, nil)
-        }
+        if state.microphoneCapture == .up { state.microphoneCapture = .stopping; return (state, .stopCapture(.microphone)) }
+        if state.callCapture == .up { state.callCapture = .stopping; return (state, .stopCapture(.call)) }
+        if state.microphoneCapture == .starting || state.callCapture == .starting { return (state, nil) }
+        if state.microphoneTrack == .up { state.microphoneTrack = .stopping; return (state, .closeTrack(.microphone)) }
+        if state.callTrack == .up { state.callTrack = .stopping; return (state, .closeTrack(.call)) }
+        if state.microphoneTrack == .starting || state.callTrack == .starting { return (state, nil) }
+        if state.callText == .up { state.callText = .stopping; return (state, .stopCallText) }
+        if state.callText == .starting { return (state, nil) }
+        if state.transcript == .up { state.transcript = .stopping; return (state, .closeTranscript) }
+        if state.transcript == .starting || state.folder == .starting || state.processes == .starting { return (state, nil) }
         state.phase = .ended
         return (state, nil)
     }
@@ -368,6 +383,28 @@ public enum SessionReducer {
             state.cannotRecord = "no track can record"
             state.phase = .bringingUp
         }
+    }
+
+    private static func startCallCaptureOrFinish(_ state: inout SessionState) -> (SessionState, SessionEffect?) {
+
+        guard state.phase == .bringingUp else { return finishCaptureBringUp(&state) }
+        if state.callCapture == .down {
+            state.callCapture = .starting
+            return (state, .startCapture(.call, selection: state.processSelection ?? .only([])))
+        }
+        return finishCaptureBringUp(&state)
+    }
+
+    private static func finishCaptureBringUp(_ state: inout SessionState) -> (SessionState, SessionEffect?) {
+
+        if hasUsableTrack(state) {
+            state.phase = .recording
+        } else {
+            state.cannotRecord = "no track can record"
+            state.phase = .bringingUp
+        }
+        state.liveText = state.liveText == .gettingReady && state.callText == .up ? .gettingReady : state.liveText
+        return (state, nil)
     }
 
     private static func setTrack(_ state: inout SessionState, _ side: SessionSide, _ status: SessionState.PieceStatus) {
@@ -405,6 +442,15 @@ public extension SessionState.PieceStatus {
 
         switch self { case .up, .stopping: true; default: false }
     }
+
+}
+
+private extension SessionState.PieceStatus {
+
+    var isFailed: Bool {
+
+        if case .failed = self { true } else { false }
+    }
 }
 
 private extension SessionSide {
@@ -430,6 +476,11 @@ private extension SessionState.Piece {
 }
 
 private extension SessionState {
+
+    func track(for side: SessionSide) -> PieceStatus {
+
+        side == .microphone ? microphoneTrack : callTrack
+    }
 
     func capture(for side: SessionSide) -> PieceStatus {
 
@@ -533,28 +584,10 @@ public final class SessionEffectHandler: Sendable {
 public final class Session: Sendable {
 
     public let machine: Machine<SessionState, SessionEvent, SessionEffect>
-    private let eventTask: Task<Void, Never>?
 
     public init(handler: SessionEffectHandler, initial: SessionState = .init()) {
 
         machine = handler.machine(initial: initial)
-        eventTask = nil
-    }
-
-    public init(handler: SessionEffectHandler, events: any SessionEventSource, initial: SessionState = .init()) {
-
-        let machine = handler.machine(initial: initial)
-        self.machine = machine
-        eventTask = Task {
-            for await event in events.events {
-                machine.send(event)
-            }
-        }
-    }
-
-    deinit {
-
-        eventTask?.cancel()
     }
 
     public nonisolated func send(_ event: SessionEvent) {

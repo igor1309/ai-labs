@@ -123,12 +123,13 @@ struct SessionTests {
         let heldIndex = bringUp.firstIndex(of: held)!
         #expect(actualBringUp == Array(bringUp.prefix(heldIndex + 1)))
         #expect(!actualBringUp.contains { bringUp.firstIndex(of: $0)! > heldIndex })
+        #expect(output == endingOutput(for: held))
         await rig.session.end()
     }
 
     @Test func aCaptureThatComesUpAfterEndIsStoppedBeforeEnded() async throws {
 
-        let held = "microphone.capture.start"
+        let held = "call.capture.start"
         let rig = Rig(held: [held])
         let states = await rig.session.states()
         var updates = states.makeAsyncIterator()
@@ -140,6 +141,10 @@ struct SessionTests {
         let ending = try await nextState(&updates) { $0.phase == .ending && $0.microphoneCapture == .stopping }
         #expect(ending.microphoneCapture == .stopping)
         _ = try await nextState(&updates) { $0.phase == .ended }
+        let output = await rig.output.values()
+        #expect(output.contains("call.capture.start"))
+        #expect(output.contains("call.capture.stop"))
+        #expect(output.firstIndex(of: "call.capture.start")! < output.firstIndex(of: "call.capture.stop")!)
         await rig.session.end()
     }
 
@@ -176,6 +181,12 @@ struct SessionTests {
         let state = await rig.waitFor { $0.cannotRecord != nil }
         #expect(state.cannotRecord == "no track can record")
         #expect(state.phase == .bringingUp)
+        #expect(state.microphoneCapture == .failed("microphone.capture.start failed"))
+        #expect(state.callCapture == .failed("call.capture.start failed"))
+        #expect(state.failures == [
+            .init(piece: "microphone capture", message: "microphone.capture.start failed"),
+            .init(piece: "call capture", message: "call.capture.start failed")
+        ])
         await end(rig)
     }
 
@@ -185,6 +196,12 @@ struct SessionTests {
         rig.session.send(.begin(liveText: true))
         let state = await rig.waitFor { $0.cannotRecord != nil }
         #expect(state.cannotRecord == "no track can record")
+        #expect(state.microphoneTrack == .failed("microphone.track.open failed"))
+        #expect(state.callTrack == .failed("call.track.open failed"))
+        #expect(state.failures == [
+            .init(piece: "microphone track", message: "microphone.track.open failed"),
+            .init(piece: "call track", message: "call.track.open failed")
+        ])
         await end(rig)
     }
 
@@ -209,8 +226,17 @@ struct SessionTests {
         let rig = Rig(failing: [failing])
         rig.session.send(.begin(liveText: true))
         let state = await rig.waitFor { $0.phase == .recording }
-        #expect(!state.failures.isEmpty)
+        #expect(state.failures.contains(.init(piece: bringUpFailurePiece(failing), message: "\(failing) failed")))
         #expect(state.microphoneTrack.isUp || state.callTrack.isUp)
+        let output = await rig.output.values()
+        if failing.contains("microphone") || failing == "processes.select" {
+            #expect(output.contains("call.audio"))
+        } else if failing.contains("call") {
+            #expect(output.contains("microphone.audio"))
+        } else {
+            #expect(output.contains("microphone.audio"))
+            #expect(output.contains("call.audio"))
+        }
         await end(rig)
     }
 
@@ -219,7 +245,7 @@ struct SessionTests {
         let rig = Rig()
         rig.session.send(.begin(liveText: true))
         _ = await rig.waitFor { $0.phase == .recording }
-        rig.events.send(.accessChanged(.microphone, available: false))
+        rig.session.send(.accessChanged(.microphone, available: false))
         let state = await rig.waitFor { $0.failures.contains { $0.piece == "microphone access" } }
         #expect(state.callCapture == .up)
         await end(rig)
@@ -231,7 +257,7 @@ struct SessionTests {
         rig.session.send(.begin(liveText: true))
         _ = await rig.waitFor { $0.phase == .recording }
         await rig.microphoneCapture.sendAudio("before-failure")
-        rig.events.send(.pieceFailed(.capture(.microphone), error: "device stopped"))
+        rig.session.send(.pieceFailed(.capture(.microphone), error: "device stopped"))
         let state = await rig.waitFor { $0.failures.contains { $0.piece == "microphone capture" } }
         #expect(state.microphoneCapture == .failed("device stopped"))
         #expect(state.callCapture == .up)
@@ -240,17 +266,49 @@ struct SessionTests {
         await end(rig)
     }
 
-    @Test func runtimeTrackFailureAndAccessLossSaysCannotRecord() async throws {
+    @Test(arguments: [SessionSide.microphone, SessionSide.call])
+    func runtimeTrackFailureAndAccessLossSaysCannotRecord(_ failedTrack: SessionSide) async throws {
 
         let rig = Rig()
         rig.session.send(.begin(liveText: true))
         _ = await rig.waitFor { $0.phase == .recording }
-        rig.events.send(.pieceFailed(.track(.call), error: "disk stopped"))
-        rig.events.send(.accessChanged(.microphone, available: false))
+        let lostAccess = failedTrack == .microphone ? SessionSide.call : .microphone
+        rig.session.send(.pieceFailed(.track(failedTrack), error: "disk stopped"))
+        rig.session.send(.accessChanged(lostAccess, available: false))
         let state = await rig.waitFor { $0.cannotRecord != nil }
         #expect(state.cannotRecord == "no track can record")
-        #expect(state.callTrack == .failed("disk stopped"))
-        #expect(state.microphoneCapture == .failed("access lost"))
+        #expect(state.failures.contains(.init(piece: failedTrack == .microphone ? "microphone track" : "call track", message: "disk stopped")))
+        #expect(state.failures.contains(.init(piece: lostAccess == .microphone ? "microphone access" : "call access", message: "access lost")))
+        if failedTrack == .microphone {
+            #expect(state.microphoneTrack == .failed("disk stopped"))
+            #expect(state.callCapture == .failed("access lost"))
+        } else {
+            #expect(state.callTrack == .failed("disk stopped"))
+            #expect(state.microphoneCapture == .failed("access lost"))
+        }
+        await end(rig)
+    }
+
+    @Test(arguments: [SessionSide.microphone, SessionSide.call])
+    func bringUpAccessLossKeepsTheOtherSide(_ side: SessionSide) async throws {
+
+        let rig = Rig(held: ["folder.create"])
+        rig.session.send(.begin(liveText: true))
+        await rig.output.waitUntilHeld("folder.create")
+        rig.session.send(.accessChanged(side, available: false))
+        await rig.output.release("folder.create")
+        let state = await rig.waitFor { $0.phase == .recording }
+        let piece = side == .microphone ? "microphone access" : "call access"
+        #expect(state.failures.contains(.init(piece: piece, message: "access lost")))
+        if side == .microphone {
+            #expect(state.microphoneCapture == .failed("access lost"))
+            #expect(state.callCapture == .up)
+            #expect(await rig.output.values().contains("call.audio"))
+        } else {
+            #expect(state.callCapture == .failed("access lost"))
+            #expect(state.microphoneCapture == .up)
+            #expect(await rig.output.values().contains("microphone.audio"))
+        }
         await end(rig)
     }
 
@@ -259,44 +317,102 @@ struct SessionTests {
         let rig = Rig()
         rig.session.send(.begin(liveText: true))
         _ = await rig.waitFor { $0.phase == .recording }
-        rig.events.send(.pieceFailed(.capture(.microphone), error: "microphone stopped"))
-        rig.events.send(.pieceFailed(.capture(.call), error: "call stopped"))
+        rig.session.send(.pieceFailed(.capture(.microphone), error: "microphone stopped"))
+        rig.session.send(.pieceFailed(.capture(.call), error: "call stopped"))
         let state = await rig.waitFor { $0.cannotRecord != nil }
         #expect(state.cannotRecord == "no track can record")
         #expect(state.microphoneCapture == .failed("microphone stopped"))
         #expect(state.callCapture == .failed("call stopped"))
+        #expect(state.failures == [
+            .init(piece: "microphone capture", message: "microphone stopped"),
+            .init(piece: "call capture", message: "call stopped")
+        ])
         await end(rig)
     }
 
-    @Test(arguments: [
-        SessionState.Piece.track(.call),
-        SessionState.Piece.capture(.call),
-        SessionState.Piece.callText,
-        SessionState.Piece.transcript
-    ])
-    func everyRuntimePieceFailureIsNamed(_ piece: SessionState.Piece) {
+    @Test func lateCaptureSuccessDoesNotEraseRuntimeFailure() {
 
-        let recording = SessionState(
-            phase: .recording,
+        var state = SessionState(
+            phase: .bringingUp,
             microphoneTrack: .up,
             callTrack: .up,
-            microphoneCapture: .up,
-            callCapture: .up,
-            transcript: .up,
-            callText: .up
+            microphoneCapture: .starting,
+            callCapture: .starting
         )
-        let (state, effect) = SessionReducer.reduce(recording, .pieceFailed(piece, error: "stopped"))
-        #expect(effect == nil)
-        #expect(state.failures.count == 1)
-        switch piece {
-        case .track(.call): #expect(state.callTrack == .failed("stopped"))
-        case .capture(.call): #expect(state.callCapture == .failed("stopped"))
-        case .callText: #expect(state.callText == .failed("stopped"))
-        case .transcript: #expect(state.transcript == .failed("stopped"))
-        default: #expect(Bool(false))
+        (state, _) = SessionReducer.reduce(state, .pieceFailed(.capture(.microphone), error: "device stopped"))
+        (state, _) = SessionReducer.reduce(state, .captureFinished(.microphone, error: nil))
+        #expect(state.microphoneCapture == .failed("device stopped"))
+        #expect(state.failures == [SessionFailure(piece: "microphone capture", message: "device stopped")])
+    }
+
+    @Test func folderFailureWhileRecordingSaysCannotRecord() async throws {
+
+        let rig = Rig()
+        rig.session.send(.begin(liveText: true))
+        _ = await rig.waitFor { $0.phase == .recording }
+        rig.session.send(.pieceFailed(.folder, error: "folder stopped"))
+        let state = await rig.waitFor { $0.cannotRecord != nil }
+        #expect(state.cannotRecord == "folder: folder stopped")
+        #expect(state.folder == .failed("folder stopped"))
+        #expect(state.failures.contains(SessionFailure(piece: "folder", message: "folder stopped")))
+        await end(rig)
+    }
+
+    @Test func liveTextCompletionAfterEndIsIgnored() async throws {
+
+        let rig = Rig(held: ["callText.set(off)"])
+        rig.session.send(.begin(liveText: true))
+        _ = await rig.waitFor { $0.phase == .recording }
+        rig.session.send(.liveTextChanged(false))
+        await rig.output.waitUntilHeld("callText.set(off)")
+        rig.session.send(.end)
+        await rig.output.release("callText.set(off)")
+        let state = await rig.waitFor { $0.phase == .ended }
+        #expect(state.liveText == .gettingReady)
+        await rig.session.end()
+    }
+
+    @Test(arguments: [
+        "folder", "processes", "microphone.track", "call.track", "transcript",
+        "callText", "microphone.capture", "call.capture", "microphone.access", "call.access"
+    ])
+    func runtimeFailureMatrixRunsThroughSession(_ caseName: String) async throws {
+
+        let rig = Rig()
+        rig.session.send(.begin(liveText: true))
+        _ = await rig.waitFor { $0.phase == .recording }
+        let failure = runtimeFailure(for: caseName)
+        rig.session.send(failure.event)
+        let state = await rig.waitFor { $0.failures.contains(failure.expected) }
+        #expect(state.failures.contains(failure.expected))
+        #expect(state.failures.contains { $0.message == "runtime failed" || $0.message == "access lost" })
+        if caseName == "folder" {
+            #expect(state.cannotRecord == "folder: runtime failed")
+        } else if caseName.hasSuffix("access") {
+            if failure.side == .microphone {
+                #expect(state.microphoneCapture == .failed("access lost"))
+                #expect(state.callCapture == .up)
+            } else {
+                #expect(state.callCapture == .failed("access lost"))
+                #expect(state.microphoneCapture == .up)
+            }
+        } else {
+            #expect(state.phase == .recording)
+            #expect(state.failures.contains(failure.expected))
         }
-        #expect(state.phase == .recording)
-        #expect(state.microphoneTrack == .up)
+        let survivors = survivingSides(for: caseName)
+        if survivors.contains(.microphone) { await rig.microphoneCapture.sendAudio("after-\(caseName)") }
+        if survivors.contains(.call) {
+            if caseName != "callText" { await rig.callText.speak("after-\(caseName)") }
+            await rig.callCapture.sendAudio("after-\(caseName)")
+        }
+        let microphoneAudio = await rig.microphoneTrack.values()
+        let callAudio = await rig.callTrack.values()
+        #expect(microphoneAudio.first == "microphone-first")
+        #expect(callAudio.first == "call-first")
+        if survivors.contains(.microphone) { #expect(microphoneAudio.contains("after-\(caseName)")) }
+        if survivors.contains(.call) { #expect(callAudio.contains("after-\(caseName)")) }
+        await end(rig)
     }
 
     @Test func accessLossWinsOverLateCaptureStart() {
@@ -407,10 +523,90 @@ struct SessionTests {
         rig.session.send(.end)
         let state = await rig.waitFor { $0.phase == .ended }
         #expect(state.failures.contains { $0.message == "close failed" })
+        let output = await rig.output.values()
+        for label in [
+            "microphone.capture.stop", "call.capture.stop", "microphone.track.close",
+            "call.track.close", "callText.stop", "transcript.close"
+        ] {
+            #expect(output.contains(label))
+        }
         #expect(await rig.microphoneTrack.values() == ["microphone-first"])
         #expect(await rig.callTrack.values() == ["call-first"])
         #expect(await rig.transcript.values() == ["callText-first", "finishing text"])
         await rig.session.end()
+    }
+}
+
+private struct RuntimeFailure {
+
+    let event: SessionEvent
+    let expected: SessionFailure
+    let side: SessionSide?
+}
+
+private func bringUpFailurePiece(_ label: String) -> String {
+
+    switch label {
+    case "processes.select": "processes"
+    case "microphone.track.open": "microphone track"
+    case "call.track.open": "call track"
+    case "transcript.open": "transcript"
+    case "callText.start(on)": "call text"
+    case "microphone.capture.start": "microphone capture"
+    case "call.capture.start": "call capture"
+    default: fatalError("unknown bring-up failure \(label)")
+    }
+}
+
+private func survivingSides(for name: String) -> [SessionSide] {
+
+    switch name {
+    case "microphone.track", "microphone.capture", "microphone.access": [.call]
+    case "call.track", "call.capture", "call.access": [.microphone]
+    default: [.microphone, .call]
+    }
+}
+
+private func runtimeFailure(for name: String) -> RuntimeFailure {
+
+    switch name {
+    case "folder":
+        RuntimeFailure(event: .pieceFailed(.folder, error: "runtime failed"), expected: .init(piece: "folder", message: "runtime failed"), side: nil)
+    case "processes":
+        RuntimeFailure(event: .pieceFailed(.processes, error: "runtime failed"), expected: .init(piece: "processes", message: "runtime failed"), side: nil)
+    case "microphone.track":
+        RuntimeFailure(event: .pieceFailed(.track(.microphone), error: "runtime failed"), expected: .init(piece: "microphone track", message: "runtime failed"), side: nil)
+    case "call.track":
+        RuntimeFailure(event: .pieceFailed(.track(.call), error: "runtime failed"), expected: .init(piece: "call track", message: "runtime failed"), side: nil)
+    case "transcript":
+        RuntimeFailure(event: .pieceFailed(.transcript, error: "runtime failed"), expected: .init(piece: "transcript", message: "runtime failed"), side: nil)
+    case "callText":
+        RuntimeFailure(event: .pieceFailed(.callText, error: "runtime failed"), expected: .init(piece: "call text", message: "runtime failed"), side: nil)
+    case "microphone.capture":
+        RuntimeFailure(event: .pieceFailed(.capture(.microphone), error: "runtime failed"), expected: .init(piece: "microphone capture", message: "runtime failed"), side: nil)
+    case "call.capture":
+        RuntimeFailure(event: .pieceFailed(.capture(.call), error: "runtime failed"), expected: .init(piece: "call capture", message: "runtime failed"), side: nil)
+    case "microphone.access":
+        RuntimeFailure(event: .accessChanged(.microphone, available: false), expected: .init(piece: "microphone access", message: "access lost"), side: .microphone)
+    case "call.access":
+        RuntimeFailure(event: .accessChanged(.call, available: false), expected: .init(piece: "call access", message: "access lost"), side: .call)
+    default:
+        fatalError("unknown runtime failure \(name)")
+    }
+}
+
+private func endingOutput(for held: String) -> [String] {
+
+    switch held {
+    case "folder.create": ["folder.create"]
+    case "processes.select": ["folder.create", "processes.select"]
+    case "microphone.track.open": ["folder.create", "processes.select", "microphone.track.open", "microphone.track.close"]
+    case "call.track.open": ["folder.create", "processes.select", "microphone.track.open", "call.track.open", "microphone.track.close", "call.track.close"]
+    case "transcript.open": ["folder.create", "processes.select", "microphone.track.open", "call.track.open", "transcript.open", "microphone.track.close", "call.track.close", "transcript.close"]
+    case "callText.start(on)": ["folder.create", "processes.select", "microphone.track.open", "call.track.open", "transcript.open", "callText.start(on)", "call.text", "microphone.track.close", "call.track.close", "callText.stop", "callText.finalText", "transcript.close"]
+    case "microphone.capture.start": ["folder.create", "processes.select", "microphone.track.open", "call.track.open", "transcript.open", "callText.start(on)", "call.text", "microphone.capture.start", "microphone.audio", "microphone.capture.stop", "microphone.track.close", "call.track.close", "callText.stop", "callText.finalText", "transcript.close"]
+    case "call.capture.start": ["folder.create", "processes.select", "microphone.track.open", "call.track.open", "transcript.open", "callText.start(on)", "call.text", "microphone.capture.start", "microphone.audio", "call.capture.start", "call.audio", "microphone.capture.stop", "call.capture.stop", "microphone.track.close", "call.track.close", "callText.stop", "callText.finalText", "transcript.close"]
+    default: []
     }
 }
 
@@ -438,11 +634,11 @@ private struct Rig {
 
     let output: TestOutput
     let microphoneCapture: TestCapture
+    let callCapture: TestCapture
     let microphoneTrack: TestTrack
     let callTrack: TestTrack
     let callText: TestCallText
     let transcript: TestTranscript
-    let events: TestEvents
     let session: Session
 
     init(held: Set<String> = [], failing: Set<String> = [], selection: SessionProcessSelection = .only([4, 7])) {
@@ -458,15 +654,15 @@ private struct Rig {
         self.transcript = transcript
         microphoneCapture = TestCapture(name: "microphone", output: output, track: microphoneTrack)
         let callCapture = TestCapture(name: "call", output: output, track: callTrack)
+        self.callCapture = callCapture
         callText = TestCallText(output: output, transcript: transcript)
-        events = TestEvents()
         let handler = SessionEffectHandler(
             folder: folder, processes: processes,
             microphoneCapture: microphoneCapture, callCapture: callCapture,
             microphoneTrack: microphoneTrack, callTrack: callTrack,
             callText: callText, transcript: transcript
         )
-        session = Session(handler: handler, events: events)
+        session = Session(handler: handler)
     }
 
     func waitFor(_ matching: @escaping (SessionState) -> Bool) async -> SessionState {
@@ -477,20 +673,6 @@ private struct Rig {
             if matching(state) { return state }
         }
         return await session.snapshot()
-    }
-}
-
-private final class TestEvents: SessionEventSource, @unchecked Sendable {
-
-    let events: AsyncStream<SessionEvent>
-    private let continuation: AsyncStream<SessionEvent>.Continuation
-
-    init() {
-        (events, continuation) = AsyncStream.makeStream()
-    }
-
-    func send(_ event: SessionEvent) {
-        continuation.yield(event)
     }
 }
 

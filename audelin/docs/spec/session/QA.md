@@ -45,7 +45,8 @@ ended, what was kept stays, and no later piece comes up. Evidence:
 `folderFailureSaysCannotRecordAndWaitsForEnd`, `bothTrackFailuresSayCannotRecord`,
 `bothCaptureFailuresSayCannotRecord`,
 `runtimeTrackFailureAndAccessLossSaysCannotRecord`,
-`bothRuntimeCaptureFailuresSayCannotRecord`.
+`bothRuntimeCaptureFailuresSayCannotRecord`,
+`runtimeFailureMatrixRunsThroughSession`.
 
 ## S-6 Any other failure keeps the rest
 
@@ -56,7 +57,8 @@ audio and text already kept: the state names it and shows
 the rest recording; what it kept stays in the output, and audio and text
 sent after reach every other piece. Evidence:
 `eachOtherBringUpFailureKeepsAnotherTrack`, `lostAccessIsNamedWhileTheOtherSideRecords`,
-`runtimeFailureKeepsOtherSideAndNamesThePiece`.
+`runtimeFailureKeepsOtherSideAndNamesThePiece`,
+`bringUpAccessLossKeepsTheOtherSide`, `runtimeFailureMatrixRunsThroughSession`.
 
 ## S-7 Live text gets ready while the call records
 
