@@ -126,17 +126,4 @@ describe("a care visit upright", () => {
     expect({ visitor: visitorShown().id, hearts: heartsShown(), needs: needStates(), asked: needAsked() }).toEqual(before);
     expect([part(".stage").dataset.turnPart, part(".tray").dataset.turnPart]).toEqual(["care-stage", "care-tray"]);
   });
-
-  it("still asks to turn over the result", async () => {
-    openWindow(1180, 820);
-    const viewport = manualViewport("landscape");
-    const { user, clock } = openCareApp({ viewport, portraitLayouts: PORTRAIT_LAYOUTS });
-    await welcomeVisitor(user);
-    await playVisit(user, clock);
-    act(() => clock.settle());
-    expect(screen.getByLabelText("SCORE")).toBeTruthy();
-    openWindow(820, 1180);
-    act(() => viewport.resize("tall", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-  });
 });

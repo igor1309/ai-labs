@@ -2,14 +2,13 @@
 
 ## 2026-10-24
 
-- Acknowledged track audio stays unchanged through later writes, failures
-  and crashes (LAB-523).
+- Tracks keep mono audio on disk, append-only, read stretches while
+  recording, and keep every returned write after a failure, a crash or a
+  full disk (LAB-523).
 
-- Converted track writes retain their full duration after a later failure or
-  crash, with continuous audio across successive chunks (LAB-523).
-
-- Tracks keep mono audio on disk, read stretches while recording, and retain
-  completed writes after a crash or a full disk (LAB-523).
+- Audelin captures the processes it is told, or every process but those
+  left out, as mono audio at the device's rate, leaving playback unmuted
+  (LAB-471).
 
 - Recording keeps the latest Session's failure reason visible even when
   its end report arrives first (LAB-506).

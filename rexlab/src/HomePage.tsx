@@ -9,7 +9,7 @@ import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
 import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
-import { TILE_COLUMN, TILE_GAP, tileColumnWidth } from "./tileColumns.ts";
+import { NARROW_ROW_START, ROW_START, TILE_COLUMN, TILE_GAP, tileColumnWidth } from "./tileColumns.ts";
 import { useKeptRow, type LayoutKeeping } from "./useKeptRow.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
@@ -45,8 +45,10 @@ export type HomePageProps = {
   // The window, whose width the tiles' columns follow upright.
   viewport: WindowWidth;
   // Whether the window stands upright, where the tiles' columns narrow
-  // with its width.
+  // with its width, and whether it is narrow too, as an iPhone upright,
+  // where the page's sides are narrower.
   upright: boolean;
+  narrow?: boolean;
   // Where the page keeps where the tiles' row was swiped to, through each
   // change of its layout.
   layoutKeeping: LayoutKeeping;
@@ -101,6 +103,7 @@ export function HomePage({
   startTimer,
   viewport,
   upright,
+  narrow = false,
   layoutKeeping,
   featured,
   faceOff,
@@ -299,7 +302,8 @@ export function HomePage({
   const shown = HOME_GAMES.filter((game) => game !== featured);
   // The tiles and the games still to come, in columns of two.
   const columns = Math.ceil((shown.length + 1) / 2);
-  const column = upright ? tileColumnWidth(windowWidth, columns) : TILE_COLUMN;
+  const rowStart = narrow ? NARROW_ROW_START : ROW_START;
+  const column = upright ? tileColumnWidth(windowWidth, columns, rowStart) : TILE_COLUMN;
   const tilesRow = useKeptRow(layoutKeeping, { column, gap: TILE_GAP });
   const today = games[featured];
   const FeaturedSymbol = today.symbol;
@@ -319,7 +323,7 @@ export function HomePage({
         <span className="wordmark-mark" aria-hidden="true">
           <Footprints size={18} />
         </span>
-        {BRAND}
+        <span className="narrow-hidden">{BRAND}</span>
       </p>
       {/* The corner holds the museum, for the child, beside the menus for
           parents. An open menu's backdrop is stacked here too, over the
@@ -332,7 +336,7 @@ export function HomePage({
         {openMenu && <div className="menu-backdrop" onClick={() => setOpenMenu(undefined)} />}
         <Button className="card home-museum" onClick={onMuseum}>
           <Landmark size={24} aria-hidden="true" />
-          {text.museum}
+          <span className="narrow-hidden">{text.museum}</span>
         </Button>
         {/* The menus are for parents: small, in the soft ink and out of the
             way in the top-right corner, and only here, never during a round. */}
@@ -416,7 +420,7 @@ export function HomePage({
           ref={tilesRow.ref}
           className="games-tiles"
           data-turn-part="tiles"
-          style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns)}px` } as CSSProperties}
+          style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns, rowStart)}px` } as CSSProperties}
           onScroll={tilesRow.onScroll}
         >
           {shown.map((game) => tiles[game])}

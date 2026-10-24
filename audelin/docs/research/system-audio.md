@@ -13,8 +13,9 @@ AudioCap 6f609e8 (2025-08-07). This Mac runs macOS 26.6.2.
 | Core Audio process tap (`CATapDescription` → `AudioHardwareCreateProcessTap` → private aggregate device holding only the tap → IO proc), macOS 14.2+ | Amanu; Muesli by default; anarlog; Meetily as an option; AudioCap, the reference sample | "System Audio Recording Only", prompted the first time a tap is created; `NSAudioCaptureUsageDescription` in Info.plist |
 | ScreenCaptureKit `SCStream` with `capturesAudio` | MacParakeet; Muesli as fallback; Meetily by default | "Screen & System Audio Recording" |
 
-All of them put only the tap in the aggregate device. Meetily first added
-the output device as well and recorded the audio twice, as an echo.
+Amanu and Muesli put only the tap in the aggregate device; AudioCap adds
+the output device as its main sub-device. Meetily first added the output
+device as well and recorded the audio twice, as an echo.
 
 ## What decides between them
 

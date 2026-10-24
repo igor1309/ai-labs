@@ -2,6 +2,8 @@
 
 ## 2026-10-24
 
+- The home page stands upright on an iPhone instead of asking to turn: 20-pixel sides, RexLab and the museum as their symbols so the corner keeps one line, a smaller greeting and large card, and the tiles' row with the next column peeking in, every word fitting in English and Russian from 320 wide (LAB-520).
+- Care's result stands upright in a tall window instead of asking to turn: the visitor over the score and the hearts in one row, and NEW VISITOR, FRIENDS and HOME stacked across the width, every word fitting in English and Russian. Care now plays whole upright, and in a tall window no screen asks to turn any more (LAB-514).
 - Care's FRIENDS stands upright in a tall window instead of asking to turn: the cards two to a row under NEW VISITOR across the width, BACK and HOME as their symbols, and the nest and NEW VISITOR in the middle with no friends yet, every word fitting in English and Russian. The result still asks to turn (LAB-513).
 - A care visit stands upright in a tall window instead of asking to turn: the needs and hearts across the top under HOME as its symbol, the visitor on a tall stage, its name over the need's bubble, and the five items in one row under it, every name and word fitting in English and Russian; turning mid-visit keeps the visit. FRIENDS and the result still ask to turn (LAB-512).
 - Care's welcome stands upright in a tall window instead of asking to turn: NEW VISITOR over FRIENDS across the width, under a one-row bar with HOME as its symbol, every word fitting in English and Russian. A visit, FRIENDS and the result still ask to turn (LAB-511).

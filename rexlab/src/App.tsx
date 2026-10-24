@@ -654,6 +654,7 @@ export function App({
             startTimer={startTimer}
             viewport={viewport}
             upright={size === "tall" || size === "tall-narrow"}
+            narrow={size === "tall-narrow"}
             layoutKeeping={turns}
             featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}

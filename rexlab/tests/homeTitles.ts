@@ -89,19 +89,19 @@ export function gamesWidths(width: number) {
 
 // The width a title has in a card `cardWidth` wide: the card's width,
 // short of the sides of the card and the row, and of the row's other
-// parts and the gaps between them.
-export function roomFor(title: Element, cardWidth: (card: Element) => number) {
+// parts and the gaps between them, each part's style read by `styleOf`.
+export function roomFor(title: Element, cardWidth: (card: Element) => number, styleOf: (element: Element) => CSSStyleDeclaration = getComputedStyle) {
   const row = title.parentElement;
   const card = title.closest("button, .more-coming");
   if (!row || !card) throw new Error("A title outside the games");
   const others = [...row.children].filter((child) => child !== title);
   return (
     cardWidth(card) -
-    sidesOf(getComputedStyle(card)) -
-    sidesOf(getComputedStyle(row)) -
+    sidesOf(styleOf(card)) -
+    sidesOf(styleOf(row)) -
     // A symbol drawn straight into the row is as wide as it is drawn.
-    others.reduce((sum, other) => sum + (px(getComputedStyle(other).width) || px(other.getAttribute("width") ?? "")), 0) -
-    columnGapOf(getComputedStyle(row)) * others.length
+    others.reduce((sum, other) => sum + (px(styleOf(other).width) || px(other.getAttribute("width") ?? "")), 0) -
+    columnGapOf(styleOf(row)) * others.length
   );
 }
 

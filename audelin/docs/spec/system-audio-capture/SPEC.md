@@ -9,9 +9,9 @@ they play, through an interface it owns. An adapter over a Core Audio tap.
 - The client names the processes to hear, or those to leave out ("all but"
   also hears later ones); a tap takes both, and leaves playback unmuted
   (`CATapDescription`, Amanu `SystemAudioRecorder.swift:209-213`).
-- The tap's mono mix at the device's rate (anarlog, Meetily). The device
-  starts when told to: one started before Zoom's audio froze Zoom for 60 s
-  (Muesli #600).
+- The tap's mono mix at the device's rate, mixed by Core Audio: the
+  recognisers read mono. The device starts when told, auto-start off: it
+  waits for a tapped process to play, and hung Zoom 60 s (Muesli #600).
 - A tap delivers samples without a break, zeros while nothing plays, while
   the process is frozen and after it quits (measured on this Mac,
   [system-audio.md](../../research/system-audio.md#measured-on-this-mac)),
@@ -84,7 +84,7 @@ Feature: Hearing the processes a client names
   Scenario: S-15 A naming the system refuses keeps the old one
     Given a capture of the processes I named
     When the system refuses a new naming
-    Then I can still read what the first processes play
+    Then I can tell it was refused and still read what the first processes play
 
   Scenario: S-17 Sound is read without muting it
     Given a capture of the processes I named
@@ -92,6 +92,9 @@ Feature: Hearing the processes a client names
     Then I can read its sound without muting its playback
 ```
 
-S-3, S-4 and S-16 are retired: a tap leaves no gaps to time. Not
-capture's: choosing and listing processes, naming again, retrying, keeping echo cancellation
-(it kills a tap, MacParakeet) out of the process, the permission, the file.
+S-3, S-4 and S-16 are retired: a tap leaves no gaps. Not capture's:
+choosing and listing processes (call app processes, Core Audio processes);
+naming again, retries after a failure or sleep, and a watchdog for audio
+that stops (the client and root decorators); echo cancellation, which kills
+a tap (MacParakeet); the permission (setup); telling the user (the panel);
+the file (a decorator). It knows nothing of recognition.
