@@ -8025,15 +8025,15 @@ html[data-size="tall-narrow"] .dig-brush-option {
 html[data-size="tall-narrow"] .dig-field-guide-button {
   min-width: 52px;
   height: 52px;
-  padding: 0 10px;
-  gap: 8px;
+  padding: 0 6px;
+  gap: 4px;
   font-size: 18px;
 }
 
 html[data-size="tall-narrow"] .dig-chip {
-  padding: 0 10px;
+  padding: 0 8px;
   gap: 4px;
-  font-size: 16px;
+  font-size: 14px;
 }
 
 /* The question's names one over another, each a 52-pixel row of its
@@ -8164,10 +8164,15 @@ html[data-size="tall-narrow"] .dig-reward {
   gap: 12px;
 }
 
+/* DUG UP wraps: what its first row of the star, the words and the count
+   leaves no room for, NEW!, the trophy and the badge, goes to a second. */
 html[data-size="tall-narrow"] .dig-card {
-  height: 60px;
-  padding: 0 16px 0 8px;
-  gap: 10px;
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 60px;
+  padding: 8px 12px 8px 8px;
+  gap: 4px 8px;
+  border-radius: 30px;
   font-size: 18px;
 }
 
