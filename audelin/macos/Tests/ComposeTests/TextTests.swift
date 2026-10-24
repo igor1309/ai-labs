@@ -89,12 +89,77 @@ struct TextTests {
         }
     }
 
-    @Test func cancellingHearingEndsTheWaitAndListening() async throws {
+    @Test func switchingTextBackOnKeepsSettledWordsFromBeforeTheCancelledHearing() async throws {
+
+        let began = Signal()
+        let release = Signal()
+        let recognizer = ScriptRecognizer(hearings: [
+            .success(.init(words: [.init("earlier", start: 0, end: 1)], finalThrough: 1)),
+            .success(.init(words: [.init("later", start: 1, end: 2)], from: 1)),
+            .success(.init(words: [.init("revised", start: 1, end: 2)], from: 1)),
+        ], endings: [.success(.init(words: []))], blocked: began, release: release)
+        let microphone = TextAudio()
+        let other = TextAudio()
+        defer { microphone.end(); other.end(); release.end() }
+        let call = CallText(
+            microphone: Track(
+                audio: microphone,
+                written: TextTrack(chunks: [.init(start: 1, samples: [0.5], sampleRate: 1)]),
+                text: Compose.TrackText(recognizer: recognizer)
+            ),
+            call: Track(audio: other, written: TextTrack(chunks: []), text: Compose.TrackText(recognizer: ScriptRecognizer(
+                hearings: [], endings: [.success(.init(words: []))]
+            )))
+        )
+        await call.start()
+        var states = call.updates.makeAsyncIterator()
+        while let state = await states.next(), state.status != .listening {}
+        release.send()
+        await microphone.send(.init(start: 0, samples: [0.25], sampleRate: 1))
+        await began.next()
+        let before = await call.state
+        #expect(before.entries.map(\.text) == [.init(id: 0, start: 0, end: 1, settled: "earlier")])
+        let hearing = Task { await microphone.send(.init(start: 1, samples: [0.5], sampleRate: 1)) }
+        defer { hearing.cancel() }
+        await began.next()
+        await call.setEnabled(false)
+        await hearing.value
+        #expect(await call.state.entries == before.entries)
+        await call.setEnabled(true)
+        release.end()
+        while let state = await states.next() {
+            if state.status == .listening || state.status == .finished { break }
+        }
+        let resumed = await call.state
+        #expect(resumed.status == .listening)
+        #expect(resumed.entries.map(\.text) == [
+            .init(id: 0, start: 0, end: 2, settled: "earlier", pending: "revised"),
+        ])
+        await call.stop()
+    }
+
+    @Test func releasingAPreparedAdapterCompletesItsListeningWork() async throws {
+
+        let released = Signal()
+        let finishes = Values<Bool>()
+        weak var remaining: LifetimeRecognizer?
+        do {
+            let recognizer = LifetimeRecognizer(released: released, finishes: finishes)
+            remaining = recognizer
+            let adapter = Compose.TrackText(recognizer: recognizer)
+            try await adapter.prepare()
+        }
+        await released.next()
+        #expect(remaining == nil)
+        #expect(finishes.all == [true])
+    }
+
+    @Test func cancellingHearingEndsOnlyTheWait() async throws {
 
         let began = Signal()
         let release = Signal()
         let recognizer = ScriptRecognizer(
-            hearings: [], endings: [.success(.init(words: []))], blocked: began, release: release
+            hearings: [.success(.init(words: []))], endings: [.success(.init(words: []))], blocked: began, release: release
         )
         let adapter = Compose.TrackText(recognizer: recognizer)
         try await adapter.prepare()
@@ -104,6 +169,10 @@ struct TextTests {
         hearing.cancel()
         await #expect(throws: CancellationError.self) { try await hearing.value }
         #expect(await recognizer.chunks == [.init(samples: [0.25], sampleRate: 1)])
+        #expect(await recognizer.finishes == 0)
+        release.end()
+        #expect(try await adapter.finish() == [])
+        #expect(await recognizer.finishes == 1)
     }
 
     @Test func cancellingFinishCancelsTheRecognizersLastUpdate() async throws {
