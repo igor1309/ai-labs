@@ -3702,37 +3702,44 @@ html[data-size="tall-narrow"] .result-actions .home-button {
    upright screens, its bar keeps one row with HOME as its symbol, and NEW
    VISITOR stands over FRIENDS across the width, its words a size that fits
    in either language. */
-html[data-size="tall"] .care-welcome {
+html[data-size="tall"] .care-welcome,
+html[data-size="tall-narrow"] .care-welcome {
   padding-right: calc(32px + var(--screen-right));
   padding-left: calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .care-bar {
+html[data-size="tall"] .care-bar,
+html[data-size="tall-narrow"] .care-bar {
   gap: 16px;
 }
 
-html[data-size="tall"] .care-bar .home-button {
+html[data-size="tall"] .care-bar .home-button,
+html[data-size="tall-narrow"] .care-bar .home-button {
   width: 56px;
   padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .care-choices {
+html[data-size="tall"] .care-choices,
+html[data-size="tall-narrow"] .care-choices {
   flex-direction: column;
   gap: 24px;
 }
 
-html[data-size="tall"] .new-visitor-card {
+html[data-size="tall"] .new-visitor-card,
+html[data-size="tall-narrow"] .new-visitor-card {
   flex: 3 1 0;
   min-height: 0;
 }
 
-html[data-size="tall"] .friends-card {
+html[data-size="tall"] .friends-card,
+html[data-size="tall-narrow"] .friends-card {
   flex: 2 1 0;
   min-height: 0;
 }
 
-html[data-size="tall"] .new-visitor-title {
+html[data-size="tall"] .new-visitor-title,
+html[data-size="tall-narrow"] .new-visitor-title {
   font-size: 40px;
   white-space: nowrap;
 }
@@ -3742,51 +3749,60 @@ html[data-size="tall"] .new-visitor-title {
    the visitor larger and lower and the bubble under the name, and the
    five items share one row, their words a size that fits in either
    language. */
-html[data-size="tall"] .visit {
+html[data-size="tall"] .visit,
+html[data-size="tall-narrow"] .visit {
   padding-right: calc(32px + var(--screen-right));
   padding-left: calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .visit-bar .home-button {
+html[data-size="tall"] .visit-bar .home-button,
+html[data-size="tall-narrow"] .visit-bar .home-button {
   width: 56px;
   padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .visitor-name {
+html[data-size="tall"] .visitor-name,
+html[data-size="tall-narrow"] .visitor-name {
   left: 32px;
   top: 28px;
   font-size: 28px;
   white-space: nowrap;
 }
 
-html[data-size="tall"] .visitor {
+html[data-size="tall"] .visitor,
+html[data-size="tall-narrow"] .visitor {
   left: 8%;
   top: 30%;
   width: 84%;
   height: 62%;
 }
 
-html[data-size="tall"] .need-bubble {
+html[data-size="tall"] .need-bubble,
+html[data-size="tall-narrow"] .need-bubble {
   left: 55%;
   top: 14%;
 }
 
-html[data-size="tall"] .tray {
+html[data-size="tall"] .tray,
+html[data-size="tall-narrow"] .tray {
   gap: 10px;
 }
 
-html[data-size="tall"] .tray-item {
+html[data-size="tall"] .tray-item,
+html[data-size="tall-narrow"] .tray-item {
   min-width: 0;
   height: 150px;
   padding: 8px 4px 12px;
 }
 
-html[data-size="tall"] .tray-picture {
+html[data-size="tall"] .tray-picture,
+html[data-size="tall-narrow"] .tray-picture {
   height: 96px;
 }
 
-html[data-size="tall"] .tray-label {
+html[data-size="tall"] .tray-label,
+html[data-size="tall-narrow"] .tray-label {
   font-size: 14px;
   white-space: nowrap;
 }
@@ -4354,22 +4370,27 @@ html[data-size="tall"] .tray-label {
    visitor, fitted whole at its 4:3, at most 480 or as tall as the width
    allows, then the hearts in one row, and NEW VISITOR, FRIENDS and HOME
    stacked across the width. */
-html[data-size="tall"] .care-result .result-hero {
+html[data-size="tall"] .care-result .result-hero,
+html[data-size="tall-narrow"] .care-result .result-hero {
   max-height: min(480px, (100vw - 64px) * 3 / 4);
 }
 
-html[data-size="tall"] .care-result .result-hearts {
+html[data-size="tall"] .care-result .result-hearts,
+html[data-size="tall-narrow"] .care-result .result-hearts {
   flex-wrap: nowrap;
 }
 
-html[data-size="tall"] .care-result .result-actions {
+html[data-size="tall"] .care-result .result-actions,
+html[data-size="tall-narrow"] .care-result .result-actions {
   align-self: stretch;
   padding-top: 0;
   flex-direction: column;
 }
 
 html[data-size="tall"] .care-result .play-again-button,
-html[data-size="tall"] .care-result .result-actions .home-button {
+html[data-size="tall-narrow"] .care-result .play-again-button,
+html[data-size="tall"] .care-result .result-actions .home-button,
+html[data-size="tall-narrow"] .care-result .result-actions .home-button {
   justify-content: center;
 }
 
@@ -4537,34 +4558,311 @@ html[data-size="tall"] .care-result .result-actions .home-button {
 /* Upright, the friends take the narrower side padding, BACK and HOME
    are their symbols, NEW VISITOR takes its own row across the width
    under the bar, and the cards stand two to a row. */
-html[data-size="tall"] .friends {
+html[data-size="tall"] .friends,
+html[data-size="tall-narrow"] .friends {
   padding-right: calc(32px + var(--screen-right));
   padding-left: calc(32px + var(--screen-left));
 }
 
-html[data-size="tall"] .friends-bar {
+html[data-size="tall"] .friends-bar,
+html[data-size="tall-narrow"] .friends-bar {
   flex-wrap: wrap;
   row-gap: 20px;
 }
 
-html[data-size="tall"] .friends-bar .home-button {
+html[data-size="tall"] .friends-bar .home-button,
+html[data-size="tall-narrow"] .friends-bar .home-button {
   width: 56px;
   padding: 0;
   justify-content: center;
 }
 
-html[data-size="tall"] .friends-bar .friends-title {
+html[data-size="tall"] .friends-bar .friends-title,
+html[data-size="tall-narrow"] .friends-bar .friends-title {
   padding-left: 0;
   font-size: 34px;
 }
 
-html[data-size="tall"] .friends-bar .new-visitor-button {
+html[data-size="tall"] .friends-bar .new-visitor-button,
+html[data-size="tall-narrow"] .friends-bar .new-visitor-button {
   flex-basis: 100%;
   justify-content: center;
 }
 
-html[data-size="tall"] .friends-grid {
+html[data-size="tall"] .friends-grid,
+html[data-size="tall-narrow"] .friends-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* On a phone care's screens take 24 pixels above, 32 below and 20 at the
+   sides, their parts 16 apart, HOME and BACK as 48-pixel symbols, the
+   titles at 24 pixels. */
+html[data-size="tall-narrow"] .care-welcome,
+html[data-size="tall-narrow"] .visit {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(32px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .friends {
+  padding:
+    calc(24px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    env(safe-area-inset-bottom)
+    calc(20px + var(--screen-left));
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .care-bar,
+html[data-size="tall-narrow"] .friends-bar,
+html[data-size="tall-narrow"] .visit-bar {
+  gap: 12px 8px;
+}
+
+html[data-size="tall-narrow"] .care-bar .home-button,
+html[data-size="tall-narrow"] .visit-bar .home-button,
+html[data-size="tall-narrow"] .friends-bar .home-button {
+  width: 48px;
+}
+
+html[data-size="tall-narrow"] .care-title,
+html[data-size="tall-narrow"] .friends-bar .friends-title {
+  gap: 8px;
+  font-size: 24px;
+}
+
+/* The bars' titles are their words alone, beside HOME, BACK and the
+   best score. */
+html[data-size="tall-narrow"] .care-bar .care-mark,
+html[data-size="tall-narrow"] .friends-bar .friends-mark {
+  display: none;
+}
+
+html[data-size="tall-narrow"] .care-best,
+html[data-size="tall-narrow"] .friend-count {
+  padding: 0 10px;
+  gap: 6px;
+  font-size: 16px;
+}
+
+/* FRIENDS' bar keeps BACK, HOME and the count of friends on its first
+   row: its title stays for screen readers alone. */
+html[data-size="tall-narrow"] .friends-bar .friends-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* With no friends yet, the nest as wide as the screen, its words and
+   NEW VISITOR smaller. */
+html[data-size="tall-narrow"] .no-friends {
+  gap: 20px;
+}
+
+html[data-size="tall-narrow"] .no-friends-picture {
+  width: 100%;
+  height: min(200px, 28vh);
+  height: min(200px, 28dvh);
+}
+
+html[data-size="tall-narrow"] .no-friends-bubble {
+  width: 88px;
+  height: 88px;
+}
+
+html[data-size="tall-narrow"] .no-friends-text {
+  font-size: 24px;
+}
+
+html[data-size="tall-narrow"] .no-friends-button {
+  padding: 0 20px 0 16px;
+  font-size: 20px;
+}
+
+/* The welcome's NEW VISITOR over FRIENDS, their footers smaller. */
+html[data-size="tall-narrow"] .care-choices {
+  gap: 16px;
+}
+
+html[data-size="tall-narrow"] .new-visitor-card,
+html[data-size="tall-narrow"] .friends-card {
+  border-radius: 24px;
+}
+
+html[data-size="tall-narrow"] .knock-bubble {
+  width: 64px;
+  height: 64px;
+}
+
+html[data-size="tall-narrow"] .new-visitor-footer {
+  padding: 12px 16px 16px;
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .new-visitor-symbol {
+  width: 48px;
+  height: 48px;
+}
+
+html[data-size="tall-narrow"] .new-visitor-title {
+  font-size: 20px;
+}
+
+html[data-size="tall-narrow"] .friends-card {
+  padding: 16px;
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .friend-faces {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .friends-row {
+  gap: 8px;
+}
+
+html[data-size="tall-narrow"] .friends-symbol {
+  width: 40px;
+  height: 40px;
+}
+
+html[data-size="tall-narrow"] .friends-row .friends-title {
+  font-size: 20px;
+}
+
+/* A visit's bar puts HOME and the hearts on its first row and the needs
+   across the second; the visitor's name is smaller, and the five items
+   share one row as their pictures alone, their words kept for screen
+   readers. */
+html[data-size="tall-narrow"] .visit-bar {
+  flex-wrap: wrap;
+}
+
+html[data-size="tall-narrow"] .needs {
+  order: 1;
+  flex: 1 0 100%;
+  box-sizing: border-box;
+  padding: 4px;
+  justify-content: space-around;
+}
+
+html[data-size="tall-narrow"] .need {
+  width: 48px;
+  height: 48px;
+}
+
+html[data-size="tall-narrow"] .hearts-counter {
+  height: 48px;
+  padding: 0 14px 0 12px;
+  gap: 6px;
+  font-size: 20px;
+}
+
+/* The stage keeps at least 200 pixels for the visitor: a window too
+   short for that scrolls. */
+html[data-size="tall-narrow"] .visit {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+html[data-size="tall-narrow"] .stage {
+  flex: 1 0 200px;
+  border-radius: 24px;
+}
+
+html[data-size="tall-narrow"] .visitor-name {
+  left: 16px;
+  top: 14px;
+  font-size: 22px;
+}
+
+html[data-size="tall-narrow"] .tray {
+  gap: 6px;
+}
+
+html[data-size="tall-narrow"] .tray-item {
+  height: 72px;
+  padding: 6px 2px;
+  border-radius: 16px;
+}
+
+html[data-size="tall-narrow"] .tray-item[data-suggested]::after {
+  border-radius: 21px;
+}
+
+html[data-size="tall-narrow"] .tray-picture {
+  height: 100%;
+}
+
+html[data-size="tall-narrow"] .tray-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* FRIENDS keeps its cards two to a row, closer together. */
+html[data-size="tall-narrow"] .friends-grid {
+  gap: 12px;
+}
+
+html[data-size="tall-narrow"] .friend-art {
+  padding: 10px;
+}
+
+/* A name takes up to three lines of 14-pixel type, so the longest fits
+   a card half the narrowest phone's width. */
+html[data-size="tall-narrow"] .friend-footer {
+  height: 76px;
+  padding: 10px 12px 12px;
+  gap: 6px;
+}
+
+html[data-size="tall-narrow"] .friend-name {
+  font-size: 14px;
+  line-height: 18px;
+}
+
+/* A care result's visitor as wide as the column, its eight hearts at 28
+   on one row, and its three ways one over another. */
+html[data-size="tall-narrow"] .care-result .result-hero {
+  max-height: min(480px, (100vw - 40px) * 3 / 4);
+}
+
+html[data-size="tall-narrow"] .result-hearts {
+  gap: 4px;
+}
+
+html[data-size="tall-narrow"] .result-heart svg {
+  width: 28px;
+  height: 28px;
+}
+
+html[data-size="tall-narrow"] .friend-chip {
+  height: 44px;
+  padding: 0 16px;
+  font-size: 18px;
+}
+
+html[data-size="tall-narrow"] .care-result .result-actions {
+  gap: 10px;
+}
+
+html[data-size="tall-narrow"] .care-result .play-again-button,
+html[data-size="tall-narrow"] .care-result .result-actions .home-button {
+  height: 64px;
+  padding: 0 16px;
+  font-size: 20px;
 }
 
 /* The sorting board: the prompt, a tray of six to ten cards and the two or

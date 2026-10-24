@@ -5,8 +5,7 @@ Feature: Care: the result in a tall window
   FRIEND!", the friend and best score chips, and NEW VISITOR, FRIENDS
   and HOME stacked across the width. The rest is as
   dinosaur-care-result.feature tells. Care now plays whole upright in a
-  tall window. A tall-narrow window keeps the picture asking to turn or
-  widen (window-shape.feature).
+  tall window. A tall-narrow window has its own sizes.
 
   Scenario Outline: The result stands upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room

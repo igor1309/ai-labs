@@ -382,10 +382,11 @@ export function App({
     counting("dig")
   );
 
-  // In a tall window FRIENDS stands two cards to a row, four otherwise.
+  // Upright, tall or tall-narrow, FRIENDS stands two cards to a row, four
+  // otherwise.
   const care = useCareGame({ ...careProps, bodyPicture, random, startTimer }, home, counting("care"), {
     keeping: turns,
-    columns: () => (viewport.sizeClass() === "tall" ? 2 : 4)
+    columns: () => (viewport.sizeClass().startsWith("tall") ? 2 : 4)
   });
 
   // Each game's phase is its own: the gate and the turns read it as the
