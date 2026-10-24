@@ -7,7 +7,7 @@ import { CatalogueScreen, type CatalogueLayout } from "./CatalogueScreen.tsx";
 import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
 import { closingPicture, refitPicture, type PictureMotion } from "./closingPicture.ts";
 import { compareQuestionType, compareQuestionWidth, NARROW_QUESTION, PORTRAIT_QUESTION } from "./compareQuestionLayout.ts";
-import { compareResultType, compareResultWidth } from "./compareResultLayout.ts";
+import { compareResultType, compareResultWidth, NARROW_RESULT, PORTRAIT_RESULT } from "./compareResultLayout.ts";
 import digTile from "./assets/dig/tile.webp";
 import { DIG_REVEAL, useDigGame, type DigGameProps, type DigPhase } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
@@ -420,7 +420,7 @@ export function App({
   // And one size for the result's stars, level names and dinosaur.
   const resultWidth = useSyncExternalStore(viewport.subscribe, () => {
     const { left, right } = viewport.sideInsets();
-    return compareResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0);
+    return compareResultWidth(viewport.width(), left, right, viewport.scrollbarWidth?.() ?? 0, viewport.sizeClass() === "tall-narrow" ? NARROW_RESULT : PORTRAIT_RESULT);
   });
   // And one type for find the pair's welcome's title and level names.
   const welcomeWidth = useSyncExternalStore(viewport.subscribe, () => {
@@ -589,7 +589,7 @@ export function App({
   const content = () => {
     switch (screen.kind) {
       case "compare":
-        return quiz.content(language, compareQuestionType(questionWidth, size === "tall-narrow" ? NARROW_QUESTION : PORTRAIT_QUESTION), compareResultType(resultWidth));
+        return quiz.content(language, compareQuestionType(questionWidth, size === "tall-narrow" ? NARROW_QUESTION : PORTRAIT_QUESTION), compareResultType(resultWidth, size === "tall-narrow" ? NARROW_RESULT : PORTRAIT_RESULT));
       case "catalogue":
         return (
           <CatalogueScreen

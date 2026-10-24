@@ -13,7 +13,7 @@ Feature: Compare dinosaurs quiz: a question in a tall-narrow window
   tall window, from the width less the 20-pixel sides, so every prompt
   and name in either language fits from 320 wide. The marks, the values'
   chips, "VS" and "NEXT" keep their sizes; every tap is at least 44
-  pixels. The result still asks to turn or widen.
+  pixels.
 
   Scenario Outline: A question stands upright on a phone
     Given a window of <width> by <height> CSS pixels, with no safe areas
