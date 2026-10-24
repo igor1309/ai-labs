@@ -1,16 +1,9 @@
 import Foundation
 
-struct ConvertedAudio {
-
-    let samples: [Float]
-    let replacing: Int
-}
-
-/// Each result replaces the previous provisional tail and appends through the
-/// end of the supplied input, so no acknowledged duration remains buffered.
+/// Each result contains only this write's audio, drained through its end.
 protocol TrackFileConversion {
 
-    func convert(_ samples: [Float]) throws -> ConvertedAudio
+    func convert(_ samples: [Float]) throws -> [Float]
 }
 
 /// One mono recording. Its times are seconds from its first sample.
@@ -68,8 +61,8 @@ public actor TrackFile {
                 conversion = sampleRate == Self.sampleRate ? nil : try makeConversion(sampleRate)
                 inputRate = sampleRate
             }
-            let output = try conversion?.convert(samples) ?? ConvertedAudio(samples: samples, replacing: 0)
-            try append(output.samples, replacing: output.replacing)
+            let output = try conversion?.convert(samples) ?? samples
+            try append(output)
         } catch {
             conversion = nil
             endWriting()
@@ -122,14 +115,13 @@ public actor TrackFile {
         return Int64(value.rounded())
     }
 
-    private func append(_ samples: [Float], replacing: Int) throws {
+    private func append(_ samples: [Float]) throws {
 
         let pcm = samples.map { sample in
             Int16(max(-32_768, min(32_767, (Double(sample) * 32_768).rounded())))
         }
-        let start = frames - Int64(replacing)
-        try binding.write(pcm, at: start)
-        frames = start + Int64(pcm.count)
+        try binding.write(pcm, at: frames)
+        frames += Int64(pcm.count)
         for reader in readers.values { reader.yield(()) }
     }
 

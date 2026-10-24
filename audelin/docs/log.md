@@ -2,6 +2,9 @@
 
 ## 2026-10-24
 
+- Acknowledged track audio stays unchanged through later writes, failures
+  and crashes (LAB-523).
+
 - Converted track writes retain their full duration after a later failure or
   crash, with continuous audio across successive chunks (LAB-523).
 

@@ -47,25 +47,28 @@ struct TrackFileConversionTests {
             let url = folder.appendingPathComponent("track.caf")
             let track = try TrackFile(url: url)
             let input = (0..<Int((rate * 3).rounded())).map { Float(0.6 * sin(2 * .pi * 300 * Double($0) / rate)) }
-            let count = Int((Double(input.count) * 48_000 / rate).rounded())
-            let expected = (0..<count).map { Float(0.6 * sin(2 * .pi * 300 * Double($0) / 48_000)) }
             let sizes = [1, 31, 997, 4_096, 7, 8_191]
             var position = 0
             var chunk = 0
+            var expected: [Float] = []
+            var acknowledged = Data()
             while position < input.count {
                 let end = min(input.count, position + sizes[chunk % sizes.count])
-                try await track.write(Array(input[position..<end]), sampleRate: rate)
+                let samples = Array(input[position..<end])
+                expected += try referenceWrite(samples, preceding: Array(input[..<position]), rate: rate)
+                try await track.write(samples, sampleRate: rate)
+                let written = try await track.read(from: 0, to: Double(expected.count) / 48_000)
+                expectSamples(written, expected)
+                let bytes = try Data(contentsOf: url).dropFirst(68)
+                #expect(bytes.starts(with: acknowledged))
+                acknowledged = Data(bytes)
+                expectSamples(try externalSamples(url), expected)
                 position = end
                 chunk += 1
-                // Read before close: every returned write already has its full duration.
-                let frames = Int((Double(end) * 48_000 / rate).rounded())
-                let written = try await track.read(from: 0, to: Double(frames) / 48_000)
-                #expect(written.count == frames)
             }
             try await track.close()
-            let actual = try await track.read(from: 0, to: Double(count) / 48_000)
-            expectContinuousTone(actual, expected)
-            expectContinuousTone(try externalSamples(url), expected)
+            expectSamples(try await track.read(from: 0, to: Double(expected.count) / 48_000), expected)
+            expectSamples(try externalSamples(url), expected)
             try await expectAfinfo(url, frames: expected.count)
         }
     }
@@ -77,29 +80,23 @@ struct TrackFileConversionTests {
             let url = folder.appendingPathComponent("track.caf")
             let binding = try FailingBinding(url: url)
             let rig = try TrackRig(folder, binding: binding)
+            let expected = try referenceWrite(tone(1, rate: rate), preceding: [], rate: Double(rate))
             try await rig.track.write(tone(1, rate: rate), sampleRate: Double(rate))
+            expectSamples(try await rig.track.read(from: 0, to: 1), expected)
             try await withPendingRead(rig, from: 0.5, to: 2) { read in
                 binding.fail(.write)
                 await #expect(throws: BindingFailure.self) {
                     try await rig.track.write(tone(2, rate: rate), sampleRate: Double(rate))
                 }
                 let tail = try await read.value
-                #expect(tail.count == 24_000)
+                expectSamples(tail, Array(expected.suffix(24_000)))
             }
             try await rig.track.close()
-            expectConvertedTone(try await rig.track.read(from: 0, to: 1), number: 1)
-            try await expectPlayable(url, tones: 1, converted: true)
+            expectSamples(try await rig.track.read(from: 0, to: 1), expected)
+            expectSamples(try externalSamples(url), expected)
+            try await expectAfinfo(url, frames: expected.count)
         }
     }
-}
-
-func expectContinuousTone(_ actual: [Float], _ expected: [Float], sourceLocation: SourceLocation = #_sourceLocation) {
-
-    #expect(actual.count == expected.count, sourceLocation: sourceLocation)
-    let errors = zip(actual.dropFirst(256).dropLast(256), expected.dropFirst(256).dropLast(256))
-        .map { abs($0 - $1) }
-    let error = errors.max() ?? 0
-    #expect(error < 0.005, "continuous tone error: \(error), frame: \(256 + (errors.firstIndex(of: error) ?? 0))", sourceLocation: sourceLocation)
 }
 
 private struct ConversionFailure: Error {}
@@ -108,10 +105,10 @@ private final class FailingConversion: TrackFileConversion {
 
     private var written = false
 
-    func convert(_ samples: [Float]) throws -> ConvertedAudio {
+    func convert(_ samples: [Float]) throws -> [Float] {
 
         if written { throw ConversionFailure() }
         written = true
-        return ConvertedAudio(samples: tone(1), replacing: 0)
+        return tone(1)
     }
 }

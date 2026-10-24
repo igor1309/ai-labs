@@ -57,11 +57,11 @@ struct TrackFileTests {
             try await track.write(tone(1, rate: 24_000), sampleRate: 24_000)
             try await track.write(tone(2, rate: 44_100), sampleRate: 44_100)
             try await track.close()
-            for number in 1...2 {
-                let samples = try await track.read(from: Double(number - 1), to: Double(number))
-                expectConvertedTone(samples, number: number)
-            }
-            try await expectPlayable(url, tones: 2, converted: true)
+            let expected = try referenceWrite(tone(1, rate: 24_000), preceding: [], rate: 24_000)
+                + referenceWrite(tone(2, rate: 44_100), preceding: [], rate: 44_100)
+            expectSamples(try await track.read(from: 0, to: 2), expected)
+            expectSamples(try externalSamples(url), expected)
+            try await expectAfinfo(url, frames: expected.count)
         }
     }
 

@@ -33,7 +33,9 @@ A tone at 24 kHz, then one at 44.1 kHz, is written; each reads back at
 48 kHz with its duration kept and its frequency in place. Evidence:
 `otherRatesKeepDurationAndFrequency` and
 `successiveVariableChunksKeepDurationAndContinuousAudio`, which writes
-variable chunks at each converted rate and checks audio through their boundaries.
+variable chunks at each converted rate and checks every acknowledged frame
+against an independently drained conversion, including their ends, before
+the next write.
 
 ## S-5 A closed track plays
 
@@ -49,11 +51,13 @@ Evidence: `closingReleasesWaitingReadWithOnlyTheWrittenTail`.
 
 ## S-7 A track left open by a crash keeps its audio
 
-A helper process opens a track at native and converted rates, writes numbered tones, and reports each
-tone's number once its write returns; it is killed with SIGKILL without
-closing. The file plays and holds every reported tone, in order and
-intact, followed by none, part or all of the next tone, whose samples
-are that tone's. Evidence: `sigkillKeepsEveryAcknowledgedTone`.
+A helper process opens a track at native and converted rates, writes short and
+long numbered tone chunks, and reports each chunk's number once its write
+returns; it is killed with SIGKILL without closing. The file plays and
+holds every reported tone, in order and
+intact, followed by none, part or all of the next tone. Every frame, including
+each converted chunk's end, matches an independently drained conversion.
+Evidence: `sigkillKeepsEveryAcknowledgedTone`.
 
 ## S-8 A track that cannot be opened fails
 
@@ -74,11 +78,13 @@ read waiting past the end. The write fails, later writes are refused, the
 waiting read returns the written tail, every tone whose write returned
 reads back through the track at its place, and the file plays them in
 order and intact. Conversion failure and a later failed converted write also
-keep the full acknowledged duration; a partial replacement restores the
-acknowledged tail. Evidence: `diskFullEndsWritingAndPreservesAcknowledgedTones`,
+keep every acknowledged sample. Short and long converted chunks are checked
+in full against an independent conversion before another write and after a
+partial append fails, including when the write fault persists through retries.
+Evidence: `diskFullEndsWritingAndPreservesAcknowledgedTones`,
 `conversionFailureKeepsAcknowledgedAudioAndEndsWaitingReads`,
 `laterFailedWriteKeepsTheWholeConvertedSecond` and
-`partialConvertedReplacementRestoresAcknowledgedAudio`.
+`partialConvertedAppendKeepsAcknowledgedAudio`.
 
 ## S-11 A read that cannot be made fails
 
@@ -95,4 +101,7 @@ as a file left open. Evidence: `failedFinalLengthLeavesOpenFilePlayableAndEndsWa
 
 The disk-image harness is also cancelled immediately after mounting and
 during its body. Detach runs without cancellation and completes before the
-temporary folder is removed. Evidence: `cancellationAwaitsDetachBeforeRemovingFolder`.
+temporary folder is removed. A nonzero or throwing detach is reported as a
+failure and keeps the folder and its image. Evidence:
+`cancellationAwaitsDetachBeforeRemovingFolder` and
+`failedDetachReportsFailureAndKeepsImage`.

@@ -39,6 +39,33 @@ struct TrackFileDiskImageTests {
             commands.releaseDetach()
         }
     }
+
+    @Test(arguments: [false, true])
+    func failedDetachReportsFailureAndKeepsImage(throwing: Bool) async throws {
+
+        let commands = FailedDetachCommands(throwing: throwing)
+        do {
+            try await withTrackFolder { folder in
+                await commands.setFolder(folder)
+                try await withDiskImage(in: folder, run: { try await commands.run($0, $1) }) { _ in }
+            }
+            Issue.record("a failed detach must fail the harness")
+        } catch let failure as DiskImageDetachFailure {
+            switch failure {
+            case .nonzero(let result):
+                #expect(!throwing)
+                #expect(result.status == 17)
+                #expect(result.output == "volume is busy")
+            case .command(let error):
+                #expect(throwing)
+                #expect(error is DetachCommandFailure)
+            }
+        }
+        let folder = try #require(await commands.folder)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        #expect(try Data(contentsOf: folder.appendingPathComponent("small.dmg")) == Data("mounted image".utf8))
+        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("volume").path))
+    }
 }
 
 actor DiskImageCommands {
@@ -108,5 +135,34 @@ actor DiskImageCommands {
         event.yield(.cancellable)
         for await _ in wait.stream {}
         throw CancellationError()
+    }
+}
+
+private struct DetachCommandFailure: Error {}
+
+private actor FailedDetachCommands {
+
+    let throwing: Bool
+    private(set) var folder: URL?
+
+    init(throwing: Bool) { self.throwing = throwing }
+
+    func setFolder(_ folder: URL) { self.folder = folder }
+
+    func run(_ executable: String, _ arguments: [String]) throws -> CommandResult {
+
+        #expect(executable == "/usr/bin/hdiutil")
+        switch arguments.first {
+        case "create":
+            let folder = try #require(folder)
+            try Data("mounted image".utf8).write(to: folder.appendingPathComponent("small.dmg"))
+        case "attach": break
+        case "detach":
+            #expect(!Task.isCancelled)
+            if throwing { throw DetachCommandFailure() }
+            return CommandResult(status: 17, output: "volume is busy")
+        default: Issue.record("unexpected disk-image command")
+        }
+        return CommandResult(status: 0, output: "")
     }
 }

@@ -9,7 +9,10 @@ func withTrackFolder(_ body: (URL) async throws -> Void) async throws {
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("track-test-\(UUID())", isDirectory: true)
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
     do { try await body(folder) }
-    catch {
+    catch let error as DiskImageDetachFailure {
+        // The image may still be mounted, so its containing folder must survive.
+        throw error
+    } catch {
         do { try FileManager.default.removeItem(at: folder) }
         catch { Issue.record(error) }
         throw error
@@ -17,10 +20,10 @@ func withTrackFolder(_ body: (URL) async throws -> Void) async throws {
     try FileManager.default.removeItem(at: folder)
 }
 
-func tone(_ number: Int, rate: Int = 48_000) -> [Float] {
+func tone(_ number: Int, rate: Int = 48_000, frames: Int? = nil) -> [Float] {
 
     let step = 2 * Double.pi * Double(200 + number * 100) / Double(rate)
-    return (0..<rate).map { Float(0.6 * sin(step * Double($0))) }
+    return (0..<(frames ?? rate)).map { Float(0.6 * sin(step * Double($0))) }
 }
 
 func expectSamples(_ actual: [Float], _ expected: [Float], sourceLocation: SourceLocation = #_sourceLocation) {
@@ -28,16 +31,6 @@ func expectSamples(_ actual: [Float], _ expected: [Float], sourceLocation: Sourc
     #expect(actual.count == expected.count, sourceLocation: sourceLocation)
     let error = zip(actual, expected).map { abs($0 - $1) }.max() ?? 0
     #expect(error <= 1 / 32_768, "largest sample error: \(error)", sourceLocation: sourceLocation)
-}
-
-func expectConvertedTone(_ samples: [Float], number: Int, sourceLocation: SourceLocation = #_sourceLocation) {
-
-    #expect(samples.count == 48_000, sourceLocation: sourceLocation)
-    // Omit the filter's edge transients; the interior must retain phase and amplitude.
-    let interior = samples.dropFirst(256).dropLast(256)
-    let expected = tone(number).dropFirst(256).dropLast(256)
-    let error = zip(interior, expected).map { abs($0 - $1) }.max() ?? 0
-    #expect(error < 0.005, "converted tone error: \(error)", sourceLocation: sourceLocation)
 }
 
 func externalSamples(_ url: URL) throws -> [Float] {
@@ -51,7 +44,7 @@ func externalSamples(_ url: URL) throws -> [Float] {
     return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
 }
 
-func expectPlayable(_ url: URL, tones: Int, converted: Bool = false) async throws {
+func expectPlayable(_ url: URL, tones: Int) async throws {
 
     let samples = try externalSamples(url)
     #expect(samples.count == tones * 48_000)
@@ -60,8 +53,7 @@ func expectPlayable(_ url: URL, tones: Int, converted: Bool = false) async throw
         let end = min(number * 48_000, samples.count)
         guard start < end else { continue }
         let stretch = Array(samples[start..<end])
-        if converted { expectConvertedTone(stretch, number: number) }
-        else { expectSamples(stretch, tone(number)) }
+        expectSamples(stretch, tone(number))
     }
     try await expectAfinfo(url, frames: samples.count)
 }

@@ -91,6 +91,12 @@ func runCommand(_ executable: String, _ arguments: [String]) async throws -> Com
 
 typealias TrackCommandRunner = @Sendable (String, [String]) async throws -> CommandResult
 
+enum DiskImageDetachFailure: Error {
+
+    case nonzero(CommandResult)
+    case command(any Error)
+}
+
 func withDiskImage(
     in folder: URL, run: @escaping TrackCommandRunner = runCommand,
     _ body: (URL) async throws -> Void
@@ -121,8 +127,8 @@ func withDiskImage(
     }.value
     switch cleanup {
     case .success(let result):
-        #expect(result.status == 0, "detach failed: \(result.output)")
-    case .failure(let error): Issue.record(error)
+        guard result.status == 0 else { throw DiskImageDetachFailure.nonzero(result) }
+    case .failure(let error): throw DiskImageDetachFailure.command(error)
     }
     try outcome.get()
 }

@@ -6,14 +6,14 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct TrackFileFailureTests {
 
-    @Test(arguments: [48_000, 24_000, 44_100])
-    func sigkillKeepsEveryAcknowledgedTone(rate: Int) async throws {
+    @Test(arguments: [48_000, 24_000, 44_100], [31, 96_001])
+    func sigkillKeepsEveryAcknowledgedTone(rate: Int, chunkSize: Int) async throws {
 
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
             let executable = Bundle(for: TrackFileTestBundle.self).bundleURL
                 .deletingLastPathComponent().appendingPathComponent("TrackFileCrashWriter")
-            let command = try TrackCommand(executable.path, [url.path, String(rate)])
+            let command = try TrackCommand(executable.path, [url.path, String(rate), String(chunkSize)])
             do {
                 try await withTaskCancellationHandler {
                     var text = ""
@@ -32,17 +32,19 @@ struct TrackFileFailureTests {
                     command.kill()
                     #expect(await command.finish() == SIGKILL)
                     let samples = try externalSamples(url)
-                    try #require(samples.count >= reported.count * 48_000)
-                    #expect(samples.count <= (reported.count + 1) * 48_000)
-                    for number in reported {
-                        let stretch = Array(samples[((number - 1) * 48_000)..<(number * 48_000)])
-                        if rate == 48_000 { expectSamples(stretch, tone(number)) }
-                        else { expectConvertedTone(stretch, number: number) }
+                    var preceding: [Float] = []
+                    var expected: [Float] = []
+                    var acknowledgedCount = 0
+                    for number in 1...4 {
+                        let input = tone(number, rate: rate, frames: chunkSize)
+                        expected += rate == 48_000 ? input
+                            : try referenceWrite(input, preceding: preceding, rate: Double(rate))
+                        preceding += input
+                        if number == reported.count { acknowledgedCount = expected.count }
                     }
-                    let tail = Array(samples.dropFirst(3 * 48_000))
-                    let expected = Array(tone(4).prefix(tail.count))
-                    if rate == 48_000 { expectSamples(tail, expected) }
-                    else { expectContinuousTone(tail, expected) }
+                    try #require(samples.count >= acknowledgedCount)
+                    try #require(samples.count <= expected.count)
+                    expectSamples(samples, Array(expected.prefix(samples.count)))
                     #expect(try dataChunkLength(url) == -1)
                     try await expectAfinfo(url, frames: samples.count)
                 } onCancel: {

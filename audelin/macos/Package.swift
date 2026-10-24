@@ -145,7 +145,7 @@ let package = Package(
         ),
         .testTarget(
             name: "TrackFileTests",
-            dependencies: ["TrackFile", "TrackFileCrashWriter"]
+            dependencies: ["TrackFile", "TrackFileCrashWriter", "AudioConversion"]
         ),
         .testTarget(
             name: "TwoPassRecognizerTests",

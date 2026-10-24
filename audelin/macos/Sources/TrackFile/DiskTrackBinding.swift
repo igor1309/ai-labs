@@ -68,26 +68,9 @@ final class DiskTrackBinding: TrackFileBinding {
         var info = stat()
         guard fstat(descriptor, &info) == 0 else { throw currentError() }
         let originalEnd = info.st_size
-        var saved = Data(count: max(0, Int(min(originalEnd - offset, Int64(bytes.count)))))
-        try saved.withUnsafeMutableBytes { buffer in
-            var done = 0
-            while done < buffer.count {
-                let size = pread(descriptor, buffer.baseAddress!.advanced(by: done), buffer.count - done, offset + Int64(done))
-                if size < 0 {
-                    if errno == EINTR { continue }
-                    throw currentError()
-                }
-                guard size > 0 else { throw POSIXError(.EIO) }
-                done += size
-            }
-        }
         do { try writeAll(bytes, at: offset) }
         catch {
-            // Replacing a provisional filter tail must preserve the acknowledged
-            // audio too if the replacement or its following append fails.
-            let restored = Result { try writeAll(saved, at: offset) }
             guard ftruncate(descriptor, originalEnd) == 0 else { throw currentError() }
-            try restored.get()
             throw error
         }
     }
