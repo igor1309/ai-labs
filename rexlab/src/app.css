@@ -4019,6 +4019,29 @@ html[data-size="tall"] .tray-label {
   white-space: nowrap;
 }
 
+/* Upright, a care result stands in the result's centred column: the
+   visitor, fitted whole at its 4:3, at most 480 or as tall as the width
+   allows, then the hearts in one row, and NEW VISITOR, FRIENDS and HOME
+   stacked across the width. */
+html[data-size="tall"] .care-result .result-hero {
+  max-height: min(480px, (100vw - 64px) * 3 / 4);
+}
+
+html[data-size="tall"] .care-result .result-hearts {
+  flex-wrap: nowrap;
+}
+
+html[data-size="tall"] .care-result .result-actions {
+  align-self: stretch;
+  padding-top: 0;
+  flex-direction: column;
+}
+
+html[data-size="tall"] .care-result .play-again-button,
+html[data-size="tall"] .care-result .result-actions .home-button {
+  justify-content: center;
+}
+
 /* Friends: the bar stays at the top while the cards, four to a row,
    scroll under it, the first row rising in one after the other. */
 .friends {
