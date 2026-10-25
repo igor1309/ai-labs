@@ -152,15 +152,110 @@ steps:
 			if len(started) != 1 || started[0].id != record.ID || started[0].event.Step != "tests" || started[0].event.Workflow != "child" {
 				t.Fatalf("child starts %+v", started)
 			}
-			wantInputs := map[string]string{"brief": "brief from " + c.file, "revision": "commit-of-" + c.revision}
-			for name, inputs := range map[string][]runstore.Input{"child record": record.Children[0].Inputs, "child_started event": started[0].event.Inputs} {
-				gotInputs := make(map[string]string, len(inputs))
-				for _, input := range inputs {
-					gotInputs[input.Name] = input.Value
-				}
-				if len(inputs) != len(wantInputs) || !reflect.DeepEqual(gotInputs, wantInputs) {
+			brief := "brief from " + c.file
+			commit := "commit-of-" + c.revision
+			wantInputs := []any{
+				map[string]any{"name": "brief", "value": brief, "identity": identityOf(brief)},
+				map[string]any{"name": "revision", "value": commit, "identity": commit},
+			}
+			for name, inputs := range map[string]any{
+				"child record":        asJSON(t, record)["children"].([]any)[0].(map[string]any)["inputs"],
+				"child_started event": asJSON(t, started[0].event)["inputs"],
+			} {
+				if !reflect.DeepEqual(inputs, wantInputs) {
 					t.Errorf("%s inputs %+v, want %v", name, inputs, wantInputs)
 				}
+			}
+		})
+	}
+}
+
+// Integrates settings resolution, planning, workflow execution and recording.
+// Contract test: the runtime settings shipped in home.
+func TestComposedWorkflowItemsResolveInsideBranchArmsAndRepeatBodies(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name, parent string
+		files, steps []string
+	}{
+		{
+			name: "selected branch arm",
+			parent: `schema: agister.workflow/v1alpha1
+params: {mode: {default: selected}, path: {default: branch.md}}
+steps:
+ - name: choose
+   branch:
+    - name: skipped
+      if: {equals: [{from: params.mode}, skipped]}
+      workflow: child
+      inputs: {path: missing.md}
+      outputs: {value: {from: steps.skipped.outputs}}
+    - name: tests
+      if: {equals: [{from: params.mode}, selected]}
+      workflow: child
+      inputs: {path: {from: params.path}}
+      outputs: {value: {from: steps.tests.outputs}}
+    - name: fallback
+      process: say
+      agent: bash
+      inputs: {what: fallback}
+      outputs: {value: {from: steps.fallback.outputs.stdout.head}}
+outputs: {result: {from: steps.choose.outputs.value}}
+`,
+			files: []string{"branch.md"}, steps: []string{"tests/read_brief"},
+		},
+		{
+			name: "repeat body",
+			parent: `schema: agister.workflow/v1alpha1
+steps:
+ - name: rounds
+   repeat:
+    state: {path: first.md, value: ""}
+    steps:
+     - {name: tests, workflow: child, inputs: {path: {from: state.path}}}
+    next: {path: second.md, value: {from: steps.tests.outputs}}
+    until: {equals: [{from: state.value}, "brief from second.md\n"]}
+    max: 3
+outputs: {result: {from: steps.rounds.outputs.state.value}}
+`,
+			files: []string{"first.md", "second.md"}, steps: []string{"tests/read_brief/1", "tests/read_brief/2"},
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := newRunFixture(t, runSettings(t, map[string]string{
+				"/r/.agister/workflows/parent.yaml": c.parent,
+				"/r/.agister/workflows/child.yaml": `schema: agister.workflow/v1alpha1
+params: {path: {}}
+inputs: {brief: {source: file, path: {from: params.path}}}
+steps:
+ - {name: read_brief, process: say, agent: bash, inputs: {what: {from: inputs.brief}}}
+outputs: {output: {from: steps.read_brief.outputs.stdout.head}}
+`,
+			}), echoes)
+			f.sources.files = map[string]string{}
+			for _, file := range c.files {
+				f.sources.files["/r/"+file] = "brief from " + file
+			}
+			got := f.run(t, "/r", "run", "parent")
+			if got.code != 0 || got.stderr != "" {
+				t.Fatalf("run %+v", got)
+			}
+			record := f.store.last(t)
+			if len(record.Calls) != len(c.steps) {
+				t.Fatalf("calls %+v, want %v", record.Calls, c.steps)
+			}
+			for i, call := range record.Calls {
+				if call.Step != c.steps[i] || call.ID != record.ID+"/"+c.steps[i] {
+					t.Errorf("call %s at %s, want %s", call.Step, call.ID, c.steps[i])
+				}
+				if value := recordedInput(t, call, "what"); value != "brief from "+c.files[i] {
+					t.Errorf("%s input %q, want brief from %s", call.Step, value, c.files[i])
+				}
+			}
+			want := map[string]any{"result": "brief from " + c.files[len(c.files)-1] + "\n"}
+			if record.Status != "completed" || record.Result == nil || !reflect.DeepEqual(record.Result.Output, want) {
+				t.Errorf("record status %s, result %+v, want output %v", record.Status, record.Result, want)
 			}
 		})
 	}

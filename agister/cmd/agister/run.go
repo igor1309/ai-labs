@@ -1375,7 +1375,7 @@ func (b boundary) Resolve(ctx context.Context, given map[string]string) (workflo
 	if b.records != nil {
 		b.records.Resolved(givenInputs(b.declared.Inputs, resolved.Inputs))
 	}
-	return workflow.Boundary{Params: resolved.Params, Inputs: values(resolved.Inputs)}, nil
+	return workflow.Boundary{Params: resolved.Params, Inputs: workflowInputs(resolved.Inputs)}, nil
 }
 
 // givenInput is an input as it was resolved: its name, its value and its
@@ -1395,11 +1395,11 @@ func givenInputs(declared []inputs.Input, resolved map[string]inputs.Fixed) []gi
 	return given
 }
 
-// values is each input's value, by its name.
-func values(fixed map[string]inputs.Fixed) map[string]string {
-	mapped := map[string]string{}
+// workflowInputs carries each resolved value and identity into the workflow.
+func workflowInputs(fixed map[string]inputs.Fixed) map[string]workflow.Input {
+	mapped := map[string]workflow.Input{}
 	for name, f := range fixed {
-		mapped[name] = f.Value
+		mapped[name] = workflow.Input{Value: f.Value, Identity: f.Identity}
 	}
 	return mapped
 }

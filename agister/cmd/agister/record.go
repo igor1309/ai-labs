@@ -300,7 +300,7 @@ func (r *runRecord) Ended(step string, ended workflow.Ended) {
 		Duration: ended.Duration})
 }
 
-func (r *runRecord) ChildStarted(step, workflowName string, params, inputs map[string]string) {
+func (r *runRecord) ChildStarted(step, workflowName string, params map[string]string, inputs map[string]workflow.Input) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	keptInputs := childInputs(inputs)
@@ -372,11 +372,12 @@ func recordInputs(given []givenInput) []runstore.Input {
 	return kept
 }
 
-func childInputs(given map[string]string) []runstore.Input {
+func childInputs(given map[string]workflow.Input) []runstore.Input {
 	names := slices.Sorted(maps.Keys(given))
 	kept := make([]runstore.Input, 0, len(names))
 	for _, name := range names {
-		kept = append(kept, runstore.Input{Name: name, Value: given[name]})
+		input := given[name]
+		kept = append(kept, runstore.Input{Name: name, Value: input.Value, Identity: input.Identity})
 	}
 	return kept
 }
@@ -446,7 +447,7 @@ func (b bothEvents) Ended(step string, ended workflow.Ended) {
 	}
 }
 
-func (b bothEvents) ChildStarted(step, workflowName string, params, inputs map[string]string) {
+func (b bothEvents) ChildStarted(step, workflowName string, params map[string]string, inputs map[string]workflow.Input) {
 	for _, events := range b {
 		events.ChildStarted(step, workflowName, params, inputs)
 	}

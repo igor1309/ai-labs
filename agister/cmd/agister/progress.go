@@ -98,7 +98,7 @@ func (p *progress) Ended(step string, ended workflow.Ended) {
 	p.line(step, fmt.Sprintf("ended %s in %s", how, took(ended.Duration)))
 }
 
-func (p *progress) ChildStarted(string, string, map[string]string, map[string]string) {}
+func (p *progress) ChildStarted(string, string, map[string]string, map[string]workflow.Input) {}
 
 func (p *progress) ChildEnded(string, workflow.ChildEnd) {}
 

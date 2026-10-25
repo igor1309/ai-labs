@@ -52,7 +52,7 @@ func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 	s.told = append(s.told, fmt.Sprintf("%s ended %s %s in %v", step, ended.Status, ended.Class, ended.Duration))
 }
 
-func (s *eventsSpy) ChildStarted(step, name string, _ map[string]string, _ map[string]string) {
+func (s *eventsSpy) ChildStarted(step, name string, _ map[string]string, _ map[string]workflow.Input) {
 	s.told = append(s.told, step+" child "+name+" started")
 }
 
