@@ -563,7 +563,7 @@ enum StopNotification: CaseIterable, Sendable {
         }
     }
 
-    fileprivate var expectedReads: [NativeAddress] {
+    var expectedReads: [NativeAddress] {
 
         switch self {
         case .alive: [NativeAddress(selector)]
@@ -611,7 +611,7 @@ enum NativeTapFormat: CaseIterable, Sendable {
     }
 }
 
-private struct TapSnapshot: Sendable {
+struct TapSnapshot: Sendable {
 
     let uuid: UUID
     let processes: [UInt32]
@@ -633,7 +633,7 @@ private struct TapSnapshot: Sendable {
     }
 }
 
-private struct ListenerIdentity: Equatable, Sendable {
+struct ListenerIdentity: Equatable, Sendable {
 
     let selector: UInt32
     let scope: UInt32
@@ -654,7 +654,7 @@ private struct ListenerIdentity: Equatable, Sendable {
     }
 }
 
-fileprivate struct NativeAddress: Equatable, Sendable {
+struct NativeAddress: Equatable, Sendable {
 
     let selector: UInt32
     let scope: UInt32
@@ -676,7 +676,7 @@ fileprivate struct NativeAddress: Equatable, Sendable {
     }
 }
 
-private enum NativeResource: Equatable, Sendable {
+enum NativeResource: Equatable, Sendable {
 
     case tap(UInt32)
     case device(UInt32)
@@ -686,13 +686,13 @@ private enum NativeResource: Equatable, Sendable {
 }
 
 // The dictionary is an immutable snapshot of the native request.
-private struct AggregateSnapshot: @unchecked Sendable {
+struct AggregateSnapshot: @unchecked Sendable {
 
     let value: NSDictionary
 }
 
 // Retain the native block until removal so its recorded address cannot be reused.
-private struct ListenerRegistration: @unchecked Sendable {
+struct ListenerRegistration: @unchecked Sendable {
 
     let device: AudioObjectID
     let address: AudioObjectPropertyAddress
@@ -700,7 +700,7 @@ private struct ListenerRegistration: @unchecked Sendable {
     let block: @convention(block) (UInt32, UnsafePointer<AudioObjectPropertyAddress>) -> Void
 }
 
-private enum NativeThreadRole: String, Sendable {
+enum NativeThreadRole: String, Sendable {
 
     case io, event, caller
 
@@ -710,13 +710,13 @@ private enum NativeThreadRole: String, Sendable {
     }
 }
 
-private struct NativeCall: Equatable, Sendable {
+struct NativeCall: Equatable, Sendable {
 
     let name: String
     let role: NativeThreadRole
 }
 
-private final class RecordingCaptureCalls: Sendable {
+final class RecordingCaptureCalls: Sendable {
 
     struct State {
 
