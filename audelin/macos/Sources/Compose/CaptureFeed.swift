@@ -38,13 +38,18 @@ public final class CaptureFeed: LiveAudio, Sendable {
         executor: (any TaskExecutor)? = nil
     ) {
 
+        // Capture fans out without waiting; a stalled writer buffers in memory,
+        // just as the capture's input stream does.
         let captured = AsyncStream<Audio>.makeStream()
         let delivered = AsyncStream<Audio>.makeStream()
         audio = delivered.stream
         let position = Position()
         self.position = position
         let receiving = Task(executorPreference: executor) {
-            defer { captured.continuation.finish() }
+            defer {
+                captured.continuation.finish()
+                delivered.continuation.finish()
+            }
             await beforeInput()
             for try await piece in stream {
                 let piece = unpack(piece)
@@ -53,18 +58,17 @@ public final class CaptureFeed: LiveAudio, Sendable {
                     end = audio.end
                     return audio
                 }
+                delivered.continuation.yield(audio)
                 captured.continuation.yield(audio)
             }
         }
         self.receiving = receiving
         writing = Task(executorPreference: executor) {
-            defer { delivered.continuation.finish() }
             do {
                 for await audio in captured.stream {
                     try Task.checkCancellation()
                     try await beforeWrite(audio)
                     try await track.write(audio.samples, sampleRate: audio.sampleRate)
-                    delivered.continuation.yield(audio)
                 }
                 try await receiving.value
             } catch {
@@ -93,8 +97,8 @@ public final class CaptureFeed: LiveAudio, Sendable {
         }
     }
 
-    /// Joins writing and surfaces a stream or write failure. The listener
-    /// drains the successfully written prefix before its subscription ends.
+    /// Joins writing and surfaces a stream or write failure. Live delivery
+    /// ends with input, independently of pending writes.
     public func wait() async throws {
 
         try await withTaskCancellationHandler {
