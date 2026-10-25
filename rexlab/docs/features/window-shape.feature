@@ -13,7 +13,7 @@ Feature: The window's shape
   portrait:
     | class       | window                                   | for example        |
     | wide        | landscape, at least 600 CSS pixels tall  | iPad, Mac          |
-    | wide-short  | landscape, under 600 CSS pixels tall     | iPhone landscape   |
+    | wide-short  | landscape, under 600 CSS pixels tall and at least 568 wide | iPhone landscape |
     | tall        | portrait, at least 600 CSS pixels wide   | iPad portrait      |
     | tall-narrow | portrait, under 600 CSS pixels wide, or landscape under 568 wide | iPhone portrait, a small Mac window |
   Until a screen's own stage builds them, a wide-short window shows the

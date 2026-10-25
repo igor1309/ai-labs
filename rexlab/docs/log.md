@@ -2,7 +2,7 @@
 
 ## 2026-10-25
 
-- The home page fits an iPhone on its side instead of clipping: RexLab, the greeting and the parents' corner share one short bar, and the large card and two rows of tiles fill the height below it, every word fitting in English and Russian (LAB-533).
+- The home page fits an iPhone on its side instead of clipping: RexLab, the greeting and the parents' corner share one short bar, and the large card and two rows of tiles fill the height below it, every word fitting in English and Russian. A landscape window under 568 wide, narrower than any phone on its side, now shows every screen's upright phone layout (LAB-533).
 
 ## 2026-10-24
 
