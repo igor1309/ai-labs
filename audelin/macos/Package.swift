@@ -11,12 +11,14 @@ let package = Package(
         .library(name: "Compose", targets: ["Compose"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
+        .library(name: "LiveAudio", targets: ["LiveAudio"]),
         .library(name: "LiveText", targets: ["LiveText"]),
         .library(name: "Machine", targets: ["Machine"]),
         .library(name: "MicrophoneCapture", targets: ["MicrophoneCapture"]),
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
+        .library(name: "RecordedCapture", targets: ["RecordedCapture"]),
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Session", targets: ["Session"]),
@@ -43,7 +45,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["CallFolder", "CallAppProcesses", "Session", "CallText", "LiveText", "TrackFile", "TranscriptFile", "MicrophoneCapture", "SystemAudioCapture"]
+            dependencies: ["LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "Session", "CallText", "LiveText", "TrackFile", "TranscriptFile", "MicrophoneCapture", "SystemAudioCapture"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -51,6 +53,9 @@ let package = Package(
         .target(
             name: "GlassLedger",
             resources: [.copy("Resources/Fonts")]
+        ),
+        .target(
+            name: "LiveAudio"
         ),
         .target(
             name: "LiveText"
@@ -85,6 +90,9 @@ let package = Package(
                 "ModelLoading",
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ]
+        ),
+        .target(
+            name: "RecordedCapture"
         ),
         .target(
             name: "Recording",
@@ -141,6 +149,10 @@ let package = Package(
             dependencies: ["CoreAudioProcesses"]
         ),
         .testTarget(
+            name: "LiveAudioTests",
+            dependencies: ["LiveAudio"]
+        ),
+        .testTarget(
             name: "LiveTextTests",
             dependencies: ["LiveText"]
         ),
@@ -167,6 +179,10 @@ let package = Package(
         .testTarget(
             name: "ParakeetRecognizerTests",
             dependencies: ["ParakeetRecognizer"]
+        ),
+        .testTarget(
+            name: "RecordedCaptureTests",
+            dependencies: ["RecordedCapture"]
         ),
         .testTarget(
             name: "RecordingTests",

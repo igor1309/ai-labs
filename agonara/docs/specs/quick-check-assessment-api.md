@@ -15,7 +15,7 @@ Define the public HTTP API for Agonara deterministic single-select Quick Check c
 
 ## Implementation status
 
-Implemented by [Quick Check Assessment HTTP API Implementation Plan](../plans/implemented/quick-check-assessment-api.md) and covered by [Quick-check HTTP API tests](../../tests/http-api.test.js).
+Implemented by [Quick Check Assessment HTTP API Implementation Plan](../plans/implemented/quick-check-assessment-api.md) and covered by [http-api-quick-check-curation.test.js](../../tests/http-api-quick-check-curation.test.js), [http-api-quick-check-delivery.test.js](../../tests/http-api-quick-check-delivery.test.js), [http-api-quick-check-attempts.test.js](../../tests/http-api-quick-check-attempts.test.js), [http-api-server.test.js](../../tests/http-api-server.test.js).
 
 ## Public interface
 

@@ -23,7 +23,7 @@ Implemented by [Accepted Checks and Assessment Criteria HTTP API Implementation 
 
 - HTTP route adapters and status mapping: [server.js](../../src/server.js)
 - Delegated assessment corpus command/query boundary: [corpus.js](../../src/corpus.js)
-- Focused HTTP route, session, CSRF, pagination, redaction, and out-of-scope coverage: [http-api.test.js](../../tests/http-api.test.js)
+- Focused HTTP route, session, CSRF, pagination, redaction, and out-of-scope coverage: [http-api-assessment-criteria.test.js](../../tests/http-api-assessment-criteria.test.js), [http-api-open-answer-checks.test.js](../../tests/http-api-open-answer-checks.test.js), [http-api-assessment-validation.test.js](../../tests/http-api-assessment-validation.test.js)
 - End-to-end executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
 
 The implemented API exposes the assessment criterion and open-answer check candidate lifecycle, acceptance/rejection commands, current accepted reads, and historical revision reads over the existing session, CSRF, envelope, pagination, and redaction conventions. It delegates policy to the implemented Corpus command/query boundary and preserves the slice boundary by excluding Admin UI, Curator UI, Student UI, CLI commands, Student Workspace attempts, scoring, feedback, LLM execution, and human review workflow.

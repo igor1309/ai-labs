@@ -23,7 +23,7 @@ Implemented by [Program Shell and Membership HTTP API Implementation Plan](../pl
 
 - HTTP route adapters, session/CSRF handling, pagination, response shaping, and status mapping: [server.js](../../src/server.js)
 - Delegated Program shell and membership command/query boundary: [program.js](../../src/program.js)
-- Focused HTTP route, session, CSRF, pagination, redaction, and out-of-scope coverage: [http-api.test.js](../../tests/http-api.test.js)
+- Focused HTTP route, session, CSRF, pagination, redaction, and out-of-scope coverage: [http-api-programs.test.js](../../tests/http-api-programs.test.js), [http-api-program-student-memberships.test.js](../../tests/http-api-program-student-memberships.test.js), [http-api-program-membership-control.test.js](../../tests/http-api-program-membership-control.test.js), [http-api-program-participation.test.js](../../tests/http-api-program-participation.test.js), [http-api-program-events.test.js](../../tests/http-api-program-events.test.js)
 - End-to-end executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
 
 The implemented API exposes Program shell list/create/detail routes, Student membership self-join/leave/rejoin routes, current-session membership reads, effective-participation reads, and scoped Program/Program Membership event reads over the existing Identity session, CSRF, envelope, pagination, and redaction conventions. It delegates policy to the implemented Program command/query boundary. This status note is scoped to the base Program shell and membership API slice; later invitation, participant-management, and recovery routes are owned by [Program Membership Invitations and Recovery](program-membership-invitations-and-recovery.md).

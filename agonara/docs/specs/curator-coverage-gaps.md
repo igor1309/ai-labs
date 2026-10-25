@@ -191,6 +191,6 @@ Runtime evidence:
 Verification evidence:
 
 - [Curator Workspace tests](../../tests/curator-workspace.test.js)
-- [HTTP API tests](../../tests/http-api.test.js)
+- [http-api-coverage-gaps.test.js](../../tests/http-api-coverage-gaps.test.js)
 - [Executable HTTP acceptance tests](../../tests/executable-acceptance.test.js)
 - [Coverage-gap browser tests](../../tests/curator-coverage-gaps.playwright.js)

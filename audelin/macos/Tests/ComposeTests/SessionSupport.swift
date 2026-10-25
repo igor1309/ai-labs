@@ -85,6 +85,7 @@ struct SessionRig: Sendable {
 
     let pieces: SessionPieces
     let session: Session
+    let subscription: Task<Void, Never>
     let microphone: CaptureScript<MicrophoneCapture.AudioPiece>
     let call: CaptureScript<SystemAudioCapture.AudioPiece>
     let mine: SessionRecognizer
@@ -94,7 +95,8 @@ struct SessionRig: Sendable {
     init(
         root: URL, microphoneFails: Bool, processesFail: Bool, hooks: SessionPieces.Hooks,
         stopFailure: SessionSide?, stopEndsStream: Bool, rates: [Double]?,
-        recognizers: (any Recognizer, any Recognizer)?
+        recognizers: (any Recognizer, any Recognizer)?,
+        beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in }
     ) {
 
         let firstSamples = rates.map { Array(repeating: Float(0), count: Int($0[0] / 100)) }
@@ -126,6 +128,7 @@ struct SessionRig: Sendable {
             microphoneRecognizer: recognizers?.0 ?? mine, callRecognizer: recognizers?.1 ?? theirs, hooks: hooks
         )
         session = Session(handler: pieces.handler())
+        subscription = subscribe(pieces, to: session, beforeForward: beforeForward)
     }
 
     func state(where matches: (SessionState) -> Bool) async throws -> SessionState {
@@ -142,6 +145,8 @@ struct SessionRig: Sendable {
         session.send(.end)
         _ = try? await state { $0.phase == .ended }
         await session.end()
+        subscription.cancel()
+        await subscription.value
         microphone.end()
         call.end()
     }
@@ -151,13 +156,15 @@ func withSessionRig(
     microphoneFails: Bool = false, processesFail: Bool = false, hooks: SessionPieces.Hooks = .init(),
     stopFailure: SessionSide? = nil, stopEndsStream: Bool = true, rates: [Double]? = nil,
     recognizers: (any Recognizer, any Recognizer)? = nil,
+    beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in },
     _ body: (SessionRig, URL) async throws -> Void
 ) async throws {
 
     try await withComposeFolder { root in
         let rig = SessionRig(
             root: root, microphoneFails: microphoneFails, processesFail: processesFail, hooks: hooks,
-            stopFailure: stopFailure, stopEndsStream: stopEndsStream, rates: rates, recognizers: recognizers
+            stopFailure: stopFailure, stopEndsStream: stopEndsStream, rates: rates, recognizers: recognizers,
+            beforeForward: beforeForward
         )
         do {
             try await body(rig, root.appendingPathComponent("1970.01.01-0000"))

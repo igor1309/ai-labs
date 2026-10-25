@@ -337,6 +337,6 @@ Verification evidence:
 - [Curator Workspace tests](../../tests/curator-workspace.test.js)
 - [Corpus tests](../../tests/corpus.test.js)
 - [Student Workspace tests](../../tests/student-workspace.test.js)
-- [HTTP API tests](../../tests/http-api.test.js) and [OpenAPI contract tests](../../tests/openapi-contract.test.js)
+- [http-api-lifecycle-status.test.js](../../tests/http-api-lifecycle-status.test.js), [http-api-corpus-sources.test.js](../../tests/http-api-corpus-sources.test.js), [http-api-corpus-accepted.test.js](../../tests/http-api-corpus-accepted.test.js), [http-api-assessment-criteria.test.js](../../tests/http-api-assessment-criteria.test.js), [http-api-open-answer-checks.test.js](../../tests/http-api-open-answer-checks.test.js), [http-api-quick-check-delivery.test.js](../../tests/http-api-quick-check-delivery.test.js), [http-api-readiness-checks.test.js](../../tests/http-api-readiness-checks.test.js), [http-api-navigation.test.js](../../tests/http-api-navigation.test.js) and [OpenAPI contract tests](../../tests/openapi-contract.test.js)
 - [Quick Check lifecycle browser tests](../../tests/quick-check-product-ui.playwright.js)
 - [Navigation and source lifecycle browser tests](../../tests/topic-concept-material-navigation.playwright.js)

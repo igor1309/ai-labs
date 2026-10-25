@@ -24,7 +24,7 @@ Implemented by [Identity and Operations First-Slice Implementation Plan](../plan
 - HTTP route adapters, session-cookie handling, CSRF handling, rate limiting, status mapping, pagination, and redaction: [server.js](../../src/server.js)
 - Operator CLI bootstrap/status commands, stdin JSON handling, envelopes, and exit-code behavior: [cli.js](../../src/cli.js)
 - Delegated Identity command/query boundary: [identity.js](../../src/identity.js)
-- Focused HTTP API coverage for bootstrap, login, sessions, Admin routes, audit events, rate limiting, CSRF, cookies, and redaction: [http-api.test.js](../../tests/http-api.test.js)
+- Focused HTTP API coverage for bootstrap, login, sessions, Admin routes, audit events, rate limiting, CSRF, cookies, and redaction: [http-api-identity-session.test.js](../../tests/http-api-identity-session.test.js)
 - Focused CLI coverage for bootstrap status, bootstrap admin, stdin JSON, rejected output, usage errors, and secret-free arguments: [cli.test.js](../../tests/cli.test.js)
 - End-to-end executable acceptance coverage across CLI bootstrap, HTTP login/session/logout, Admin operations, CSRF, audit reads, last-Admin protection, rate limiting, and redaction: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
 

@@ -111,7 +111,7 @@ Expected files:
 - `agonara/tests/corpus.test.js`, `agonara/tests/corpus-executable-acceptance.test.js` — acceptance
   duplicate rejection with atomic rollback; `relationship_update` duplicate rejection; withdrawn
   tuple re-acceptance; reactivation collision rejection then success after withdrawal.
-- `agonara/tests/http-api.test.js`, `agonara/tests/executable-acceptance.test.js` — acceptance and
+- `agonara/tests/http-api-navigation.test.js`, `agonara/tests/executable-acceptance.test.js` — acceptance and
   reactivation routes surface `navigation_relationship_already_accepted` under curator + CSRF with
   no partial accepted corpus.
 - `agonara/tests/openapi-contract.test.js` — OpenAPI enumerates the new reason.
@@ -138,7 +138,7 @@ Targeted commands:
 
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "uniqueness storage" node --test --test-name-pattern "uniqueness|duplicate|backstop|already_accepted" agonara/tests/storage.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "uniqueness corpus domain" node --test --test-name-pattern "duplicate|already_accepted|reactivat|relationship_update" agonara/tests/corpus.test.js agonara/tests/corpus-executable-acceptance.test.js`
-- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "uniqueness http" node --test --test-name-pattern "duplicate|already_accepted|reactivat" agonara/tests/http-api.test.js agonara/tests/executable-acceptance.test.js agonara/tests/openapi-contract.test.js`
+- `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "uniqueness http" node --test --test-name-pattern "duplicate|already_accepted|reactivat" agonara/tests/http-api-navigation.test.js agonara/tests/executable-acceptance.test.js agonara/tests/openapi-contract.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "uniqueness backup restore" node --test --test-name-pattern "duplicate|uniqueness" agonara/tests/backup-restore.test.js`
 - `PATH="$HOME/.nvm/versions/node/v22.21.1/bin:$PATH" ./scripts/run_silent.sh "agonara tests" npm test --workspace agonara`
 - `./scripts/run_silent.sh "build" npx tsc --noEmit`

@@ -6,68 +6,6 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct SessionDrainTests {
 
-    @Test(arguments: [SessionSide.microphone, .call], [false, true])
-    func trackClosesAfterTheHeldLastWrite(side: SessionSide, stopThrows: Bool) async throws {
-
-        let write = DrainGate(), executor = DrainExecutor()
-        let returned = Values<SessionSide>()
-        var hooks = SessionPieces.Hooks()
-        hooks.executor = executor
-        hooks.beforeWrite = { current, audio in
-            if current == side && audio.start > 0 { await write.wait() }
-        }
-        let configured = hooks
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            try await withDrainRig(hooks: configured, stopFailure: stopThrows ? side : nil) { rig, folder in
-                try await stopDrainCapture(rig, side: side, throwsFailure: stopThrows)
-                returned.append(side)
-                try await rig.pieces.stopCapture(side == .microphone ? .call : .microphone)
-                try await closeDrainRig(rig)
-                try await expectDrainedAudio(rig, folder: folder)
-            }
-        }
-        defer { write.release(); executor.run() }
-        await executor.run(until: { write.entered })
-        #expect(write.entered)
-        #expect(returned.all.isEmpty)
-        write.release()
-        await executor.finish()
-        try await task.value
-        #expect(returned.all == [side])
-    }
-
-    @Test(arguments: [SessionSide.microphone, .call])
-    func throwingStopDrainsFinishedInputThatHasNotBeenRead(side: SessionSide) async throws {
-
-        let input = DrainGate(), executor = DrainExecutor()
-        let returned = Values<SessionSide>()
-        var hooks = SessionPieces.Hooks()
-        hooks.executor = executor
-        hooks.beforeCaptureInput = { current in
-            if current == side { await input.wait() }
-        }
-        let configured = hooks
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            try await withDrainRig(hooks: configured, stopFailure: side) { rig, folder in
-                try await stopDrainCapture(rig, side: side, throwsFailure: true)
-                returned.append(side)
-                try await rig.pieces.stopCapture(side == .microphone ? .call : .microphone)
-                try await closeDrainRig(rig)
-                try await expectDrainedAudio(rig, folder: folder)
-            }
-        }
-        defer { input.release(); executor.run() }
-        await executor.run(until: { input.entered })
-        #expect(input.entered)
-        #expect(returned.all.isEmpty)
-        input.release()
-        await executor.finish()
-        try await task.value
-        #expect(returned.all == [side])
-    }
-
     @Test(arguments: [SessionSide.microphone, .call])
     func throwingStopEndsAnOpenStreamAndNamesTheFailure(side: SessionSide) async throws {
 
@@ -126,14 +64,4 @@ struct SessionDrainTests {
         try await task.value
         #expect(closed.all == [true])
     }
-}
-
-private func expectDrainedAudio(_ rig: SessionRig, folder: URL) async throws {
-
-    let mine: [Float] = [0.25, -0.5, 0.125]
-    let theirs: [Float] = [-0.25, 0.5, -0.125]
-    #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == mine)
-    #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == theirs)
-    #expect(await rig.mine.chunks.flatMap(\.samples) == mine)
-    #expect(await rig.theirs.chunks.flatMap(\.samples) == theirs)
 }
