@@ -7,8 +7,11 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct TrackFilePositionedWriteTests {
 
-    @Test(arguments: [24_000, 44_100], [31, 96_001])
-    func partialConvertedAppendKeepsAcknowledgedAudio(rate: Int, chunkSize: Int) async throws {
+    @Test(arguments: [24_000, 44_100], [false, true])
+    func partialConvertedAppendKeepsAcknowledgedAudio(rate: Int, long: Bool) async throws {
+
+        // A long chunk is one frame past the second of input kept as filter context.
+        let chunkSize = long ? rate + 1 : 31
 
         for persistent in [false, true] {
             for prefix in [0, 1, 127, Int.max] {
