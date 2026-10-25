@@ -106,7 +106,7 @@ func withDiskImage(
     let mount = folder.appendingPathComponent("volume", isDirectory: true)
     try FileManager.default.createDirectory(at: mount, withIntermediateDirectories: false)
     let created = try await run("/usr/bin/hdiutil", [
-        "create", "-size", "16m", "-fs", "HFS+", "-type", "UDIF", "-volname", "TrackFileTest", "-o", image.path,
+        "create", "-size", "2m", "-fs", "HFS+", "-type", "UDIF", "-volname", "TrackFileTest", "-o", image.path,
     ])
     try #require(created.status == 0, "\(created.output)")
     let outcome: Result<Void, any Error>
