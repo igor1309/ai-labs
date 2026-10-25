@@ -62,9 +62,47 @@ function subjectClasses(selector: string) {
   return selector.slice(start).replace(/\([^)]*\)/g, "").replace(/\[[^\]]*\]/g, "").match(/\.[\w-]+/g)?.map((name) => name.slice(1)) ?? [];
 }
 
+// Attributes that name a card's dinosaur rather than shape it: no rule
+// selects by them, so cards that differ only in them style alike.
+const NAMING = new Set(["aria-label", "data-id", "data-turn-part", "style", "alt", "src"]);
+
+// An element's shape within its card: its tag, its attributes but those
+// naming the dinosaur, and its place among its siblings, from itself up
+// to the card, whose own place in the list no rule selects by. A part
+// shaped alike in another card of the same list takes
+// the same values.
+function shapeInCard(element: Element) {
+  const steps: string[] = [];
+  for (let at: Element | null = element; at; at = at.parentElement) {
+    const attributes = [...at.attributes].filter(({ name }) => !NAMING.has(name)).map(({ name, value }) => `${name}=${value}`).sort();
+    const card = at.classList.contains("catalogue-card");
+    steps.push(`${at.tagName}[${attributes.join(" ")}]#${card || !at.parentElement ? 0 : [...at.parentElement.children].indexOf(at)}`);
+    if (card) return steps.join("<");
+  }
+  return undefined;
+}
+
+// The values already worked out for each list, by shape, card width and
+// property; a list is new on each render, so none outlives its page.
+const worked = new WeakMap<Element, Map<string, string>>();
+
 // The value a property of `element` takes in a card `cardWidth` wide, the
 // card's container rules applied: jsdom applies none.
 export function inCard(element: Element, cardWidth: number, property: string) {
+  const shape = shapeInCard(element);
+  const list = element.closest(".catalogue-card")?.parentElement;
+  if (shape === undefined || !list) return cascadeInCard(element, cardWidth, property);
+  const values = worked.get(list) ?? new Map<string, string>();
+  worked.set(list, values);
+  const key = `${document.styleSheets.length} ${cardWidth} ${property} ${shape}`;
+  const known = values.get(key);
+  if (known !== undefined) return known;
+  const value = cascadeInCard(element, cardWidth, property);
+  values.set(key, value);
+  return value;
+}
+
+function cascadeInCard(element: Element, cardWidth: number, property: string) {
   let found: { value: string; specificity: Specificity } | undefined;
   for (const sheet of document.styleSheets) {
     for (const { selectors, value, most } of rulesSetting(sheet, property)) {
