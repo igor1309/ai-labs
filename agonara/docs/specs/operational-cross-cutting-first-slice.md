@@ -21,7 +21,7 @@ Implemented by [Identity and Operations First-Slice Implementation Plan](../plan
 
 - HTTP request correlation, health, diagnostics, fault response, completion logging, and redaction boundary: [server.js](../../src/server.js)
 - Backend-initiated backup/restore operational logging: [identity.js](../../src/identity.js)
-- Focused HTTP operational coverage for request IDs, health, diagnostics, fault redaction, completion logs, rejected logs, and sensitive-value redaction: [http-api.test.js](../../tests/http-api.test.js)
+- Focused HTTP operational coverage for request IDs, health, diagnostics, fault redaction, completion logs, rejected logs, and sensitive-value redaction: [http-api-logging.test.js](../../tests/http-api-logging.test.js), [http-api-server.test.js](../../tests/http-api-server.test.js), [http-api-assessment-validation.test.js](../../tests/http-api-assessment-validation.test.js)
 - Backup/restore operational log coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
 - CLI diagnostic redaction and usage-error coverage: [cli.test.js](../../tests/cli.test.js)
 - End-to-end acceptance coverage for Admin-only diagnostics and request correlation: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)

@@ -409,7 +409,7 @@ Verification evidence:
 - [Storage tests](../../tests/storage.test.js)
 - [Backup/restore tests](../../tests/backup-restore.test.js)
 - [Curator Workspace tests](../../tests/curator-workspace.test.js)
-- [HTTP API tests](../../tests/http-api.test.js)
+- [http-api-llm-suggestions.test.js](../../tests/http-api-llm-suggestions.test.js)
 - [Executable HTTP acceptance tests](../../tests/executable-acceptance.test.js)
 - [Suggestion browser tests](../../tests/llm-assisted-curation-suggestions.playwright.js)
 
