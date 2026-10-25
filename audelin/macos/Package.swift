@@ -17,6 +17,7 @@ let package = Package(
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
+        .library(name: "RecordedCapture", targets: ["RecordedCapture"]),
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Session", targets: ["Session"]),
@@ -85,6 +86,9 @@ let package = Package(
                 "ModelLoading",
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ]
+        ),
+        .target(
+            name: "RecordedCapture"
         ),
         .target(
             name: "Recording",
@@ -167,6 +171,10 @@ let package = Package(
         .testTarget(
             name: "ParakeetRecognizerTests",
             dependencies: ["ParakeetRecognizer"]
+        ),
+        .testTarget(
+            name: "RecordedCaptureTests",
+            dependencies: ["RecordedCapture"]
         ),
         .testTarget(
             name: "RecordingTests",

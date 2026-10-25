@@ -2,6 +2,9 @@
 
 ## 2026-10-25
 
+- Recorded capture keeps one capture’s audio on its track while feeding live
+  text independently, and reports capture and track failures (LAB-553a).
+
 - Live text receives captured audio without waiting for track writes (LAB-551).
 
 - System audio capture keeps delivering audio through running-0 notices
