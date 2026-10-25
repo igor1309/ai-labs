@@ -6,7 +6,7 @@ Feature: Find the pair's level offer on a phone on its side
     Given a <width> by <height> window on its side
     When the result offers the <level> level in <language>
     Then the question takes at most two lines
-    And YES and NOT NOW stand side by side, each at least 48 tall
+    And YES and NOT NOW stand side by side, each 52 tall
     And the whole offer fits the height
 
     Examples:

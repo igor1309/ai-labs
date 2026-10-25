@@ -81,10 +81,12 @@ describe("find the pair's level offer in a wide-short window", () => {
     for (const button of buttons) {
       const style = at(button);
       const symbol = at(button.querySelector("svg")!).px("width");
-      expect(style.px("height")).toBeGreaterThanOrEqual(48);
+      expect(style.px("height")).toBe(52);
       expect(style.px("padding-left") + symbol + style.columnGap() + ANSWER_EMS[button.textContent!]! * style.px("font-size") + style.px("padding-right")).toBeLessThanOrEqual(buttonWidth);
     }
-    const picture = at(dialog.querySelector(".pairs-offer-picture")!).px("height");
+    const pictureStyle = at(dialog.querySelector(".pairs-offer-picture")!);
+    expect([pictureStyle.px("width"), pictureStyle.px("height")]).toEqual([64, 64]);
+    const picture = pictureStyle.px("height");
     const cardHeight = card.px("padding-top") + picture + 2 * card.rowGap() + lines * font * Number(question.value("line-height")) + at(buttons[0]!).px("height") + card.px("padding-bottom");
     expect(cardHeight + 24).toBeLessThanOrEqual(height);
   });
