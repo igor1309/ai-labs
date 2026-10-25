@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
+import { twoLines } from "../src/DigBar.tsx";
 import { DigRevealScreen } from "../src/DigRevealScreen.tsx";
 import { STAR_LANDS } from "../src/digGame.tsx";
 import { TEXTS } from "../src/language/texts.ts";
@@ -62,7 +63,8 @@ function phoneScreen(selector: string, size: WindowSize) {
   expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
   const page = styleAt(part(selector), size);
   expect([page.px("padding-top"), page.px("padding-bottom"), page.px("padding-left"), page.px("padding-right"), page.rowGap()]).toEqual([24, 32, 20, 20, 16]);
-  expect(styleAt(part(".dig-bar"), size).columnGap()).toBe(8);
+  // The board's bar, one row of four parts, keeps 4 between them.
+  expect(styleAt(part(".dig-bar"), size).columnGap()).toBe(selector === ".dig-board-screen" ? 4 : 8);
   for (const button of all(".dig-bar .home-button")) {
     expect(styleAt(button, size).px("width")).toBe(48);
     expect(button.querySelector(".upright-hidden")?.textContent).toBe(button.textContent);
@@ -70,48 +72,65 @@ function phoneScreen(selector: string, size: WindowSize) {
 }
 
 describe("DIG upright on a phone", () => {
-  it.each(PHONES)("stands the board upright at %i by %i, its bar in two rows over the sand", (...size) => {
-    openDig(size);
+  it.each(PHONES.flatMap((size) => LANGUAGES.map((language) => [...size, language] as const)))("stands the board upright at %i by %i in %s, its bar one row over the sand", (width, height, language) => {
+    const size: WindowSize = [width, height];
+    openDig(size, { level: "paleontologist", language });
     phoneScreen(".dig-board-screen", size);
     const bar = styleAt(part(".dig-board-screen .dig-bar"), size);
-    expect([bar.value("flex-wrap"), bar.rowGap(), bar.value("justify-content")]).toEqual(["wrap", 12, "space-between"]);
-    // HOME and the title fill the first row, so the brush picker, the
-    // FIELD GUIDE and DUG UP go to the second, side by side on the
-    // narrowest phone with the bar's gap between each: the guide's count
-    // of three digits and DUG UP's two of them each side of its slash,
-    // digits at most Lexend's widest 0.68 em and the slash 0.4.
-    expect(styleAt(part(".dig-board-screen .dig-title"), size).value("flex-basis")).toBe("calc(100% - 56px)");
-    const picker = styleAt(part(".dig-brush-picker"), size);
-    const option = styleAt(part(".dig-brush-option"), size);
-    expect([picker.px("height"), option.px("width"), option.px("height")]).toEqual([52, 44, 44]);
-    const pickerWidth = 2 * picker.px("padding-left") + 2 * option.px("width") + picker.columnGap();
-    expect(pickerWidth).toBe(98);
+    expect([bar.value("flex-wrap"), bar.columnGap()]).toEqual(["nowrap", 4]);
+    // The picker's pair, DUG UP and the title's brush leave the bar; the
+    // brush menu takes the brush's place, after HOME.
+    for (const gone of [".dig-brush-picker", ".dig-chip", ".dig-board-screen .dig-mark"]) expect(styleAt(part(gone), size).value("display"), gone).toBe("none");
+    const menu = styleAt(part(".dig-brush-menu"), size);
+    expect([menu.value("display"), menu.value("order"), styleAt(part(".dig-bar .home-button"), size).value("order")]).toEqual(["block", "-1", "-2"]);
+    // HOME, the menu's button of the brush and the wide brush's dot, and
+    // the FIELD GUIDE with a count of three digits, each at most Lexend's
+    // widest 0.68 em, leave the title its room.
+    const button = styleAt(part(".dig-brush-menu .parent-menu-button"), size);
+    const face = styleAt(part(".dig-brush-menu .parent-menu-face"), size);
+    expect([button.px("height"), button.px("padding-left"), button.px("padding-right")]).toEqual([48, 8, 8]);
+    const menuWidth = 2 * 8 + 24 + face.columnGap() + 14;
     const guide = styleAt(part(".dig-field-guide-button"), size);
-    expect([guide.px("height"), guide.px("font-size")]).toEqual([52, 18]);
+    expect([guide.px("height"), guide.px("font-size")]).toEqual([48, 18]);
     const guideWidth = 2 * guide.px("padding-left") + 26 + guide.columnGap() + 3 * 0.68 * 18;
-    const chip = styleAt(part(".dig-chip"), size);
-    const chipWidth = 2 * chip.px("padding-left") + 20 + chip.columnGap() + (4 * 0.68 + 0.4) * chip.px("font-size");
-    expect(pickerWidth + guideWidth + chipWidth + 2 * bar.columnGap()).toBeLessThanOrEqual(size[0] - 40);
+    const room = width - 40 - 48 - menuWidth - guideWidth - 3 * bar.columnGap();
+    // Each title on its two lines at most, as large as its longer line
+    // lets it, at least 12 pixels.
+    const words = styleAt(part(".dig-board-screen .dig-title-words"), size);
+    expect([words.value("white-space"), words.value("font-size")]).toEqual(["normal", "min(28px, 46px / (var(--lines) * 1.05), 100cqi / (var(--line-letters) * 0.75))"]);
+    for (const title of [TEXTS[language].dig, TEXTS[language].whoIsIt]) {
+      const lines = twoLines(title);
+      const type = Math.min(28, 46 / (lines.length * 1.05), room / (Math.max(...lines.map((line) => line.length)) * 0.75));
+      expect(type, title).toBeGreaterThanOrEqual(12);
+      expect(lines.length * 1.05 * type).toBeLessThanOrEqual(48);
+    }
     expect(styleAt(board(), size).value("touch-action")).toBe("none");
   });
 
-  it.each(PHONES.flatMap((size) => (["explorer", "paleontologist"] as const).map((level) => [...size, level] as const)))("asks WHO IS IT? at %i by %i at %s, the names in rows under the sand", (width, height, level) => {
+  it.each(PHONES.flatMap((size) => (["explorer", "paleontologist"] as const).map((level) => [...size, level] as const)))("asks WHO IS IT? at %i by %i at %s, the dinosaurs two to a row under the sand", (width, height, level) => {
     const size: WindowSize = [width, height];
     openDig(size, { level });
     phoneScreen(".dig-board-screen", size);
     expect(styleAt(part(".dig-board-screen .dig-body[data-asks]"), size).value("flex-direction")).toBe("column");
     const cards = styleAt(part(".dig-choice-cards"), size);
-    expect([cards.value("flex-direction"), cards.rowGap()]).toEqual(["column", 8]);
+    expect([cards.value("display"), cards.value("grid-template-columns"), cards.columnGap(), cards.rowGap()]).toEqual(["grid", "repeat(2, minmax(0, 1fr))", 12, 12]);
     const count = level === "explorer" ? 3 : 4;
-    expect(all(".dig-choice-slot")).toHaveLength(count);
-    for (const slot of all(".dig-choice-slot")) expect(styleAt(slot, size).value("flex-basis")).toBe("52px");
-    // The sand keeps at least 160 pixels of width over the rows, under a
-    // bar of HOME's row and the 52 of the picker's.
-    const rows = count * 52 + (count - 1) * 8;
-    expect(styleAt(board(), size).value("width")).toBe(`min(100cqw, (100cqh - 16px - ${rows}px) * var(--frame-width) / var(--frame-height))`);
-    const home = styleAt(part(".dig-bar .home-button"), size).px("height");
-    const body = height - 24 - 32 - (home + 12 + 52) - 16;
-    expect(Math.min(width - 40, (body - 16 - rows) * 800 / 600)).toBeGreaterThanOrEqual(160);
+    const slots = all(".dig-choice-slot");
+    expect(slots).toHaveLength(count);
+    for (const slot of slots) expect(styleAt(slot, size).value("aspect-ratio")).toBe("10 / 9");
+    // Three put the third alone on its row, centred, as wide as the rest.
+    const last = styleAt(slots.at(-1)!, size);
+    const alone = [last.value("grid-column"), last.value("justify-self"), last.value("width")];
+    if (count === 3) expect(alone).toEqual(["1 / -1", "center", "calc(0.5 * (100% - 12px))"]);
+    else expect(alone[0]).not.toBe("1 / -1");
+    // The sand takes what two rows of cards leave, at least 160 wide,
+    // under the bar's one row of 48.
+    expect(styleAt(board(), size).value("width")).toBe("min(100cqw, (100cqh - 12px - ((100cqw - 12px) * 0.9 + 12px)) * var(--frame-width) / var(--frame-height))");
+    const column = width - 40;
+    const rows = (column - 12) * 0.9 + 12;
+    const body = height - 24 - 32 - 48 - 16;
+    expect(Math.min(column, (body - 12 - rows) * 800 / 600)).toBeGreaterThanOrEqual(160);
+    expect((column - 12) / 2).toBeGreaterThanOrEqual(134);
   });
 
   it.each(LANGUAGES)("keeps every %s name of the question on one line, at least 12 pixels, at 320 wide", (language) => {
@@ -123,11 +142,13 @@ describe("DIG upright on a phone", () => {
     for (const card of cards) {
       const name = card.querySelector<HTMLElement>(".dig-choice-name")!;
       const own = styleAt(name, size);
-      expect([own.value("white-space"), own.value("font-size")]).toEqual(["nowrap", "min(20px, calc((100cqi - 72px) / (var(--letters) * 0.75)))"]);
-      expect([styleAt(card, size).value("flex-direction"), styleAt(card.querySelector<HTMLElement>(".dig-choice-picture")!, size).px("width")]).toEqual(["row", 64]);
-      // The card's content: 280 less its 2 × 2 border and 2 × 10 padding.
+      expect([own.value("white-space"), own.value("font-size")]).toEqual(["nowrap", "min(16px, calc(100cqi / (var(--letters) * 0.75)))"]);
+      const style = styleAt(card, size);
+      expect([style.value("flex-direction"), style.px("padding-left"), style.px("padding-right")]).toEqual(["column", 2, 2]);
+      // The card's content: half of 280 less the 12 gap, less its 2 × 2
+      // border and 2 × 2 padding.
       const letters = Number(name.style.getPropertyValue("--letters"));
-      expect(Math.min(20, (256 - 72) / (letters * 0.75)), name.textContent ?? "").toBeGreaterThanOrEqual(12);
+      expect(Math.min(16, 126 / (letters * 0.75)), name.textContent ?? "").toBeGreaterThanOrEqual(12);
     }
   });
 

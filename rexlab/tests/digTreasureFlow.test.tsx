@@ -9,7 +9,7 @@ import { presentDigBoard } from "../src/presentation.ts";
 import { board, choiceCard, cleared, clearCells, drag, finishBoard, landTreasure, openDigApp, placeBoard, roundDinosaur } from "./digApp.tsx";
 import { badgeOf } from "./homePage.tsx";
 import { withPictures } from "./pictures.tsx";
-import { fakeBodyPicture, fakeTreasurePicture, homeTile, memoryStorage, SHIPPED_DIG, type MemoryStorage } from "./support.ts";
+import { fakeBodyPicture, fakeTreasurePicture, homeTile, manualTimers, memoryStorage, SHIPPED_DIG, type MemoryStorage } from "./support.ts";
 
 // Every test round, drawn at 0, hides a shell at the first place beside
 // its dinosaur.
@@ -337,7 +337,7 @@ it("opens the FIELD GUIDE through the board's hook", () => {
   const round = startRound(SHIPPED_DIG, [], undefined, () => 0, "explorer");
   render(<DigBoardScreen
     {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)} choiceCount={round.choices.length} language="en" level="explorer"
-    brush={BRUSH_SIZES.explorer} wide={false} onWide={() => {}} grains dugUp={0} total={SHIPPED_DIG.length} treasures={5} sandContext={() => null} onBrush={() => {}} onHome={() => {}} onFieldGuide={onFieldGuide}
+    brush={BRUSH_SIZES.explorer} wide={false} onWide={() => {}} menuTimer={manualTimers().startTimer} grains dugUp={0} total={SHIPPED_DIG.length} treasures={5} sandContext={() => null} onBrush={() => {}} onHome={() => {}} onFieldGuide={onFieldGuide}
   />, withPictures);
   fireEvent.click(fieldGuide());
   expect([fieldGuide().textContent, onFieldGuide.mock.calls.length]).toEqual(["5", 1]);

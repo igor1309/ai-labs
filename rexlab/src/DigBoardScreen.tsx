@@ -5,7 +5,7 @@ import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useGateShown } from "./OrientationGate.tsx";
-import { BrushPicker, DigBar, FieldGuideButton } from "./DigBar.tsx";
+import { BrushMenu, BrushPicker, DigBar, FieldGuideButton } from "./DigBar.tsx";
 import { Picture, PictureImage, usePicture, type PictureLook } from "./Picture.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 
@@ -108,6 +108,8 @@ export type DigBoardScreenProps = {
   onBrush: (mark: SandMark) => void;
   onPick?: (id: string) => void;
   onWide: (wide: boolean) => void;
+  // Times the phone's brush menu out as it closes.
+  menuTimer: StartTimer;
   onHome: () => void;
   onFieldGuide?: (() => void) | undefined;
 };
@@ -263,11 +265,13 @@ export function DigBoardScreen({
   onBrush,
   onPick,
   onWide,
+  menuTimer,
   onHome,
   onFieldGuide
 }: DigBoardScreenProps) {
   const gateShown = useGateShown();
   const text = TEXTS[language];
+  const [brushMenu, setBrushMenu] = useState(false);
   const chipStar = useRef<SVGSVGElement>(null);
   const [flight, setFlight] = useState<CSSProperties>({});
   const book = useRef<SVGSVGElement>(null);
@@ -467,6 +471,8 @@ export function DigBoardScreen({
       <div className="stratum stratum-1" aria-hidden="true" />
       <DigBar language={language} title={questionShown ? text.whoIsIt : text.dig} onHome={onHome}>
         <BrushPicker language={language} wide={wide} disabled={blown} onWide={onWide} />
+        <BrushMenu language={language} wide={wide} disabled={blown} open={brushMenu} onOpen={() => setBrushMenu(true)} onClose={() => setBrushMenu(false)}
+          onWide={onWide} startTimer={menuTimer} />
         <FieldGuideButton language={language} count={treasures} motion={grains} bookRef={book} onFieldGuide={onFieldGuide}
           landed={treasureFlight?.phase === "landed" ? (treasureFlight.fresh ? "new" : "again") : undefined} />
         {dugUp !== undefined && (

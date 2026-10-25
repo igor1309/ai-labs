@@ -7222,6 +7222,59 @@ html[data-size="tall-narrow"] .pairs-offer-answers button {
   background: #1d2742;
 }
 
+/* The phone's brush menu, shown only there: its button DIG's amber brush
+   with the picked brush's dot, half the picker's; its
+   menu hangs from the button's left edge. */
+.dig-brush-menu {
+  display: none;
+}
+
+.dig-brush-menu .parent-menu-button {
+  height: 48px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.dig-brush-menu .parent-menu-button[aria-expanded="true"] {
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.dig-brush-menu .parent-menu-face {
+  gap: 4px;
+}
+
+.dig-brush-menu .parent-menu-face .dig-brush-dot {
+  width: 7px;
+  height: 7px;
+  background: #1d2742;
+}
+
+.dig-brush-menu .parent-menu-face .dig-brush-dot[data-wide] {
+  width: 14px;
+  height: 14px;
+}
+
+.dig-brush-menu .parent-menu-list {
+  right: auto;
+  left: 0;
+  transform-origin: top left;
+}
+
+.dig-brush-menu .parent-menu-choice {
+  font-weight: 700;
+}
+
+.dig-brush-slot {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+
 /* The FIELD GUIDE's button beside DUG UP: the book and the count of
    treasures found, ringed in amber once one lands, with NEW! above it
    for the first of a kind. */
@@ -8407,34 +8460,47 @@ html[data-size="tall-narrow"] .dig-mark {
   height: 44px;
 }
 
-html[data-size="tall-narrow"] .dig-board-screen .dig-title-words {
-  font-size: min(28px, (100cqi - 52px) / (var(--letters) * 0.75));
+
+/* The board's bar is one row: HOME, the brush menu in the place of the
+   title's brush, the title and the FIELD GUIDE, each 48 tall. DUG UP's
+   count and the picker's pair of buttons leave it. */
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-picker,
+html[data-size="tall-narrow"] .dig-board-screen .dig-chip,
+html[data-size="tall-narrow"] .dig-board-screen .dig-mark {
+  display: none;
 }
 
-/* The board's bar takes two rows: HOME beside the title, then the brush
-   picker, the FIELD GUIDE and DUG UP across the width, each 52 tall. */
 html[data-size="tall-narrow"] .dig-board-screen .dig-bar {
-  flex-wrap: wrap;
-  justify-content: space-between;
+  column-gap: 4px;
 }
 
-html[data-size="tall-narrow"] .dig-board-screen .dig-title {
-  flex: 1 0 calc(100% - 56px);
+html[data-size="tall-narrow"] .dig-board-screen .home-button {
+  order: -2;
 }
 
-html[data-size="tall-narrow"] .dig-brush-picker {
-  height: 52px;
-  padding: 4px 3px;
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
+  padding: 0 8px;
 }
 
-html[data-size="tall-narrow"] .dig-brush-option {
-  width: 44px;
-  height: 44px;
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu {
+  position: relative;
+  z-index: 2;
+  order: -1;
+  flex-shrink: 0;
+  display: block;
+}
+
+/* The title takes two lines where it has two words or more, as large as
+   its longer line lets it, both lines inside the bar's 48. */
+html[data-size="tall-narrow"] .dig-board-screen .dig-title-words {
+  font-size: min(28px, 46px / (var(--lines) * 1.05), 100cqi / (var(--line-letters) * 0.75));
+  line-height: 1.05;
+  white-space: normal;
 }
 
 html[data-size="tall-narrow"] .dig-field-guide-button {
-  min-width: 52px;
-  height: 52px;
+  min-width: 48px;
+  height: 48px;
   padding: 0 6px;
   gap: 4px;
   font-size: 18px;
@@ -8446,50 +8512,44 @@ html[data-size="tall-narrow"] .dig-chip {
   font-size: 14px;
 }
 
-/* The question's names one over another, each a 52-pixel row of its
-   picture beside its name, which stays as large as the row allows; the
-   board takes what three or four rows leave. */
+/* The question's dinosaurs two to a row under the sand, each card a
+   little wider than tall, its picture over its name; three put the third
+   alone, centred, as wide as the others. The sand takes what the two
+   rows leave, the same from the round's start. */
 html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] {
-  gap: 16px;
+  gap: 12px;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] .dig-board {
-  width: min(100cqw, (100cqh - 16px - 172px) * var(--frame-width) / var(--frame-height));
-}
-
-html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks]:has(.dig-choice-slot:nth-child(4)) .dig-board {
-  width: min(100cqw, (100cqh - 16px - 232px) * var(--frame-width) / var(--frame-height));
+  width: min(100cqw, (100cqh - 12px - ((100cqw - 12px) * 0.9 + 12px)) * var(--frame-width) / var(--frame-height));
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-choice-cards {
   flex: 0 0 auto;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-choice-slot {
-  flex: 0 0 52px;
+  max-height: none;
+  aspect-ratio: 10 / 9;
+}
+
+html[data-size="tall-narrow"] .dig-board-screen .dig-choice-slot:nth-child(3):last-child {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: calc((100% - 12px) / 2);
 }
 
 html[data-size="tall-narrow"] .dig-choice-card {
-  padding: 4px 10px;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  border-radius: 16px;
+  padding: 8px 2px 10px;
+  border-radius: 18px;
 }
 
-html[data-size="tall-narrow"] .dig-choice-picture {
-  flex: 0 0 64px;
-  width: 64px;
-  height: 100%;
-}
-
+/* A name, on one line, as large as its card's width lets it, at most 16. */
 html[data-size="tall-narrow"] .dig-choice-name {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: min(20px, calc((100cqi - 72px) / (var(--letters) * 0.75)));
-  text-align: left;
+  font-size: min(16px, calc(100cqi / (var(--letters) * 0.75)));
 }
 
 html[data-size="tall-narrow"] .dig-empty-card {
@@ -10556,6 +10616,12 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   color: #1d2742;
 }
 
+[data-theme="dark"] .dig-brush-menu .parent-menu-button,
+[data-theme="dark"] .dig-brush-menu .parent-menu-button[aria-expanded="true"] {
+  background: #f2b24b;
+  color: #1d2742;
+}
+
 [data-theme="dark"] .dig-treasure-name {
   background: #f2b24b;
 }
@@ -10575,6 +10641,10 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 }
 
 [data-theme="dark"] .dig-brush-option[aria-pressed="true"] .dig-brush-dot {
+  background: #181e2e;
+}
+
+[data-theme="dark"] .dig-brush-menu .parent-menu-face .dig-brush-dot {
   background: #181e2e;
 }
 
