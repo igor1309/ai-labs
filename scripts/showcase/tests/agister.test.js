@@ -29,12 +29,15 @@ test('agister projection carries code and its inputs while excluding private tre
   ]);
   for (const path of ['architecture_test.go', 'home_test.go', 'cmd/agister/main.go', 'core/call/call_test.go',
     'e2e/e2e_test.go', 'core/call/call.feature', 'go.mod', 'go.sum', 'home/prompts/implement.md',
-    'home/agents/bash.toml', 'skills/agister/SKILL.md', 'scripts/check-public.sh']) {
+    'home/agents/bash.toml', 'skills/agister/SKILL.md', 'scripts/check-public.sh',
+    'docs/run-architecture/index.html', 'docs/settings-architecture/index.html']) {
     assert.equal(isIncluded(path, settings), true, path);
   }
   for (const path of ['archive/main.go', 'archive/go.mod', 'research/example.go', 'backlog/case.feature',
     '.agister/settings.go', 'docs/example.go', 'AGENTS.md', 'README.md', 'scripts/loop/install.sh',
-    'scripts/loop/example.go', 'install_test.go', 'showcase/showcase.toml', 'showcase/AGENTS.md']) {
+    'scripts/loop/example.go', 'install_test.go', 'showcase/showcase.toml', 'showcase/AGENTS.md',
+    'docs/adr/001-agister-architecture.md', 'docs/run-implementation.md', 'docs/settings-architecture/notes.md',
+    'docs/log.md', 'docs/architecture.pen', 'docs/example.feature']) {
     assert.equal(isIncluded(path, settings), false, path);
   }
   assert.equal(existsSync(join(root, 'agister/install_test.go')), true);
@@ -52,6 +55,31 @@ test('agister projection carries code and its inputs while excluding private tre
   }
   for (const path of ['README.md', 'AGENTS.md', 'docs/private.md', 'scripts/other.sh']) {
     assert.equal(included(path), false, path);
+  }
+});
+
+test('every relative link in an exported page or document names an exported file', () => {
+  const tracked = spawnSync('git', ['ls-files', '-z', '--', 'agister', 'gokit'], { cwd: root, encoding: 'utf8' });
+  assert.equal(tracked.status, 0, tracked.stderr);
+  const [mount] = settings.mount;
+  // Export path to source path, the public overlay last, as the exporter writes them.
+  const exported = new Map();
+  const paths = tracked.stdout.split('\0').filter(Boolean);
+  for (const path of paths) {
+    const inMount = path.slice(`${mount.source}/`.length);
+    if (path.startsWith('agister/') && isIncluded(path.slice('agister/'.length), settings)) exported.set(path.slice('agister/'.length), path);
+    if (path.startsWith(`${mount.source}/`) && mount.include.some((glob) => matchesGlob(inMount, glob))) exported.set(`${mount.target}/${inMount}`, path);
+  }
+  for (const path of paths.filter((path) => path.startsWith('agister/showcase/public/'))) {
+    exported.set(path.slice('agister/showcase/public/'.length), path);
+  }
+  for (const [page, source] of exported) {
+    if (!/\.(md|html)$/.test(page)) continue;
+    for (const [, target] of readFileSync(join(root, source), 'utf8').matchAll(/(?:\]\(|href=")([^)"#\s]+)/g)) {
+      if (/^[a-z]+:/.test(target)) continue;
+      const path = join(dirname(page), target).replace(/\/$/, '');
+      assert.ok(exported.has(path) || [...exported.keys()].some((file) => file.startsWith(`${path}/`)), `${page} links ${target}`);
+    }
   }
 });
 

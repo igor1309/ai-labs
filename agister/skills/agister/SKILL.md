@@ -63,5 +63,6 @@ agent when its worktree is as recorded. `--reuse <run-id>` takes matching
 completed calls. Read records under home's `runs/<run-id>/`; use
 `agister runs export <run-id> --to <directory>` to export a run.
 
-For design constraints read [ADR-001](../../docs/adr/001-agister-architecture.md)
-and the [run implementation](../../docs/run-implementation.md).
+For the design read the
+[run architecture](../../docs/run-architecture/index.html) and the
+[settings architecture](../../docs/settings-architecture/index.html).
