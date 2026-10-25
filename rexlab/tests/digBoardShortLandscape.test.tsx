@@ -62,17 +62,21 @@ describe("DIG's board at Hatchling in a wide-short window", () => {
     // The brushes 44 inside a picker of 48, the FIELD GUIDE 48, DUG UP 40.
     const picker = at(".dig-brush-picker");
     expect([picker.value("height"), picker.px("padding-left")]).toEqual(["48px", 2]);
-    for (const option of [TEXTS[language].brush, TEXTS[language].wideBrush]) expect(styleAt(screen.getByRole("button", { name: option }), size).value("height")).toBe("44px");
+    for (const option of [TEXTS[language].brush, TEXTS[language].wideBrush]) {
+      const brush = styleAt(screen.getByRole("button", { name: option }), size);
+      expect([brush.value("width"), brush.value("height")]).toEqual(["44px", "44px"]);
+    }
     const guide = at(".dig-field-guide-button");
     expect([guide.value("height"), guide.px("font-size")]).toEqual(["48px", 18]);
     const chip = at(".dig-chip");
     expect([chip.value("height"), chip.px("font-size")]).toEqual(["40px", 16]);
     // The title, its mark 40, takes the room the rest leave: each part
-    // at its widest, a count of three digits at Lexend's widest 0.68 em.
+    // at its widest, the guide's count three digits and DUG UP's "52/52"
+    // five glyphs, each at Lexend's widest 0.68 em.
     expect(at(".dig-board-screen .dig-mark").value("width")).toBe("40px");
     const pickerWidth = 2 * 2 + 2 * 44 + picker.columnGap();
     const guideWidth = guide.px("padding-left") + guide.px("padding-right") + 26 + guide.columnGap() + 3 * 0.68 * 18;
-    const chipWidth = 2 * chip.px("padding-left") + 20 + chip.columnGap() + 3 * 0.68 * 16;
+    const chipWidth = 2 * chip.px("padding-left") + 20 + chip.columnGap() + 5 * 0.68 * 16;
     const room = width - 40 - insets.left - insets.right - 48 - pickerWidth - guideWidth - chipWidth - 4 * 8 - 40 - 8;
     expect(at(".dig-board-screen .dig-title-words").value("font-size")).toBe("min(24px, (100cqi - 48px) / (var(--letters) * 0.75))");
     const title = TEXTS[language].dig;
@@ -81,7 +85,7 @@ describe("DIG's board at Hatchling in a wide-short window", () => {
     const sand = styleAt(board(), size);
     expect([sand.value("height"), sand.value("aspect-ratio"), sand.value("touch-action")]).toEqual(["100%", "var(--frame-width) / var(--frame-height)", "none"]);
     const body = at(".dig-body");
-    expect([body.value("justify-content"), body.value("align-items"), body.px("min-height")]).toEqual(["center", "center", 0]);
+    expect([body.value("flex").replace("0px", "0"), body.value("max-height") || "none", body.value("justify-content"), body.value("align-items"), body.px("min-height")]).toEqual(["1 1 0", "none", "center", "center", 0]);
     const tall = height - 8 - 48 - 8 - 12 - insets.bottom;
     expect(Math.min(tall, ((width - 40 - insets.left - insets.right) * 3) / 4)).toBeGreaterThanOrEqual(220);
   });
