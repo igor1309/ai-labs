@@ -20,20 +20,28 @@ final class DeferredAudio: LiveAudio, Sendable {
 
     var capturedThrough: Double { position.value.withLock { $0 } }
 
-    init(listening: @escaping @Sendable () -> Void = {}, finished: @escaping @Sendable () -> Void = {}) {
+    init(
+        listening: @escaping @Sendable () -> Void = {}, finished: @escaping @Sendable () -> Void = {},
+        beforeDelivery: @escaping @Sendable () async -> Void = {}
+    ) {
 
         self.listening = listening
         self.finished = finished
-        let attachment = attachment.stream, audio = audio.continuation, position = position
+        let attachment = attachment.stream, audio = audio.continuation
         translating = Task {
             defer { audio.finish() }
+            await beforeDelivery()
             for await capture in attachment {
                 for await piece in await capture.listen() {
-                    position.value.withLock { $0 = piece.end }
                     audio.yield(Audio(start: piece.start, samples: piece.samples, sampleRate: piece.sampleRate))
                 }
             }
         }
+    }
+
+    func captured(_ piece: CapturedPiece) {
+
+        position.value.withLock { $0 += Double(piece.samples.count) / piece.sampleRate }
     }
 
     func attach(_ capture: RecordedCapture) {

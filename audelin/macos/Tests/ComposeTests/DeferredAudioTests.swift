@@ -18,7 +18,7 @@ struct DeferredAudioTests {
             let source = AsyncThrowingStream<CapturedPiece, any Error>.makeStream()
             let capture = CaptureAdapter(begin: {
                 StartedCapture(stream: source.stream, stop: { source.continuation.finish() })
-            }, unpack: { $0 })
+            }, unpack: { $0 }, captured: { audio.captured($0) })
             let feed = RecordedCapture(capture: capture, track: CaptureTrack(track: track))
             defer { source.continuation.finish(); audio.finish(); listening.end() }
             try await feed.start()
@@ -70,7 +70,7 @@ struct DeferredAudioTests {
             let source = AsyncThrowingStream<CapturedPiece, any Error>.makeStream()
             let capture = CaptureAdapter(begin: {
                 StartedCapture(stream: source.stream, stop: { source.continuation.finish() })
-            }, unpack: { $0 })
+            }, unpack: { $0 }, captured: { audio.captured($0) })
             let recorded = RecordedCapture(capture: capture, track: CaptureTrack(track: track))
             let received = Values<Audio>()
             let listener = Task {

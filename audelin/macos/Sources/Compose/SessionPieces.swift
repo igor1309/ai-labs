@@ -4,7 +4,6 @@ import CallText
 import Foundation
 import LiveText
 import struct MicrophoneCapture.AudioPiece
-import class RecordedCapture.RecordedCapture
 import Session
 import struct SystemAudioCapture.AudioPiece
 import enum SystemAudioCapture.ProcessSelection
@@ -45,6 +44,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         var textStarted: @Sendable (CallText) async -> Void = { _ in }
         var audioListening: @Sendable (SessionSide) -> Void = { _ in }
         var audioEnded: @Sendable (SessionSide) -> Void = { _ in }
+        var beforeAudioDelivery: @Sendable () async -> Void = {}
         var beforeTranscriptWrite: @Sendable (State) async throws -> Void = { _ in }
     }
 
@@ -56,11 +56,10 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         var captureAttempted = false
         var captureStarting = false
         var captureStopping = false
-        var capture: RecordedCapture?
-        var failures: Task<Void, Never>?
+        var stopCapture: (@Sendable () async throws -> Void)?
     }
 
-    /// Runtime and stop failures from both sides, buffered as Session events.
+    /// Runtime failures from both sides, buffered as Session events.
     public nonisolated var events: AsyncStream<SessionEvent> { news.stream }
 
     let news = AsyncStream<SessionEvent>.makeStream()
@@ -116,7 +115,8 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         self.hooks = hooks
         sides = Dictionary(uniqueKeysWithValues: [SessionSide.microphone, .call].map { side in
             (side, Side(audio: DeferredAudio(
-                listening: { hooks.audioListening(side) }, finished: { hooks.audioEnded(side) }
+                listening: { hooks.audioListening(side) }, finished: { hooks.audioEnded(side) },
+                beforeDelivery: hooks.beforeAudioDelivery
             )))
         })
     }
@@ -158,7 +158,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         guard let destination = sides[side], let track = destination.track, !destination.closed else {
             throw Failure.outOfOrder("\(side) track is not open")
         }
-        guard !destination.captureStarting, destination.capture == nil else {
+        guard !destination.captureStarting, destination.stopCapture == nil else {
             throw Failure.outOfOrder("\(side) capture is still running")
         }
         sides[side]?.closed = true
@@ -212,7 +212,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     public func stop() async throws {
 
         guard let text, !textStopped, !textStopping else { throw Failure.outOfOrder("call text is not running") }
-        guard sides.values.allSatisfy({ !$0.captureStarting && $0.capture == nil }) else {
+        guard sides.values.allSatisfy({ !$0.captureStarting && $0.stopCapture == nil }) else {
             throw Failure.outOfOrder("capture is still running")
         }
         textStopping = true

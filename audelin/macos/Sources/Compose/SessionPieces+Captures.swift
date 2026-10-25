@@ -8,9 +8,10 @@ extension SessionPieces {
 
     func startMicrophoneCapture() async throws {
 
+        let audio = sides[.microphone]!.audio
         let capture = CaptureAdapter(begin: startMicrophone, unpack: {
             CapturedPiece(samples: $0.samples, sampleRate: $0.sampleRate)
-        })
+        }, captured: { audio.captured($0) })
         try await startCapture(capture, side: .microphone)
     }
 
@@ -24,28 +25,25 @@ extension SessionPieces {
             resolved = .allExcept([getpid()])
         }
         let startCall = startCall
+        let audio = sides[.call]!.audio
         let capture = CaptureAdapter(begin: { try await startCall(resolved) }, unpack: {
             CapturedPiece(samples: $0.samples, sampleRate: $0.sampleRate)
-        })
+        }, captured: { audio.captured($0) })
         try await startCapture(capture, side: .call)
     }
 
     func stopCapture(_ side: SessionSide) async throws {
 
         guard let destination = sides[side], !destination.captureStopping,
-              let capture = destination.capture else {
+              let stop = destination.stopCapture else {
             throw Failure.outOfOrder("\(side) capture is not running")
         }
         sides[side]?.captureStopping = true
-        defer { sides[side]?.capture = nil }
-        // RecordedCapture reports stop failures through the same stream as
-        // runtime failures, preserving their piece identity without a second report.
-        _ = try? await capture.stop()
-        await destination.audio.drain()
-        await destination.failures?.value
+        defer { sides[side]?.stopCapture = nil }
+        try await stop()
     }
 
-    private func startCapture(_ capture: any Capture, side: SessionSide) async throws {
+    private func startCapture<Piece>(_ capture: CaptureAdapter<Piece>, side: SessionSide) async throws {
 
         let track = try captureTrack(side)
         let recorded = RecordedCapture(capture: capture, track: hooks.recordingTrack(side, track))
@@ -53,9 +51,8 @@ extension SessionPieces {
         defer { sides[side]?.captureStarting = false }
         do {
             try await recorded.start()
-            sides[side]?.capture = recorded
             let news = news.continuation
-            sides[side]?.failures = Task {
+            let failures = Task {
                 for await failure in recorded.failures {
                     let event: SessionEvent = switch failure {
                     case let .track(error): .pieceFailed(.track(side), error: String(describing: error))
@@ -63,6 +60,14 @@ extension SessionPieces {
                     }
                     news.yield(event)
                 }
+            }
+            let audio = sides[side]!.audio
+            sides[side]?.stopCapture = {
+                // Runtime failures already have their own forwarding path.
+                _ = try? await recorded.stop()
+                await audio.drain()
+                await failures.value
+                if let failure = await capture.stopFailure { throw failure }
             }
         } catch let RecordingFailure.capture(error) {
             throw error
