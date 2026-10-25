@@ -87,7 +87,26 @@ func main() { println(kit.Value + tree.Value) }
   }
 });
 
-const firstRunResult = '{\n  "output": {"stdout": {"head": "Hello, world\\n"}},\n  "warnings": []\n}\n';
+// The indented shape agister prints, trimmed to the fields the check reads.
+const firstRunResult = `{
+  "status": "completed",
+  "output": {
+    "output": {
+      "exit_code": 0,
+      "stderr": {
+        "head": "",
+        "warnings": []
+      },
+      "stdout": {
+        "digest": "d",
+        "head": "Hello, world\\n",
+        "size": 13
+      }
+    }
+  },
+  "warnings": []
+}
+`;
 
 function checkFixture(t, { featureLines = 100, testLines = 1000, unformatted = '', fail = '', runResult = firstRunResult } = {}) {
   const directory = temporary(t);
@@ -155,7 +174,9 @@ test('public check enforces module format, size, build, vet and race tests, with
 
 for (const [name, runResult] of [
   ['other output', firstRunResult.replace('Hello, world', 'Hello')],
-  ['warnings', firstRunResult.replace('"warnings": []', '"warnings": ["w"]')],
+  ['warnings', firstRunResult.replace('\n  "warnings": []', '\n  "warnings": ["w"]')],
+  ['the greeting on stderr only', firstRunResult.replace('"head": "Hello, world\\n"', '"head": "Hello"')
+    .replace('"head": ""', '"head": "Hello, world\\n"')],
 ]) {
   // Contract test: the README's first run, with a spy agister, fails the check on a wrong result.
   test(`public check fails when the README's first run gives ${name}`, (t) => {
