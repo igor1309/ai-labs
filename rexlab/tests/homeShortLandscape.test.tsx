@@ -147,6 +147,10 @@ describe("the home page in a wide-short window", () => {
     const line = topLine(width, language, { wordsHidden: true });
     const home = styleAt(part(".home"), [width, height]);
     const greeting = styleAt(part(".greeting"), [width, height]);
+    // The bar stands on the page, scrolling away with the greeting where
+    // the page scrolls, never fixed over the games.
+    expect([".wordmark", ".home-corner"].map((selector) => styleAt(part(selector), [width, height]).value("position"))).toEqual(["absolute", "absolute"]);
+    expect([home.value("position"), styleAt(document.body, [width, height]).value("position")]).toEqual(["relative", "relative"]);
     // Nothing before the greeting takes a place in the page's column: the
     // bands of rock's holder lies flat and the rest is fixed or laid over.
     const before = [...part(".home").children].slice(0, [...part(".home").children].indexOf(part(".greeting")));
@@ -173,9 +177,13 @@ describe("the home page in a wide-short window", () => {
   it("names RexLab and the museum for screen readers while showing their symbols alone, every tap at least 44 pixels", () => {
     openShort(667, 375);
     for (const word of [screen.getByText("RexLab"), screen.getByText(TEXTS.en.museum)]) {
-      expect(getComputedStyle(word).position).toBe("absolute");
-      expect(getComputedStyle(word).clipPath).toBe("inset(50%)");
+      const style = styleAt(word, [667, 375]);
+      expect([style.value("position"), style.value("clip-path")]).toEqual(["absolute", "inset(50%)"]);
+      // Hidden from sight alone: still in the page for a screen reader.
+      expect([style.value("display"), style.value("visibility"), word.closest("[aria-hidden='true']")]).toEqual(["inline", "visible", null]);
     }
+    expect(screen.getByRole("button", { name: TEXTS.en.museum })).toBe(part(".home-museum"));
+    expect(part(".wordmark").textContent).toContain("RexLab");
     const museum = styleAt(part(".home-museum"), [667, 375]);
     expect([museum.px("min-width"), museum.px("height")]).toEqual([60, 60]);
     for (const button of document.querySelectorAll(".parent-menu-button")) {
@@ -276,6 +284,8 @@ describe("the home page in a wide-short window", () => {
       const corner = styleAt(part(".home-corner"), [width, height]);
       const top = corner.px("top") + styleAt(part(".home-museum"), [width, height]).px("height") + px(getComputedStyle(opened).top.replace(/^calc\(100% \+ (\d+)px\)$/, "$1"));
       expect([style.px("max-height"), style.value("overflow-y")]).toEqual([height - 84, "auto"]);
+      // Its choices keep their height and scroll, never squeezed to fit.
+      expect([...opened.children].map((child) => styleAt(child, [width, height]).value("flex-shrink"))).toEqual([...opened.children].map(() => "0"));
       expect(top + Math.min(tall, style.px("max-height"))).toBeLessThanOrEqual(height - 8);
       if (height >= 375) expect(top + tall).toBeLessThanOrEqual(height);
       fireEvent.click(button);

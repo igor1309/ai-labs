@@ -1016,7 +1016,9 @@ body:has(.result) #version {
 [data-size="tall"] .wordmark,
 [data-size="tall"] .home-corner,
 [data-size="tall-narrow"] .wordmark,
-[data-size="tall-narrow"] .home-corner {
+[data-size="tall-narrow"] .home-corner,
+[data-size="wide-short"] .wordmark,
+[data-size="wide-short"] .home-corner {
   position: absolute;
 }
 
@@ -1231,7 +1233,8 @@ body:has(.result) #version {
 /* In a wide-short window, an iPhone on its side, the page keeps the
    landscape row under one short bar: RexLab's mark, the greeting beside
    it and the corner, all on the line of the museum's 60 pixels, with
-   RexLab's and the museum's words hidden as upright on a phone. The large
+   RexLab's and the museum's words hidden as upright on a phone. The bar
+   stands on the page, so it scrolls away with the greeting. The large
    card and the tiles take the height the bar leaves, with 20-pixel sides
    past the notch, the tiles in two rows of 122 pixels or more: in a
    window too short for that the page scrolls. The card and the tiles
