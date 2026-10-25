@@ -43,7 +43,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["CallText", "LiveText", "TrackFile", "TranscriptFile", "MicrophoneCapture", "SystemAudioCapture"]
+            dependencies: ["CallFolder", "CallAppProcesses", "Session", "CallText", "LiveText", "TrackFile", "TranscriptFile", "MicrophoneCapture", "SystemAudioCapture"]
         ),
         .target(
             name: "CoreAudioProcesses"
