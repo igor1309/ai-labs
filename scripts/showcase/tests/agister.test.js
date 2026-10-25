@@ -87,11 +87,35 @@ func main() { println(kit.Value + tree.Value) }
   }
 });
 
-function checkFixture(t, { featureLines = 100, testLines = 1000, unformatted = '', fail = '' } = {}) {
+// The indented shape agister prints, trimmed to the fields the check reads.
+const firstRunResult = `{
+  "status": "completed",
+  "output": {
+    "output": {
+      "exit_code": 0,
+      "stderr": {
+        "head": "",
+        "warnings": []
+      },
+      "stdout": {
+        "digest": "d",
+        "head": "Hello, world\\n",
+        "size": 13
+      }
+    }
+  },
+  "warnings": []
+}
+`;
+
+function checkFixture(t, { featureLines = 100, testLines = 1000, unformatted = '', fail = '', runResult = firstRunResult } = {}) {
   const directory = temporary(t);
   put(directory, 'scripts/check-public.sh', readFileSync(join(root, 'agister/scripts/check-public.sh')));
   put(directory, 'go.mod', 'module example.test/public\n');
   put(directory, 'go.work', 'use .\n');
+  put(directory, 'README.md', readFileSync(join(root, 'agister/showcase/public/README.md')));
+  put(directory, 'home/agents/bash.toml', 'runtime = "bash"\n');
+  put(directory, 'run-result.json', runResult);
   put(directory, 'case.feature', 'line\n'.repeat(featureLines));
   put(directory, 'case_test.go', '// line\n'.repeat(testLines));
   put(directory, 'gokit/go.mod', 'module example.test/gokit\n');
@@ -107,11 +131,33 @@ if test -n "$CHECK_UNFORMATTED"; then printf '%s\n' "$CHECK_UNFORMATTED"; fi
 `, 0o755);
   put(directory, 'bin/go', `#!/bin/sh
 test "$GOWORK" = "$CHECK_ROOT/go.work" || exit 92
+if test "$1 $2" = "build -o"; then
+  printf 'go build -o %s %s\n' "$(basename "$3")" "$4" >> "$CHECK_RECORDS"
+  test "$CHECK_FAIL" != first-build || exit 1
+  cat > "$3" <<'AGISTER'
+#!/bin/sh
+printf 'agister %s\n' "$*" >> "$CHECK_RECORDS"
+test "$AGISTER_HOME" = "$PWD/home" && test -f home/agents/bash.toml || exit 94
+if test "$1" = run; then
+  test -f .agister/processes/say.yaml && test -f .agister/prompts/say.md || exit 95
+  mkdir -p "$AGISTER_HOME/runs/r1" && printf '{}\n' > "$AGISTER_HOME/runs/r1/record.json"
+  cat "$CHECK_ROOT/run-result.json"
+fi
+AGISTER
+  chmod +x "$3"
+  exit 0
+fi
 printf 'go %s\n' "$*" >> "$CHECK_RECORDS"
 if test "$1" = test; then
   test "\${AGISTER_E2E+x}" != x || exit 93
 fi
 test "$CHECK_FAIL" != "$1"
+`, 0o755);
+  const git = spawnSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).stdout.trim();
+  put(directory, 'bin/git', `#!/bin/sh
+where=export; test "$PWD" = "$CHECK_ROOT" || { test -x ./agister && where=first-run; }
+printf 'git %s in %s\\n' "$*" "$where" >> "$CHECK_RECORDS"
+exec ${git} "$@"
 `, 0o755);
   const result = spawnSync('sh', ['-c', settings.check], {
     cwd: directory, encoding: 'utf8', env: { ...process.env,
@@ -121,7 +167,7 @@ test "$CHECK_FAIL" != "$1"
   });
   assert.ifError(result.error);
   const records = readFileSync(join(directory, 'records'), 'utf8').trim().split('\n');
-  return { ...result, records };
+  return { ...result, records, exportRuns: existsSync(join(directory, 'home/runs')) };
 }
 
 // Contract test: sh executes the exported check with go and gofmt supplied as spies.
@@ -129,8 +175,25 @@ test('public check enforces module format, size, build, vet and race tests, with
   const result = checkFixture(t);
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.deepEqual(result.records, ['gokit check', 'gofmt -l ./case_test.go', 'go build ./...', 'go vet ./...',
-    'go test -race -count=1 -timeout 1m ./...']);
+    'go test -race -count=1 -timeout 1m ./...', 'go build -o agister ./cmd/agister', 'git init -q in first-run',
+    'agister check', 'agister run --process say --agent bash --param what=world']);
+  assert.equal(result.exportRuns, false, 'the first run wrote run records into the export');
 });
+
+for (const [name, runResult] of [
+  ['other output', firstRunResult.replace('Hello, world', 'Hello')],
+  ['warnings', firstRunResult.replace('\n  "warnings": []', '\n  "warnings": ["w"]')],
+  ['the greeting on stderr only', firstRunResult.replace('"head": "Hello, world\\n"', '"head": "Hello"')
+    .replace('"head": ""', '"head": "Hello, world\\n"')],
+]) {
+  // Contract test: the README's first run, with a spy agister, fails the check on a wrong result.
+  test(`public check fails when the README's first run gives ${name}`, (t) => {
+    const result = checkFixture(t, { runResult });
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    assert.match(result.stdout, /the README's first run did not print Hello, world without warnings/);
+    assert.equal(result.records.at(-1), 'agister run --process say --agent bash --param what=world');
+  });
+}
 
 for (const [name, options, diagnostic] of [
   ['format', { unformatted: './case_test.go' }, /gofmt needed:\n\.\/case_test.go/],
@@ -146,12 +209,13 @@ for (const [name, options, diagnostic] of [
   });
 }
 
-for (const stage of ['gokit', 'build', 'vet', 'test']) {
+for (const stage of ['gokit', 'build', 'vet', 'test', 'first-build']) {
   // Contract test: the check propagates a failed dependency check or Go command's exit status.
   test(`public check fails when ${stage} fails`, (t) => {
     const result = checkFixture(t, { fail: stage });
     assert.equal(result.status, 1, result.stdout + result.stderr);
     assert.equal(result.records.at(-1), stage === 'gokit' ? 'gokit check' :
-      stage === 'test' ? 'go test -race -count=1 -timeout 1m ./...' : `go ${stage} ./...`);
+      stage === 'test' ? 'go test -race -count=1 -timeout 1m ./...' :
+      stage === 'first-build' ? 'go build -o agister ./cmd/agister' : `go ${stage} ./...`);
   });
 }
