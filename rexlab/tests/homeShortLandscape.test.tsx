@@ -5,7 +5,7 @@ import type { HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
-import { PEEK, SHORT_ROW_COLUMNS, SHORT_TILE_GAP, shortTileColumn } from "../src/tileColumns.ts";
+import { PEEK, SHORT_LEAST_COLUMN, SHORT_ROW_COLUMNS, SHORT_TILE_GAP, shortTileColumn } from "../src/tileColumns.ts";
 import { appStylesheet, type SafeArea } from "./stylesheet.ts";
 import { topLine } from "./homeCorner.ts";
 import { TITLE_EMS, linesOf, roomFor, tileTitles, widthOf } from "./homeTitles.ts";
@@ -39,6 +39,14 @@ const PHONES = [
   [667, 375],
   [852, 393],
   [932, 430],
+] as const;
+
+// Narrower windows of the same class, which the tiles' least column and
+// the bar keep to: an older iPhone on its side, and a window at the
+// class's edge.
+const NARROWER = [
+  [568, 320],
+  [600, 400],
 ] as const;
 
 const GAMES: HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons", "dig", "sandWriting"];
@@ -134,7 +142,7 @@ describe("the home page in a wide-short window", () => {
     expect([games.value("flex-direction") || "row", [...part(".games").children]]).toEqual(["row", [featuredCard(), part(".games-tiles")]]);
   });
 
-  it.each((["en", "ru"] as const).flatMap((language) => PHONES.map(([width, height]) => [language, width, height] as const)))("puts RexLab's mark, the greeting and the corner on one 60-pixel bar in %s at %i by %i", (language, width, height) => {
+  it.each((["en", "ru"] as const).flatMap((language) => [...PHONES, ...NARROWER].map(([width, height]) => [language, width, height] as const)))("puts RexLab's mark, the greeting and the corner on one 60-pixel bar in %s at %i by %i", (language, width, height) => {
     openShort(width, height, { language });
     const line = topLine(width, language, { wordsHidden: true });
     const home = styleAt(part(".home"), [width, height]);
@@ -192,6 +200,11 @@ describe("the home page in a wide-short window", () => {
     openShort(667, 320);
     const { games, tiles } = across(667, 320);
     expect(games.value("flex")).toBe("1 0 260px");
+    // The page grows past the window to hold them, the window scrolling it.
+    const home = styleAt(part(".home"), [667, 320]);
+    expect([home.value("height") || "auto", home.value("max-height") || "none"]).toEqual(["auto", "none"]);
+    expect(["visible", ""]).toContain(styleAt(document.body, [667, 320]).value("overflow-y"));
+    expect(styleAt(document.documentElement, [667, 320]).value("overflow-y")).not.toMatch(/hidden|clip/);
     expect((260 - tiles.rowGap()) / 2).toBeGreaterThanOrEqual(LEAST_TILE_ROW);
   });
 
@@ -200,14 +213,17 @@ describe("the home page in a wide-short window", () => {
     const { tiles, row, gap, column } = across(width, height);
     // The stylesheet's columns are those the page keeps the row's place by.
     const probe = document.createElement("div");
-    probe.style.gridAutoColumns = `calc((100% - ${SHORT_TILE_GAP}px) / ${SHORT_ROW_COLUMNS})`;
+    probe.style.gridAutoColumns = `max(${SHORT_LEAST_COLUMN}px, calc((100% - ${SHORT_TILE_GAP}px) / ${SHORT_ROW_COLUMNS}))`;
     expect([tiles.value("grid-auto-columns"), gap]).toEqual([probe.style.gridAutoColumns, SHORT_TILE_GAP]);
+    // The width the page keeps the row's place by is the stylesheet's
+    // column: four fifths of the row short of its gap, at 236 the least.
+    expect([shortTileColumn(408), shortTileColumn(200)]).toEqual([313.6, 236]);
     const peek = row - (column + gap);
     expect(peek).toBeGreaterThanOrEqual(PEEK);
     expect(peek).toBeLessThanOrEqual(column - PEEK);
   });
 
-  it.each((["en", "ru"] as const).flatMap((language) => PHONES.flatMap(([width, height]) => GAMES.map((featured) => [language, width, height, featured] as const))))(
+  it.each((["en", "ru"] as const).flatMap((language) => [...PHONES, ...NARROWER].flatMap(([width, height]) => GAMES.map((featured) => [language, width, height, featured] as const))))(
     "fits every word in %s at %i by %i, featuring %s",
     (language, width, height, featured) => {
       openShort(width, height, { language, featured });
