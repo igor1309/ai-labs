@@ -8,7 +8,7 @@ import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { presentDigBoard } from "../src/presentation.ts";
 import { finishBoard, board, brushAll, choiceCard, cleared, digUp, drag, landTreasure, openDigApp, placeBoard, roundDinosaur, wrongCards } from "./digApp.tsx";
-import { PALETTE, SHIPPED_DIG, SHIPPED_DINOSAURS, fakeBodyPicture, fakeTreasurePicture, homeTile, manualPictures, memoryStorage, sameColour } from "./support.ts";
+import { PALETTE, SHIPPED_DIG, SHIPPED_DINOSAURS, fakeBodyPicture, fakeTreasurePicture, homeTile, manualPictures, manualTimers, memoryStorage, sameColour } from "./support.ts";
 import { moveAt, pressAt, releaseAt } from "./taps.ts";
 import { withPictures } from "./pictures.tsx";
 
@@ -147,7 +147,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     const roundAt = (count: number) => ({ ...started, dinosaur, sand: { ...started.sand, counts: new Uint8Array(GRID.columns * GRID.rows).fill(25, 0, count) } });
     const submitted: string[] = [];
     const draw = (count: number) => <DigBoardScreen language="en" {...presentDigBoard(roundAt(count), fakeBodyPicture, fakeTreasurePicture, (id) => id)}
-      choiceCount={started.choices.length} level={level} brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} grains={!reducedMotion}
+      choiceCount={started.choices.length} level={level} brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} menuTimer={manualTimers().startTimer} grains={!reducedMotion}
       dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
       onBrush={() => {}} onPick={(id) => submitted.push(id)} onHome={() => {}} />;
     const view = render(draw(0), withPictures);
@@ -190,7 +190,7 @@ describe.each(["explorer", "paleontologist"] as const)("the question at %s", (le
     const asked = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
     const marks: SandMark[] = [];
     const draw = (round: typeof started) => <DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)}
-      choiceCount={round.choices.length} level={level} brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} grains={!reducedMotion}
+      choiceCount={round.choices.length} level={level} brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} menuTimer={manualTimers().startTimer} grains={!reducedMotion}
       dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
       onBrush={(mark) => marks.push(mark)} onHome={() => {}} />;
     const view = render(draw(started), withPictures);
@@ -414,7 +414,7 @@ describe("the question's cards", () => {
     const round = brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 });
     const submitted: string[] = [];
     render(<DigBoardScreen language="en" {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)}
-      choiceCount={round.choices.length} level={round.level} brush={BRUSH_SIZES[round.level]} wide={false} onWide={() => {}} grains={false}
+      choiceCount={round.choices.length} level={round.level} brush={BRUSH_SIZES[round.level]} wide={false} onWide={() => {}} menuTimer={manualTimers().startTimer} grains={false}
       dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null}
       onBrush={() => {}} onPick={(id) => submitted.push(id)} onHome={() => {}} />, withPictures);
     for (const card of choices()) fireEvent.click(card);

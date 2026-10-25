@@ -112970,6 +112970,1304 @@
           "height": 200
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "V2uD0h",
+      "x": 6344,
+      "y": 42350,
+      "name": "Dig · iPhone upright 393×700 — Dark · Paleontologist · Who is it? · 4 choices (LAB-542)",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 393,
+      "height": 700,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 14,
+      "padding": [
+        12,
+        16,
+        16,
+        16
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "AJFX9",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 4,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "pByIU",
+              "name": "Home Button",
+              "width": 48,
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "K9OR0x",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "l3VTm",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "swvpn",
+                  "name": "Brush Mark · picker",
+                  "height": 48,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 14,
+                  "gap": 4,
+                  "padding": [
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Ma08t",
+                      "name": "Brush Icon",
+                      "width": 24,
+                      "height": 24,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "eykPx",
+                      "name": "Picked Brush Dot",
+                      "fill": "#1D2742",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "icon",
+                      "id": "NGN01",
+                      "x": 52,
+                      "y": 16,
+                      "name": "Chevron",
+                      "enabled": false,
+                      "width": 16,
+                      "height": 16,
+                      "icon": "chevron-down",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "nd7lP",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Nunito",
+                  "fontSize": 28,
+                  "fontWeight": "900"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SVsPf",
+              "name": "Field Guide Button",
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 6,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Dwuas",
+                  "name": "Book Icon",
+                  "width": 22,
+                  "height": 22,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "$fm-amber"
+                },
+                {
+                  "type": "text",
+                  "id": "n0a5S",
+                  "name": "Count",
+                  "fill": "$fm-ink",
+                  "content": "3",
+                  "fontFamily": "Nunito",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "RZBHw",
+          "name": "Sand Board",
+          "width": "fill_container",
+          "height": 271,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-explorer-triceratops.webp",
+            "mode": "cover"
+          },
+          "cornerRadius": 22
+        },
+        {
+          "type": "frame",
+          "id": "aryBD",
+          "name": "Choices 2×2",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "frame",
+              "id": "L33ga",
+              "name": "Row 1",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "snuot",
+                  "name": "Choice TRICERATOPS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "smFKM",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "hWrqc",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "TRICERATOPS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "eWBoR",
+                  "name": "Choice STYRACOSAURUS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Q7QNO0",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/styracosaurus.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "IAJkS",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "STYRACOSAURUS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GG2Fi",
+              "name": "Row 2",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "j0aNl",
+                  "name": "Choice CHASMOSAURUS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "i2sfp",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/chasmosaurus.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "j6bOR9",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "CHASMOSAURUS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "LJRew",
+                  "name": "Choice PROTOCERATOPS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "gFRb7",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/protoceratops.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "h74WLI",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "PROTOCERATOPS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "kNhPd",
+      "x": 6817,
+      "y": 42350,
+      "name": "Dig · iPhone upright 393×700 — Dark · Brush menu open from the title (LAB-542)",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 393,
+      "height": 700,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 14,
+      "padding": [
+        12,
+        16,
+        16,
+        16
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "lrw2j",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 4,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "lLyog",
+              "name": "Home Button",
+              "width": 48,
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "AstYZ",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "S93X94",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "S0zNR3",
+                  "name": "Brush Mark · picker",
+                  "height": 48,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 14,
+                  "gap": 4,
+                  "padding": [
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "ZmfD0",
+                      "name": "Brush Icon",
+                      "width": 24,
+                      "height": 24,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "yPDhl",
+                      "name": "Picked Brush Dot",
+                      "fill": "#1D2742",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "icon",
+                      "id": "iYGu3",
+                      "x": 52,
+                      "y": 16,
+                      "name": "Chevron",
+                      "enabled": false,
+                      "width": 16,
+                      "height": 16,
+                      "icon": "chevron-down",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "g7CNJ",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Nunito",
+                  "fontSize": 28,
+                  "fontWeight": "900"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "WhtxH",
+              "name": "Field Guide Button",
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 6,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "G6rUM",
+                  "name": "Book Icon",
+                  "width": 22,
+                  "height": 22,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "$fm-amber"
+                },
+                {
+                  "type": "text",
+                  "id": "dgGqG",
+                  "name": "Count",
+                  "fill": "$fm-ink",
+                  "content": "3",
+                  "fontFamily": "Nunito",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "l5BbX",
+          "name": "Sand Board",
+          "width": "fill_container",
+          "height": 271,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-explorer-triceratops.webp",
+            "mode": "cover"
+          },
+          "cornerRadius": 22
+        },
+        {
+          "type": "frame",
+          "id": "N09yE5",
+          "name": "Choices 2×2",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "frame",
+              "id": "O5zN6g",
+              "name": "Row 1",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "sViPB",
+                  "name": "Choice TRICERATOPS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Qmr0l",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "P2paqX",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "TRICERATOPS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "DquNv",
+                  "name": "Choice STYRACOSAURUS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "C3gQj",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/styracosaurus.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "Lk6Jr",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "STYRACOSAURUS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "cSoii",
+              "name": "Row 2",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "z0XPP",
+                  "name": "Choice CHASMOSAURUS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "RcuyJ",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/chasmosaurus.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "T2Onu",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "CHASMOSAURUS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Y7yBG",
+                  "name": "Choice PROTOCERATOPS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CWDVz",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/protoceratops.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "F7GlYl",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "PROTOCERATOPS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s0v4e7",
+          "layoutPosition": "absolute",
+          "x": 74,
+          "y": 66,
+          "name": "Brush Menu",
+          "width": 200,
+          "fill": "$fm-surface-2",
+          "cornerRadius": 16,
+          "stroke": "$fm-line",
+          "strokeWidth": 1,
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "$fm-shadow",
+            "offset": {
+              "x": 0,
+              "y": 8
+            },
+            "blur": 24
+          },
+          "layout": "vertical",
+          "gap": 4,
+          "padding": 6,
+          "children": [
+            {
+              "type": "frame",
+              "id": "ckCg1",
+              "name": "Option BRUSH",
+              "width": "fill_container",
+              "height": 52,
+              "fill": "$fm-amber",
+              "cornerRadius": 12,
+              "gap": 12,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Bgfs7",
+                  "name": "Dot Slot",
+                  "width": 28,
+                  "height": 28,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "i60gom",
+                      "name": "Dot",
+                      "fill": "#1D2742",
+                      "width": 10,
+                      "height": 10
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "H2v0X5",
+                  "name": "Label",
+                  "fill": "#1D2742",
+                  "content": "BRUSH",
+                  "fontFamily": "Nunito",
+                  "fontSize": 16,
+                  "fontWeight": "900"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "mVX7i",
+              "name": "Option WIDE BRUSH",
+              "width": "fill_container",
+              "height": 52,
+              "fill": "#00000000",
+              "cornerRadius": 12,
+              "gap": 12,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "iV171",
+                  "name": "Dot Slot",
+                  "width": 28,
+                  "height": 28,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "mwerh",
+                      "name": "Dot",
+                      "fill": "$fm-amber",
+                      "width": 22,
+                      "height": 22
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "q3h9sd",
+                  "name": "Label",
+                  "fill": "$fm-ink",
+                  "content": "WIDE BRUSH",
+                  "fontFamily": "Nunito",
+                  "fontSize": 16,
+                  "fontWeight": "900"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "wHkjD",
+      "x": 7290,
+      "y": 42350,
+      "name": "Dig · iPhone upright 393×700 — Dark · Explorer · Who is it? · 3 choices, the third centred (LAB-542)",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 393,
+      "height": 700,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 14,
+      "padding": [
+        12,
+        16,
+        16,
+        16
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "AliN5",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "gap": 4,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "fc1cy",
+              "name": "Home Button",
+              "width": 48,
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "x8lat",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "SJMY5",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 10,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wnt99",
+                  "name": "Brush Mark · picker",
+                  "height": 48,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 14,
+                  "gap": 4,
+                  "padding": [
+                    0,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "tCYC1",
+                      "name": "Brush Icon",
+                      "width": 24,
+                      "height": 24,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "JlIgn",
+                      "name": "Picked Brush Dot",
+                      "fill": "#1D2742",
+                      "width": 8,
+                      "height": 8
+                    },
+                    {
+                      "type": "icon",
+                      "id": "i9vnAA",
+                      "x": 52,
+                      "y": 16,
+                      "name": "Chevron",
+                      "enabled": false,
+                      "width": 16,
+                      "height": 16,
+                      "icon": "chevron-down",
+                      "library": "lucide",
+                      "fill": "#1D2742"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "EHV37",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Nunito",
+                  "fontSize": 28,
+                  "fontWeight": "900"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "PXJXp",
+              "name": "Field Guide Button",
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 6,
+              "padding": [
+                0,
+                12
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "PhmbP",
+                  "name": "Book Icon",
+                  "width": 22,
+                  "height": 22,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "$fm-amber"
+                },
+                {
+                  "type": "text",
+                  "id": "jFNc4",
+                  "name": "Count",
+                  "fill": "$fm-ink",
+                  "content": "3",
+                  "fontFamily": "Nunito",
+                  "fontSize": 18,
+                  "fontWeight": "800"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "nVo5x",
+          "name": "Sand Board",
+          "width": "fill_container",
+          "height": 271,
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/dig-explorer-triceratops.webp",
+            "mode": "cover"
+          },
+          "cornerRadius": 22
+        },
+        {
+          "type": "frame",
+          "id": "ZD5B2",
+          "name": "Choices 2×2",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "frame",
+              "id": "xxJqy",
+              "name": "Row 1",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "j2ln3",
+                  "name": "Choice TRICERATOPS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "baJqZ",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "VGwXk",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "TRICERATOPS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "AljfD",
+                  "name": "Choice STYRACOSAURUS",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ceXNO",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/styracosaurus.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "UlqzC",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "STYRACOSAURUS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Q47w5Z",
+              "name": "Row 2",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 12,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "YK7sT",
+                  "name": "Choice CHASMOSAURUS",
+                  "width": 174.5,
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": [
+                    8,
+                    8,
+                    10,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "eEZyW",
+                      "name": "Picture",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/chasmosaurus.webp",
+                        "mode": "contain"
+                      },
+                      "cornerRadius": 12
+                    },
+                    {
+                      "type": "text",
+                      "id": "dvsYd",
+                      "name": "Name",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "CHASMOSAURUS",
+                      "lineHeight": 1.1,
+                      "textAlign": "center",
+                      "fontFamily": "Nunito",
+                      "fontSize": 15,
+                      "fontWeight": "900"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {

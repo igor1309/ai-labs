@@ -28,6 +28,8 @@ export type ParentMenuProps<Value extends string> = {
   choices: readonly MenuChoice<Value>[];
   chosen: Value;
   open: boolean;
+  // A menu that rests cannot be opened.
+  disabled?: boolean | undefined;
   onOpen: () => void;
   onClose: () => void;
   onChoose: (value: Value) => void;
@@ -38,7 +40,7 @@ export type ParentMenuProps<Value extends string> = {
 // A small button that opens a menu of choices, one of them ticked. The
 // page that holds it decides which menu is open, so only one ever is, and
 // closes it on a tap outside.
-export function ParentMenu<Value extends string>({ label, button, choices, chosen, open, onOpen, onClose, onChoose, startTimer }: ParentMenuProps<Value>) {
+export function ParentMenu<Value extends string>({ label, button, choices, chosen, open, disabled, onOpen, onClose, onChoose, startTimer }: ParentMenuProps<Value>) {
   const id = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -94,6 +96,7 @@ export function ParentMenu<Value extends string>({ label, button, choices, chose
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? id : undefined}
+        disabled={disabled}
         onClick={open ? onClose : onOpen}
       >
         <span key={face.changes} className="parent-menu-face" data-changed={face.changes > 0 ? "" : undefined}>
