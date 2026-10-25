@@ -68,7 +68,15 @@ describe("DIG's WHO IS IT? in a wide-short window", () => {
     // The sand's size is set before the cards come, so it never moves.
     const sand = styleAt(board(), size);
     expect([sand.value("flex").replace("0px", "0"), sand.value("width"), sand.value("height"), sand.value("max-height")]).toEqual(["0 0 auto", "min(100cqw - 228px, 100cqh * var(--frame-width) / var(--frame-height))", "auto", "none"]);
+    // The column holds its room before the question too.
+    const room = () => {
+      const style = styleAt(part(".dig-choice-cards"), size);
+      return [style.value("flex"), style.value("align-self"), style.columnGap(), styleAt(part(".dig-body[data-asks]"), size).columnGap()];
+    };
+    const before = room();
+    expect(part(".dig-choice-cards").getAttribute("aria-hidden")).toBe("true");
     brushUntilAsked();
+    expect(room()).toEqual(before);
     const column = styleAt(part(".dig-choice-cards"), size);
     expect([column.value("flex").replace("0px", "0"), column.value("flex-direction"), column.value("justify-content"), column.value("overflow-y"), column.rowGap()]).toEqual(["0 0 216px", "column", "safe center", "auto", 8]);
     const count = level === "explorer" ? 3 : 4;
@@ -100,18 +108,25 @@ describe("DIG's WHO IS IT? in a wide-short window", () => {
     expect([name.value("font-size"), name.value("text-align")]).toEqual(["min(16px, calc((100cqi - 64px) / (var(--line-letters) * 0.75)))", "start"]);
     // A long name's hyphen and break, placed in a card on the board,
     // show, so it stands on two lines.
-    const card = part(".dig-choice-name");
+    const nameOf = part(".dig-choice-name");
     const hyphen = Object.assign(document.createElement("span"), { className: "dig-choice-hyphen" });
     const lineBreak = Object.assign(document.createElement("br"), { className: "dig-choice-break" });
-    card.append(hyphen, lineBreak);
+    nameOf.append(hyphen, lineBreak);
     expect([styleAt(hyphen, [568, 320]).value("display"), styleAt(lineBreak, [568, 320]).value("display")]).toEqual(["inline", "inline"]);
+    // The name's room from the card as styled: the column less its border,
+    // padding, picture and gap.
+    const card = styleAt(part(".dig-choice-card"), [568, 320]);
+    const pictureWidth = styleAt(part(".dig-choice-picture"), [568, 320]).px("width");
+    const room = 216 - card.px("border-left-width") - card.px("border-right-width") - card.px("padding-left") - card.px("padding-right") - pictureWidth - card.columnGap();
+    expect(room).toBe(132);
+    const vertical = card.px("border-top-width") + card.px("border-bottom-width") + card.px("padding-top") + card.px("padding-bottom");
     const names = SHIPPED_DIG.map(({ id }) => SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === id)!.name[language].toLocaleUpperCase(language));
     for (const each of names) {
       const lines = nameLines(each);
-      const type = Math.min(16, (216 - 4 - 16 - 56 - 8) / (Math.max(...lines.map((line) => line.length)) * 0.75));
+      const type = Math.min(16, room / (Math.max(...lines.map((line) => line.length)) * 0.75));
       expect(type, each).toBeGreaterThanOrEqual(12);
       // Both lines inside the smallest card, less its border and padding.
-      expect(lines.length * 1.1 * type, each).toBeLessThanOrEqual((244 - 3 * 8) / 4 - 4 - 8);
+      expect(lines.length * 1.1 * type, each).toBeLessThanOrEqual((244 - 3 * 8) / 4 - vertical);
     }
   });
 
