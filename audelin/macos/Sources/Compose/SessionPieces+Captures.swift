@@ -1,11 +1,24 @@
 import Darwin
+import struct CallText.Audio
 import class LiveAudio.LiveAudio
 import RecordedCapture
 import Session
 import enum SystemAudioCapture.ProcessSelection
 import TrackFile
 
-typealias CaptureAudio = LiveAudio
+struct LiveCaptureAudio: CaptureAudio {
+
+    let capture: LiveAudio
+
+    var capturedThrough: Double { capture.capturedThrough }
+
+    func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async {
+
+        for await piece in await capture.listen() {
+            await receive(Audio(start: piece.start, samples: piece.samples, sampleRate: piece.sampleRate))
+        }
+    }
+}
 
 extension SessionPieces {
 
@@ -49,7 +62,7 @@ extension SessionPieces {
         let track = try captureTrack(side)
         let live = LiveAudio(capture: capture)
         let recorded = RecordedCapture(capture: RecordedInput(capture: live), track: hooks.recordingTrack(side, track))
-        sides[side]?.audio.attach(live)
+        sides[side]?.audio.attach(LiveCaptureAudio(capture: live))
         defer { sides[side]?.captureStarting = false }
         do {
             try await recorded.start()

@@ -2,11 +2,17 @@ import protocol CallText.LiveAudio
 import struct CallText.Audio
 import Synchronization
 
+protocol CaptureAudio: Sendable {
+
+    var capturedThrough: Double { get }
+    func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async
+}
+
 /// Keeps the destination subscribed while its capture is still being made.
 final class DeferredAudio: CallText.LiveAudio, Sendable {
 
-    private let capture = Mutex<CaptureAudio?>(nil)
-    private let attachment = AsyncStream<CaptureAudio>.makeStream()
+    private let capture = Mutex<(any CaptureAudio)?>(nil)
+    private let attachment = AsyncStream<any CaptureAudio>.makeStream()
     private let audio = AsyncStream<Audio>.makeStream()
     private let ended = AsyncStream<Void>.makeStream()
     private let translating: Task<Void, Never>
@@ -27,14 +33,12 @@ final class DeferredAudio: CallText.LiveAudio, Sendable {
             defer { audio.finish() }
             await beforeDelivery()
             for await capture in attachment {
-                for await piece in await capture.listen() {
-                    audio.yield(Audio(start: piece.start, samples: piece.samples, sampleRate: piece.sampleRate))
-                }
+                await capture.listen { audio.yield($0) }
             }
         }
     }
 
-    func attach(_ capture: CaptureAudio) {
+    func attach(_ capture: any CaptureAudio) {
 
         self.capture.withLock { $0 = capture }
         attachment.continuation.yield(capture)

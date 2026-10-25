@@ -1,5 +1,5 @@
 import struct CallText.Audio
-import class LiveAudio.LiveAudio
+import Synchronization
 import Testing
 @testable import Compose
 
@@ -7,18 +7,13 @@ import Testing
 struct DeferredAudioTests {
 
     @Test(arguments: [false, true])
-    func attachmentWorksBeforeOrAfterListening(listenFirst: Bool) async throws {
+    func attachmentWorksBeforeOrAfterListening(listenFirst: Bool) async {
 
         let listening = Signal()
         let audio = DeferredAudio(listening: { listening.send() })
         #expect(audio.capturedThrough == 0)
-        let source = AsyncThrowingStream<CapturedPiece, any Error>.makeStream()
-        let capture = CaptureAdapter(begin: {
-            StartedCapture(stream: source.stream, stop: { source.continuation.finish() })
-        }, unpack: { $0 })
-        let feed = LiveAudio(capture: capture)
-        defer { source.continuation.finish(); audio.finish(); listening.end() }
-        _ = try await feed.start()
+        let feed = FakeCaptureAudio()
+        defer { feed.finish(); audio.finish(); listening.end() }
         let received = Values<Audio>()
         let listener: Task<Void, Never>
         if listenFirst {
@@ -30,9 +25,8 @@ struct DeferredAudioTests {
             listener = Task { await audio.listen { received.append($0) } }
         }
         defer { listener.cancel() }
-        source.continuation.yield(.init(samples: [0.25, -0.5], sampleRate: 48_000))
-        source.continuation.finish()
-        try await feed.stop()
+        feed.give(.init(start: 0, samples: [0.25, -0.5], sampleRate: 48_000))
+        feed.finish()
         await withTaskCancellationHandler { await listener.value } onCancel: { listener.cancel() }
         await audio.wait()
         #expect(received.all == [.init(start: 0, samples: [0.25, -0.5], sampleRate: 48_000)])
@@ -57,14 +51,10 @@ struct DeferredAudioTests {
         #expect(audio.capturedThrough == 0)
     }
 
-    @Test func capturedThroughIncludesAudioBeforeTheListenerAcceptsIt() async throws {
+    @Test func capturedThroughIncludesAudioBeforeTheListenerAcceptsIt() async {
 
         let audio = DeferredAudio(), held = Signal(), release = Signal()
-        let source = AsyncThrowingStream<CapturedPiece, any Error>.makeStream()
-        let capture = CaptureAdapter(begin: {
-            StartedCapture(stream: source.stream, stop: { source.continuation.finish() })
-        }, unpack: { $0 })
-        let live = LiveAudio(capture: capture)
+        let capture = FakeCaptureAudio()
         let received = Values<Audio>()
         let listener = Task {
             await audio.listen { piece in
@@ -72,13 +62,12 @@ struct DeferredAudioTests {
                 received.append(piece)
             }
         }
-        defer { source.continuation.finish(); listener.cancel(); release.end(); audio.finish() }
-        audio.attach(live)
-        _ = try await live.start()
-        source.continuation.yield(.init(samples: [0.25, -0.5], sampleRate: 48_000))
+        defer { capture.finish(); listener.cancel(); held.end(); release.end(); audio.finish() }
+        audio.attach(capture)
+        capture.give(.init(start: 0, samples: [0.25, -0.5], sampleRate: 48_000))
         await held.next()
-        source.continuation.yield(.init(samples: [0.5], sampleRate: 24_000))
-        try await live.stop()
+        capture.give(.init(start: 2 / 48_000, samples: [0.5], sampleRate: 24_000))
+        capture.finish()
         await audio.drain()
         #expect(audio.capturedThrough == 2 / 48_000.0 + 1 / 24_000.0)
         #expect(received.all.isEmpty)
@@ -88,5 +77,26 @@ struct DeferredAudioTests {
             Audio(start: 0, samples: [0.25, -0.5], sampleRate: 48_000),
             Audio(start: 2 / 48_000, samples: [0.5], sampleRate: 24_000),
         ])
+    }
+}
+
+private final class FakeCaptureAudio: CaptureAudio {
+
+    private let audio = AsyncStream<Audio>.makeStream()
+    private let position = Mutex(0.0)
+
+    var capturedThrough: Double { position.withLock { $0 } }
+
+    func give(_ piece: Audio) {
+
+        position.withLock { $0 = piece.end }
+        audio.continuation.yield(piece)
+    }
+
+    func finish() { audio.continuation.finish() }
+
+    func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async {
+
+        for await piece in audio.stream { await receive(piece) }
     }
 }
