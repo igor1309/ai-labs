@@ -2323,6 +2323,142 @@ html[data-size="tall-narrow"] .dinosaur-footer {
   padding: 20px;
 }
 
+/* In a wide-short window, an iPhone on its side, the question keeps the
+   cards side by side under a 48-pixel bar, 8 under the top and 20 past
+   each side's inset, with NEXT beside the prompt rather than under the
+   cards, so they take the rest of the height. A card's value stands at
+   the bottom right of its picture's area, its name on one line in a
+   footer of its own height, so no card grows as the values show. The
+   prompt is 28 pixels, or less where the widest of either language
+   would not fit beside the widest NEXT, 210 pixels; a name is 20, or
+   less where the longest would not fit its card. */
+html[data-size="wide-short"] .question {
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px 12px;
+  container-type: inline-size;
+}
+
+html[data-size="wide-short"] .question-bar {
+  grid-column: 1 / -1;
+  gap: 16px;
+}
+
+html[data-size="wide-short"] .question .home-button {
+  height: 48px;
+  font-size: 17px;
+}
+
+html[data-size="wide-short"] .question .progress {
+  font-size: 17px;
+}
+
+html[data-size="wide-short"] .question .prompt {
+  grid-row: 2;
+  grid-column: 1;
+  gap: 12px;
+  font-size: min(28px, calc((100cqi - 274px) / 9.97));
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+html[data-size="wide-short"] .question .prompt-symbol {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .question .prompt-symbol svg {
+  width: 24px;
+  height: 24px;
+}
+
+html[data-size="wide-short"] .question .next-row {
+  grid-row: 2;
+  grid-column: 2;
+  min-height: 48px;
+}
+
+html[data-size="wide-short"] .question .next-button {
+  height: 48px;
+  padding: 0 20px 0 24px;
+  gap: 10px;
+  border-radius: 16px;
+  font-size: 20px;
+}
+
+html[data-size="wide-short"] .question .next-button svg {
+  width: 22px;
+  height: 22px;
+}
+
+html[data-size="wide-short"] .dinosaur-cards {
+  grid-row: 3;
+  grid-column: 1 / -1;
+  align-items: stretch;
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .dinosaur-card {
+  position: relative;
+  border-radius: 20px;
+  container-type: inline-size;
+}
+
+html[data-size="wide-short"] .dinosaur-art {
+  padding: 12px;
+}
+
+html[data-size="wide-short"] .dinosaur-footer {
+  flex: none;
+  height: 41px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  flex-wrap: nowrap;
+}
+
+html[data-size="wide-short"] .dinosaur-name {
+  font-size: min(20px, calc((100cqi - 24px) / 12.7));
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+html[data-size="wide-short"] .dinosaur-value-chip {
+  position: absolute;
+  right: 12px;
+  bottom: 53px;
+  height: 36px;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 10px;
+  font-size: 17px;
+}
+
+html[data-size="wide-short"] .mark {
+  top: 12px;
+  left: 12px;
+  height: 36px;
+  padding: 0 14px 0 10px;
+  gap: 6px;
+  border-radius: 18px;
+  font-size: 15px;
+}
+
+html[data-size="wide-short"] .versus {
+  align-self: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  font-size: 15px;
+}
+
 /* The catalogue: its bar stays at the top while the cards, as many to a
    row as CatalogueScreen gives in --columns, four in landscape, scroll
    under it, the list as wide as the screen so its scrollbar is at the
