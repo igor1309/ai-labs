@@ -552,8 +552,15 @@ img {
   width: 34px;
   height: 34px;
   border-radius: 10px;
+  overflow: hidden;
   background: #1f2b4d;
   color: #f6f2e9;
+}
+
+/* RexLab's mark is the app's own icon, so it is never read as a game's
+   symbol: the footprints count the catalogue's dinosaurs (LAB-583). */
+.wordmark-mark {
+  background: #1f2b4d url("/icons/icon-180.png") center / cover;
 }
 
 /* The top-right corner: the museum, then the parents' menus, centred on
@@ -1129,8 +1136,23 @@ body:has(.result) #version {
 }
 
 [data-size="tall-narrow"] .wordmark {
-  top: calc(28px + env(safe-area-inset-top));
+  top: calc(24px + env(safe-area-inset-top));
   left: calc(20px + var(--screen-left));
+  height: 60px;
+}
+
+/* On a phone RexLab shows its mark alone, so the mark, the museum and the
+   parents' menus share one 60-pixel height on one line, the mark
+   narrower under 360 wide (LAB-583). */
+[data-size="tall-narrow"] .wordmark-mark {
+  width: 40px;
+  height: 60px;
+  border-radius: 18px;
+}
+
+[data-size="tall-narrow"] .parent-menus {
+  padding: 8px 4px;
+  border-radius: 30px;
 }
 
 [data-size="tall-narrow"] .home-corner {
@@ -1211,7 +1233,8 @@ body:has(.result) #version {
     gap: 8px;
   }
 
-  [data-size="tall-narrow"] .home-museum {
+  [data-size="tall-narrow"] .home-museum,
+  [data-size="tall-narrow"] .wordmark-mark {
     min-width: 60px;
     width: 60px;
   }
@@ -6230,6 +6253,130 @@ html[data-size="tall-narrow"] .pairs-play-button {
   font-size: 30px;
 }
 
+/* In a wide-short window, an iPhone on its side, the welcome keeps the
+   cards beside a 320-pixel column, 12 under the top and over the bottom
+   and 20 past each side's inset. HOME is its house alone, a 48-pixel
+   square; the column holds the title in 28-pixel type by a 44 mark, the
+   chips 40 tall, the switch showing each level's picture alone, its name
+   kept for screen readers, and PLAY 56 tall, 12 apart, so it fits the
+   shortest window, 320 tall. The cards take the width left, at most the
+   body's height. */
+html[data-size="wide-short"] .pairs-welcome {
+  padding:
+    calc(12px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-welcome .stratum-1 {
+  height: 24px;
+}
+
+html[data-size="wide-short"] .pairs-welcome-bar .home-button {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="wide-short"] .pairs-welcome-body {
+  gap: 24px;
+}
+
+html[data-size="wide-short"] .pairs-hero {
+  align-self: stretch;
+}
+
+html[data-size="wide-short"] .pairs-hero-card {
+  max-height: 100%;
+  padding: 8px;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px #1d274224;
+}
+
+html[data-size="wide-short"] .pairs-hero-back {
+  padding: 6px;
+}
+
+html[data-size="wide-short"] .pairs-start {
+  width: 320px;
+  gap: 12px;
+}
+
+html[data-size="wide-short"] .pairs-title {
+  flex-wrap: nowrap;
+  gap: 12px;
+  white-space: nowrap;
+  font-size: 28px;
+}
+
+html[data-size="wide-short"] .pairs-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .pairs-mark svg {
+  width: 26px;
+  height: 26px;
+}
+
+html[data-size="wide-short"] .pairs-chips {
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-climb:not([data-shown]) {
+  margin-right: -8px;
+}
+
+html[data-size="wide-short"] .pairs-chip {
+  height: 40px;
+  padding: 0 14px;
+  gap: 8px;
+  border-radius: 20px;
+  font-size: 20px;
+}
+
+html[data-size="wide-short"] .pairs-chip svg {
+  width: 22px;
+  height: 22px;
+}
+
+html[data-size="wide-short"] .pairs-welcome .level-switch {
+  padding: 4px;
+  border-radius: 26px;
+}
+
+html[data-size="wide-short"] .pairs-welcome .level-switch-mark {
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 16px) / 3);
+  border-radius: 22px;
+}
+
+html[data-size="wide-short"] .pairs-welcome .level-switch-level {
+  height: 44px;
+  border-radius: 22px;
+}
+
+html[data-size="wide-short"] .pairs-play-button {
+  height: 56px;
+  padding: 0 28px 0 24px;
+  gap: 12px;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px #1d274224;
+  font-size: 24px;
+}
+
+html[data-size="wide-short"] .pairs-play-button svg {
+  width: 28px;
+  height: 28px;
+}
+
 /* A game's level switch, find the pair's and the skeleton game's: the age
    levels side by side, youngest first, across its column. The chosen level is filled in ink, bolder and raised, and a
    mark of the same ink slides to it from the level chosen before. */
@@ -6411,7 +6558,7 @@ html[data-size="tall-narrow"] .level-switch-level {
 /* In a wide-short window, an iPhone on its side, a result with the level
    switch keeps the dinosaur beside its rewards, 12 under the top and 20
    past each side's inset, the dinosaur as tall as the height allows. The
-   score stands beside "WELL DONE!" over the stars, the switch shows each
+   score stands beside "WELL DONE!" over the stars, the hand 36 so up to 999 fits beside the title, the switch shows each
    level's picture alone, its name kept for screen readers, and PLAY AGAIN
    stands beside HOME, each 48 tall, so the column fits the height. */
 html[data-size="wide-short"] .result-with-levels {
@@ -6851,6 +6998,90 @@ html[data-size="tall-narrow"] .pairs-bar-chip svg {
   height: 20px;
 }
 
+/* In a wide-short window, an iPhone on its side, the board keeps its
+   rows and columns as dealt under a 48-pixel bar, 8 under the top, 12
+   over the bottom and 20 past each side's inset. The cards stand 8 apart,
+   about 3:2 once the gaps are taken, wider than tall like the pictures, as large as the room under
+   the bar lets the whole board be; even the fullest board's four rows
+   keep a card over 44 tall. BACK and HOME are 48 squares of their
+   symbols, the title in 24-pixel type, and a found card's name is left
+   to its label, as on an upright phone. */
+html[data-size="wide-short"] .pairs-board-screen {
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  row-gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-board-screen .pairs-bar {
+  height: 48px;
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-bar .home-button {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="wide-short"] .pairs-bar-title {
+  gap: 10px;
+  font-size: 24px;
+}
+
+html[data-size="wide-short"] .pairs-bar-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .pairs-bar-chip {
+  height: 40px;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 20px;
+  font-size: 20px;
+}
+
+html[data-size="wide-short"] .pairs-bar-chip svg {
+  width: 20px;
+  height: 20px;
+}
+
+html[data-size="wide-short"] .pair-board {
+  width: min(100cqw, 100cqh * var(--columns) * 3 / (var(--rows) * 2));
+  aspect-ratio: calc(var(--columns) * 3) / calc(var(--rows) * 2);
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+  row-gap: 8px;
+  column-gap: 8px;
+}
+
+html[data-size="wide-short"] .pair-card {
+  border-radius: 14px;
+  box-shadow: 0 4px 12px #1d274224;
+}
+
+html[data-size="wide-short"] .pair-card-back {
+  padding: 5px;
+}
+
+html[data-size="wide-short"] .pair-card-back-frame {
+  border-radius: 10px;
+}
+
+html[data-size="wide-short"] .pair-card-art {
+  padding: 6px;
+}
+
+html[data-size="wide-short"] .pair-card-name[data-caption] {
+  display: none;
+}
+
 /* Upright, the bar keeps one row at the narrowest width: BACK and HOME
    show their symbols alone, each 56 a side, and the title its mark alone. */
 html[data-size="tall"] .pairs-bar .home-button {
@@ -6864,7 +7095,9 @@ html[data-size="tall"] .pairs-bar .home-button {
    page, as home's are in a wide-short one. */
 html[data-size="tall-narrow"] .narrow-hidden,
 html[data-size="wide-short"] .home .narrow-hidden,
-html[data-size="wide-short"] .result-with-levels .narrow-hidden {
+html[data-size="wide-short"] .result-with-levels .narrow-hidden,
+html[data-size="wide-short"] .pairs-result .narrow-hidden,
+html[data-size="wide-short"] .pairs-welcome .narrow-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -6876,7 +7109,8 @@ html[data-size="wide-short"] .result-with-levels .narrow-hidden {
 }
 
 html[data-size="tall"] .upright-hidden,
-html[data-size="tall-narrow"] .upright-hidden {
+html[data-size="tall-narrow"] .upright-hidden,
+html[data-size="wide-short"] .pairs-bar .home-button .upright-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -7224,6 +7458,184 @@ html[data-size="tall-narrow"] .pairs-result .result-actions .play-again-button {
   flex-basis: 100%;
 }
 
+/* In a wide-short window, an iPhone on its side, the result keeps the
+   dinosaurs beside a 300-pixel column, 12 under the top and over the
+   bottom and 20 past each side's inset. The dinosaurs stand 8 apart, the
+   rows sharing the height, NEW its sparkle alone. In the
+   column the tries stand beside "WELL DONE!" over the stars, the badges
+   above and the best under them, then PLAY AGAIN across the column over
+   BACK and HOME, each 44 tall, all 6 apart, so even both badges on two
+   rows fit the shortest window, 320 tall. */
+html[data-size="wide-short"] .pairs-result {
+  padding:
+    calc(12px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+}
+
+html[data-size="wide-short"] .pairs-result {
+  container-type: size;
+}
+
+/* Every board's rows share the height, each at most a card's art at 4:3
+   over its name, in the name's own type and padding, and at most 162, so
+   a small board keeps its cards' shape and a large one fits. The card's
+   width is the room the column leaves, over the columns. */
+html[data-size="wide-short"] .pairs-result .pairs-found {
+  --found-columns: 3;
+  --found-card: calc((100cqw - 316px - (var(--found-columns) - 1) * 8px) / var(--found-columns));
+  height: 100%;
+  max-height: calc(var(--found-rows) * min(162px, var(--found-card) * 0.75 + min(18px, (var(--found-card) - 16px) / 13) * 1.25 + 16px) + (var(--found-rows) - 1) * 8px);
+  grid-template-rows: repeat(var(--found-rows), minmax(0, 1fr));
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-result .pairs-found[data-count="4"] {
+  --found-columns: 2;
+}
+
+html[data-size="wide-short"] .pairs-result .pairs-found-art {
+  flex: 1 1 0;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+html[data-size="wide-short"] .pairs-found-card {
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .pairs-result .pairs-found-art {
+  padding: 6px;
+}
+
+html[data-size="wide-short"] .pairs-new-badge {
+  top: 4px;
+  right: 4px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 12px;
+}
+
+html[data-size="wide-short"] .pairs-badges {
+  grid-column: 1 / -1;
+  gap: 6px;
+}
+
+html[data-size="wide-short"] .pairs-result .celebration,
+html[data-size="wide-short"] .pairs-level-up {
+  height: 32px;
+  padding: 0 14px 0 10px;
+  gap: 8px;
+  border-radius: 16px;
+  font-size: 16px;
+}
+
+html[data-size="wide-short"] .pairs-result .celebration svg,
+html[data-size="wide-short"] .pairs-level-up svg {
+  width: 20px;
+  height: 20px;
+}
+
+html[data-size="wide-short"] .pairs-next-board {
+  grid-template-columns: repeat(var(--columns), 8px);
+  gap: 2px;
+}
+
+html[data-size="wide-short"] .pairs-next-card {
+  height: 9px;
+  border-radius: 2px;
+}
+
+html[data-size="wide-short"] .pairs-result-tries {
+  order: 1;
+  grid-column: 1;
+  grid-row: span 2;
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-result-tries-value {
+  font-size: 44px;
+}
+
+html[data-size="wide-short"] .pairs-result-hand {
+  width: 36px;
+  height: 36px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-title {
+  order: 2;
+  grid-column: 2;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+html[data-size="wide-short"] .pairs-result-stars {
+  order: 3;
+  grid-column: 2;
+  gap: 6px;
+  font-size: 24px;
+}
+
+html[data-size="wide-short"] .pairs-result .best-score {
+  order: 4;
+  grid-column: 1 / -1;
+  justify-self: center;
+  height: 32px;
+  padding: 0 14px;
+  gap: 8px;
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+html[data-size="wide-short"] .pairs-result .best-score svg {
+  width: 18px;
+  height: 18px;
+}
+
+html[data-size="wide-short"] .pairs-result .best-score-value {
+  font-size: 16px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-actions {
+  order: 4;
+  grid-column: 1 / -1;
+  align-self: stretch;
+  padding-top: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 44px;
+  padding: 0 10px;
+  gap: 6px;
+  justify-content: center;
+  border-radius: 14px;
+  font-size: 16px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-actions svg {
+  width: 20px;
+  height: 20px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
+  flex-basis: 100%;
+}
+
 /* The next level is offered over the completed result. The scrim keeps
    catching taps through its fade out. */
 .pairs-offer-scrim {
@@ -7374,6 +7786,48 @@ html[data-size="tall-narrow"] .pairs-offer-question {
 html[data-size="tall-narrow"] .pairs-offer-answers button {
   height: 64px;
   font-size: 22px;
+}
+
+/* In a wide-short window, an iPhone on its side, the offer is at most 520
+   wide on 12-pixel margins, its padding 20 at the top and 16 elsewhere,
+   its parts 12 apart: the picture 64, the question in 22-pixel type on
+   at most two lines, and YES beside NOT NOW, each 52 tall in 20, so it
+   fits the shortest window, 320 tall. */
+html[data-size="wide-short"] .pairs-offer-scrim {
+  padding: 12px;
+}
+
+html[data-size="wide-short"] .pairs-offer {
+  width: min(520px, 100%);
+  padding: 20px 16px 16px;
+  gap: 12px;
+  border-radius: 24px;
+}
+
+html[data-size="wide-short"] .pairs-offer-picture {
+  width: 64px;
+  height: 64px;
+  font-size: 36px;
+}
+
+html[data-size="wide-short"] .pairs-offer-question {
+  font-size: 22px;
+}
+
+html[data-size="wide-short"] .pairs-offer-answers {
+  gap: 12px;
+}
+
+html[data-size="wide-short"] .pairs-offer-answers button {
+  height: 52px;
+  gap: 10px;
+  border-radius: 16px;
+  font-size: 20px;
+}
+
+html[data-size="wide-short"] .pairs-offer-answers svg {
+  width: 24px;
+  height: 24px;
 }
 
 /* The skeleton game's screens fill the screen under a bar like find the

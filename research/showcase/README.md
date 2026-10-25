@@ -12,8 +12,8 @@ ai-labs holds my AI-SDLC work, and some of its projects are worth showing on my 
 
 So each project worth showing gets a small public repo: its code, its tests
 and a README written for strangers, with pictures. Nothing else crosses over.
-The first is rexlab (LAB-461), then foliotell (LAB-462); audelin follows
-once it has something to show (LAB-463).
+The first is rexlab (LAB-461), then foliotell (LAB-462), then agister
+(LAB-543); audelin follows once it has something to show (LAB-463).
 
 ## Decisions
 
@@ -25,11 +25,40 @@ once it has something to show (LAB-463).
   someone adds it to the list.
 - **Committed files only.** The export reads `HEAD`, never the working tree,
   so a stray local file cannot leak.
-- **Code and tests public; docs private.** The one exception is rexlab's
+- **Code and tests public; docs private.** The exceptions are rexlab's
   Gherkin, `docs/features/*.feature`: specs plus the tests that check them
-  are the best evidence of how the work is done. Every other doc stays home.
+  are the best evidence of how the work is done; and agister's two
+  architecture pages, which explain a tool with no screens. Every other doc
+  stays home.
 - **A separate public README.** The project's own README stays written for
   me and the agents; the public one is written for a visitor.
+
+## The lineup
+
+- **[RexLab](https://github.com/igor1309/rexlab)**: a dinosaur learning
+  game for children, built with React and TypeScript.
+  [Play it](https://rexlab.enoa.ai).
+- **[FolioTell](https://github.com/igor1309/foliotell)**: an offline
+  iPhone app that reads Markdown and plain-text files aloud, built with
+  SwiftUI. [Site](https://foliotell.pages.dev).
+- **[Agister](https://github.com/igor1309/agister)**: a Go command-line
+  runner for AI-agent work defined in settings files: agents, processes
+  and workflows that compose, every run resolved before it starts and
+  recorded whole. Pages: [how a run executes](https://igor1309.dev/agister/run-architecture/),
+  [how settings resolve](https://igor1309.dev/agister/settings-architecture/).
+
+Agister has no screenshots; its picture is how a run executes:
+
+```mermaid
+flowchart LR
+  request(["agister run"]) --> resolve["settings/resolve<br/>definitions or a refusal"]
+  resolve --> workflow["core/workflow<br/>items in order"]
+  workflow --> aCall["core/call · admit<br/>hold, limits, budget"]
+  aCall --> wrappers["runtime wrappers<br/>bash · claude-code · codex"]
+  wrappers --> supervisor["supervisor"]
+  supervisor --> program(["the agent's program"])
+  workflow --> runstore[("runstore<br/>record.json · events.jsonl")]
+```
 
 ## The process
 

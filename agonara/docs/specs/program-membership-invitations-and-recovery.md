@@ -20,7 +20,7 @@ Implemented in the Program Membership Invitations and Recovery plan:
 - Plan archive: [Program Membership Invitations and Recovery Implementation Plan](../plans/implemented/program-membership-invitations-and-recovery.md)
 - Storage and backup/restore coverage: [storage.test.js](../../tests/storage.test.js), [backup-restore.test.js](../../tests/backup-restore.test.js)
 - Program Membership domain coverage: [program.test.js](../../tests/program.test.js)
-- HTTP and executable acceptance coverage: [http-api.test.js](../../tests/http-api.test.js), [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- HTTP and executable acceptance coverage: [http-api-program-membership-control.test.js](../../tests/http-api-program-membership-control.test.js), [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
 - Browser coverage: [program-membership-invitations-and-recovery.playwright.js](../../tests/program-membership-invitations-and-recovery.playwright.js)
 - Runtime surfaces: [Program domain service](../../src/program.js), [HTTP adapter](../../src/server.js), [`/learn` product UI](../../src/learn-ui.js), [`/admin` operations UI](../../src/admin-ui.js), [Storage backup/restore](../../src/storage.js)
 
