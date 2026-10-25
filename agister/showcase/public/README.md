@@ -23,6 +23,52 @@ project's `.agister/`. The [`home/`](home/) folder here is the home
 Agister ships: its agents, the processes and workflows of a multi-lens
 code review, and an implement process.
 
+## How it works
+
+A run starts from a request: a workflow with its params, or one process
+on an agent. Resolve turns it into definitions or a refusal; a refusal
+ends the command before anything runs. Core runs the workflow's items in
+order; each step is a call that holds the worktree, then makes turns on
+its runtime through the supervisor, which starts the program and ends
+everything it started. The run store keeps the record as calls end.
+
+```mermaid
+flowchart LR
+  request(["agister run"]) --> resolve["settings/resolve<br/>definitions or a refusal"]
+  resolve --> workflow["core/workflow<br/>items in order"]
+  workflow -- "a workflow item:<br/>a child run" --> workflow
+  workflow --> aCall["core/call · admit<br/>hold, limits, budget"]
+  aCall --> git["git<br/>the worktree"]
+  aCall --> wrappers["runtime wrappers<br/>bash · claude-code · codex"]
+  wrappers --> supervisor["supervisor<br/>starts the program,<br/>ends its group"]
+  supervisor --> program(["the agent's program"])
+  workflow --> runstore[("runstore<br/>record.json · events.jsonl")]
+```
+
+Each arrow is a call through a port. The composition root,
+[`cmd/agister`](cmd/agister/), wires every one: core knows no settings
+file, no git and no runtime.
+
+Settings compose from up to three layers, home first, the nearer layer
+winning field by field. A workflow names its items; a step binds a
+process to an agent; an agent's runtime mapping says what its runtime
+grants.
+
+```mermaid
+flowchart TB
+  subgraph layers["layers, the nearer wins"]
+    direction LR
+    home["home<br/>~/.agister"] --> repository["repository<br/>.agister at the worktree root"] --> project["project<br/>the nearest .agister<br/>from the launch directory"]
+  end
+  layers -- "composed field by field" --> workflow
+  workflow["workflow<br/>sequence · parallel · branch · repeat"] --> step["step"]
+  workflow --> child["workflow<br/>a child run"]
+  step --> process["process<br/>prompt · inputs · output schema<br/>permissions · limits"]
+  step --> agent["agent<br/>runtime · model · effort"]
+  process --> files["prompts/*.md · schemas/*.json"]
+  agent --> runtime["runtime mapping<br/>what the runtime grants"]
+```
+
 ## Getting started
 
 You need Go and git. The build pulls nothing from a private repository:
