@@ -156,6 +156,55 @@ test('an overlay replaces a private source file before marker scanning', (t) => 
   assert.equal(readFileSync(join(f.invoke(), 'README.md'), 'utf8'), 'public');
 });
 
+test('an exact public replacement of an included source file is scanned and exported', (t) => {
+  const f = fixture(t);
+  put(f.root, 'game/src/main.js', 'agister');
+  put(f.root, 'game/showcase/public/src/main.js', 'public replacement');
+  f.commit();
+  const directory = f.invoke({}, f.run, (directory) => {
+    f.scanDirectory(directory);
+    assert.equal(readFileSync(join(directory, 'src/main.js'), 'utf8'), 'public replacement');
+  });
+  assert.deepEqual(list(directory), ['src/main.js']);
+  assert.equal(readFileSync(join(directory, 'src/main.js'), 'utf8'), 'public replacement');
+});
+
+for (const path of ['src/MAIN.js', 'SRC/main.js', 'SRC', 'src/MAIN.js/child']) {
+  test(`rejects a public path ${path} that aliases a project file before marker scanning`, (t) => {
+    const f = fixture(t);
+    put(f.root, 'game/src/main.js', 'agister');
+    put(f.root, `game/showcase/public/${path}`, 'public');
+    f.commit();
+    assert.throws(() => f.invoke({ push: true }), (error) => {
+      assert.match(error.message, /^Export path collision:/);
+      assert.ok(error.message.includes(path), error.message);
+      assert.ok(error.message.includes('src/main.js'), error.message);
+      return true;
+    });
+    assert.ok(f.calls.every(({ command, args }) => command === 'git' && args[0] !== 'clone'));
+    assert.deepEqual(readdirSync(f.base), ['source']);
+  });
+
+  for (const source of ['game', 'game/showcase/public']) {
+    test(`rejects aliases within ${source}: ${path} and src/main.js`, (t) => {
+      const f = fixture(t, { include: ['**'] });
+      put(f.root, `${source}/src/main.js`, 'public');
+      f.commit();
+      const oid = git(f.root, 'rev-parse', `HEAD:${source}/src/main.js`).toString().trim();
+      // Git's index can represent case aliases even when the working filesystem cannot.
+      git(f.root, 'update-index', '--add', '--cacheinfo', '100644', oid, `${source}/${path}`);
+      git(f.root, 'commit', '-m', 'Case aliases');
+      assert.throws(() => f.invoke(), (error) => {
+        assert.match(error.message, /^Export path collision:/);
+        assert.ok(error.message.includes(path), error.message);
+        assert.ok(error.message.includes('src/main.js'), error.message);
+        return true;
+      });
+      assert.ok(f.calls.every(({ command }) => command === 'git'));
+    });
+  }
+}
+
 test('marker allowances use exported paths for source files, mounts and the public overlay', (t) => {
   const f = fixture(t, {
     mount: [{ source: 'gokit', target: 'lib', include: ['**'] }],
@@ -238,7 +287,7 @@ test('mounts select committed source-relative globs, default the target and prec
   assert.ok(lstatSync(join(directory, 'gokit/tool.sh')).mode & 0o111);
 });
 
-for (const projectPath of ['src/main.js', 'src', 'src/main.js/child']) {
+for (const projectPath of ['src/main.js', 'src', 'src/main.js/child', 'SRC/MAIN.js', 'SRC', 'src/MAIN.js/child']) {
   test(`mounts reject collisions with project path ${projectPath} before the overlay`, (t) => {
     const f = fixture(t, { include: ['**'], mount: [{ source: 'gokit', target: 'src', include: ['**'] }] });
     rmSync(join(f.root, 'game/src'), { recursive: true });
@@ -246,21 +295,41 @@ for (const projectPath of ['src/main.js', 'src', 'src/main.js/child']) {
     put(f.root, 'gokit/main.js', 'mounted');
     put(f.root, 'game/showcase/public/src/main.js', 'overlay');
     f.commit();
-    assert.throws(() => f.invoke(), /Mount collision at export path: src\/main.js/);
+    assert.throws(() => f.invoke(), (error) => {
+      assert.match(error.message, /^Mount collision at export path: src\/main.js/);
+      assert.ok(error.message.includes(`conflicts with ${projectPath}`), error.message);
+      return true;
+    });
     assert.ok(f.calls.every(({ command }) => command === 'git'));
   });
 }
 
-test('overlapping mounts cannot replace an earlier mounted file', (t) => {
-  const f = fixture(t, { mount: [
-    { source: 'gokit', target: 'lib', include: ['**'] },
-    { source: 'other', target: 'lib', include: ['**'] }
-  ] });
-  put(f.root, 'gokit/main.go', 'first');
-  put(f.root, 'other/main.go', 'second');
+test('a case-aliased mount cannot overwrite a project file through a marker exemption', (t) => {
+  const f = fixture(t, {
+    mount: [{ source: 'gokit', target: 'src', include: ['**'] }],
+    allow_marker: [{ marker: 'agister', paths: ['src/MAIN.js'] }]
+  });
+  put(f.root, 'gokit/MAIN.js', 'agister');
   f.commit();
-  assert.throws(() => f.invoke(), /Mount collision at export path: lib\/main.go/);
+  assert.throws(() => f.invoke(), /Mount collision at export path: src\/MAIN.js \(conflicts with src\/main.js\)/);
+  assert.ok(f.calls.every(({ command }) => command === 'git'));
 });
+
+for (const target of ['lib', 'LIB']) {
+  test(`overlapping mounts at ${target} cannot replace an earlier mounted file`, (t) => {
+    const f = fixture(t, { mount: [
+      { source: 'gokit', target: 'lib', include: ['**'] },
+      { source: 'other', target, include: ['**'] }
+    ] });
+    put(f.root, 'gokit/main.go', 'first');
+    put(f.root, 'other/main.go', 'second');
+    f.commit();
+    assert.throws(() => f.invoke(), (error) => {
+      assert.equal(error.message, `Mount collision at export path: ${target}/main.go (conflicts with lib/main.go)`);
+      return true;
+    });
+  });
+}
 
 test('mounted files still pass the marker gate and secret scanner', (t) => {
   for (const stage of ['marker', 'scanner']) {

@@ -87,6 +87,23 @@ function safePath(path) {
   }
 }
 
+function checkPathCollisions(files) {
+  const paths = new Map();
+  for (const path of files.keys()) {
+    const folded = path.toLowerCase();
+    if (paths.has(folded)) {
+      throw new Error(`Export path collision: ${path} (conflicts with ${paths.get(folded)})`);
+    }
+    paths.set(folded, path);
+  }
+  for (const [folded, path] of paths) {
+    for (let end = folded.lastIndexOf('/'); end !== -1; end = folded.lastIndexOf('/', end - 1)) {
+      const parent = paths.get(folded.slice(0, end));
+      if (parent !== undefined) throw new Error(`Export path collision: ${path} (conflicts with ${parent})`);
+    }
+  }
+}
+
 function writeSnapshot(directory, files) {
   // Build tools may leave outputs or change inputs. Publish only the snapshot
   // whose bytes passed the scans, regardless of what the check writes.
@@ -178,8 +195,10 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
       if (!mount.include.some((glob) => matchesGlob(entry.path, glob)) ||
           (mount.exclude ?? []).some((glob) => matchesGlob(entry.path, glob))) continue;
       const path = `${mount.target ?? mount.source}/${entry.path}`;
+      const folded = path.toLowerCase();
       for (const existing of files.keys()) {
-        if (existing === path || existing.startsWith(`${path}/`) || path.startsWith(`${existing}/`)) {
+        const other = existing.toLowerCase();
+        if (other === folded || other.startsWith(`${folded}/`) || folded.startsWith(`${other}/`)) {
           throw new Error(`Mount collision at export path: ${path} (conflicts with ${existing})`);
         }
       }
@@ -189,6 +208,7 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
   for (const entry of entries) {
     if (entry.path.startsWith('showcase/public/')) add(entry, entry.path.slice('showcase/public/'.length));
   }
+  checkPathCollisions(files);
   scanMarkers(files, markers, settings.allow_marker);
   const directory = mkdtempSync(join(tempRoot, 'showcase-export-'));
   let clone;
