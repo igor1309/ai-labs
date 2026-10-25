@@ -1016,24 +1016,29 @@ body:has(.result) #version {
 [data-size="tall"] .wordmark,
 [data-size="tall"] .home-corner,
 [data-size="tall-narrow"] .wordmark,
-[data-size="tall-narrow"] .home-corner {
+[data-size="tall-narrow"] .home-corner,
+[data-size="wide-short"] .wordmark,
+[data-size="wide-short"] .home-corner {
   position: absolute;
 }
 
 /* The bands of rock lie against the page, and their holder takes no
    place, nor a gap, in its column. */
 [data-size="tall"] .home .strata,
-[data-size="tall-narrow"] .home .strata {
+[data-size="tall-narrow"] .home .strata,
+[data-size="wide-short"] .home .strata {
   display: contents;
 }
 
 [data-size="tall"] body:has(.home),
-[data-size="tall-narrow"] body:has(.home) {
+[data-size="tall-narrow"] body:has(.home),
+[data-size="wide-short"] body:has(.home) {
   position: relative;
 }
 
 [data-size="tall"] body:has(.home) #version,
-[data-size="tall-narrow"] body:has(.home) #version {
+[data-size="tall-narrow"] body:has(.home) #version,
+[data-size="wide-short"] body:has(.home) #version {
   position: absolute;
 }
 
@@ -1069,14 +1074,18 @@ body:has(.result) #version {
    spread three of their widths across, so they are no taller than that
    width allows. DIG's sand keeps its 4:3 at no more than the width the
    card leaves it, centred in the room it leaves: the card's padding and
-   the footer's margin keep its least room above and below it. */
+   the footer's margin keep its least room above and below it. On a
+   phone on its side the card is wider than tall, yet narrow enough that
+   the pairs' cards are held by its width too. */
 [data-size="tall"] .featured-card .pairs-tile-art,
-[data-size="tall-narrow"] .featured-card .pairs-tile-art {
+[data-size="tall-narrow"] .featured-card .pairs-tile-art,
+[data-size="wide-short"] .featured-card .pairs-tile-art {
   container-type: size;
 }
 
 [data-size="tall"] .featured-card .pairs-tile-card,
-[data-size="tall-narrow"] .featured-card .pairs-tile-card {
+[data-size="tall-narrow"] .featured-card .pairs-tile-card,
+[data-size="wide-short"] .featured-card .pairs-tile-card {
   height: min(84cqh, 40cqw);
 }
 
@@ -1223,6 +1232,114 @@ body:has(.result) #version {
     white-space: nowrap;
     line-height: normal;
   }
+}
+
+/* In a wide-short window, an iPhone on its side, the page keeps the
+   landscape row under one short bar: RexLab's mark, the greeting beside
+   it and the corner, all on the line of the museum's 60 pixels, with
+   RexLab's and the museum's words hidden as upright on a phone. The bar
+   stands on the page, so it scrolls away with the greeting. The large
+   card and the tiles take the height the bar leaves, with 20-pixel sides
+   past the notch, the tiles in two rows of 122 pixels or more: in a
+   window too short for that the page scrolls. The card and the tiles
+   share the row evenly, and the tiles' columns are a share of their
+   row's width, so one stands whole and the next peeks in, past the
+   page's side to the notch's, and never under 236 pixels, the least a
+   tile's name fits in. The parents' menus open under the bar,
+   and one taller than a short window leaves scrolls within it. */
+[data-size="wide-short"] .home {
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(20px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 12px;
+}
+
+[data-size="wide-short"] .wordmark {
+  top: calc(8px + env(safe-area-inset-top));
+  left: calc(20px + var(--screen-left));
+  height: 60px;
+}
+
+[data-size="wide-short"] .home-corner {
+  top: calc(8px + env(safe-area-inset-top));
+  right: calc(20px + var(--screen-right));
+}
+
+[data-size="wide-short"] .home-museum {
+  padding: 0;
+  justify-content: center;
+}
+
+[data-size="wide-short"] .greeting {
+  padding-left: 50px;
+  font-size: 24px;
+  line-height: 60px;
+}
+
+[data-size="wide-short"] .games {
+  height: auto;
+  flex: 1 0 260px;
+  gap: 16px;
+}
+
+[data-size="wide-short"] .featured-card,
+[data-size="wide-short"] .games-tiles {
+  flex: 1 1 0;
+}
+
+[data-size="wide-short"] .featured-card-footer {
+  padding: 14px 16px 16px;
+  gap: 12px;
+}
+
+[data-size="wide-short"] .featured-card-symbol {
+  width: 48px;
+  height: 48px;
+}
+
+[data-size="wide-short"] .featured-card-title {
+  font-size: 24px;
+}
+
+[data-size="wide-short"] .featured-card-badge {
+  top: 14px;
+  right: 14px;
+  padding: 8px 14px;
+  font-size: 22px;
+}
+
+[data-size="wide-short"] .games-tiles {
+  margin-right: -20px;
+  gap: 16px;
+  grid-auto-columns: max(236px, calc((100% - 16px) / 1.25));
+}
+
+[data-size="wide-short"] .more-coming {
+  padding: 16px 12px;
+}
+
+[data-size="wide-short"] .catalogue-tile-title {
+  white-space: normal;
+  line-height: 1.15;
+}
+
+[data-size="wide-short"] .parent-menu-list {
+  max-height: calc(100dvh - 84px);
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+[data-size="wide-short"] .parent-menu-list > * {
+  flex-shrink: 0;
+}
+
+/* The version stands under the tiles, in the page's bottom side, and
+   scrolls with the page. */
+[data-size="wide-short"] body:has(.home) #version {
+  right: calc(20px + var(--screen-right));
+  bottom: calc(3px + env(safe-area-inset-bottom));
 }
 
 /* The row stays where the page put it until the motion to the other
@@ -6336,8 +6453,10 @@ html[data-size="tall"] .pairs-bar .home-button {
   justify-content: center;
 }
 
-/* A name a tall-narrow window shows to screen readers alone, kept in the page. */
-html[data-size="tall-narrow"] .narrow-hidden {
+/* A name a tall-narrow window shows to screen readers alone, kept in the
+   page, as home's are in a wide-short one. */
+html[data-size="tall-narrow"] .narrow-hidden,
+html[data-size="wide-short"] .home .narrow-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
