@@ -6230,6 +6230,130 @@ html[data-size="tall-narrow"] .pairs-play-button {
   font-size: 30px;
 }
 
+/* In a wide-short window, an iPhone on its side, the welcome keeps the
+   cards beside a 320-pixel column, 12 under the top and over the bottom
+   and 20 past each side's inset. HOME is its house alone, a 48-pixel
+   square; the column holds the title in 28-pixel type by a 44 mark, the
+   chips 40 tall, the switch showing each level's picture alone, its name
+   kept for screen readers, and PLAY 56 tall, 12 apart, so it fits the
+   shortest window, 320 tall. The cards take the width left, at most the
+   body's height. */
+html[data-size="wide-short"] .pairs-welcome {
+  padding:
+    calc(12px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-welcome .stratum-1 {
+  height: 24px;
+}
+
+html[data-size="wide-short"] .pairs-welcome-bar .home-button {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="wide-short"] .pairs-welcome-body {
+  gap: 24px;
+}
+
+html[data-size="wide-short"] .pairs-hero {
+  align-self: stretch;
+}
+
+html[data-size="wide-short"] .pairs-hero-card {
+  max-height: 100%;
+  padding: 8px;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px #1d274224;
+}
+
+html[data-size="wide-short"] .pairs-hero-back {
+  padding: 6px;
+}
+
+html[data-size="wide-short"] .pairs-start {
+  width: 320px;
+  gap: 12px;
+}
+
+html[data-size="wide-short"] .pairs-title {
+  flex-wrap: nowrap;
+  gap: 12px;
+  white-space: nowrap;
+  font-size: 28px;
+}
+
+html[data-size="wide-short"] .pairs-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .pairs-mark svg {
+  width: 26px;
+  height: 26px;
+}
+
+html[data-size="wide-short"] .pairs-chips {
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-climb:not([data-shown]) {
+  margin-right: -8px;
+}
+
+html[data-size="wide-short"] .pairs-chip {
+  height: 40px;
+  padding: 0 14px;
+  gap: 8px;
+  border-radius: 20px;
+  font-size: 20px;
+}
+
+html[data-size="wide-short"] .pairs-chip svg {
+  width: 22px;
+  height: 22px;
+}
+
+html[data-size="wide-short"] .pairs-welcome .level-switch {
+  padding: 4px;
+  border-radius: 26px;
+}
+
+html[data-size="wide-short"] .pairs-welcome .level-switch-mark {
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 16px) / 3);
+  border-radius: 22px;
+}
+
+html[data-size="wide-short"] .pairs-welcome .level-switch-level {
+  height: 44px;
+  border-radius: 22px;
+}
+
+html[data-size="wide-short"] .pairs-play-button {
+  height: 56px;
+  padding: 0 28px 0 24px;
+  gap: 12px;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px #1d274224;
+  font-size: 24px;
+}
+
+html[data-size="wide-short"] .pairs-play-button svg {
+  width: 28px;
+  height: 28px;
+}
+
 /* A game's level switch, find the pair's and the skeleton game's: the age
    levels side by side, youngest first, across its column. The chosen level is filled in ink, bolder and raised, and a
    mark of the same ink slides to it from the level chosen before. */
@@ -6948,7 +7072,8 @@ html[data-size="tall"] .pairs-bar .home-button {
    page, as home's are in a wide-short one. */
 html[data-size="tall-narrow"] .narrow-hidden,
 html[data-size="wide-short"] .home .narrow-hidden,
-html[data-size="wide-short"] .result-with-levels .narrow-hidden {
+html[data-size="wide-short"] .result-with-levels .narrow-hidden,
+html[data-size="wide-short"] .pairs-welcome .narrow-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
