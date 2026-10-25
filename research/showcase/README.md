@@ -51,11 +51,22 @@ names the public repo, its description, homepage and topics, the `include`
 and `exclude` globs of committed files, and the `check` command that must
 pass inside the export.
 
+Optional `[[allow_marker]]` tables each name a `marker` from the shared list
+(case-insensitive) and a nonempty `paths` array of export-relative globs.
+Only that marker in matching files is exempt; other files and markers still
+stop the export. Optional `[[mount]]` tables carry committed sibling folders:
+`source` is repository-relative and outside the project, `target` defaults to
+`source`, and `include` / optional `exclude` globs match paths within the source.
+Mounts are added after project files and before `public/`; collisions with
+selected project files or earlier mounts stop the export. Mounted files pass
+the same path checks and marker and secret scans.
+
 One exporter serves every project, `scripts/showcase/export.js`:
 
-1. Export the committed files at `HEAD` that the allowlist matches.
+1. Export the committed project files at `HEAD` that the allowlist matches,
+   then add any mounts.
 2. Lay `public/` over them.
-3. Stop on a secret (`gitleaks`) or on a private marker from the shared
+3. Stop on a secret (`gitleaks`) or on a non-exempt private marker from the shared
    `scripts/showcase/markers.txt` (`agister`, `multica`, home paths). Issue
    ids such as `LAB-461` are opaque and stay public.
 4. Run the project's `check` inside the export, so the public repo builds

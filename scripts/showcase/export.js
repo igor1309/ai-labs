@@ -17,7 +17,11 @@ export function runCommand(command, args, { cwd }) {
   return result.stdout;
 }
 
-export function readSettings(text) {
+function markerList(text) {
+  return text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !line.startsWith('#'));
+}
+
+export function readSettings(text, project, markers = readFileSync(new URL('markers.txt', import.meta.url), 'utf8')) {
   const settings = parse(text);
   for (const key of ['repo', 'description', 'homepage', 'check']) {
     if (typeof settings[key] !== 'string' || !settings[key].trim()) {
@@ -30,6 +34,41 @@ export function readSettings(text) {
   for (const key of ['topics', 'include', 'exclude']) {
     if (!Array.isArray(settings[key]) || settings[key].some((value) => typeof value !== 'string' || !value.trim())) {
       throw new Error(`showcase.toml: ${key} must be an array of nonempty strings`);
+    }
+  }
+  for (const key of ['allow_marker', 'mount']) {
+    if (settings[key] === undefined) continue;
+    if (!Array.isArray(settings[key]) || settings[key].some((entry) => !entry || typeof entry !== 'object' || Array.isArray(entry))) {
+      throw new Error(`showcase.toml: ${key} must be an array of tables`);
+    }
+  }
+  const knownMarkers = markerList(markers).map((marker) => marker.toLowerCase());
+  for (const entry of settings.allow_marker ?? []) {
+    if (typeof entry.marker !== 'string' || !knownMarkers.includes(entry.marker.toLowerCase())) {
+      throw new Error('showcase.toml: allow_marker.marker must name a marker in markers.txt');
+    }
+    if (!Array.isArray(entry.paths) || !entry.paths.length || entry.paths.some((path) => typeof path !== 'string' || !path.trim())) {
+      throw new Error('showcase.toml: allow_marker.paths must be a nonempty array of nonempty strings');
+    }
+  }
+  for (const entry of settings.mount ?? []) {
+    for (const key of ['source', 'target']) {
+      if (key === 'target' && entry.target === undefined) continue;
+      try {
+        if (typeof entry[key] !== 'string' || !entry[key].trim() || /^[a-z]:/i.test(entry[key])) throw new Error();
+        safePath(entry[key]);
+      } catch {
+        throw new Error(`showcase.toml: mount.${key} must be a safe ${key === 'source' ? 'repository' : 'export'}-relative folder`);
+      }
+    }
+    if (entry.source === project || entry.source.startsWith(`${project}/`)) {
+      throw new Error('showcase.toml: mount.source must be outside the project');
+    }
+    for (const key of ['include', 'exclude']) {
+      if (key === 'exclude' && entry.exclude === undefined) continue;
+      if (!Array.isArray(entry[key]) || entry[key].some((glob) => typeof glob !== 'string' || !glob.trim())) {
+        throw new Error(`showcase.toml: mount.${key} must be an array of nonempty strings`);
+      }
     }
   }
   return settings;
@@ -45,6 +84,23 @@ function safePath(path) {
   if (!path || path.startsWith('/') || path.includes('\\') ||
       path.split('/').some((part) => !part || part === '.' || part === '..' || part.toLowerCase() === '.git')) {
     throw new Error(`Unsafe export path: ${path}`);
+  }
+}
+
+function checkPathCollisions(files) {
+  const paths = new Map();
+  for (const path of files.keys()) {
+    const folded = path.toLowerCase();
+    if (paths.has(folded)) {
+      throw new Error(`Export path collision: ${path} (conflicts with ${paths.get(folded)})`);
+    }
+    paths.set(folded, path);
+  }
+  for (const [folded, path] of paths) {
+    for (let end = folded.lastIndexOf('/'); end !== -1; end = folded.lastIndexOf('/', end - 1)) {
+      const parent = paths.get(folded.slice(0, end));
+      if (parent !== undefined) throw new Error(`Export path collision: ${path} (conflicts with ${parent})`);
+    }
   }
 }
 
@@ -79,12 +135,14 @@ function writeSnapshot(directory, files) {
   }
 }
 
-export function scanMarkers(files, text) {
-  const markers = text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !line.startsWith('#'));
+export function scanMarkers(files, text, allowances = []) {
+  const markers = markerList(text);
   const violations = [];
   for (const [path, { bytes }] of files) {
+    const blocked = markers.filter((marker) => !allowances.some((entry) =>
+      entry.marker.toLowerCase() === marker.toLowerCase() && entry.paths.some((glob) => matchesGlob(path, glob))));
     bytes.toString().split('\n').forEach((line, index) => {
-      for (const marker of markers) {
+      for (const marker of blocked) {
         if (line.toLowerCase().includes(marker.toLowerCase())) violations.push(`${path}:${index + 1}: private marker ${marker}`);
       }
     });
@@ -108,14 +166,16 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
     clean();
     if (git(['rev-parse', 'HEAD']).toString().trim() !== sha) throw new Error('HEAD changed during export');
   };
-  const entries = git(['ls-tree', '-r', '-z', sha, '--', `${project}/`]).toString().split('\0').filter(Boolean).map((entry) => {
+  const readTree = (source) => git(['ls-tree', '-r', '-z', sha, '--', `${source}/`]).toString().split('\0').filter(Boolean).map((entry) => {
     const [, mode, type, oid, path] = /^(\d+) (\w+) ([\da-f]+)\t([\s\S]+)$/.exec(entry) ?? [];
-    if (!path?.startsWith(`${project}/`)) throw new Error('Invalid git tree entry');
-    return { mode, type, oid, path: path.slice(project.length + 1) };
+    if (!path?.startsWith(`${source}/`)) throw new Error('Invalid git tree entry');
+    return { mode, type, oid, path: path.slice(source.length + 1) };
   });
+  const entries = readTree(project);
   const config = entries.find((entry) => entry.path === 'showcase/showcase.toml');
   if (!config || config.mode !== '100644' && config.mode !== '100755') throw new Error(`${project}/showcase/showcase.toml must be committed at HEAD`);
-  const settings = readSettings(git(['cat-file', 'blob', config.oid]).toString());
+  const markers = readFileSync(new URL('markers.txt', import.meta.url), 'utf8');
+  const settings = readSettings(git(['cat-file', 'blob', config.oid]).toString(), project, markers);
   const files = new Map();
   const add = (entry, path) => {
     safePath(path);
@@ -128,10 +188,28 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
     files.set(path, { mode: entry.mode, bytes: git(['cat-file', 'blob', entry.oid]) });
   };
   for (const entry of entries) if (isIncluded(entry.path, settings)) add(entry, entry.path);
+  for (const mount of settings.mount ?? []) {
+    const mountedEntries = readTree(mount.source);
+    if (!mountedEntries.length) throw new Error(`${mount.source}: mount source must be a folder committed at HEAD`);
+    for (const entry of mountedEntries) {
+      if (!mount.include.some((glob) => matchesGlob(entry.path, glob)) ||
+          (mount.exclude ?? []).some((glob) => matchesGlob(entry.path, glob))) continue;
+      const path = `${mount.target ?? mount.source}/${entry.path}`;
+      const folded = path.toLowerCase();
+      for (const existing of files.keys()) {
+        const other = existing.toLowerCase();
+        if (other === folded || other.startsWith(`${folded}/`) || folded.startsWith(`${other}/`)) {
+          throw new Error(`Mount collision at export path: ${path} (conflicts with ${existing})`);
+        }
+      }
+      add(entry, path);
+    }
+  }
   for (const entry of entries) {
     if (entry.path.startsWith('showcase/public/')) add(entry, entry.path.slice('showcase/public/'.length));
   }
-  scanMarkers(files, readFileSync(new URL('markers.txt', import.meta.url), 'utf8'));
+  checkPathCollisions(files);
+  scanMarkers(files, markers, settings.allow_marker);
   const directory = mkdtempSync(join(tempRoot, 'showcase-export-'));
   let clone;
   try {
