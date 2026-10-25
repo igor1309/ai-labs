@@ -38,7 +38,7 @@ Native: unavailable processes, unsupported formats and refused format subscripti
 ## S-7 A capture the system stops fails
 
 Fake and native: stopped devices and unreadable formats fail after cleanup;
-the first failure survives a later stop. Native notifications require a matching subscription and read alive and running independently, checking each UInt32 byte count. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`, `NativeCaptureBindingTests.nativeStopNotificationsReadTheirOwnDeviceState`, `NativeCaptureBindingTests.nativeStopNotificationsRequireMatchingSubscriptions`,
+the first failure survives a later stop. Native notifications require a matching subscription. A device that is no longer alive, a failed alive read, or abnormally stopped IO ends the capture; the alive read checks its UInt32 byte count. A running-0 notice or failed running read does not end it: Core Audio reports running 0 just after a start while the device goes on delivering audio. Evidence: `SystemAudioCaptureTests.aSystemStopReportsFailure`, `NativeCaptureBindingTests.nativeStopNotificationsReadTheirOwnDeviceState`, `NativeCaptureBindingTests.nativeRunningZeroNoticeKeepsDeliveringAudio`, `NativeCaptureBindingTests.nativeStopNotificationsRequireMatchingSubscriptions`,
 `SystemAudioCaptureTests.anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup`, `NativeCaptureBindingTests.nativeFormatFailuresKeepEarlierAudio`, `NativeCaptureBindingTests.nativeRefusedFormatNotificationsFailOnceAndSuppressLaterBuffers`, `NativeCaptureBindingTests.nativeFailedFormatReadNotificationFailsOnceAndSuppressesLaterBuffers`, `NativeCaptureBindingTests.nativeHeldBufferSurvivesFormatFailure`.
 
 ## S-8 A failed capture keeps what it heard

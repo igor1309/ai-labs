@@ -1,4 +1,5 @@
 import AVFAudio
+import CoreAudio
 import Foundation
 import Testing
 @testable import SystemAudioCapture
@@ -43,7 +44,10 @@ struct CoreAudioBindingTests {
         }
     }
 
-    private func start(_ pid: Int32, binding: CoreAudioBinding = CoreAudioBinding()) async throws -> SystemAudioCapture {
+    func start(
+        _ pid: Int32, binding: CoreAudioBinding = CoreAudioBinding(),
+        pause: () async throws -> Void = { try await Task.sleep(for: .milliseconds(20)) }
+    ) async throws -> SystemAudioCapture {
 
         // The child has no audio process object until afplay opens the file.
         // The deadline only guards a hang: on a loaded machine afplay can take
@@ -53,11 +57,20 @@ struct CoreAudioBindingTests {
         repeat {
             object = try? binding.processObject(pid)
             if object != nil { break }
-            try await Task.sleep(for: .milliseconds(20))
+            try await pause()
         } while ContinuousClock.now < deadline
         _ = try #require(object, "Core Audio must expose the afplay child's audio process")
-        let capture = try? SystemAudioCapture(binding: binding, processes: .only([pid]))
-        return try #require(capture, "A native capture must start")
+        // The child's audio object can exist before a tap can take it.
+        while true {
+            do {
+                return try SystemAudioCapture(binding: binding, processes: .only([pid]))
+            } catch let error as NSError where error.domain == NSOSStatusErrorDomain
+                && error.code == Int(kAudioHardwareBadObjectError) {
+                guard ContinuousClock.now < deadline else { throw error }
+                try await pause()
+                guard ContinuousClock.now < deadline else { throw error }
+            }
+        }
     }
 
     private func hearToneAndStop(_ capture: SystemAudioCapture) async throws {

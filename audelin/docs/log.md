@@ -1,5 +1,10 @@
 # Log
 
+## 2026-10-25
+
+- System audio capture keeps delivering audio through running-0 notices
+  at startup (LAB-541).
+
 ## 2026-10-24
 
 - Compose translates a recording's captured audio, written tracks and live
