@@ -52,7 +52,10 @@ cd "$first_run"
 git init -q
 AGISTER_HOME="$first_run/home" ./agister check > /dev/null
 AGISTER_HOME="$first_run/home" sh first-run.sh > result.json 2> progress.txt
-if ! grep -q '"head": "Hello, world\\n"' result.json || ! grep -q '"warnings": \[\]' result.json; then
+# The result is indented JSON: stdout's head is the "head" inside the
+# "stdout" object, and the run's warnings are a top-level key.
+stdout_head=$(awk '/^ *"stdout": \{/ { in_stdout = 1; next } in_stdout && /^ *\}/ { exit } in_stdout && /^ *"head": / { print; exit }' result.json)
+if test "$stdout_head" != '        "head": "Hello, world\n",' || ! grep -q '^  "warnings": \[\]' result.json; then
   echo "the README's first run did not print Hello, world without warnings:"
   cat first-run.sh result.json progress.txt
   exit 1
