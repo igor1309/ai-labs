@@ -13,25 +13,25 @@ has not ended. Every ending row checks it.
 
 ## S-1 Audio is read as it comes
 
-Words given one at a time: each word comes back before the next is given. Evidence: Missing.
+Words given one at a time: each word comes back before the next is given. Evidence: `SideTextTests.audioIsReadOneWordAtATime(sampleRate:)`.
 
 ## S-2 Live audio is read after filling in
 
 Words 1 to 5 are captured while fill in is held reading up to word 3,
 and the live audio delivers words 2 to 5, word 3 straddling where fill in
-stops; on release words 1 to 5 come back once each, in order. Evidence: Missing.
+stops; on release words 1 to 5 come back once each, in order. Evidence: `SideTextTests.liveAudioResumesAtTheSampleWhereFillInLeftOff()`.
 
 ## S-3 Switched off, the text stays as it is
 
 One word comes back, fill in is held, live text is switched off, two live
 words are given and the fill in is let go with its words: the text is the
-one word, before and after the release. Evidence: Missing.
+one word, before and after the release. Evidence: `SideTextTests.switchingOffFreezesTextBeforeAndAfterHeldFillInReturns(failing:)`.
 
 ## S-4 Switched on, it fills in again
 
 Two words come back, live text is switched off, three more are given,
 then it is switched on with fill in bringing all five: each comes back
-once, the last three marked written later. Evidence: Missing.
+once, the last three marked written later. Evidence: `SideTextTests.switchingOnFillsInAgainAndMarksOnlyMissedWordsWrittenLater()`.
 
 ## S-5 Its text ends with its audio
 
@@ -73,17 +73,17 @@ still open. Evidence: Missing.
 ## S-12 Live text failing while hearing ends it
 
 The fake fails hearing the second word: side text reads as failed with the
-first word kept. Evidence: Missing.
+first word kept. Evidence: `SideTextTests.hearingFailureKeepsTheFirstWordAndWaitsForLiveTextToStop()`.
 
 ## S-15 Live text failing while finishing ends it
 
 Words come back, the audio ends, the fake fails finishing: side text reads
-as failed with those words kept. Evidence: Missing.
+as failed with those words kept. Evidence: `SideTextTests.finishingFailureKeepsTheWordsAndWaitsForLiveTextToStop()`.
 
 ## S-13 Filling in failing ends it
 
 Fill in fails after bringing one word: side text reads as failed with that
-word kept. Evidence: Missing.
+word kept. Evidence: `SideTextTests.fillInFailureKeepsItsFirstWordAndWaitsForLiveTextToStop()`.
 
 ## S-14 Stopping twice ends once
 

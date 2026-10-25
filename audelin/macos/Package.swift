@@ -23,6 +23,7 @@ let package = Package(
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Session", targets: ["Session"]),
+        .library(name: "SideText", targets: ["SideText"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
         .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
@@ -109,6 +110,9 @@ let package = Package(
         .target(
             name: "Session",
             dependencies: ["Machine"]
+        ),
+        .target(
+            name: "SideText"
         ),
         .target(
             name: "SystemAudioCapture"
@@ -203,6 +207,10 @@ let package = Package(
         .testTarget(
             name: "SessionTests",
             dependencies: ["Session", "Machine"]
+        ),
+        .testTarget(
+            name: "SideTextTests",
+            dependencies: ["SideText"]
         ),
         .testTarget(
             name: "SystemAudioCaptureTests",
