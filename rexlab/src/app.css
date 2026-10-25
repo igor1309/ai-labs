@@ -7788,6 +7788,48 @@ html[data-size="tall-narrow"] .pairs-offer-answers button {
   font-size: 22px;
 }
 
+/* In a wide-short window, an iPhone on its side, the offer is at most 520
+   wide on 12-pixel margins, its padding 20 at the top and 16 elsewhere,
+   its parts 12 apart: the picture 64, the question in 22-pixel type on
+   at most two lines, and YES beside NOT NOW, each 52 tall in 20, so it
+   fits the shortest window, 320 tall. */
+html[data-size="wide-short"] .pairs-offer-scrim {
+  padding: 12px;
+}
+
+html[data-size="wide-short"] .pairs-offer {
+  width: min(520px, 100%);
+  padding: 20px 16px 16px;
+  gap: 12px;
+  border-radius: 24px;
+}
+
+html[data-size="wide-short"] .pairs-offer-picture {
+  width: 64px;
+  height: 64px;
+  font-size: 36px;
+}
+
+html[data-size="wide-short"] .pairs-offer-question {
+  font-size: 22px;
+}
+
+html[data-size="wide-short"] .pairs-offer-answers {
+  gap: 12px;
+}
+
+html[data-size="wide-short"] .pairs-offer-answers button {
+  height: 52px;
+  gap: 10px;
+  border-radius: 16px;
+  font-size: 20px;
+}
+
+html[data-size="wide-short"] .pairs-offer-answers svg {
+  width: 24px;
+  height: 24px;
+}
+
 /* The skeleton game's screens fill the screen under a bar like find the
    pair's: HOME, the title beside a bone, MUSEUM and, while building, the
    bones fitted. */
