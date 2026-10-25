@@ -8,6 +8,53 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct AudioTests {
 
+    @Test func blockedWriteDoesNotDelayLaterAudio() async throws {
+
+        try await withComposeFolder { folder in
+            let track = try TrackFile(url: folder.appendingPathComponent("track.caf"))
+            typealias Piece = (samples: [Float], sampleRate: Double)
+            let source = AsyncThrowingStream<Piece, any Error>.makeStream()
+            let write = DrainGate(), executor = DrainExecutor()
+            let feed = CaptureFeed(
+                stream: source.stream, track: track, unpack: { $0 },
+                beforeWrite: { audio in if audio.start == 0 { await write.wait() } },
+                executor: executor
+            )
+            defer { source.continuation.finish(); feed.cancel(); write.release(); executor.run() }
+            let expected = [
+                Audio(start: 0, samples: [0.25, -0.5], sampleRate: 48_000),
+                Audio(start: 2 / 48_000, samples: [0.125], sampleRate: 48_000),
+                Audio(start: 3 / 48_000, samples: [-0.25, 0.5], sampleRate: 48_000),
+            ]
+            let received = Values<Audio>(), returned = Values<Bool>()
+            let listener = Task(executorPreference: executor) {
+                await feed.listen { received.append($0) }
+            }
+            let waiting = Task(executorPreference: executor) {
+                try await feed.wait()
+                returned.append(true)
+            }
+            defer { listener.cancel(); waiting.cancel(); executor.run() }
+            source.continuation.yield((expected[0].samples, expected[0].sampleRate))
+            await executor.run(until: { write.entered })
+            for audio in expected.dropFirst() { source.continuation.yield((audio.samples, audio.sampleRate)) }
+            executor.run()
+            #expect(received.all == expected)
+            #expect(feed.capturedThrough == expected.last?.end)
+            #expect(returned.all.isEmpty)
+
+            source.continuation.finish()
+            executor.run()
+            #expect(returned.all.isEmpty)
+            write.release()
+            await executor.run(until: { !returned.all.isEmpty })
+            try await waiting.value
+            await listener.value
+            try await track.close()
+            #expect(try await track.read(from: 0, to: 5 / 48_000) == expected.flatMap(\.samples))
+        }
+    }
+
     @Test func captureRatesTranslateWithoutChangingSamplesOrCallTime() async throws {
 
         try await withComposeFolder { folder in
@@ -36,7 +83,7 @@ struct AudioTests {
     }
 
     @Test(arguments: [false, true])
-    func bothCapturesWriteBeforeDeliveryAndKeepCallTime(system: Bool) async throws {
+    func bothCapturesWriteAndDeliverWithCallTime(system: Bool) async throws {
 
         try await withComposeFolder { folder in
             let track = try TrackFile(url: folder.appendingPathComponent("track.caf"))
@@ -117,7 +164,7 @@ struct AudioTests {
     }
 
     @Test(arguments: [false, true])
-    func failuresEndAfterTheWrittenPrefix(writeFails: Bool) async throws {
+    func failuresEndTheFeedAndKeepTheWrittenPrefix(writeFails: Bool) async throws {
 
         try await withComposeFolder { folder in
             let track = try TrackFile(url: folder.appendingPathComponent("track.caf"))
@@ -135,7 +182,16 @@ struct AudioTests {
             }
             let received = Values<Audio>()
             await feed.listen { received.append($0) }
-            #expect(received.all == [Audio(start: 0, samples: [0.25], sampleRate: 48_000)])
+            // Delivery follows capture even when the track rejects a piece.
+            #expect(Array(received.all.prefix(1)) == [Audio(start: 0, samples: [0.25], sampleRate: 48_000)])
+            #expect(received.all.count == (writeFails ? 2 : 1))
+            if writeFails {
+                let rejected = try #require(received.all.last)
+                #expect(rejected.start == 1 / 48_000.0)
+                #expect(rejected.sampleRate == 48_000)
+                #expect(rejected.samples.count == 1)
+                #expect(rejected.samples.first?.isNaN == true)
+            }
             #expect(feed.capturedThrough == Double(writeFails ? 2 : 1) / 48_000)
             try await track.close()
             #expect(try await track.read(from: 0, to: 2 / 48_000) == [0.25])
@@ -156,7 +212,17 @@ struct AudioTests {
             await #expect(throws: TrackFile.Failure.invalidAudio) { try await feed.wait() }
             let received = Values<Audio>()
             await feed.listen { received.append($0) }
-            #expect(received.all == [prefix])
+            // Delivery follows capture even when the track rejects a piece.
+            #expect(Array(received.all.prefix(1)) == [prefix])
+            #expect(received.all.count == 2)
+            let rejected = try #require(received.all.last)
+            #expect(rejected.start == prefix.end)
+            #expect(rejected.sampleRate == 48_000)
+            #expect(rejected.samples.count == 1)
+            #expect(rejected.samples.first?.isNaN == true)
+            if case .terminated = source.continuation.yield(.init(samples: [0.5], sampleRate: 48_000)) {} else {
+                Issue.record("Write failure must cancel input")
+            }
             try await track.close()
             #expect(try await track.read(from: 0, to: 3 / 48_000) == prefix.samples)
         }
@@ -200,7 +266,7 @@ struct AudioTests {
         }
     }
 
-    @Test func validAudioRejectedByAClosedTrackIsNeverDelivered() async throws {
+    @Test func validAudioIsDeliveredEvenWhenAClosedTrackRejectsIt() async throws {
 
         try await withComposeFolder { folder in
             let track = try TrackFile(url: folder.appendingPathComponent("track.caf"))
@@ -213,7 +279,8 @@ struct AudioTests {
             await #expect(throws: TrackFile.Failure.writingEnded) { try await feed.wait() }
             let received = Values<Audio>()
             await feed.listen { received.append($0) }
-            #expect(received.all.isEmpty)
+            // Delivery follows capture even when the track rejects a piece.
+            #expect(received.all == [Audio(start: 0, samples: [0.25, -0.5], sampleRate: 48_000)])
             #expect(feed.capturedThrough == 2 / 48_000.0)
             #expect(try await track.read(from: 0, to: 2 / 48_000) == [])
         }
