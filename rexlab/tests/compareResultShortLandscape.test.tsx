@@ -4,12 +4,12 @@ import { describe, expect, it, onTestFinished } from "vitest";
 import { App } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import type { ProgressStore } from "../src/quiz/progress.ts";
+import type { ProgressStore } from "../src/quizGame.tsx";
 import { correctOf } from "../src/quiz/round.ts";
 import { appStylesheet, type SafeArea } from "./stylesheet.ts";
 import {
   SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, emptyCare, emptyDig, emptyPairs,
-  emptySkeletons, emptySorting, fakeBodyPicture, featuring, gameDoor,
+  emptyProgress, emptySkeletons, emptySorting, fakeBodyPicture, featuring, gameDoor,
   lightDevice, loadedPictures, manualViewport, pageAtRest, seededRandom,
   shownQuestion, unreadVersion, unsetAgeLevel
 } from "./support.ts";
@@ -32,15 +32,54 @@ const EARLIER_BEST: ProgressStore = {
   save: () => {}
 };
 
+// A best of 10 already, so a round won whole is no new best: no
+// celebration, the best still shown.
+const BEST_OF_TEN: ProgressStore = {
+  load: () => ({ progress: { best: { hatchling: 10, explorer: 10, paleontologist: 10 }, roundsPlayed: 3 }, levelChoice: undefined }),
+  save: () => {}
+};
+
 const part = (selector: string, root: ParentNode = document) => {
   const found = root.querySelector<HTMLElement>(selector);
   if (!found) throw new Error(`No ${selector}`);
   return found;
 };
 
+// Where a two-column grid's automatic placement puts each of the rewards'
+// column's parts, in their order and from their declared columns and
+// spans, as a browser does: jsdom does not. Rows and columns from 1.
+function placed(size: WindowSize) {
+  const items = [...part(".result-content").children].map((element, index) => {
+    const style = styleAt(element, size);
+    const column = style.value("grid-column") || "auto";
+    const span = /^span (\d+)$/.exec(style.value("grid-row"))?.[1];
+    return { name: element.className, order: Number(style.value("order") || 0), index, column, rows: span ? Number(span) : 1 };
+  }).sort((a, b) => a.order - b.order || a.index - b.index);
+  const taken = new Set<string>();
+  const free = (row: number, column: number, rows: number) => Array.from({ length: rows }, (_, step) => `${row + step} ${column}`).every((cell) => !taken.has(cell));
+  let row = 1;
+  let column = 1;
+  return items.map(({ name, column: declared, rows }) => {
+    const whole = declared === "1 / -1";
+    const fixed = whole ? 1 : declared === "auto" ? undefined : Number(declared);
+    for (;;) {
+      if (fixed !== undefined && column > fixed) { row += 1; column = 1; }
+      const at = fixed ?? column;
+      if (at > 2) { row += 1; column = 1; continue; }
+      if (free(row, at, rows) && (!whole || free(row, 2, rows))) {
+        for (let step = 0; step < rows; step += 1) for (const each of whole ? [1, 2] : [at]) taken.add(`${row + step} ${each}`);
+        column = whole ? 3 : at + 1;
+        return [name, row, whole ? "1 / -1" : at] as const;
+      }
+      column = at + 1;
+      if (column > 2 || fixed !== undefined) { row += 1; column = 1; }
+    }
+  });
+}
+
 // The compare quiz's result, every question answered right, in a
 // wide-short window of `size` with the safe-area insets `insets`.
-async function openResult(size: WindowSize, insets: SafeArea, language: Language = "en") {
+async function openResult(size: WindowSize, insets: SafeArea, language: Language = "en", progress: ProgressStore = EARLIER_BEST) {
   openWindow(...size);
   const sheet = document.createElement("style");
   sheet.textContent = appStylesheet(insets);
@@ -57,7 +96,7 @@ async function openResult(size: WindowSize, insets: SafeArea, language: Language
     random={seededRandom(11)}
     portraitLayouts={{}}
     viewport={viewport}
-    progress={EARLIER_BEST}
+    progress={progress}
     deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
     languageStore={{ load: () => undefined, save: () => {} }}
     nameVersion={unreadVersion}
@@ -100,6 +139,8 @@ describe("the compare quiz's result in a wide-short window", () => {
     expect([...part(".result-content").children].map((element) => element.className)).toEqual(["celebration", "result-score", "result-stars", "result-title", "best-score", "level-switch", "result-actions"]);
     const column = (selector: string) => at(selector).value("grid-column") || "auto";
     expect([column(".celebration"), column(".best-score"), column(".level-switch"), column(".result-actions"), at(".result-score").value("grid-row")]).toEqual(["1 / -1", "1 / -1", "1 / -1", "1 / -1", "span 2"]);
+    // The celebration on top, the score beside WELL DONE! over the stars.
+    expect(placed(size)).toEqual([["celebration", 1, "1 / -1"], ["result-score", 2, 1], ["result-title", 2, 2], ["result-stars", 3, 2], ["best-score", 4, "1 / -1"], ["level-switch", 5, "1 / -1"], ["result-actions", 6, "1 / -1"]]);
     // The score spans the two rows the stars and "WELL DONE!" stand in.
     const score = at(".result-score-value").px("font-size");
     const pair = at(".result-title").px("font-size") * Number(at(".result-title").value("line-height")) + 8 + at(".result-stars").px("font-size") * Number(at(".result-stars").value("line-height") || 1);
@@ -124,6 +165,12 @@ describe("the compare quiz's result in a wide-short window", () => {
       expect([style.value("flex").replace("0px", "0"), style.px("padding-left"), style.columnGap(), style.value("font-size"), style.value("white-space")]).toEqual(["1 1 0", 16, 8, "18px", "nowrap"]);
       expect(styleAt(part("svg", button), size).value("width")).toBe("22px");
     }
+  });
+
+  it.each(["en", "ru"] as const)("stands WELL DONE! over the stars with no celebration either, in %s", async (language) => {
+    await openResult([667, 375], PHONES[0][2], language, BEST_OF_TEN);
+    expect(document.querySelector(".celebration")).toBeNull();
+    expect(placed([667, 375])).toEqual([["result-score", 1, 1], ["result-title", 1, 2], ["result-stars", 2, 2], ["best-score", 3, "1 / -1"], ["level-switch", 4, "1 / -1"], ["result-actions", 5, "1 / -1"]]);
   });
 
   it("goes back to the iPad's layout when the window grows past 600 tall", async () => {
@@ -157,25 +204,36 @@ const COLUMNS = [
   ...Array.from({ length: 932 - 812 + 1 }, (_, step) => Math.min(400, 812 + step - 40 - 2 * 59 - 20))
 ];
 
+// The rendered sizes the fit sums take, read from the result as the
+// stylesheet sets it on a phone on its side.
+function shownSizes(size: WindowSize) {
+  const at = (selector: string) => styleAt(part(selector), size);
+  const button = at(".play-again-button");
+  const celebration = at(".celebration");
+  return {
+    score: at(".result-score-value").px("font-size"), scoreGap: at(".result-score").columnGap(), total: at(".result-score-total").px("font-size"),
+    beside: at(".result-content").columnGap(), star: at(".result-stars").px("font-size"), starGap: at(".result-stars").columnGap(), title: at(".result-title").px("font-size"),
+    button: { sides: button.px("padding-left") + button.px("padding-right"), gap: button.columnGap(), symbol: styleAt(part("svg", part(".play-again-button")), size).px("width"), type: button.px("font-size") },
+    homeType: at(".result-actions .home-button").px("font-size"), between: at(".result-actions").columnGap(),
+    celebration: { sides: celebration.px("padding-left") + celebration.px("padding-right"), gap: celebration.columnGap(), symbol: styleAt(part("svg", part(".celebration")), size).px("width"), type: celebration.px("font-size") }
+  };
+}
+
 describe("the result's words fit on a phone on its side", () => {
-  it("measures the words the result shows", () => {
-    for (const language of ["en", "ru"] as const) {
-      const text = TEXTS[language];
-      for (const word of [text.wellDone, text.playAgain, text.home, ...Object.values(text.celebrations).map(({ text: shown }) => shown)]) ems(word);
+  it.each((["en", "ru"] as const).flatMap((language) => [[language, "new-best", () => EARLIER_BEST], [language, "first-best", emptyProgress]] as const))("fits every part in its row at every width, in %s with a %s celebration", async (language, kind, progress) => {
+    const size: WindowSize = [667, 375];
+    // No round played before, a round won is the first best.
+    await openResult(size, PHONES[0][2], language, progress());
+    const text = TEXTS[language];
+    expect(part(".celebration-text").textContent).toBe(text.celebrations[kind].text);
+    const shown = shownSizes(size);
+    const score = ems("10") * shown.score + shown.scoreGap + ems("/10") * shown.total;
+    const button = (word: string, type: number) => shown.button.sides + shown.button.symbol + shown.button.gap + ems(word) * type;
+    for (const column of new Set(COLUMNS)) {
+      expect(score + shown.beside + 10 * ems("★") * shown.star + 9 * shown.starGap, `stars in ${column}`).toBeLessThanOrEqual(column);
+      expect(score + shown.beside + ems(text.wellDone) * shown.title, `title in ${column}`).toBeLessThanOrEqual(column);
+      expect(Math.max(button(text.playAgain, shown.button.type), button(text.home, shown.homeType)) * 2 + shown.between, `actions in ${column}`).toBeLessThanOrEqual(column);
+      expect(shown.celebration.sides + shown.celebration.symbol + shown.celebration.gap + ems(text.celebrations[kind].text) * shown.celebration.type, `celebration in ${column}`).toBeLessThanOrEqual(column);
     }
-  });
-
-  it.each([...new Set(COLUMNS)])("fits ten stars beside 10/10, and WELL DONE! in either language, in a %i-pixel column", (column) => {
-    const score = ems("10") * 56 + 8 + ems("/10") * 24;
-    expect(score + 16 + 10 * ems("★") * 20 + 9 * 4).toBeLessThanOrEqual(column);
-    for (const title of ["WELL DONE!", "МОЛОДЕЦ!"]) expect(score + 16 + ems(title) * 24, title).toBeLessThanOrEqual(column);
-  });
-
-  it.each([...new Set(COLUMNS)])("fits PLAY AGAIN beside HOME and every celebration in either language in a %i-pixel column", (column) => {
-    // A button: 16 a side, its 22-pixel symbol and the 8 gap before its word.
-    const button = (word: string) => 16 + 22 + 8 + ems(word) * 18 + 16;
-    for (const [again, home] of [["PLAY AGAIN", "HOME"], ["ЕЩЁ РАЗ", "ДОМОЙ"]] as const) expect(Math.max(button(again), button(home)) * 2 + 12, again).toBeLessThanOrEqual(column);
-    // A celebration: 12 before its 22-pixel symbol, the 8 gap and 16 after.
-    for (const word of ["FIRST BEST!", "NEW BEST!", "ПЕРВЫЙ РЕКОРД!", "НОВЫЙ РЕКОРД!"]) expect(12 + 22 + 8 + ems(word) * 16 + 16, word).toBeLessThanOrEqual(column);
   });
 });

@@ -6438,6 +6438,12 @@ html[data-size="wide-short"] .result-with-levels .result-content {
   gap: 8px 16px;
 }
 
+html[data-size="wide-short"] .result-with-levels .best-score,
+html[data-size="wide-short"] .result-with-levels .level-switch,
+html[data-size="wide-short"] .result-with-levels .result-actions {
+  order: 2;
+}
+
 html[data-size="wide-short"] .result-with-levels .celebration,
 html[data-size="wide-short"] .result-with-levels .best-score {
   grid-column: 1 / -1;
@@ -6451,7 +6457,13 @@ html[data-size="wide-short"] .result-with-levels .celebration {
   font-size: 16px;
 }
 
+html[data-size="wide-short"] .result-with-levels .celebration svg {
+  width: 20px;
+  height: 20px;
+}
+
 html[data-size="wide-short"] .result-with-levels .result-score {
+  grid-column: 1;
   grid-row: span 2;
   gap: 8px;
 }
@@ -6465,11 +6477,16 @@ html[data-size="wide-short"] .result-with-levels .result-score-total {
 }
 
 html[data-size="wide-short"] .result-with-levels .result-title {
+  grid-column: 2;
   font-size: 24px;
   line-height: 1.2;
 }
 
+/* The stars come after "WELL DONE!" in the grid, under it beside the
+   score, and the parts after them follow. */
 html[data-size="wide-short"] .result-with-levels .result-stars {
+  order: 1;
+  grid-column: 2;
   gap: 4px;
   font-size: 20px;
 }
