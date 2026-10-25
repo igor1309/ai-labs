@@ -9509,7 +9509,7 @@ html[data-size="wide-short"] .dig-board-screen .dig-choice-cards {
   justify-content: safe center;
   gap: 8px;
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
 }
 
 html[data-size="wide-short"] .dig-board-screen .dig-choice-slot {

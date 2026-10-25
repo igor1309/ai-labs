@@ -141,7 +141,7 @@ describe("DIG's WHO IS IT? in a wide-short window", () => {
     expect(4 * 44 + 3 * 8).toBeGreaterThan(roomHeight);
     for (const slot of all(".dig-choice-slot")) expect(styleAt(slot, size).px("min-height")).toBe(44);
     const column = styleAt(part(".dig-choice-cards"), size);
-    expect([column.value("overflow-y"), column.value("overscroll-behavior"), column.value("justify-content")]).toEqual(["auto", "contain", "safe center"]);
+    expect([column.value("overflow-y"), column.value("overscroll-behavior"), column.value("justify-content")]).toEqual(["auto", "none", "safe center"]);
     expect(styleAt(part(".dig-board-screen"), size).value("overflow")).toBe("hidden");
   });
 
