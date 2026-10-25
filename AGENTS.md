@@ -109,6 +109,39 @@
 - Before building a large issue, present a top-level plan, including any
   restructuring of its issues, and wait for the owner's answer.
 
+## Adding a project
+
+A project is a top-level directory, named in lower-case kebab-case. Each
+place below is checked by a test or read by a tool; miss one and CI or the
+daily dashboard flags it.
+
+- Give it a `README.md` (what it is, its status, how to run it) and a
+  `docs/log.md` (see Logs). Add an `AGENTS.md` when it has rules of its own.
+- Add a row to `## Components` in the root `README.md` (or `## Structure`
+  for a docs-only area). These two tables are the project registry the
+  dashboard-sync agent reads (`dashboard-sync-agent/README.md`).
+- Add the name to `scripts/loc-dashboard.sh` in three places: the header
+  comment, the `for proj in ...` loop, and `known` in `check_project_drift`.
+  Add its row to the `data = [...]` array in `docs/loc-dashboard.html`.
+  `scripts/tests/loc-dashboard.test.js` fails when the loop and the chart
+  differ, or when trunk shows a drift warning.
+- For a product, add its card to `docs/products.html`; a landing page it
+  links must exist (same test).
+- If it has tests, give it a `.github/workflows/<project>-core.yml`
+  reusable workflow and, in `.github/workflows/ci.yml`: a `<project>` path
+  filter listing its code paths only (no `<project>/**`, no docs) and a
+  `<project>-ci` filter for its workflow files, both in `changes.outputs`;
+  a `<project>-core` job gated on them and on `workflow_dispatch`; and the
+  job in `needs` of `report` and `notify` and in `notify`'s
+  `job_results`. Rules: `.github/workflows/AGENTS.md` and `README.md`
+  there, whose "What CI runs" table gets a row too.
+  `scripts/tests/ci-workflow-paths.test.js` fails while any tracked test
+  file selects no job or a job does not run on manual dispatch.
+- If it ships releases, add it to `paths` in `release-units.config.toml`,
+  give it one `package.json` or `release.toml`, and regenerate
+  `release-units.toml` with `node scripts/release/generate-manifest.js`;
+  `release-validation` in `ci.yml` fails on a stale one (`--check`).
+
 ## Logs
 
 - A project's `docs/log.md` records what changed for the product, newest
