@@ -17,10 +17,10 @@ const PHONES = [
   [932, 430, { top: 0, right: 59, bottom: 21, left: 59 }]
 ] as const;
 
-// Each board's shape: a climb's smallest and fullest, and the larger
-// levels'.
+// Each board's shape: a climb's three, and the larger levels'.
 const BOARDS = {
   "climb 1": [{ climbLevel: 1 }, 2, 3],
+  "climb 2": [{ climbLevel: 2 }, 2, 4],
   "climb 4": [{ climbLevel: 4 }, 3, 4],
   explorer: [{ large: "explorer" }, 3, 6],
   paleontologist: [{ large: "paleontologist" }, 4, 6]

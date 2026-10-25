@@ -6853,8 +6853,8 @@ html[data-size="tall-narrow"] .pairs-bar-chip svg {
 
 /* In a wide-short window, an iPhone on its side, the board keeps its
    rows and columns as dealt under a 48-pixel bar, 8 under the top, 12
-   over the bottom and 20 past each side's inset. The cards stand 8 apart
-   at 3:2, wider than tall like the pictures, as large as the room under
+   over the bottom and 20 past each side's inset. The cards stand 8 apart,
+   about 3:2 once the gaps are taken, wider than tall like the pictures, as large as the room under
    the bar lets the whole board be; even the fullest board's four rows
    keep a card over 44 tall. BACK and HOME are 48 squares of their
    symbols, the title in 24-pixel type, and a found card's name is left
