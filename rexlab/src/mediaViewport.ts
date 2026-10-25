@@ -2,6 +2,10 @@
 // safe-area insets, which a script cannot read from env() itself.
 export const SIDE_INSETS = { left: "--safe-area-left", right: "--safe-area-right" } as const;
 
+// A landscape window narrower than this, too narrow for a landscape row
+// (no phone on its side is), lays out as a phone upright does.
+export const LEAST_WIDE = 568;
+
 // The screen's orientation is independent of a Split View or desktop
 // window's shape. Older browsers can only tell us the window's shape.
 // The side insets are read from `rootStyle`, the root's computed style,
@@ -24,6 +28,7 @@ export function mediaViewport(
   return {
     sizeClass: () => portrait.matches
       ? narrow.matches ? "tall-narrow" as const : "tall" as const
+      : window.innerWidth < LEAST_WIDE ? "tall-narrow" as const
       : short.matches ? "wide-short" as const : "wide" as const,
     isScreenUpright: () => screenOrientation ? screenOrientation.type.startsWith("portrait") : portrait.matches,
     width: () => window.innerWidth,

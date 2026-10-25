@@ -9,6 +9,14 @@ export const NARROW_ROW_START = 20;
 // them in either layout, as the stylesheet sets them.
 export const TILE_COLUMN = 310;
 export const TILE_GAP = 24;
+// In a wide-short window, an iPhone on its side, the columns are a share
+// of the row's width, `width` wide, as the stylesheet sets them: one whole
+// column, its gap and a quarter of the next fill it, each column 236
+// wide at least, the least a tile's name fits in.
+export const SHORT_TILE_GAP = 16;
+export const SHORT_ROW_COLUMNS = 1.25;
+export const SHORT_LEAST_COLUMN = 236;
+export const shortTileColumn = (width: number) => Math.max(SHORT_LEAST_COLUMN, (width - SHORT_TILE_GAP) / SHORT_ROW_COLUMNS);
 // The least of the next column that shows at the row's edge, and the
 // least of it that hides there.
 export const PEEK = 24;
