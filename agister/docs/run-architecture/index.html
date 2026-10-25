@@ -134,9 +134,10 @@ that list, so it refuses exactly what a run would.</p>
   <tr><td>parallel</td><td>its steps at once, or <code>max</code> at a time; one that fails does not stop the next; at least one must complete</td><td>a list, in declared order, of each step's status, class and output</td></tr>
   <tr><td>branch</td><td>the first arm whose <code>if</code> holds, else the arm with none</td><td>the arm's output mapping</td></tr>
   <tr><td>repeat</td><td>its body, then binds <code>next</code> over its state, then reads <code>until</code>; again until it holds or <code>max</code> passes have run; never reads <code>until</code> before the first pass</td><td><code>{"state", "stopped", "passes"}</code>: the last state, <code>until</code> or <code>max</code>, and how many passes ran</td></tr>
+  <tr><td>workflow</td><td>another workflow, as a child run: its inputs resolve when it starts, over the params the item binds, in its own boundary; its steps are called as <code>&lt;item&gt;/&lt;step&gt;</code>, with the pass where the item is in a repeat</td><td>its outputs; one output named <code>output</code> is given whole</td></tr>
 </table>
 <p>Items sit anywhere an item may: in the workflow's steps, an arm, a
-repeat's body; a parallel holds steps alone. A condition is pure: it reads
+repeat's body; a parallel holds steps and workflows. A condition is pure: it reads
 params, inputs, a repeat's state and the outputs of items already ended, with
 <code>equals</code>, <code>present</code>, <code>all</code>, <code>any</code>,
 <code>and</code>, <code>or</code> and <code>not</code>. A number never equals
@@ -175,8 +176,8 @@ a revision, its changes as a patch.</p>
 its start's UTC time and six random hex characters:</p>
 <table>
   <tr><th>File</th><th>Holds</th></tr>
-  <tr><td><code>record.json</code></td><td>the request, status and result; every call ended, as <code>&lt;run id&gt;/&lt;step&gt;</code>, with its process, agent, inputs, permission plan, environment, definition files by digest, HEAD and content, cost and result; written whole as each call ends, <code>lost</code> until the run ends</td></tr>
-  <tr><td><code>events.jsonl</code></td><td>a line per event as it happens: a step started, reused, a tool call, a stale turn, a turn at capacity, a fallback, a step ended; a branch's arm with each condition read, its values and whether it held; a repeat's pass with its state; why a repeat stopped</td></tr>
+  <tr><td><code>record.json</code></td><td>the request, status and result; every call ended, as <code>&lt;run id&gt;/&lt;step&gt;</code>, with its process, agent, inputs, permission plan, environment, definition files by digest, HEAD and content, cost and result; under <code>children</code>, each child run, as <code>&lt;run id&gt;/&lt;item&gt;</code>, with its workflow, params, inputs and their identities, status and output; written whole as each call ends, <code>lost</code> until the run ends</td></tr>
+  <tr><td><code>events.jsonl</code></td><td>a line per event as it happens: a step started, reused, a tool call, a stale turn, a turn at capacity, a fallback, a step ended; a branch's arm with each condition read, its values and whether it held; a repeat's pass with its state; why a repeat stopped; a child run started, with its params and inputs, and ended, with its status and output</td></tr>
   <tr><td><code>definitions/</code></td><td>the bytes of every settings file a call was made from, by digest</td></tr>
   <tr><td><code>patches/</code></td><td>each pinned call's changes, by its name</td></tr>
 </table>
@@ -197,7 +198,7 @@ goes on in the session of a one-step run's call.</p>
 <h2>What Agister does not do</h2>
 <p>Agister runs what settings define and records it. Committing, pushing,
 deciding what a review's findings mean and asking the owner stay with whoever
-calls it. It does not yet run a workflow inside a workflow, a branch or repeat
+calls it. It does not yet run a branch or repeat
 inside a parallel, or a turn on pi; <code>check</code> and <code>run</code>
 refuse them alike.</p>
 
