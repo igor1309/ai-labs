@@ -533,7 +533,6 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 	}
 	built := plan{calls: map[string]plannedCall{}, definitions: []runstore.Definition{}, boundaries: map[string]inputs.Declared{}}
 	named := []runstore.Definition{}
-	origins := map[string]string{}
 	defaults := declaredParams(params)
 	for _, param := range w.Params {
 		built.boundary.Params = append(built.boundary.Params, inputs.Param{Name: param.Name, Default: defaults[param.Name]})
@@ -597,11 +596,6 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 		var builtWorkflow workflow.Workflow
 		var buildItem func(resolve.Item, string) (workflow.Step, error)
 		stepOf := func(item resolve.Item, path string) (workflow.Step, error) {
-			origin := fmt.Sprintf("the step %q of workflow %q", item.Name, workflowName)
-			if previous, exists := origins[path]; exists {
-				return workflow.Step{}, fmt.Errorf("%s and %s would both be planned as %q", previous, origin, path)
-			}
-			origins[path] = origin
 			planned, err := plannedCallOf(workflowName, item, item.Agent.Value, resolved, docs, takes)
 			if err != nil {
 				return workflow.Step{}, err
@@ -755,6 +749,50 @@ func planOf(name string, resolved resolve.Resolved, docs runDocuments, takes map
 var passName = regexp.MustCompile(`/[0-9]+$`)
 
 func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) ([]notRunLine, error) {
+	if err := validateCallNames(name, w, resolved); err != nil {
+		return nil, err
+	}
+	return notRunWorkflowOf(name, w, resolved, docs, takes)
+}
+
+// validateCallNames checks the qualified names shared by plans and call records.
+func validateCallNames(name string, w resolve.Workflow, resolved resolve.Resolved) error {
+	origins := map[string]string{}
+	var walk func(string, []resolve.Item, string) error
+	walk = func(owner string, items []resolve.Item, prefix string) error {
+		for _, item := range items {
+			switch {
+			case item.Workflow.Value != "":
+				if err := walk(item.Workflow.Value, resolved.Workflows[item.Workflow.Value].Steps, prefix+item.Name+"/"); err != nil {
+					return err
+				}
+			case item.Parallel != nil:
+				if err := walk(owner, item.Parallel, prefix); err != nil {
+					return err
+				}
+			case item.Branch != nil:
+				if err := walk(owner, item.Branch, prefix); err != nil {
+					return err
+				}
+			case item.Repeat != nil:
+				if err := walk(owner, item.Repeat.Steps, prefix); err != nil {
+					return err
+				}
+			default:
+				path := prefix + item.Name
+				origin := fmt.Sprintf("the step %q of workflow %q", item.Name, owner)
+				if previous, exists := origins[path]; exists {
+					return fmt.Errorf("%s and %s would both be planned as %q", previous, origin, path)
+				}
+				origins[path] = origin
+			}
+		}
+		return nil
+	}
+	return walk(name, w.Steps, "")
+}
+
+func notRunWorkflowOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs runDocuments, takes map[string]call.Inputs) ([]notRunLine, error) {
 	var unrun notRun
 	document := resolve.Reference{Kind: resolve.KindProcess, Name: ""}
 	if name != "" {
@@ -784,7 +822,7 @@ func notRunOf(name string, w resolve.Workflow, resolved resolve.Resolved, docs r
 				switch {
 				case item.Workflow.Value != "":
 					childName := item.Workflow.Value
-					lines, err := notRunOf(childName, resolved.Workflows[childName], resolved, docs, takes)
+					lines, err := notRunWorkflowOf(childName, resolved.Workflows[childName], resolved, docs, takes)
 					if err != nil {
 						return err
 					}

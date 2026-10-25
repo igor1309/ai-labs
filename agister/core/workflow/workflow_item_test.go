@@ -3,6 +3,7 @@ package workflow_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"maps"
 	"reflect"
 	"slices"
@@ -19,6 +20,57 @@ type childResolver struct {
 func (r *childResolver) Resolve(_ context.Context, given map[string]string) (workflow.Boundary, error) {
 	r.asked = append(r.asked, maps.Clone(given))
 	return r.resolve(given), nil
+}
+
+type boundaryResolverFunc func(context.Context, map[string]string) (workflow.Boundary, error)
+
+func (f boundaryResolverFunc) Resolve(ctx context.Context, given map[string]string) (workflow.Boundary, error) {
+	return f(ctx, given)
+}
+
+func TestCancellationWhileWorkflowInputsResolveEndsInterruptedCancelled(t *testing.T) {
+	t.Parallel()
+	for _, where := range []string{"root", "item", "parallel item"} {
+		t.Run(where, func(t *testing.T) {
+			t.Parallel()
+			f := newItemFixture(t)
+			ctx, cancel := context.WithCancel(context.Background())
+			resolving := make(chan struct{})
+			resolver := boundaryResolverFunc(func(ctx context.Context, _ map[string]string) (workflow.Boundary, error) {
+				close(resolving)
+				<-ctx.Done()
+				return workflow.Boundary{}, errors.New("revision lookup ended")
+			})
+			if where == "root" {
+				var err error
+				f.runner, err = workflow.New(resolver, f.caller, f.events, f.clock)
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				f.w.Steps[0].Resolver = resolver
+				if where == "parallel item" {
+					f.w.Steps[0] = workflow.Step{Name: "reviews", Parallel: []workflow.Step{f.w.Steps[0]}}
+				}
+			}
+			done := make(chan workflow.Result, 1)
+			finished := make(chan struct{})
+			go func() {
+				defer close(finished)
+				done <- f.runner.Run(ctx, f.w, nil)
+			}()
+			t.Cleanup(func() { cancel(); <-finished })
+			<-resolving
+			cancel()
+			got := <-done
+			if got.Status != workflow.Interrupted || got.Class != workflow.Cancelled || got.Output != nil {
+				t.Fatalf("run %+v, want interrupted, cancelled, no output", got)
+			}
+			if len(f.caller.params) != 0 || len(f.events.told) != 0 {
+				t.Fatalf("calls %v, events %v, want none", f.caller.params, f.events.told)
+			}
+		})
+	}
 }
 
 type itemFixture struct {

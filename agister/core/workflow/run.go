@@ -333,6 +333,10 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 
 	boundary, err := r.resolver.Resolve(ctx, given)
 	if err != nil {
+		if ctx.Err() != nil {
+			result.Status, result.Class = Interrupted, Cancelled
+			return finish()
+		}
 		result.Reason = err.Error()
 		return refuse()
 	}

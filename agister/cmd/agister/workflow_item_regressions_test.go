@@ -1,14 +1,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/igor1309/ai-labs/agister/runstore"
+	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
 )
 
@@ -43,6 +46,96 @@ func TestQualifiedChildNamesCannotOverwriteDeclaredStepPlans(t *testing.T) {
 			}
 			if got.code != 1 || len(f.runtimes.bash.ran()) != 0 || len(f.store.records) != 0 {
 				t.Fatalf("run %+v, calls %v, records %v", got, f.runtimes.bash.ran(), f.store.records)
+			}
+			check := f.run(t, "/r", "check")
+			if check.code != 1 || !strings.Contains(check.stdout, `both be planned as "tests/draft"`) || !strings.Contains(check.stdout, "refuses workflow parent") {
+				t.Errorf("check %+v", check)
+			}
+			inspect := f.run(t, "/r", "inspect", "workflow", "parent")
+			if inspect.code != 0 || !strings.Contains(inspect.stdout, `both be planned as "tests/draft"`) || !strings.Contains(inspect.stdout, "\nrefused\n") || strings.Contains(inspect.stdout, "plan of ") {
+				t.Errorf("inspect %+v", inspect)
+			}
+		})
+	}
+}
+
+// Contract test: the runtime settings shipped in home.
+func TestAnUnfinishedChildIsRecordedLostThenRewrittenWhenItEnds(t *testing.T) {
+	t.Parallel()
+	f := newRunFixture(t, runSettings(t, map[string]string{
+		"/r/.agister/workflows/parent.yaml": "schema: agister.workflow/v1alpha1\nsteps: [{name: tests, workflow: child}]\n",
+		"/r/.agister/workflows/child.yaml":  simpleChild,
+	}), nil)
+	started, release, finished := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	var unblock sync.Once
+	f.runtimes.bash.answer = func(ctx context.Context, turn bash.Turn) (bash.Ended, error) {
+		close(started)
+		<-release
+		return echoes(ctx, turn)
+	}
+	done := make(chan ran, 1)
+	go func() {
+		defer close(finished)
+		done <- f.run(t, "/r", "run", "parent")
+	}()
+	t.Cleanup(func() { unblock.Do(func() { close(release) }); <-finished })
+	<-started
+	unfinished := f.store.last(t)
+	want := []runstore.Child{{ID: unfinished.ID + "/tests", Parent: unfinished.ID, Workflow: "child", Params: map[string]string{}, Inputs: []runstore.Input{}, Status: "lost"}}
+	if unfinished.Status != "lost" || !reflect.DeepEqual(unfinished.Children, want) {
+		t.Fatalf("unfinished root %s, children %+v, want %+v", unfinished.Status, unfinished.Children, want)
+	}
+	unblock.Do(func() { close(release) })
+	got := <-done
+	if got.code != 0 || got.stderr != "" {
+		t.Fatalf("run %+v", got)
+	}
+	want[0].Status, want[0].Output = "completed", 0
+	ended := f.store.last(t)
+	if ended.Status != "completed" || !reflect.DeepEqual(ended.Children, want) {
+		t.Fatalf("ended root %s, children %+v, want %+v", ended.Status, ended.Children, want)
+	}
+	if unfinished.Children[0].Status != "lost" {
+		t.Fatal("rewriting the child changed the unfinished snapshot")
+	}
+}
+
+// Contract test: the runtime settings shipped in home.
+func TestComposedChildStepsReceiveDeclaredInputsOverBoundAndDefaultedParams(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct{ name, bindings, file, revision string }{
+		{"bound", "{path: bound.md, rev: feature}", "bound.md", "feature"},
+		{"defaulted", "{}", "default.md", "trunk"},
+		{"mixed", "{path: bound.md}", "bound.md", "trunk"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := newRunFixture(t, runSettings(t, map[string]string{
+				"/r/.agister/workflows/parent.yaml": "schema: agister.workflow/v1alpha1\nparams: {path: {default: outer.md}, rev: {default: outer}}\nsteps:\n - {name: tests, workflow: child, inputs: " + c.bindings + "}\n",
+				"/r/.agister/workflows/child.yaml": `schema: agister.workflow/v1alpha1
+params: {path: {default: default.md}, rev: {default: trunk}}
+inputs:
+ brief: {source: file, path: {from: params.path}}
+ revision: {source: git.revision, rev: {from: params.rev}}
+steps:
+ - {name: read_brief, process: say, agent: bash, inputs: {what: {from: inputs.brief}}}
+ - {name: read_revision, process: say, agent: bash, inputs: {what: {from: inputs.revision}}}
+`,
+			}), echoes)
+			f.sources.files = map[string]string{"/r/" + c.file: "brief from " + c.file}
+			f.sources.commits = map[string]string{c.revision: "commit-of-" + c.revision}
+			got := f.run(t, "/r", "run", "parent")
+			if got.code != 0 || got.stderr != "" {
+				t.Fatalf("run %+v", got)
+			}
+			calls := itemCalls(f.store.last(t))
+			for step, value := range map[string]string{"tests/read_brief": "brief from " + c.file, "tests/read_revision": "commit-of-" + c.revision} {
+				if input := recordedInput(t, calls[step], "what"); input != value {
+					t.Errorf("%s received %q, want %q", step, input, value)
+				}
+			}
+			if asked := f.sources.askedOf(); !slices.Equal(asked, []string{"bytes /r/" + c.file, "commit " + c.revision + " in /r"}) {
+				t.Errorf("sources %v", asked)
 			}
 		})
 	}

@@ -175,6 +175,9 @@ func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, s
 		}
 		boundary, err := item.Resolver.Resolve(ctx, params)
 		if err != nil {
+			if ctx.Err() != nil {
+				return Result{Status: Interrupted, Class: Cancelled}
+			}
 			result := refused()
 			result.Reason = err.Error()
 			return result

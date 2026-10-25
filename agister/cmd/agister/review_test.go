@@ -133,6 +133,89 @@ func judged(t *testing.T, f *runFixture) []any {
 	return got
 }
 
+// Contract test: home's shipped code_review and its private tests debate.
+func TestShippedCodeReviewGivesTheJudgeOnlyTheFinalTestsRevision(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name      string
+		passes    int
+		converges bool
+	}{{"first revision", 1, true}, {"second revision", 2, true}, {"pass limit", 2, false}} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := newReviewFixture(t)
+			revision, critique := 0, 0
+			f.runtimes.codex.answer = func(_ context.Context, turn codex.Turn) (codex.Result, error) {
+				process := processOf(t, f.settings, turn)
+				label := process
+				if process == "tests_review" {
+					label = "tests-draft"
+				} else if process == "review_revise" {
+					revision++
+					label = fmt.Sprintf("tests-revision-%d", revision)
+				}
+				data, err := json.Marshal(reviewResult(label))
+				session := turn.Session
+				if session == "" {
+					session = "review-" + process
+				}
+				return codex.Result{Reply: &codex.Reply{Output: data, Session: session}}, err
+			}
+			critiques := map[string]any{}
+			f.runtimes.claude.answer = func(_ context.Context, turn claudecode.Turn) (claudecode.Result, error) {
+				if !strings.Contains(turn.Message, f.settings["/u/.agister/prompts/code-review-critic.md"]) {
+					return claudecode.Result{Reply: &claudecode.Reply{Output: []byte(judgement)}}, nil
+				}
+				verdict, status := "another_round", "open"
+				if c.converges && critique == c.passes {
+					verdict, status = "converged", "settled"
+				}
+				label := fmt.Sprintf("critique-%d", critique)
+				answer := map[string]any{"verdict": verdict, "challenges": []any{map[string]any{
+					"id": label, "finding": nil, "challenge": label, "evidence": label, "settled_by": label, "status": status,
+				}}}
+				critiques[label] = answer
+				critique++
+				data, err := json.Marshal(answer)
+				return claudecode.Result{Reply: &claudecode.Reply{Output: data}}, err
+			}
+			got := f.run(t, "/r", "run", "code_review", "--param", "goal=g.md")
+			if got.code != 0 || got.stderr != "" || revision != c.passes || critique != c.passes+1 {
+				t.Fatalf("run %+v, revisions %d, critiques %d", got, revision, critique)
+			}
+			var want []any
+			for _, review := range reviews {
+				label := review.process
+				if review.step == "tests" {
+					label = fmt.Sprintf("tests-revision-%d", c.passes)
+				}
+				want = append(want, map[string]any{"status": "completed", "class": nil, "output": reviewResult(label)})
+			}
+			if given := judged(t, f); !reflect.DeepEqual(given, want) {
+				t.Fatalf("judge received %v, want %v", given, want)
+			}
+			calls := itemCalls(f.store.last(t))
+			assertInput := func(step, input string, want any) {
+				t.Helper()
+				var given any
+				if err := json.Unmarshal([]byte(recordedInput(t, calls[step], input)), &given); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(given, want) {
+					t.Errorf("%s input %s = %v, want %v", step, input, given, want)
+				}
+			}
+			assertInput("tests/critique", "review", reviewResult("tests-draft"))
+			for pass := 1; pass <= c.passes; pass++ {
+				prior := critiques[fmt.Sprintf("critique-%d", pass-1)]
+				assertInput(fmt.Sprintf("tests/revise/%d", pass), "critique", prior)
+				assertInput(fmt.Sprintf("tests/recheck/%d", pass), "critique", prior)
+				assertInput(fmt.Sprintf("tests/recheck/%d", pass), "review", reviewResult(fmt.Sprintf("tests-revision-%d", pass)))
+			}
+		})
+	}
+}
+
 // review.feature, "Five reviews side by side, then the judge": each turn
 // ends only once all five have started, which only turns side by side get
 // past; by then each holds the worktree, shared.

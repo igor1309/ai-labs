@@ -306,7 +306,7 @@ func (r *runRecord) ChildStarted(step, workflowName string, params, inputs map[s
 	keptInputs := childInputs(inputs)
 	r.record.Children = append(r.record.Children, runstore.Child{
 		ID: callID(r.record.ID, step), Workflow: workflowName, Parent: r.record.ID,
-		Params: maps.Clone(params), Inputs: keptInputs, Status: string(workflow.Failed),
+		Params: maps.Clone(params), Inputs: keptInputs, Status: "lost",
 	})
 	if err := r.store.Append(r.record.ID, runstore.Event{At: r.clock.Now(), Step: step, Kind: runstore.ChildStarted, Workflow: workflowName, Params: maps.Clone(params), Inputs: keptInputs}); err != nil {
 		r.warn("an event of the run could not be recorded: " + err.Error())
