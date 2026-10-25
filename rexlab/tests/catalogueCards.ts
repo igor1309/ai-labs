@@ -66,39 +66,67 @@ function subjectClasses(selector: string) {
 // selects by them, so cards that differ only in them style alike.
 const NAMING = new Set(["aria-label", "data-id", "data-turn-part", "style", "alt", "src"]);
 
-// An element's shape within its card: its tag, its attributes but those
-// naming the dinosaur, and its place among its siblings, from itself up
-// to the card, whose own place in the list no rule selects by. A part
-// shaped alike in another card of the same list takes
-// the same values.
-function shapeInCard(element: Element) {
+// An element's shape: its tag and its attributes but those naming the
+// dinosaur, from itself up to the root, and its place among its siblings
+// within its card, whose own place in the list counts for nothing. Parts
+// shaped alike in two cards take the same values unless a rule tells the
+// cards apart by their places or neighbours, which structural() finds.
+function shapeOf(element: Element) {
   const steps: string[] = [];
+  let inCard = true;
   for (let at: Element | null = element; at; at = at.parentElement) {
     const attributes = [...at.attributes].filter(({ name }) => !NAMING.has(name)).map(({ name, value }) => `${name}=${value}`).sort();
     const card = at.classList.contains("catalogue-card");
-    steps.push(`${at.tagName}[${attributes.join(" ")}]#${card || !at.parentElement ? 0 : [...at.parentElement.children].indexOf(at)}`);
-    if (card) return steps.join("<");
+    steps.push(`${at.tagName}[${attributes.join(" ")}]#${inCard && !card && at.parentElement ? [...at.parentElement.children].indexOf(at) : ""}`);
+    if (card) inCard = false;
   }
-  return undefined;
+  return inCard ? undefined : steps.join("<");
 }
 
-// The values already worked out for each list, by shape, card width and
-// property; a list is new on each render, so none outlives its page.
-const worked = new WeakMap<Element, Map<string, string>>();
+// Whether a selector can tell two cards apart by their places, their
+// neighbours or what they hold: a position pseudo-class, a sibling
+// combinator, or :has, but on the root or the body, which every card
+// shares.
+function structural(selector: string) {
+  const below = selector.replace(/^(html|body)(\[[^\]]*\]|\.[\w-]+)*:has\([^)]*\)/, "");
+  return /:(nth-|first-child|last-child|only-child|first-of-type|last-of-type|only-of-type|has\()|[+~]/.test(below);
+}
+
+// Whether a rule of `sheet` setting `property` is structural, worked out
+// once for each sheet and property.
+const structures = new WeakMap<CSSStyleSheet, Map<string, boolean>>();
+function setByStructure(sheet: CSSStyleSheet, property: string) {
+  const known = structures.get(sheet) ?? new Map<string, boolean>();
+  structures.set(sheet, known);
+  const found = known.get(property) ?? rulesSetting(sheet, property).some(({ selectors }) => selectors.some(({ selector }) => structural(selector)));
+  known.set(property, found);
+  return found;
+}
+
+// The values worked out in this turn of the event loop, by shape, card
+// width and property: a test's loop over the cards shares them, and the
+// next await, after which the page may have changed, starts afresh.
+const worked = new Map<string, string>();
+let clearing = false;
 
 // The value a property of `element` takes in a card `cardWidth` wide, the
 // card's container rules applied: jsdom applies none.
 export function inCard(element: Element, cardWidth: number, property: string) {
-  const shape = shapeInCard(element);
-  const list = element.closest(".catalogue-card")?.parentElement;
-  if (shape === undefined || !list) return cascadeInCard(element, cardWidth, property);
-  const values = worked.get(list) ?? new Map<string, string>();
-  worked.set(list, values);
-  const key = `${document.styleSheets.length} ${cardWidth} ${property} ${shape}`;
-  const known = values.get(key);
+  const shape = shapeOf(element);
+  const sheets = [...document.styleSheets];
+  if (shape === undefined || sheets.some((sheet) => setByStructure(sheet, property))) return cascadeInCard(element, cardWidth, property);
+  if (!clearing) {
+    clearing = true;
+    queueMicrotask(() => {
+      worked.clear();
+      clearing = false;
+    });
+  }
+  const key = `${sheets.length} ${cardWidth} ${property} ${shape}`;
+  const known = worked.get(key);
   if (known !== undefined) return known;
   const value = cascadeInCard(element, cardWidth, property);
-  values.set(key, value);
+  worked.set(key, value);
   return value;
 }
 

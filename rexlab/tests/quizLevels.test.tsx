@@ -124,14 +124,16 @@ describe("the compare quiz's levels across the app", () => {
     expect([chosen(), storedQuiz(storage)]).toEqual([["paleontologist"], expect.objectContaining({ explorerBest: 7, paleontologistBest: 2, roundsPlayed: 4 })]);
   });
 
-  // The choice saved as the switch saves it, so each round here is one the
-  // test above has already shown leads to it.
-  it("plays a chosen level from the tile and after reopening", async () => {
+  // The choice saved as the switch saves it, as the test above shows.
+  it("plays a chosen level again from the tile, by way of HOME, and after reopening", async () => {
     const storage = recordAt("explorer", { ...EMPTY_ENTRY, explorerBest: 7, paleontologistBest: 2, roundsPlayed: 4, levelChoice: { level: "paleontologist", revision: "parent-pick" } });
     const app = openApp(storage);
     await app.user.click(gameDoor("COMPARE"));
+    await finishWith(app.user, 1);
+    await app.user.click(button("HOME"));
+    await app.user.click(gameDoor("COMPARE"));
     await finishWith(app.user, 4);
-    expect([chosen(), storedQuiz(storage)]).toEqual([["paleontologist"], expect.objectContaining({ paleontologistBest: 4, roundsPlayed: 5 })]);
+    expect([chosen(), storedQuiz(storage)]).toEqual([["paleontologist"], expect.objectContaining({ paleontologistBest: 4, roundsPlayed: 6 })]);
     app.unmount();
     const reopened = openApp(storage);
     await reopened.user.click(gameDoor("COMPARE"));
@@ -192,12 +194,17 @@ describe("the compare quiz's levels across the app", () => {
     expect([chosen(), storage.items.get(PROGRESS_KEY)]).toEqual([["paleontologist"], before]);
   });
 
-  // The storage the visit above left as it was, so reopened it plays the
-  // stored level.
   it.each([undefined, "hatchling"] as const)("reopened after an unsaved choice over a saved choice of %s, plays the stored level", async (saved) => {
-    const { user } = openApp(unsavable(saved));
-    await user.click(gameDoor("COMPARE"));
-    await finishWith(user, 5);
+    const storage = unsavable(saved);
+    const app = openApp(storage);
+    await app.user.click(gameDoor("COMPARE"));
+    await finishWith(app.user, 5);
+    await app.user.click(switchButton("paleontologist"));
+    expect(chosen()).toEqual(["paleontologist"]);
+    app.unmount();
+    const reopened = openApp(storage);
+    await reopened.user.click(gameDoor("COMPARE"));
+    await finishWith(reopened.user, 5);
     expect(chosen()).toEqual([saved ?? "explorer"]);
   });
 });
