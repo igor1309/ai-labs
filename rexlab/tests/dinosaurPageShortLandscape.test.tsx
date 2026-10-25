@@ -123,6 +123,9 @@ describe("a dinosaur's page in a wide-short window", () => {
     const at = (selector: string) => styleAt(part(selector), size);
     const info = at(".dinosaur-info");
     expect([info.value("overflow-y"), info.value("justify-content"), info.rowGap()]).toEqual(["auto", "flex-start", 12]);
+    // The words' side is held to the body's height, stretched across it
+    // by no height of its own, so what is taller scrolls within it.
+    expect([["auto", "stretch"].includes(info.value("align-self") || "auto"), ["normal", "stretch"].includes(at(".dinosaur-body").value("align-items") || "normal"), info.value("height") || "auto", info.value("max-height") || "none"]).toEqual([true, true, "auto", "none"]);
     expect([at(".dinosaur-page-name").value("font-size"), at(".dinosaur-page-name").value("white-space")]).toEqual(["min(32px, 7.8cqi)", "nowrap"]);
     expect([at(".dinosaur-description").px("font-size"), at(".dinosaur-description").px("line-height"), at(".dinosaur-description").value("height") || "auto"]).toEqual([17, 24, "auto"]);
     expect([at(".dinosaur-facts").value("flex-direction") || "row", at(".dinosaur-facts").columnGap()]).toEqual(["row", 8]);
