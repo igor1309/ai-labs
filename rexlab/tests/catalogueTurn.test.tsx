@@ -55,21 +55,27 @@ const recordedName = (element: Element) => {
   return nameOf(element);
 };
 
-function cardHeight(width: number) {
-  return (width * 200) / 317 + 14 + 1.25 * Math.min(20, 0.07 * width) + 10 + 32 + 18;
+// A card's height: its picture over its footer, which a wide-short
+// window closes up to 10 above and 12 below.
+function cardHeight(width: number, size: SizeClass) {
+  const [above, below] = size === "wide-short" ? [10, 12] : [14, 18];
+  return (width * 200) / 317 + above + 1.25 * Math.min(20, 0.07 * width) + 10 + 32 + below;
 }
 
-// The list's padding on each side: 20 in a tall-narrow window, 56 in
-// any other.
-const sideOf = (size: SizeClass) => (size === "tall-narrow" ? 20 : 56);
+// The list's padding on each side: 20 in a tall-narrow or wide-short
+// window, 56 in any other.
+const sideOf = (size: SizeClass) => (size === "tall-narrow" || size === "wide-short" ? 20 : 56);
+// The list's padding below its last row: 20 in a wide-short window, 48
+// in any other.
+const endOf = (size: SizeClass) => (size === "wide-short" ? 20 : 48);
 
 function listGeometry(width: number, height: number, size: SizeClass, count = IDS.length) {
   const columns = catalogueColumns(width, size, 0, 0);
   const card = (width - 2 * sideOf(size) - (columns - 1) * 20) / columns;
-  const row = cardHeight(card);
-  const top = size === "tall" ? 40 + 56 + 28 : size === "tall-narrow" ? 40 + 48 + 20 : 124;
+  const row = cardHeight(card, size);
+  const top = size === "tall" ? 40 + 56 + 28 : size === "tall-narrow" ? 40 + 48 + 20 : size === "wide-short" ? 8 + 48 + 12 : 124;
   const listHeight = height - top;
-  return { columns, card, row, top, listHeight, scrollHeight: Math.ceil(count / columns) * row + (Math.ceil(count / columns) - 1) * 20 + 48 };
+  return { columns, card, row, top, listHeight, scrollHeight: Math.ceil(count / columns) * row + (Math.ceil(count / columns) - 1) * 20 + endOf(size) };
 }
 
 function listMetrics(list: HTMLElement, count = IDS.length) {
@@ -691,11 +697,15 @@ describe("catalogue's shared turn", () => {
     list.scrollTop = rowScroll(id, 852, 393, "wide-short");
     fireEvent.scroll(list);
 
+    // Upright, the first card of that row, three to a row on its side,
+    // stands at the top.
+    const { columns } = listGeometry(852, 393, "wide-short");
+    const first = IDS[Math.floor(IDS.indexOf(id) / columns) * columns]!;
     app.resize([393, 852, "tall-narrow"]);
     const upright = app.grid();
     expect(upright.style.getPropertyValue("--columns")).toBe("1");
-    expect(upright.scrollTop).toBeCloseTo(rowScroll(id, 393, 852, "tall-narrow"));
-    expect(cardIn(upright, id).getBoundingClientRect().top).toBeCloseTo(upright.getBoundingClientRect().top);
+    expect(upright.scrollTop).toBeCloseTo(rowScroll(first, 393, 852, "tall-narrow"));
+    expect(cardIn(upright, first).getBoundingClientRect().top).toBeCloseTo(upright.getBoundingClientRect().top);
     app.settle();
 
     app.resize([852, 393, "wide-short"]);
