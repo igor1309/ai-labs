@@ -195,6 +195,12 @@ test("ciReleaseValidation_shouldRunReleaseAndShowcaseTests_onShowcaseChanges", (
 });
 
 for (const file of [
+  "agister/showcase/showcase.toml",
+  "agister/showcase/public/go.work",
+  "agister/showcase/public/README.md",
+  "agister/showcase/AGENTS.md",
+  "agister/scripts/check-public.sh",
+  "agister/go.mod",
   "rexlab/showcase/showcase.toml",
   "rexlab/showcase/public/LICENSE",
   "rexlab/tests/catalogueSources.test.ts",

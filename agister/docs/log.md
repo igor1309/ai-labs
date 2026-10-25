@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-563: Agister has a standalone public projection with its local gokit
+  dependency and a check that builds and tests the exported snapshot.
+
 - LAB-534: a workflow runs as an item of another, as a child run in its record;
   home's tests lens debates its review in private before the judge.
 

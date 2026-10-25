@@ -106,6 +106,9 @@ jobs:
               - "release-units.toml"
               - "scripts/release/**"
               - "scripts/showcase/**"
+              - "agister/showcase/**"
+              - "agister/scripts/check-public.sh"
+              - "agister/go.mod"
               - "rexlab/showcase/showcase.toml"
               - "rexlab/showcase/public/LICENSE"
               - "rexlab/tests/catalogueSources.test.ts"
@@ -430,6 +433,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
+
+      - name: Setup Go for showcase workspace tests
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: agister/go.mod
+          cache-dependency-path: agister/go.sum
 
       - name: Verify manifest is up to date
         run: node scripts/release/generate-manifest.js --check
