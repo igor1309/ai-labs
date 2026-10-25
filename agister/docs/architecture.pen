@@ -6093,6 +6093,2828 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "N46Cyk",
+      "x": 2100,
+      "y": 0,
+      "name": "Settings architecture — after",
+      "clip": true,
+      "width": 1200,
+      "fill": "$ground",
+      "layout": "vertical",
+      "padding": [
+        56,
+        64,
+        72,
+        64
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "HeAjA",
+          "name": "Header",
+          "width": "fill_container",
+          "stroke": "$line",
+          "strokeWidth": {
+            "bottom": 1
+          },
+          "layout": "vertical",
+          "gap": 16,
+          "padding": [
+            0,
+            0,
+            32,
+            0
+          ],
+          "children": [
+            {
+              "type": "text",
+              "id": "AZM27",
+              "name": "Eyebrow",
+              "fill": "$text-faint",
+              "content": "AGISTER · SETTINGS",
+              "fontFamily": "$mono",
+              "fontSize": 12,
+              "fontWeight": "normal",
+              "letterSpacing": 2.2
+            },
+            {
+              "type": "text",
+              "id": "G96t7",
+              "name": "Title",
+              "fill": "$text",
+              "content": "Agister's settings architecture",
+              "lineHeight": 1.05,
+              "fontFamily": "$display",
+              "fontSize": 52,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "bSkFr",
+              "name": "Lede",
+              "fill": "$text-body",
+              "textGrowth": "fixed-width",
+              "width": 760,
+              "content": "Settings define the work; runs and calls are what executed it. Agister reads settings from up to three layers, composes each document field by field, and resolves a request into definitions that core executes as a run, or into a refusal that names the chain at fault. Definitions live in settings, not in code; code adds only a runtime or a kind of input source.",
+              "lineHeight": 1.55,
+              "fontFamily": "$sans",
+              "fontSize": 19,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "bG0jG",
+          "name": "Body",
+          "width": "fill_container",
+          "gap": 56,
+          "padding": [
+            40,
+            0,
+            0,
+            0
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "aQrLl",
+              "name": "Contents",
+              "width": 200,
+              "layout": "vertical",
+              "gap": 10,
+              "padding": [
+                6,
+                0,
+                0,
+                0
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "e8i7eg",
+                  "name": "Contents label",
+                  "fill": "$text-faint",
+                  "content": "ON THIS PAGE",
+                  "fontFamily": "$mono",
+                  "fontSize": 11,
+                  "fontWeight": "normal",
+                  "letterSpacing": 1.8
+                },
+                {
+                  "type": "text",
+                  "id": "vPREX",
+                  "name": "TOC Settings architecture ↗",
+                  "fill": "$text-dim",
+                  "content": "Run architecture ↗",
+                  "fontFamily": "$sans",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "Id6hY",
+                  "name": "TOC Three axes",
+                  "fill": "$text",
+                  "content": "Three axes",
+                  "fontFamily": "$sans",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "XriGI",
+                  "name": "TOC What a workflow names",
+                  "fill": "$text-dim",
+                  "content": "What a workflow names",
+                  "fontFamily": "$sans",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "DBiqc",
+                  "name": "TOC Where settings live",
+                  "fill": "$text-dim",
+                  "content": "Where settings live",
+                  "fontFamily": "$sans",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "fhpfQ",
+                  "name": "TOC From files to definitions",
+                  "fill": "$text-dim",
+                  "content": "From files to definitions",
+                  "fontFamily": "$sans",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "wOfdH",
+                  "name": "TOC The parts",
+                  "fill": "$text-dim",
+                  "content": "The parts",
+                  "fontFamily": "$sans",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "A132t",
+                  "name": "TOC What a run does with them",
+                  "fill": "$text-dim",
+                  "content": "What a run does with them",
+                  "fontFamily": "$sans",
+                  "fontSize": 14,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "c9fWA",
+              "name": "Column",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "cJu3a",
+                  "name": "Section axes",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": [
+                    28,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "K0HlHo",
+                      "name": "H2 axes",
+                      "fill": "$text",
+                      "content": "Three axes",
+                      "fontFamily": "$display",
+                      "fontSize": 28,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "VE64G",
+                      "name": "P axes",
+                      "fill": "$text-body",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Each thing has one name, on one axis. A definition is declared, resolved and planned; it never runs. An execution starts and ends; it is never declared.",
+                      "lineHeight": 1.65,
+                      "fontFamily": "$sans",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Gva9t",
+                      "name": "Axes",
+                      "width": "fill_container",
+                      "gap": 16,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "gKT29",
+                          "name": "Axis DEFINITIONS",
+                          "width": "fill_container",
+                          "fill": "$surface",
+                          "cornerRadius": 6,
+                          "stroke": "$line-soft",
+                          "strokeWidth": 1,
+                          "layout": "vertical",
+                          "gap": 10,
+                          "padding": 16,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "m8E26",
+                              "name": "Axis head DEFINITIONS",
+                              "fill": "$text-dim",
+                              "content": "DEFINITIONS",
+                              "fontFamily": "$mono",
+                              "fontSize": 11,
+                              "fontWeight": "normal",
+                              "letterSpacing": 1.6
+                            },
+                            {
+                              "type": "text",
+                              "id": "V2TGc2",
+                              "name": "Axis sub DEFINITIONS",
+                              "fill": "$text-faint",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "in settings",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "QLsA4",
+                              "name": "Term workflow",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "XzXeo",
+                                  "name": "Term key workflow",
+                                  "fill": "$workflow",
+                                  "content": "workflow",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "JXrRa",
+                                  "name": "Term text workflow",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "work defined by inputs, an output contract and children, each a step or a workflow, composed by sequence, parallel, branch or bounded repetition",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "At5Co",
+                              "name": "Term step",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "ESWcF",
+                                  "name": "Term key step",
+                                  "fill": "$step",
+                                  "content": "step",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "pJIA2",
+                                  "name": "Term text step",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "a process bound to an agent, the one leaf",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "dWD82",
+                              "name": "Term process",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "DRJQV",
+                                  "name": "Term key process",
+                                  "fill": "$process",
+                                  "content": "process",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "tg3CJ",
+                                  "name": "Term text process",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "what a step does: prompt, inputs, environment, output schema, permissions and limits",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "UGl93",
+                              "name": "Term agent",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "lkXEp",
+                                  "name": "Term key agent",
+                                  "fill": "$agent",
+                                  "content": "agent",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "dVzeW",
+                                  "name": "Term text agent",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "who does it: a runtime mapping, and the model, effort and skills its runtime takes",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "kvGxO",
+                              "name": "Term runtime mapping",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "VMAmy",
+                                  "name": "Term key runtime mapping",
+                                  "fill": "$runtime",
+                                  "content": "runtime mapping",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "aMJ4W",
+                                  "name": "Term text runtime mapping",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "what its runtime grants with no option, and its options with what each grants",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "nilHQ",
+                          "name": "Axis EXECUTIONS",
+                          "width": "fill_container",
+                          "fill": "$surface",
+                          "cornerRadius": 6,
+                          "stroke": "$line-soft",
+                          "strokeWidth": 1,
+                          "layout": "vertical",
+                          "gap": 10,
+                          "padding": 16,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "QgNdN",
+                              "name": "Axis head EXECUTIONS",
+                              "fill": "$text-dim",
+                              "content": "EXECUTIONS",
+                              "fontFamily": "$mono",
+                              "fontSize": 11,
+                              "fontWeight": "normal",
+                              "letterSpacing": 1.6
+                            },
+                            {
+                              "type": "text",
+                              "id": "UU7Xp",
+                              "name": "Axis sub EXECUTIONS",
+                              "fill": "$text-faint",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "in records; each names the definition it executes",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "dc1Vq",
+                              "name": "Term run",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "s3piR",
+                                  "name": "Term key run",
+                                  "fill": "$run",
+                                  "content": "run",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "GYtdg",
+                                  "name": "Term text run",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "executes a workflow",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "ZkvPV",
+                              "name": "Term call",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "V9Zao",
+                                  "name": "Term key call",
+                                  "fill": "$run",
+                                  "content": "call",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "x1ew2",
+                                  "name": "Term text call",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "executes a step",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "YmAL9",
+                              "name": "Term iteration",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "mvPbp",
+                                  "name": "Term key iteration",
+                                  "fill": "$text-sub",
+                                  "content": "iteration",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "aFJo7",
+                                  "name": "Term text iteration",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "one execution of a repetition's body",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "YZyKM",
+                              "name": "Term turn",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "h9d7s",
+                                  "name": "Term key turn",
+                                  "fill": "$text-sub",
+                                  "content": "turn",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "QGuqo",
+                                  "name": "Term text turn",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "one exchange of a call with its runtime",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "c6gdCD",
+                              "name": "Term session",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "SrfuG",
+                                  "name": "Term key session",
+                                  "fill": "$text-sub",
+                                  "content": "session",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "bdJig",
+                                  "name": "Term text session",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "the conversation a call held, on a runtime that keeps one",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "o1fv8D",
+                          "name": "Axis MACHINERY",
+                          "width": "fill_container",
+                          "fill": "$surface",
+                          "cornerRadius": 6,
+                          "stroke": "$line-soft",
+                          "strokeWidth": 1,
+                          "layout": "vertical",
+                          "gap": 10,
+                          "padding": 16,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "RodgY",
+                              "name": "Axis head MACHINERY",
+                              "fill": "$text-dim",
+                              "content": "MACHINERY",
+                              "fontFamily": "$mono",
+                              "fontSize": 11,
+                              "fontWeight": "normal",
+                              "letterSpacing": 1.6
+                            },
+                            {
+                              "type": "text",
+                              "id": "ztmRd",
+                              "name": "Axis sub MACHINERY",
+                              "fill": "$text-faint",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "in code, as settings meet it",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "p5eoIG",
+                              "name": "Term runtime",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "QdzUh",
+                                  "name": "Term key runtime",
+                                  "fill": "$runtime",
+                                  "content": "runtime",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "uq4SO",
+                                  "name": "Term text runtime",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "a program Agister drives through its wrapper; a runtime mapping names one",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "pbFKa",
+                              "name": "Term runtime facts",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": 2,
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "EMiLk",
+                                  "name": "Term key runtime facts",
+                                  "fill": "$text-sub",
+                                  "content": "runtime facts",
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "kmPFW",
+                                  "name": "Term text runtime facts",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "what a runtime can do; resolve refuses a step that needs what its runtime cannot do",
+                                  "lineHeight": 1.5,
+                                  "fontFamily": "$sans",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "XLfFM",
+                  "name": "Section names",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": [
+                    28,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "zvuTK",
+                      "name": "H2 names",
+                      "fill": "$text",
+                      "content": "What a workflow names",
+                      "fontFamily": "$display",
+                      "fontSize": 28,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Sd63V",
+                      "name": "P names",
+                      "fill": "$text-body",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Documents name each other by kind and name, fixed in settings, so they resolve without a run. A workflow composes steps and other workflows. A step binds a process to an agent; nothing but a step chooses an agent. Bash is a runtime, planned like any other: its agent names only the runtime, and its prompt is a script.",
+                      "lineHeight": 1.65,
+                      "fontFamily": "$sans",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "mpxEZ",
+                      "name": "Figure names",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 6,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 14,
+                      "padding": 20,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "n6wLP",
+                          "name": "Diagram names",
+                          "width": 776,
+                          "height": 286,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "path",
+                              "id": "Ey38Z",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Edges",
+                              "geometry": "M160 152l58 0m-158-22l0-34 60 0 0 32m230 17l68-55m-68 70l68 66m132-152l68-44m-68 50l68-5m-68 13l68 33m-68-25l68 70m-68 58l68-44m-68 56l68 6",
+                              "viewBox": [
+                                0,
+                                0,
+                                776,
+                                286
+                              ],
+                              "width": 776,
+                              "height": 286,
+                              "stroke": "$line-strong",
+                              "strokeWidth": 1.5,
+                              "strokeLinejoin": "round"
+                            },
+                            {
+                              "type": "path",
+                              "id": "CQpz9",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Arrowheads",
+                              "geometry": "M218 152l-7 3.5 0-7z m-98-24l-3.5-7 7 0z m298-38l-3.2 7.1-4.4-5.4z m0 136l-7.5-2.4 4.9-5z m200-196l-4 6.7-3.8-5.8z m0 45l-6.7 4-0.5-7z m0 46l-7.8 0.1 3-6.3z m0 45l-7.4-2.6 5-4.9z m0 14l-4 6.7-3.8-5.8z m0 62l-7.3 2.9 0.6-7z",
+                              "viewBox": [
+                                0,
+                                0,
+                                776,
+                                286
+                              ],
+                              "fill": "#55555E",
+                              "width": 776,
+                              "height": 286
+                            },
+                            {
+                              "type": "frame",
+                              "id": "oqZSa",
+                              "x": 20,
+                              "y": 130,
+                              "name": "Box workflow",
+                              "width": 140,
+                              "height": 44,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$workflow",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "iqpZR",
+                                  "name": "workflow",
+                                  "fill": "$text",
+                                  "content": "workflow",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "s2QyH",
+                              "x": 220,
+                              "y": 130,
+                              "name": "Box step",
+                              "width": 130,
+                              "height": 44,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$step",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "HtLn0",
+                                  "name": "step",
+                                  "fill": "$text",
+                                  "content": "step",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "p3qcT",
+                              "x": 420,
+                              "y": 60,
+                              "name": "Box process",
+                              "width": 130,
+                              "height": 44,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$process",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "ZO4ZI",
+                                  "name": "process",
+                                  "fill": "$text",
+                                  "content": "process",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "zV2wg",
+                              "x": 420,
+                              "y": 210,
+                              "name": "Box agent",
+                              "width": 130,
+                              "height": 44,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$agent",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "lZ8NN",
+                                  "name": "agent",
+                                  "fill": "$text",
+                                  "content": "agent",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "H5eivW",
+                              "x": 620,
+                              "y": 10,
+                              "name": "Box prompt",
+                              "width": 140,
+                              "height": 34,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$text-sub",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "a1GNZT",
+                                  "name": "prompt",
+                                  "fill": "$text",
+                                  "content": "prompt",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "a5rCJy",
+                              "x": 620,
+                              "y": 58,
+                              "name": "Box schema",
+                              "width": 140,
+                              "height": 34,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$text-sub",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "dHGM9",
+                                  "name": "schema",
+                                  "fill": "$text",
+                                  "content": "schema",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "j5Gt3",
+                              "x": 620,
+                              "y": 106,
+                              "name": "Box brief form",
+                              "width": 140,
+                              "height": 34,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$text-sub",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "KH8Zy",
+                                  "name": "brief form",
+                                  "fill": "$text",
+                                  "content": "brief form",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "WBhAn",
+                              "x": 620,
+                              "y": 154,
+                              "name": "Box skill",
+                              "width": 140,
+                              "height": 34,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$text-sub",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "xYoQX",
+                                  "name": "skill",
+                                  "fill": "$text",
+                                  "content": "skill",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "H9qDu5",
+                              "x": 620,
+                              "y": 226,
+                              "name": "Box runtime mapping",
+                              "width": 140,
+                              "height": 34,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$runtime",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "zPBf6",
+                                  "name": "runtime mapping",
+                                  "fill": "$text",
+                                  "content": "runtime mapping",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "I2qbHI",
+                              "x": 40,
+                              "y": 74,
+                              "name": "Label child workflow",
+                              "fill": "$text-dim",
+                              "content": "child workflow",
+                              "fontFamily": "$sans",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "T4Pzcs",
+                          "name": "Caption names",
+                          "fill": "$text-dim",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "A process names its prompt, guidance, output schema and skills; a workflow's or a process's text inputs may name brief forms; an agent names its runtime mapping and its skills. A child workflow is another workflow: references never form a cycle.",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "lsKy5",
+                  "name": "Section where",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": [
+                    28,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "XfyTa",
+                      "name": "H2 where",
+                      "fill": "$text",
+                      "content": "Where settings live",
+                      "fontFamily": "$display",
+                      "fontSize": 28,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "z2xxU",
+                      "name": "P where",
+                      "fill": "$text-body",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Each kind has its folder in a layer, and a document is the file named after it. Nothing but kind and name joins files across layers.",
+                      "lineHeight": 1.65,
+                      "fontFamily": "$sans",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "S4o9N9",
+                      "name": "Kinds",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "VmyYR",
+                          "name": "Row agent",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "LsoaX",
+                              "name": "Key agent",
+                              "fill": "$agent",
+                              "textGrowth": "fixed-width",
+                              "width": 180,
+                              "content": "agent",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "iME4p",
+                              "name": "Text agent",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "agents/<name>.toml",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "WrX25",
+                          "name": "Row process",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "EQjsu",
+                              "name": "Key process",
+                              "fill": "$process",
+                              "textGrowth": "fixed-width",
+                              "width": 180,
+                              "content": "process",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "itMfy",
+                              "name": "Text process",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "processes/<name>.yaml",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Z1afUc",
+                          "name": "Row workflow",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "TH5E8",
+                              "name": "Key workflow",
+                              "fill": "$workflow",
+                              "textGrowth": "fixed-width",
+                              "width": 180,
+                              "content": "workflow",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "WjbyY",
+                              "name": "Text workflow",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "workflows/<name>.yaml",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "UZRlt",
+                          "name": "Row runtime mapping",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Hu7td",
+                              "name": "Key runtime mapping",
+                              "fill": "$runtime",
+                              "textGrowth": "fixed-width",
+                              "width": 180,
+                              "content": "runtime mapping",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "nIbdF",
+                              "name": "Text runtime mapping",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "runtimes/<name>.yaml",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "mjtgB",
+                          "name": "Row brief form",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "mZqN6",
+                              "name": "Key brief form",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": 180,
+                              "content": "brief form",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "s45m2",
+                              "name": "Text brief form",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "brief-forms/<name>.yaml",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "egCe7",
+                          "name": "Row schema",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "y5Bzl",
+                              "name": "Key schema",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": 180,
+                              "content": "schema",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "i3GwM",
+                              "name": "Text schema",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "schemas/<name>.json",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "L4tvS",
+                          "name": "Row prompt",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "zux9A",
+                              "name": "Key prompt",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": 180,
+                              "content": "prompt",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "cEiw0",
+                              "name": "Text prompt",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "prompts/<name>.md",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "LZt6S",
+                          "name": "Row skill",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "tZLPZ",
+                              "name": "Key skill",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": 180,
+                              "content": "skill",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "nJl1w",
+                              "name": "Text skill",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "skills/<name>/SKILL.md — not read yet",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "OznXL",
+                      "name": "Layers",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 6,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "gap": 24,
+                      "padding": 20,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "A8Jthy",
+                          "name": "Layer stack",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 10,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "kyelU",
+                              "name": "Layer home",
+                              "width": "fill_container",
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$line-strong",
+                              "strokeWidth": 1,
+                              "gap": 16,
+                              "padding": [
+                                12,
+                                16
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "diFwr",
+                                  "name": "Layer name home",
+                                  "fill": "$text",
+                                  "textGrowth": "fixed-width",
+                                  "width": 96,
+                                  "content": "home",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "a4J9Y",
+                                  "name": "Layer path home",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "~/.agister",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "g5XpW",
+                              "name": "Layer repository",
+                              "width": "fill_container",
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$line-strong",
+                              "strokeWidth": 1,
+                              "gap": 16,
+                              "padding": [
+                                12,
+                                16
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "Bheqj",
+                                  "name": "Layer name repository",
+                                  "fill": "$text",
+                                  "textGrowth": "fixed-width",
+                                  "width": 96,
+                                  "content": "repository",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "RkWhi",
+                                  "name": "Layer path repository",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": ".agister at the worktree root, with blocks.yaml",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "junIw",
+                              "name": "Layer project",
+                              "width": "fill_container",
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$line-strong",
+                              "strokeWidth": 1,
+                              "gap": 16,
+                              "padding": [
+                                12,
+                                16
+                              ],
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "u13nP",
+                                  "name": "Layer name project",
+                                  "fill": "$text",
+                                  "textGrowth": "fixed-width",
+                                  "width": 96,
+                                  "content": "project",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "B5pu7",
+                                  "name": "Layer path project",
+                                  "fill": "$text-sub",
+                                  "textGrowth": "fixed-width",
+                                  "width": "fill_container",
+                                  "content": "the nearest .agister from the launch directory up to the root",
+                                  "lineHeight": 1.55,
+                                  "fontFamily": "$mono",
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "eTe2T",
+                          "name": "Layer rules",
+                          "width": 220,
+                          "stroke": "$line-strong",
+                          "strokeWidth": {
+                            "left": 1.5
+                          },
+                          "layout": "vertical",
+                          "gap": 6,
+                          "padding": [
+                            4,
+                            0,
+                            4,
+                            16
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "c0HzDn",
+                              "name": "Rule applied home first; the nearer wins",
+                              "fill": "$text-dim",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "applied home first; the nearer wins",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "GMePm",
+                              "name": "Rule maps merge by key",
+                              "fill": "$text-dim",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "maps merge by key",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "LOKqK",
+                              "name": "Rule lists and scalars replace whole",
+                              "fill": "$text-dim",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "lists and scalars replace whole",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "G3aFH",
+                              "name": "Rule nothing unsets",
+                              "fill": "$text-dim",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "nothing unsets",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "VoND6",
+                      "name": "P layers",
+                      "fill": "$text-body",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "The launch directory is where the command is launched, or --dir; the layers select settings, not the place of work. Each layer is over its parent alone, and outside a git worktree only home is read. Schemas, prompts and skills are taken whole from the nearest layer. A document may name another of its kind in extends: the extended one is composed first, the extending one over it.",
+                      "lineHeight": 1.65,
+                      "fontFamily": "$sans",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MTmcI",
+                      "name": "Callout blocks",
+                      "width": "fill_container",
+                      "fill": "#F28DB012",
+                      "stroke": "$workflow",
+                      "strokeWidth": {
+                        "left": 2
+                      },
+                      "padding": [
+                        14,
+                        18
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "i28Jk",
+                          "name": "Callout text",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "The repository's blocks.yaml names documents it refuses, each with a reason; whatever depends on a blocked document is refused, naming the block.",
+                          "lineHeight": 1.65,
+                          "fontFamily": "$sans",
+                          "fontSize": 16,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "R8A7MZ",
+                  "name": "Section resolve",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": [
+                    28,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "mEBbX",
+                      "name": "H2 resolve",
+                      "fill": "$text",
+                      "content": "From files to definitions",
+                      "fontFamily": "$display",
+                      "fontSize": 28,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "C4oHR",
+                      "name": "P resolve",
+                      "fill": "$text-body",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Resolve takes a request: a document by kind and name, such as a workflow with its parameters, or a step given as a process and an agent, which resolves as a workflow of that one step. Resolve is the gate before a run: what resolves may run; what does not never reaches core and leaves no run.",
+                      "lineHeight": 1.65,
+                      "fontFamily": "$sans",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "u2m0n2",
+                      "name": "Figure resolve",
+                      "width": "fill_container",
+                      "fill": "$surface",
+                      "cornerRadius": 6,
+                      "stroke": "$line",
+                      "strokeWidth": 1,
+                      "layout": "vertical",
+                      "gap": 14,
+                      "padding": 20,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "TbCBr",
+                          "name": "Diagram resolve",
+                          "width": 776,
+                          "height": 264,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "path",
+                              "id": "csZw7",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Edges",
+                              "geometry": "M94 108l28 0m122 0l28 0m132 0l28 0m152-38l38-8m-38 66l38 6m-113 52l0-28m-325-22l0 102 510 0 0-80m-355-12l0 108 395 0 0-96",
+                              "viewBox": [
+                                0,
+                                0,
+                                776,
+                                264
+                              ],
+                              "width": 776,
+                              "height": 264,
+                              "stroke": "$line-strong",
+                              "strokeWidth": 1.5,
+                              "strokeLinejoin": "round"
+                            },
+                            {
+                              "type": "path",
+                              "id": "XYKA5",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Arrowheads",
+                              "geometry": "M122 108l-7 3.5 0-7z m150 0l-7 3.5 0-7z m160 0l-7 3.5 0-7z m190-46l-6.1 4.9-1.5-6.9z m0 72l-7.5 2.4 1.1-6.9z m-113 24l3.5 7-7 0z m185 0l3.5 7-7 0z m40 0l3.5 7-7 0z",
+                              "viewBox": [
+                                0,
+                                0,
+                                776,
+                                264
+                              ],
+                              "fill": "#55555E",
+                              "width": 776,
+                              "height": 264
+                            },
+                            {
+                              "type": "frame",
+                              "id": "qGcJ9",
+                              "x": 4,
+                              "y": 80,
+                              "name": "Box files",
+                              "width": 90,
+                              "height": 56,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$line-strong",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "hwE6j",
+                                  "name": "files",
+                                  "fill": "$text",
+                                  "content": "files",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "mREUj",
+                              "x": 124,
+                              "y": 80,
+                              "name": "Box layout",
+                              "width": 120,
+                              "height": 56,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$text-sub",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "P6cHac",
+                                  "name": "layout",
+                                  "fill": "$text",
+                                  "content": "layout",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "th4zK",
+                                  "name": "layout sub",
+                                  "fill": "$text-dim",
+                                  "content": "kind, name → file",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "J7hZkp",
+                              "x": 274,
+                              "y": 70,
+                              "name": "Box documents",
+                              "width": 130,
+                              "height": 76,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$text-sub",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "XnE2U",
+                                  "name": "documents",
+                                  "fill": "$text",
+                                  "content": "documents",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "yPKjZ",
+                                  "name": "documents sub",
+                                  "fill": "$text-dim",
+                                  "content": "format",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Lqs33",
+                                  "name": "documents sub",
+                                  "fill": "$text-dim",
+                                  "content": "layering · kinds",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "eeNl5",
+                              "x": 434,
+                              "y": 40,
+                              "name": "Box resolve",
+                              "width": 150,
+                              "height": 116,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "#FF8F6B",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "ijsTs",
+                                  "name": "resolve",
+                                  "fill": "$text",
+                                  "content": "resolve",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "D3VBG",
+                                  "name": "resolve sub",
+                                  "fill": "$text-dim",
+                                  "content": "references · blocks",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "LpIQT",
+                                  "name": "resolve sub",
+                                  "fill": "$text-dim",
+                                  "content": "boundaries · bindings",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "oZ5x9",
+                                  "name": "resolve sub",
+                                  "fill": "$text-dim",
+                                  "content": "each step's plan",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 11,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "e4EYf",
+                              "x": 624,
+                              "y": 40,
+                              "name": "Box core",
+                              "width": 140,
+                              "height": 44,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$run",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "H5bj4L",
+                                  "name": "core",
+                                  "fill": "$text",
+                                  "content": "core",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "OR8xp",
+                              "x": 624,
+                              "y": 112,
+                              "name": "Box check",
+                              "width": 140,
+                              "height": 44,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$line-strong",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "xN9dH",
+                                  "name": "check",
+                                  "fill": "$text",
+                                  "content": "check",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "IBeFW",
+                              "x": 434,
+                              "y": 186,
+                              "name": "Box runtime wrappers",
+                              "width": 150,
+                              "height": 36,
+                              "fill": "$surface-2",
+                              "cornerRadius": 5,
+                              "stroke": "$runtime",
+                              "strokeWidth": 1.5,
+                              "layout": "vertical",
+                              "gap": 2,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "v7paG7",
+                                  "name": "runtime wrappers",
+                                  "fill": "$text",
+                                  "content": "runtime wrappers",
+                                  "fontFamily": "$sans",
+                                  "fontSize": 14,
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "id": "VtRwC",
+                              "x": 516,
+                              "y": 162,
+                              "name": "Label runtime facts",
+                              "fill": "$text-dim",
+                              "content": "runtime facts",
+                              "fontFamily": "$sans",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "j9Rfm",
+                              "x": 194,
+                              "y": 222,
+                              "name": "Label list names",
+                              "fill": "$text-dim",
+                              "content": "list names",
+                              "fontFamily": "$sans",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "g5WNWH",
+                              "x": 349,
+                              "y": 238,
+                              "name": "Label fields, each with its source",
+                              "fill": "$text-dim",
+                              "content": "fields, each with its source",
+                              "fontFamily": "$sans",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "eboCa",
+                          "name": "Caption resolve",
+                          "fill": "$text-dim",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "An arrow is what flows, and the composition carries every one: no settings package imports another. Resolve plans each step from its process's permissions and its agent's mapping. Check is handed resolve and resolves every document, by the names layout lists.",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "q0K7gd",
+                      "name": "Refusals",
+                      "width": "fill_container",
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "PCURA",
+                          "name": "Row doc",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "y9HU0",
+                              "name": "Key doc",
+                              "fill": "#FF8F6B",
+                              "textGrowth": "fixed-width",
+                              "width": 150,
+                              "content": "a document",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "OCr1H",
+                              "name": "Text doc",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "A problem in a document refuses only what depends on it, naming the chain to the document at fault.",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "tnQVD",
+                          "name": "Row none",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "nzACS",
+                              "name": "Key none",
+                              "fill": "#FF8F6B",
+                              "textGrowth": "fixed-width",
+                              "width": 150,
+                              "content": "no document",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "IRblJ",
+                              "name": "Text none",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "A problem of no document refuses every request.",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "fR62X",
+                          "name": "Row plan",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "iaNzg",
+                              "name": "Key plan",
+                              "fill": "#FF8F6B",
+                              "textGrowth": "fixed-width",
+                              "width": 150,
+                              "content": "a plan",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "lnm8o",
+                              "name": "Text plan",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "A plan gives every required permission or refuses; what it grants beyond what the process allows is a warning.",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "OSnQW",
+                          "name": "Row fact",
+                          "width": "fill_container",
+                          "stroke": "$line-soft",
+                          "strokeWidth": {
+                            "top": 1
+                          },
+                          "gap": 16,
+                          "padding": [
+                            8,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Q5AOR",
+                              "name": "Key fact",
+                              "fill": "#FF8F6B",
+                              "textGrowth": "fixed-width",
+                              "width": 150,
+                              "content": "a runtime",
+                              "lineHeight": 1.7,
+                              "fontFamily": "$mono",
+                              "fontSize": 13,
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "B0XfUi",
+                              "name": "Text fact",
+                              "fill": "$text-sub",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "A step that needs what its runtime cannot do refuses, with the request that holds it, in branches a run may not take too.",
+                              "lineHeight": 1.55,
+                              "fontFamily": "$sans",
+                              "fontSize": 14,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "keemB",
+                  "name": "Section parts2",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": [
+                    28,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "tOaLZ",
+                      "name": "H2 parts2",
+                      "fill": "$text",
+                      "content": "The parts",
+                      "fontFamily": "$display",
+                      "fontSize": 28,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "N2CpNm",
+                      "name": "Parts head",
+                      "width": "fill_container",
+                      "stroke": "$line",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "gap": 24,
+                      "padding": [
+                        0,
+                        0,
+                        8,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h1xwDL",
+                          "name": "Parts head PACKAGE",
+                          "fill": "$text-dim",
+                          "textGrowth": "fixed-width",
+                          "width": 170,
+                          "content": "PACKAGE",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal",
+                          "letterSpacing": 1.6
+                        },
+                        {
+                          "type": "text",
+                          "id": "csMsO",
+                          "name": "Parts head OWNS",
+                          "fill": "$text-dim",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "OWNS",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal",
+                          "letterSpacing": 1.6
+                        },
+                        {
+                          "type": "text",
+                          "id": "m9Wxsr",
+                          "name": "Parts head PORTS",
+                          "fill": "$text-dim",
+                          "textGrowth": "fixed-width",
+                          "width": 200,
+                          "content": "PORTS",
+                          "fontFamily": "$mono",
+                          "fontSize": 11,
+                          "fontWeight": "normal",
+                          "letterSpacing": 1.6
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "q0gMAW",
+                      "name": "Part settings/layout",
+                      "width": "fill_container",
+                      "stroke": "$line-soft",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "gap": 24,
+                      "padding": [
+                        2,
+                        0,
+                        10,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Xh1nG",
+                          "name": "Pkg settings/layout",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": 170,
+                          "content": "settings/layout",
+                          "lineHeight": 1.7,
+                          "fontFamily": "$mono",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "ZB0Pc",
+                          "name": "Owns settings/layout",
+                          "fill": "$text-body",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "where settings live; a kind and name to a file; lists names",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "jIYEL",
+                          "name": "Ports settings/layout",
+                          "fill": "$text-dim",
+                          "textGrowth": "fixed-width",
+                          "width": 200,
+                          "content": "filesystem; worktree root",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "L2H1Y",
+                      "name": "Part settings/documents",
+                      "width": "fill_container",
+                      "stroke": "$line-soft",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "gap": 24,
+                      "padding": [
+                        2,
+                        0,
+                        10,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "bsvbq",
+                          "name": "Pkg settings/documents",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": 170,
+                          "content": "settings/documents",
+                          "lineHeight": 1.7,
+                          "fontFamily": "$mono",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "A0snwO",
+                          "name": "Owns settings/documents",
+                          "fill": "$text-body",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "bytes to typed definitions with each field's source: format, layering, kinds",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "wG5tw",
+                          "name": "Ports settings/documents",
+                          "fill": "$text-dim",
+                          "textGrowth": "fixed-width",
+                          "width": 200,
+                          "content": "none: pure",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "A0EDv",
+                      "name": "Part settings/resolve",
+                      "width": "fill_container",
+                      "stroke": "$line-soft",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "gap": 24,
+                      "padding": [
+                        2,
+                        0,
+                        10,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Gu5UM",
+                          "name": "Pkg settings/resolve",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": 170,
+                          "content": "settings/resolve",
+                          "lineHeight": 1.7,
+                          "fontFamily": "$mono",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "V0aM6",
+                          "name": "Owns settings/resolve",
+                          "fill": "$text-body",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "a request to definitions or a refusal naming the chain",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "EM3fG",
+                          "name": "Ports settings/resolve",
+                          "fill": "$text-dim",
+                          "textGrowth": "fixed-width",
+                          "width": 200,
+                          "content": "document source; runtime facts",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "T9TniC",
+                      "name": "Part settings/check",
+                      "width": "fill_container",
+                      "stroke": "$line-soft",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "gap": 24,
+                      "padding": [
+                        2,
+                        0,
+                        10,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Vu8SP",
+                          "name": "Pkg settings/check",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": 170,
+                          "content": "settings/check",
+                          "lineHeight": 1.7,
+                          "fontFamily": "$mono",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "LyYwe",
+                          "name": "Owns settings/check",
+                          "fill": "$text-body",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "check, every problem and what it refuses, and inspect, with each field's source",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "D58SSW",
+                          "name": "Ports settings/check",
+                          "fill": "$text-dim",
+                          "textGrowth": "fixed-width",
+                          "width": 200,
+                          "content": "resolve; list names; a document's fields",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "jIQA7",
+                      "name": "Part settings/home",
+                      "width": "fill_container",
+                      "stroke": "$line-soft",
+                      "strokeWidth": {
+                        "bottom": 1
+                      },
+                      "gap": 24,
+                      "padding": [
+                        2,
+                        0,
+                        10,
+                        0
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "uuiS0",
+                          "name": "Pkg settings/home",
+                          "fill": "$text",
+                          "textGrowth": "fixed-width",
+                          "width": 170,
+                          "content": "settings/home",
+                          "lineHeight": 1.7,
+                          "fontFamily": "$mono",
+                          "fontSize": 13,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "pZEjY",
+                          "name": "Owns settings/home",
+                          "fill": "$text-body",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "install into home and restore, on a broken home too; every write can be undone",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "QgBTU",
+                          "name": "Ports settings/home",
+                          "fill": "$text-dim",
+                          "textGrowth": "fixed-width",
+                          "width": 200,
+                          "content": "filesystem writes; clock",
+                          "lineHeight": 1.55,
+                          "fontFamily": "$sans",
+                          "fontSize": 14,
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "A4xCZ",
+                      "name": "P parts",
+                      "fill": "$text-body",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "No settings package imports another; the composition connects them. Core takes the resolved workflow and every step's process, agent, runtime mapping and permission plan, and never reads a settings file.",
+                      "lineHeight": 1.65,
+                      "fontFamily": "$sans",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "oRyET",
+                  "name": "Section run",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 16,
+                  "padding": [
+                    28,
+                    0,
+                    0,
+                    0
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "uk7Gd",
+                      "name": "H2 run",
+                      "fill": "$text",
+                      "content": "What a run does with them",
+                      "fontFamily": "$display",
+                      "fontSize": 28,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "BbhXX",
+                      "name": "P run",
+                      "fill": "$text-body",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "A workflow's items run in order: a step is one call; a parallel calls its steps and workflows at once; a branch runs the first arm whose condition holds, else its default; a repeat runs its body at least once, binds its next state, and stops when until holds or after max passes; a workflow item runs another workflow as a child run. Whatever this Agister does not run yet, agister check refuses as agister run would, before anything runs. The run architecture follows a run from the command to its record.",
+                      "lineHeight": 1.65,
+                      "fontFamily": "$sans",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "variables": {
