@@ -8621,8 +8621,26 @@ html[data-size="tall-narrow"] .dig-board-screen .home-button {
   order: -2;
 }
 
+/* HOME, the brush menu and the FIELD GUIDE are one family: 48 tall,
+   at least 48 wide, the same corners and the same thin frame. */
+html[data-size="tall-narrow"] .dig-board-screen .home-button,
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button,
+html[data-size="tall-narrow"] .dig-board-screen .dig-field-guide-button {
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+  border-radius: 14px;
+}
+
 html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
   padding: 0 8px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+}
+
+[data-theme="dark"][data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
+  outline-color: #ece8de1f;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu {
@@ -8655,39 +8673,39 @@ html[data-size="tall-narrow"] .dig-chip {
   font-size: 14px;
 }
 
-/* The question's dinosaurs two to a row under the sand, each card a
-   little wider than tall, its picture over its name; three put the third
-   alone, centred, as wide as the others. The sand takes what the two
-   rows leave, the same from the round's start. */
+/* The question's dinosaurs two to a row under the sand, 8 apart, small
+   cards twice as wide as tall, each its picture over its name; three put
+   the third alone, centred, as wide as the others. The sand takes what
+   the two rows leave, the same from the round's start. */
 html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] {
   gap: 12px;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] .dig-board {
-  width: min(100cqw, (100cqh - 12px - ((100cqw - 12px) * 0.9 + 12px)) * var(--frame-width) / var(--frame-height));
+  width: min(100cqw, (100cqh - 12px - ((100cqw - 8px) * 0.5 + 8px)) * var(--frame-width) / var(--frame-height));
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-choice-cards {
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-choice-slot {
   max-height: none;
-  aspect-ratio: 10 / 9;
+  aspect-ratio: 2 / 1;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-choice-slot:nth-child(3):last-child {
   grid-column: 1 / -1;
   justify-self: center;
-  width: calc((100% - 12px) / 2);
+  width: calc((100% - 8px) / 2);
 }
 
 html[data-size="tall-narrow"] .dig-choice-card {
-  padding: 8px 2px 10px;
-  border-radius: 18px;
+  padding: 4px 2px;
+  border-radius: 14px;
 }
 
 /* A name as large as its card's width lets it, at most 16: a long one on
@@ -8705,8 +8723,8 @@ html[data-size="tall-narrow"] .dig-choice-break {
 }
 
 html[data-size="tall-narrow"] .dig-empty-card {
-  border-radius: 16px;
-  font-size: 32px;
+  border-radius: 14px;
+  font-size: 28px;
 }
 
 /* The FIELD GUIDE's title is its book alone, its words kept for screen

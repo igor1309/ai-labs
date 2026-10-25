@@ -10,6 +10,7 @@ Feature: DIG in a tall-narrow window
     When I open DIG
     Then I see no picture asking to turn sideways or to make the window wider
     And the bar is one row: HOME, the brush menu (dig-brush-menu.feature), the title and the FIELD GUIDE, even with three digits of treasures
+    And HOME, the brush menu and the FIELD GUIDE are each 48 pixels tall, at least 48 wide, with the same corners, centred on one line
     And DUG UP's count of dinosaurs is not on the board
     And the title takes two lines where it has two words, at least 12 pixels, in English and Russian
 
@@ -24,9 +25,9 @@ Feature: DIG in a tall-narrow window
     Given a window of <width> by <height> CSS pixels
     And the level is <level>
     When the sand asks WHO IS IT?
-    Then its <count> cards stand two to a row, 12 pixels apart, each a little wider than tall, its picture over its name
+    Then its <count> cards stand two to a row, 8 pixels apart, each twice as wide as tall, its picture over its name
     And with three the third stands alone on its row, centred, as wide as the others
-    And the sand keeps at least 160 pixels of width over them, at the same size from the round's start
+    And the sand keeps at least 240 pixels of width over them, at the same size from the round's start
 
     Examples:
       | width | height | level          | count |
