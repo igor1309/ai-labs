@@ -201,6 +201,8 @@ describe("the home page in a wide-short window", () => {
     expect([home.value("display"), home.value("flex-direction"), home.px("min-height")]).toEqual(["flex", "column", height]);
     expect([games.value("height"), games.value("flex")]).toEqual(["auto", "1 0 260px"]);
     expect(left).toBeGreaterThanOrEqual(260);
+    // The tiles stand in two even rows, filling the games' height.
+    expect([tiles.value("grid-template-rows"), tiles.value("grid-auto-flow"), tiles.value("height") || "auto"]).toEqual(["minmax(0, 1fr) minmax(0, 1fr)", "column", "auto"]);
     expect((left - tiles.rowGap()) / 2).toBeGreaterThanOrEqual(LEAST_TILE_ROW);
   });
 
@@ -242,6 +244,7 @@ describe("the home page in a wide-short window", () => {
       const style = styleOf(title);
       const size = px(style.fontSize);
       const room = roomFor(title, () => card, styleOf);
+      expect(style.whiteSpace).not.toBe("nowrap");
       const lines = linesOf(title.textContent, size, px(style.letterSpacing), room);
       if (!Array.isArray(lines)) throw new Error(`${lines.missing}: no width in ems`);
       expect(lines.filter((line) => widthOf(line, size, px(style.letterSpacing)) > room)).toEqual([]);
@@ -284,6 +287,12 @@ describe("the home page in a wide-short window", () => {
       const corner = styleAt(part(".home-corner"), [width, height]);
       const top = corner.px("top") + styleAt(part(".home-museum"), [width, height]).px("height") + px(getComputedStyle(opened).top.replace(/^calc\(100% \+ (\d+)px\)$/, "$1"));
       expect([style.px("max-height"), style.value("overflow-y")]).toEqual([height - 84, "auto"]);
+      // Across, it hangs from the parents' menus' right edge, at the
+      // corner's, and stays inside the page's left side.
+      expect([style.value("position"), style.value("right"), styleAt(part(".parent-menus"), [width, height]).value("position")]).toEqual(["absolute", "0px", "relative"]);
+      const right = width - corner.px("right") - corner.px("padding-right");
+      expect(right).toBeLessThanOrEqual(width - 20);
+      expect(right - style.px("width")).toBeGreaterThanOrEqual(20);
       // Its choices keep their height and scroll, never squeezed to fit.
       expect([...opened.children].map((child) => styleAt(child, [width, height]).value("flex-shrink"))).toEqual([...opened.children].map(() => "0"));
       expect(top + Math.min(tall, style.px("max-height"))).toBeLessThanOrEqual(height - 8);
