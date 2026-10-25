@@ -3131,6 +3131,89 @@ html[data-size="tall-narrow"] .dinosaur-description {
   height: calc(var(--description-lines, 8) * 35px);
 }
 
+/* In a wide-short window, an iPhone on its side, the page keeps the
+   stage and the words side by side, sharing the row evenly on 20-pixel
+   sides past the notch, under one short bar 8 pixels from the top. The
+   stage holds the picture over a row of 48-pixel ← and →; the words,
+   in smaller type, scroll within their side where they cannot fit the
+   height, clear of the home indicator. */
+html[data-size="wide-short"] .dinosaur-page {
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .dinosaur-bar .home-button {
+  height: 48px;
+}
+
+html[data-size="wide-short"] .dinosaur-position {
+  font-size: 17px;
+}
+
+html[data-size="wide-short"] .dinosaur-body {
+  gap: 20px;
+}
+
+html[data-size="wide-short"] .dinosaur-stage {
+  flex: 1 1 0;
+  padding: 12px;
+  border-radius: 24px;
+}
+
+html[data-size="wide-short"] .dinosaur-step {
+  width: 48px;
+  height: 48px;
+  border-radius: 24px;
+}
+
+html[data-size="wide-short"] .dinosaur-info {
+  flex: 1 1 0;
+  justify-content: flex-start;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+html[data-size="wide-short"] .dinosaur-about {
+  gap: 12px;
+}
+
+html[data-size="wide-short"] .dinosaur-group {
+  margin-bottom: -8px;
+  font-size: 14px;
+}
+
+html[data-size="wide-short"] .dinosaur-page-name {
+  font-size: min(32px, 7.8cqi);
+}
+
+html[data-size="wide-short"] .dinosaur-description {
+  font-size: 17px;
+  line-height: 24px;
+}
+
+html[data-size="wide-short"] .dinosaur-facts {
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .dinosaur-fact {
+  padding: 10px 12px;
+  gap: 4px;
+  border-radius: 16px;
+}
+
+html[data-size="wide-short"] .dinosaur-fact-label {
+  font-size: 14px;
+}
+
+html[data-size="wide-short"] .dinosaur-fact-value {
+  font-size: min(24px, 26cqi);
+}
+
 .gated-screen {
   display: contents;
 }
