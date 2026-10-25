@@ -10,6 +10,7 @@ let package = Package(
         .library(name: "CallText", targets: ["CallText"]),
         .library(name: "Compose", targets: ["Compose"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
+        .library(name: "FillIn", targets: ["FillIn"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveAudio", targets: ["LiveAudio"]),
         .library(name: "LiveText", targets: ["LiveText"]),
@@ -49,6 +50,9 @@ let package = Package(
         ),
         .target(
             name: "CoreAudioProcesses"
+        ),
+        .target(
+            name: "FillIn"
         ),
         .target(
             name: "GlassLedger",
@@ -147,6 +151,10 @@ let package = Package(
         .testTarget(
             name: "CoreAudioProcessesTests",
             dependencies: ["CoreAudioProcesses"]
+        ),
+        .testTarget(
+            name: "FillInTests",
+            dependencies: ["FillIn"]
         ),
         .testTarget(
             name: "LiveAudioTests",
