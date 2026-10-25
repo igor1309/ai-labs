@@ -1,5 +1,12 @@
 # Changes
 
+- LAB-567: Agister's public README shows how a run executes and how
+  settings compose, as diagrams; the showcase lineup lists Agister.
+- LAB-566: The run and settings architecture pages ship in the public
+  export, without their links to private notes; the caller's guide points
+  at them.
+- LAB-564: Agister's public README explains what it is and gives a first
+  run on bash that needs no model; the export checks that run works.
 - LAB-563: Agister has a standalone public projection with its local gokit
   dependency and a check that builds and tests the exported snapshot.
 
