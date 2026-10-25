@@ -1,0 +1,39 @@
+repo = "igor1309/agister"
+description = "Run AI agents through configured processes and workflows from a Go command-line tool."
+homepage = "https://igor1309.dev/agister/"
+topics = ["go", "cli", "ai-agents", "workflows"]
+check = "sh scripts/check-public.sh"
+
+include = [
+  "**/*.go",
+  "**/*.feature",
+  "go.mod",
+  "go.sum",
+  "home/**",
+  "skills/**",
+  "scripts/check-public.sh",
+]
+exclude = [
+  "archive/**",
+  "research/**",
+  "backlog/**",
+  ".agister/**",
+  "docs/**",
+  "**/AGENTS.md",
+  "scripts/loop/**",
+  # This test exercises the owner's private installer.
+  "install_test.go",
+]
+
+[[mount]]
+source = "gokit"
+target = "gokit"
+include = ["**/*.go", "**/*.feature", "**/go.mod", "**/go.sum", "scripts/test.sh"]
+
+[[allow_marker]]
+marker = "agister"
+paths = ["**"]
+
+[[allow_marker]]
+marker = ".agister/"
+paths = ["**"]
