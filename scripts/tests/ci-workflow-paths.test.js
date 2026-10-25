@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import test from "node:test";
+import { parse } from "../release/lib/toml.js";
 
 const repoRoot = new URL("../../", import.meta.url);
 const workflow = readFileSync(new URL(".github/workflows/ci.yml", repoRoot), "utf8");
@@ -170,6 +171,17 @@ test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
   for (const name of tests) {
     const file = `scripts/tests/${name}`;
     assert.ok(globs.some((glob) => matchesGlob(file, glob)), `${file} is run by no CI job`);
+  }
+});
+
+test("ciReleaseValidation_shouldRun_onEveryReleaseUnitsVersionFileChange", () => {
+  const { units } = parse(readFileSync(new URL("release-units.toml", repoRoot), "utf8"));
+  assert.ok(units.length > 0);
+
+  for (const unit of units) {
+    const file = `${unit.path}/${unit.metadata}`;
+    assert.equal(matchingFilters([file]).has("release"), true, `${file} does not match the release filter`);
+    assert.equal(jobRuns("release-validation", [file]), true, `${file} does not run release-validation`);
   }
 });
 

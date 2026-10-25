@@ -109,6 +109,7 @@ jobs:
               - "agister/showcase/**"
               - "agister/scripts/check-public.sh"
               - "agister/go.mod"
+              - "rexlab/package.json"
               - "rexlab/showcase/showcase.toml"
               - "rexlab/showcase/public/LICENSE"
               - "rexlab/tests/catalogueSources.test.ts"
