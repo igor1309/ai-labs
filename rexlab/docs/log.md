@@ -2,6 +2,7 @@
 
 ## 2026-10-25
 
+- Find the pair's result fits an iPhone on its side: the dinosaurs found beside the tries, the stars and the actions, nothing cut off (LAB-582).
 - The home page on an upright iPhone: RexLab's mark is the app's T-Rex icon instead of the footprints that count the catalogue, and it, the museum and the parents' menus stand at one 60-pixel height on one line (LAB-583).
 - Find the pair's welcome fits an iPhone on its side: the cards beside the title, the level switch and PLAY, nothing cut off (LAB-581).
 - Find the pair's board fits an iPhone on its side: a short bar, and every board's cards side by side without scrolling (LAB-580).
