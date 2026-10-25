@@ -765,6 +765,11 @@ func validateCallNames(name string, w resolve.Workflow, resolved resolve.Resolve
 	var walk func(string, []resolve.Item, string) error
 	walk = func(owner string, items []resolve.Item, prefix string) error {
 		for _, item := range items {
+			path := prefix + item.Name
+			// Qualification must preserve the suffix reserved for pass identities.
+			if prefix != "" && passName.MatchString(path) {
+				return fmt.Errorf("the item %q of workflow %q would be planned as %q, named as a pass", item.Name, owner, path)
+			}
 			switch {
 			case item.Workflow.Value != "":
 				if err := walk(item.Workflow.Value, resolved.Workflows[item.Workflow.Value].Steps, prefix+item.Name+"/"); err != nil {
@@ -783,7 +788,6 @@ func validateCallNames(name string, w resolve.Workflow, resolved resolve.Resolve
 					return err
 				}
 			default:
-				path := prefix + item.Name
 				origin := fmt.Sprintf("the step %q of workflow %q", item.Name, owner)
 				if previous, exists := origins[path]; exists {
 					return fmt.Errorf("%s and %s would both be planned as %q", previous, origin, path)
