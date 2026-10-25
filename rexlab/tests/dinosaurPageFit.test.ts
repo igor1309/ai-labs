@@ -232,3 +232,44 @@ describe("narrow dinosaur words fit their kept bands", () => {
     }
   });
 });
+
+// The words' side in every wide-short window, an iPhone on its side: 568
+// to 932 wide with no notch, and from 812, the narrowest iPhone with one,
+// with its 59 on each side; half of what the page's 20-pixel sides and
+// the 20-pixel gap beside the stage leave.
+const shortWords = (width: number, inset: number) => (width - 2 * inset - 40 - 20) / 2;
+const SHORT_WIDTHS = [...new Set([
+  ...Array.from({ length: 365 }, (_, step) => shortWords(568 + step, 0)),
+  ...Array.from({ length: 121 }, (_, step) => shortWords(812 + step, 59))
+])].sort((a, b) => a - b);
+
+describe("dinosaur words beside the stage on a phone on its side", () => {
+  it("fits every word of all 52 English and Russian descriptions in 17-pixel type at every width", () => {
+    for (const width of SHORT_WIDTHS) {
+      for (const dinosaur of catalogue) {
+        for (const language of ["en", "ru"] as const) lineCount(dinosaur.description[language], width, 17, DESCRIPTION_EMS);
+      }
+    }
+  });
+
+  it("fits every name, and each fact's label and value with the two facts side by side, at every width", () => {
+    // Two facts share an 8-pixel gap, each with 12-pixel side padding; a
+    // value is 26% of that content, at most 24 pixels, and a label a
+    // 22-pixel symbol 8 from its 14-pixel word.
+    for (const width of SHORT_WIDTHS) {
+      const content = (width - 8) / 2 - 24;
+      const size = Math.min(24, content * 0.26);
+      for (const language of ["en", "ru"] as const) {
+        const texts = TEXTS[language];
+        for (const label of [...Object.values(texts.measures), texts.heavy]) expect(22 + 8 + LABEL_EMS[label]! * 14, `${label} at ${width}`).toBeLessThanOrEqual(content);
+        for (const dinosaur of catalogue) {
+          const name = dinosaur.name[language].toLocaleUpperCase(language);
+          expect(NAME_EMS[name]! * Math.min(32, width * 0.078), `${name} at ${width}`).toBeLessThanOrEqual(width);
+          for (const value of [formatLength(dinosaur.size.metres, language), formatMass(dinosaur.mass, language)]) {
+            expect(emWidth(value, FACT_EMS) * size, `${dinosaur.id} ${language}: ${value} at ${width}`).toBeLessThanOrEqual(content);
+          }
+        }
+      }
+    }
+  });
+});
