@@ -26,14 +26,30 @@ in the caller's environment.
 Commit `showcase/public/` with the intended source changes. The exporter
 reads HEAD, so uncommitted files are not published. The push requires a
 clean ai-labs worktree, an existing `igor1309/agister` repository,
-authenticated `gh` and git credentials. The owner decides when to create
-the public repository and authorizes publication; the exporter never
-creates repositories. Pinning the repository on the owner's profile is
-also the owner's action.
+authenticated `gh` and git credentials; the exporter never creates
+repositories.
 
-The public README is a placeholder; LAB-564 supplies the visitor guide.
-The HTML pages and Pages setup follow in later issues. The owner approves
-the public README and pages before publication. Review their prose for
-private context, home paths and assumptions a visitor cannot follow.
-This is public to read, all rights reserved: do not add a licence, rename
-the Go modules or publish gokit separately.
+The public README is the visitor's guide; the check runs its first run on
+bash as written, so a change to that example must still print
+`Hello, world` without warnings. The Pages site is `docs/index.html` and
+the two architecture pages. Review the README and pages for private
+context, home paths and assumptions a visitor cannot follow before
+publishing. This is public to read, all rights reserved: do not add a
+licence, rename the Go modules or publish gokit separately.
+
+## Pages
+
+GitHub Pages serves the public repo's `docs/` folder on its default
+branch. The owner's user site sets the custom domain `igor1309.dev`, so
+the site is at <https://igor1309.dev/agister/>, with the pages at
+`run-architecture/` and `settings-architecture/` under it. It was turned
+on once, after the first push:
+
+```sh
+gh api -X POST repos/igor1309/agister/pages \
+  -f 'source[branch]=main' -f 'source[path]=/docs'
+```
+
+After a push that changes the README or pages, open the site and every
+README link from a logged-out browser. Pinning the repository on the
+owner's profile has no API; the owner does it on github.com.

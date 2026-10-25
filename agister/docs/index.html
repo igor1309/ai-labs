@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agister</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ground:#08080A; --surface:#17171A; --line:#2A2A2F;
+    --text:#F5F5F7; --text-dim:#8A8A96; --text-faint:#68686F; --text-body:#D9D9DF;
+    --display:"Iowan Old Style","Palatino Linotype",Palatino,"Hoefler Text",Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  body { margin: 0; background: var(--ground); color: var(--text-body); font: 16px/1.65 var(--sans); }
+  .page { max-width: 47.5rem; margin: 0 auto; padding: 56px 32px 72px; }
+  .eyebrow { margin: 0 0 16px; font: .75rem var(--mono); letter-spacing: .18em; text-transform: uppercase; color: var(--text-faint); }
+  h1 { margin: 0 0 16px; font: 400 clamp(2.2rem, 5vw, 3.25rem)/1.05 var(--display); color: var(--text); }
+  .lede { margin: 0 0 40px; font-size: 1.19rem; line-height: 1.55; }
+  ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+  li a { display: block; padding: 16px 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; color: var(--text); text-decoration: none; }
+  li a:hover { border-color: var(--text-faint); }
+  li span { display: block; margin-top: 4px; font-size: .875rem; color: var(--text-dim); }
+</style>
+</head>
+<body>
+<main class="page">
+<p class="eyebrow">Agister</p>
+<h1>Agister</h1>
+<p class="lede">A runner for AI-agent work defined in settings files: agents,
+processes and workflows that compose, every run resolved before it starts and
+recorded whole.</p>
+<ul>
+  <li><a href="run-architecture/">Run architecture<span>How a run executes, from a
+  command to a record.</span></a></li>
+  <li><a href="settings-architecture/">Settings architecture<span>How settings are
+  read, layered and resolved.</span></a></li>
+  <li><a href="https://github.com/igor1309/agister">Source on GitHub<span>The Go
+  code, its tests and a first run that needs no model.</span></a></li>
+</ul>
+</main>
+</body>
+</html>
