@@ -1,5 +1,7 @@
 # Changes
 
+- LAB-565: Agister is public to read at github.com/igor1309/agister, with
+  its site and architecture pages at igor1309.dev/agister/.
 - LAB-567: Agister's public README shows how a run executes and how
   settings compose, as diagrams; the showcase lineup lists Agister.
 - LAB-566: The run and settings architecture pages ship in the public
