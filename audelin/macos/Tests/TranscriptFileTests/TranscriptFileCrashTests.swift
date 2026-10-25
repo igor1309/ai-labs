@@ -1,0 +1,56 @@
+import Darwin
+import Foundation
+import Testing
+@testable import TranscriptFile
+
+@Suite(.timeLimit(.minutes(1)))
+struct TranscriptFileCrashTests {
+
+    @Test(arguments: ["before", "after"])
+    func sigkillAtRenameKeepsExactlyOneWholeTranscript(point: String) async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let executable = Bundle(for: TranscriptFileTestBundle.self).bundleURL
+                .deletingLastPathComponent().appendingPathComponent("TranscriptFileCrashWriter")
+            let command = try TranscriptCommand(executable, [url.path, point])
+            do {
+                try await withTaskCancellationHandler {
+                    var pending = Data()
+                    var lines: [String] = []
+                    output: for await bytes in command.output {
+                        pending.append(bytes)
+                        while let newline = pending.firstIndex(of: 10) {
+                            let line = String(decoding: pending[..<newline], as: UTF8.self)
+                            pending.removeSubrange(...newline)
+                            lines.append(line)
+                            if line == "paused \(point)" { break output }
+                        }
+                    }
+                    try Task.checkCancellation()
+                    try #require(lines == ["returned 1", "returned 2", "paused \(point)"])
+                    command.kill()
+                    #expect(await command.finish() == SIGKILL)
+                    #expect(command.process.terminationReason == .uncaughtSignal)
+                    #expect(try transcriptText(url) == numberedTranscript(point == "before" ? 2 : 3))
+                    let leftovers = try folderNames(folder).filter { $0 != "transcript.md" }
+                    #expect(leftovers.count == (point == "before" ? 1 : 0))
+                    let other = folder.appendingPathComponent("another.md")
+                    let file = try TranscriptFile(url: other)
+                    try await file.write(numberedSegments(4))
+                    await file.close()
+                    #expect(try transcriptText(other) == numberedTranscript(4))
+                    #expect(try transcriptText(url) == numberedTranscript(point == "before" ? 2 : 3))
+                } onCancel: {
+                    command.kill()
+                }
+            } catch {
+                await command.stop()
+                throw error
+            }
+            await command.stop()
+        }
+    }
+}
+
+private final class TranscriptFileTestBundle: NSObject {}

@@ -1,6 +1,36 @@
 # Log
 
+## 2026-10-25
+
+- System audio capture keeps delivering audio through running-0 notices
+  at startup (LAB-541).
+
 ## 2026-10-24
+
+- Compose translates a recording's captured audio, written tracks and live
+  text into call text, and keeps its transcript updates on disk (LAB-535).
+
+- Microphone capture recovers immediately when its input disappears, waits
+  through brief missing defaults, and keeps delayed callbacks in time (LAB-532).
+
+- Microphone capture fills every gap up to ten minutes with silence and
+  fails on longer gaps, including when the engine has not rebuilt (LAB-532).
+
+- Microphone configuration changes keep using the current input while a new
+  default settles; each settled switch uses the input that held (LAB-532).
+
+- Audelin captures the default microphone as mono audio at its device's rate,
+  following settled input changes and preserving gaps as silence (LAB-532).
+
+- Each call gets its own folder named by when it is made, with separate
+  places for both tracks and the transcript (LAB-524).
+
+- A transcript file keeps the call's latest words as readable Markdown,
+  preserving a whole transcript through write failures and app crashes (LAB-508).
+
+- Tracks keep mono audio on disk, append-only, read stretches while
+  recording, and keep every returned write after a failure, a crash or a
+  full disk (LAB-523).
 
 - Audelin captures the processes it is told, or every process but those
   left out, as mono audio at the device's rate, leaving playback unmuted

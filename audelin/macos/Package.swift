@@ -6,11 +6,14 @@ let package = Package(
     platforms: [.macOS(.v26)],
     products: [
         .library(name: "CallAppProcesses", targets: ["CallAppProcesses"]),
+        .library(name: "CallFolder", targets: ["CallFolder"]),
         .library(name: "CallText", targets: ["CallText"]),
+        .library(name: "Compose", targets: ["Compose"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveText", targets: ["LiveText"]),
         .library(name: "Machine", targets: ["Machine"]),
+        .library(name: "MicrophoneCapture", targets: ["MicrophoneCapture"]),
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
@@ -18,6 +21,8 @@ let package = Package(
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Session", targets: ["Session"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
+        .library(name: "TrackFile", targets: ["TrackFile"]),
+        .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
     dependencies: [
@@ -31,7 +36,14 @@ let package = Package(
             name: "CallAppProcesses"
         ),
         .target(
+            name: "CallFolder"
+        ),
+        .target(
             name: "CallText"
+        ),
+        .target(
+            name: "Compose",
+            dependencies: ["CallFolder", "CallAppProcesses", "Session", "CallText", "LiveText", "TrackFile", "TranscriptFile", "MicrophoneCapture", "SystemAudioCapture"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -45,6 +57,9 @@ let package = Package(
         ),
         .target(
             name: "Machine"
+        ),
+        .target(
+            name: "MicrophoneCapture"
         ),
         .target(
             name: "ModelLoading"
@@ -87,6 +102,21 @@ let package = Package(
             name: "SystemAudioCapture"
         ),
         .target(
+            name: "TrackFile",
+            dependencies: ["AudioConversion"]
+        ),
+        .executableTarget(
+            name: "TrackFileCrashWriter",
+            dependencies: ["TrackFile"]
+        ),
+        .target(
+            name: "TranscriptFile"
+        ),
+        .executableTarget(
+            name: "TranscriptFileCrashWriter",
+            dependencies: ["TranscriptFile"]
+        ),
+        .target(
             name: "TwoPassRecognizer",
             dependencies: ["LiveText"]
         ),
@@ -95,8 +125,16 @@ let package = Package(
             dependencies: ["CallAppProcesses"]
         ),
         .testTarget(
+            name: "CallFolderTests",
+            dependencies: ["CallFolder", "TrackFile", "TranscriptFile"]
+        ),
+        .testTarget(
             name: "CallTextTests",
             dependencies: ["CallText"]
+        ),
+        .testTarget(
+            name: "ComposeTests",
+            dependencies: ["Compose"]
         ),
         .testTarget(
             name: "CoreAudioProcessesTests",
@@ -109,6 +147,10 @@ let package = Package(
         .testTarget(
             name: "MachineTests",
             dependencies: ["Machine"]
+        ),
+        .testTarget(
+            name: "MicrophoneCaptureTests",
+            dependencies: ["MicrophoneCapture"]
         ),
         .testTarget(
             name: "ModelLoadingTests",
@@ -141,6 +183,14 @@ let package = Package(
         .testTarget(
             name: "SystemAudioCaptureTests",
             dependencies: ["SystemAudioCapture"]
+        ),
+        .testTarget(
+            name: "TrackFileTests",
+            dependencies: ["TrackFile", "TrackFileCrashWriter", "AudioConversion"]
+        ),
+        .testTarget(
+            name: "TranscriptFileTests",
+            dependencies: ["TranscriptFile", "TranscriptFileCrashWriter"]
         ),
         .testTarget(
             name: "TwoPassRecognizerTests",

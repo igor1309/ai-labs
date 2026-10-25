@@ -77,6 +77,19 @@ struct SessionTests {
         await end(rig)
     }
 
+    @Test(arguments: ["first-call", "another-call"])
+    func everyFileOpensInTheFolderReturnedByCreate(id: String) async {
+
+        let folder = SessionCallFolder(id: id)
+        let rig = Rig(callFolder: folder)
+        await rig.begin(liveText: true)
+        _ = await rig.waitFor { $0.phase == .recording }
+        #expect(await rig.microphoneTrack.receivedFolders == [folder])
+        #expect(await rig.callTrack.receivedFolders == [folder])
+        #expect(await rig.transcript.receivedFolders == [folder])
+        await end(rig)
+    }
+
     @Test func endingKeepsAllOutputAndStopsSourcesFirst() async throws {
 
         let rig = Rig()
