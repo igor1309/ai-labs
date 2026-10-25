@@ -2,6 +2,8 @@
 
 ## 2026-10-25
 
+- Live text receives captured audio without waiting for track writes (LAB-551).
+
 - System audio capture keeps delivering audio through running-0 notices
   at startup (LAB-541).
 
