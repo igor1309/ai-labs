@@ -114,24 +114,24 @@ describe("DIG upright on a phone", () => {
     phoneScreen(".dig-board-screen", size);
     expect(styleAt(part(".dig-board-screen .dig-body[data-asks]"), size).value("flex-direction")).toBe("column");
     const cards = styleAt(part(".dig-choice-cards"), size);
-    expect([cards.value("display"), cards.value("grid-template-columns"), cards.columnGap(), cards.rowGap()]).toEqual(["grid", "repeat(2, minmax(0, 1fr))", 12, 12]);
+    expect([cards.value("display"), cards.value("grid-template-columns"), cards.columnGap(), cards.rowGap()]).toEqual(["grid", "repeat(2, minmax(0, 1fr))", 8, 8]);
     const count = level === "explorer" ? 3 : 4;
     const slots = all(".dig-choice-slot");
     expect(slots).toHaveLength(count);
-    for (const slot of slots) expect(styleAt(slot, size).value("aspect-ratio")).toBe("10 / 9");
+    for (const slot of slots) expect(styleAt(slot, size).value("aspect-ratio")).toBe("2 / 1");
     // Three put the third alone on its row, centred, as wide as the rest.
     const last = styleAt(slots.at(-1)!, size);
     const alone = [last.value("grid-column"), last.value("justify-self"), last.value("width")];
-    if (count === 3) expect(alone).toEqual(["1 / -1", "center", "calc(0.5 * (100% - 12px))"]);
+    if (count === 3) expect(alone).toEqual(["1 / -1", "center", "calc(0.5 * (100% - 8px))"]);
     else expect(alone[0]).not.toBe("1 / -1");
     // The sand takes what two rows of cards leave, at least 160 wide,
     // under the bar's one row of 48.
-    expect(styleAt(board(), size).value("width")).toBe("min(100cqw, (100cqh - 12px - ((100cqw - 12px) * 0.9 + 12px)) * var(--frame-width) / var(--frame-height))");
+    expect(styleAt(board(), size).value("width")).toBe("min(100cqw, (100cqh - 12px - ((100cqw - 8px) * 0.5 + 8px)) * var(--frame-width) / var(--frame-height))");
     const column = width - 40;
-    const rows = (column - 12) * 0.9 + 12;
+    const rows = (column - 8) * 0.5 + 8;
     const body = height - 24 - 32 - 48 - 16;
-    expect(Math.min(column, (body - 12 - rows) * 800 / 600)).toBeGreaterThanOrEqual(160);
-    expect((column - 12) / 2).toBeGreaterThanOrEqual(134);
+    expect(Math.min(column, (body - 12 - rows) * 800 / 600)).toBeGreaterThanOrEqual(240);
+    expect((column - 8) / 2).toBeGreaterThanOrEqual(136);
   });
 
   it.each(LANGUAGES)("sets every %s name of the question's cards in a column of 2 padding at 320 wide, sized by its longer line", (language) => {
@@ -149,7 +149,7 @@ describe("DIG upright on a phone", () => {
     }
   });
 
-  // The card's content: half of 280 less the 12 gap, less its 2 × 2
+  // The card's content: half of 280 less the 8 gap, less its 2 × 2
   // border and 2 × 2 padding.
   it.each(LANGUAGES)("fits every %s name DIG asks about at 320 wide, at least 12 pixels, a long one on two lines", (language) => {
     const names = SHIPPED_DIG.map(({ id }) => SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === id)!.name[language].toLocaleUpperCase(language));
@@ -157,10 +157,11 @@ describe("DIG upright on a phone", () => {
       const lines = nameLines(name);
       const longest = Math.max(...lines.map((line) => line.length));
       expect([lines.length <= 2, lines.join("").replace(/-/g, "")], name).toEqual([true, name.replace(/-/g, "")]);
-      expect(Math.min(16, 126 / (longest * 0.75)), name).toBeGreaterThanOrEqual(12);
-      // Both lines and the name's 4 above stay inside the card's 120
-      // high, leaving its picture at least half.
-      expect(lines.length * 1.1 * 16 + 4, name).toBeLessThanOrEqual(120 / 2 - 18);
+      expect(Math.min(16, 128 / (longest * 0.75)), name).toBeGreaterThanOrEqual(12);
+      // Both lines and the name's 4 above stay inside the card's 68
+      // high, less its 2 × 2 border and 2 × 4 padding, leaving its
+      // picture at least 16.
+      expect(lines.length * 1.1 * 16 + 4, name).toBeLessThanOrEqual(68 - 4 - 8 - 16);
     }
   });
 
