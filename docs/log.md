@@ -1,5 +1,13 @@
 # Log
 
+## 2026-10-25
+
+- ALI: land the new product (AI Learning Agent, concept stage; working
+  name). Added `ali/README.md` and `ali/docs/` (concept, vision, application
+  answers, activity log); registered it in `scripts/loc-dashboard.sh`,
+  `docs/loc-dashboard.html`, the README Components table and an unlinked
+  `docs/products.html` card. No landing page, release unit or CI yet.
+
 ## 2026-10-22
 
 - Projects can export an allowlisted public snapshot with privacy scans and checks,
