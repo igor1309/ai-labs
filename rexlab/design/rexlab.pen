@@ -112936,6 +112936,40 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "OqAlT",
+      "x": 20496,
+      "y": -383.5,
+      "name": "App icon",
+      "clip": true,
+      "width": 280,
+      "height": 280,
+      "fill": "#F2EFE8",
+      "layout": "none",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "aknWK",
+          "x": 30,
+          "y": 30,
+          "name": "Glow",
+          "fill": "#E3EBC9",
+          "width": 220,
+          "height": 220
+        },
+        {
+          "id": "D9of7L",
+          "type": "ref",
+          "ref": "LZ0Fe",
+          "name": "T-Rex",
+          "x": 30,
+          "y": 40,
+          "width": 220,
+          "height": 200
+        }
+      ]
     }
   ],
   "themes": {

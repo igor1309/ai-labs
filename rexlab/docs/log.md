@@ -2,6 +2,7 @@
 
 ## 2026-10-24
 
+- RexLab can be added to the home screen as an app: it opens full screen under its T-Rex icon and plays without Wi-Fi once opened online; a new release shows on the next launch online (LAB-276).
 - Care plays whole upright on an iPhone instead of asking to turn, and with it every RexLab screen stands upright on a phone. A visit puts the needs on a row under HOME and the hearts and gives its five items as pictures in one row; FRIENDS keeps two cards to a row with names on up to three lines; the result keeps its eight hearts on one row over NEW VISITOR, FRIENDS and HOME (LAB-515).
 - DIG plays whole upright on an iPhone instead of asking to turn. The board puts the brushes, the FIELD GUIDE and DUG UP on a second row under HOME and the title, and WHO IS IT? lists its names one over another under the sand. The FIELD GUIDE shows its five finds as rows, and on a short phone the reveal scrolls rather than shrink the dinosaur (LAB-504).
 - Skeleton assembly plays whole upright on an iPhone instead of asking to turn. The choice and the museum go two to a row, the puzzle board spans the screen over its tray, the guess stacks its names as rows beside their pictures, and BUILD ANOTHER and MUSEUM each fit one line from 320 wide in English and Russian. On a short phone the guess and the result scroll (LAB-498).
