@@ -129,7 +129,8 @@ steps:
 			if got.code != 0 || got.stderr != "" {
 				t.Fatalf("run %+v", got)
 			}
-			calls := itemCalls(f.store.last(t))
+			record := f.store.last(t)
+			calls := itemCalls(record)
 			for step, value := range map[string]string{"tests/read_brief": "brief from " + c.file, "tests/read_revision": "commit-of-" + c.revision} {
 				if input := recordedInput(t, calls[step], "what"); input != value {
 					t.Errorf("%s received %q, want %q", step, input, value)
@@ -137,6 +138,29 @@ steps:
 			}
 			if asked := f.sources.askedOf(); !slices.Equal(asked, []string{"bytes /r/" + c.file, "commit " + c.revision + " in /r"}) {
 				t.Errorf("sources %v", asked)
+			}
+			if len(record.Children) != 1 || record.Children[0].ID != record.ID+"/tests" {
+				t.Fatalf("children %+v", record.Children)
+			}
+			_, _, events := f.store.given()
+			var started []storedEvent
+			for _, event := range events {
+				if event.event.Kind == runstore.ChildStarted {
+					started = append(started, event)
+				}
+			}
+			if len(started) != 1 || started[0].id != record.ID || started[0].event.Step != "tests" || started[0].event.Workflow != "child" {
+				t.Fatalf("child starts %+v", started)
+			}
+			wantInputs := map[string]string{"brief": "brief from " + c.file, "revision": "commit-of-" + c.revision}
+			for name, inputs := range map[string][]runstore.Input{"child record": record.Children[0].Inputs, "child_started event": started[0].event.Inputs} {
+				gotInputs := make(map[string]string, len(inputs))
+				for _, input := range inputs {
+					gotInputs[input.Name] = input.Value
+				}
+				if len(inputs) != len(wantInputs) || !reflect.DeepEqual(gotInputs, wantInputs) {
+					t.Errorf("%s inputs %+v, want %v", name, inputs, wantInputs)
+				}
 			}
 		})
 	}
