@@ -226,12 +226,14 @@ struct AudioTests {
             try await track.write([0.25, -0.5, 0.125, 0.5], sampleRate: 48_000)
             try await track.close()
             let adapter = Compose.WrittenTrack(track: track)
-            for (start, end, samples) in [
-                (0.0, 4 / 48_000.0, [Float(0.25), -0.5, 0.125, 0.5]),
-                (1 / 48_000.0, 3 / 48_000.0, [-0.5, 0.125]),
-                (3 / 48_000.0, 8 / 48_000.0, [0.5]),
-                (2 / 48_000.0, 2 / 48_000.0, []),
-            ] {
+            let rate = 48_000.0
+            let cases: [(Double, Double, [Float])] = [
+                (0, 4 / rate, [0.25, -0.5, 0.125, 0.5]),
+                (1 / rate, 3 / rate, [-0.5, 0.125]),
+                (3 / rate, 8 / rate, [0.5]),
+                (2 / rate, 2 / rate, []),
+            ]
+            for (start, end, samples) in cases {
                 #expect(try await adapter.read(from: start, through: end) == [
                     Audio(start: start, samples: samples, sampleRate: 48_000),
                 ])
