@@ -114653,6 +114653,577 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "SkRs4",
+      "x": 8695,
+      "y": 42350,
+      "name": "Dig · iPhone on its side 852×393 — Light · Paleontologist · Who is it? · 4 choices stacked, a wrong pick faded (LAB-587)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 852,
+      "height": 393,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 8,
+      "padding": [
+        8,
+        79,
+        33,
+        79
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "w3U0m2",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 48,
+          "gap": 8,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "F1PhC",
+              "name": "Home Button",
+              "width": 48,
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "M4NEIq",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "Rbdhd",
+                  "x": 50,
+                  "y": 16.5,
+                  "name": "Home Text",
+                  "enabled": false,
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "v24B3",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "f8x7dY",
+                  "name": "Title Mark",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "#B98A45",
+                  "cornerRadius": 12,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "m8Odav",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "CjcKc",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 24,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "psAOH",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "W1glIu",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "LLwpO",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "id": "h9EAFz",
+              "type": "ref",
+              "ref": "tpBai",
+              "height": 48,
+              "name": "Brush Picker"
+            },
+            {
+              "type": "frame",
+              "id": "F7npW",
+              "name": "Field Guide Button",
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 6,
+              "padding": [
+                0,
+                10,
+                0,
+                8
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "NhBuz",
+                  "name": "Field Guide Icon",
+                  "width": 26,
+                  "height": 26,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "#B98A45"
+                },
+                {
+                  "type": "text",
+                  "id": "pFaKZ",
+                  "name": "Field Guide Count",
+                  "fill": "$fm-ink",
+                  "content": "3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "D7fb9",
+              "name": "Dug Up Count",
+              "height": 40,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 20,
+              "gap": 6,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "AB09b",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "yW701",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "rXFiA",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 12,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "igmqA",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 395,
+              "height": 296,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-3-keep-digging.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "k4uG37",
+                  "x": 640,
+                  "y": 480,
+                  "name": "Brush",
+                  "enabled": false,
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "YWwOJ",
+                  "x": 127.91000000000003,
+                  "y": 212.8725,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "b16gi4",
+                  "x": 253.91000000000003,
+                  "y": 178.8725,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "ellipse",
+                  "id": "fhGu4",
+                  "x": 768,
+                  "y": 550,
+                  "name": "Bed Hollow",
+                  "enabled": false,
+                  "fill": "#9c7146",
+                  "width": 124,
+                  "height": 112,
+                  "stroke": "#f4e2b8",
+                  "strokeWidth": 8
+                },
+                {
+                  "type": "frame",
+                  "id": "VwRPT",
+                  "x": 792,
+                  "y": 568,
+                  "name": "Bonus Shell",
+                  "enabled": false,
+                  "rotation": -8,
+                  "width": 76,
+                  "height": 76,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-shell.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "ellipse",
+                  "id": "y23XOk",
+                  "x": 772,
+                  "y": 548,
+                  "name": "Bonus Glow",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 116,
+                  "height": 116,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 5
+                },
+                {
+                  "type": "text",
+                  "id": "T9QcDr",
+                  "x": 814,
+                  "y": 514,
+                  "name": "Hop Mark",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "⌃",
+                  "fontFamily": "Lexend",
+                  "fontSize": 30,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 24,
+                  "id": "HgyW6",
+                  "x": 560,
+                  "y": 150,
+                  "name": "Stroke",
+                  "enabled": false,
+                  "rotation": -12.000000000000002,
+                  "fill": "#9c7146",
+                  "width": 300,
+                  "height": 48,
+                  "stroke": "#f4e2b8",
+                  "strokeWidth": 6
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xAeHZ",
+              "name": "Choices",
+              "width": 216,
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 8,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Vq6xa",
+                  "name": "Choice Baryonyx",
+                  "opacity": 0.45,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 14,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "gap": 8,
+                  "padding": [
+                    4,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SfRmv",
+                      "name": "Picture Baryonyx",
+                      "width": 56,
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/baryonyx.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "id": "Y5iMh9",
+                      "name": "Name Baryonyx",
+                      "fill": "$fm-ink",
+                      "content": "BARYONYX",
+                      "lineHeight": 1.1,
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "i9wsW",
+                  "name": "Choice Spinosaurus",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 14,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "gap": 8,
+                  "padding": [
+                    4,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CkWpy",
+                      "name": "Picture Spinosaurus",
+                      "width": 56,
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/spinosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "id": "H8Xsq",
+                      "name": "Name Spinosaurus",
+                      "fill": "$fm-ink",
+                      "content": "SPINOSAURUS",
+                      "lineHeight": 1.1,
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "xy6Nz",
+                  "name": "Choice Dilophosaurus",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 14,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "gap": 8,
+                  "padding": [
+                    4,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "q2DqJE",
+                      "name": "Picture Dilophosaurus",
+                      "width": 56,
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dilophosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "id": "TxFd5",
+                      "name": "Name Dilophosaurus",
+                      "fill": "$fm-ink",
+                      "content": "DILOPHO-\nSAURUS",
+                      "lineHeight": 1.1,
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "MNWK3",
+                  "name": "Choice Allosaurus",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 14,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 2,
+                  "gap": 8,
+                  "padding": [
+                    4,
+                    8
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "I5pfdq",
+                      "name": "Picture Allosaurus",
+                      "width": 56,
+                      "height": "fill_container",
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/allosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "id": "URi4x",
+                      "name": "Name Allosaurus",
+                      "fill": "$fm-ink",
+                      "content": "ALLOSAURUS",
+                      "lineHeight": 1.1,
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "800"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
