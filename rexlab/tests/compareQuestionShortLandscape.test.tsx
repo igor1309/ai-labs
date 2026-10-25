@@ -9,8 +9,9 @@ import {
   SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, emptyCare, emptyDig, emptyPairs,
   emptyProgress, emptySkeletons, emptySorting, fakeBodyPicture, featuring,
   gameDoor, lightDevice, loadedPictures, manualViewport, pageAtRest,
-  seededRandom, unreadVersion, unsetAgeLevel
+  seededRandom, shownQuestion, unreadVersion, unsetAgeLevel, wrongOf
 } from "./support.ts";
+import { correctOf } from "../src/quiz/round.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 
 // iPhones on their side, full screen: the smallest, a common one and the
@@ -138,13 +139,33 @@ describe("a compare question in a wide-short window", () => {
     expect(next.closest(".next-row")).toBe(part(".next-row"));
     const style = styleAt(next, size);
     expect([style.value("height"), style.value("font-size"), style.px("padding-left"), style.px("padding-right"), style.columnGap()]).toEqual(["48px", "20px", 24, 20, 10]);
+    // The symbol the fit tests leave NEXT 22 pixels for.
+    expect(styleAt(part("svg", next), size).value("width")).toBe("22px");
     for (const chip of document.querySelectorAll<HTMLElement>(".dinosaur-value-chip")) {
       const at = styleAt(chip, size);
       // 12 from the card's right, and 12 above the footer's 41.
       expect([at.value("position"), at.px("right"), at.px("bottom"), at.value("height"), at.value("font-size")]).toEqual(["absolute", 12, 41 + 12, "36px", "17px"]);
+      // The sides, gap and 22-pixel symbol the fit tests measure a chip by.
+      expect([at.px("padding-left"), at.px("padding-right"), at.columnGap(), part("svg", chip).getAttribute("width")]).toEqual([12, 12, 6, "22"]);
     }
     const mark = styleAt(part(".mark"), size);
     expect([mark.px("top"), mark.px("left"), mark.value("height")]).toEqual([12, 12, "36px"]);
+  });
+
+  // Every property that places or sizes a card or a part of one.
+  const GEOMETRY = ["position", "top", "right", "bottom", "left", "margin-top", "margin-right", "margin-bottom", "margin-left", "padding-top", "padding-right", "padding-bottom", "padding-left", "border-top-width", "border-right-width", "border-bottom-width", "border-left-width", "width", "height", "min-width", "min-height", "max-width", "max-height", "flex", "align-self", "align-items", "justify-content", "transform", "font-size", "line-height"];
+  const layout = (size: WindowSize) => [".dinosaur-cards", ".dinosaur-card", ".dinosaur-art", ".dinosaur-picture", ".dinosaur-footer", ".dinosaur-name", ".versus"].map((selector) =>
+    [...document.querySelectorAll(selector)].map((element) => GEOMETRY.map((property) => styleAt(element, size).value(property))));
+
+  it.each((["en", "ru"] as const).flatMap((language) => (["right", "wrong"] as const).map((answer) => [language, answer] as const)))("moves no card when it is answered in %s, %s", async (language, answer) => {
+    const size: WindowSize = [667, 375];
+    const { user } = await openQuestion(size, PHONES[0][2], language);
+    const before = layout(size);
+    const question = shownQuestion(language);
+    const chosen = answer === "right" ? correctOf(question) : wrongOf(question);
+    await user.click(screen.getByRole("button", { name: chosen.name[language] }));
+    expect(document.querySelectorAll(".dinosaur-card[data-answered]")).toHaveLength(2);
+    expect(layout(size)).toEqual(before);
   });
 
   it("goes back to the iPad's layout when the window grows past 600 tall", async () => {
