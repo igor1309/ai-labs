@@ -7110,6 +7110,7 @@ html[data-size="wide-short"] .pairs-welcome .narrow-hidden {
 
 html[data-size="tall"] .upright-hidden,
 html[data-size="tall-narrow"] .upright-hidden,
+html[data-size="wide-short"] .dig-board-screen .home-button .upright-hidden,
 html[data-size="wide-short"] .pairs-bar .home-button .upright-hidden {
   position: absolute;
   width: 1px;
@@ -9397,6 +9398,87 @@ html[data-size="tall-narrow"] .dig-chip {
   padding: 0 8px;
   gap: 4px;
   font-size: 14px;
+}
+
+/* In a wide-short window, an iPhone on its side, the board stands under
+   a 48-pixel bar, 8 under the top, 12 over the bottom and 20 past each
+   side's inset, 8 between them. HOME is its house alone, the brush
+   picker's buttons and the FIELD GUIDE 44 and 48 tall, DUG UP 40, and the
+   title shrinks to the room they leave; the sand is as tall as the room
+   under the bar. */
+html[data-size="wide-short"] .dig-board-screen {
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  row-gap: 8px;
+}
+
+html[data-size="wide-short"] .dig-board-screen .stratum-1 {
+  height: 24px;
+}
+
+html[data-size="wide-short"] .dig-board-screen .dig-bar {
+  height: 48px;
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .dig-board-screen .home-button {
+  width: 48px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 14px;
+}
+
+html[data-size="wide-short"] .dig-board-screen .dig-title {
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .dig-board-screen .dig-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .dig-board-screen .dig-mark svg {
+  width: 24px;
+  height: 24px;
+}
+
+html[data-size="wide-short"] .dig-board-screen .dig-title-words {
+  font-size: min(24px, (100cqi - 48px) / (var(--letters) * 0.75));
+}
+
+html[data-size="wide-short"] .dig-board-screen .dig-brush-picker {
+  height: 48px;
+  padding: 2px;
+  border-radius: 14px;
+}
+
+html[data-size="wide-short"] .dig-board-screen .dig-brush-option {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .dig-board-screen .dig-field-guide-button {
+  min-width: 48px;
+  height: 48px;
+  padding: 0 10px 0 8px;
+  gap: 6px;
+  border-radius: 14px;
+  font-size: 18px;
+}
+
+html[data-size="wide-short"] .dig-board-screen .dig-chip {
+  height: 40px;
+  padding: 0 10px;
+  gap: 6px;
+  border-radius: 20px;
+  font-size: 16px;
 }
 
 /* The question's dinosaurs two to a row under the sand, 8 apart, small

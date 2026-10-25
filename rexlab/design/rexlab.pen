@@ -114268,6 +114268,391 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "vU5kj",
+      "x": 7763,
+      "y": 42350,
+      "name": "Dig · iPhone on its side 852×393 — Light · Hatchling · the brush picked (LAB-586)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 852,
+      "height": 393,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 8,
+      "padding": [
+        8,
+        79,
+        33,
+        79
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "Hu3DF",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 48,
+          "gap": 8,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "s3guLL",
+              "name": "Home Button",
+              "width": 48,
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "xBm3c",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "U780Bp",
+                  "x": 50,
+                  "y": 16.5,
+                  "name": "Home Text",
+                  "enabled": false,
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "lHGoM",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "GA8V0",
+                  "name": "Title Mark",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "#B98A45",
+                  "cornerRadius": 12,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "b89Hu",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "wLJJx",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 24,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "NFS3N",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "LHfuq",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "CJ9rK",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "id": "gSYWw",
+              "type": "ref",
+              "ref": "tpBai",
+              "height": 48,
+              "name": "Brush Picker"
+            },
+            {
+              "type": "frame",
+              "id": "k7Ghf",
+              "name": "Field Guide Button",
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 6,
+              "padding": [
+                0,
+                10,
+                0,
+                8
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "P7Esei",
+                  "name": "Field Guide Icon",
+                  "width": 26,
+                  "height": 26,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "#B98A45"
+                },
+                {
+                  "type": "text",
+                  "id": "A0Oon",
+                  "name": "Field Guide Count",
+                  "fill": "$fm-ink",
+                  "content": "3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jXVTV",
+              "name": "Dug Up Count",
+              "height": 40,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 20,
+              "gap": 6,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "uvLCc",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "y3R6i",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "SQKQn",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "BXu6F",
+              "name": "Sand Board",
+              "clip": true,
+              "width": 395,
+              "height": 296,
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-story-3-keep-digging.webp",
+                "mode": "stretch"
+              },
+              "cornerRadius": 28,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "MOEaa",
+                  "x": 640,
+                  "y": 480,
+                  "name": "Brush",
+                  "enabled": false,
+                  "fill": "#FFFFFF40",
+                  "width": 58,
+                  "height": 58,
+                  "stroke": "#FFFFFF",
+                  "strokeWidth": 4
+                },
+                {
+                  "type": "ellipse",
+                  "id": "fEadk",
+                  "x": 127.91000000000003,
+                  "y": 212.8725,
+                  "name": "Found Glow EYE",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 152,
+                  "height": 152,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 6
+                },
+                {
+                  "type": "text",
+                  "id": "fraSb",
+                  "x": 253.91000000000003,
+                  "y": 178.8725,
+                  "name": "Star Pop EYE",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "★",
+                  "fontFamily": "Inter",
+                  "fontSize": 56,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "ellipse",
+                  "id": "pV3A2",
+                  "x": 768,
+                  "y": 550,
+                  "name": "Bed Hollow",
+                  "enabled": false,
+                  "fill": "#9c7146",
+                  "width": 124,
+                  "height": 112,
+                  "stroke": "#f4e2b8",
+                  "strokeWidth": 8
+                },
+                {
+                  "type": "frame",
+                  "id": "FHHB4",
+                  "x": 792,
+                  "y": 568,
+                  "name": "Bonus Shell",
+                  "enabled": false,
+                  "rotation": -8,
+                  "width": 76,
+                  "height": 76,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-shell.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "ellipse",
+                  "id": "d1y7z",
+                  "x": 772,
+                  "y": 548,
+                  "name": "Bonus Glow",
+                  "enabled": false,
+                  "fill": "#F2C14E22",
+                  "width": 116,
+                  "height": 116,
+                  "stroke": "#F2C14E",
+                  "strokeWidth": 5
+                },
+                {
+                  "type": "text",
+                  "id": "aLKki",
+                  "x": 814,
+                  "y": 514,
+                  "name": "Hop Mark",
+                  "enabled": false,
+                  "fill": "#E0A526",
+                  "content": "⌃",
+                  "fontFamily": "Lexend",
+                  "fontSize": 30,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 24,
+                  "id": "B5n0S",
+                  "x": 560,
+                  "y": 150,
+                  "name": "Stroke",
+                  "enabled": false,
+                  "rotation": -12.000000000000002,
+                  "fill": "#9c7146",
+                  "width": 300,
+                  "height": 48,
+                  "stroke": "#f4e2b8",
+                  "strokeWidth": 6
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
