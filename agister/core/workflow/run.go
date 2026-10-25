@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -341,7 +340,7 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 		return refuse()
 	}
 	read := reader{boundary: boundary, outputs: map[string]any{}, sessions: map[string]string{}}
-	execution := execution{runner: r, count: count, mu: &sync.Mutex{}}
+	execution := execution{runner: r, count: count}
 	ended := execution.sequence(ctx, w.Steps, read, "")
 	if ended.Status != Completed {
 		result.Status, result.Class, result.Reason = ended.Status, ended.Class, ended.Reason
@@ -357,51 +356,6 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 	}
 	result.Output = outputValues
 	return finish()
-}
-
-// parallel calls each step of together at once, or, where it sets Max,
-// each in declaration order once fewer than Max are running; its params
-// and its session read by read; and gives each call's result, in
-// declaration order, once all have ended. A step not yet called once ctx
-// has ended is not called: it ends interrupted, cancelled, having spent
-// nothing. It is false, nothing called, when a step cannot be called,
-// reason saying why where it is a session.
-func (r *Runner) parallel(ctx context.Context, together Step, read reader) ([]Result, string, bool) {
-	steps := together.Parallel
-	params := make([]map[string]string, len(steps))
-	sessions := make([]string, len(steps))
-	for i, step := range steps {
-		bound, session, reason, ok := read.call(step)
-		if !ok {
-			return nil, reason, false
-		}
-		params[i], sessions[i] = bound, session
-	}
-	running := len(steps)
-	if together.Max > 0 {
-		running = min(together.Max, running)
-	}
-	slots := make(chan struct{}, running)
-	calls := make([]Result, len(steps))
-	var all sync.WaitGroup
-	for i, step := range steps {
-		select {
-		case slots <- struct{}{}:
-		case <-ctx.Done():
-		}
-		if ctx.Err() != nil {
-			calls[i] = Result{Status: Interrupted, Class: Cancelled, Cost: new(float64)}
-			continue
-		}
-		all.Add(1)
-		go func() {
-			defer all.Done()
-			defer func() { <-slots }()
-			calls[i] = r.call(ctx, step, params[i], sessions[i])
-		}()
-	}
-	all.Wait()
-	return calls, "", true
 }
 
 // call calls step with params, continuing session, its start or the call it reused, its tool

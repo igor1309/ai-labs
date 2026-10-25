@@ -121,7 +121,6 @@ func recordedInput(t *testing.T, c runstore.Call, name string) string {
 	return ""
 }
 
-// workflow_item.feature, "The item's calls run in its slot, and the join reads its output whole".
 // Contract test: the review processes, prompts and schemas shipped in home.
 func TestTheItemsCallsRunInItsSlotAndTheJoinReadsItsOutputWhole(t *testing.T) {
 	t.Parallel()
@@ -142,7 +141,6 @@ func TestTheItemsCallsRunInItsSlotAndTheJoinReadsItsOutputWhole(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "The revise continues the draft's session, inside the item".
 // Contract test: the review processes, prompts and schemas shipped in home.
 func TestTheReviseContinuesTheDraftsSessionInsideTheItem(t *testing.T) {
 	t.Parallel()
@@ -167,7 +165,6 @@ func TestTheReviseContinuesTheDraftsSessionInsideTheItem(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "Each pass's critique reads the review the pass before left".
 // Contract test: the review processes, prompts and schemas shipped in home.
 func TestEachPasssCritiqueReadsTheReviewThePassBeforeLeft(t *testing.T) {
 	t.Parallel()
@@ -185,7 +182,6 @@ func TestEachPasssCritiqueReadsTheReviewThePassBeforeLeft(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "The record keeps the item as a child run, and each call by the item".
 // Contract test: the review processes, prompts and schemas shipped in home.
 func TestTheRecordKeepsTheItemAsAChildRunAndEachCallByTheItem(t *testing.T) {
 	t.Parallel()
@@ -224,7 +220,6 @@ func TestTheRecordKeepsTheItemAsAChildRunAndEachCallByTheItem(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "Progress names each call by the item".
 // Contract test: the review processes, prompts and schemas shipped in home.
 func TestProgressNamesEachCallByTheItem(t *testing.T) {
 	t.Parallel()
@@ -237,7 +232,6 @@ func TestProgressNamesEachCallByTheItem(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "A call inside the item meets the day's budget as any call".
 // Contract test: the review processes, prompts and schemas shipped in home.
 func TestACallInsideTheItemMeetsTheDaysBudgetAsAnyCall(t *testing.T) {
 	t.Parallel()
@@ -262,7 +256,6 @@ func TestACallInsideTheItemMeetsTheDaysBudgetAsAnyCall(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "Check passes the workflow".
 // Contract test: the review processes, prompts and schemas shipped in home.
 func TestCheckPassesTheWorkflow(t *testing.T) {
 	t.Parallel()
@@ -279,7 +272,6 @@ func TestCheckPassesTheWorkflow(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "Check passes home's code_review, its tests lens a debate".
 // Contract test: the complete settings shipped in home.
 func TestCheckPassesHomesCodeReviewItsTestsLensADebate(t *testing.T) {
 	t.Parallel()

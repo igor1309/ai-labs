@@ -2,6 +2,7 @@ package workflow_test
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"reflect"
 	"slices"
@@ -46,7 +47,6 @@ func childRunFixture(t *testing.T) (*itemFixture, *childRunEvents) {
 	return f, events
 }
 
-// child_run.feature, "A completed item is told as started, then completed".
 func TestACompletedItemIsToldAsStartedThenCompleted(t *testing.T) {
 	t.Parallel()
 	f, events := childRunFixture(t)
@@ -64,7 +64,6 @@ func TestACompletedItemIsToldAsStartedThenCompleted(t *testing.T) {
 	}
 }
 
-// child_run.feature, "A failed item is told as ended failed, of its step's class".
 func TestAFailedItemIsToldAsEndedFailedOfItsStepsClass(t *testing.T) {
 	t.Parallel()
 	f, events := childRunFixture(t)
@@ -74,5 +73,26 @@ func TestAFailedItemIsToldAsEndedFailedOfItsStepsClass(t *testing.T) {
 	got := f.runner.Run(context.Background(), f.w, map[string]string{"goal": "ship"})
 	if got.Status != workflow.Failed || !reflect.DeepEqual(events.end, workflow.ChildEnd{Status: workflow.Failed, Class: "runtime_error"}) || events.told[len(events.told)-1] != "tests child ended" {
 		t.Fatalf("result %+v, events %+v", got, events)
+	}
+}
+
+func TestAChildWhoseInputsAreRefusedStillStartsAndEnds(t *testing.T) {
+	t.Parallel()
+	f, events := childRunFixture(t)
+	f.w.Steps[0].Resolver = boundaryResolverFunc(func(context.Context, map[string]string) (workflow.Boundary, error) {
+		return workflow.Boundary{}, errors.New("missing child input")
+	})
+	got := f.run(t)
+	if got.Status != workflow.Failed || got.Class != workflow.Refused || got.Reason != "missing child input" {
+		t.Fatalf("run %+v", got)
+	}
+	if !slices.Equal(events.told, []string{"tests child started", "tests child ended"}) || len(f.caller.params) != 0 {
+		t.Fatalf("events %v, calls %v", events.told, f.caller.params)
+	}
+	if events.name != "tests" || events.definition != "lens" || !reflect.DeepEqual(events.params, map[string]string{"goal": "ship"}) || len(events.inputs) != 0 {
+		t.Fatalf("start %+v", events)
+	}
+	if !reflect.DeepEqual(events.end, workflow.ChildEnd{Status: workflow.Failed, Class: workflow.Refused}) {
+		t.Fatalf("end %+v", events.end)
 	}
 }

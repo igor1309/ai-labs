@@ -15,17 +15,10 @@ type Repeat struct {
 	Max         int
 }
 
-// execution owns the accounting shared by every nested item of one run.
+// execution accounts for calls in sequence or buffers them until a parallel joins.
 type execution struct {
 	runner *Runner
 	count  func(string, Result)
-	mu     *sync.Mutex
-}
-
-func (e execution) counted(step string, result Result) {
-	e.mu.Lock()
-	defer e.mu.Unlock()
-	e.count(step, result)
 }
 
 func (e execution) sequence(ctx context.Context, steps []Step, read reader, suffix string) Result {
@@ -34,7 +27,7 @@ func (e execution) sequence(ctx context.Context, steps []Step, read reader, suff
 
 func (e execution) sequenceAt(ctx context.Context, steps []Step, read reader, prefix, suffix string) Result {
 	for _, step := range steps {
-		result := e.itemAt(ctx, step, read, prefix, suffix, true)
+		result := e.itemAt(ctx, step, read, prefix, suffix)
 		if result.Status != Completed {
 			return result
 		}
@@ -60,10 +53,10 @@ func (r reader) bindings(bindings []Binding) (map[string]any, bool) {
 }
 
 func (e execution) item(ctx context.Context, item Step, read reader, suffix string) Result {
-	return e.itemAt(ctx, item, read, "", suffix, true)
+	return e.itemAt(ctx, item, read, "", suffix)
 }
 
-func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, suffix string, count bool) Result {
+func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, suffix string) Result {
 	if ctx.Err() != nil {
 		return Result{Status: Interrupted, Class: Cancelled}
 	}
@@ -83,7 +76,7 @@ func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, s
 			inner := read
 			inner.outputs = maps.Clone(read.outputs)
 			inner.sessions = maps.Clone(read.sessions)
-			result := e.itemAt(ctx, arm, inner, prefix, suffix, true)
+			result := e.itemAt(ctx, arm, inner, prefix, suffix)
 			if result.Status != Completed {
 				return result
 			}
@@ -144,12 +137,11 @@ func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, s
 		ends := make([]any, len(calls))
 		completed := false
 		for i, call := range calls {
-			child := item.Parallel[i]
-			if child.Workflow == nil && child.Parallel == nil && child.Branch == nil && child.Repeat == nil {
-				e.counted(prefix+child.Name+suffix, call)
+			for _, accounted := range call.calls {
+				e.count(accounted.step, accounted.result)
 			}
 			read.sessions[item.Parallel[i].Name] = call.Session
-			ends[i] = endOf(call)
+			ends[i] = endOf(call.Result)
 			completed = completed || call.Status == Completed
 		}
 		if ctx.Err() != nil {
@@ -175,16 +167,20 @@ func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, s
 		}
 		boundary, err := item.Resolver.Resolve(ctx, params)
 		if err != nil {
-			if ctx.Err() != nil {
-				return Result{Status: Interrupted, Class: Cancelled}
-			}
-			result := refused()
-			result.Reason = err.Error()
-			return result
+			boundary = Boundary{Params: params, Inputs: map[string]string{}}
 		}
 		e.runner.events.ChildStarted(name, item.WorkflowName, maps.Clone(boundary.Params), maps.Clone(boundary.Inputs))
 		inner := reader{boundary: boundary, outputs: map[string]any{}, sessions: map[string]string{}}
-		result := e.sequenceAt(ctx, item.Workflow.Steps, inner, prefix+item.Name+"/", suffix)
+		var result Result
+		if err != nil {
+			result = refused()
+			result.Reason = err.Error()
+			if ctx.Err() != nil {
+				result = Result{Status: Interrupted, Class: Cancelled}
+			}
+		} else {
+			result = e.sequenceAt(ctx, item.Workflow.Steps, inner, prefix+item.Name+"/", suffix)
+		}
 		if result.Status == Completed {
 			output := map[string]any{}
 			for _, binding := range item.Workflow.Outputs {
@@ -217,17 +213,25 @@ func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, s
 		logical := item.Name
 		item.declared, item.Name = prefix+logical, name
 		result := e.runner.call(ctx, item, params, session)
-		if count {
-			e.counted(name, result)
-		}
+		e.count(name, result)
 		read.sessions[logical] = result.Session
 		return result
 	}
 }
 
+type accountedCall struct {
+	step   string
+	result Result
+}
+
+type parallelResult struct {
+	Result
+	calls []accountedCall
+}
+
 // parallel runs arbitrary items in declaration order, bounded by Max. Each
 // child gets its own view of the parent's boundary and completed outputs.
-func (e execution) parallel(ctx context.Context, together Step, read reader, prefix, suffix string) ([]Result, string, bool) {
+func (e execution) parallel(ctx context.Context, together Step, read reader, prefix, suffix string) ([]parallelResult, string, bool) {
 	items := together.Parallel
 	params := len(items)
 	if params == 0 {
@@ -249,7 +253,7 @@ func (e execution) parallel(ctx context.Context, together Step, read reader, pre
 		running = together.Max
 	}
 	slots := make(chan struct{}, running)
-	results := make([]Result, params)
+	results := make([]parallelResult, params)
 	var all sync.WaitGroup
 	for i, child := range items {
 		select {
@@ -257,7 +261,7 @@ func (e execution) parallel(ctx context.Context, together Step, read reader, pre
 		case <-ctx.Done():
 		}
 		if ctx.Err() != nil {
-			results[i] = Result{Status: Interrupted, Class: Cancelled, Cost: new(float64)}
+			results[i].Result = Result{Status: Interrupted, Class: Cancelled, Cost: new(float64)}
 			continue
 		}
 		all.Add(1)
@@ -267,7 +271,10 @@ func (e execution) parallel(ctx context.Context, together Step, read reader, pre
 			inner := read
 			inner.outputs = maps.Clone(read.outputs)
 			inner.sessions = maps.Clone(read.sessions)
-			results[i] = e.itemAt(ctx, child, inner, prefix, suffix, false)
+			childExecution := execution{runner: e.runner, count: func(step string, result Result) {
+				results[i].calls = append(results[i].calls, accountedCall{step: step, result: result})
+			}}
+			results[i].Result = childExecution.itemAt(ctx, child, inner, prefix, suffix)
 		}(i, child)
 	}
 	all.Wait()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"reflect"
 	"slices"
@@ -66,8 +67,13 @@ func TestCancellationWhileWorkflowInputsResolveEndsInterruptedCancelled(t *testi
 			if got.Status != workflow.Interrupted || got.Class != workflow.Cancelled || got.Output != nil {
 				t.Fatalf("run %+v, want interrupted, cancelled, no output", got)
 			}
-			if len(f.caller.params) != 0 || len(f.events.told) != 0 {
-				t.Fatalf("calls %v, events %v, want none", f.caller.params, f.events.told)
+			// Input resolution belongs to the child's execution, so cancellation ends its lifecycle.
+			var wantEvents []string
+			if where != "root" {
+				wantEvents = []string{"tests child lens started", `tests child ended interrupted "cancelled"`}
+			}
+			if len(f.caller.params) != 0 || !slices.Equal(f.events.told, wantEvents) {
+				t.Fatalf("calls %v, events %v, want no calls and %v", f.caller.params, f.events.told, wantEvents)
 			}
 		})
 	}
@@ -132,7 +138,6 @@ func assertItemCalls(t *testing.T, f *itemFixture, names ...string) {
 	}
 }
 
-// workflow_item.feature, "The item's steps run in order, each with its bindings".
 func TestTheItemsStepsRunInOrderEachWithItsBindings(t *testing.T) {
 	t.Parallel()
 	f := newItemFixture(t)
@@ -146,28 +151,30 @@ func TestTheItemsStepsRunInOrderEachWithItsBindings(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "A workflow of one output named output gives that value whole".
-func TestAWorkflowOfOneOutputNamedOutputGivesThatValueWhole(t *testing.T) {
+func TestAWorkflowItemsOutputShapeDependsOnItsOutputNames(t *testing.T) {
 	t.Parallel()
-	f := newItemFixture(t)
-	f.completed(t)
-	if f.caller.bound["judge"]["reviews"] != `{"verdict":"approve"}` {
-		t.Fatalf("judge %v", f.caller.bound["judge"])
+	for _, c := range []struct {
+		name     string
+		bindings []workflow.Binding
+		want     string
+	}{
+		{"one output", []workflow.Binding{bind("output", outputs("polish", ""))}, `{"verdict":"approve"}`},
+		{"one other name", []workflow.Binding{bind("verdict", outputs("polish", "verdict"))}, `{"verdict":"approve"}`},
+		{"output and another", []workflow.Binding{bind("output", outputs("polish", "")), bind("text", outputs("draft", "text"))}, `{"output":{"verdict":"approve"},"text":"t"}`},
+		{"other names", []workflow.Binding{bind("verdict", outputs("polish", "verdict")), bind("text", outputs("draft", "text"))}, `{"text":"t","verdict":"approve"}`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := newItemFixture(t)
+			f.lens.Outputs = c.bindings
+			f.completed(t)
+			if got := f.caller.bound["judge"]["reviews"]; got != c.want {
+				t.Fatalf("judge reads %s, want %s", got, c.want)
+			}
+		})
 	}
 }
 
-// workflow_item.feature, "A workflow of other outputs gives them as a mapping".
-func TestAWorkflowOfOtherOutputsGivesThemAsAMapping(t *testing.T) {
-	t.Parallel()
-	f := newItemFixture(t)
-	f.lens.Outputs = []workflow.Binding{bind("verdict", outputs("polish", "verdict")), bind("text", outputs("draft", "text"))}
-	f.completed(t)
-	if f.caller.bound["judge"]["reviews"] != `{"text":"t","verdict":"approve"}` {
-		t.Fatalf("judge %v", f.caller.bound["judge"])
-	}
-}
-
-// workflow_item.feature, "The item's inputs resolve over the params it bound".
 func TestTheItemsInputsResolveOverTheParamsItBound(t *testing.T) {
 	t.Parallel()
 	f := newItemFixture(t)
@@ -184,7 +191,6 @@ func TestTheItemsInputsResolveOverTheParamsItBound(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "The item's steps read only its own boundary and outputs".
 func TestTheItemsStepsReadOnlyItsOwnBoundaryAndOutputs(t *testing.T) {
 	t.Parallel()
 	f := newItemFixture(t)
@@ -197,7 +203,6 @@ func TestTheItemsStepsReadOnlyItsOwnBoundaryAndOutputs(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "A session continued inside the item is the item's own".
 func TestASessionContinuedInsideTheItemIsTheItemsOwn(t *testing.T) {
 	t.Parallel()
 	f := newItemFixture(t)
@@ -213,7 +218,6 @@ func TestASessionContinuedInsideTheItemIsTheItemsOwn(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "A repeat inside the item is told by the item and its pass".
 func TestARepeatInsideTheItemIsToldByTheItemAndItsPass(t *testing.T) {
 	t.Parallel()
 	f := newItemFixture(t)
@@ -233,7 +237,6 @@ func TestARepeatInsideTheItemIsToldByTheItemAndItsPass(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "An item step that does not complete ends the run".
 func TestAnItemStepThatDoesNotCompleteEndsTheRun(t *testing.T) {
 	t.Parallel()
 	for _, status := range []workflow.Status{workflow.Failed, workflow.Interrupted, "lost"} {
@@ -271,7 +274,6 @@ func itemOutcomes(t *testing.T, f *itemFixture) []map[string]any {
 	return outcomes
 }
 
-// workflow_item.feature, "A workflow item in a parallel runs beside its steps".
 func TestAWorkflowItemInAParallelRunsBesideItsSteps(t *testing.T) {
 	t.Parallel()
 	f := newItemFixture(t)
@@ -288,7 +290,6 @@ func TestAWorkflowItemInAParallelRunsBesideItsSteps(t *testing.T) {
 	}
 }
 
-// workflow_item.feature, "A workflow item in a parallel that does not complete is its slot's failure".
 func TestAWorkflowItemInAParallelThatDoesNotCompleteIsItsSlotsFailure(t *testing.T) {
 	t.Parallel()
 	f := newItemFixture(t)
@@ -304,7 +305,6 @@ func TestAWorkflowItemInAParallelThatDoesNotCompleteIsItsSlotsFailure(t *testing
 	}
 }
 
-// workflow_item.feature, "The run's cost and usage count the item's calls".
 func TestTheRunsCostAndUsageCountTheItemsCalls(t *testing.T) {
 	t.Parallel()
 	for _, parallel := range []bool{false, true} {
@@ -328,6 +328,47 @@ func TestTheRunsCostAndUsageCountTheItemsCalls(t *testing.T) {
 			got := f.completed(t)
 			if got.Cost == nil || *got.Cost != 1 || got.Usage.Input == nil || *got.Usage.Input != 20 || !slices.Equal(got.Warnings, []string{"tests/draft", "tests/polish"}) {
 				t.Fatalf("accounting %+v", got)
+			}
+		})
+	}
+}
+
+func TestParallelWarningsFollowDeclarationOrderAcrossStepsAndWorkflowItems(t *testing.T) {
+	t.Parallel()
+	for _, max := range []int{0, 1, 2} {
+		t.Run(fmt.Sprintf("max %d", max), func(t *testing.T) {
+			t.Parallel()
+			f := newItemFixture(t)
+			f.parallel(max, true)
+			want := []string{"arch", "tests/draft", "tests/polish", "intent"}
+			archDone := make(chan struct{})
+			for i, step := range want {
+				answer := f.caller.answers[step]
+				f.caller.answers[step] = func() workflow.Result {
+					if step == "arch" {
+						defer close(archDone)
+					} else if step == "tests/draft" {
+						<-archDone
+					}
+					r := answer()
+					cost, tokens := float64(i+1), int64(i+1)
+					r.Cost, r.Usage.Input = &cost, &tokens
+					r.Session = step + "-session"
+					r.Warnings = []string{step}
+					return r
+				}
+			}
+			got := f.completed(t)
+			if !slices.Equal(got.Warnings, want) {
+				t.Errorf("warnings %v, want %v", got.Warnings, want)
+			}
+			if got.Cost == nil || *got.Cost != 10 || got.Usage.Input == nil || *got.Usage.Input != 10 {
+				t.Errorf("accounting %+v, want cost 10 and input usage 10", got)
+			}
+			for _, step := range want {
+				if got.Sessions[step] != step+"-session" {
+					t.Errorf("sessions %v lack %s's session", got.Sessions, step)
+				}
 			}
 		})
 	}

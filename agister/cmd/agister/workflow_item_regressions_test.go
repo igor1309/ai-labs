@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
@@ -273,4 +274,57 @@ func TestChildWorkflowDefinitionsAndBoundaryBriefsAreArchivedWithTheRun(t *testi
 		t.Fatalf("definitions %+v, want %+v", got, want)
 	}
 	assertDefinitionBytes(t, f.runFixture)
+}
+
+// Contract test: the runtime settings shipped in home.
+func TestAChildWithAMissingInputFileIsRecordedAsAFailedChildRun(t *testing.T) {
+	t.Parallel()
+	for _, parallel := range []bool{false, true} {
+		t.Run(fmt.Sprintf("parallel %t", parallel), func(t *testing.T) {
+			t.Parallel()
+			missing := filepath.Join(t.TempDir(), "missing.md")
+			item := fmt.Sprintf("{name: tests, workflow: child, inputs: {path: %q}}", missing)
+			if parallel {
+				item = "{name: reviews, parallel: [" + item + "]}"
+			}
+			f := newRunFixture(t, runSettings(t, map[string]string{
+				"/r/.agister/workflows/parent.yaml": "schema: agister.workflow/v1alpha1\nsteps: [" + item + "]\n",
+				"/r/.agister/workflows/child.yaml":  "schema: agister.workflow/v1alpha1\nparams: {path: {}}\ninputs: {brief: {source: file, path: {from: params.path}}}\nsteps: [{name: draft, process: say, agent: bash, inputs: {what: {from: inputs.brief}}}]\n",
+			}), echoes)
+			got := f.run(t, "/r", "run", "parent")
+			if got.code != 1 || !strings.Contains(got.stdout, missing) || len(f.runtimes.bash.ran()) != 0 {
+				t.Fatalf("run %+v, calls %v", got, f.runtimes.bash.ran())
+			}
+			record := f.store.last(t)
+			class := "refused"
+			want := []runstore.Child{{ID: record.ID + "/tests", Parent: record.ID, Workflow: "child", Params: map[string]string{"path": missing}, Inputs: []runstore.Input{}, Status: "failed", Class: &class}}
+			if record.Status != "failed" || !reflect.DeepEqual(record.Children, want) {
+				t.Fatalf("root %s, children %+v, want %+v", record.Status, record.Children, want)
+			}
+			children := asJSON(t, record)["children"]
+			wantJSON := []any{map[string]any{
+				"id": record.ID + "/tests", "parent": record.ID, "workflow": "child",
+				"params": map[string]any{"path": missing}, "inputs": []any{},
+				"status": "failed", "class": "refused", "output": nil,
+			}}
+			if !reflect.DeepEqual(children, wantJSON) {
+				t.Errorf("serialized children %v, want %v", children, wantJSON)
+			}
+			var events []map[string]any
+			for _, event := range f.store.events {
+				if event.event.Kind == runstore.ChildStarted || event.event.Kind == runstore.ChildEnded {
+					events = append(events, asJSON(t, event.event))
+				}
+			}
+			if len(events) != 2 {
+				t.Fatalf("child events %v", events)
+			}
+			if events[0]["kind"] != "child_started" || events[0]["step"] != "tests" || events[0]["workflow"] != "child" || !reflect.DeepEqual(events[0]["params"], map[string]any{"path": missing}) {
+				t.Errorf("child start %v", events[0])
+			}
+			if events[1]["kind"] != "child_ended" || events[1]["step"] != "tests" || events[1]["status"] != "failed" || events[1]["class"] != "refused" || events[1]["output"] != nil {
+				t.Errorf("child end %v", events[1])
+			}
+		})
+	}
 }
