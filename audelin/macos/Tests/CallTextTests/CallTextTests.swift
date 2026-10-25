@@ -1,6 +1,8 @@
+import Synchronization
 import Testing
 @testable import CallText
 
+@Suite(.timeLimit(.minutes(1)))
 struct CallTextTests {
 
     @Test func microphoneWordsAppearAsMineBeforeTheNextWord() async {
@@ -131,8 +133,181 @@ struct CallTextTests {
         var final: State?
         for await snapshot in rig.call.updates { final = snapshot }
         #expect(final == State(status: .failed("Live text failed"), entries: retained))
-        #expect(await (onCallTrack ? rig.microphone : rig.other).abandoned)
+        #expect((onCallTrack ? rig.microphone : rig.other).abandoned)
         await rig.call.stop()
+    }
+
+    @Test(arguments: [false, true])
+    func failureWaitsForBothSidesToReleaseLiveTextWithOtherAudioOpen(onCallTrack: Bool) async {
+
+        let executor = CueExecutor()
+        let release = CueGate(changed: executor.notify), observed = CallObservation(changed: executor.notify)
+        let failing = CueSide(loading: false, changed: executor.notify)
+        let other = CueSide(loading: false, release: release, changed: executor.notify)
+        let call = CallText(microphone: onCallTrack ? other : failing, call: onCallTrack ? failing : other)
+        let retained = ordered(entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs))
+        let task = Task(executorPreference: executor) {
+            defer { executor.complete() }
+            await call.start()
+            await (onCallTrack ? other : failing).say(0)
+            await (onCallTrack ? failing : other).say(100, at: 0)
+            let listener = Task { await observed.listen(to: call) }
+            await failing.fail()
+            await call.stop()
+            await listener.value
+            await call.stop()
+        }
+        defer { release.open(); executor.run() }
+        await executor.run(until: { release.entered && observed.latest?.status == .failed("Live text failed") })
+        #expect(release.entered)
+        #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
+        #expect(!observed.ended)
+        #expect(other.abandoned)
+        #expect(!other.audioEnded)
+        #expect(other.stopRequests == 0)
+        #expect(!other.liveTextReleased)
+        release.open()
+        await executor.finish()
+        await task.value
+        #expect(observed.ended)
+        #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
+        #expect(failing.liveTextReleased)
+        #expect(other.liveTextReleased)
+        #expect(!other.audioEnded)
+        #expect(other.stopRequests == 0)
+    }
+
+    @Test func failureDuringStopAbandonsTheOtherSidesOpenAudio() async {
+
+        let executor = CueExecutor()
+        let fail = CueGate(changed: executor.notify), stop = CueGate(changed: executor.notify)
+        let release = CueGate(changed: executor.notify), observed = CallObservation(changed: executor.notify)
+        let failing = CueSide(loading: false, stop: stop, changed: executor.notify)
+        let other = CueSide(loading: false, release: release, stop: stop, changed: executor.notify)
+        let call = CallText(microphone: failing, call: other)
+        let retained = ordered(entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs))
+        let task = Task(executorPreference: executor) {
+            defer { executor.complete() }
+            await call.start()
+            await failing.say(0)
+            await other.say(100, at: 0)
+            let listener = Task { await observed.listen(to: call) }
+            let stopping = Task { await call.stop() }
+            await fail.wait()
+            await failing.fail()
+            await stopping.value
+            await listener.value
+        }
+        defer { fail.open(); stop.open(); release.open(); executor.run() }
+        await executor.run(until: { failing.stopRequested.isOpen && other.stopRequested.isOpen })
+        fail.open()
+        await executor.run(until: { release.entered && observed.latest?.status == .failed("Live text failed") })
+        #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
+        #expect(!observed.ended)
+        #expect(other.abandoned)
+        #expect(!other.audioEnded)
+        stop.open()
+        release.open()
+        await executor.finish()
+        await task.value
+        #expect(observed.ended)
+        #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
+        #expect(failing.stopped)
+        #expect(other.stopped)
+    }
+
+    @Test func oneSidesAudioEndingSettlesItsTextAndLeavesTheOtherReading() async {
+
+        let executor = CueExecutor()
+        let continueAudio = CueGate(changed: executor.notify), observed = CallObservation(changed: executor.notify)
+        let rig = Rig(microphoneFinishWord: 1, callFinishWord: 102, changed: executor.notify)
+        let task = Task(executorPreference: executor) {
+            defer { executor.complete() }
+            await rig.call.start()
+            let listener = Task { await observed.listen(to: rig.call) }
+            await rig.microphone.say(0)
+            await rig.microphone.say(1)
+            await rig.other.say(100, at: 0)
+            await rig.microphone.endAudio()
+            await rig.microphone.waitForEnd()
+            await rig.other.say(101, at: 1)
+            await continueAudio.wait()
+            await rig.other.say(102, at: 2)
+            await rig.other.endAudio()
+            await listener.value
+        }
+        defer { continueAudio.open(); executor.run() }
+        await executor.run(until: {
+            continueAudio.entered && observed.latest?.entries.contains { $0.text.pending == "word101" } == true
+        })
+        #expect(continueAudio.entered)
+        #expect(observed.latest == State(status: .listening, entries: ordered(
+            settled(entries(0...1, speaker: .mine)) + entries(100...101, speaker: .theirs)
+        )))
+        #expect(!observed.ended)
+        #expect(rig.microphone.liveTextReleased)
+        #expect(!rig.other.liveTextReleased)
+        continueAudio.open()
+        await executor.finish()
+        await task.value
+        #expect(observed.ended)
+        #expect(observed.latest == State(status: .finished, entries: ordered(
+            settled(entries(0...1, speaker: .mine) + entries(100...102, speaker: .theirs))
+        )))
+        #expect(rig.other.liveTextReleased)
+    }
+
+    @Test func stoppingDrainsHeldDeliveriesAndFinishOnlyWordsFromBothSides() async {
+
+        let executor = CueExecutor()
+        let mine = CueGate(changed: executor.notify), theirs = CueGate(changed: executor.notify)
+        let observed = CallObservation(changed: executor.notify)
+        let rig = Rig(microphoneFinishWord: 2, callFinishWord: 102, changed: executor.notify)
+        let task = Task(executorPreference: executor) {
+            defer { executor.complete() }
+            await rig.call.start()
+            let listener = Task { await observed.listen(to: rig.call) }
+            await rig.microphone.say(0)
+            await rig.other.say(100, at: 0)
+            await rig.microphone.holdWords([1, 2], at: 1, until: mine)
+            await rig.other.holdWords([101, 102], at: 1, until: theirs)
+            await rig.microphone.endAudio()
+            await rig.other.endAudio()
+            await rig.call.stop()
+            #expect(rig.microphone.stopped)
+            #expect(rig.other.stopped)
+            await listener.value
+        }
+        defer { mine.open(); theirs.open(); executor.run() }
+        await executor.run(until: {
+            mine.entered && theirs.entered && rig.microphone.stopRequested.isOpen && rig.other.stopRequested.isOpen
+                && observed.latest?.status == .listening
+        })
+        #expect(mine.entered && theirs.entered)
+        #expect(rig.microphone.stopRequests == 1)
+        #expect(rig.other.stopRequests == 1)
+        #expect(!observed.ended)
+        #expect(observed.latest?.status == .listening)
+        mine.open()
+        await executor.run(until: {
+            rig.microphone.stopReturned.isOpen
+                && observed.latest?.entries.contains { $0.text.settled == "word2" } == true
+        })
+        #expect(rig.microphone.stopped)
+        #expect(!rig.other.stopped)
+        #expect(!observed.ended)
+        #expect(observed.latest == State(status: .listening, entries: ordered(
+            settled(entries(0...2, speaker: .mine)) + entries(100...100, speaker: .theirs)
+        )))
+        theirs.open()
+        await executor.finish()
+        await task.value
+        #expect(observed.ended)
+        #expect(observed.latest == State(status: .finished, entries: ordered(
+            settled(entries(0...2, speaker: .mine) + entries(100...102, speaker: .theirs))
+        )))
+        #expect(rig.microphone.liveTextReleased)
+        #expect(rig.other.liveTextReleased)
     }
 
     @Test func stopFinalizesJoinedInputsAndPreservesTextWhenOff() async {
@@ -144,8 +319,8 @@ struct CallTextTests {
         let retained = await rig.call.state.entries
         await rig.call.stop()
         #expect(await rig.call.state == State(status: .finished, entries: retained))
-        #expect(await rig.microphone.stopped)
-        #expect(await rig.other.stopped)
+        #expect(rig.microphone.stopped)
+        #expect(rig.other.stopped)
         var final: State?
         for await snapshot in rig.call.updates { final = snapshot }
         #expect(final == State(status: .finished, entries: retained))
@@ -158,16 +333,28 @@ private struct Rig {
     let other: CueSide
     let call: CallText
 
-    init(microphoneLoading: Bool = false, callLoading: Bool = false) {
+    init(
+        microphoneLoading: Bool = false, callLoading: Bool = false,
+        microphoneFinishWord: Int? = nil, callFinishWord: Int? = nil,
+        changed: @escaping @Sendable () -> Void = {}
+    ) {
 
-        microphone = CueSide(loading: microphoneLoading)
-        other = CueSide(loading: callLoading)
+        microphone = CueSide(loading: microphoneLoading, finishWord: microphoneFinishWord, changed: changed)
+        other = CueSide(loading: callLoading, finishWord: callFinishWord, changed: changed)
         call = CallText(microphone: microphone, call: other)
     }
 }
 
 /// Words are supplied on cue; only the side decides when they become visible.
 private actor CueSide: Side {
+
+    private struct Lifetime {
+        var stopped = false
+        var abandoned = false
+        var audioEnded = false
+        var liveTextReleased = false
+        var stopRequests = 0
+    }
 
     private struct Delivery {
         let snapshot: SideState
@@ -180,12 +367,35 @@ private actor CueSide: Side {
     private var ended = false
     private var spoken: [SideState.Entry] = []
     private var visible: [SideState.Entry] = []
+    // This supplied word becomes visible only when live text finalizes.
+    private let finishWord: Int?
+    private let release: CueGate?
+    private let stopHold: CueGate?
+    private var pendingDelivery: Task<Void, Never>?
+    private var ending: Task<Void, Never>?
     private(set) var written: [Int] = []
     private(set) var switches: [Bool] = []
-    private(set) var stopped = false
-    private(set) var abandoned = false
+    private nonisolated let lifetime = Mutex(Lifetime())
+    nonisolated var stopped: Bool { lifetime.withLock { $0.stopped } }
+    nonisolated var abandoned: Bool { lifetime.withLock { $0.abandoned } }
+    nonisolated var audioEnded: Bool { lifetime.withLock { $0.audioEnded } }
+    nonisolated var liveTextReleased: Bool { lifetime.withLock { $0.liveTextReleased } }
+    nonisolated var stopRequests: Int { lifetime.withLock { $0.stopRequests } }
+    nonisolated let stopRequested: CueGate
+    nonisolated let stopReturned: CueGate
 
-    init(loading: Bool) { self.loading = loading }
+    init(
+        loading: Bool, finishWord: Int? = nil, release: CueGate? = nil,
+        stop: CueGate? = nil, changed: @escaping @Sendable () -> Void = {}
+    ) {
+
+        self.loading = loading
+        self.finishWord = finishWord
+        self.release = release
+        stopHold = stop
+        stopRequested = CueGate(changed: changed)
+        stopReturned = CueGate(changed: changed)
+    }
 
     func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async {
 
@@ -217,7 +427,10 @@ private actor CueSide: Side {
         let start = Double(start ?? word)
         spoken.append(.init(text: Text(id: spoken.count, start: start, end: start + 1, pending: "word\(word)")))
         if write { written.append(word) }
-        if enabled, !loading { visible = spoken; await publish() }
+        if enabled, !loading {
+            visible = spoken.filter { $0.text.pending != finishWord.map { "word\($0)" } }
+            await publish()
+        }
     }
 
     func release() async { loading = false; visible = spoken; await publish() }
@@ -225,21 +438,65 @@ private actor CueSide: Side {
 
     func fail() async {
 
+        lifetime.withLock { $0.liveTextReleased = true }
         await emit(.init(status: .failed("Live text failed"), entries: visible))
         ended = true
         delivery.continuation.finish()
     }
 
-    func stop() async { stopped = true; await end() }
-    func abandon() async { abandoned = true; await end() }
+    func holdWords(_ words: [Int], at start: Int, until gate: CueGate) {
 
-    private func end() async {
+        pendingDelivery = Task {
+            await gate.wait()
+            for (offset, word) in words.enumerated() { await self.say(word, at: start + offset) }
+        }
+    }
 
-        guard !ended else { return }
-        ended = true
-        // Ending need not wait for the subscriber to consume the final snapshot.
-        delivery.continuation.yield(Delivery(snapshot: .init(status: .finished, entries: visible), received: nil))
-        delivery.continuation.finish()
+    func endAudio() {
+
+        lifetime.withLock { $0.audioEnded = true }
+        beginEnd(finalize: enabled)
+    }
+
+    func waitForEnd() async { await ending?.value }
+
+    func stop() async {
+
+        lifetime.withLock { $0.stopRequests += 1 }
+        stopRequested.open()
+        await stopHold?.wait()
+        beginEnd(finalize: enabled)
+        await ending?.value
+        lifetime.withLock { $0.stopped = true }
+        stopReturned.open()
+    }
+
+    func abandon() async {
+
+        lifetime.withLock { $0.abandoned = true }
+        beginEnd(finalize: false)
+        await ending?.value
+    }
+
+    private func beginEnd(finalize: Bool) {
+
+        guard !ended, ending == nil else { return }
+        ending = Task {
+            if finalize {
+                await self.pendingDelivery?.value
+                if self.finishWord != nil { self.visible = self.spoken }
+                self.visible = self.visible.map {
+                    .init(text: Text(id: $0.text.id, start: $0.text.start, end: $0.text.end,
+                                     settled: $0.text.settled + $0.text.pending), writtenLater: $0.writtenLater)
+                }
+            }
+            await self.release?.wait()
+            self.lifetime.withLock { $0.liveTextReleased = true }
+            self.ended = true
+            // Releasing text does not wait for the subscriber's final delivery.
+            self.delivery.continuation.yield(Delivery(snapshot: .init(status: .finished, entries: self.visible), received: nil))
+            self.delivery.continuation.finish()
+        }
     }
 
     private func publish() async {
@@ -270,5 +527,13 @@ private func ordered(_ entries: [State.Entry]) -> [State.Entry] {
     entries.sorted {
         if $0.text.start != $1.text.start { return $0.text.start < $1.text.start }
         return $0.speaker == .mine && $1.speaker == .theirs
+    }
+}
+
+private func settled(_ entries: [State.Entry]) -> [State.Entry] {
+
+    entries.map {
+        .init(speaker: $0.speaker, text: Text(id: $0.text.id, start: $0.text.start, end: $0.text.end,
+                                           settled: $0.text.pending), writtenLater: $0.writtenLater)
     }
 }

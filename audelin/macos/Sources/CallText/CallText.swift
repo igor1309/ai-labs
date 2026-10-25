@@ -8,6 +8,8 @@ public actor CallText {
     private let sides: [any Side]
     private var snapshots = [SideState](repeating: .init(status: .off, entries: []), count: 2)
     private var listeners: [Task<Void, Never>] = []
+    private var endedSides = [false, false]
+    private var abandoning: Task<Void, Never>?
     private var stopping: Task<Void, Never>?
     private var started = false
     private var enabled = false
@@ -28,6 +30,7 @@ public actor CallText {
         listeners = sides.enumerated().map { index, side in
             Task { [weak self] in
                 await side.listen { [weak self] snapshot in await self?.receive(snapshot, on: index) }
+                await self?.sideEnded(on: index)
             }
         }
         publish()
@@ -48,11 +51,13 @@ public actor CallText {
     public func stop() async {
 
         if let stopping { await stopping.value; return }
+        guard !ended else { return }
         let sides = sides
         let operation = Task {
             await withTaskGroup(of: Void.self) { group in
                 for side in sides { group.addTask { await side.stop() } }
             }
+            await self.abandoning?.value
             for listener in self.listeners { await listener.value }
             self.finish()
         }
@@ -60,18 +65,30 @@ public actor CallText {
         await operation.value
     }
 
-    private func receive(_ snapshot: SideState, on index: Int) async {
+    private func receive(_ snapshot: SideState, on index: Int) {
 
         guard !ended else { return }
         snapshots[index] = snapshot
-        if case .failed = snapshot.status {
+        publish()
+        if case .failed = snapshot.status, abandoning == nil {
             // The other side's audio may remain open after text fails.
-            await sides[1 - index].abandon()
-            finish()
-        } else {
-            publish()
-            if snapshots.allSatisfy({ $0.status == .finished }) { finish() }
+            let other = sides[1 - index]
+            let abandonment = Task { await other.abandon() }
+            abandoning = abandonment
+            if stopping == nil {
+                stopping = Task {
+                    await abandonment.value
+                    for listener in self.listeners { await listener.value }
+                    self.finish()
+                }
+            }
         }
+    }
+
+    private func sideEnded(on index: Int) {
+
+        endedSides[index] = true
+        if stopping == nil, endedSides.allSatisfy({ $0 }) { finish() }
     }
 
     private func finish() {
@@ -80,7 +97,6 @@ public actor CallText {
         ended = true
         publish()
         continuation.finish()
-        for listener in listeners { listener.cancel() }
     }
 
     private func publish() {
@@ -90,7 +106,7 @@ public actor CallText {
             return nil
         }).first {
             state.status = .failed(failure)
-        } else if ended || snapshots.allSatisfy({ $0.status == .finished }) {
+        } else if ended {
             state.status = .finished
         } else if !enabled {
             state.status = .off
