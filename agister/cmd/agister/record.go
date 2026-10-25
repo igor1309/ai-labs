@@ -12,6 +12,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/cli"
 	"github.com/igor1309/ai-labs/agister/core/admit"
+	"github.com/igor1309/ai-labs/agister/core/inputs"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runstore"
 )
@@ -110,6 +111,7 @@ type runRecord struct {
 	warnings           []string
 	definitionBytes    map[string][]byte
 	definitionAttempts map[string]bool
+	childInputs        map[string]func() []runstore.Input
 }
 
 // newRunRecord is the record of the run id, started at started, of request,
@@ -255,6 +257,7 @@ func (r *runRecord) end(result workflow.Result) cli.Result {
 func (r *runRecord) written() runstore.Record {
 	record := r.record
 	record.Calls = slices.Clone(r.record.Calls)
+	record.Children = slices.Clone(r.record.Children)
 	return record
 }
 
@@ -299,6 +302,60 @@ func (r *runRecord) Ended(step string, ended workflow.Ended) {
 		Duration: ended.Duration})
 }
 
+func (r *runRecord) ChildStarted(step, workflowName string, params map[string]string, _ map[string]string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	keptInputs := []runstore.Input{}
+	// Execution appends each enclosing repeat's pass to the declared path.
+	// The resolver observer belongs to that declaration across its passes.
+	for declared := step; ; {
+		if captured := r.childInputs[declared]; captured != nil {
+			keptInputs = captured()
+			break
+		}
+		withoutPass := passName.ReplaceAllString(declared, "")
+		if withoutPass == declared {
+			break
+		}
+		declared = withoutPass
+	}
+	r.record.Children = append(r.record.Children, runstore.Child{
+		ID: callID(r.record.ID, step), Workflow: workflowName, Parent: r.record.ID,
+		Params: maps.Clone(params), Inputs: keptInputs, Status: "lost",
+	})
+	if err := r.store.Append(r.record.ID, runstore.Event{At: r.clock.Now(), Step: step, Kind: runstore.ChildStarted, Workflow: workflowName, Params: maps.Clone(params), Inputs: keptInputs}); err != nil {
+		r.warn("an event of the run could not be recorded: " + err.Error())
+	}
+	if err := r.store.Write(r.written()); err != nil {
+		r.warn("the run's record could not be written: " + err.Error())
+	}
+}
+
+func (r *runRecord) ChildEnded(step string, ended workflow.ChildEnd) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i := range r.record.Children {
+		if r.record.Children[i].ID != callID(r.record.ID, step) {
+			continue
+		}
+		child := &r.record.Children[i]
+		child.Status, child.Output = string(ended.Status), ended.Output
+		if ended.Class == "" {
+			child.Class = nil
+		} else {
+			class := string(ended.Class)
+			child.Class = &class
+		}
+		break
+	}
+	if err := r.store.Append(r.record.ID, runstore.Event{At: r.clock.Now(), Step: step, Kind: runstore.ChildEnded, Status: string(ended.Status), Class: string(ended.Class), Output: ended.Output}); err != nil {
+		r.warn("an event of the run could not be recorded: " + err.Error())
+	}
+	if err := r.store.Write(r.written()); err != nil {
+		r.warn("the run's record could not be written: " + err.Error())
+	}
+}
+
 func (r *runRecord) append(event runstore.Event) {
 	event.At = r.clock.Now()
 	if err := r.store.Append(r.record.ID, event); err != nil {
@@ -330,12 +387,22 @@ func recordInputs(given []givenInput) []runstore.Input {
 	return kept
 }
 
+func childInputs(given map[string]inputs.Fixed) []runstore.Input {
+	names := slices.Sorted(maps.Keys(given))
+	kept := make([]runstore.Input, 0, len(names))
+	for _, name := range names {
+		input := given[name]
+		kept = append(kept, runstore.Input{Name: name, Value: input.Value, Identity: input.Identity})
+	}
+	return kept
+}
+
 // outcomeOf is result in the shape Agister prints it: a class and a
 // reason that are none as nil, its warnings none as empty.
 func outcomeOf(result workflow.Result) runstore.Outcome {
 	outcome := runstore.Outcome{
 		Status:   string(result.Status),
-		Output:   result.Output,
+		Output:   workflowOutput(result),
 		Timing:   runstore.Timing{Started: result.Timing.Started, Ended: result.Timing.Ended, DurationMS: result.Timing.Duration.Milliseconds()},
 		Cost:     result.Cost,
 		Usage:    runstore.Usage(result.Usage),
@@ -392,6 +459,18 @@ func (b bothEvents) Reused(step, call string) {
 func (b bothEvents) Ended(step string, ended workflow.Ended) {
 	for _, events := range b {
 		events.Ended(step, ended)
+	}
+}
+
+func (b bothEvents) ChildStarted(step, workflowName string, params map[string]string, inputs map[string]string) {
+	for _, events := range b {
+		events.ChildStarted(step, workflowName, params, inputs)
+	}
+}
+
+func (b bothEvents) ChildEnded(step string, ended workflow.ChildEnd) {
+	for _, events := range b {
+		events.ChildEnded(step, ended)
 	}
 }
 

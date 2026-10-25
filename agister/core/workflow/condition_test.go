@@ -117,7 +117,7 @@ func assertCondition(t *testing.T, boundary workflow.Boundary, before []workflow
 	if holds {
 		want = "yes"
 	}
-	if result.Status != workflow.Completed || result.Output["chosen"] != want {
+	if result.Status != workflow.Completed || result.Output.(map[string]any)["chosen"] != want {
 		t.Fatalf("result %+v, want chosen %s", result, want)
 	}
 }

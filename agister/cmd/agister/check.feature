@@ -12,7 +12,7 @@ Feature: Check refuses what a run does not run yet
 
     Examples:
       | holding                                    | line                                                                      |
-      | the workflow item "c", of the workflow "v" | the workflow "w": the item "c", a workflow, is not run yet                |
+      | the parallel "p" holding the repeat "c"    | the workflow "w": the item "c", a repeat, is not run yet                  |
       | the step "s" of "say" on the agent "pi-m3" | the step "s": the runtime "pi"'s turn is not run yet                      |
       | the input "d" from the source "git.diff"   | the workflow "w": the input "d" from the source "git.diff" is not run yet |
 
@@ -37,8 +37,7 @@ Feature: Check refuses what a run does not run yet
       yet", refusing "say", "w1" and "w2"
 
   Scenario: Inspect shows a workflow a run does not run yet as refused
-    Given the workflow "w" holds the workflow item "c", of the workflow
-      "v"
+    Given the workflow "w" holds the parallel "p", holding the repeat "c"
     When "agister inspect workflow w" runs
     Then it shows the refusal, with the line "the workflow "w": the item
-      "c", a workflow, is not run yet", and no plan
+      "c", a repeat, is not run yet", and no plan

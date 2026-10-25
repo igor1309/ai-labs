@@ -144,6 +144,14 @@ func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 	s.tell("%s ended %s %q in %v", step, ended.Status, ended.Class, ended.Duration)
 }
 
+func (s *eventsSpy) ChildStarted(step, name string, _ map[string]string, _ map[string]string) {
+	s.tell("%s child %s started", step, name)
+}
+
+func (s *eventsSpy) ChildEnded(step string, ended workflow.ChildEnd) {
+	s.tell("%s child ended %s %q", step, ended.Status, ended.Class)
+}
+
 // fixture is a runner over its spies and its clock, the resolver and the
 // caller sharing one trail.
 type fixture struct {

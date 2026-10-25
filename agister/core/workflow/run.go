@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -66,6 +65,12 @@ type Step struct {
 	If       *Condition
 	Outputs  []Binding
 	Repeat   *Repeat
+	// Workflow is the child workflow run by this item. Resolver resolves its
+	// boundary from the item's bindings. WorkflowName is its declared name,
+	// for child-run events.
+	Workflow     *Workflow
+	Resolver     Resolver
+	WorkflowName string
 	// declared is the name the step is declared by, where Name is that
 	// of one execution of it, a pass of a repeat; "" where they are one.
 	declared string
@@ -183,6 +188,15 @@ type Events interface {
 	Branch(step, arm string, conditions []ConditionRead)
 	Pass(step string, pass int, state map[string]any)
 	Stopped(step, why string, passes int)
+	ChildStarted(step, workflow string, params map[string]string, inputs map[string]string)
+	ChildEnded(step string, ended ChildEnd)
+}
+
+// ChildEnd is how a workflow item ended, with its whole output value.
+type ChildEnd struct {
+	Status Status
+	Class  Class
+	Output any
 }
 
 // Ended is how a step's call ended: its status and class, and how long it
@@ -199,14 +213,15 @@ type Clock interface {
 }
 
 // Result is the result shape, a call's or a run's: the status and class;
-// the output of a completed one; its timing; its cost, nil when unknown;
+// the output of a completed one (a mapping for calls and root runs, any
+// value for workflow items); its timing; its cost, nil when unknown;
 // its usage; a call's session, empty where none was reported, and a run's
 // sessions, each step's name to its call's session; the reason of one that
 // did not complete, empty where there is none; and its warnings.
 type Result struct {
 	Status   Status
 	Class    Class
-	Output   map[string]any
+	Output   any
 	Timing   Timing
 	Cost     *float64
 	Usage    Usage
@@ -317,6 +332,10 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 
 	boundary, err := r.resolver.Resolve(ctx, given)
 	if err != nil {
+		if ctx.Err() != nil {
+			result.Status, result.Class = Interrupted, Cancelled
+			return finish()
+		}
 		result.Reason = err.Error()
 		return refuse()
 	}
@@ -327,60 +346,16 @@ func (r *Runner) Run(ctx context.Context, w Workflow, given map[string]string) R
 		result.Status, result.Class, result.Reason = ended.Status, ended.Class, ended.Reason
 		return finish()
 	}
-	result.Output = map[string]any{}
+	outputValues := map[string]any{}
 	for _, output := range w.Outputs {
 		value, ok := read.value(output.Value)
 		if !ok {
 			return refuse()
 		}
-		result.Output[output.Name] = value
+		outputValues[output.Name] = value
 	}
+	result.Output = outputValues
 	return finish()
-}
-
-// parallel calls each step of together at once, or, where it sets Max,
-// each in declaration order once fewer than Max are running; its params
-// and its session read by read; and gives each call's result, in
-// declaration order, once all have ended. A step not yet called once ctx
-// has ended is not called: it ends interrupted, cancelled, having spent
-// nothing. It is false, nothing called, when a step cannot be called,
-// reason saying why where it is a session.
-func (r *Runner) parallel(ctx context.Context, together Step, read reader) ([]Result, string, bool) {
-	steps := together.Parallel
-	params := make([]map[string]string, len(steps))
-	sessions := make([]string, len(steps))
-	for i, step := range steps {
-		bound, session, reason, ok := read.call(step)
-		if !ok {
-			return nil, reason, false
-		}
-		params[i], sessions[i] = bound, session
-	}
-	running := len(steps)
-	if together.Max > 0 {
-		running = min(together.Max, running)
-	}
-	slots := make(chan struct{}, running)
-	calls := make([]Result, len(steps))
-	var all sync.WaitGroup
-	for i, step := range steps {
-		select {
-		case slots <- struct{}{}:
-		case <-ctx.Done():
-		}
-		if ctx.Err() != nil {
-			calls[i] = Result{Status: Interrupted, Class: Cancelled, Cost: new(float64)}
-			continue
-		}
-		all.Add(1)
-		go func() {
-			defer all.Done()
-			defer func() { <-slots }()
-			calls[i] = r.call(ctx, step, params[i], sessions[i])
-		}()
-	}
-	all.Wait()
-	return calls, "", true
 }
 
 // call calls step with params, continuing session, its start or the call it reused, its tool

@@ -127,9 +127,26 @@ func TestShippedSettingsCheckClean(t *testing.T) {
 		{"code_review", []string{"architecture_review", "tests_review", "adversarial_review", "clarity_review", "intent_review"}},
 	} {
 		for i, process := range w.processes {
+			// The tests slot is a workflow; its own call plans follow below.
+			if w.name == "code_review" && i == 1 {
+				continue
+			}
 			for _, extra := range []string{"repository.write", "repository.history.write", "network", "host.write"} {
 				fmt.Fprintf(&warnings, "warning: /u/.agister/workflows/%s.yaml:%d steps[0].parallel.steps[%d]: its plan on its fallback \"claude-opus\" grants %q beyond what its process %q allows\n  with workflow %s\n", w.name, 16+i, i, extra, process, w.name)
 			}
+		}
+	}
+	for _, step := range []struct {
+		place, process, how string
+		line                int
+	}{
+		{"steps[0]", "tests_review", " on its fallback \"claude-opus\"", 10},
+		{"steps[1]", "review_critique", "", 11},
+		{"steps[2].repeat.steps[0]", "review_revise", " on its fallback \"claude-opus\"", 16},
+		{"steps[2].repeat.steps[1]", "review_critique", "", 17},
+	} {
+		for _, extra := range []string{"repository.write", "repository.history.write", "network", "host.write"} {
+			fmt.Fprintf(&warnings, "warning: /u/.agister/workflows/tests_debate.yaml:%d %s: its plan%s grants %q beyond what its process %q allows\n  with workflow code_review, workflow tests_debate\n", step.line, step.place, step.how, extra, step.process)
 		}
 	}
 	if want := (ran{stdout: warnings.String() + fmt.Sprintf("%d resolve, 0 refused\n", heldNames(t))}); got != want {
@@ -144,10 +161,19 @@ func TestCheckAndRunShareEveryWorkflowNotRunLine(t *testing.T) {
 	cases := []struct {
 		name, workflow, line string
 	}{
-		{"workflow", `schema: agister.workflow/v1alpha1
+		{"parallel repeat", `schema: agister.workflow/v1alpha1
 steps:
- - {name: c, workflow: v}
-`, `the workflow "w": the item "c", a workflow, is not run yet`},
+ - name: p
+   parallel:
+    - name: c
+      repeat:
+       state: {}
+       next: {}
+       steps:
+        - {name: s, process: say, agent: bash, inputs: {what: hi}}
+       until: {equals: [{from: steps.s.outputs.exit_code}, 0]}
+       max: 2
+`, `the workflow "w": the item "c", a repeat, is not run yet`},
 		{"runtime turn", `schema: agister.workflow/v1alpha1
 steps:
   - {name: s, process: say, agent: pi-m3, inputs: {what: hi}}
@@ -290,11 +316,20 @@ func TestInspectShowsTheWorkflowNotRunRefusalWithoutAPlan(t *testing.T) {
 		"/u/.agister/workflows/v.yaml":   pairWorkflow,
 		"/u/.agister/workflows/w.yaml": `schema: agister.workflow/v1alpha1
 steps:
-  - {name: c, workflow: v}
+  - name: p
+    parallel:
+      - name: c
+        repeat:
+          state: {}
+          next: {}
+          steps:
+            - {name: s, process: say, agent: bash, inputs: {what: hi}}
+          until: {equals: [{from: steps.s.outputs.exit_code}, 0]}
+          max: 2
 `,
 	}
 	got := compose(t, settings, "inspect", "workflow", "w")
-	if got.code != 0 || !strings.Contains(got.stdout, `the workflow "w": the item "c", a workflow, is not run yet`) || strings.Contains(got.stdout, "plan of ") {
+	if got.code != 0 || !strings.Contains(got.stdout, `the workflow "w": the item "c", a repeat, is not run yet`) || strings.Contains(got.stdout, "plan of ") {
 		t.Fatalf("inspect ran %+v, want refusal and no plan", got)
 	}
 }
@@ -307,12 +342,12 @@ func TestAMissingRuntimeIsReportedWithWhatItRefuses(t *testing.T) {
 	got := compose(t, map[string]string{"/r/.agister/agents/claude-opus.toml": "runtime = \"gone\"\n"}, "check")
 	want := `runtime gone
   no layer holds the runtime "gone"
-  refuses workflow adr_review, workflow code_review, agent claude-opus, agent codex-sol-61
+  refuses workflow adr_review, workflow code_review, workflow tests_debate, agent claude-opus, agent codex-sol-61
 `
 	if !strings.HasPrefix(got.stdout, want) {
 		t.Errorf("stdout\n%s\nwant it to start\n%s", got.stdout, want)
 	}
-	counted(t, got.stdout, heldNames(t)-4, 4)
+	counted(t, got.stdout, heldNames(t)-5, 5)
 	if got.stderr != "" || got.code != 1 {
 		t.Errorf("stderr %q, exit %d; want none, 1", got.stderr, got.code)
 	}
@@ -383,7 +418,10 @@ func TestAStepsPlanComesThroughTheSourceAndTheFacts(t *testing.T) {
 		if line == "refused" {
 			t.Errorf("the workflow is refused:\n%s", got.stdout)
 		}
-		if rest, ok := strings.CutPrefix(line, "plan of code_review "); ok {
+		if strings.HasPrefix(line, "plan of ") {
+			place = ""
+		}
+		if rest, ok := strings.CutPrefix(line, "plan of "); ok {
 			step, what, _ := strings.Cut(rest, ": ")
 			agent, runtime, _ := strings.Cut(what, ", runtime ")
 			place = step + ": " + agent
@@ -396,10 +434,29 @@ func TestAStepsPlanComesThroughTheSourceAndTheFacts(t *testing.T) {
 			plans[place] = p
 		}
 	}
-	want := map[string]plan{"steps[1]: process review_judge, agent claude-opus": {runtime: "claude-code"}}
+	want := map[string]plan{"code_review steps[1]: process review_judge, agent claude-opus": {runtime: "claude-code"}}
 	for i := range 5 {
-		prefix := fmt.Sprintf("steps[0].parallel.steps[%d]: process %s, agent ", i, reviews[i].process)
+		// The tests slot exposes the child workflow's plans below.
+		if i == 1 {
+			continue
+		}
+		prefix := fmt.Sprintf("code_review steps[0].parallel.steps[%d]: process %s, agent ", i, reviews[i].process)
 		want[prefix+"codex-sol-61"] = plan{runtime: "codex", options: "read-only"}
+		want[prefix+"claude-opus"] = plan{runtime: "claude-code", options: "Glob, Bash"}
+	}
+	for _, step := range []struct {
+		place, process string
+		codex          bool
+	}{
+		{"steps[0]", "tests_review", true},
+		{"steps[1]", "review_critique", false},
+		{"steps[2].repeat.steps[0]", "review_revise", true},
+		{"steps[2].repeat.steps[1]", "review_critique", false},
+	} {
+		prefix := "tests_debate " + step.place + ": process " + step.process + ", agent "
+		if step.codex {
+			want[prefix+"codex-sol-61"] = plan{runtime: "codex", options: "read-only"}
+		}
 		want[prefix+"claude-opus"] = plan{runtime: "claude-code", options: "Glob, Bash"}
 	}
 	if !maps.Equal(plans, want) {
