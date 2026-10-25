@@ -1074,14 +1074,18 @@ body:has(.result) #version {
    spread three of their widths across, so they are no taller than that
    width allows. DIG's sand keeps its 4:3 at no more than the width the
    card leaves it, centred in the room it leaves: the card's padding and
-   the footer's margin keep its least room above and below it. */
+   the footer's margin keep its least room above and below it. On a
+   phone on its side the card is wider than tall, yet narrow enough that
+   the pairs' cards are held by its width too. */
 [data-size="tall"] .featured-card .pairs-tile-art,
-[data-size="tall-narrow"] .featured-card .pairs-tile-art {
+[data-size="tall-narrow"] .featured-card .pairs-tile-art,
+[data-size="wide-short"] .featured-card .pairs-tile-art {
   container-type: size;
 }
 
 [data-size="tall"] .featured-card .pairs-tile-card,
-[data-size="tall-narrow"] .featured-card .pairs-tile-card {
+[data-size="tall-narrow"] .featured-card .pairs-tile-card,
+[data-size="wide-short"] .featured-card .pairs-tile-card {
   height: min(84cqh, 40cqw);
 }
 
