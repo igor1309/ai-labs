@@ -23,7 +23,7 @@ Implemented by [Student Workspace Open-Answer Attempt HTTP API Implementation Pl
 
 - HTTP route adapters and status mapping: [server.js](../../src/server.js)
 - Student Workspace submit/detail/list commands: [student-workspace.js](../../src/student-workspace.js)
-- HTTP route coverage: [http-api.test.js](../../tests/http-api.test.js)
+- HTTP route coverage: [http-api-open-answer-attempt-submission.test.js](../../tests/http-api-open-answer-attempt-submission.test.js), [http-api-open-answer-attempt-detail.test.js](../../tests/http-api-open-answer-attempt-detail.test.js), [http-api-open-answer-attempt-list.test.js](../../tests/http-api-open-answer-attempt-list.test.js), [http-api-open-answer-attempt-acceptance.test.js](../../tests/http-api-open-answer-attempt-acceptance.test.js), [http-api-server.test.js](../../tests/http-api-server.test.js)
 - Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
 - Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
 
