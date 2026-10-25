@@ -320,7 +320,11 @@ and permission plan, and never reads a settings file.</p>
 steps and workflows at once; a branch runs the first arm whose condition holds,
 else its default; a repeat runs its body at least once, binds its next state,
 and stops when <code>until</code> holds or after <code>max</code> passes; a
-workflow item runs another workflow as a child run. Whatever this Agister does
+workflow item runs another workflow as a child run. Home's
+<code>code_review</code> runs its tests lens as the workflow
+<code>tests_debate</code>: one model drafts the review, another critiques it,
+and the writer revises in its own session until the critique converges or two
+passes have run; only the last review reaches the judge. Whatever this Agister does
 not run yet, <code>agister check</code> refuses as <code>agister run</code>
 would, before anything runs. The
 <a href="../run-architecture/index.html">run architecture</a> follows a run

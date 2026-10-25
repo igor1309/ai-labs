@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -72,9 +73,11 @@ inputs: {failure: {source: param, name: failure}}
 }
 
 // loopFixture runs the real composition with settings and runtime, git,
-// store and clock spies; its ordered calls are the wrapper invocations.
+// store and clock spies; its ordered calls are the wrapper invocations,
+// which a parallel makes at once.
 type loopFixture struct {
 	*runFixture
+	mu           sync.Mutex
 	calls        []string
 	changeRepair bool
 }
@@ -84,6 +87,8 @@ func newLoopFixture(t *testing.T, codes []int) *loopFixture {
 	f := &loopFixture{}
 	test, repair := 0, 0
 	f.runFixture = newRecordFixture(t, loopSettings(t), func(_ context.Context, turn bash.Turn) (bash.Ended, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
 		if turn.Script == "done" {
 			f.calls = append(f.calls, "done")
 			return bash.Ended{}, nil
@@ -102,6 +107,8 @@ func newLoopFixture(t *testing.T, codes []int) *loopFixture {
 		return bash.Ended{Code: code, Stdout: kept(fmt.Sprintf("failure %d", test)), Stderr: kept("")}, nil
 	})
 	f.runtimes.codex.answer = func(ctx context.Context, turn codex.Turn) (codex.Result, error) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
 		name := "build"
 		if turn.Session != "" {
 			repair++
