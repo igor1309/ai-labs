@@ -552,8 +552,15 @@ img {
   width: 34px;
   height: 34px;
   border-radius: 10px;
+  overflow: hidden;
   background: #1f2b4d;
   color: #f6f2e9;
+}
+
+/* RexLab's mark is the app's own icon, so it is never read as a game's
+   symbol: the footprints count the catalogue's dinosaurs (LAB-583). */
+.wordmark-mark {
+  background: #1f2b4d url("/icons/icon-180.png") center / cover;
 }
 
 /* The top-right corner: the museum, then the parents' menus, centred on
@@ -1129,8 +1136,23 @@ body:has(.result) #version {
 }
 
 [data-size="tall-narrow"] .wordmark {
-  top: calc(28px + env(safe-area-inset-top));
+  top: calc(24px + env(safe-area-inset-top));
   left: calc(20px + var(--screen-left));
+  height: 60px;
+}
+
+/* On a phone RexLab shows its mark alone, so the mark, the museum and the
+   parents' menus share one 60-pixel height on one line, the mark
+   narrower under 360 wide (LAB-583). */
+[data-size="tall-narrow"] .wordmark-mark {
+  width: 40px;
+  height: 60px;
+  border-radius: 18px;
+}
+
+[data-size="tall-narrow"] .parent-menus {
+  padding: 8px 4px;
+  border-radius: 30px;
 }
 
 [data-size="tall-narrow"] .home-corner {
@@ -1211,7 +1233,8 @@ body:has(.result) #version {
     gap: 8px;
   }
 
-  [data-size="tall-narrow"] .home-museum {
+  [data-size="tall-narrow"] .home-museum,
+  [data-size="tall-narrow"] .wordmark-mark {
     min-width: 60px;
     width: 60px;
   }

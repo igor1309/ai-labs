@@ -155,6 +155,18 @@ describe("the home page in a tall-narrow window", () => {
     }
   });
 
+  // LAB-583: RexLab's mark is the app icon, not the catalogue's footprints,
+  // and it, the museum and the menus' group share one 60-pixel height.
+  it.each([320, 375])("lines RexLab's icon, the museum and the menus up at one height at %i wide", (width) => {
+    openNarrow(width, 667);
+    const mark = part(".wordmark-mark");
+    expect(mark.querySelector("svg")).toBeNull();
+    expect(getComputedStyle(mark).backgroundImage).toContain("/icons/icon-180.png");
+    const menus = getComputedStyle(part(".parent-menus"));
+    const menuHeight = px(menus.paddingTop) + px(getComputedStyle(part(".parent-menu-button")).minHeight) + px(menus.paddingBottom);
+    expect([styleAt(mark, [width, 667]).px("height"), styleAt(part(".home-museum"), [width, 667]).px("height"), menuHeight]).toEqual([60, 60, 60]);
+  });
+
   it.each(PHONES)("sizes the tiles' columns from the 20-pixel side in a %i by %i window, the next column peeking in", (width, height) => {
     openNarrow(width, height);
     const row = tilesRow();

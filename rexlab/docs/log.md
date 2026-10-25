@@ -2,6 +2,7 @@
 
 ## 2026-10-25
 
+- The home page on an upright iPhone: RexLab's mark is the app's T-Rex icon instead of the footprints that count the catalogue, and it, the museum and the parents' menus stand at one 60-pixel height on one line (LAB-583).
 - Find the pair's board fits an iPhone on its side: a short bar, and every board's cards side by side without scrolling (LAB-580).
 - The compare quiz's result, and the sorting game's, fits an iPhone on its side instead of clipping: the dinosaur stands beside the score, the level switch and PLAY AGAIN beside HOME (LAB-576).
 - A compare quiz question fits an iPhone on its side instead of clipping: the two dinosaurs stand whole side by side under one short bar, NEXT beside the prompt (LAB-575).
