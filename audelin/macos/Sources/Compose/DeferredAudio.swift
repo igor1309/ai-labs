@@ -1,24 +1,19 @@
-import CallText
-import class RecordedCapture.RecordedCapture
+import protocol CallText.LiveAudio
+import struct CallText.Audio
 import Synchronization
 
 /// Keeps the destination subscribed while its capture is still being made.
-final class DeferredAudio: LiveAudio, Sendable {
+final class DeferredAudio: CallText.LiveAudio, Sendable {
 
-    private final class Position: Sendable {
-
-        let value = Mutex(0.0)
-    }
-
-    private let position = Position()
-    private let attachment = AsyncStream<RecordedCapture>.makeStream()
+    private let capture = Mutex<CaptureAudio?>(nil)
+    private let attachment = AsyncStream<CaptureAudio>.makeStream()
     private let audio = AsyncStream<Audio>.makeStream()
     private let ended = AsyncStream<Void>.makeStream()
     private let translating: Task<Void, Never>
     private let listening: @Sendable () -> Void
     private let finished: @Sendable () -> Void
 
-    var capturedThrough: Double { position.value.withLock { $0 } }
+    var capturedThrough: Double { capture.withLock { $0?.capturedThrough ?? 0 } }
 
     init(
         listening: @escaping @Sendable () -> Void = {}, finished: @escaping @Sendable () -> Void = {},
@@ -39,13 +34,9 @@ final class DeferredAudio: LiveAudio, Sendable {
         }
     }
 
-    func captured(_ piece: CapturedPiece) {
+    func attach(_ capture: CaptureAudio) {
 
-        position.value.withLock { $0 += Double(piece.samples.count) / piece.sampleRate }
-    }
-
-    func attach(_ capture: RecordedCapture) {
-
+        self.capture.withLock { $0 = capture }
         attachment.continuation.yield(capture)
         attachment.continuation.finish()
     }

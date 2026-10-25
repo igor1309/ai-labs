@@ -1,17 +1,19 @@
 import Darwin
+import class LiveAudio.LiveAudio
 import RecordedCapture
 import Session
 import enum SystemAudioCapture.ProcessSelection
 import TrackFile
 
+typealias CaptureAudio = LiveAudio
+
 extension SessionPieces {
 
     func startMicrophoneCapture() async throws {
 
-        let audio = sides[.microphone]!.audio
         let capture = CaptureAdapter(begin: startMicrophone, unpack: {
             CapturedPiece(samples: $0.samples, sampleRate: $0.sampleRate)
-        }, captured: { audio.captured($0) })
+        })
         try await startCapture(capture, side: .microphone)
     }
 
@@ -25,10 +27,9 @@ extension SessionPieces {
             resolved = .allExcept([getpid()])
         }
         let startCall = startCall
-        let audio = sides[.call]!.audio
         let capture = CaptureAdapter(begin: { try await startCall(resolved) }, unpack: {
             CapturedPiece(samples: $0.samples, sampleRate: $0.sampleRate)
-        }, captured: { audio.captured($0) })
+        })
         try await startCapture(capture, side: .call)
     }
 
@@ -46,8 +47,9 @@ extension SessionPieces {
     private func startCapture<Piece>(_ capture: CaptureAdapter<Piece>, side: SessionSide) async throws {
 
         let track = try captureTrack(side)
-        let recorded = RecordedCapture(capture: capture, track: hooks.recordingTrack(side, track))
-        sides[side]?.audio.attach(recorded)
+        let live = LiveAudio(capture: capture)
+        let recorded = RecordedCapture(capture: RecordedInput(capture: live), track: hooks.recordingTrack(side, track))
+        sides[side]?.audio.attach(live)
         defer { sides[side]?.captureStarting = false }
         do {
             try await recorded.start()

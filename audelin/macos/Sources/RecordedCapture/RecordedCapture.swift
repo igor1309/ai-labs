@@ -1,4 +1,4 @@
-/// Records one capture while delivering its audio independently to one listener.
+/// Records one capture, buffering its audio independently of track writes.
 public actor RecordedCapture {
 
     /// Failures are buffered from construction and remain available until stop.
@@ -10,13 +10,10 @@ public actor RecordedCapture {
     private let executor: (any TaskExecutor)?
     private let beforeInput: @Sendable () async -> Void
     private let news: AsyncStream<Failure>.Continuation
-    private let live = AsyncStream<Audio>.makeStream()
     private let pending = AsyncStream<AudioPiece>.makeStream()
-    private var listened = false
     private var attempted = false
     private var started = false
     private var trackFailed = false
-    private var position = 0.0
     private var firstFailure: Failure?
     private var starting: Task<Void, any Error>?
     private var stopping: Task<Void, any Error>?
@@ -45,7 +42,7 @@ public actor RecordedCapture {
         news = events.continuation
     }
 
-    /// Starts once. A refused start ends a listener that subscribed beforehand.
+    /// Starts once. A refused start writes nothing.
     public func start() async throws {
 
         guard !attempted else { throw LifecycleError.alreadyStarted }
@@ -64,14 +61,6 @@ public actor RecordedCapture {
         let task = Task(executorPreference: executor) { try await self.end() }
         stopping = task
         try await task.value
-    }
-
-    /// Only the first call receives audio. Later calls receive an ended stream.
-    public func listen() -> AsyncStream<Audio> {
-
-        guard !listened else { return AsyncStream { $0.finish() } }
-        listened = true
-        return live.stream
     }
 
     private func begin() async throws {
@@ -115,9 +104,6 @@ public actor RecordedCapture {
     private func receive(_ piece: AudioPiece) -> Bool {
 
         guard !trackFailed else { return false }
-        let audio = Audio(start: position, samples: piece.samples, sampleRate: piece.sampleRate)
-        position = audio.end
-        live.continuation.yield(audio)
         pending.continuation.yield(piece)
         return true
     }
@@ -139,7 +125,6 @@ public actor RecordedCapture {
 
     private func finishInput() {
 
-        live.continuation.finish()
         pending.continuation.finish()
     }
 
@@ -189,7 +174,6 @@ public actor RecordedCapture {
 
         receiving?.cancel()
         writing?.cancel()
-        live.continuation.finish()
         pending.continuation.finish()
         news.finish()
     }

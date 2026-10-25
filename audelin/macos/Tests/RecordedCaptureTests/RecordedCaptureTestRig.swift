@@ -100,6 +100,45 @@ final class FakeCapture: Capture, Sendable {
     }
 }
 
+/// Pulling a tone reports its handoff to the recording reader.
+actor PullCapture: Capture {
+
+    private let input = AsyncThrowingStream<AudioPiece, any Error>.makeStream()
+    private var iterator: AsyncThrowingStream<AudioPiece, any Error>.Iterator
+    private let taken = AsyncStream<AudioPiece>.makeStream()
+
+    init() {
+
+        iterator = input.stream.makeAsyncIterator()
+    }
+
+    func start() async throws -> AsyncThrowingStream<AudioPiece, any Error> {
+
+        AsyncThrowingStream(unfolding: { try await self.next() })
+    }
+
+    private func next() async throws -> AudioPiece? {
+
+        var iterator = iterator
+        let piece = try await iterator.next(isolation: self)
+        self.iterator = iterator
+        if let piece { taken.continuation.yield(piece) }
+        return piece
+    }
+
+    func give(_ pieces: [AudioPiece]) {
+
+        for piece in pieces { input.continuation.yield(piece) }
+    }
+
+    func handoffs() -> AsyncStream<AudioPiece> { taken.stream }
+
+    func stop() async throws {
+
+        input.continuation.finish()
+    }
+}
+
 final class FakeTrack: Track, Sendable {
 
     private let stored = Mutex<[AudioPiece]>([])
@@ -132,18 +171,6 @@ func tones() -> [AudioPiece] {
         AudioPiece(samples: [0.2, 0, -0.2], sampleRate: 16_000),
         AudioPiece(samples: [0.3, 0.1, -0.3, -0.1], sampleRate: 48_000),
     ]
-}
-
-func heard(_ stream: AsyncStream<Audio>) async -> [Audio] {
-
-    var result: [Audio] = []
-    for await audio in stream { result.append(audio) }
-    return result
-}
-
-func pieces(_ audio: [Audio]) -> [AudioPiece] {
-
-    audio.map { AudioPiece(samples: $0.samples, sampleRate: $0.sampleRate) }
 }
 
 /// Runs all runnable work before inspecting whether a held write blocks stop.
