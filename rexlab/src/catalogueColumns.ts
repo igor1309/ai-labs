@@ -4,7 +4,8 @@ export type CatalogueSizeClass = "wide" | "wide-short" | "tall" | "tall-narrow";
 // A screen's content, its own padding included, is at most 1440 pixels
 // wide and centred, as app.css's --screen-left and --screen-right set it.
 const SCREEN_CAP = 1440;
-// The list's padding on each side, 20 in a tall-narrow window, and the
+// The list's padding on each side, 20 in a tall-narrow or wide-short
+// window, and the
 // gap between its cards, which keeps its landscape size upright.
 const LIST_PADDING = 56;
 const NARROW_LIST_PADDING = 20;
@@ -25,13 +26,15 @@ export function catalogueRow(windowWidth: number, leftInset: number, rightInset:
 
 // The cards in a row of the catalogue in a window `windowWidth` wide.
 // Landscape keeps four. A tall window holds as many, up to four, as keep
-// each card at least 213 wide, out of the catalogue's row, and so does a
-// tall-narrow one out of its row on 20-pixel sides. Worked out in whole cards rather than from a card's width, so a
+// each card at least 213 wide, out of the catalogue's row, and so do a
+// tall-narrow and a wide-short one out of their row on 20-pixel sides: a
+// phone on its side holds two or three, each card standing whole in the
+// height its bar leaves. Worked out in whole cards rather than from a card's width, so a
 // row exactly wide enough, as 1024 is for four, holds them. The window's
 // width counts, not the list's, so a scrollbar that takes room narrows
 // the cards, never their count.
 export function catalogueColumns(windowWidth: number, sizeClass: CatalogueSizeClass, leftInset: number, rightInset: number): number {
-  if (sizeClass !== "tall" && sizeClass !== "tall-narrow") return MOST_COLUMNS;
+  if (sizeClass === "wide") return MOST_COLUMNS;
   const row = catalogueRow(windowWidth, leftInset, rightInset, sizeClass === "tall" ? LIST_PADDING : NARROW_LIST_PADDING);
   const whole = Math.floor((row + CARD_GAP) / (LEAST_CARD + CARD_GAP));
   return Math.min(MOST_COLUMNS, Math.max(1, whole));

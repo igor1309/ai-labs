@@ -2470,24 +2470,28 @@ html[data-size="tall-narrow"] .dinosaur-footer {
 /* Portrait keeps HOME and all four food symbols on one row. Fixed chip
    sizes keep the row independent of words, counts and measured arrangements. */
 html[data-size="tall"] .catalogue-bar,
-html[data-size="tall-narrow"] .catalogue-bar {
+html[data-size="tall-narrow"] .catalogue-bar,
+html[data-size="wide-short"] .catalogue-bar {
   flex-direction: row;
   align-items: center;
 }
 
 html[data-size="tall"] .food-chips,
-html[data-size="tall-narrow"] .food-chips {
+html[data-size="tall-narrow"] .food-chips,
+html[data-size="wide-short"] .food-chips {
   flex-direction: row;
   flex-shrink: 0;
 }
 
 html[data-size="tall"] .food-chip,
-html[data-size="tall-narrow"] .food-chip {
+html[data-size="tall-narrow"] .food-chip,
+html[data-size="wide-short"] .food-chip {
   flex-shrink: 0;
 }
 
 html[data-size="tall"] .food-chip .food-chip-face,
-html[data-size="tall-narrow"] .food-chip .food-chip-face {
+html[data-size="tall-narrow"] .food-chip .food-chip-face,
+html[data-size="wide-short"] .food-chip .food-chip-face {
   width: 56px;
   padding: 0;
   justify-content: center;
@@ -2496,7 +2500,9 @@ html[data-size="tall-narrow"] .food-chip .food-chip-face {
 html[data-size="tall"] .food-chip-word,
 html[data-size="tall"] .food-chip-count,
 html[data-size="tall-narrow"] .food-chip-word,
-html[data-size="tall-narrow"] .food-chip-count {
+html[data-size="tall-narrow"] .food-chip-count,
+html[data-size="wide-short"] .food-chip-word,
+html[data-size="wide-short"] .food-chip-count {
   display: none;
 }
 
@@ -2534,6 +2540,45 @@ html[data-size="tall-narrow"] .catalogue-home-word {
 
 html[data-size="tall-narrow"] .catalogue-grid {
   padding: 0 20px 48px;
+}
+
+/* In a wide-short window, an iPhone on its side, the bar is one short
+   row, HOME beside the food symbols, 8 pixels under the top, and the
+   cards, two or three to a row, take the height it leaves on 20-pixel
+   sides past the notch, the list scrolling; the home indicator keeps its
+   side under them. */
+html[data-size="wide-short"] .catalogue {
+  padding-top: calc(8px + env(safe-area-inset-top));
+  gap: 12px;
+}
+
+html[data-size="wide-short"] .catalogue-bar {
+  padding: 0 20px;
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .food-chips {
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .catalogue-bar .home-button,
+html[data-size="wide-short"] .food-chip {
+  height: 48px;
+}
+
+html[data-size="wide-short"] .food-chip .food-chip-face {
+  width: 48px;
+}
+
+html[data-size="wide-short"] .catalogue-grid {
+  padding: 0 20px 20px;
+}
+
+/* A card's footer closes up so the widest card, two to a row on the
+   smallest phone, stands whole under the bar. */
+html[data-size="wide-short"] .catalogue-footer {
+  padding-top: 10px;
+  padding-bottom: 12px;
 }
 
 .catalogue-grid {
