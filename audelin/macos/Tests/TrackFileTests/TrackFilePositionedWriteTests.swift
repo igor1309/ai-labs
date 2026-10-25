@@ -11,18 +11,20 @@ struct TrackFilePositionedWriteTests {
         [0, 1, 127, Int.max].map { (persistent, $0) }
     }
 
-    static let cases: [(rate: Int, chunkSize: Int, persistent: Bool, prefix: Int)] = [24_000, 44_100].flatMap { rate in
-        [31, 96_001].flatMap { chunkSize in faults.map { (rate, chunkSize, $0.persistent, $0.prefix) } }
+    static let cases: [(rate: Int, long: Bool, persistent: Bool, prefix: Int)] = [24_000, 44_100].flatMap { rate in
+        [false, true].flatMap { long in faults.map { (rate, long, $0.persistent, $0.prefix) } }
     }
 
     /// Each fault is its own case under the suite's time limit: run in one
-    /// loop, the large chunk took 68 s on hosted CI (PR #1275).
+    /// loop, the long chunk took 68 s on hosted CI (PR #1275).
     @Test(arguments: cases)
     func partialConvertedAppendKeepsAcknowledgedAudio(
-        _ testCase: (rate: Int, chunkSize: Int, persistent: Bool, prefix: Int)
+        _ testCase: (rate: Int, long: Bool, persistent: Bool, prefix: Int)
     ) async throws {
 
-        let (rate, chunkSize, persistent, prefix) = testCase
+        let (rate, long, persistent, prefix) = testCase
+        // A long chunk is one frame past the second of input kept as filter context.
+        let chunkSize = long ? rate + 1 : 31
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
             let fault = PositionedWriteFault()
