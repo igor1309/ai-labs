@@ -34,8 +34,12 @@ describe("the catalogue's cards in a row", () => {
     expect(cardIn(windowWidth, 4)).toBe(card);
   });
 
-  it("are four in a short landscape window", () => {
-    expect(catalogueColumns(1024, "wide-short", NO_INSETS.left, NO_INSETS.right)).toBe(4);
+  it.each([
+    [667, 0, 2],
+    [852, 59, 3],
+    [932, 59, 3]
+  ])("in a phone on its side %i wide, %i past each side, are %i, as many as keep each 213 wide on 20-pixel sides", (windowWidth, inset, columns) => {
+    expect(catalogueColumns(windowWidth, "wide-short", inset, inset)).toBe(columns);
   });
 
   it.each([
