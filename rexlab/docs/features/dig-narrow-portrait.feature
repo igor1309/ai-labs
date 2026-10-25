@@ -38,7 +38,9 @@ Feature: DIG in a tall-narrow window
     Given the language is <language>
     And a window of 320 by 568 CSS pixels
     When a Paleontologist's sand asks WHO IS IT?
-    Then every name stays on one line, at least 12 pixels
+    Then every name DIG can ask about is at least 12 pixels
+    And a name too long for one line, such as PACHYCEPHALOSAURUS, breaks before its root onto a second line, PACHYCEPHALO- over SAURUS
+    And on larger windows every name stays on one line
 
     Examples:
       | language |

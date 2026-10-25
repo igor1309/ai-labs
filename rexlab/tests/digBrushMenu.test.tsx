@@ -50,6 +50,10 @@ describe("the phone's brush menu", () => {
     const choices = within(menu()!).getAllByRole("menuitemradio");
 
     expect(choices.map((choice) => [choice.textContent, choice.getAttribute("aria-checked")])).toEqual([[TEXTS.en.brush, "true"], [TEXTS.en.wideBrush, "false"]]);
+    // The menu stands over its backdrop in the menu's own layer, so a
+    // finger on a choice reaches it.
+    const layer = (selector: string) => Number(getComputedStyle(document.querySelector(`.dig-brush-menu ${selector}`)!).zIndex);
+    expect(layer(".parent-menu-list")).toBeGreaterThan(layer(".menu-backdrop"));
     fireEvent.click(choices[1]!);
     app.timers.fire(MENU_EXIT);
 

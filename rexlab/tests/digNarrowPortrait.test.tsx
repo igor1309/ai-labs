@@ -2,13 +2,14 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
 import { twoLines } from "../src/DigBar.tsx";
+import { nameLines } from "../src/DigBoardScreen.tsx";
 import { DigRevealScreen } from "../src/DigRevealScreen.tsx";
 import { STAR_LANDS } from "../src/digGame.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { board, brushAll, digUp, finishBoard, openDigApp, placeBoard } from "./digApp.tsx";
 import { withPictures } from "./pictures.tsx";
-import { fakeBodyPicture, homeTile, manualTimers, manualViewport, memoryStorage } from "./support.ts";
+import { SHIPPED_DIG, SHIPPED_DINOSAURS, fakeBodyPicture, homeTile, manualTimers, manualViewport, memoryStorage } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 
 // DIG's screens in a tall-narrow window: an iPhone upright.
@@ -133,7 +134,7 @@ describe("DIG upright on a phone", () => {
     expect((column - 12) / 2).toBeGreaterThanOrEqual(134);
   });
 
-  it.each(LANGUAGES)("keeps every %s name of the question on one line, at least 12 pixels, at 320 wide", (language) => {
+  it.each(LANGUAGES)("sets every %s name of the question's cards in a column of 2 padding at 320 wide, sized by its longer line", (language) => {
     const size: WindowSize = [320, 568];
     openDig(size, { level: "paleontologist", language });
     brushAll();
@@ -142,14 +143,44 @@ describe("DIG upright on a phone", () => {
     for (const card of cards) {
       const name = card.querySelector<HTMLElement>(".dig-choice-name")!;
       const own = styleAt(name, size);
-      expect([own.value("white-space"), own.value("font-size")]).toEqual(["nowrap", "min(16px, calc(100cqi / (var(--letters) * 0.75)))"]);
+      expect([own.value("white-space"), own.value("font-size")]).toEqual(["nowrap", "min(16px, calc(100cqi / (var(--line-letters) * 0.75)))"]);
       const style = styleAt(card, size);
       expect([style.value("flex-direction"), style.px("padding-left"), style.px("padding-right")]).toEqual(["column", 2, 2]);
-      // The card's content: half of 280 less the 12 gap, less its 2 × 2
-      // border and 2 × 2 padding.
-      const letters = Number(name.style.getPropertyValue("--letters"));
-      expect(Math.min(16, 126 / (letters * 0.75)), name.textContent ?? "").toBeGreaterThanOrEqual(12);
     }
+  });
+
+  // The card's content: half of 280 less the 12 gap, less its 2 × 2
+  // border and 2 × 2 padding.
+  it.each(LANGUAGES)("fits every %s name DIG asks about at 320 wide, at least 12 pixels, a long one on two lines", (language) => {
+    const names = SHIPPED_DIG.map(({ id }) => SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === id)!.name[language].toLocaleUpperCase(language));
+    for (const name of names) {
+      const lines = nameLines(name);
+      const longest = Math.max(...lines.map((line) => line.length));
+      expect([lines.length <= 2, lines.join("").replace(/-/g, "")], name).toEqual([true, name.replace(/-/g, "")]);
+      expect(Math.min(16, 126 / (longest * 0.75)), name).toBeGreaterThanOrEqual(12);
+      // Both lines and the name's 4 above stay inside the card's 120
+      // high, leaving its picture at least half.
+      expect(lines.length * 1.1 * 16 + 4, name).toBeLessThanOrEqual(120 / 2 - 18);
+    }
+  });
+
+  it("breaks a long name before its root on a phone only, its hyphen kept for the eye", () => {
+    const longName = (size: WindowSize, layout: "tall-narrow" | "wide") => {
+      openWindow(...size);
+      document.documentElement.dataset.size = layout;
+      const parts = [".dig-choice-hyphen", ".dig-choice-break"].map((selector) => document.createElement(selector === ".dig-choice-hyphen" ? "span" : "br"));
+      parts[0]!.className = "dig-choice-hyphen";
+      parts[1]!.className = "dig-choice-break";
+      document.body.append(...parts);
+      const shown = parts.map((part) => styleAt(part, size).value("display"));
+      parts.forEach((part) => part.remove());
+      return shown;
+    };
+    expect(nameLines("PACHYCEPHALOSAURUS")).toEqual(["PACHYCEPHALO-", "SAURUS"]);
+    expect(nameLines("ГЕТЕРОДОНТОЗАВР")).toEqual(["ГЕТЕРОДОНТО-", "ЗАВР"]);
+    expect(nameLines("TRICERATOPS")).toEqual(["TRICERATOPS"]);
+    expect(longName([393, 852], "tall-narrow")).toEqual(["inline", "inline"]);
+    expect(longName([1180, 820], "wide")).toEqual(["none", "none"]);
   });
 
   it.each(PHONES.flatMap((size) => LANGUAGES.map((language) => [...size, language] as const)))("stands the FIELD GUIDE upright at %i by %i in %s, its five cards one over another", (width, height, language) => {

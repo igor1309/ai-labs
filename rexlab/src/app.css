@@ -7257,7 +7257,9 @@ html[data-size="tall-narrow"] .pairs-offer-answers button {
   height: 14px;
 }
 
+/* The menu stands over its backdrop, which takes every tap but its own. */
 .dig-brush-menu .parent-menu-list {
+  z-index: 2;
   right: auto;
   left: 0;
   transform-origin: top left;
@@ -7627,7 +7629,12 @@ html[data-size="tall-narrow"] .pairs-offer-answers button {
 }
 
 /* A dinosaur's name, on one line, shrinks from 14px only as much as a
-   long name needs to fit the card. */
+   long name needs to fit the card; only a phone breaks it. */
+.dig-choice-hyphen,
+.dig-choice-break {
+  display: none;
+}
+
 .dig-choice-name {
   display: block;
   flex: 0 0 auto;
@@ -8547,9 +8554,18 @@ html[data-size="tall-narrow"] .dig-choice-card {
   border-radius: 18px;
 }
 
-/* A name, on one line, as large as its card's width lets it, at most 16. */
+/* A name as large as its card's width lets it, at most 16: a long one on
+   two lines, broken before its root, sized by its longer line. */
 html[data-size="tall-narrow"] .dig-choice-name {
-  font-size: min(16px, calc(100cqi / (var(--letters) * 0.75)));
+  font-size: min(16px, calc(100cqi / (var(--line-letters) * 0.75)));
+}
+
+html[data-size="tall-narrow"] .dig-choice-hyphen {
+  display: inline;
+}
+
+html[data-size="tall-narrow"] .dig-choice-break {
+  display: inline;
 }
 
 html[data-size="tall-narrow"] .dig-empty-card {
