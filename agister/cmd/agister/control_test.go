@@ -57,7 +57,7 @@ func TestUnsupportedItemsAreFoundInsideBranchesAndBodies(t *testing.T) {
 	for _, c := range []struct{ name, workflow, line string }{
 		{"unselected arm runtime", strings.Replace(testedWorkflow, "name: done, process: pass, agent: bash", "name: done, process: pass, agent: pi-m3", 1), `the step "done": the runtime "pi"'s turn is not run yet`},
 		{"repeat body runtime", strings.Replace(testedWorkflow, "name: retest, process: tests, agent: bash", "name: retest, process: tests, agent: pi-m3", 1), `the step "retest": the runtime "pi"'s turn is not run yet`},
-		{"body workflow", strings.Replace(testedWorkflow, "name: retest, process: tests, agent: bash", "name: retest, workflow: checks", 1), `the workflow "tested": the item "retest", a workflow, is not run yet`},
+		{"body workflow runtime", strings.Replace(testedWorkflow, "name: retest, process: tests, agent: bash", "name: retest, workflow: checks", 1), `the step "run_checks": the runtime "pi"'s turn is not run yet`},
 	} {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
@@ -65,7 +65,7 @@ func TestUnsupportedItemsAreFoundInsideBranchesAndBodies(t *testing.T) {
 			f.settings["/r/.agister/workflows/tested.yaml"] = c.workflow
 			f.settings["/r/.agister/workflows/checks.yaml"] = `schema: agister.workflow/v1alpha1
 steps:
- - {name: run_checks, process: tests, agent: bash}
+ - {name: run_checks, process: tests, agent: pi-m3}
 outputs:
  exit_code: {from: steps.run_checks.outputs.exit_code}
  stdout: {from: steps.run_checks.outputs.stdout}

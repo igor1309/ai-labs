@@ -1,0 +1,23 @@
+schema: agister.workflow/v1alpha1
+params:
+  base: {}
+  candidate: {}
+  goal: {}
+
+# The tests lens drafts its review, then argues it in private with a
+# critic on another model; only its last review leaves the lens.
+steps:
+  - {name: draft, process: tests_review, agent: codex-sol-61, inputs: {base: {from: params.base}, candidate: {from: params.candidate}, goal: {from: params.goal}}}
+  - {name: critique, process: review_critique, agent: claude-opus, inputs: {base: {from: params.base}, candidate: {from: params.candidate}, goal: {from: params.goal}, review: {from: steps.draft.outputs}, critique: none}}
+  - name: debate
+    repeat:
+      state: {review: {from: steps.draft.outputs}, critique: {from: steps.critique.outputs}}
+      steps:
+        - {name: revise, process: review_revise, agent: codex-sol-61, session: {from: steps.draft.session}, inputs: {candidate: {from: params.candidate}, critique: {from: state.critique}}}
+        - {name: recheck, process: review_critique, agent: claude-opus, inputs: {base: {from: params.base}, candidate: {from: params.candidate}, goal: {from: params.goal}, review: {from: steps.revise.outputs}, critique: {from: state.critique}}}
+      next: {review: {from: steps.revise.outputs}, critique: {from: steps.recheck.outputs}}
+      until: {equals: [{from: state.critique.verdict}, converged]}
+      max: 2
+
+outputs:
+  output: {from: steps.debate.outputs.state.review}

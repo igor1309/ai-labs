@@ -166,6 +166,49 @@ func TestEachEventReachesRunstoreInOrder(t *testing.T) {
 	}
 }
 
+func TestChildRecordsKeepTheirOwnResultsWhenTheyEndInAnotherOrder(t *testing.T) {
+	t.Parallel()
+	store := &storeSpy{}
+	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Workflow: "reviews"}, nil, nil, "/r", "/r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	children := []struct {
+		step string
+		end  workflow.ChildEnd
+	}{
+		{"tests", workflow.ChildEnd{Status: workflow.Completed, Output: "approved"}},
+		{"architecture", workflow.ChildEnd{Status: workflow.Failed, Class: workflow.Refused}},
+		{"tests/2", workflow.ChildEnd{Status: workflow.Completed, Output: map[string]any{"verdict": "revise"}}},
+		{"intent", workflow.ChildEnd{Status: workflow.Interrupted, Class: workflow.Cancelled}},
+	}
+	want := []any{}
+	assertChildren := func() {
+		t.Helper()
+		if got := asJSON(t, store.last(t))["children"]; !reflect.DeepEqual(got, want) {
+			t.Fatalf("serialized children %v, want %v", got, want)
+		}
+	}
+	for _, child := range children {
+		record.ChildStarted(child.step, "lens", map[string]string{}, map[string]string{})
+		want = append(want, map[string]any{
+			"id": recordID + "/" + child.step, "parent": recordID, "workflow": "lens",
+			"params": map[string]any{}, "inputs": []any{}, "status": "lost", "class": nil, "output": nil,
+		})
+		assertChildren()
+	}
+	for _, i := range []int{2, 0, 3, 1} {
+		child := children[i]
+		record.ChildEnded(child.step, child.end)
+		kept := want[i].(map[string]any)
+		kept["status"], kept["output"] = string(child.end.Status), child.end.Output
+		if child.end.Class != "" {
+			kept["class"] = string(child.end.Class)
+		}
+		assertChildren()
+	}
+}
+
 // A stale turn is appended as runstore's stale event, at the clock's time:
 // what went stale, and whether a recovery turn follows.
 func TestAStaleTurnIsAppendedAsAStaleEvent(t *testing.T) {
@@ -274,7 +317,7 @@ func TestCallsSideBySideThatEndTogetherAreBothKept(t *testing.T) {
 		steps = append(steps, call.Step)
 	}
 	slices.Sort(steps)
-	if want := []string{"adversarial", "architecture", "clarity", "intent", "judge", "tests"}; !slices.Equal(steps, want) {
+	if want := []string{"adversarial", "architecture", "clarity", "intent", "judge", "tests/critique", "tests/draft", "tests/recheck/1", "tests/revise/1"}; !slices.Equal(steps, want) {
 		t.Errorf("the last record holds the calls of %q, want each of %q once", steps, want)
 	}
 }

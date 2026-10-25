@@ -52,6 +52,14 @@ func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 	s.told = append(s.told, fmt.Sprintf("%s ended %s %s in %v", step, ended.Status, ended.Class, ended.Duration))
 }
 
+func (s *eventsSpy) ChildStarted(step, name string, _ map[string]string, _ map[string]string) {
+	s.told = append(s.told, step+" child "+name+" started")
+}
+
+func (s *eventsSpy) ChildEnded(step string, ended workflow.ChildEnd) {
+	s.told = append(s.told, fmt.Sprintf("%s child ended %s %s", step, ended.Status, ended.Class))
+}
+
 // progress.feature, "A step's start, tool calls and end, each a line".
 //
 // Contract test: the files home holds, as Agister ships them.
