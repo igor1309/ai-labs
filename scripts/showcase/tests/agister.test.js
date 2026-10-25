@@ -30,7 +30,7 @@ test('agister projection carries code and its inputs while excluding private tre
   for (const path of ['architecture_test.go', 'home_test.go', 'cmd/agister/main.go', 'core/call/call_test.go',
     'e2e/e2e_test.go', 'core/call/call.feature', 'go.mod', 'go.sum', 'home/prompts/implement.md',
     'home/agents/bash.toml', 'skills/agister/SKILL.md', 'scripts/check-public.sh',
-    'docs/run-architecture/index.html', 'docs/settings-architecture/index.html']) {
+    'docs/index.html', 'docs/run-architecture/index.html', 'docs/settings-architecture/index.html']) {
     assert.equal(isIncluded(path, settings), true, path);
   }
   for (const path of ['archive/main.go', 'archive/go.mod', 'research/example.go', 'backlog/case.feature',
