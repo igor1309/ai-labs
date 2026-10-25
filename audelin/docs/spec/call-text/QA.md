@@ -45,9 +45,24 @@ comes back from the first, marked as written later. Evidence:
 
 Live text fails; call text reads the failure, and the text so far stays.
 Evidence: `liveTextFailureIsReportedAndKeepsTheTextSoFar`.
+With the other side's audio left open and its live-text stop held, call
+text has not ended until the stop is let go; then it reads as failed with both sides' text kept.
+Evidence: Missing.
 
 ## S-9 Live text does not wait for the files
 
 A sentence sent on the mic track while the written track is held still:
 each word comes back as mine before the next is sent. Evidence:
 `liveWordsArriveBeforeAnyAudioIsWritten`.
+
+## S-10 One side ending leaves the other reading
+
+The mic side's audio ends while call words are still given: every mic
+word and its finish-only word come back settled as mine, call text is not
+ended, and later call words still come back as theirs. Evidence: Missing.
+
+## S-11 Stopping ends with both sides' text
+
+Both sides' audio ends with a delivery held on each, then stop is asked:
+on release every word and each finish-only word come back, call text
+reads as ended, and both fakes' stops have returned. Evidence: Missing.
