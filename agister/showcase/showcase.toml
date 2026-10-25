@@ -11,6 +11,8 @@ include = [
   "go.sum",
   "home/**",
   "skills/**",
+  "docs/run-architecture/index.html",
+  "docs/settings-architecture/index.html",
   "scripts/check-public.sh",
 ]
 exclude = [
@@ -18,7 +20,9 @@ exclude = [
   "research/**",
   "backlog/**",
   ".agister/**",
-  "docs/**",
+  # Only the two architecture pages leave docs/.
+  "docs/**/*.go",
+  "docs/**/*.feature",
   "**/AGENTS.md",
   "scripts/loop/**",
   # This test exercises the owner's private installer.
