@@ -703,10 +703,13 @@ describe("taps and keys during the motion", () => {
 
 describe("a resize that keeps the layout", () => {
   // SKELETONS's column is the second: it stands at the row's left edge
-  // one column and its gap in, upright 310 wide, then 292 at 712.
+  // one column and its gap in, upright 310 wide, then 292 at 712; on a
+  // phone on its side, four fifths of the row short of its 16-pixel gap:
+  // 313.6 of 408 at 852, then 345.6 of 448 at 932.
   it.each([
     [[820, 1180, "tall"], [712, 1180, "tall"], 334, 316],
-    [[1440, 900, "wide"], [1440, 560, "wide-short"], 334, 334]
+    [[1440, 900, "wide"], [1440, 700, "wide"], 334, 334],
+    [[852, 393, "wide-short"], [932, 430, "wide-short"], 330, 361.6]
   ] as const)("from %j to %j moves nothing, SKELETONS still at the row's left edge", (from, to, before, after) => {
     const app = openTurning(from[0], from[1], from[2]);
     const row = layOutTilesRow();

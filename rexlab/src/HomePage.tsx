@@ -9,7 +9,7 @@ import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
 import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
-import { NARROW_ROW_START, ROW_START, TILE_COLUMN, TILE_GAP, tileColumnWidth } from "./tileColumns.ts";
+import { NARROW_ROW_START, ROW_START, SHORT_TILE_GAP, TILE_COLUMN, TILE_GAP, shortTileColumn, tileColumnWidth } from "./tileColumns.ts";
 import { useKeptRow, type LayoutKeeping } from "./useKeptRow.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
@@ -46,9 +46,11 @@ export type HomePageProps = {
   viewport: WindowWidth;
   // Whether the window stands upright, where the tiles' columns narrow
   // with its width, and whether it is narrow too, as an iPhone upright,
-  // where the page's sides are narrower.
+  // where the page's sides are narrower, and whether it is short, as an
+  // iPhone on its side, where the columns are a share of the row's width.
   upright: boolean;
   narrow?: boolean;
+  short?: boolean;
   // Where the page keeps where the tiles' row was swiped to, through each
   // change of its layout.
   layoutKeeping: LayoutKeeping;
@@ -104,6 +106,7 @@ export function HomePage({
   viewport,
   upright,
   narrow = false,
+  short = false,
   layoutKeeping,
   featured,
   faceOff,
@@ -304,7 +307,7 @@ export function HomePage({
   const columns = Math.ceil((shown.length + 1) / 2);
   const rowStart = narrow ? NARROW_ROW_START : ROW_START;
   const column = upright ? tileColumnWidth(windowWidth, columns, rowStart) : TILE_COLUMN;
-  const tilesRow = useKeptRow(layoutKeeping, { column, gap: TILE_GAP });
+  const tilesRow = useKeptRow(layoutKeeping, short ? { column: shortTileColumn, gap: SHORT_TILE_GAP } : { column, gap: TILE_GAP });
   const today = games[featured];
   const FeaturedSymbol = today.symbol;
   // Each part both layouts share is marked, so it glides to its place in
