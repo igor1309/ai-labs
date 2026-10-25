@@ -6558,7 +6558,7 @@ html[data-size="tall-narrow"] .level-switch-level {
 /* In a wide-short window, an iPhone on its side, a result with the level
    switch keeps the dinosaur beside its rewards, 12 under the top and 20
    past each side's inset, the dinosaur as tall as the height allows. The
-   score stands beside "WELL DONE!" over the stars, the switch shows each
+   score stands beside "WELL DONE!" over the stars, the hand 36 so up to 999 fits beside the title, the switch shows each
    level's picture alone, its name kept for screen readers, and PLAY AGAIN
    stands beside HOME, each 48 tall, so the column fits the height. */
 html[data-size="wide-short"] .result-with-levels {
@@ -7096,6 +7096,7 @@ html[data-size="tall"] .pairs-bar .home-button {
 html[data-size="tall-narrow"] .narrow-hidden,
 html[data-size="wide-short"] .home .narrow-hidden,
 html[data-size="wide-short"] .result-with-levels .narrow-hidden,
+html[data-size="wide-short"] .pairs-result .narrow-hidden,
 html[data-size="wide-short"] .pairs-welcome .narrow-hidden {
   position: absolute;
   width: 1px;
@@ -7454,6 +7455,184 @@ html[data-size="tall-narrow"] .pairs-result .result-actions button {
 }
 
 html[data-size="tall-narrow"] .pairs-result .result-actions .play-again-button {
+  flex-basis: 100%;
+}
+
+/* In a wide-short window, an iPhone on its side, the result keeps the
+   dinosaurs beside a 300-pixel column, 12 under the top and over the
+   bottom and 20 past each side's inset. The dinosaurs stand 8 apart, the
+   rows sharing the height, NEW its sparkle alone. In the
+   column the tries stand beside "WELL DONE!" over the stars, the badges
+   above and the best under them, then PLAY AGAIN across the column over
+   BACK and HOME, each 44 tall, all 6 apart, so even both badges on two
+   rows fit the shortest window, 320 tall. */
+html[data-size="wide-short"] .pairs-result {
+  padding:
+    calc(12px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+}
+
+html[data-size="wide-short"] .pairs-result {
+  container-type: size;
+}
+
+/* Every board's rows share the height, each at most a card's art at 4:3
+   over its name, in the name's own type and padding, and at most 162, so
+   a small board keeps its cards' shape and a large one fits. The card's
+   width is the room the column leaves, over the columns. */
+html[data-size="wide-short"] .pairs-result .pairs-found {
+  --found-columns: 3;
+  --found-card: calc((100cqw - 316px - (var(--found-columns) - 1) * 8px) / var(--found-columns));
+  height: 100%;
+  max-height: calc(var(--found-rows) * min(162px, var(--found-card) * 0.75 + min(18px, (var(--found-card) - 16px) / 13) * 1.25 + 16px) + (var(--found-rows) - 1) * 8px);
+  grid-template-rows: repeat(var(--found-rows), minmax(0, 1fr));
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-result .pairs-found[data-count="4"] {
+  --found-columns: 2;
+}
+
+html[data-size="wide-short"] .pairs-result .pairs-found-art {
+  flex: 1 1 0;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
+html[data-size="wide-short"] .pairs-found-card {
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .pairs-result .pairs-found-art {
+  padding: 6px;
+}
+
+html[data-size="wide-short"] .pairs-new-badge {
+  top: 4px;
+  right: 4px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px 12px;
+}
+
+html[data-size="wide-short"] .pairs-badges {
+  grid-column: 1 / -1;
+  gap: 6px;
+}
+
+html[data-size="wide-short"] .pairs-result .celebration,
+html[data-size="wide-short"] .pairs-level-up {
+  height: 32px;
+  padding: 0 14px 0 10px;
+  gap: 8px;
+  border-radius: 16px;
+  font-size: 16px;
+}
+
+html[data-size="wide-short"] .pairs-result .celebration svg,
+html[data-size="wide-short"] .pairs-level-up svg {
+  width: 20px;
+  height: 20px;
+}
+
+html[data-size="wide-short"] .pairs-next-board {
+  grid-template-columns: repeat(var(--columns), 8px);
+  gap: 2px;
+}
+
+html[data-size="wide-short"] .pairs-next-card {
+  height: 9px;
+  border-radius: 2px;
+}
+
+html[data-size="wide-short"] .pairs-result-tries {
+  order: 1;
+  grid-column: 1;
+  grid-row: span 2;
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-result-tries-value {
+  font-size: 44px;
+}
+
+html[data-size="wide-short"] .pairs-result-hand {
+  width: 36px;
+  height: 36px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-title {
+  order: 2;
+  grid-column: 2;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+html[data-size="wide-short"] .pairs-result-stars {
+  order: 3;
+  grid-column: 2;
+  gap: 6px;
+  font-size: 24px;
+}
+
+html[data-size="wide-short"] .pairs-result .best-score {
+  order: 4;
+  grid-column: 1 / -1;
+  justify-self: center;
+  height: 32px;
+  padding: 0 14px;
+  gap: 8px;
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+html[data-size="wide-short"] .pairs-result .best-score svg {
+  width: 18px;
+  height: 18px;
+}
+
+html[data-size="wide-short"] .pairs-result .best-score-value {
+  font-size: 16px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-actions {
+  order: 4;
+  grid-column: 1 / -1;
+  align-self: stretch;
+  padding-top: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-actions button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 44px;
+  padding: 0 10px;
+  gap: 6px;
+  justify-content: center;
+  border-radius: 14px;
+  font-size: 16px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-actions svg {
+  width: 20px;
+  height: 20px;
+}
+
+html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
   flex-basis: 100%;
 }
 
