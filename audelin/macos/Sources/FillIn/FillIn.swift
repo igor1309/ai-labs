@@ -45,7 +45,7 @@ public actor FillIn {
 
     /// Joins collaborator work after it has been released, independently of the
     /// client's immediate abandonment result.
-    func waitForWork() async { await operation?.value }
+    public func waitForWork() async { await operation?.value }
 
     private func fill() async {
 

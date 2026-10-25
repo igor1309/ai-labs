@@ -223,13 +223,13 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         textStopped = true
     }
 
-    private func track(_ side: SessionSide, recognizer: any Recognizer) throws -> Track {
+    private func track(_ side: SessionSide, recognizer: any Recognizer) throws -> CallSide {
 
         guard let destination = sides[side], let file = destination.track, !destination.closed else {
             throw Failure.outOfOrder("\(side) track is not open")
         }
         let adapter = TrackText(recognizer: recognizer, executor: hooks.executor)
         trackTexts.append(adapter)
-        return Track(audio: destination.audio, written: WrittenTrack(track: file), text: adapter)
+        return CallSide(audio: destination.audio, text: adapter, written: WrittenTrack(track: file), sampleRate: TrackFile.sampleRate)
     }
 }

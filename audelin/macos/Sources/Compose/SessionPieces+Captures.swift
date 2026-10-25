@@ -1,5 +1,5 @@
 import Darwin
-import struct CallText.Audio
+import struct SideText.Audio
 import class LiveAudio.LiveAudio
 import RecordedCapture
 import Session

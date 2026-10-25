@@ -1,5 +1,5 @@
-import protocol CallText.LiveAudio
-import struct CallText.Audio
+import protocol SideText.LiveAudio
+import struct SideText.Audio
 import Synchronization
 
 protocol CaptureAudio: Sendable {
@@ -9,7 +9,7 @@ protocol CaptureAudio: Sendable {
 }
 
 /// Keeps the destination subscribed while its capture is still being made.
-final class DeferredAudio: CallText.LiveAudio, Sendable {
+final class DeferredAudio: SideText.LiveAudio, Sendable {
 
     private let capture = Mutex<(any CaptureAudio)?>(nil)
     private let attachment = AsyncStream<any CaptureAudio>.makeStream()

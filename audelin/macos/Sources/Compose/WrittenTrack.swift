@@ -1,8 +1,8 @@
-import struct CallText.Audio
-import protocol CallText.WrittenTrack
+import struct FillIn.Audio
+import protocol FillIn.WrittenTrack
 import TrackFile
 
-public struct WrittenTrack: CallText.WrittenTrack {
+public struct WrittenTrack: FillIn.WrittenTrack {
 
     private let track: TrackFile
 
