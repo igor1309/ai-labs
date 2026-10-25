@@ -99,6 +99,25 @@ struct RecordedCaptureTests {
         #expect(capture.stops == 1)
     }
 
+    @Test func failedFirstWriteStillDeliversItsAudio() async throws {
+
+        let capture = FakeCapture(), track = FakeTrack(failingWrite: 1)
+        defer { capture.finish() }
+        let recorded = RecordedCapture(capture: capture, track: track)
+        let live = await recorded.listen()
+        var failures = recorded.failures.makeAsyncIterator()
+        try await recorded.start()
+        capture.give([tones()[0]])
+        guard case .track(let cause) = try #require(await failures.next()) else {
+            Issue.record("Expected a track failure"); return
+        }
+        #expect(cause as? Refusal == .write)
+        #expect(pieces(await heard(live)) == [tones()[0]])
+        #expect(track.pieces.isEmpty)
+        await #expect(throws: Failure.self) { try await recorded.stop() }
+        #expect(capture.stops == 1)
+    }
+
     @Test func failedCaptureReportsBeforeStopAndKeepsEveryGivenTone() async throws {
 
         let capture = FakeCapture(), track = FakeTrack()
@@ -166,6 +185,32 @@ struct RecordedCaptureTests {
         while let next = await first.next() { audio.append(next) }
         #expect(pieces(audio) == tones())
         #expect(track.pieces == tones())
+    }
+
+    @Test func cancellingTheListenerLeavesRecordingRunning() async throws {
+
+        let capture = FakeCapture(), track = FakeTrack(), listenerGate = WriteGate()
+        defer { capture.finish(); listenerGate.release() }
+        let recorded = RecordedCapture(capture: capture, track: track)
+        let live = await recorded.listen(), received = Mutex<[Audio]>([])
+        let listener = Task {
+            for await audio in live {
+                received.withLock { $0.append(audio) }
+                await listenerGate.wait()
+            }
+        }
+        defer { listener.cancel() }
+        try await recorded.start()
+        capture.give([tones()[0]])
+        await listenerGate.waitUntilEntered()
+        listener.cancel()
+        listenerGate.release()
+        await listener.value
+        #expect(capture.stops == 0)
+        capture.give(Array(tones().dropFirst()))
+        try await recorded.stop()
+        #expect(track.pieces == tones())
+        #expect(pieces(received.withLock { $0 }) == [tones()[0]])
     }
 
     @Test func listeningBeforeStartHearsTheFirstTone() async throws {

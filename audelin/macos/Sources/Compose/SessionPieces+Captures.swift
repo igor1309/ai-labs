@@ -1,7 +1,6 @@
 import Darwin
+import RecordedCapture
 import Session
-import struct MicrophoneCapture.AudioPiece
-import struct SystemAudioCapture.AudioPiece
 import enum SystemAudioCapture.ProcessSelection
 import TrackFile
 
@@ -9,20 +8,10 @@ extension SessionPieces {
 
     func startMicrophoneCapture() async throws {
 
-        let track = try captureTrack(.microphone)
-        do {
-            let capture = try await startMicrophone()
-            let beforeWrite = hooks.beforeWrite
-            let beforeInput = hooks.beforeCaptureInput
-            let feed = CaptureFeed(stream: capture.stream, track: track, unpack: { ($0.samples, $0.sampleRate) },
-                                   beforeWrite: { try await beforeWrite(.microphone, $0) },
-                                   beforeInput: { await beforeInput(.microphone) }, executor: hooks.executor)
-            attach(feed, stop: capture.stop, side: .microphone)
-        } catch {
-            sides[.microphone]?.captureStarting = false
-            sides[.microphone]?.audio.finish()
-            throw error
-        }
+        let capture = CaptureAdapter(begin: startMicrophone, unpack: {
+            CapturedPiece(samples: $0.samples, sampleRate: $0.sampleRate)
+        })
+        try await startCapture(capture, side: .microphone)
     }
 
     func startCallCapture(selection: SessionProcessSelection?) async throws {
@@ -34,38 +23,50 @@ extension SessionPieces {
         } else {
             resolved = .allExcept([getpid()])
         }
-        let track = try captureTrack(.call)
-        do {
-            let capture = try await startCall(resolved)
-            let beforeWrite = hooks.beforeWrite
-            let beforeInput = hooks.beforeCaptureInput
-            let feed = CaptureFeed(stream: capture.stream, track: track, unpack: { ($0.samples, $0.sampleRate) },
-                                   beforeWrite: { try await beforeWrite(.call, $0) },
-                                   beforeInput: { await beforeInput(.call) }, executor: hooks.executor)
-            attach(feed, stop: capture.stop, side: .call)
-        } catch {
-            sides[.call]?.captureStarting = false
-            sides[.call]?.audio.finish()
-            throw error
-        }
+        let startCall = startCall
+        let capture = CaptureAdapter(begin: { try await startCall(resolved) }, unpack: {
+            CapturedPiece(samples: $0.samples, sampleRate: $0.sampleRate)
+        })
+        try await startCapture(capture, side: .call)
     }
 
     func stopCapture(_ side: SessionSide) async throws {
 
         guard let destination = sides[side], !destination.captureStopping,
-              let stop = destination.stop, let feed = destination.feed else {
+              let capture = destination.capture else {
             throw Failure.outOfOrder("\(side) capture is not running")
         }
         sides[side]?.captureStopping = true
-        defer { sides[side]?.stop = nil }
-        // Even a failed stop joins the feed before Session can close its track.
-        do { try await stop() }
-        catch {
-            feed.endInput()
-            _ = try? await feed.wait()
+        defer { sides[side]?.capture = nil }
+        // RecordedCapture reports stop failures through the same stream as
+        // runtime failures, preserving their piece identity without a second report.
+        _ = try? await capture.stop()
+        await destination.audio.drain()
+        await destination.failures?.value
+    }
+
+    private func startCapture(_ capture: any Capture, side: SessionSide) async throws {
+
+        let track = try captureTrack(side)
+        let recorded = RecordedCapture(capture: capture, track: hooks.recordingTrack(side, track))
+        sides[side]?.audio.attach(recorded)
+        defer { sides[side]?.captureStarting = false }
+        do {
+            try await recorded.start()
+            sides[side]?.capture = recorded
+            let news = news.continuation
+            sides[side]?.failures = Task {
+                for await failure in recorded.failures {
+                    let event: SessionEvent = switch failure {
+                    case let .track(error): .pieceFailed(.track(side), error: String(describing: error))
+                    case let .capture(error): .pieceFailed(.capture(side), error: String(describing: error))
+                    }
+                    news.yield(event)
+                }
+            }
+        } catch let RecordingFailure.capture(error) {
             throw error
         }
-        try await feed.wait()
     }
 
     private func captureTrack(_ side: SessionSide) throws -> TrackFile {
@@ -78,13 +79,5 @@ extension SessionPieces {
         sides[side]?.captureAttempted = true
         sides[side]?.captureStarting = true
         return track
-    }
-
-    private func attach(_ feed: CaptureFeed, stop: @escaping @Sendable () async throws -> Void, side: SessionSide) {
-
-        sides[side]?.feed = feed
-        sides[side]?.stop = stop
-        sides[side]?.captureStarting = false
-        sides[side]?.audio.attach(feed)
     }
 }

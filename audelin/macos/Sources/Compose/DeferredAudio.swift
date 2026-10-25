@@ -1,27 +1,44 @@
 import CallText
+import class RecordedCapture.RecordedCapture
 import Synchronization
 
 /// Keeps the destination subscribed while its capture is still being made.
 final class DeferredAudio: LiveAudio, Sendable {
 
-    private let feed = Mutex<CaptureFeed?>(nil)
-    private let attachment = AsyncStream<CaptureFeed>.makeStream()
+    private final class Position: Sendable {
+
+        let value = Mutex(0.0)
+    }
+
+    private let position = Position()
+    private let attachment = AsyncStream<RecordedCapture>.makeStream()
+    private let audio = AsyncStream<Audio>.makeStream()
     private let ended = AsyncStream<Void>.makeStream()
+    private let translating: Task<Void, Never>
     private let listening: @Sendable () -> Void
     private let finished: @Sendable () -> Void
 
-    var capturedThrough: Double { feed.withLock { $0?.capturedThrough ?? 0 } }
+    var capturedThrough: Double { position.value.withLock { $0 } }
 
     init(listening: @escaping @Sendable () -> Void = {}, finished: @escaping @Sendable () -> Void = {}) {
 
         self.listening = listening
         self.finished = finished
+        let attachment = attachment.stream, audio = audio.continuation, position = position
+        translating = Task {
+            defer { audio.finish() }
+            for await capture in attachment {
+                for await piece in await capture.listen() {
+                    position.value.withLock { $0 = piece.end }
+                    audio.yield(Audio(start: piece.start, samples: piece.samples, sampleRate: piece.sampleRate))
+                }
+            }
+        }
     }
 
-    func attach(_ feed: CaptureFeed) {
+    func attach(_ capture: RecordedCapture) {
 
-        self.feed.withLock { $0 = feed }
-        attachment.continuation.yield(feed)
+        attachment.continuation.yield(capture)
         attachment.continuation.finish()
     }
 
@@ -29,17 +46,26 @@ final class DeferredAudio: LiveAudio, Sendable {
 
         defer { ended.continuation.finish(); finished() }
         listening()
-        for await feed in attachment.stream {
+        for await piece in audio.stream {
             guard !Task.isCancelled else { return }
-            await feed.listen(receive)
+            await receive(piece)
         }
     }
 
     func finish() { attachment.continuation.finish() }
 
+    func drain() async { await translating.value }
+
     /// The live reader acknowledges every written delivery before text stops.
     func wait() async {
 
         for await _ in ended.stream {}
+    }
+
+    deinit {
+
+        translating.cancel()
+        attachment.continuation.finish()
+        audio.continuation.finish()
     }
 }

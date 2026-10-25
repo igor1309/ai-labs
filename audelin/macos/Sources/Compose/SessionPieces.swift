@@ -4,6 +4,7 @@ import CallText
 import Foundation
 import LiveText
 import struct MicrophoneCapture.AudioPiece
+import class RecordedCapture.RecordedCapture
 import Session
 import struct SystemAudioCapture.AudioPiece
 import enum SystemAudioCapture.ProcessSelection
@@ -37,12 +38,13 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
         var executor: (any TaskExecutor)?
 
-        var beforeWrite: @Sendable (SessionSide, Audio) async throws -> Void = { _, _ in }
+        var recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordingTrack = { _, track in
+            CaptureTrack(track: track)
+        }
         var beforeTranscriptFeed: @Sendable () async throws -> Void = {}
         var textStarted: @Sendable (CallText) async -> Void = { _ in }
         var audioListening: @Sendable (SessionSide) -> Void = { _ in }
         var audioEnded: @Sendable (SessionSide) -> Void = { _ in }
-        var beforeCaptureInput: @Sendable (SessionSide) async -> Void = { _ in }
         var beforeTranscriptWrite: @Sendable (State) async throws -> Void = { _ in }
     }
 
@@ -54,10 +56,14 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         var captureAttempted = false
         var captureStarting = false
         var captureStopping = false
-        var stop: (@Sendable () async throws -> Void)?
-        var feed: CaptureFeed?
+        var capture: RecordedCapture?
+        var failures: Task<Void, Never>?
     }
 
+    /// Runtime and stop failures from both sides, buffered as Session events.
+    public nonisolated var events: AsyncStream<SessionEvent> { news.stream }
+
+    let news = AsyncStream<SessionEvent>.makeStream()
     let folder: CallFolder
     let processes: CallAppProcesses
     let startMicrophone: @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>
@@ -152,7 +158,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         guard let destination = sides[side], let track = destination.track, !destination.closed else {
             throw Failure.outOfOrder("\(side) track is not open")
         }
-        guard !destination.captureStarting, destination.stop == nil else {
+        guard !destination.captureStarting, destination.capture == nil else {
             throw Failure.outOfOrder("\(side) capture is still running")
         }
         sides[side]?.closed = true
@@ -171,6 +177,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         guard let transcriptFile, !transcriptClosed else { throw Failure.outOfOrder("transcript is not open") }
         guard text == nil || textStopped else { throw Failure.outOfOrder("call text is still running") }
         transcriptClosed = true
+        defer { news.continuation.finish() }
         // Closing still releases the file when the feed reports a write failure.
         let result: Result<Void, any Error>?
         if let transcriptFeed { result = await transcriptFeed.result } else { result = nil }
@@ -205,7 +212,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     public func stop() async throws {
 
         guard let text, !textStopped, !textStopping else { throw Failure.outOfOrder("call text is not running") }
-        guard sides.values.allSatisfy({ !$0.captureStarting && $0.stop == nil }) else {
+        guard sides.values.allSatisfy({ !$0.captureStarting && $0.capture == nil }) else {
             throw Failure.outOfOrder("capture is still running")
         }
         textStopping = true

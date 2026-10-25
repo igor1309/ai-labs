@@ -89,7 +89,6 @@ final class DrainExecutor: TaskExecutor {
 // Direct calls keep Machine's detached effects outside the controlled task graph.
 func withDrainRig(
     hooks: SessionPieces.Hooks,
-    stopFailure: SessionSide? = nil,
     recognizers: (any Recognizer, any Recognizer)? = nil,
     _ body: (SessionRig, URL) async throws -> Void
 ) async throws {
@@ -112,7 +111,7 @@ func withDrainRig(
         }
         let rig = SessionRig(
             root: root, microphoneFails: false, processesFail: false, hooks: prepared,
-            stopFailure: stopFailure, stopEndsStream: true, rates: nil, recognizers: recognizers
+            stopFailure: nil, stopEndsStream: true, rates: nil, recognizers: recognizers
         )
         do {
             let folder = try await rig.pieces.create()
@@ -124,8 +123,12 @@ func withDrainRig(
             try await rig.pieces.callCapture.start(selection: nil)
             try await body(rig, root.appendingPathComponent("1970.01.01-0000"))
             await rig.session.end()
+            rig.subscription.cancel()
+            await rig.subscription.value
         } catch {
             await rig.session.end()
+            rig.subscription.cancel()
+            await rig.subscription.value
             rig.microphone.end()
             rig.call.end()
             throw error
@@ -133,21 +136,4 @@ func withDrainRig(
         rig.microphone.end()
         rig.call.end()
     }
-}
-
-func stopDrainCapture(_ rig: SessionRig, side: SessionSide, throwsFailure: Bool) async throws {
-
-    if throwsFailure {
-        await #expect(throws: ScriptFailure.failed) { try await rig.pieces.stopCapture(side) }
-    } else {
-        try await rig.pieces.stopCapture(side)
-    }
-}
-
-func closeDrainRig(_ rig: SessionRig) async throws {
-
-    try await rig.pieces.microphoneTrack.close()
-    try await rig.pieces.callTrack.close()
-    try await rig.pieces.stop()
-    try await rig.pieces.transcript.close()
 }

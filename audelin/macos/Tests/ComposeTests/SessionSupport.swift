@@ -85,6 +85,7 @@ struct SessionRig: Sendable {
 
     let pieces: SessionPieces
     let session: Session
+    let subscription: Task<Void, Never>
     let microphone: CaptureScript<MicrophoneCapture.AudioPiece>
     let call: CaptureScript<SystemAudioCapture.AudioPiece>
     let mine: SessionRecognizer
@@ -126,6 +127,7 @@ struct SessionRig: Sendable {
             microphoneRecognizer: recognizers?.0 ?? mine, callRecognizer: recognizers?.1 ?? theirs, hooks: hooks
         )
         session = Session(handler: pieces.handler())
+        subscription = subscribe(pieces, to: session)
     }
 
     func state(where matches: (SessionState) -> Bool) async throws -> SessionState {
@@ -142,6 +144,8 @@ struct SessionRig: Sendable {
         session.send(.end)
         _ = try? await state { $0.phase == .ended }
         await session.end()
+        subscription.cancel()
+        await subscription.value
         microphone.end()
         call.end()
     }

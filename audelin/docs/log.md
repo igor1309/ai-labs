@@ -2,6 +2,9 @@
 
 ## 2026-10-25
 
+- Compose records both sides through RecordedCapture and reports each side’s
+  capture or track failure to the running Session immediately (LAB-553b).
+
 - Recorded capture keeps one capture’s audio on its track while feeding live
   text independently, and reports capture and track failures (LAB-553a).
 
