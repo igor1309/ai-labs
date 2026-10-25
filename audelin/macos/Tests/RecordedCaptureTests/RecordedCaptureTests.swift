@@ -118,6 +118,31 @@ struct RecordedCaptureTests {
         #expect(capture.stops == 1)
     }
 
+    @Test(arguments: [false, true])
+    func failedWriteReportsItsFailedStopAsCaptureBeforeAnyRequestedStop(stopEndsInput: Bool) async throws {
+
+        let capture = FakeCapture(stopFailure: .stop, stopEndsInput: stopEndsInput)
+        let track = FakeTrack(failingWrite: 1)
+        defer { capture.finish() }
+        let recorded = RecordedCapture(capture: capture, track: track)
+        var failures = recorded.failures.makeAsyncIterator()
+        try await recorded.start()
+        capture.give([tones()[0]])
+        guard case .track(let write) = try #require(await failures.next()) else {
+            Issue.record("Expected a track failure"); return
+        }
+        #expect(write as? Refusal == .write)
+        guard case .capture(let stop) = try #require(await failures.next()) else {
+            Issue.record("Expected an automatic stop to fail as the capture"); return
+        }
+        #expect(stop as? Refusal == .stop)
+        for _ in 0..<2 {
+            await #expect(throws: Failure.self) { try await recorded.stop() }
+        }
+        #expect(await failures.next() == nil)
+        #expect(capture.stops == 1)
+    }
+
     @Test func failedCaptureReportsBeforeStopAndKeepsEveryGivenTone() async throws {
 
         let capture = FakeCapture(), track = FakeTrack()
@@ -285,7 +310,7 @@ struct RecordedCaptureTests {
                 try await recorded.stop()
                 Issue.record("Expected stop to fail")
             } catch let failure as Failure {
-                guard case .capture(let cause) = failure else {
+                guard case .stop(let cause) = failure else {
                     Issue.record("Expected a capture stop failure"); return
                 }
                 #expect(cause as? Refusal == .stop)
@@ -293,7 +318,7 @@ struct RecordedCaptureTests {
         }
         var failures = recorded.failures.makeAsyncIterator()
         let failure = try #require(await failures.next())
-        guard case .capture(let cause) = failure else {
+        guard case .stop(let cause) = failure else {
             Issue.record("Expected a capture stop failure"); return
         }
         #expect(cause as? Refusal == .stop)
@@ -350,7 +375,7 @@ private func expectHeldStop(stopFailure: Refusal?, stopEndsInput: Bool) async th
                 try await recorded.stop()
                 Issue.record("Expected stop to fail")
             } catch let failure as Failure {
-                guard case .capture(let cause) = failure else {
+                guard case .stop(let cause) = failure else {
                     Issue.record("Expected a capture stop failure"); return
                 }
                 #expect(cause as? Refusal == .stop)

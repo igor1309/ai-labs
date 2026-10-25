@@ -21,6 +21,8 @@ the root over one capture and its track (`../../app-shape.md`).
   it gave written and heard, after the news.
 - **Stopping returns once the last piece is written,** even when the
   capture's stop fails, so Session closes the track after its last audio.
+  The stop a failed write makes fails at once, as the capture; only the
+  stop I ask for fails at my stop, so each failure is told once.
 - **One live listener, who may listen before the start:** Session starts
   call text first to keep the first audio (Session, Decided), and call
   text runs one live text per track; a second listener hears nothing.
@@ -81,6 +83,11 @@ Feature: Recording a capture to its track
     When stopping its capture fails
     Then I can tell the stop failed
     And I can read all the audio it gave once the stop returns
+
+  Scenario: S-13 A failed write's own stop is told when it fails
+    Given a recorded capture whose capture will not stop
+    When writing to its track fails
+    Then I can tell the track and the capture failed, before any stop
 
   Scenario: S-9 A second listener hears nothing
     Given a recorded capture I am hearing

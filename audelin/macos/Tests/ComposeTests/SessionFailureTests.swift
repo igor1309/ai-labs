@@ -7,6 +7,35 @@ import TrackFile
 @Suite(.timeLimit(.minutes(1)))
 struct SessionFailureTests {
 
+    @Test(arguments: [SessionSide.microphone, .call], [false, true])
+    func failedWriteAndItsFailedStopReachSessionBeforeEnd(side: SessionSide, stopEndsStream: Bool) async throws {
+
+        var hooks = SessionPieces.Hooks()
+        hooks.recordingTrack = { current, track in
+            if current == side { return FailingTrack(track: track) }
+            return CaptureTrack(track: track)
+        }
+        try await withSessionRig(hooks: hooks, stopFailure: side, stopEndsStream: stopEndsStream) { rig, folder in
+            rig.session.send(.begin(liveText: true))
+            _ = try await rig.state { $0.phase == .recording }
+            await rig.mine.heard.next()
+            await rig.theirs.heard.next()
+            if side == .microphone {
+                rig.microphone.source.continuation.yield(.init(samples: [0.75], sampleRate: 48_000))
+            } else {
+                rig.call.source.continuation.yield(.init(samples: [0.75], sampleRate: 48_000))
+            }
+            let failed = try await rig.state { $0.health(of: .capture(side)) == .failed("failed") }
+            #expect(failed.phase == .recording)
+            #expect(failed.health(of: .track(side)) == .failed("failed"))
+            #expect(failed.failures == [
+                .init(piece: "\(side) track", message: "failed"),
+                .init(piece: "\(side) capture", message: "failed"),
+            ])
+            try await expectOtherSideRecords(rig, failedSide: side, folder: folder, failures: failed.failures)
+        }
+    }
+
     @Test(arguments: [SessionSide.microphone, .call])
     func failedWriteReachesSessionBeforeEnd(side: SessionSide) async throws {
 

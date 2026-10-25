@@ -149,7 +149,7 @@ public actor RecordedCapture {
         news.yield(failure)
     }
 
-    private func stopCapture() async throws {
+    private func stopCapture(requested: Bool = false) async throws {
 
         if let captureStop { return try await captureStop.value }
         let capture = capture
@@ -157,7 +157,7 @@ public actor RecordedCapture {
             do {
                 try await capture.stop()
             } catch {
-                let failure = Failure.capture(error)
+                let failure: Failure = requested ? .stop(error) : .capture(error)
                 await self?.failedStop(failure)
                 throw failure
             }
@@ -177,7 +177,7 @@ public actor RecordedCapture {
     private func end() async throws {
 
         if let starting { _ = await starting.result }
-        if started { _ = try? await stopCapture() }
+        if started { _ = try? await stopCapture(requested: true) }
         await receiving?.value
         await writing?.value
         finishInput()

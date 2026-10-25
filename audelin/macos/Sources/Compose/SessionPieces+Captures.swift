@@ -53,21 +53,25 @@ extension SessionPieces {
             try await recorded.start()
             let news = news.continuation
             let failures = Task {
+                var stopFailure: (any Error)?
                 for await failure in recorded.failures {
-                    let event: SessionEvent = switch failure {
-                    case let .track(error): .pieceFailed(.track(side), error: String(describing: error))
-                    case let .capture(error): .pieceFailed(.capture(side), error: String(describing: error))
+                    switch failure {
+                    case let .track(error):
+                        news.yield(.pieceFailed(.track(side), error: String(describing: error)))
+                    case let .capture(error):
+                        news.yield(.pieceFailed(.capture(side), error: String(describing: error)))
+                    case let .stop(error):
+                        stopFailure = error
                     }
-                    news.yield(event)
                 }
+                return stopFailure
             }
             let audio = sides[side]!.audio
             sides[side]?.stopCapture = {
                 // Runtime failures already have their own forwarding path.
                 _ = try? await recorded.stop()
                 await audio.drain()
-                await failures.value
-                if let failure = await capture.stopFailure { throw failure }
+                if let failure = await failures.value { throw failure }
             }
         } catch let RecordingFailure.capture(error) {
             throw error

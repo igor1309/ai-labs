@@ -54,6 +54,15 @@ is told while the write is still held. Evidence: `RecordedCaptureTests.captureFa
 The capture fake's stop fails after two tones; the stop is told as
 failed, and when it returns the track holds both tones. Evidence: `RecordedCaptureTests.failedStopWaitsForEveryGivenTone`.
 
+## S-13 A failed write's own stop is told when it fails
+
+A write fails and its automatic stop fails, with the source either ending
+or staying open. The track and capture failures arrive before a client
+requests a stop; joining that stop twice emits no more failures and stops
+the capture only once. A client-requested stop instead reports a distinct
+stop failure. Evidence: `RecordedCaptureTests.failedWriteReportsItsFailedStopAsCaptureBeforeAnyRequestedStop`
+and `RecordedCaptureTests.repeatedStopsKeepTheFailureAndStopTheCaptureOnce`.
+
 ## S-9 A second listener hears nothing
 
 A second listening started while the first is hearing ends with no tone;

@@ -2,6 +2,9 @@
 
 ## 2026-10-25
 
+- A failed write's automatic capture stop reports its failure immediately,
+  once, while Session-requested stops report through shutdown (LAB-553b).
+
 - Compose records both sides through RecordedCapture and reports each side’s
   capture or track failure to the running Session immediately (LAB-553b).
 

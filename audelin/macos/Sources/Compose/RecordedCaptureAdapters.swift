@@ -11,7 +11,6 @@ actor CaptureAdapter<Piece: Sendable>: Capture {
     let begin: @Sendable () async throws -> StartedCapture<Piece>
     let unpack: @Sendable (Piece) -> CapturedPiece
     let captured: @Sendable (CapturedPiece) -> Void
-    private(set) var stopFailure: (any Error)?
     private var started: StartedCapture<Piece>?
     private var translating: Task<Void, Never>?
 
@@ -47,18 +46,15 @@ actor CaptureAdapter<Piece: Sendable>: Capture {
         return output.stream
     }
 
-    func stop() async {
+    func stop() async throws {
 
         do { try await started?.stop() }
         catch {
-            // Session's stop step owns this failure; forwarding it through
-            // RecordedCapture would race that step and report it twice.
-            stopFailure = error
             // A failed stop quiesces production but may leave the source open.
             // Cancellation drains its buffered pieces before ending translation.
             translating?.cancel()
             await translating?.value
-            return
+            throw error
         }
         await translating?.value
     }

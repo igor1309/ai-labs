@@ -46,4 +46,6 @@ public enum Failure: Error, Sendable {
 
     case capture(any Error)
     case track(any Error)
+    /// A stop requested by the client failed, rather than one ending a failed write.
+    case stop(any Error)
 }
