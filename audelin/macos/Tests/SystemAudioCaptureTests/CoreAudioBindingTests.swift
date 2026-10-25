@@ -97,6 +97,23 @@ struct CoreAudioBindingTests {
         }
     }
 
+    @Test func endingAPlayerThatIgnoresTerminateIsBounded() async throws {
+
+        let player = Process()
+        player.executableURL = URL(fileURLWithPath: "/bin/sh")
+        player.arguments = ["-c", "trap '' TERM; sleep 60"]
+        try player.run()
+        try await Task.sleep(for: .milliseconds(200))
+        let started = ContinuousClock.now
+        await Self.end(player)
+        #expect(ContinuousClock.now - started < .seconds(10))
+        let deadline = ContinuousClock.now + .seconds(5)
+        while kill(player.processIdentifier, 0) == 0, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(kill(player.processIdentifier, 0) != 0, "A player still running past the bound must be killed")
+    }
+
     private func withPlayer(_ body: (Int32) async throws -> Void) async throws {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -109,11 +126,26 @@ struct CoreAudioBindingTests {
         // A tap hears the process after its own volume, so the tone plays faintly, not at 0.
         player.arguments = ["-v", "0.02", sound.path]
         try player.run()
-        defer {
-            if player.isRunning { player.terminate() }
-            player.waitUntilExit()
+        do {
+            try await body(player.processIdentifier)
+        } catch {
+            await Self.end(player)
+            throw error
         }
-        try await body(player.processIdentifier)
+        await Self.end(player)
+    }
+
+    /// Never blocks on waitUntilExit: a lost termination notice hung a runner for good.
+    /// The player counts as gone once its pid is, even if Process never noticed.
+    static func end(_ player: Process) async {
+
+        let pid = player.processIdentifier
+        if player.isRunning { player.terminate() }
+        let deadline = ContinuousClock.now + .seconds(5)
+        while player.isRunning, kill(pid, 0) == 0, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        if player.isRunning, kill(pid, 0) == 0 { kill(pid, SIGKILL) }
     }
 
     private func writeTone(to sound: URL) throws {
