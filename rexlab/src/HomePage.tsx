@@ -323,9 +323,7 @@ export function HomePage({
         <div className="stratum stratum-3" data-turn-fade="" />
       </div>
       <p className="wordmark" data-turn-part="wordmark">
-        <span className="wordmark-mark" aria-hidden="true">
-          <Footprints size={18} />
-        </span>
+        <span className="wordmark-mark" aria-hidden="true" />
         <span className="narrow-hidden">{BRAND}</span>
       </p>
       {/* The corner holds the museum, for the child, beside the menus for
