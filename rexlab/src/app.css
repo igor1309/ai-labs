@@ -9501,12 +9501,20 @@ html[data-size="wide-short"] .dig-board-screen .dig-body[data-asks] .dig-board {
   max-height: none;
 }
 
+/* Each card keeps at least 44 pixels; in a window shorter than a phone's
+   full screen, where they do not all fit, the column scrolls on its own
+   and the page stays still. */
 html[data-size="wide-short"] .dig-board-screen .dig-choice-cards {
   flex: 0 0 216px;
+  justify-content: safe center;
   gap: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 html[data-size="wide-short"] .dig-board-screen .dig-choice-slot {
+  flex: 1 0 44px;
+  min-height: 44px;
   max-height: 72px;
 }
 

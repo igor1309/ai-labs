@@ -21,3 +21,9 @@ Feature: DIG's WHO IS IT? on a phone on its side
     Given the child has picked a wrong dinosaur
     When the phone turns upright and back
     Then the round, its choices and the wrong pick stay
+
+  Scenario: A window shorter than the full screen
+    Given a 568 by 212 window on its side, Safari's toolbars showing
+    When the question asks with four choices
+    Then each choice stays at least 44 tall
+    And the choices' column scrolls on its own while the page stays still

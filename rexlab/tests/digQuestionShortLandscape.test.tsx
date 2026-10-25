@@ -70,15 +70,18 @@ describe("DIG's WHO IS IT? in a wide-short window", () => {
     expect([sand.value("flex").replace("0px", "0"), sand.value("width"), sand.value("height"), sand.value("max-height")]).toEqual(["0 0 auto", "min(100cqw - 228px, 100cqh * var(--frame-width) / var(--frame-height))", "auto", "none"]);
     brushUntilAsked();
     const column = styleAt(part(".dig-choice-cards"), size);
-    expect([column.value("flex").replace("0px", "0"), column.value("flex-direction"), column.rowGap()]).toEqual(["0 0 216px", "column", 8]);
+    expect([column.value("flex").replace("0px", "0"), column.value("flex-direction"), column.value("justify-content"), column.value("overflow-y"), column.rowGap()]).toEqual(["0 0 216px", "column", "safe center", "auto", 8]);
     const count = level === "explorer" ? 3 : 4;
     const slots = all(".dig-choice-slot");
     expect(slots).toHaveLength(count);
-    for (const slot of slots) expect([styleAt(slot, size).value("flex").replace("0px", "0"), styleAt(slot, size).value("max-height")]).toEqual(["1 1 0", "72px"]);
+    for (const slot of slots) expect([styleAt(slot, size).value("flex"), styleAt(slot, size).value("min-height"), styleAt(slot, size).value("max-height")]).toEqual(["1 0 44px", "44px", "72px"]);
     for (const card of all(".dig-choice-card")) {
       const style = styleAt(card, size);
       expect([style.value("flex-direction"), style.value("align-items"), style.px("padding-left"), style.columnGap()]).toEqual(["row", "center", 8, 8]);
-      expect(styleAt(card.querySelector<HTMLElement>(".dig-choice-picture")!, size).value("width")).toBe("56px");
+      // The dinosaur fills the card's height, its base height of 0 left
+      // to the column cards of larger windows.
+      const picture = styleAt(card.querySelector<HTMLElement>(".dig-choice-picture")!, size);
+      expect([picture.value("flex").replace("0px", "0"), picture.value("width"), picture.value("height")]).toEqual(["0 0 56px", "56px", "100%"]);
     }
     // Each card at least 44 tall in the room under the bar, and the sand
     // at least 220 wide beside the column.
@@ -95,10 +98,13 @@ describe("DIG's WHO IS IT? in a wide-short window", () => {
     brushUntilAsked();
     const name = styleAt(part(".dig-choice-name"), [568, 320]);
     expect([name.value("font-size"), name.value("text-align")]).toEqual(["min(16px, calc((100cqi - 64px) / (var(--line-letters) * 0.75)))", "start"]);
-    for (const selector of [".dig-choice-hyphen", ".dig-choice-break"]) {
-      const shown = document.querySelector<HTMLElement>(selector);
-      if (shown) expect(styleAt(shown, [568, 320]).value("display")).toBe("inline");
-    }
+    // A long name's hyphen and break, placed in a card on the board,
+    // show, so it stands on two lines.
+    const card = part(".dig-choice-name");
+    const hyphen = Object.assign(document.createElement("span"), { className: "dig-choice-hyphen" });
+    const lineBreak = Object.assign(document.createElement("br"), { className: "dig-choice-break" });
+    card.append(hyphen, lineBreak);
+    expect([styleAt(hyphen, [568, 320]).value("display"), styleAt(lineBreak, [568, 320]).value("display")]).toEqual(["inline", "inline"]);
     const names = SHIPPED_DIG.map(({ id }) => SHIPPED_DINOSAURS.find((dinosaur) => dinosaur.id === id)!.name[language].toLocaleUpperCase(language));
     for (const each of names) {
       const lines = nameLines(each);
@@ -107,6 +113,21 @@ describe("DIG's WHO IS IT? in a wide-short window", () => {
       // Both lines inside the smallest card, less its border and padding.
       expect(lines.length * 1.1 * type, each).toBeLessThanOrEqual((244 - 3 * 8) / 4 - 4 - 8);
     }
+  });
+
+  // Safari's toolbars, or a shorter window, leave less than four cards of
+  // 44 need: each keeps its 44, and the column scrolls instead of the page.
+  it.each([[667, 220], [568, 212]] as const)("keeps every card at least 44 tall at %i by %i, the column scrolling on its own", (width, height) => {
+    const size: WindowSize = [width, height];
+    openBoard(size, PHONES[0][2], "paleontologist");
+    brushUntilAsked();
+    expect(document.documentElement.dataset.size).toBe("wide-short");
+    const [, roomHeight] = roomOf(width, height, PHONES[0][2]);
+    expect(4 * 44 + 3 * 8).toBeGreaterThan(roomHeight);
+    for (const slot of all(".dig-choice-slot")) expect(styleAt(slot, size).px("min-height")).toBe(44);
+    const column = styleAt(part(".dig-choice-cards"), size);
+    expect([column.value("overflow-y"), column.value("overscroll-behavior"), column.value("justify-content")]).toEqual(["auto", "contain", "safe center"]);
+    expect(styleAt(part(".dig-board-screen"), size).value("overflow")).toBe("hidden");
   });
 
   it("marks a wrong pick inside its card and the right one in its corner", () => {
