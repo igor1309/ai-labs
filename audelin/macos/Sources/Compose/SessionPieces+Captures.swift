@@ -13,8 +13,10 @@ extension SessionPieces {
         do {
             let capture = try await startMicrophone()
             let beforeWrite = hooks.beforeWrite
+            let beforeInput = hooks.beforeCaptureInput
             let feed = CaptureFeed(stream: capture.stream, track: track, unpack: { ($0.samples, $0.sampleRate) },
-                                   beforeWrite: { try await beforeWrite(.microphone, $0) })
+                                   beforeWrite: { try await beforeWrite(.microphone, $0) },
+                                   beforeInput: { await beforeInput(.microphone) }, executor: hooks.executor)
             attach(feed, stop: capture.stop, side: .microphone)
         } catch {
             sides[.microphone]?.captureStarting = false
@@ -36,8 +38,10 @@ extension SessionPieces {
         do {
             let capture = try await startCall(resolved)
             let beforeWrite = hooks.beforeWrite
+            let beforeInput = hooks.beforeCaptureInput
             let feed = CaptureFeed(stream: capture.stream, track: track, unpack: { ($0.samples, $0.sampleRate) },
-                                   beforeWrite: { try await beforeWrite(.call, $0) })
+                                   beforeWrite: { try await beforeWrite(.call, $0) },
+                                   beforeInput: { await beforeInput(.call) }, executor: hooks.executor)
             attach(feed, stop: capture.stop, side: .call)
         } catch {
             sides[.call]?.captureStarting = false
@@ -58,10 +62,10 @@ extension SessionPieces {
         do { try await stop() }
         catch {
             feed.endInput()
-            _ = try? await hooks.joinCapture(side, feed)
+            _ = try? await feed.wait()
             throw error
         }
-        try await hooks.joinCapture(side, feed)
+        try await feed.wait()
     }
 
     private func captureTrack(_ side: SessionSide) throws -> TrackFile {

@@ -26,6 +26,7 @@ public actor TrackText: CallText.TrackText {
         let task: Task<Void, Never>
         let requests: AsyncStream<Reply>.Continuation
         let reading: Task<Void, Never>
+        let executor: (any TaskExecutor)?
 
         @discardableResult
         func stop() -> Task<Void, Never> {
@@ -34,7 +35,7 @@ public actor TrackText: CallText.TrackText {
             requests.finish()
             reading.cancel()
             task.cancel()
-            return Task { await live.stop() }
+            return Task(executorPreference: executor) { await live.stop() }
         }
     }
 
@@ -76,12 +77,19 @@ public actor TrackText: CallText.TrackText {
     }
 
     private let recognizer: any Recognizer
+    private let executor: (any TaskExecutor)?
     private var listening: Listening?
     private var accepted: Accepted?
 
     public init(recognizer: any Recognizer) {
 
+        self.init(recognizer: recognizer, executor: nil)
+    }
+
+    init(recognizer: any Recognizer, executor: (any TaskExecutor)?) {
+
         self.recognizer = recognizer
+        self.executor = executor
     }
 
     public func prepare() throws {
@@ -90,11 +98,11 @@ public actor TrackText: CallText.TrackText {
         guard listening == nil else { return }
         let live = LiveText(recognizer: recognizer)
         let source = AsyncStream<AudioChunk>.makeStream()
-        let task = Task { await live.listen(to: Source(stream: source.stream)) }
+        let task = Task(executorPreference: executor) { await live.listen(to: Source(stream: source.stream)) }
         let requests = AsyncStream<Reply>.makeStream()
         // The session owns replies; cancelling a caller leaves its accepted
         // interval and update available when call text replays that interval.
-        let reading = Task {
+        let reading = Task(executorPreference: executor) {
             var updates = live.updates.makeAsyncIterator()
             for await reply in requests.stream {
                 await reply.complete(await updates.next())
@@ -102,7 +110,7 @@ public actor TrackText: CallText.TrackText {
         }
         listening = Listening(
             live: live, source: source.continuation, task: task,
-            requests: requests.continuation, reading: reading
+            requests: requests.continuation, reading: reading, executor: executor
         )
     }
 

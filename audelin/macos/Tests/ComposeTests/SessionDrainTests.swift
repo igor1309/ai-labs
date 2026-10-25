@@ -9,47 +9,63 @@ struct SessionDrainTests {
     @Test(arguments: [SessionSide.microphone, .call], [false, true])
     func trackClosesAfterTheHeldLastWrite(side: SessionSide, stopThrows: Bool) async throws {
 
-        let writing = Signal(), release = Signal()
-        let joined = Values<SessionSide>()
+        let write = DrainGate(), executor = DrainExecutor()
+        let returned = Values<SessionSide>()
         var hooks = SessionPieces.Hooks()
+        hooks.executor = executor
         hooks.beforeWrite = { current, audio in
-            if current == side && audio.start > 0 {
-                writing.send()
-                await release.next()
-                try Task.checkCancellation()
+            if current == side && audio.start > 0 { await write.wait() }
+        }
+        let configured = hooks
+        let task = Task(executorPreference: executor) {
+            defer { executor.complete() }
+            try await withDrainRig(hooks: configured, stopFailure: stopThrows ? side : nil) { rig, folder in
+                try await stopDrainCapture(rig, side: side, throwsFailure: stopThrows)
+                returned.append(side)
+                try await rig.pieces.stopCapture(side == .microphone ? .call : .microphone)
+                try await closeDrainRig(rig)
+                try await expectDrainedAudio(rig, folder: folder)
             }
         }
-        hooks.joinCapture = { current, feed in
-            if current == side { release.end() }
-            try await feed.wait()
-            joined.append(current)
+        defer { write.release(); executor.run() }
+        await executor.run(until: { write.entered })
+        #expect(write.entered)
+        #expect(returned.all.isEmpty)
+        write.release()
+        await executor.finish()
+        try await task.value
+        #expect(returned.all == [side])
+    }
+
+    @Test(arguments: [SessionSide.microphone, .call])
+    func throwingStopDrainsFinishedInputThatHasNotBeenRead(side: SessionSide) async throws {
+
+        let input = DrainGate(), executor = DrainExecutor()
+        let returned = Values<SessionSide>()
+        var hooks = SessionPieces.Hooks()
+        hooks.executor = executor
+        hooks.beforeCaptureInput = { current in
+            if current == side { await input.wait() }
         }
-        try await withSessionRig(
-            hooks: hooks, stopFailure: stopThrows ? side : nil,
-            beforeStopReturns: { if $0 == side { await writing.next() } }
-        ) { rig, folder in
-            defer { writing.end(); release.end() }
-            rig.session.send(.begin(liveText: true))
-            _ = try await rig.state { $0.phase == .recording }
-            await rig.mine.heard.next()
-            await rig.theirs.heard.next()
-            // A missing join must fail on closed-file output rather than strand the held write.
-            let closing = Task {
-                _ = try? await rig.state { (side == .microphone ? $0.microphoneTrack : $0.callTrack) == .closed }
-                release.end()
+        let configured = hooks
+        let task = Task(executorPreference: executor) {
+            defer { executor.complete() }
+            try await withDrainRig(hooks: configured, stopFailure: side) { rig, folder in
+                try await stopDrainCapture(rig, side: side, throwsFailure: true)
+                returned.append(side)
+                try await rig.pieces.stopCapture(side == .microphone ? .call : .microphone)
+                try await closeDrainRig(rig)
+                try await expectDrainedAudio(rig, folder: folder)
             }
-            defer { closing.cancel() }
-            rig.session.send(.end)
-            let ended = try await rig.state { $0.phase == .ended }
-            await closing.value
-            #expect(ended.failures == (stopThrows ? [SessionFailure(piece: "\(side) capture", message: "failed")] : []))
-            #expect(Set(joined.all) == [.microphone, .call])
-            let name = side == .microphone ? "microphone.caf" : "call.caf"
-            let expected: [Float] = side == .microphone ? [0.25, -0.5, 0.125] : [-0.25, 0.5, -0.125]
-            #expect(try recordedSamples(folder.appendingPathComponent(name)) == expected)
-            let chunks = side == .microphone ? await rig.mine.chunks : await rig.theirs.chunks
-            #expect(chunks.flatMap(\.samples) == expected)
         }
+        defer { input.release(); executor.run() }
+        await executor.run(until: { input.entered })
+        #expect(input.entered)
+        #expect(returned.all.isEmpty)
+        input.release()
+        await executor.finish()
+        try await task.value
+        #expect(returned.all == [side])
     }
 
     @Test(arguments: [SessionSide.microphone, .call])
@@ -74,35 +90,50 @@ struct SessionDrainTests {
 
     @Test func transcriptClosesAfterItsHeldFinalSnapshot() async throws {
 
-        let feeding = Signal(), release = Signal()
-        let joined = Values<Bool>()
+        let snapshot = DrainGate(), closing = DrainGate(), executor = DrainExecutor()
+        let closed = Values<Bool>()
         var hooks = SessionPieces.Hooks()
-        hooks.beforeTranscriptFeed = {
-            feeding.send()
-            await release.next()
-            try Task.checkCancellation()
+        hooks.executor = executor
+        hooks.beforeTranscriptWrite = { state in
+            if state.status == .finished { await snapshot.wait() }
         }
-        hooks.joinTranscript = { task in
-            release.end()
-            let result = await task.result
-            joined.append(true)
-            return result
+        let configured = hooks
+        let task = Task(executorPreference: executor) {
+            defer { executor.complete() }
+            try await withDrainRig(hooks: configured) { rig, folder in
+                try await rig.pieces.stopCapture(.microphone)
+                try await rig.pieces.stopCapture(.call)
+                try await rig.pieces.microphoneTrack.close()
+                try await rig.pieces.callTrack.close()
+                try await rig.pieces.stop()
+                await closing.wait()
+                try await rig.pieces.transcript.close()
+                closed.append(true)
+                _ = await rig.pieces.transcriptFeed?.result
+                #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+                    == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
+            }
         }
-        try await withSessionRig(hooks: hooks) { rig, folder in
-            defer { feeding.end(); release.end() }
-            rig.session.send(.begin(liveText: true))
-            _ = try await rig.state { $0.phase == .recording }
-            await feeding.next()
-            await rig.mine.heard.next()
-            await rig.theirs.heard.next()
-            rig.session.send(.end)
-            let ended = try await rig.state { $0.phase == .ended }
-            release.end()
-            _ = await rig.pieces.transcriptFeed?.result
-            #expect(ended.failures.isEmpty)
-            #expect(joined.all == [true])
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
-                == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
-        }
+        defer { snapshot.release(); closing.release(); executor.run() }
+        await executor.run(until: { snapshot.entered && closing.entered })
+        #expect(snapshot.entered)
+        #expect(closing.entered)
+        closing.release()
+        executor.run()
+        #expect(closed.all.isEmpty)
+        snapshot.release()
+        await executor.finish()
+        try await task.value
+        #expect(closed.all == [true])
     }
+}
+
+private func expectDrainedAudio(_ rig: SessionRig, folder: URL) async throws {
+
+    let mine: [Float] = [0.25, -0.5, 0.125]
+    let theirs: [Float] = [-0.25, 0.5, -0.125]
+    #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == mine)
+    #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == theirs)
+    #expect(await rig.mine.chunks.flatMap(\.samples) == mine)
+    #expect(await rig.theirs.chunks.flatMap(\.samples) == theirs)
 }

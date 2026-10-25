@@ -33,7 +33,9 @@ public final class CaptureFeed: LiveAudio, Sendable {
         stream: AsyncThrowingStream<Piece, any Error>,
         track: TrackFile,
         unpack: @escaping @Sendable (Piece) -> (samples: [Float], sampleRate: Double),
-        beforeWrite: @escaping @Sendable (Audio) async throws -> Void
+        beforeWrite: @escaping @Sendable (Audio) async throws -> Void,
+        beforeInput: @escaping @Sendable () async -> Void = {},
+        executor: (any TaskExecutor)? = nil
     ) {
 
         let captured = AsyncStream<Audio>.makeStream()
@@ -41,8 +43,9 @@ public final class CaptureFeed: LiveAudio, Sendable {
         audio = delivered.stream
         let position = Position()
         self.position = position
-        let receiving = Task {
+        let receiving = Task(executorPreference: executor) {
             defer { captured.continuation.finish() }
+            await beforeInput()
             for try await piece in stream {
                 let piece = unpack(piece)
                 let audio = position.value.withLock { end in
@@ -54,7 +57,7 @@ public final class CaptureFeed: LiveAudio, Sendable {
             }
         }
         self.receiving = receiving
-        writing = Task {
+        writing = Task(executorPreference: executor) {
             defer { delivered.continuation.finish() }
             do {
                 for await audio in captured.stream {
