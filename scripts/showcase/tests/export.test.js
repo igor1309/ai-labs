@@ -156,6 +156,223 @@ test('an overlay replaces a private source file before marker scanning', (t) => 
   assert.equal(readFileSync(join(f.invoke(), 'README.md'), 'utf8'), 'public');
 });
 
+test('an exact public replacement of an included source file is scanned and exported', (t) => {
+  const f = fixture(t);
+  put(f.root, 'game/src/main.js', 'agister');
+  put(f.root, 'game/showcase/public/src/main.js', 'public replacement');
+  f.commit();
+  const directory = f.invoke({}, f.run, (directory) => {
+    f.scanDirectory(directory);
+    assert.equal(readFileSync(join(directory, 'src/main.js'), 'utf8'), 'public replacement');
+  });
+  assert.deepEqual(list(directory), ['src/main.js']);
+  assert.equal(readFileSync(join(directory, 'src/main.js'), 'utf8'), 'public replacement');
+});
+
+for (const path of ['src/MAIN.js', 'SRC/main.js', 'SRC', 'src/MAIN.js/child']) {
+  test(`rejects a public path ${path} that aliases a project file before marker scanning`, (t) => {
+    const f = fixture(t);
+    put(f.root, 'game/src/main.js', 'agister');
+    put(f.root, `game/showcase/public/${path}`, 'public');
+    f.commit();
+    assert.throws(() => f.invoke({ push: true }), (error) => {
+      assert.match(error.message, /^Export path collision:/);
+      assert.ok(error.message.includes(path), error.message);
+      assert.ok(error.message.includes('src/main.js'), error.message);
+      return true;
+    });
+    assert.ok(f.calls.every(({ command, args }) => command === 'git' && args[0] !== 'clone'));
+    assert.deepEqual(readdirSync(f.base), ['source']);
+  });
+
+  for (const source of ['game', 'game/showcase/public']) {
+    test(`rejects aliases within ${source}: ${path} and src/main.js`, (t) => {
+      const f = fixture(t, { include: ['**'] });
+      put(f.root, `${source}/src/main.js`, 'public');
+      f.commit();
+      const oid = git(f.root, 'rev-parse', `HEAD:${source}/src/main.js`).toString().trim();
+      // Git's index can represent case aliases even when the working filesystem cannot.
+      git(f.root, 'update-index', '--add', '--cacheinfo', '100644', oid, `${source}/${path}`);
+      git(f.root, 'commit', '-m', 'Case aliases');
+      assert.throws(() => f.invoke(), (error) => {
+        assert.match(error.message, /^Export path collision:/);
+        assert.ok(error.message.includes(path), error.message);
+        assert.ok(error.message.includes('src/main.js'), error.message);
+        return true;
+      });
+      assert.ok(f.calls.every(({ command }) => command === 'git'));
+    });
+  }
+}
+
+test('marker allowances use exported paths for source files, mounts and the public overlay', (t) => {
+  const f = fixture(t, {
+    mount: [{ source: 'gokit', target: 'lib', include: ['**'] }],
+    allow_marker: [
+      { marker: 'AGISTER', paths: ['src/main.js', 'README.md'] },
+      { marker: '.Agister/', paths: ['src/main.js'] },
+      { marker: '/users/', paths: ['lib/**/*test.js', 'tests/*test.js'] }
+    ]
+  });
+  put(f.root, 'game/src/main.js', 'agister uses .agister/');
+  put(f.root, 'game/tests/redaction.test.js', 'fixture: /Users/private');
+  put(f.root, 'gokit/nested/path.test.js', 'fixture: /Users/private');
+  put(f.root, 'game/showcase/public/README.md', 'Agister');
+  f.commit();
+  const dir = f.invoke();
+  assert.equal(readFileSync(join(dir, 'src/main.js'), 'utf8'), 'agister uses .agister/');
+  assert.equal(readFileSync(join(dir, 'tests/redaction.test.js'), 'utf8'), 'fixture: /Users/private');
+  assert.equal(readFileSync(join(dir, 'lib/nested/path.test.js'), 'utf8'), 'fixture: /Users/private');
+  assert.equal(readFileSync(join(dir, 'README.md'), 'utf8'), 'Agister');
+  assert.ok(f.calls.some(({ command }) => command === 'scanDirectory'));
+  assert.ok(f.calls.some(({ command }) => command === 'sh'));
+});
+
+for (const { path, content, marker } of [
+  { path: 'src/other.js', content: 'AGISTER', marker: 'agister' },
+  { path: 'src/main.js', content: 'agister\nmultica', marker: 'multica' },
+  { path: 'src/main.js', content: '.agister/', marker: '.agister/' },
+  { path: 'showcase/public/README.md', content: 'agister', marker: 'agister' }
+]) {
+  test(`marker allowance still rejects ${marker} in ${path}`, (t) => {
+    const f = fixture(t, { allow_marker: [{ marker: 'agister', paths: ['src/main.js'] }] });
+    put(f.root, `game/${path}`, content);
+    f.commit();
+    assert.throws(() => f.invoke(), (error) => {
+      assert.ok(error.message.includes(`${path.replace('showcase/public/', '')}:`), error.message);
+      assert.ok(error.message.includes(`private marker ${marker}`), error.message);
+      assert.ok(!error.message.includes('src/main.js:1: private marker agister'), error.message);
+      return true;
+    });
+    assert.ok(f.calls.every(({ command }) => command === 'git'));
+  });
+}
+
+test('mounts select committed source-relative globs, default the target and precede the public overlay', (t) => {
+  const f = fixture(t, { mount: [
+    { source: 'gokit', include: ['go.mod', 'pkg/**', 'tool.sh'], exclude: ['pkg/private/**'] },
+    { source: 'shared/data', target: 'assets', include: ['*.json'] }
+  ] });
+  for (const [path, bytes] of Object.entries({
+    'gokit/go.mod': 'module example.test/gokit', 'gokit/pkg/main.go': 'package library',
+    'gokit/pkg/private/key': 'multica', 'gokit/docs/private.md': 'agister',
+    'gokit/pkg/overlaid.go': 'agister', 'gokit/tool.sh': '#!/bin/sh\ntrue\n',
+    'shared/data/catalogue.json': '{"committed":true}', 'shared/data/notes.md': 'multica',
+    'game/showcase/public/gokit/pkg/overlaid.go': 'public replacement'
+  })) put(f.root, path, bytes);
+  chmodSync(join(f.root, 'gokit/tool.sh'), 0o755);
+  symlinkSync('main.go', join(f.root, 'gokit/pkg/alias.go'));
+  f.commit();
+  put(f.root, 'gokit/pkg/main.go', 'uncommitted');
+  put(f.root, 'gokit/pkg/local.go', 'untracked');
+  put(f.root, 'shared/data/catalogue.json', '{"committed":false}');
+  rmSync(join(f.root, 'gokit/go.mod'));
+  let scannedFiles;
+  const directory = f.invoke({}, (command, args, options) => {
+    if (command === 'sh') {
+      assert.equal(readFileSync(join(options.cwd, 'gokit/pkg/main.go'), 'utf8'), 'package library');
+      assert.equal(readFileSync(join(options.cwd, 'assets/catalogue.json'), 'utf8'), '{"committed":true}');
+    }
+    return f.run(command, args, options);
+  }, (directory) => {
+    f.scanDirectory(directory);
+    scannedFiles = list(directory);
+  });
+  assert.deepEqual(list(directory), ['assets/catalogue.json', 'gokit/go.mod', 'gokit/pkg/alias.go',
+    'gokit/pkg/main.go', 'gokit/pkg/overlaid.go', 'gokit/tool.sh', 'src/main.js']);
+  assert.deepEqual(scannedFiles, list(directory));
+  assert.equal(readFileSync(join(directory, 'gokit/go.mod'), 'utf8'), 'module example.test/gokit');
+  assert.equal(readFileSync(join(directory, 'gokit/pkg/overlaid.go'), 'utf8'), 'public replacement');
+  assert.equal(readlinkSync(join(directory, 'gokit/pkg/alias.go')), 'main.go');
+  assert.ok(lstatSync(join(directory, 'gokit/tool.sh')).mode & 0o111);
+});
+
+for (const projectPath of ['src/main.js', 'src', 'src/main.js/child', 'SRC/MAIN.js', 'SRC', 'src/MAIN.js/child']) {
+  test(`mounts reject collisions with project path ${projectPath} before the overlay`, (t) => {
+    const f = fixture(t, { include: ['**'], mount: [{ source: 'gokit', target: 'src', include: ['**'] }] });
+    rmSync(join(f.root, 'game/src'), { recursive: true });
+    put(f.root, `game/${projectPath}`, 'project');
+    put(f.root, 'gokit/main.js', 'mounted');
+    put(f.root, 'game/showcase/public/src/main.js', 'overlay');
+    f.commit();
+    assert.throws(() => f.invoke(), (error) => {
+      assert.match(error.message, /^Mount collision at export path: src\/main.js/);
+      assert.ok(error.message.includes(`conflicts with ${projectPath}`), error.message);
+      return true;
+    });
+    assert.ok(f.calls.every(({ command }) => command === 'git'));
+  });
+}
+
+test('a case-aliased mount cannot overwrite a project file through a marker exemption', (t) => {
+  const f = fixture(t, {
+    mount: [{ source: 'gokit', target: 'src', include: ['**'] }],
+    allow_marker: [{ marker: 'agister', paths: ['src/MAIN.js'] }]
+  });
+  put(f.root, 'gokit/MAIN.js', 'agister');
+  f.commit();
+  assert.throws(() => f.invoke(), /Mount collision at export path: src\/MAIN.js \(conflicts with src\/main.js\)/);
+  assert.ok(f.calls.every(({ command }) => command === 'git'));
+});
+
+for (const target of ['lib', 'LIB']) {
+  test(`overlapping mounts at ${target} cannot replace an earlier mounted file`, (t) => {
+    const f = fixture(t, { mount: [
+      { source: 'gokit', target: 'lib', include: ['**'] },
+      { source: 'other', target, include: ['**'] }
+    ] });
+    put(f.root, 'gokit/main.go', 'first');
+    put(f.root, 'other/main.go', 'second');
+    f.commit();
+    assert.throws(() => f.invoke(), (error) => {
+      assert.equal(error.message, `Mount collision at export path: ${target}/main.go (conflicts with lib/main.go)`);
+      return true;
+    });
+  });
+}
+
+test('mounted files still pass the marker gate and secret scanner', (t) => {
+  for (const stage of ['marker', 'scanner']) {
+    const f = fixture(t, { mount: [{ source: 'gokit', target: 'lib', include: ['**'] }] });
+    put(f.root, 'gokit/main.go', stage === 'marker' ? 'multica' : 'secret fixture');
+    f.commit();
+    assert.throws(() => f.invoke({}, f.run, (directory) => {
+      f.scanDirectory(directory);
+      assert.equal(readFileSync(join(directory, 'lib/main.go'), 'utf8'), 'secret fixture');
+      throw new Error('secret detected in lib/main.go');
+    }), stage === 'marker' ? /lib\/main.go:1: private marker multica/ : /secret detected in lib\/main.go/);
+    assert.ok(!f.calls.some(({ command }) => command === 'sh'));
+    assert.deepEqual(readdirSync(f.base), ['source']);
+  }
+});
+
+test('mounted symlinks cannot escape the exported snapshot', (t) => {
+  const f = fixture(t, { mount: [{ source: 'gokit', include: ['**'] }] });
+  mkdirSync(join(f.root, 'gokit'));
+  symlinkSync('../../outside', join(f.root, 'gokit/escape'));
+  f.commit();
+  assert.throws(() => f.invoke(), /Unsafe symlink: gokit\/escape/);
+  assert.ok(!f.calls.some(({ command }) => command === 'scanDirectory'));
+});
+
+test('mounted files must have safe export paths', (t) => {
+  const f = fixture(t, { mount: [{ source: 'gokit', include: ['**'] }] });
+  put(f.root, 'gokit/unsafe\\name', 'file');
+  f.commit();
+  assert.throws(() => f.invoke(), /Unsafe export path: gokit\/unsafe\\name/);
+  assert.ok(!f.calls.some(({ command }) => command === 'scanDirectory'));
+});
+
+test('a mount requires a folder committed at HEAD', (t) => {
+  for (const source of ['missing', 'file.txt']) {
+    const f = fixture(t, { mount: [{ source, include: ['**'] }] });
+    put(f.root, 'file.txt', 'a file');
+    f.commit();
+    put(f.root, 'missing/local.go', 'untracked');
+    assert.throws(() => f.invoke(), /mount source must be a folder committed at HEAD/);
+  }
+});
+
 for (const stage of ['scanner', 'check', 'clone', 'push', 'metadata']) {
   test(`${stage} failure stops the export, reports output and removes temporary directories`, (t) => {
     const f = fixture(t);
@@ -339,6 +556,65 @@ test('validates required settings instead of accepting malformed allowlists or c
     delete missing[key];
     assert.throws(() => readSettings(stringify(missing)), /showcase.toml/);
   }
+});
+
+test('validates marker allowance tables and mount tables with showcase.toml diagnostics', () => {
+  const settings = { repo: 'someone/game', description: 'game', homepage: 'https://example.test',
+    topics: [], include: ['src/**'], exclude: [], check: 'true' };
+  const mount = { source: 'gokit', include: ['**'] };
+  const cases = [
+    ['allow_marker', 'agister', 'allow_marker must be an array of tables'],
+    ['allow_marker', [false], 'allow_marker must be an array of tables'],
+    ...[{}, { marker: false, paths: ['**'] }, { marker: 'unknown', paths: ['**'] }]
+      .map((entry) => ['allow_marker', [entry], 'allow_marker.marker must name a marker in markers.txt']),
+    ...[undefined, [], '**', [''], [false]].map((paths) => ['allow_marker',
+      [{ marker: 'agister', ...(paths === undefined ? {} : { paths }) }], 'allow_marker.paths must be a nonempty array']),
+    ['mount', 'gokit', 'mount must be an array of tables'],
+    ['mount', [false], 'mount must be an array of tables'],
+    ...[undefined, false, '', ' ', '/gokit', '../gokit', 'lib/../gokit', 'gokit/..', 'gokit//lib',
+      '.', './gokit', 'gokit/', 'C:/gokit', 'lib\\gokit', '.git', 'lib/.GIT'].map((source) => ['mount',
+      [{ include: ['**'], ...(source === undefined ? {} : { source }) }], 'mount.source must be a safe repository-relative folder']),
+    ...['game', 'game/src', 'game/src/nested'].map((source) => ['mount', [{ ...mount, source }], 'mount.source must be outside the project']),
+    ...[false, '', ' ', '/lib', '../lib', 'lib/../other', '.', './lib', 'lib/', 'lib//nested',
+      'lib\\nested', 'C:/lib', '.git', 'lib/.GIT'].map((target) => ['mount', [{ ...mount, target }], 'mount.target must be a safe export-relative folder']),
+    ...[undefined, '**', [''], [false]].map((include) => ['mount',
+      [{ source: 'gokit', ...(include === undefined ? {} : { include }) }], 'mount.include must be an array of nonempty strings']),
+    ...['**', [''], [false]].map((exclude) => ['mount', [{ ...mount, exclude }], 'mount.exclude must be an array of nonempty strings'])
+  ];
+  for (const [key, value, diagnostic] of cases) {
+    assert.throws(() => readSettings(stringify({ ...settings, [key]: value }), 'game'), (error) => {
+      assert.ok(error.message.startsWith(`showcase.toml: ${diagnostic}`), `${key}=${JSON.stringify(value)}: ${error.message}`);
+      return true;
+    });
+  }
+  const valid = { ...settings,
+    allow_marker: [{ marker: 'AGISTER', paths: ['src/**'] }, { marker: '/users/', paths: ['tests/*.js'] }],
+    mount: [mount, { source: 'game-tools', target: 'lib/tools', include: ['*.go'], exclude: ['private.go'] }]
+  };
+  assert.deepEqual(readSettings(stringify(valid), 'game'), valid);
+  assert.deepEqual(readSettings(stringify({ ...settings, allow_marker: [], mount: [] }), 'game'),
+    { ...settings, allow_marker: [], mount: [] });
+  for (const source of ['products/game', 'products/game/src']) {
+    assert.throws(() => readSettings(stringify({ ...settings, mount: [{ ...mount, source }] }), 'products/game'),
+      /showcase.toml: mount.source must be outside the project/);
+  }
+});
+
+test('exports reject mounts of the project itself or its descendants', (t) => {
+  for (const source of ['game', 'game/src']) {
+    const f = fixture(t, { mount: [{ source, include: ['**'] }] });
+    f.commit();
+    assert.throws(() => f.invoke(), /showcase.toml: mount.source must be outside the project/);
+    assert.ok(f.calls.every(({ command }) => command === 'git'));
+  }
+});
+
+test('foliotell settings still parse without marker allowances or mounts', () => {
+  const settings = readSettings(readFileSync(new URL('../../../foliotell/showcase/showcase.toml', import.meta.url), 'utf8'));
+  assert.equal(settings.repo, 'igor1309/foliotell');
+  assert.equal(settings.check, 'cd ios && swift build && swift test');
+  assert.equal(isIncluded('ios/Sources/App.swift', settings), true);
+  assert.equal(isIncluded('android/app/Main.kt', settings), false);
 });
 
 // Contract test: the process adapter sets the real child process's working directory.

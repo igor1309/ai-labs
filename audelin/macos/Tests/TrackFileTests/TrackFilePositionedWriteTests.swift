@@ -7,47 +7,58 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct TrackFilePositionedWriteTests {
 
-    @Test(arguments: [24_000, 44_100], [31, 96_001])
-    func partialConvertedAppendKeepsAcknowledgedAudio(rate: Int, chunkSize: Int) async throws {
+    static let faults: [(persistent: Bool, prefix: Int)] = [false, true].flatMap { persistent in
+        [0, 1, 127, Int.max].map { (persistent, $0) }
+    }
 
-        for persistent in [false, true] {
-            for prefix in [0, 1, 127, Int.max] {
-                try await withTrackFolder { folder in
-                    let url = folder.appendingPathComponent("track.caf")
-                    let fault = PositionedWriteFault()
-                    let binding = try DiskTrackBinding(url: url, positionedWrite: { try fault.write($0, $1, $2) })
-                    let rig = try TrackRig(folder, binding: binding)
-                    var preceding: [Float] = []
-                    var expected: [Float] = []
-                    for number in 1...2 {
-                        let input = tone(number, rate: rate, frames: chunkSize)
-                        expected += try referenceWrite(input, preceding: preceding, rate: Double(rate))
-                        try await rig.track.write(input, sampleRate: Double(rate))
-                        expectSamples(try await rig.track.read(from: 0, to: Double(expected.count) / 48_000), expected)
-                        preceding += input
-                        fault.acknowledge(try Data(contentsOf: url).count)
-                    }
-                    let acknowledged = try Data(contentsOf: url)
-                    try await withPendingRead(rig, from: 0, to: 60) { read in
-                        fault.arm(after: prefix, persistent: persistent)
-                        await #expect(throws: BindingFailure.self) {
-                            try await rig.track.write(tone(3, rate: rate, frames: chunkSize), sampleRate: Double(rate))
-                        }
-                        expectSamples(try await read.value, expected)
-                    }
-                    #expect(try Data(contentsOf: url) == acknowledged)
-                    expectSamples(try externalSamples(url), expected)
-                    await #expect(throws: TrackFile.Failure.writingEnded) {
-                        try await rig.track.write([0.5], sampleRate: Double(rate))
-                    }
-                    // The fault remains armed through all failed-write recovery.
-                    fault.disarm()
-                    try await rig.track.close()
-                    expectSamples(try await rig.track.read(from: 0, to: 60), expected)
-                    expectSamples(try externalSamples(url), expected)
-                    try await expectAfinfo(url, frames: expected.count)
-                }
+    static let cases: [(rate: Int, long: Bool, persistent: Bool, prefix: Int)] = [24_000, 44_100].flatMap { rate in
+        [false, true].flatMap { long in faults.map { (rate, long, $0.persistent, $0.prefix) } }
+    }
+
+    /// Each fault is its own case under the suite's time limit: run in one
+    /// loop, the long chunk took 68 s on hosted CI (PR #1275).
+    @Test(arguments: cases)
+    func partialConvertedAppendKeepsAcknowledgedAudio(
+        _ testCase: (rate: Int, long: Bool, persistent: Bool, prefix: Int)
+    ) async throws {
+
+        let (rate, long, persistent, prefix) = testCase
+        // A long chunk is one frame past the second of input kept as filter context.
+        let chunkSize = long ? rate + 1 : 31
+        try await withTrackFolder { folder in
+            let url = folder.appendingPathComponent("track.caf")
+            let fault = PositionedWriteFault()
+            let binding = try DiskTrackBinding(url: url, positionedWrite: { try fault.write($0, $1, $2) })
+            let rig = try TrackRig(folder, binding: binding)
+            var preceding: [Float] = []
+            var expected: [Float] = []
+            for number in 1...2 {
+                let input = tone(number, rate: rate, frames: chunkSize)
+                expected += try referenceWrite(input, preceding: preceding, rate: Double(rate))
+                try await rig.track.write(input, sampleRate: Double(rate))
+                expectSamples(try await rig.track.read(from: 0, to: Double(expected.count) / 48_000), expected)
+                preceding += input
+                fault.acknowledge(try Data(contentsOf: url).count)
             }
+            let acknowledged = try Data(contentsOf: url)
+            try await withPendingRead(rig, from: 0, to: 60) { read in
+                fault.arm(after: prefix, persistent: persistent)
+                await #expect(throws: BindingFailure.self) {
+                    try await rig.track.write(tone(3, rate: rate, frames: chunkSize), sampleRate: Double(rate))
+                }
+                expectSamples(try await read.value, expected)
+            }
+            #expect(try Data(contentsOf: url) == acknowledged)
+            expectSamples(try externalSamples(url), expected)
+            await #expect(throws: TrackFile.Failure.writingEnded) {
+                try await rig.track.write([0.5], sampleRate: Double(rate))
+            }
+            // The fault remains armed through all failed-write recovery.
+            fault.disarm()
+            try await rig.track.close()
+            expectSamples(try await rig.track.read(from: 0, to: 60), expected)
+            expectSamples(try externalSamples(url), expected)
+            try await expectAfinfo(url, frames: expected.count)
         }
     }
 }

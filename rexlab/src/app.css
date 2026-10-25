@@ -2323,6 +2323,142 @@ html[data-size="tall-narrow"] .dinosaur-footer {
   padding: 20px;
 }
 
+/* In a wide-short window, an iPhone on its side, the question keeps the
+   cards side by side under a 48-pixel bar, 8 under the top and 20 past
+   each side's inset, with NEXT beside the prompt rather than under the
+   cards, so they take the rest of the height. A card's value stands at
+   the bottom right of its picture's area, its name on one line in a
+   footer of its own height, so no card grows as the values show. The
+   prompt is 28 pixels, or less where the widest of either language
+   would not fit beside the widest NEXT, 210 pixels; a name is 20, or
+   less where the longest would not fit its card. */
+html[data-size="wide-short"] .question {
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px 12px;
+  container-type: inline-size;
+}
+
+html[data-size="wide-short"] .question-bar {
+  grid-column: 1 / -1;
+  gap: 16px;
+}
+
+html[data-size="wide-short"] .question .home-button {
+  height: 48px;
+  font-size: 17px;
+}
+
+html[data-size="wide-short"] .question .progress {
+  font-size: 17px;
+}
+
+html[data-size="wide-short"] .question .prompt {
+  grid-row: 2;
+  grid-column: 1;
+  gap: 12px;
+  font-size: min(28px, calc((100cqi - 274px) / 9.97));
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+html[data-size="wide-short"] .question .prompt-symbol {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .question .prompt-symbol svg {
+  width: 24px;
+  height: 24px;
+}
+
+html[data-size="wide-short"] .question .next-row {
+  grid-row: 2;
+  grid-column: 2;
+  min-height: 48px;
+}
+
+html[data-size="wide-short"] .question .next-button {
+  height: 48px;
+  padding: 0 20px 0 24px;
+  gap: 10px;
+  border-radius: 16px;
+  font-size: 20px;
+}
+
+html[data-size="wide-short"] .question .next-button svg {
+  width: 22px;
+  height: 22px;
+}
+
+html[data-size="wide-short"] .dinosaur-cards {
+  grid-row: 3;
+  grid-column: 1 / -1;
+  align-items: stretch;
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .dinosaur-card {
+  position: relative;
+  border-radius: 20px;
+  container-type: inline-size;
+}
+
+html[data-size="wide-short"] .dinosaur-art {
+  padding: 12px;
+}
+
+html[data-size="wide-short"] .dinosaur-footer {
+  flex: none;
+  height: 41px;
+  box-sizing: border-box;
+  padding: 8px 12px;
+  flex-wrap: nowrap;
+}
+
+html[data-size="wide-short"] .dinosaur-name {
+  font-size: min(20px, calc((100cqi - 24px) / 12.7));
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+html[data-size="wide-short"] .dinosaur-value-chip {
+  position: absolute;
+  right: 12px;
+  bottom: 53px;
+  height: 36px;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 10px;
+  font-size: 17px;
+}
+
+html[data-size="wide-short"] .mark {
+  top: 12px;
+  left: 12px;
+  height: 36px;
+  padding: 0 14px 0 10px;
+  gap: 6px;
+  border-radius: 18px;
+  font-size: 15px;
+}
+
+html[data-size="wide-short"] .versus {
+  align-self: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  font-size: 15px;
+}
+
 /* The catalogue: its bar stays at the top while the cards, as many to a
    row as CatalogueScreen gives in --columns, four in landscape, scroll
    under it, the list as wide as the screen so its scrollbar is at the
@@ -6272,6 +6408,141 @@ html[data-size="tall-narrow"] .level-switch-level {
   font-size: var(--level-name-size);
 }
 
+/* In a wide-short window, an iPhone on its side, a result with the level
+   switch keeps the dinosaur beside its rewards, 12 under the top and 20
+   past each side's inset, the dinosaur as tall as the height allows. The
+   score stands beside "WELL DONE!" over the stars, the switch shows each
+   level's picture alone, its name kept for screen readers, and PLAY AGAIN
+   stands beside HOME, each 48 tall, so the column fits the height. */
+html[data-size="wide-short"] .result-with-levels {
+  padding:
+    calc(12px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  grid-template-columns: minmax(0, 1fr) minmax(0, 400px);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 20px;
+}
+
+html[data-size="wide-short"] .result-with-levels .result-hero {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+}
+
+html[data-size="wide-short"] .result-with-levels .result-content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px 16px;
+}
+
+html[data-size="wide-short"] .result-with-levels .best-score,
+html[data-size="wide-short"] .result-with-levels .level-switch,
+html[data-size="wide-short"] .result-with-levels .result-actions {
+  order: 2;
+}
+
+html[data-size="wide-short"] .result-with-levels .celebration,
+html[data-size="wide-short"] .result-with-levels .best-score {
+  grid-column: 1 / -1;
+  justify-self: center;
+  height: 36px;
+}
+
+html[data-size="wide-short"] .result-with-levels .celebration {
+  padding: 0 16px 0 12px;
+  gap: 8px;
+  font-size: 16px;
+}
+
+html[data-size="wide-short"] .result-with-levels .celebration svg {
+  width: 20px;
+  height: 20px;
+}
+
+html[data-size="wide-short"] .result-with-levels .result-score {
+  grid-column: 1;
+  grid-row: span 2;
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .result-with-levels .result-score-value {
+  font-size: 56px;
+}
+
+html[data-size="wide-short"] .result-with-levels .result-score-total {
+  font-size: 24px;
+}
+
+html[data-size="wide-short"] .result-with-levels .result-title {
+  grid-column: 2;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+/* The stars come after "WELL DONE!" in the grid, under it beside the
+   score, and the parts after them follow. */
+html[data-size="wide-short"] .result-with-levels .result-stars {
+  order: 1;
+  grid-column: 2;
+  gap: 4px;
+  font-size: 20px;
+}
+
+html[data-size="wide-short"] .result-with-levels .best-score {
+  padding: 0 14px;
+  gap: 8px;
+  font-size: 15px;
+}
+
+html[data-size="wide-short"] .result-with-levels .best-score-value {
+  font-size: 18px;
+}
+
+html[data-size="wide-short"] .result-with-levels .level-switch {
+  grid-column: 1 / -1;
+  padding: 4px;
+  border-radius: 26px;
+}
+
+html[data-size="wide-short"] .result-with-levels .level-switch-mark {
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 16px) / 3);
+  border-radius: 22px;
+}
+
+html[data-size="wide-short"] .result-with-levels .level-switch-level {
+  height: 44px;
+  border-radius: 22px;
+}
+
+html[data-size="wide-short"] .result-with-levels .result-actions {
+  grid-column: 1 / -1;
+  padding-top: 0;
+  gap: 12px;
+}
+
+html[data-size="wide-short"] .result-with-levels .play-again-button,
+html[data-size="wide-short"] .result-with-levels .result-actions .home-button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 48px;
+  padding: 0 16px;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 16px;
+  font-size: 18px;
+}
+
+html[data-size="wide-short"] .result-with-levels .result-actions svg {
+  width: 22px;
+  height: 22px;
+}
+
 .pairs-play-button {
   height: 104px;
   padding: 0 52px 0 44px;
@@ -6592,7 +6863,8 @@ html[data-size="tall"] .pairs-bar .home-button {
 /* A name a tall-narrow window shows to screen readers alone, kept in the
    page, as home's are in a wide-short one. */
 html[data-size="tall-narrow"] .narrow-hidden,
-html[data-size="wide-short"] .home .narrow-hidden {
+html[data-size="wide-short"] .home .narrow-hidden,
+html[data-size="wide-short"] .result-with-levels .narrow-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -8621,8 +8893,26 @@ html[data-size="tall-narrow"] .dig-board-screen .home-button {
   order: -2;
 }
 
+/* HOME, the brush menu and the FIELD GUIDE are one family: 48 tall,
+   at least 48 wide, the same corners and the same thin frame. */
+html[data-size="tall-narrow"] .dig-board-screen .home-button,
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button,
+html[data-size="tall-narrow"] .dig-board-screen .dig-field-guide-button {
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  box-sizing: border-box;
+  border-radius: 14px;
+}
+
 html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
   padding: 0 8px;
+  outline: 1px solid #1d27421f;
+  outline-offset: -0.5px;
+}
+
+[data-theme="dark"][data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
+  outline-color: #ece8de1f;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu {
@@ -8655,39 +8945,39 @@ html[data-size="tall-narrow"] .dig-chip {
   font-size: 14px;
 }
 
-/* The question's dinosaurs two to a row under the sand, each card a
-   little wider than tall, its picture over its name; three put the third
-   alone, centred, as wide as the others. The sand takes what the two
-   rows leave, the same from the round's start. */
+/* The question's dinosaurs two to a row under the sand, 8 apart, small
+   cards twice as wide as tall, each its picture over its name; three put
+   the third alone, centred, as wide as the others. The sand takes what
+   the two rows leave, the same from the round's start. */
 html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] {
   gap: 12px;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] .dig-board {
-  width: min(100cqw, (100cqh - 12px - ((100cqw - 12px) * 0.9 + 12px)) * var(--frame-width) / var(--frame-height));
+  width: min(100cqw, (100cqh - 12px - ((100cqw - 8px) * 0.5 + 8px)) * var(--frame-width) / var(--frame-height));
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-choice-cards {
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-choice-slot {
   max-height: none;
-  aspect-ratio: 10 / 9;
+  aspect-ratio: 2 / 1;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-choice-slot:nth-child(3):last-child {
   grid-column: 1 / -1;
   justify-self: center;
-  width: calc((100% - 12px) / 2);
+  width: calc((100% - 8px) / 2);
 }
 
 html[data-size="tall-narrow"] .dig-choice-card {
-  padding: 8px 2px 10px;
-  border-radius: 18px;
+  padding: 4px 2px;
+  border-radius: 14px;
 }
 
 /* A name as large as its card's width lets it, at most 16: a long one on
@@ -8705,8 +8995,8 @@ html[data-size="tall-narrow"] .dig-choice-break {
 }
 
 html[data-size="tall-narrow"] .dig-empty-card {
-  border-radius: 16px;
-  font-size: 32px;
+  border-radius: 14px;
+  font-size: 28px;
 }
 
 /* The FIELD GUIDE's title is its book alone, its words kept for screen
