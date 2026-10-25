@@ -25,6 +25,7 @@ import { attributeOf, correctOf, QUESTION_KINDS, ROUND_LENGTH, type Question } f
 import { TEXTS } from "../src/language/texts.ts";
 import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
+import { shortTileColumn } from "../src/tileColumns.ts";
 import type { LayoutKeeping } from "../src/useKeptRow.ts";
 import { styleAt } from "./windowSizes.ts";
 
@@ -782,17 +783,21 @@ export function tilesRow(): HTMLElement {
 // The home page's row of tiles laid out as a browser would, which jsdom
 // does not: upright it runs from the page's 56-pixel padding to the
 // window's right edge, and in landscape it takes four sevenths of what
-// the page's 56-pixel sides and the large card's 28-pixel gap leave. Its
-// columns, of two each, are as wide and as far apart as the stylesheet
-// sets them in the test's window. A tile's frame, drawn under it as it
-// glides, takes no place in them.
+// the page's 56-pixel sides and the large card's 28-pixel gap leave, or,
+// in a wide-short window, half of what its 20-pixel sides and 16-pixel
+// gap leave and the right side too. Its columns, of two each, are as wide
+// and as far apart as the stylesheet sets them in the test's window, a
+// share of the row's width in a wide-short one. A tile's frame, drawn
+// under it as it glides, takes no place in them.
 export function layOutTilesRow(): HTMLElement {
   const row = tilesRow();
+  const size = () => document.documentElement.dataset.size;
   const style = () => styleAt(row, [window.innerWidth, window.innerHeight]);
-  const width = () => (document.documentElement.dataset.size === "tall" ? window.innerWidth - 56 : document.documentElement.dataset.size === "tall-narrow" ? window.innerWidth - 20 : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
+  const width = () => (size() === "tall" ? window.innerWidth - 56 : size() === "tall-narrow" ? window.innerWidth - 20 : size() === "wide-short" ? Math.round((window.innerWidth - 40 - 16) / 2 + 20) : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
+  const column = () => (size() === "wide-short" ? shortTileColumn(width()) : style().px("grid-auto-columns"));
   const scrollWidth = () => {
     const columns = Math.ceil([...row.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);
-    return columns * style().px("grid-auto-columns") + (columns - 1) * style().columnGap();
+    return Math.round(columns * column() + (columns - 1) * style().columnGap());
   };
   Object.defineProperties(row, { clientWidth: { get: width }, scrollWidth: { get: scrollWidth } });
   return row;
