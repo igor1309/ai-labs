@@ -13,9 +13,9 @@ Feature: The window's shape
   portrait:
     | class       | window                                   | for example        |
     | wide        | landscape, at least 600 CSS pixels tall  | iPad, Mac          |
-    | wide-short  | landscape, under 600 CSS pixels tall     | iPhone landscape   |
+    | wide-short  | landscape, under 600 CSS pixels tall and at least 568 wide | iPhone landscape |
     | tall        | portrait, at least 600 CSS pixels wide   | iPad portrait      |
-    | tall-narrow | portrait, under 600 CSS pixels wide      | iPhone portrait    |
+    | tall-narrow | portrait, under 600 CSS pixels wide, or landscape under 568 wide | iPhone portrait, a small Mac window |
   Until a screen's own stage builds them, a wide-short window shows the
   wide layout, and a tall-narrow window the picture asking to turn or
   widen. Every screen now has a portrait layout for a tall window and one
@@ -39,6 +39,7 @@ Feature: The window's shape
       | 600   | 900    | tall        | 599       | 900        | tall-narrow |
       | 900   | 800    | wide        | 800       | 800        | tall        |
       | 1000  | 600    | wide        | 1000      | 599        | wide-short  |
+      | 568   | 320    | wide-short  | 567       | 320        | tall-narrow |
 
   Scenario Outline: An upright screen is asked to turn sideways
     Given the app is in <language> on care's result, on a phone

@@ -1,4 +1,4 @@
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 
 // main.tsx, the app's entry, with the app itself left out: only what it
 // puts before the app is under test.
@@ -19,4 +19,29 @@ it("puts the double-tap filter before the app", async () => {
   await import("../src/main.tsx");
 
   expect([touch("pointerdown", 0), touch("pointerup", 50), touch("pointerdown", 250)]).toEqual([true, true, false]);
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
+// The app's entry run afresh in a build, with a browser that keeps what
+// it is asked to register.
+async function launch(released: boolean) {
+  vi.resetModules();
+  vi.stubEnv("PROD", released);
+  const registered: string[] = [];
+  vi.stubGlobal("navigator", { ...navigator, serviceWorker: { register: async (url: string) => { registered.push(url); } } });
+  document.body.innerHTML = '<div id="root"></div>';
+  await import("../src/main.tsx");
+  return registered;
+}
+
+it("registers the offline worker in a release", async () => {
+  expect(await launch(true)).toEqual(["/sw.js"]);
+});
+
+it("registers no worker in development", async () => {
+  expect(await launch(false)).toEqual([]);
 });

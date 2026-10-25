@@ -9,7 +9,6 @@ import (
 	"slices"
 
 	"github.com/igor1309/ai-labs/agister/core/call"
-	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runstore"
 	"github.com/igor1309/ai-labs/agister/settings/documents"
 )
@@ -192,14 +191,7 @@ func continuing(planned plannedCall, prompt string, definitions []runstore.Defin
 // "continuation" does not resolve in docs. A workflow none of whose steps
 // continues a session does not ask for the prompt.
 func sessionsContinued(built plan, docs runDocuments) (plan, []string) {
-	var names []string
-	for _, item := range built.workflow.Steps {
-		for _, step := range append([]workflow.Step{item}, item.Parallel...) {
-			if step.Session != "" {
-				names = append(names, step.Name)
-			}
-		}
-	}
+	names := slices.Clone(built.sessionSteps)
 	if len(names) == 0 {
 		return built, nil
 	}

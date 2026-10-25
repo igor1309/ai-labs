@@ -354,6 +354,7 @@ export function useDigGame(
             onBrush={brush}
             onPick={pick}
             onWide={setWide}
+            menuTimer={startTimer}
             onHome={home}
             onFieldGuide={openGuide}
           />

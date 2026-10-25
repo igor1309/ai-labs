@@ -1,7 +1,13 @@
 # rexlab — Change Log
 
+## 2026-10-25
+
+- DIG fits an upright iPhone: its bar is one row, the title's brush opens a menu of the two brushes, the dinosaur count leaves the board, and WHO IS IT?'s dinosaurs stand two to a row as near-square cards under the sand (LAB-542).
+- The home page fits an iPhone on its side instead of clipping: RexLab, the greeting and the parents' corner share one short bar, and the large card and two rows of tiles fill the height below it, every word fitting in English and Russian. A landscape window under 568 wide, narrower than any phone on its side, now shows every screen's upright phone layout (LAB-533).
+
 ## 2026-10-24
 
+- RexLab can be added to the home screen as an app: it opens full screen under its T-Rex icon and plays without Wi-Fi once opened online; a new release shows on the next launch online (LAB-276).
 - Care plays whole upright on an iPhone instead of asking to turn, and with it every RexLab screen stands upright on a phone. A visit puts the needs on a row under HOME and the hearts and gives its five items as pictures in one row; FRIENDS keeps two cards to a row with names on up to three lines; the result keeps its eight hearts on one row over NEW VISITOR, FRIENDS and HOME (LAB-515).
 - DIG plays whole upright on an iPhone instead of asking to turn. The board puts the brushes, the FIELD GUIDE and DUG UP on a second row under HOME and the title, and WHO IS IT? lists its names one over another under the sand. The FIELD GUIDE shows its five finds as rows, and on a short phone the reveal scrolls rather than shrink the dinosaur (LAB-504).
 - Skeleton assembly plays whole upright on an iPhone instead of asking to turn. The choice and the museum go two to a row, the puzzle board spans the screen over its tray, the guess stacks its names as rows beside their pictures, and BUILD ANOTHER and MUSEUM each fit one line from 320 wide in English and Russian. On a short phone the guess and the result scroll (LAB-498).

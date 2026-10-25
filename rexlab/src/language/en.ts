@@ -124,6 +124,7 @@ export const en: Texts = {
   treasureNew: "NEW!",
   brush: "BRUSH",
   wideBrush: "WIDE BRUSH",
+  brushMenu: "BRUSHES",
   treasureCards: "TREASURES",
   kindsFound: "KINDS FOUND",
   treasures: { shell: "SHELL", tooth: "TOOTH", amber: "AMBER", "egg-nest": "EGG NEST", "golden-fossil": "GOLDEN FOSSIL" },

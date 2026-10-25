@@ -1016,24 +1016,29 @@ body:has(.result) #version {
 [data-size="tall"] .wordmark,
 [data-size="tall"] .home-corner,
 [data-size="tall-narrow"] .wordmark,
-[data-size="tall-narrow"] .home-corner {
+[data-size="tall-narrow"] .home-corner,
+[data-size="wide-short"] .wordmark,
+[data-size="wide-short"] .home-corner {
   position: absolute;
 }
 
 /* The bands of rock lie against the page, and their holder takes no
    place, nor a gap, in its column. */
 [data-size="tall"] .home .strata,
-[data-size="tall-narrow"] .home .strata {
+[data-size="tall-narrow"] .home .strata,
+[data-size="wide-short"] .home .strata {
   display: contents;
 }
 
 [data-size="tall"] body:has(.home),
-[data-size="tall-narrow"] body:has(.home) {
+[data-size="tall-narrow"] body:has(.home),
+[data-size="wide-short"] body:has(.home) {
   position: relative;
 }
 
 [data-size="tall"] body:has(.home) #version,
-[data-size="tall-narrow"] body:has(.home) #version {
+[data-size="tall-narrow"] body:has(.home) #version,
+[data-size="wide-short"] body:has(.home) #version {
   position: absolute;
 }
 
@@ -1069,14 +1074,18 @@ body:has(.result) #version {
    spread three of their widths across, so they are no taller than that
    width allows. DIG's sand keeps its 4:3 at no more than the width the
    card leaves it, centred in the room it leaves: the card's padding and
-   the footer's margin keep its least room above and below it. */
+   the footer's margin keep its least room above and below it. On a
+   phone on its side the card is wider than tall, yet narrow enough that
+   the pairs' cards are held by its width too. */
 [data-size="tall"] .featured-card .pairs-tile-art,
-[data-size="tall-narrow"] .featured-card .pairs-tile-art {
+[data-size="tall-narrow"] .featured-card .pairs-tile-art,
+[data-size="wide-short"] .featured-card .pairs-tile-art {
   container-type: size;
 }
 
 [data-size="tall"] .featured-card .pairs-tile-card,
-[data-size="tall-narrow"] .featured-card .pairs-tile-card {
+[data-size="tall-narrow"] .featured-card .pairs-tile-card,
+[data-size="wide-short"] .featured-card .pairs-tile-card {
   height: min(84cqh, 40cqw);
 }
 
@@ -1223,6 +1232,114 @@ body:has(.result) #version {
     white-space: nowrap;
     line-height: normal;
   }
+}
+
+/* In a wide-short window, an iPhone on its side, the page keeps the
+   landscape row under one short bar: RexLab's mark, the greeting beside
+   it and the corner, all on the line of the museum's 60 pixels, with
+   RexLab's and the museum's words hidden as upright on a phone. The bar
+   stands on the page, so it scrolls away with the greeting. The large
+   card and the tiles take the height the bar leaves, with 20-pixel sides
+   past the notch, the tiles in two rows of 122 pixels or more: in a
+   window too short for that the page scrolls. The card and the tiles
+   share the row evenly, and the tiles' columns are a share of their
+   row's width, so one stands whole and the next peeks in, past the
+   page's side to the notch's, and never under 236 pixels, the least a
+   tile's name fits in. The parents' menus open under the bar,
+   and one taller than a short window leaves scrolls within it. */
+[data-size="wide-short"] .home {
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(20px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  gap: 12px;
+}
+
+[data-size="wide-short"] .wordmark {
+  top: calc(8px + env(safe-area-inset-top));
+  left: calc(20px + var(--screen-left));
+  height: 60px;
+}
+
+[data-size="wide-short"] .home-corner {
+  top: calc(8px + env(safe-area-inset-top));
+  right: calc(20px + var(--screen-right));
+}
+
+[data-size="wide-short"] .home-museum {
+  padding: 0;
+  justify-content: center;
+}
+
+[data-size="wide-short"] .greeting {
+  padding-left: 50px;
+  font-size: 24px;
+  line-height: 60px;
+}
+
+[data-size="wide-short"] .games {
+  height: auto;
+  flex: 1 0 260px;
+  gap: 16px;
+}
+
+[data-size="wide-short"] .featured-card,
+[data-size="wide-short"] .games-tiles {
+  flex: 1 1 0;
+}
+
+[data-size="wide-short"] .featured-card-footer {
+  padding: 14px 16px 16px;
+  gap: 12px;
+}
+
+[data-size="wide-short"] .featured-card-symbol {
+  width: 48px;
+  height: 48px;
+}
+
+[data-size="wide-short"] .featured-card-title {
+  font-size: 24px;
+}
+
+[data-size="wide-short"] .featured-card-badge {
+  top: 14px;
+  right: 14px;
+  padding: 8px 14px;
+  font-size: 22px;
+}
+
+[data-size="wide-short"] .games-tiles {
+  margin-right: -20px;
+  gap: 16px;
+  grid-auto-columns: max(236px, calc((100% - 16px) / 1.25));
+}
+
+[data-size="wide-short"] .more-coming {
+  padding: 16px 12px;
+}
+
+[data-size="wide-short"] .catalogue-tile-title {
+  white-space: normal;
+  line-height: 1.15;
+}
+
+[data-size="wide-short"] .parent-menu-list {
+  max-height: calc(100dvh - 84px);
+  overflow-y: auto;
+  overscroll-behavior: none;
+}
+
+[data-size="wide-short"] .parent-menu-list > * {
+  flex-shrink: 0;
+}
+
+/* The version stands under the tiles, in the page's bottom side, and
+   scrolls with the page. */
+[data-size="wide-short"] body:has(.home) #version {
+  right: calc(20px + var(--screen-right));
+  bottom: calc(3px + env(safe-area-inset-bottom));
 }
 
 /* The row stays where the page put it until the motion to the other
@@ -6336,8 +6453,10 @@ html[data-size="tall"] .pairs-bar .home-button {
   justify-content: center;
 }
 
-/* A name a tall-narrow window shows to screen readers alone, kept in the page. */
-html[data-size="tall-narrow"] .narrow-hidden {
+/* A name a tall-narrow window shows to screen readers alone, kept in the
+   page, as home's are in a wide-short one. */
+html[data-size="tall-narrow"] .narrow-hidden,
+html[data-size="wide-short"] .home .narrow-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -7103,6 +7222,61 @@ html[data-size="tall-narrow"] .pairs-offer-answers button {
   background: #1d2742;
 }
 
+/* The phone's brush menu, shown only there: its button DIG's amber brush
+   with the picked brush's dot, half the picker's; its
+   menu hangs from the button's left edge. */
+.dig-brush-menu {
+  display: none;
+}
+
+.dig-brush-menu .parent-menu-button {
+  height: 48px;
+  padding: 0 12px;
+  border-radius: 14px;
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.dig-brush-menu .parent-menu-button[aria-expanded="true"] {
+  background: #e39b2d;
+  color: #1d2742;
+}
+
+.dig-brush-menu .parent-menu-face {
+  gap: 4px;
+}
+
+.dig-brush-menu .parent-menu-face .dig-brush-dot {
+  width: 7px;
+  height: 7px;
+  background: #1d2742;
+}
+
+.dig-brush-menu .parent-menu-face .dig-brush-dot[data-wide] {
+  width: 14px;
+  height: 14px;
+}
+
+/* The menu stands over its backdrop, which takes every tap but its own. */
+.dig-brush-menu .parent-menu-list {
+  z-index: 2;
+  right: auto;
+  left: 0;
+  transform-origin: top left;
+}
+
+.dig-brush-menu .parent-menu-choice {
+  font-weight: 700;
+}
+
+.dig-brush-slot {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+}
+
 /* The FIELD GUIDE's button beside DUG UP: the book and the count of
    treasures found, ringed in amber once one lands, with NEW! above it
    for the first of a kind. */
@@ -7455,7 +7629,12 @@ html[data-size="tall-narrow"] .pairs-offer-answers button {
 }
 
 /* A dinosaur's name, on one line, shrinks from 14px only as much as a
-   long name needs to fit the card. */
+   long name needs to fit the card; only a phone breaks it. */
+.dig-choice-hyphen,
+.dig-choice-break {
+  display: none;
+}
+
 .dig-choice-name {
   display: block;
   flex: 0 0 auto;
@@ -8288,34 +8467,47 @@ html[data-size="tall-narrow"] .dig-mark {
   height: 44px;
 }
 
-html[data-size="tall-narrow"] .dig-board-screen .dig-title-words {
-  font-size: min(28px, (100cqi - 52px) / (var(--letters) * 0.75));
+
+/* The board's bar is one row: HOME, the brush menu in the place of the
+   title's brush, the title and the FIELD GUIDE, each 48 tall. DUG UP's
+   count and the picker's pair of buttons leave it. */
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-picker,
+html[data-size="tall-narrow"] .dig-board-screen .dig-chip,
+html[data-size="tall-narrow"] .dig-board-screen .dig-mark {
+  display: none;
 }
 
-/* The board's bar takes two rows: HOME beside the title, then the brush
-   picker, the FIELD GUIDE and DUG UP across the width, each 52 tall. */
 html[data-size="tall-narrow"] .dig-board-screen .dig-bar {
-  flex-wrap: wrap;
-  justify-content: space-between;
+  column-gap: 4px;
 }
 
-html[data-size="tall-narrow"] .dig-board-screen .dig-title {
-  flex: 1 0 calc(100% - 56px);
+html[data-size="tall-narrow"] .dig-board-screen .home-button {
+  order: -2;
 }
 
-html[data-size="tall-narrow"] .dig-brush-picker {
-  height: 52px;
-  padding: 4px 3px;
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
+  padding: 0 8px;
 }
 
-html[data-size="tall-narrow"] .dig-brush-option {
-  width: 44px;
-  height: 44px;
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu {
+  position: relative;
+  z-index: 2;
+  order: -1;
+  flex-shrink: 0;
+  display: block;
+}
+
+/* The title takes two lines where it has two words or more, as large as
+   its longer line lets it, both lines inside the bar's 48. */
+html[data-size="tall-narrow"] .dig-board-screen .dig-title-words {
+  font-size: min(28px, 46px / (var(--lines) * 1.05), 100cqi / (var(--line-letters) * 0.75));
+  line-height: 1.05;
+  white-space: normal;
 }
 
 html[data-size="tall-narrow"] .dig-field-guide-button {
-  min-width: 52px;
-  height: 52px;
+  min-width: 48px;
+  height: 48px;
   padding: 0 6px;
   gap: 4px;
   font-size: 18px;
@@ -8327,50 +8519,53 @@ html[data-size="tall-narrow"] .dig-chip {
   font-size: 14px;
 }
 
-/* The question's names one over another, each a 52-pixel row of its
-   picture beside its name, which stays as large as the row allows; the
-   board takes what three or four rows leave. */
+/* The question's dinosaurs two to a row under the sand, each card a
+   little wider than tall, its picture over its name; three put the third
+   alone, centred, as wide as the others. The sand takes what the two
+   rows leave, the same from the round's start. */
 html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] {
-  gap: 16px;
+  gap: 12px;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks] .dig-board {
-  width: min(100cqw, (100cqh - 16px - 172px) * var(--frame-width) / var(--frame-height));
-}
-
-html[data-size="tall-narrow"] .dig-board-screen .dig-body[data-asks]:has(.dig-choice-slot:nth-child(4)) .dig-board {
-  width: min(100cqw, (100cqh - 16px - 232px) * var(--frame-width) / var(--frame-height));
+  width: min(100cqw, (100cqh - 12px - ((100cqw - 12px) * 0.9 + 12px)) * var(--frame-width) / var(--frame-height));
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-choice-cards {
   flex: 0 0 auto;
-  flex-direction: column;
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-choice-slot {
-  flex: 0 0 52px;
+  max-height: none;
+  aspect-ratio: 10 / 9;
+}
+
+html[data-size="tall-narrow"] .dig-board-screen .dig-choice-slot:nth-child(3):last-child {
+  grid-column: 1 / -1;
+  justify-self: center;
+  width: calc((100% - 12px) / 2);
 }
 
 html[data-size="tall-narrow"] .dig-choice-card {
-  padding: 4px 10px;
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-  border-radius: 16px;
+  padding: 8px 2px 10px;
+  border-radius: 18px;
 }
 
-html[data-size="tall-narrow"] .dig-choice-picture {
-  flex: 0 0 64px;
-  width: 64px;
-  height: 100%;
-}
-
+/* A name as large as its card's width lets it, at most 16: a long one on
+   two lines, broken before its root, sized by its longer line. */
 html[data-size="tall-narrow"] .dig-choice-name {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: min(20px, calc((100cqi - 72px) / (var(--letters) * 0.75)));
-  text-align: left;
+  font-size: min(16px, calc(100cqi / (var(--line-letters) * 0.75)));
+}
+
+html[data-size="tall-narrow"] .dig-choice-hyphen {
+  display: inline;
+}
+
+html[data-size="tall-narrow"] .dig-choice-break {
+  display: inline;
 }
 
 html[data-size="tall-narrow"] .dig-empty-card {
@@ -10437,6 +10632,12 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   color: #1d2742;
 }
 
+[data-theme="dark"] .dig-brush-menu .parent-menu-button,
+[data-theme="dark"] .dig-brush-menu .parent-menu-button[aria-expanded="true"] {
+  background: #f2b24b;
+  color: #1d2742;
+}
+
 [data-theme="dark"] .dig-treasure-name {
   background: #f2b24b;
 }
@@ -10456,6 +10657,10 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 }
 
 [data-theme="dark"] .dig-brush-option[aria-pressed="true"] .dig-brush-dot {
+  background: #181e2e;
+}
+
+[data-theme="dark"] .dig-brush-menu .parent-menu-face .dig-brush-dot {
   background: #181e2e;
 }
 

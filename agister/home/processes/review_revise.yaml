@@ -1,0 +1,39 @@
+schema: agister.process/v1alpha1
+prompt: code-review-revise
+instruction: >-
+  Revise the review you wrote earlier in this session, answering the
+  critique given as input critique, following the prompt given as input
+  prompt. Read the code again where a challenge needs it.
+
+params:
+  candidate: {default: HEAD}
+  critique: {}
+inputs:
+  candidate_revision: {source: git.revision, rev: {from: params.candidate}}
+  critique: {source: param, name: critique}
+
+workspace:
+  access: read-only
+  revision: {from: inputs.candidate_revision}
+
+permissions:
+  require:
+    - repository.read
+    - repository.diff
+  allow:
+    - repository.read
+    - repository.diff
+    - repository.search
+    - repository.history.read
+    - process.execute
+    - host.read
+
+limits:
+  time: 20m
+  stale:
+    no_event: 10m
+    tool_command: 8m
+    repeated_tool_calls: 5
+
+output:
+  schema: review-result
