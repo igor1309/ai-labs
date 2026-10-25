@@ -42,8 +42,19 @@ its outputs are `state`, `stopped` and `passes`. Conditions are
 inputs, state and earlier outputs; params are text and never equal a
 number. A step in a repeat is named `<step>/<pass>` in its record and
 progress; `events.jsonl` keeps each branch taken, each pass's state and
-why a repeat stopped. A branch or repeat inside a parallel, and a
-workflow inside a workflow, are refused by check and run alike.
+why a repeat stopped. A branch or repeat inside a parallel is refused by
+check and run alike.
+
+A step may name a `workflow` instead of a process: it runs as a child
+run, its params bound from the step's inputs, its steps named
+`<step>/<child step>`. Home's `code_review` runs its tests lens this way,
+as `tests_debate`: codex-sol-61 drafts the review, claude-opus critiques
+it, and a repeat of at most two passes has codex revise in the draft's
+own session and claude-opus critique again, until the critique says
+`converged`. At least one revision always runs; a first critique that
+converges gets the review back unchanged. Only the last review reaches
+the judge; the critiques stay in the run's record. A lens without a
+critic names its process, as `tests_review`, not a debate.
 
 Run a named workflow with `agister run <workflow> --param <name>=<value>`;
 run one process with `agister run --process <name> --agent <name>` and its
