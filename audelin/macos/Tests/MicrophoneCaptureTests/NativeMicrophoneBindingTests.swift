@@ -3,6 +3,11 @@ import Testing
 @testable import MicrophoneCapture
 
 private let microphoneSkipReason: String? = {
+    // A hosted CI runner reports a default input with access granted, yet
+    // none of its captures ever ended (PR 1262); these run in the local test step.
+    guard ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] == nil else {
+        return "A hosted CI runner has no microphone that delivers audio."
+    }
     guard (try? NativeMicrophoneBinding.readDefaultInput()) != nil else {
         return "The Mac has no accessible default input device."
     }
@@ -41,14 +46,27 @@ struct NativeMicrophoneBindingTests {
 
     private func hearAndStop(_ capture: MicrophoneCapture) async throws {
 
-        var heard = false
-        for try await piece in capture.audio {
-            #expect(piece.sampleRate.isFinite && piece.sampleRate > 0)
-            #expect(!piece.samples.isEmpty)
-            #expect(piece.samples.allSatisfy { $0.isFinite })
-            heard = true
-            capture.stop()
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask {
+                var heard = false
+                for try await piece in capture.audio {
+                    #expect(piece.sampleRate.isFinite && piece.sampleRate > 0)
+                    #expect(!piece.samples.isEmpty)
+                    #expect(piece.samples.allSatisfy { $0.isFinite })
+                    heard = true
+                    capture.stop()
+                }
+                #expect(heard)
+            }
+            group.addTask {
+                try await Task.sleep(for: .seconds(30))
+                capture.stop()
+                throw MicrophoneSilent()
+            }
+            defer { group.cancelAll() }
+            try await group.next()
         }
-        #expect(heard)
     }
 }
+
+private struct MicrophoneSilent: Error {}
