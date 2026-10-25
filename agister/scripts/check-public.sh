@@ -38,3 +38,22 @@ echo "== agister go vet ./..."
 go vet ./...
 echo "== agister go test -race -count=1 -timeout 1m ./... (e2e skipped)"
 env -u AGISTER_E2E go test -race -count=1 -timeout 1m ./...
+
+# The README's first run must work as written: its second sh block, run
+# in a fresh git repository on a copy of home, prints Hello, world with
+# no warnings.
+echo "== README first run on bash"
+first_run=$(mktemp -d)
+trap 'rm -rf "$first_run"' EXIT
+go build -o "$first_run/agister" ./cmd/agister
+cp -R home "$first_run/home"
+awk '/^```sh$/ { n++; on = (n == 2); next } /^```$/ { on = 0 } on' README.md > "$first_run/first-run.sh"
+cd "$first_run"
+git init -q
+AGISTER_HOME="$first_run/home" ./agister check > /dev/null
+AGISTER_HOME="$first_run/home" sh first-run.sh > result.json 2> progress.txt
+if ! grep -q '"head": "Hello, world\\n"' result.json || ! grep -q '"warnings": \[\]' result.json; then
+  echo "the README's first run did not print Hello, world without warnings:"
+  cat first-run.sh result.json progress.txt
+  exit 1
+fi
