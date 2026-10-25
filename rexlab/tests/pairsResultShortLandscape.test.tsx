@@ -44,6 +44,10 @@ const EMS: Record<string, number> = {
   "WELL DONE!": 6.52, "МОЛОДЕЦ!": 6.12
 };
 
+// Counts of tries at weight 700, the wider of Lexend and the system face,
+// rounded up.
+const DIGIT_EMS: Record<string, number> = { "9": 0.66, "99": 1.31, "100": 1.92, "999": 1.96 };
+
 const part = (selector: string, root: ParentNode = document) => {
   const found = root.querySelector<HTMLElement>(selector);
   if (!found) throw new Error(`No ${selector}`);
@@ -115,7 +119,7 @@ describe("find the pair's result in a wide-short window", () => {
 
     // The dinosaurs: three across, two for four, in the width the column
     // leaves, their rows sharing the height, each row at most its card's
-    // art at 4:3 over a 26-pixel name, and at most 162.
+    // art at 4:3 over its name, and at most 162.
     const found = at(".pairs-found");
     const columns = count === 4 ? 2 : 3;
     const rows = Math.ceil(count / 3);
@@ -124,13 +128,14 @@ describe("find the pair's result in a wide-short window", () => {
     const left = width - 40 - insets.left - insets.right - 300 - 16;
     const card = (left - (columns - 1) * 8) / columns;
     const nameStyle = at(".pairs-found-name");
-    const nameHeight = Math.min(14, (card - 12) / 13) * 1.25 + nameStyle.px("padding-top") + nameStyle.px("padding-bottom");
-    expect(nameHeight).toBeLessThanOrEqual(26);
-    const most = pixelsIn(found.value("max-height").replaceAll("var(--found-rows)", `${rows}`).replaceAll("var(--found-columns)", `${columns}`), width - insets.left - insets.right - 40);
+    expect([nameStyle.value("font-size"), nameStyle.value("line-height"), nameStyle.px("padding-top"), nameStyle.px("padding-bottom")]).toEqual(["min(18px, 0.07692307692307693 * (100cqi - 16px))", "1.25", 8, 8]);
+    const nameHeight = Math.min(18, (card - 16) / 13) * 1.25 + 16;
+    const cardValue = found.value("--found-card").replaceAll("var(--found-columns)", `${columns}`);
+    const most = pixelsIn(found.value("max-height").replaceAll("var(--found-rows)", `${rows}`).replaceAll("var(--found-card)", cardValue), width - insets.left - insets.right - 40);
     const row = (Math.min(room, most) - (rows - 1) * 8) / rows;
-    expect(most).toBeCloseTo(rows * Math.min(162, card * 0.75 + 26) + (rows - 1) * 8, 6);
+    expect(most).toBeCloseTo(rows * Math.min(162, card * 0.75 + nameHeight) + (rows - 1) * 8, 6);
     expect(row - nameHeight).toBeGreaterThan(30);
-    expect((row - 26) / card).toBeLessThanOrEqual(0.75 + 1e-9);
+    expect((row - nameHeight) / card).toBeLessThanOrEqual(0.75 + 1e-9);
   });
 
   it.each(["en", "ru"] as const)("fits PLAY AGAIN across the column, BACK and HOME side by side and WELL DONE! beside the tries, in %s", async (language) => {
@@ -143,11 +148,13 @@ describe("find the pair's result in a wide-short window", () => {
     const text = TEXTS[language];
     expect(width(text.playAgain)).toBeLessThanOrEqual(300);
     expect(width(text.back) + width(text.home) + at(".pairs-result .result-actions").columnGap()).toBeLessThanOrEqual(300);
-    // The tries take at most two digits beside the hand.
+    // The tries, up to 999, beside the hand and WELL DONE!.
     const tries = at(".pairs-result-tries");
-    const triesWidth = 1.31 * at(".pairs-result-tries-value").px("font-size") + tries.columnGap() + at(".pairs-result-hand").px("width");
     const title = at(".pairs-result .result-title");
-    expect(triesWidth + at(".pairs-result .result-content").columnGap() + EMS[text.wellDone]! * title.px("font-size")).toBeLessThanOrEqual(300);
+    for (const count of ["9", "99", "100", "999"]) {
+      const triesWidth = DIGIT_EMS[count]! * at(".pairs-result-tries-value").px("font-size") + tries.columnGap() + at(".pairs-result-hand").px("width");
+      expect(triesWidth + at(".pairs-result .result-content").columnGap() + EMS[text.wellDone]! * title.px("font-size"), count).toBeLessThanOrEqual(300);
+    }
   });
 
   it("shows NEW as its sparkle alone, the word kept for screen readers", async () => {

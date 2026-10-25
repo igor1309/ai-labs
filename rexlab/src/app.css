@@ -6411,7 +6411,7 @@ html[data-size="tall-narrow"] .level-switch-level {
 /* In a wide-short window, an iPhone on its side, a result with the level
    switch keeps the dinosaur beside its rewards, 12 under the top and 20
    past each side's inset, the dinosaur as tall as the height allows. The
-   score stands beside "WELL DONE!" over the stars, the switch shows each
+   score stands beside "WELL DONE!" over the stars, the hand 36 so up to 999 fits beside the title, the switch shows each
    level's picture alone, its name kept for screen readers, and PLAY AGAIN
    stands beside HOME, each 48 tall, so the column fits the height. */
 html[data-size="wide-short"] .result-with-levels {
@@ -7333,13 +7333,14 @@ html[data-size="wide-short"] .pairs-result {
 }
 
 /* Every board's rows share the height, each at most a card's art at 4:3
-   over its name, 26 tall, and at most 162, so a small board keeps its
-   cards' shape and a large one fits. The card's width is the room the
-   column leaves, over the columns. */
+   over its name, in the name's own type and padding, and at most 162, so
+   a small board keeps its cards' shape and a large one fits. The card's
+   width is the room the column leaves, over the columns. */
 html[data-size="wide-short"] .pairs-result .pairs-found {
   --found-columns: 3;
+  --found-card: calc((100cqw - 316px - (var(--found-columns) - 1) * 8px) / var(--found-columns));
   height: 100%;
-  max-height: calc(var(--found-rows) * min(162px, (100cqw - 316px - (var(--found-columns) - 1) * 8px) / var(--found-columns) * 0.75 + 26px) + (var(--found-rows) - 1) * 8px);
+  max-height: calc(var(--found-rows) * min(162px, var(--found-card) * 0.75 + min(18px, (var(--found-card) - 16px) / 13) * 1.25 + 16px) + (var(--found-rows) - 1) * 8px);
   grid-template-rows: repeat(var(--found-rows), minmax(0, 1fr));
   gap: 8px;
 }
@@ -7360,11 +7361,6 @@ html[data-size="wide-short"] .pairs-found-card {
 
 html[data-size="wide-short"] .pairs-result .pairs-found-art {
   padding: 6px;
-}
-
-html[data-size="wide-short"] .pairs-found-name {
-  padding: 4px 6px;
-  font-size: min(14px, calc((100cqi - 12px) / 13));
 }
 
 html[data-size="wide-short"] .pairs-new-badge {
@@ -7408,7 +7404,7 @@ html[data-size="wide-short"] .pairs-next-board {
 }
 
 html[data-size="wide-short"] .pairs-next-card {
-  height: 10px;
+  height: 9px;
   border-radius: 2px;
 }
 
@@ -7420,12 +7416,12 @@ html[data-size="wide-short"] .pairs-result-tries {
 }
 
 html[data-size="wide-short"] .pairs-result-tries-value {
-  font-size: 52px;
+  font-size: 44px;
 }
 
 html[data-size="wide-short"] .pairs-result-hand {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
 }
 
 html[data-size="wide-short"] .pairs-result .result-title {
