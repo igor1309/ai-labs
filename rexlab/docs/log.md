@@ -2,6 +2,7 @@
 
 ## 2026-10-25
 
+- Find the pair's welcome fits an iPhone on its side: the cards beside the title, the level switch and PLAY, nothing cut off (LAB-581).
 - Find the pair's board fits an iPhone on its side: a short bar, and every board's cards side by side without scrolling (LAB-580).
 - The compare quiz's result, and the sorting game's, fits an iPhone on its side instead of clipping: the dinosaur stands beside the score, the level switch and PLAY AGAIN beside HOME (LAB-576).
 - A compare quiz question fits an iPhone on its side instead of clipping: the two dinosaurs stand whole side by side under one short bar, NEXT beside the prompt (LAB-575).
