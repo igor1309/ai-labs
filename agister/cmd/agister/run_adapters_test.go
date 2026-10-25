@@ -220,7 +220,7 @@ func TestTheBoundaryIsResolvedByCoreInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := workflow.Boundary{Params: map[string]string{"base": "main", "goal": "x"}, Inputs: map[string]workflow.Input{"g": {Value: "x", Identity: "digest"}, "b": {Value: "main", Identity: "c0"}}}
+	want := workflow.Boundary{Params: map[string]string{"base": "main", "goal": "x"}, Inputs: map[string]string{"g": "x", "b": "main"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("boundary %+v, want %+v", got, want)
 	}

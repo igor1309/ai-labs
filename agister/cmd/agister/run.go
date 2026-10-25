@@ -295,11 +295,12 @@ func (r *runs) runner(built plan, id, launch, dir string, record *runRecord, reu
 	}
 	steps.run = id
 	steps.reuse = reusable{calls: reused.Calls, root: dir, facts: r.holding.facts}
-	attachWorkflowResolvers(&built.workflow, built.boundaries, resolver)
+	record.childInputs = attachWorkflowResolvers(&built.workflow, built.boundaries, resolver)
 	return workflow.New(boundary{inputs: resolver, declared: built.boundary, records: record}, steps, bothEvents{r.events, record}, r.host.clock)
 }
 
-func attachWorkflowResolvers(w *workflow.Workflow, boundaries map[string]inputs.Declared, resolver declaredResolver) {
+func attachWorkflowResolvers(w *workflow.Workflow, boundaries map[string]inputs.Declared, resolver declaredResolver) map[string]func() []runstore.Input {
+	captured := map[string]func() []runstore.Input{}
 	var attachItems func([]workflow.Step, string)
 	attachItems = func(items []workflow.Step, prefix string) {
 		for i := range items {
@@ -307,7 +308,9 @@ func attachWorkflowResolvers(w *workflow.Workflow, boundaries map[string]inputs.
 			path := prefix + step.Name
 			if step.Workflow != nil {
 				if declared, ok := boundaries[path]; ok {
-					step.Resolver = boundary{inputs: resolver, declared: declared}
+					observer := &childInputCapture{inputs: resolver}
+					step.Resolver = boundary{inputs: observer, declared: declared}
+					captured[path] = observer.recorded
 				}
 				attachItems(step.Workflow.Steps, path+"/")
 			}
@@ -319,6 +322,7 @@ func attachWorkflowResolvers(w *workflow.Workflow, boundaries map[string]inputs.
 		}
 	}
 	attachItems(w.Steps, "")
+	return captured
 }
 
 // cancelled is the host's context, ended once a signal arrives; stop ends
@@ -1395,11 +1399,11 @@ func givenInputs(declared []inputs.Input, resolved map[string]inputs.Fixed) []gi
 	return given
 }
 
-// workflowInputs carries each resolved value and identity into the workflow.
-func workflowInputs(fixed map[string]inputs.Fixed) map[string]workflow.Input {
-	mapped := map[string]workflow.Input{}
+// workflowInputs is each resolved input value, by its name.
+func workflowInputs(fixed map[string]inputs.Fixed) map[string]string {
+	mapped := map[string]string{}
 	for name, f := range fixed {
-		mapped[name] = workflow.Input{Value: f.Value, Identity: f.Identity}
+		mapped[name] = f.Value
 	}
 	return mapped
 }

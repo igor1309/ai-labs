@@ -109,15 +109,10 @@ const (
 )
 
 // Boundary is the workflow's params, a param not given taking its default,
-// and its inputs' values and identities, each by its name.
+// and its inputs' values, each by its name.
 type Boundary struct {
 	Params map[string]string
-	Inputs map[string]Input
-}
-
-// Input is a resolved input's value and the identity fixed by its resolver.
-type Input struct {
-	Value, Identity string
+	Inputs map[string]string
 }
 
 // Resolver resolves the workflow's boundary over the params given: what
@@ -193,7 +188,7 @@ type Events interface {
 	Branch(step, arm string, conditions []ConditionRead)
 	Pass(step string, pass int, state map[string]any)
 	Stopped(step, why string, passes int)
-	ChildStarted(step, workflow string, params map[string]string, inputs map[string]Input)
+	ChildStarted(step, workflow string, params map[string]string, inputs map[string]string)
 	ChildEnded(step string, ended ChildEnd)
 }
 
@@ -478,9 +473,7 @@ func (r reader) reference(ref Reference) (any, bool) {
 	case Params:
 		value, ok = r.boundary.Params[ref.Name]
 	case Inputs:
-		var input Input
-		input, ok = r.boundary.Inputs[ref.Name]
-		value = input.Value
+		value, ok = r.boundary.Inputs[ref.Name]
 	case State:
 		value, ok = r.state[ref.Name]
 	case QueryItem:

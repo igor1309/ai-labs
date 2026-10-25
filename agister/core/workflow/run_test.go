@@ -144,7 +144,7 @@ func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 	s.tell("%s ended %s %q in %v", step, ended.Status, ended.Class, ended.Duration)
 }
 
-func (s *eventsSpy) ChildStarted(step, name string, _ map[string]string, _ map[string]workflow.Input) {
+func (s *eventsSpy) ChildStarted(step, name string, _ map[string]string, _ map[string]string) {
 	s.tell("%s child %s started", step, name)
 }
 
@@ -307,7 +307,7 @@ func TestTheWorkflowsInputsAreResolvedOnceAtItsBoundary(t *testing.T) {
 	t.Parallel()
 	f := newFixture(t, workflow.Boundary{
 		Params: map[string]string{"g": "x"},
-		Inputs: map[string]workflow.Input{"goal": {Value: "x"}},
+		Inputs: map[string]string{"goal": "x"},
 	}, map[string]func() workflow.Result{"a": completes(0)})
 	w := workflow.Workflow{
 		Steps: []workflow.Step{{Name: "a", Bindings: []workflow.Binding{bind("t", input("goal"))}}},
@@ -383,7 +383,7 @@ func TestTheRunsOutputIsItsOutputMapping(t *testing.T) {
 			t.Parallel()
 			f := newFixture(t, workflow.Boundary{
 				Params: map[string]string{"p": "x"},
-				Inputs: map[string]workflow.Input{"i": {Value: "x"}},
+				Inputs: map[string]string{"i": "x"},
 			}, map[string]func() workflow.Result{"a": completes(7), "b": completes(0)})
 			got := f.runner.Run(context.Background(), workflow.Workflow{
 				Steps:   []workflow.Step{{Name: "a"}, {Name: "b"}},

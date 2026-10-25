@@ -12,6 +12,7 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/cli"
 	"github.com/igor1309/ai-labs/agister/core/admit"
+	"github.com/igor1309/ai-labs/agister/core/inputs"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runstore"
 )
@@ -110,6 +111,7 @@ type runRecord struct {
 	warnings           []string
 	definitionBytes    map[string][]byte
 	definitionAttempts map[string]bool
+	childInputs        map[string]func() []runstore.Input
 }
 
 // newRunRecord is the record of the run id, started at started, of request,
@@ -300,10 +302,23 @@ func (r *runRecord) Ended(step string, ended workflow.Ended) {
 		Duration: ended.Duration})
 }
 
-func (r *runRecord) ChildStarted(step, workflowName string, params map[string]string, inputs map[string]workflow.Input) {
+func (r *runRecord) ChildStarted(step, workflowName string, params map[string]string, _ map[string]string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	keptInputs := childInputs(inputs)
+	keptInputs := []runstore.Input{}
+	// Execution appends each enclosing repeat's pass to the declared path.
+	// The resolver observer belongs to that declaration across its passes.
+	for declared := step; ; {
+		if captured := r.childInputs[declared]; captured != nil {
+			keptInputs = captured()
+			break
+		}
+		withoutPass := passName.ReplaceAllString(declared, "")
+		if withoutPass == declared {
+			break
+		}
+		declared = withoutPass
+	}
 	r.record.Children = append(r.record.Children, runstore.Child{
 		ID: callID(r.record.ID, step), Workflow: workflowName, Parent: r.record.ID,
 		Params: maps.Clone(params), Inputs: keptInputs, Status: "lost",
@@ -372,7 +387,7 @@ func recordInputs(given []givenInput) []runstore.Input {
 	return kept
 }
 
-func childInputs(given map[string]workflow.Input) []runstore.Input {
+func childInputs(given map[string]inputs.Fixed) []runstore.Input {
 	names := slices.Sorted(maps.Keys(given))
 	kept := make([]runstore.Input, 0, len(names))
 	for _, name := range names {
@@ -447,7 +462,7 @@ func (b bothEvents) Ended(step string, ended workflow.Ended) {
 	}
 }
 
-func (b bothEvents) ChildStarted(step, workflowName string, params map[string]string, inputs map[string]workflow.Input) {
+func (b bothEvents) ChildStarted(step, workflowName string, params map[string]string, inputs map[string]string) {
 	for _, events := range b {
 		events.ChildStarted(step, workflowName, params, inputs)
 	}

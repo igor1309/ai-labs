@@ -95,7 +95,7 @@ func TestParamsAndInputsAreText(t *testing.T) {
 		for _, literal := range []any{"0", 0} {
 			t.Run(fmt.Sprintf("%d/%T", value.Reads.Of, literal), func(t *testing.T) {
 				t.Parallel()
-				assertCondition(t, workflow.Boundary{Params: map[string]string{"p": "0"}, Inputs: map[string]workflow.Input{"p": {Value: "0"}}}, nil, nil, compare(value, literal), literal == "0")
+				assertCondition(t, workflow.Boundary{Params: map[string]string{"p": "0"}, Inputs: map[string]string{"p": "0"}}, nil, nil, compare(value, literal), literal == "0")
 			})
 		}
 	}

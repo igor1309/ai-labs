@@ -15,11 +15,11 @@ type childRunEvents struct {
 	*eventsSpy
 	name, definition string
 	params           map[string]string
-	inputs           map[string]workflow.Input
+	inputs           map[string]string
 	end              workflow.ChildEnd
 }
 
-func (e *childRunEvents) ChildStarted(step, name string, params map[string]string, inputs map[string]workflow.Input) {
+func (e *childRunEvents) ChildStarted(step, name string, params map[string]string, inputs map[string]string) {
 	e.tell("%s child started", step)
 	e.name, e.definition = step, name
 	e.params, e.inputs = maps.Clone(params), maps.Clone(inputs)
@@ -37,7 +37,7 @@ func childRunFixture(t *testing.T) (*itemFixture, *childRunEvents) {
 	f.lens.Outputs = []workflow.Binding{bind("output", outputs("draft", ""))}
 	f.w.Steps = f.w.Steps[:1]
 	f.child.resolve = func(given map[string]string) workflow.Boundary {
-		return workflow.Boundary{Params: maps.Clone(given), Inputs: map[string]workflow.Input{}}
+		return workflow.Boundary{Params: maps.Clone(given), Inputs: map[string]string{}}
 	}
 	events := &childRunEvents{eventsSpy: f.events}
 	runner, err := workflow.New(f.resolver, f.caller, events, f.clock)
@@ -57,7 +57,7 @@ func TestACompletedItemIsToldAsStartedThenCompleted(t *testing.T) {
 	if !slices.Equal(events.told, want) {
 		t.Fatalf("events %q, want %q", events.told, want)
 	}
-	if events.name != "tests" || events.definition != "lens" || !reflect.DeepEqual(events.params, map[string]string{"goal": "ship"}) || !reflect.DeepEqual(events.inputs, map[string]workflow.Input{}) {
+	if events.name != "tests" || events.definition != "lens" || !reflect.DeepEqual(events.params, map[string]string{"goal": "ship"}) || !reflect.DeepEqual(events.inputs, map[string]string{}) {
 		t.Fatalf("start %+v", events)
 	}
 	if !reflect.DeepEqual(events.end, workflow.ChildEnd{Status: workflow.Completed, Output: map[string]any{"verdict": "approve"}}) {

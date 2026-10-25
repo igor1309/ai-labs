@@ -190,7 +190,7 @@ func TestChildRecordsKeepTheirOwnResultsWhenTheyEndInAnotherOrder(t *testing.T) 
 		}
 	}
 	for _, child := range children {
-		record.ChildStarted(child.step, "lens", map[string]string{}, map[string]workflow.Input{})
+		record.ChildStarted(child.step, "lens", map[string]string{}, map[string]string{})
 		want = append(want, map[string]any{
 			"id": recordID + "/" + child.step, "parent": recordID, "workflow": "lens",
 			"params": map[string]any{}, "inputs": []any{}, "status": "lost", "class": nil, "output": nil,

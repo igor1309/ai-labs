@@ -104,7 +104,7 @@ func newItemFixture(t *testing.T) *itemFixture {
 		if _, ok := params["depth"]; !ok {
 			params["depth"] = "2"
 		}
-		return workflow.Boundary{Params: params, Inputs: map[string]workflow.Input{}}
+		return workflow.Boundary{Params: params, Inputs: map[string]string{}}
 	}}
 	lens := &workflow.Workflow{Steps: []workflow.Step{
 		{Name: "draft", Bindings: []workflow.Binding{bind("g", param("goal"))}},
@@ -182,7 +182,7 @@ func TestTheItemsInputsResolveOverTheParamsItBound(t *testing.T) {
 		if len(f.caller.params) != 0 {
 			t.Error("child inputs resolved after a call")
 		}
-		return workflow.Boundary{Params: map[string]string{"goal": given["goal"], "depth": "2"}, Inputs: map[string]workflow.Input{"rev": {Value: "rev-of-" + given["goal"]}}}
+		return workflow.Boundary{Params: map[string]string{"goal": given["goal"], "depth": "2"}, Inputs: map[string]string{"rev": "rev-of-" + given["goal"]}}
 	}
 	f.lens.Steps[0].Bindings = []workflow.Binding{bind("g", input("rev"))}
 	f.completed(t)

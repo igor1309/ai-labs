@@ -167,7 +167,7 @@ func (e execution) itemAt(ctx context.Context, item Step, read reader, prefix, s
 		}
 		boundary, err := item.Resolver.Resolve(ctx, params)
 		if err != nil {
-			boundary = Boundary{Params: params, Inputs: map[string]Input{}}
+			boundary = Boundary{Params: params, Inputs: map[string]string{}}
 		}
 		e.runner.events.ChildStarted(name, item.WorkflowName, maps.Clone(boundary.Params), maps.Clone(boundary.Inputs))
 		inner := reader{boundary: boundary, outputs: map[string]any{}, sessions: map[string]string{}}
