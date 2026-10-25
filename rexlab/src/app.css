@@ -6851,6 +6851,90 @@ html[data-size="tall-narrow"] .pairs-bar-chip svg {
   height: 20px;
 }
 
+/* In a wide-short window, an iPhone on its side, the board keeps its
+   rows and columns as dealt under a 48-pixel bar, 8 under the top, 12
+   over the bottom and 20 past each side's inset. The cards stand 8 apart
+   at 3:2, wider than tall like the pictures, as large as the room under
+   the bar lets the whole board be; even the fullest board's four rows
+   keep a card over 44 tall. BACK and HOME are 48 squares of their
+   symbols, the title in 24-pixel type, and a found card's name is left
+   to its label, as on an upright phone. */
+html[data-size="wide-short"] .pairs-board-screen {
+  padding:
+    calc(8px + env(safe-area-inset-top))
+    calc(20px + var(--screen-right))
+    calc(12px + env(safe-area-inset-bottom))
+    calc(20px + var(--screen-left));
+  row-gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-board-screen .pairs-bar {
+  height: 48px;
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .pairs-bar .home-button {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  justify-content: center;
+}
+
+html[data-size="wide-short"] .pairs-bar-title {
+  gap: 10px;
+  font-size: 24px;
+}
+
+html[data-size="wide-short"] .pairs-bar-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+html[data-size="wide-short"] .pairs-bar-chip {
+  height: 40px;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 20px;
+  font-size: 20px;
+}
+
+html[data-size="wide-short"] .pairs-bar-chip svg {
+  width: 20px;
+  height: 20px;
+}
+
+html[data-size="wide-short"] .pair-board {
+  width: min(100cqw, 100cqh * var(--columns) * 3 / (var(--rows) * 2));
+  aspect-ratio: calc(var(--columns) * 3) / calc(var(--rows) * 2);
+  grid-template-columns: repeat(var(--columns), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+  row-gap: 8px;
+  column-gap: 8px;
+}
+
+html[data-size="wide-short"] .pair-card {
+  border-radius: 14px;
+  box-shadow: 0 4px 12px #1d274224;
+}
+
+html[data-size="wide-short"] .pair-card-back {
+  padding: 5px;
+}
+
+html[data-size="wide-short"] .pair-card-back-frame {
+  border-radius: 10px;
+}
+
+html[data-size="wide-short"] .pair-card-art {
+  padding: 6px;
+}
+
+html[data-size="wide-short"] .pair-card-name[data-caption] {
+  display: none;
+}
+
 /* Upright, the bar keeps one row at the narrowest width: BACK and HOME
    show their symbols alone, each 56 a side, and the title its mark alone. */
 html[data-size="tall"] .pairs-bar .home-button {
@@ -6876,7 +6960,8 @@ html[data-size="wide-short"] .result-with-levels .narrow-hidden {
 }
 
 html[data-size="tall"] .upright-hidden,
-html[data-size="tall-narrow"] .upright-hidden {
+html[data-size="tall-narrow"] .upright-hidden,
+html[data-size="wide-short"] .pairs-bar .home-button .upright-hidden {
   position: absolute;
   width: 1px;
   height: 1px;
