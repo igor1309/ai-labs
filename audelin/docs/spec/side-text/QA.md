@@ -36,39 +36,39 @@ once, the last three marked written later. Evidence: `SideTextTests.switchingOnF
 ## S-5 Its text ends with its audio
 
 Words given, then the audio ends: every word and the finish-only word come
-back settled, and side text reads as ended. Evidence: Missing.
+back settled, and side text reads as ended. Evidence: `SideTextTests.audioEndingFinishesEveryWordAndWaitsForLiveTextToStop()`.
 
 ## S-6 Audio ending while filling in finishes after it
 
 The audio ends while fill in is held; on release its words and the
-finish-only word come back settled, then side text reads as ended. Evidence: Missing.
+finish-only word come back settled, then side text reads as ended. Evidence: `SideTextTests.audioEndingWaitsForHeldFillInThenFinishesAndStopsLiveText()`.
 
 ## S-7 Audio ending while off keeps the text so far
 
 Two words come back, live text is switched off, more are given, the audio
-ends: side text reads as ended with the two words only. Evidence: Missing.
+ends: side text reads as ended with the two words only. Evidence: `SideTextTests.audioEndingWhileOffKeepsOnlyVisibleWordsAndStopsLiveText()`.
 
 ## S-8 Stopping reads the audio to its end
 
 Words given while a delivery is held, stop asked, the audio ends; on
 release every word and the finish-only word come back settled before side
-text reads as ended. Evidence: Missing.
+text reads as ended. Evidence: `SideTextTests.stoppingDrainsHeldAudioAndWaitsForLiveTextToStop()`.
 
 ## S-9 Stopping while filling in abandons it
 
 Stop asked while fill in is held after one word: side text reads as ended
-with that word, fill in abandoned and still held. Evidence: Missing.
+with that word, fill in abandoned and still held. Evidence: `SideTextTests.stoppingWhileFillingInAbandonsItAndWaitsForLiveTextToStop()`.
 
 ## S-10 Abandoning ends it at once
 
 Words come back, the audio stays open, abandon asked: side text reads as
-ended with those words while the audio is still open. Evidence: Missing.
+ended with those words while the audio is still open. Evidence: `SideTextTests.abandoningWithOpenAudioKeepsVisibleWordsAndWaitsForLiveTextToStop()`.
 
 ## S-11 Abandoning while filling in ends it at once
 
 Abandon asked while fill in is held after one word and the audio is open:
 side text reads as ended with that word, fill in still held and the audio
-still open. Evidence: Missing.
+still open. Evidence: `SideTextTests.abandoningWhileFillingInKeepsVisibleWordsAndWaitsForLiveTextToStop()`.
 
 ## S-12 Live text failing while hearing ends it
 
@@ -90,4 +90,4 @@ word kept. Evidence: `SideTextTests.fillInFailureKeepsItsFirstWordAndWaitsForLiv
 Words given with a delivery held, two stops asked, the audio ends: on
 release both stops return together, every word and the finish-only word
 come back settled, side text reads as ended once, and the fake's stop was
-called once. Evidence: Missing.
+called once. Evidence: `SideTextTests.stoppingTwiceDrainsHeldAudioAndStopsLiveTextOnce()`.

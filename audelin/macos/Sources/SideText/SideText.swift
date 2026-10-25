@@ -10,10 +10,17 @@ public actor SideText {
     private let text: any LiveText
     private let makeFillIn: @Sendable () -> any FillingIn
     private let inputQueued: @Sendable () -> Void
+    private let audioEndReceived: @Sendable () -> Void
+    private let stopRequested: @Sendable () -> Void
     private var listener: Task<Void, Never>?
     private var operation: Task<Void, Never>?
     private var enabled = false
     private var ending = false
+    private var ended = false
+    private var stopping = false
+    private var sourceEnded = false
+    private var endWaiters: [CheckedContinuation<Void, Never>] = []
+    private var fills: [Int: any FillingIn] = [:]
     private var generation = 0
     private var heardThrough = 0.0
     private var sampleRate = 1.0
@@ -27,25 +34,32 @@ public actor SideText {
         fillIn: @escaping @Sendable () -> any FillingIn
     ) {
 
-        self.init(audio: audio, text: text, fillIn: fillIn, inputQueued: {})
+        self.init(
+            audio: audio, text: text, fillIn: fillIn,
+            inputQueued: {}, audioEndReceived: {}, stopRequested: {}
+        )
     }
 
     init(
         audio: any LiveAudio, text: any LiveText,
         fillIn: @escaping @Sendable () -> any FillingIn,
-        inputQueued: @escaping @Sendable () -> Void
+        inputQueued: @escaping @Sendable () -> Void,
+        audioEndReceived: @escaping @Sendable () -> Void,
+        stopRequested: @escaping @Sendable () -> Void
     ) {
 
         self.audio = audio
         self.text = text
         makeFillIn = fillIn
         self.inputQueued = inputQueued
+        self.audioEndReceived = audioEndReceived
+        self.stopRequested = stopRequested
         (updates, continuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
 
     public func start(enabled: Bool = true) {
 
-        guard listener == nil, !ending else { return }
+        guard listener == nil, !ending, !stopping else { return }
         listener = Task { [weak self, audio] in
             await audio.listen { [weak self] chunk in await self?.receive(chunk) }
             await self?.audioEnded()
@@ -55,9 +69,9 @@ public actor SideText {
 
     /// Freezes visible text while retaining live text for the next switch on.
     /// In-flight work may finish invisibly so its consumed cursor is retained.
-    public func setEnabled(_ enabled: Bool) {
+    public func setEnabled(_ enabled: Bool) async {
 
-        guard listener != nil, !ending, enabled != self.enabled else { return }
+        guard listener != nil, !ending, !stopping, enabled != self.enabled else { return }
         if enabled {
             activate(writtenLater: true)
         } else {
@@ -65,8 +79,25 @@ public actor SideText {
             generation += 1
             state.status = .off
             publish()
+            if sourceEnded { await end(.finished) }
         }
     }
+
+    /// Drains live audio; held filling in is abandoned instead of awaited.
+    /// Concurrent callers all wait for the same ending and live-text stop.
+    public func stop() async {
+
+        stopping = true
+        stopRequested()
+        if !ending, !fills.isEmpty || listener == nil {
+            await end(.finished)
+        } else {
+            await waitUntilEnded()
+        }
+    }
+
+    /// Keeps the visible text without waiting for audio or filling in.
+    public func abandon() async { await end(.finished) }
 
     private func activate(writtenLater: Bool) {
 
@@ -76,6 +107,7 @@ public actor SideText {
         let boundary = audio.capturedThrough
         if writtenLater, shownThrough < boundary { later.append(shownThrough..<boundary) }
         let run = makeFillIn()
+        fills[turn] = run
         state.status = .fillingIn
         let previous = operation
         operation = Task { [weak self] in
@@ -92,6 +124,7 @@ public actor SideText {
 
     private func fillIn(_ run: any FillingIn, turn: Int) async {
 
+        defer { fills[turn] = nil }
         guard current(turn) else { return }
         do {
             try await run.fillIn(from: heardThrough) { [weak self] progress in
@@ -166,6 +199,13 @@ public actor SideText {
 
     private func audioEnded() async {
 
+        sourceEnded = true
+        audioEndReceived()
+        guard !ending else { return }
+        if !enabled {
+            await end(.finished)
+            return
+        }
         await operation?.value
         guard enabled, !ending else { return }
         let turn = generation
@@ -174,12 +214,7 @@ public actor SideText {
             guard current(turn) else { return }
             latest = finished
             show()
-            ending = true
-            enabled = false
-            await text.stop()
-            state.status = .finished
-            publish()
-            continuation.finish()
+            await end(.finished)
         } catch {
             await fail(.finishing(String(describing: error)), turn: turn)
         }
@@ -188,14 +223,35 @@ public actor SideText {
     private func fail(_ failure: State.Failure, turn: Int) async {
 
         guard current(turn) else { return }
+        await end(.failed(failure))
+    }
+
+    private func end(_ status: State.Status) async {
+
+        guard !ending else {
+            await waitUntilEnded()
+            return
+        }
         ending = true
         enabled = false
         generation += 1
         listener?.cancel()
+        operation?.cancel()
+        let abandoned = Array(fills.values)
+        for run in abandoned { await run.abandon() }
         await text.stop()
-        state.status = .failed(failure)
+        state.status = status
         publish()
         continuation.finish()
+        ended = true
+        for waiter in endWaiters { waiter.resume() }
+        endWaiters.removeAll()
+    }
+
+    private func waitUntilEnded() async {
+
+        guard !ended else { return }
+        await withCheckedContinuation { endWaiters.append($0) }
     }
 
     private func show() {

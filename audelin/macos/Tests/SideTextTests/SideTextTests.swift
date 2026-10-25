@@ -109,6 +109,233 @@ struct SideTextTests {
         }
     }
 
+    @Test func audioEndingFinishesEveryWordAndWaitsForLiveTextToStop() async {
+
+        let stopping = Gate()
+        await withRig(finishOnlyWord: 3, stopping: stopping) { rig in
+            await rig.side.start()
+            await rig.listening()
+            for word in 1...3 { await rig.audio.send(tones(word...word)) }
+            #expect(await rig.side.state == expected(1...2))
+            rig.audio.end()
+            await rig.heldStop(stopping, keeps: expected(1...3, settled: true))
+            await stopping.release()
+            #expect(await rig.result() == expected(1...3, status: .finished, settled: true))
+            #expect(await rig.text.finishCalls == 1)
+        }
+    }
+
+    @Test func audioEndingWaitsForHeldFillInThenFinishesAndStopsLiveText() async {
+
+        let filling = Gate()
+        let stopping = Gate()
+        let plan = FillPlan(through: 3, prefixThrough: 1, afterPrefix: filling)
+        await withRig(plans: [plan], finishOnlyWord: 3, stopping: stopping) { rig in
+            rig.audio.capture(tones(1...3))
+            await rig.side.start()
+            await filling.entered()
+            rig.audio.end()
+            await rig.audioEndReceived()
+            #expect(await rig.side.state == expected(1...1, status: .fillingIn))
+            #expect(await rig.text.stopCalls == 0)
+            #expect(await rig.text.finishCalls == 0)
+            #expect(await rig.fills[0].abandoned == false)
+            await filling.release()
+            await rig.heldStop(stopping, keeps: expected(1...3, settled: true))
+            await stopping.release()
+            #expect(await rig.result() == expected(1...3, status: .finished, settled: true))
+            #expect(await rig.text.finishCalls == 1)
+        }
+    }
+
+    @Test func audioEndingWhileOffKeepsOnlyVisibleWordsAndStopsLiveText() async {
+
+        let stopping = Gate()
+        await withRig(stopping: stopping) { rig in
+            await rig.side.start()
+            await rig.listening()
+            for word in 1...2 { await rig.audio.send(tones(word...word)) }
+            await rig.side.setEnabled(false)
+            for word in 3...4 { await rig.audio.send(tones(word...word)) }
+            rig.audio.end()
+            await rig.heldStop(stopping, keeps: expected(1...2, status: .off))
+            await stopping.release()
+            #expect(await rig.result() == expected(1...2, status: .finished))
+            #expect(await rig.text.samples == [1, 2])
+            #expect(await rig.text.finishCalls == 0)
+        }
+    }
+
+    @Test func stoppingDrainsHeldAudioAndWaitsForLiveTextToStop() async {
+
+        await checkStoppingHeldAudio(stopCount: 1)
+    }
+
+    @Test func stoppingWhileFillingInAbandonsItAndWaitsForLiveTextToStop() async {
+
+        await checkEndingHeldFill(abandon: false)
+    }
+
+    @Test func abandoningWithOpenAudioKeepsVisibleWordsAndWaitsForLiveTextToStop() async {
+
+        let stopping = Gate()
+        await withRig(finishOnlyWord: 3, stopping: stopping) { rig in
+            await rig.side.start()
+            await rig.listening()
+            for word in 1...3 { await rig.audio.send(tones(word...word)) }
+            let abandoning = Task {
+                await rig.side.abandon()
+                return await rig.side.state
+            }
+            await rig.heldStop(stopping, keeps: expected(1...2))
+            #expect(rig.audio.isEnded == false)
+            await stopping.release()
+            let final = expected(1...2, status: .finished)
+            #expect(await rig.result() == final)
+            #expect(await abandoning.value == final)
+            #expect(rig.audio.isEnded == false)
+            #expect(await rig.text.finishCalls == 0)
+        }
+    }
+
+    @Test func abandoningWhileFillingInKeepsVisibleWordsAndWaitsForLiveTextToStop() async {
+
+        await checkEndingHeldFill(abandon: true)
+    }
+
+    @Test func stoppingTwiceDrainsHeldAudioAndStopsLiveTextOnce() async {
+
+        await checkStoppingHeldAudio(stopCount: 2)
+    }
+
+    @Test(arguments: [false, true])
+    func audioEndingAndSwitchingOffAbandonHeldFillInWithoutChangingVisibleWords(audioEndsFirst: Bool) async {
+
+        let filling = Gate()
+        let stopping = Gate()
+        let plan = FillPlan(through: 3, prefixThrough: 1, afterPrefix: filling)
+        await withRig(plans: [plan], stopping: stopping) { rig in
+            rig.audio.capture(tones(1...3))
+            await rig.side.start()
+            await filling.entered()
+            let switching: Task<Void, Never>?
+            if audioEndsFirst {
+                rig.audio.end()
+                await rig.audioEndReceived()
+                switching = Task { await rig.side.setEnabled(false) }
+            } else {
+                await rig.side.setEnabled(false)
+                switching = nil
+                rig.audio.end()
+            }
+            await rig.heldStop(stopping, keeps: expected(1...1, status: .off))
+            #expect(await rig.fills[0].abandoned)
+            #expect(await filling.isHeld)
+            await stopping.release()
+            let final = expected(1...1, status: .finished)
+            #expect(await rig.result() == final)
+            await switching?.value
+            await filling.release()
+            await rig.side.waitForWork()
+            #expect(await rig.side.state == final)
+            #expect(await rig.text.finishCalls == 0)
+        }
+    }
+
+    @Test func abandoningIgnoresAHearingThatReturnsAfterLiveTextStopped() async {
+
+        let hearing = Gate()
+        let stopping = Gate()
+        await withRig(stopping: stopping) { rig in
+            await rig.side.start()
+            await rig.listening()
+            await rig.audio.send(tones(1...1))
+            await rig.text.holdNextHearing(hearing)
+            let delivery = Task { await rig.audio.send(tones(2...2)) }
+            await hearing.entered()
+            let abandoning = Task { await rig.side.abandon() }
+            await rig.heldStop(stopping, keeps: expected(1...1))
+            await stopping.release()
+            let final = expected(1...1, status: .finished)
+            #expect(await rig.result() == final)
+            await abandoning.value
+            #expect(rig.audio.isEnded == false)
+            #expect(await hearing.isHeld)
+            await hearing.release()
+            await delivery.value
+            #expect(await rig.side.state == final)
+            #expect(await rig.text.stopCalls == 1)
+            #expect(await rig.text.finishCalls == 0)
+        }
+    }
+
+    private func checkStoppingHeldAudio(stopCount: Int) async {
+
+        let delivery = Gate()
+        let stopping = Gate()
+        await withRig(finishOnlyWord: 4, stopping: stopping) { rig in
+            await rig.side.start()
+            await rig.listening()
+            rig.audio.holdNextDelivery(delivery)
+            let sending = Task { await rig.audio.send(tones(1...4)) }
+            await delivery.entered()
+            var stops: [Task<State, Never>] = []
+            for _ in 0..<stopCount {
+                stops.append(Task {
+                    await rig.side.stop()
+                    return await rig.side.state
+                })
+                await rig.stopRequested()
+            }
+            rig.audio.end()
+            #expect(await rig.side.state == State(status: .listening, entries: []))
+            #expect(await rig.text.stopCalls == 0)
+            await delivery.release()
+            await sending.value
+            await rig.heldStop(stopping, keeps: expected(1...4, settled: true))
+            await stopping.release()
+            let final = expected(1...4, status: .finished, settled: true)
+            #expect(await rig.result() == final)
+            for stop in stops { #expect(await stop.value == final) }
+            #expect(await rig.text.samples == [1, 2, 3, 4])
+            #expect(await rig.text.finishCalls == 1)
+            await rig.side.stop()
+            await rig.side.abandon()
+            #expect(await rig.side.state == final)
+            #expect(await rig.text.stopCalls == 1)
+        }
+    }
+
+    private func checkEndingHeldFill(abandon: Bool) async {
+
+        let filling = Gate()
+        let stopping = Gate()
+        let plan = FillPlan(through: 3, prefixThrough: 1, afterPrefix: filling)
+        await withRig(plans: [plan], stopping: stopping) { rig in
+            rig.audio.capture(tones(1...3))
+            await rig.side.start()
+            await filling.entered()
+            let ending = Task {
+                if abandon { await rig.side.abandon() } else { await rig.side.stop() }
+                return await rig.side.state
+            }
+            await rig.heldStop(stopping, keeps: expected(1...1, status: .fillingIn))
+            #expect(await rig.fills[0].abandoned)
+            #expect(await filling.isHeld)
+            #expect(rig.audio.isEnded == false)
+            await stopping.release()
+            let final = expected(1...1, status: .finished)
+            #expect(await rig.result() == final)
+            #expect(await ending.value == final)
+            #expect(await filling.isHeld)
+            #expect(rig.audio.isEnded == false)
+            await filling.release()
+            await rig.side.waitForWork()
+            #expect(await rig.side.state == final)
+            #expect(await rig.text.finishCalls == 0)
+        }
+    }
+
     @Test func hearingFailureKeepsTheFirstWordAndWaitsForLiveTextToStop() async {
 
         let stopping = Gate()
