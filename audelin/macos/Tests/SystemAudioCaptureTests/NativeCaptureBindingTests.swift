@@ -6,6 +6,53 @@ import Testing
 
 struct NativeCaptureBindingTests {
 
+    @Test(arguments: [0, 1, 3])
+    func contractStartWaitsForATappableChild(refusals: Int) async throws {
+
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
+        var native = calls.native
+        let createTap = native.createTap
+        let attempts = Mutex(0)
+        native.createTap = { description, tap in
+            let attempt = attempts.withLock { $0 += 1; return $0 }
+            if attempt <= refusals { return kAudioHardwareBadObjectError }
+            return createTap(description, &tap)
+        }
+        let pauses = Mutex(0)
+        let capture = try await CoreAudioBindingTests().start(10, binding: CoreAudioBinding(native: native)) {
+            pauses.withLock { $0 += 1 }
+        }
+        defer { capture.stop() }
+        try calls.deliver(samples: [0.25])
+        capture.stop()
+        #expect(try await drain(capture).map(\.samples) == [[0.25]])
+        #expect(attempts.withLock { $0 } == refusals + 1)
+        #expect(pauses.withLock { $0 } == refusals)
+    }
+
+    @Test(arguments: [OSStatus(-50), kAudioHardwareIllegalOperationError])
+    func contractStartPropagatesOtherErrorsWithoutWaiting(status: OSStatus) async throws {
+
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
+        var native = calls.native
+        let attempts = Mutex(0)
+        native.createTap = { _, _ in
+            attempts.withLock { $0 += 1 }
+            return status
+        }
+        do {
+            let capture = try await CoreAudioBindingTests().start(10, binding: CoreAudioBinding(native: native)) {
+                Issue.record("Only a bad-object refusal may wait")
+            }
+            capture.stop()
+            Issue.record("The refused native start must throw")
+        } catch {
+            #expect((error as NSError).domain == NSOSStatusErrorDomain)
+            #expect((error as NSError).code == Int(status))
+        }
+        #expect(attempts.withLock { $0 } == 1)
+    }
+
     @Test func nativeFormatChangeDuringInstallUsesSubscribedRate() async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
@@ -345,6 +392,29 @@ struct NativeCaptureBindingTests {
         #expect(stops.withLock { $0 } == (notification.reportsStop(in: deviceState) ? 1 : 0))
     }
 
+    @Test(arguments: [noErr, OSStatus(-50)])
+    func nativeRunningZeroNoticeKeepsDeliveringAudio(readStatus: OSStatus) async throws {
+
+        let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
+        let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
+        defer { capture.stop() }
+        calls.state.withLock {
+            $0.running = 0
+            $0.runningStatus = readStatus
+        }
+        let registration = try #require(calls.state.withLock { $0.listener })
+        let address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceIsRunning,
+            mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain
+        )
+        calls.fire([address], on: 22, through: registration)
+        try calls.deliver(samples: [0.25, -0.5])
+        capture.stop()
+        let pieces = try await drain(capture)
+        #expect(pieces.map(\.samples) == [[0.25, -0.5]])
+        #expect(pieces.map(\.sampleRate) == [48_000])
+    }
+
     @Test func nativeStopNotificationsRequireMatchingSubscriptions() throws {
 
         let notification = AudioObjectPropertyAddress(
@@ -493,11 +563,11 @@ enum StopNotification: CaseIterable, Sendable {
         }
     }
 
-    fileprivate var expectedReads: [NativeAddress] {
+    var expectedReads: [NativeAddress] {
 
         switch self {
-        case .alive, .running: [NativeAddress(selector)]
-        case .abnormal, .unrelated, .afterUnwatch: []
+        case .alive: [NativeAddress(selector)]
+        case .abnormal, .running, .unrelated, .afterUnwatch: []
         }
     }
 
@@ -506,8 +576,7 @@ enum StopNotification: CaseIterable, Sendable {
         switch self {
         case .abnormal: true
         case .alive: [.runningOnly, .aliveReadFails].contains(state)
-        case .running: [.aliveOnly, .runningReadFails].contains(state)
-        case .unrelated, .afterUnwatch: false
+        case .running, .unrelated, .afterUnwatch: false
         }
     }
 }
@@ -542,7 +611,7 @@ enum NativeTapFormat: CaseIterable, Sendable {
     }
 }
 
-private struct TapSnapshot: Sendable {
+struct TapSnapshot: Sendable {
 
     let uuid: UUID
     let processes: [UInt32]
@@ -564,7 +633,7 @@ private struct TapSnapshot: Sendable {
     }
 }
 
-private struct ListenerIdentity: Equatable, Sendable {
+struct ListenerIdentity: Equatable, Sendable {
 
     let selector: UInt32
     let scope: UInt32
@@ -585,7 +654,7 @@ private struct ListenerIdentity: Equatable, Sendable {
     }
 }
 
-fileprivate struct NativeAddress: Equatable, Sendable {
+struct NativeAddress: Equatable, Sendable {
 
     let selector: UInt32
     let scope: UInt32
@@ -607,7 +676,7 @@ fileprivate struct NativeAddress: Equatable, Sendable {
     }
 }
 
-private enum NativeResource: Equatable, Sendable {
+enum NativeResource: Equatable, Sendable {
 
     case tap(UInt32)
     case device(UInt32)
@@ -617,13 +686,13 @@ private enum NativeResource: Equatable, Sendable {
 }
 
 // The dictionary is an immutable snapshot of the native request.
-private struct AggregateSnapshot: @unchecked Sendable {
+struct AggregateSnapshot: @unchecked Sendable {
 
     let value: NSDictionary
 }
 
 // Retain the native block until removal so its recorded address cannot be reused.
-private struct ListenerRegistration: @unchecked Sendable {
+struct ListenerRegistration: @unchecked Sendable {
 
     let device: AudioObjectID
     let address: AudioObjectPropertyAddress
@@ -631,7 +700,7 @@ private struct ListenerRegistration: @unchecked Sendable {
     let block: @convention(block) (UInt32, UnsafePointer<AudioObjectPropertyAddress>) -> Void
 }
 
-private enum NativeThreadRole: String, Sendable {
+enum NativeThreadRole: String, Sendable {
 
     case io, event, caller
 
@@ -641,13 +710,13 @@ private enum NativeThreadRole: String, Sendable {
     }
 }
 
-private struct NativeCall: Equatable, Sendable {
+struct NativeCall: Equatable, Sendable {
 
     let name: String
     let role: NativeThreadRole
 }
 
-private final class RecordingCaptureCalls: Sendable {
+final class RecordingCaptureCalls: Sendable {
 
     struct State {
 

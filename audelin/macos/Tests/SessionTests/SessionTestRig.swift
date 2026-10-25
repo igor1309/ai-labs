@@ -19,10 +19,15 @@ struct Rig {
     let transcript: TestTranscript
     let session: Session
 
-    init(held: Set<String> = [], failing: Set<String> = [], selection: SessionProcessSelection = .init(id: "chosen-app")) {
+    init(
+        held: Set<String> = [],
+        failing: Set<String> = [],
+        selection: SessionProcessSelection = .init(id: "chosen-app"),
+        callFolder: SessionCallFolder = .init(id: "made-folder")
+    ) {
 
         output = TestOutput(held: held, failing: failing)
-        let folder = TestFolder(output: output)
+        let folder = TestFolder(output: output, made: callFolder)
         let processes = TestProcesses(output: output, selection: selection)
         let microphoneTrack = TestTrack(name: "microphone", output: output)
         let callTrack = TestTrack(name: "call", output: output)
@@ -159,8 +164,12 @@ struct TestError: Error, CustomStringConvertible {
 actor TestFolder: SessionFolder {
 
     let output: TestOutput
-    init(output: TestOutput) { self.output = output }
-    func create() async throws { try await output.perform("folder.create") }
+    let made: SessionCallFolder
+    init(output: TestOutput, made: SessionCallFolder) { self.output = output; self.made = made }
+    func create() async throws -> SessionCallFolder {
+        try await output.perform("folder.create")
+        return made
+    }
 }
 
 actor TestProcesses: SessionProcesses {
@@ -209,7 +218,9 @@ actor TestTrack: SessionTrackFile {
     init(name: String, output: TestOutput) { self.name = name; self.output = output }
     private var audio: [String] = []
     private var opened = false
-    func open() async throws {
+    private(set) var receivedFolders: [SessionCallFolder] = []
+    func open(in folder: SessionCallFolder) async throws {
+        receivedFolders.append(folder)
         try await output.perform("\(name).track.open")
         opened = true
     }
@@ -267,8 +278,10 @@ actor TestTranscript: SessionTranscript {
     let output: TestOutput
     private var text: [String] = []
     private var opened = false
+    private(set) var receivedFolders: [SessionCallFolder] = []
     init(output: TestOutput) { self.output = output }
-    func open() async throws {
+    func open(in folder: SessionCallFolder) async throws {
+        receivedFolders.append(folder)
         try await output.perform("transcript.open")
         opened = true
     }

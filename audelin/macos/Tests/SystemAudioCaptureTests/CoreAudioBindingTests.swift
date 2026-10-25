@@ -1,4 +1,5 @@
 import AVFAudio
+import CoreAudio
 import Foundation
 import Testing
 @testable import SystemAudioCapture
@@ -43,21 +44,34 @@ struct CoreAudioBindingTests {
         }
     }
 
-    private func start(_ pid: Int32, binding: CoreAudioBinding = CoreAudioBinding()) async throws -> SystemAudioCapture {
+    func start(
+        _ pid: Int32, binding: CoreAudioBinding = CoreAudioBinding(),
+        pause: () async throws -> Void = { try await Task.sleep(for: .milliseconds(20)) },
+        now: () -> ContinuousClock.Instant = { .now }
+    ) async throws -> SystemAudioCapture {
 
         // The child has no audio process object until afplay opens the file.
         // The deadline only guards a hang: on a loaded machine afplay can take
         // well over five seconds to open its file.
-        let deadline = ContinuousClock.now + .seconds(30)
+        let deadline = now() + .seconds(30)
         var object: UInt32?
         repeat {
             object = try? binding.processObject(pid)
             if object != nil { break }
-            try await Task.sleep(for: .milliseconds(20))
-        } while ContinuousClock.now < deadline
+            try await pause()
+        } while now() < deadline
         _ = try #require(object, "Core Audio must expose the afplay child's audio process")
-        let capture = try? SystemAudioCapture(binding: binding, processes: .only([pid]))
-        return try #require(capture, "A native capture must start")
+        // The child's audio object can exist before a tap can take it.
+        while true {
+            do {
+                return try SystemAudioCapture(binding: binding, processes: .only([pid]))
+            } catch let error as NSError where error.domain == NSOSStatusErrorDomain
+                && error.code == Int(kAudioHardwareBadObjectError) {
+                guard now() < deadline else { throw error }
+                try await pause()
+                guard now() < deadline else { throw error }
+            }
+        }
     }
 
     private func hearToneAndStop(_ capture: SystemAudioCapture) async throws {
@@ -83,6 +97,23 @@ struct CoreAudioBindingTests {
         }
     }
 
+    @Test func endingAPlayerThatIgnoresTerminateIsBounded() async throws {
+
+        let player = Process()
+        player.executableURL = URL(fileURLWithPath: "/bin/sh")
+        player.arguments = ["-c", "trap '' TERM; sleep 60"]
+        try player.run()
+        try await Task.sleep(for: .milliseconds(200))
+        let started = ContinuousClock.now
+        await Self.end(player)
+        #expect(ContinuousClock.now - started < .seconds(10))
+        let deadline = ContinuousClock.now + .seconds(5)
+        while kill(player.processIdentifier, 0) == 0, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(kill(player.processIdentifier, 0) != 0, "A player still running past the bound must be killed")
+    }
+
     private func withPlayer(_ body: (Int32) async throws -> Void) async throws {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -95,11 +126,26 @@ struct CoreAudioBindingTests {
         // A tap hears the process after its own volume, so the tone plays faintly, not at 0.
         player.arguments = ["-v", "0.02", sound.path]
         try player.run()
-        defer {
-            if player.isRunning { player.terminate() }
-            player.waitUntilExit()
+        do {
+            try await body(player.processIdentifier)
+        } catch {
+            await Self.end(player)
+            throw error
         }
-        try await body(player.processIdentifier)
+        await Self.end(player)
+    }
+
+    /// Never blocks on waitUntilExit: a lost termination notice hung a runner for good.
+    /// The player counts as gone once its pid is, even if Process never noticed.
+    static func end(_ player: Process) async {
+
+        let pid = player.processIdentifier
+        if player.isRunning { player.terminate() }
+        let deadline = ContinuousClock.now + .seconds(5)
+        while player.isRunning, kill(pid, 0) == 0, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(20))
+        }
+        if player.isRunning, kill(pid, 0) == 0 { kill(pid, SIGKILL) }
     }
 
     private func writeTone(to sound: URL) throws {
