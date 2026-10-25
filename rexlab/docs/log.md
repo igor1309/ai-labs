@@ -2,6 +2,7 @@
 
 ## 2026-10-25
 
+- A compare quiz question fits an iPhone on its side instead of clipping: the two dinosaurs stand whole side by side under one short bar, NEXT beside the prompt (LAB-575).
 - DIG on an upright iPhone: HOME, the brush menu and the FIELD GUIDE are one family, each 48 tall with the same corners and frame; WHO IS IT?'s dinosaurs are small cards twice as wide as tall, two to a row, so the sand above them grows to the full width (LAB-578).
 - A dinosaur's page fits an iPhone on its side instead of clipping: the picture and the words stand side by side under one short bar, the words scrolling where they are longer than the height (LAB-540).
 - The catalogue fits an iPhone on its side instead of clipping: HOME and the food symbols share one short bar, and the cards, two or three to a row, stand whole in the height below it (LAB-539).
