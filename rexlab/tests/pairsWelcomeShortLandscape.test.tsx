@@ -1,4 +1,4 @@
-import { act, screen } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import { describe, expect, it, onTestFinished } from "vitest";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -77,9 +77,12 @@ describe("find the pair's welcome in a wide-short window", () => {
     expect(Math.min(hero * 0.32, (bodyHeight * 3) / 4)).toBeGreaterThan(56);
   });
 
-  it.each(PHONES)("shows each level's picture alone on the switch, its name kept for screen readers, at %i by %i", async (width, height, insets) => {
-    await openWelcome([width, height], insets);
+  it.each(PHONES.flatMap((phone) => (["en", "ru"] as const).map((language) => [...phone, language] as const)))("shows each level's picture alone on the switch, its name kept for screen readers, at %i by %i, in %s", async (width, height, insets, language) => {
+    await openWelcome([width, height], insets, language);
     const size: WindowSize = [width, height];
+    const levels = screen.getByRole("group", { name: TEXTS[language].ageLevelSwitch });
+    const named = (["hatchling", "explorer", "paleontologist"] as const).map((level) => within(levels).getByRole("button", { name: TEXTS[language].ageLevels[level].name }));
+    for (const button of named) expect(styleAt(part(".level-switch-name", button), size).value("display")).not.toBe("none");
     const names = [...document.querySelectorAll<HTMLElement>(".pairs-welcome .level-switch-name")];
     expect(names).toHaveLength(3);
     for (const name of names) expect([styleAt(name, size).value("position"), styleAt(name, size).value("clip-path")]).toEqual(["absolute", "inset(50%)"]);
