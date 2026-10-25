@@ -2574,11 +2574,19 @@ html[data-size="wide-short"] .catalogue-grid {
   padding: 0 20px 20px;
 }
 
-/* A card's footer closes up so the widest card, two to a row on the
-   smallest phone, stands whole under the bar. */
+/* A card's footer closes up, and its picture is never taller than the
+   window leaves under the bar and over the list's 20-pixel end, less the
+   footer's 89 pixels: its padding, its name's line at 20 pixels, the gap
+   and the chips. So every card stands whole in the list, the last row
+   too, scrolled to its end, the widest two to a row on a short phone as
+   well, its picture fitting the shorter frame. */
 html[data-size="wide-short"] .catalogue-footer {
   padding-top: 10px;
   padding-bottom: 12px;
+}
+
+html[data-size="wide-short"] .catalogue-art {
+  max-height: calc(100dvh - 8px - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 48px - 12px - 20px - 89px);
 }
 
 .catalogue-grid {
