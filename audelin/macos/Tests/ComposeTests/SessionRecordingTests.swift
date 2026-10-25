@@ -39,7 +39,7 @@ struct SessionRecordingTests {
         let started = Signal(), release = Signal(), listening = Signal()
         let listenersEnded = Values<SessionSide>()
         var hooks = SessionPieces.Hooks()
-        hooks.textStarted = { started.send(); await release.next() }
+        hooks.textStarted = { _ in started.send(); await release.next() }
         hooks.audioListening = { _ in listening.send() }
         hooks.audioEnded = { listenersEnded.append($0) }
         try await withSessionRig(hooks: hooks) { rig, folder in

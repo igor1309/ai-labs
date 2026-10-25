@@ -37,11 +37,11 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
         var beforeWrite: @Sendable (SessionSide, Audio) async throws -> Void = { _, _ in }
         var beforeTranscriptFeed: @Sendable () async throws -> Void = {}
-        var textStarted: @Sendable () async -> Void = {}
+        var textStarted: @Sendable (CallText) async -> Void = { _ in }
         var audioListening: @Sendable (SessionSide) -> Void = { _ in }
         var audioEnded: @Sendable (SessionSide) -> Void = { _ in }
-        var captureJoining: @Sendable (SessionSide) -> Void = { _ in }
-        var transcriptJoining: @Sendable () -> Void = {}
+        var joinCapture: @Sendable (SessionSide, CaptureFeed) async throws -> Void = { _, feed in try await feed.wait() }
+        var joinTranscript: @Sendable (Task<Void, any Error>) async -> Result<Void, any Error> = { await $0.result }
     }
 
     struct Side {
@@ -69,6 +69,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     var transcriptFile: TranscriptFile?
     var transcriptClosed = false
     var text: CallText?
+    var trackTexts: [TrackText] = []
     var textStopped = false
     var textStopping = false
     var transcriptFeed: Task<Void, any Error>?
@@ -169,8 +170,8 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         guard text == nil || textStopped else { throw Failure.outOfOrder("call text is still running") }
         transcriptClosed = true
         // Closing still releases the file when the feed reports a write failure.
-        hooks.transcriptJoining()
-        let result = await transcriptFeed?.result
+        let result: Result<Void, any Error>?
+        if let transcriptFeed { result = await hooks.joinTranscript(transcriptFeed) } else { result = nil }
         await transcriptFile.close()
         try result?.get()
     }
@@ -189,7 +190,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
             try await Transcript.feed(text.updates, to: transcriptFile)
         }
         await text.start(enabled: enabled)
-        await hooks.textStarted()
+        await hooks.textStarted(text)
     }
 
     public func setEnabled(_ enabled: Bool) async throws {
@@ -208,6 +209,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         for side in sides.values { side.audio.finish() }
         for side in sides.values { await side.audio.wait() }
         await text.stop()
+        for adapter in trackTexts { await adapter.shutdown() }
         textStopped = true
     }
 
@@ -216,6 +218,8 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         guard let destination = sides[side], let file = destination.track, !destination.closed else {
             throw Failure.outOfOrder("\(side) track is not open")
         }
-        return Track(audio: destination.audio, written: WrittenTrack(track: file), text: TrackText(recognizer: recognizer))
+        let adapter = TrackText(recognizer: recognizer)
+        trackTexts.append(adapter)
+        return Track(audio: destination.audio, written: WrittenTrack(track: file), text: adapter)
     }
 }

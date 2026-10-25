@@ -57,12 +57,11 @@ extension SessionPieces {
         // Even a failed stop joins the feed before Session can close its track.
         do { try await stop() }
         catch {
-            feed.cancel()
-            _ = try? await feed.wait()
+            feed.endInput()
+            _ = try? await hooks.joinCapture(side, feed)
             throw error
         }
-        hooks.captureJoining(side)
-        try await feed.wait()
+        try await hooks.joinCapture(side, feed)
     }
 
     private func captureTrack(_ side: SessionSide) throws -> TrackFile {

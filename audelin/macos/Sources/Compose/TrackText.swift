@@ -27,13 +27,14 @@ public actor TrackText: CallText.TrackText {
         let requests: AsyncStream<Reply>.Continuation
         let reading: Task<Void, Never>
 
-        func stop() {
+        @discardableResult
+        func stop() -> Task<Void, Never> {
 
             source.finish()
             requests.finish()
             reading.cancel()
             task.cancel()
-            Task { await live.stop() }
+            return Task { await live.stop() }
         }
     }
 
@@ -155,6 +156,17 @@ public actor TrackText: CallText.TrackText {
         } onCancel: {
             session.stop()
         }
+    }
+
+    /// Ends and joins the adapter's work without publishing another text update.
+    public func shutdown() async {
+
+        guard let session = listening else { return }
+        listening = nil
+        accepted = nil
+        await session.stop().value
+        await session.reading.value
+        await session.task.value
     }
 
     private func nextUpdate(_ reply: Reply, through end: Double) async throws -> [Text] {

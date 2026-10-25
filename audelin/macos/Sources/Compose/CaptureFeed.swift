@@ -44,7 +44,6 @@ public final class CaptureFeed: LiveAudio, Sendable {
         let receiving = Task {
             defer { captured.continuation.finish() }
             for try await piece in stream {
-                try Task.checkCancellation()
                 let piece = unpack(piece)
                 let audio = position.value.withLock { end in
                     let audio = Audio(start: end, samples: piece.samples, sampleRate: piece.sampleRate)
@@ -106,6 +105,13 @@ public final class CaptureFeed: LiveAudio, Sendable {
 
         receiving.cancel()
         writing.cancel()
+    }
+
+    /// Ends a pending input read while preserving buffered input and writes.
+    /// AsyncThrowingStream drains its buffer even when its reader is cancelled.
+    func endInput() {
+
+        receiving.cancel()
     }
 
     deinit {

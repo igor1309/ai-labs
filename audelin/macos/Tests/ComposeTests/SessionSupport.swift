@@ -27,12 +27,21 @@ final class CaptureScript<Piece: Sendable>: Sendable {
     let first: Piece
     let last: Piece
     let fails: Bool
+    let stopFails: Bool
+    let stopEndsStream: Bool
+    let beforeStopReturns: @Sendable () async -> Void
 
-    init(first: Piece, last: Piece, fails: Bool) {
+    init(
+        first: Piece, last: Piece, fails: Bool, stopFails: Bool = false, stopEndsStream: Bool = true,
+        beforeStopReturns: @escaping @Sendable () async -> Void = {}
+    ) {
 
         self.first = first
         self.last = last
         self.fails = fails
+        self.stopFails = stopFails
+        self.stopEndsStream = stopEndsStream
+        self.beforeStopReturns = beforeStopReturns
     }
 
     func start() throws -> StartedCapture<Piece> {
@@ -43,8 +52,10 @@ final class CaptureScript<Piece: Sendable>: Sendable {
         return StartedCapture(stream: source.stream, stop: {
             self.stops.append(true)
             self.source.continuation.yield(self.last)
-            self.source.continuation.finish()
+            if self.stopEndsStream { self.source.continuation.finish() }
             self.stopped.send()
+            await self.beforeStopReturns()
+            if self.stopFails { throw ScriptFailure.failed }
         })
     }
 
@@ -84,15 +95,28 @@ struct SessionRig: Sendable {
     let theirs: SessionRecognizer
     let selections = Values<SystemAudioCapture.ProcessSelection>()
 
-    init(root: URL, microphoneFails: Bool, processesFail: Bool, hooks: SessionPieces.Hooks) {
+    init(
+        root: URL, microphoneFails: Bool, processesFail: Bool, hooks: SessionPieces.Hooks,
+        stopFailure: SessionSide?, stopEndsStream: Bool, rates: [Double]?,
+        recognizers: (any Recognizer, any Recognizer)?,
+        beforeStopReturns: @escaping @Sendable (SessionSide) async -> Void
+    ) {
 
+        let firstSamples = rates.map { Array(repeating: Float(0), count: Int($0[0] / 100)) }
+        let lastSamples = rates.map { Array(repeating: Float(0), count: Int($0[1] / 100)) }
         microphone = CaptureScript(
-            first: .init(samples: [0.25, -0.5], sampleRate: 48_000),
-            last: .init(samples: [0.125], sampleRate: 48_000), fails: microphoneFails
+            first: .init(samples: firstSamples ?? [0.25, -0.5], sampleRate: rates?[0] ?? 48_000),
+            last: .init(samples: lastSamples ?? [0.125], sampleRate: rates?[1] ?? 48_000),
+            fails: microphoneFails, stopFails: stopFailure == .microphone,
+            stopEndsStream: stopFailure == .microphone ? stopEndsStream : true,
+            beforeStopReturns: { await beforeStopReturns(.microphone) }
         )
         call = CaptureScript(
-            first: .init(samples: [-0.25, 0.5], sampleRate: 48_000),
-            last: .init(samples: [-0.125], sampleRate: 48_000), fails: false
+            first: .init(samples: firstSamples ?? [-0.25, 0.5], sampleRate: rates?[0] ?? 48_000),
+            last: .init(samples: lastSamples ?? [-0.125], sampleRate: rates?[1] ?? 48_000),
+            fails: false, stopFails: stopFailure == .call,
+            stopEndsStream: stopFailure == .call ? stopEndsStream : true,
+            beforeStopReturns: { await beforeStopReturns(.call) }
         )
         mine = SessionRecognizer(name: "mine")
         theirs = SessionRecognizer(name: "theirs")
@@ -106,7 +130,7 @@ struct SessionRig: Sendable {
             ]))),
             startMicrophone: { try microphone.start() },
             startCall: { selection in selections.append(selection); return try call.start() },
-            microphoneRecognizer: mine, callRecognizer: theirs, hooks: hooks
+            microphoneRecognizer: recognizers?.0 ?? mine, callRecognizer: recognizers?.1 ?? theirs, hooks: hooks
         )
         session = Session(handler: pieces.handler())
     }
@@ -132,11 +156,18 @@ struct SessionRig: Sendable {
 
 func withSessionRig(
     microphoneFails: Bool = false, processesFail: Bool = false, hooks: SessionPieces.Hooks = .init(),
+    stopFailure: SessionSide? = nil, stopEndsStream: Bool = true, rates: [Double]? = nil,
+    recognizers: (any Recognizer, any Recognizer)? = nil,
+    beforeStopReturns: @escaping @Sendable (SessionSide) async -> Void = { _ in },
     _ body: (SessionRig, URL) async throws -> Void
 ) async throws {
 
     try await withComposeFolder { root in
-        let rig = SessionRig(root: root, microphoneFails: microphoneFails, processesFail: processesFail, hooks: hooks)
+        let rig = SessionRig(
+            root: root, microphoneFails: microphoneFails, processesFail: processesFail, hooks: hooks,
+            stopFailure: stopFailure, stopEndsStream: stopEndsStream, rates: rates, recognizers: recognizers,
+            beforeStopReturns: beforeStopReturns
+        )
         do {
             try await body(rig, root.appendingPathComponent("1970.01.01-0000"))
             await rig.finish()
