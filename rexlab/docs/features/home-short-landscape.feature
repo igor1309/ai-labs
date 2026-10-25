@@ -11,7 +11,8 @@ Feature: The home page in a wide-short window
     Given a wide-short window 667 by 375, 852 by 393 or 932 by 430
     When I open the home page
     Then it shows the page, not an ask to turn
-    And the page keeps 20 pixels on each side, past the notch
+    And the page keeps 20 pixels on each side, past the notch, on whichever side the notch is
+    And the tiles' row reaches into the page's right side, never under the notch
     And the large card and the tiles share the row evenly
 
   Scenario: The greeting stands on the bar between RexLab and the corner
@@ -44,7 +45,8 @@ Feature: The home page in a wide-short window
   Scenario: The parents' menus open whole
     Given a wide-short window
     When I open any of the parents' menus
-    Then it opens under the bar, whole within the window
+    Then it opens under the bar, within the window
+    And in a window too short for all its choices it scrolls within itself
 
   Scenario: Growing past 600 tall brings back the landscape layout
     Given the home page in a wide-short window

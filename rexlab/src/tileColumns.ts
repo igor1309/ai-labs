@@ -11,9 +11,9 @@ export const TILE_COLUMN = 310;
 export const TILE_GAP = 24;
 // In a wide-short window, an iPhone on its side, the columns are a share
 // of the row's width, `width` wide, as the stylesheet sets them: one whole
-// column, its gap and three tenths of the next fill it.
+// column, its gap and a quarter of the next fill it.
 export const SHORT_TILE_GAP = 16;
-export const SHORT_ROW_COLUMNS = 1.3;
+export const SHORT_ROW_COLUMNS = 1.25;
 export const shortTileColumn = (width: number) => (width - SHORT_TILE_GAP) / SHORT_ROW_COLUMNS;
 // The least of the next column that shows at the row's edge, and the
 // least of it that hides there.

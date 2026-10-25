@@ -8,6 +8,7 @@ import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { extendPart, filterDoubleTaps, turnFrame } from "../src/root.ts";
 import type { TapInput } from "../src/tapFilter.ts";
+import { SHORT_TILE_GAP, shortTileColumn } from "../src/tileColumns.ts";
 import type { Box, TurnAnimation } from "../src/turnMotion.ts";
 import { openMenu } from "./menus.ts";
 import {
@@ -704,11 +705,11 @@ describe("taps and keys during the motion", () => {
 describe("a resize that keeps the layout", () => {
   // SKELETONS's column is the second: it stands at the row's left edge
   // one column and its gap in, upright 310 wide, then 292 at 712; on a
-  // phone on its side, 309 wide at 852, then 340 at 932.
+  // phone on its side, a share of the row 408 wide at 852, then 448 at 932.
   it.each([
     [[820, 1180, "tall"], [712, 1180, "tall"], 334, 316],
     [[1440, 900, "wide"], [1440, 700, "wide"], 334, 334],
-    [[852, 393, "wide-short"], [932, 430, "wide-short"], 325, 356]
+    [[852, 393, "wide-short"], [932, 430, "wide-short"], Math.round(shortTileColumn(408) + SHORT_TILE_GAP), shortTileColumn(448) + SHORT_TILE_GAP]
   ] as const)("from %j to %j moves nothing, SKELETONS still at the row's left edge", (from, to, before, after) => {
     const app = openTurning(from[0], from[1], from[2]);
     const row = layOutTilesRow();

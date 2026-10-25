@@ -785,7 +785,7 @@ export function tilesRow(): HTMLElement {
 // window's right edge, and in landscape it takes four sevenths of what
 // the page's 56-pixel sides and the large card's 28-pixel gap leave, or,
 // in a wide-short window, half of what its 20-pixel sides and 16-pixel
-// gap leave and the right side too. Its columns, of two each, are as wide
+// gap leave with the right side it reaches into. Its columns, of two each, are as wide
 // and as far apart as the stylesheet sets them in the test's window, a
 // share of the row's width in a wide-short one. A tile's frame, drawn
 // under it as it glides, takes no place in them.
@@ -793,7 +793,7 @@ export function layOutTilesRow(): HTMLElement {
   const row = tilesRow();
   const size = () => document.documentElement.dataset.size;
   const style = () => styleAt(row, [window.innerWidth, window.innerHeight]);
-  const width = () => (size() === "tall" ? window.innerWidth - 56 : size() === "tall-narrow" ? window.innerWidth - 20 : size() === "wide-short" ? Math.round((window.innerWidth - 40 - 16) / 2 + 20) : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
+  const width = () => (size() === "tall" ? window.innerWidth - 56 : size() === "tall-narrow" ? window.innerWidth - 20 : size() === "wide-short" ? Math.round((window.innerWidth - 40 - 16 + 20) / 2) : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
   const column = () => (size() === "wide-short" ? shortTileColumn(width()) : style().px("grid-auto-columns"));
   const scrollWidth = () => {
     const columns = Math.ceil([...row.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);

@@ -6,6 +6,7 @@ import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { PEEK, SHORT_ROW_COLUMNS, SHORT_TILE_GAP, shortTileColumn } from "../src/tileColumns.ts";
+import { appStylesheet, type SafeArea } from "./stylesheet.ts";
 import { topLine } from "./homeCorner.ts";
 import { TITLE_EMS, linesOf, roomFor, tileTitles, widthOf } from "./homeTitles.ts";
 import {
@@ -104,7 +105,9 @@ function openShort(width: number, height: number, { language = "en", featured = 
 
 // The page's parts across a window `width` wide, as its rules set them:
 // the content between the sides, the large card's width and the tiles'
-// row, which reaches past the right side, and each column in it.
+// row, and each column in it. The card and the row grow from nothing in
+// even shares of what the gap and their margins leave, so the row's
+// negative margin, reaching past the page's right side, widens both.
 function across(width: number, height: number) {
   const at = (selector: string) => styleAt(part(selector), [width, height]);
   const home = at(".home");
@@ -112,8 +115,10 @@ function across(width: number, height: number) {
   const tiles = at(".games-tiles");
   const content = width - home.px("padding-left") - home.px("padding-right");
   const shared = content - games.columnGap();
-  const card = shared / 2;
-  const row = shared / 2 - tiles.px("margin-right");
+  expect([featuredCard(), part(".games-tiles")].map((side) => styleAt(side, [width, height]).value("flex"))).toEqual(["1 1 0px", "1 1 0px"]);
+  expect(styleAt(featuredCard(), [width, height]).px("margin-right")).toBe(0);
+  const card = (shared - tiles.px("margin-right")) / 2;
+  const row = card;
   const gap = tiles.columnGap();
   const column = shortTileColumn(row);
   return { home, games, tiles, card, row, gap, column };
@@ -134,6 +139,15 @@ describe("the home page in a wide-short window", () => {
     const line = topLine(width, language, { wordsHidden: true });
     const home = styleAt(part(".home"), [width, height]);
     const greeting = styleAt(part(".greeting"), [width, height]);
+    // Nothing before the greeting takes a place in the page's column: the
+    // bands of rock's holder lies flat and the rest is fixed or laid over.
+    const before = [...part(".home").children].slice(0, [...part(".home").children].indexOf(part(".greeting")));
+    expect(before.length).toBeGreaterThan(0);
+    for (const element of before) {
+      const style = styleAt(element, [width, height]);
+      const laidOver = (child: Element) => ["absolute", "fixed"].includes(styleAt(child, [width, height]).value("position"));
+      expect(laidOver(element) || (style.value("display") === "contents" && [...element.children].every(laidOver))).toBe(true);
+    }
     // The bar's line: the corner's and the mark's, and the greeting's.
     expect([line.cornerEnd, line.wordmarkEnd, home.px("padding-top") + greeting.px("line-height")]).toEqual([68, 68, 68]);
     // Along it: the mark, then the greeting, then the corner, each at
@@ -184,9 +198,10 @@ describe("the home page in a wide-short window", () => {
   it.each(PHONES)("shows a column of tiles whole and the next peeking in, in a %i by %i window", (width, height) => {
     openShort(width, height);
     const { tiles, row, gap, column } = across(width, height);
-    expect([featuredCard(), part(".games-tiles")].map((side) => styleAt(side, [width, height]).value("flex"))).toEqual(["1 1 0px", "1 1 0px"]);
-    expect(tiles.value("grid-auto-columns")).toMatch(/^calc\(/);
-    expect(gap).toBe(16);
+    // The stylesheet's columns are those the page keeps the row's place by.
+    const probe = document.createElement("div");
+    probe.style.gridAutoColumns = `calc((100% - ${SHORT_TILE_GAP}px) / ${SHORT_ROW_COLUMNS})`;
+    expect([tiles.value("grid-auto-columns"), gap]).toEqual([probe.style.gridAutoColumns, SHORT_TILE_GAP]);
     const peek = row - (column + gap);
     expect(peek).toBeGreaterThanOrEqual(PEEK);
     expect(peek).toBeLessThanOrEqual(column - PEEK);
@@ -229,9 +244,9 @@ describe("the home page in a wide-short window", () => {
     },
   );
 
-  it.each(PHONES)("opens each parents' menu whole under the bar in a %i by %i window", (width, height) => {
+  it.each([...PHONES, [667, 220] as const])("opens each parents' menu under the bar within a %i by %i window, scrolling in it where the window is too short", (width, height) => {
     openShort(width, height);
-    const list = () => document.querySelector(".parent-menu-list");
+    const list = () => document.querySelector(".parent-menu-list:not([data-leaving])");
     for (const button of document.querySelectorAll(".parent-menu-button")) {
       fireEvent.click(button);
       const opened = list();
@@ -240,10 +255,31 @@ describe("the home page in a wide-short window", () => {
       const rows = opened.querySelectorAll(".parent-menu-choice");
       const rowHeight = styleAt(rows[0]!, [width, height]).px("height");
       const tall = style.px("padding-top") + style.px("padding-bottom") + rows.length * rowHeight + (rows.length - 1) * style.rowGap();
-      const top = 8 + 60 + 8;
-      expect(top + tall).toBeLessThanOrEqual(height);
+      // The corner's buttons end where the bar does, and the menu opens 8
+      // under them.
+      const corner = styleAt(part(".home-corner"), [width, height]);
+      const top = corner.px("top") + styleAt(part(".home-museum"), [width, height]).px("height") + px(getComputedStyle(opened).top.replace(/^calc\(100% \+ (\d+)px\)$/, "$1"));
+      expect([style.px("max-height"), style.value("overflow-y")]).toEqual([height - 84, "auto"]);
+      expect(top + Math.min(tall, style.px("max-height"))).toBeLessThanOrEqual(height - 8);
+      if (height >= 375) expect(top + tall).toBeLessThanOrEqual(height);
       fireEvent.click(button);
     }
+  });
+
+  it.each([
+    ["left", { top: 0, right: 0, bottom: 21, left: 47 }],
+    ["right", { top: 0, right: 47, bottom: 21, left: 0 }]
+  ] as const)("keeps 20 pixels past the notch on the %s, the tiles' row stopping at its edge", (_, insets: SafeArea) => {
+    openShort(852, 393);
+    const sheet = document.createElement("style");
+    sheet.textContent = appStylesheet(insets);
+    document.head.append(sheet);
+    onTestFinished(() => sheet.remove());
+    const at = (selector: string) => styleAt(part(selector), [852, 393]);
+    expect([at(".home").px("padding-top"), at(".home").px("padding-right"), at(".home").px("padding-bottom"), at(".home").px("padding-left")]).toEqual([8, 20 + insets.right, 20 + insets.bottom, 20 + insets.left]);
+    expect([at(".wordmark").px("left"), at(".home-corner").px("right"), at(".home-corner").px("top")]).toEqual([20 + insets.left, 20 + insets.right, 8]);
+    // The row reaches over the page's right side alone, never past it.
+    expect(at(".games-tiles").px("margin-right")).toBe(-20);
   });
 
   it("goes back to the iPad's layout when the window grows past 600 tall", () => {
