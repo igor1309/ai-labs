@@ -26,9 +26,14 @@ struct PreferencesTests {
                                     callsFolder: root.appendingPathComponent("first"))
             try store.write(first)
             #expect(PreferencesStore(fileURL: file).read() == first)
+            let firstData = try Data(contentsOf: file)
+            // An open handle keeps the old file whole when the path is replaced, not rewritten in place.
+            let handle = try FileHandle(forReadingFrom: file)
+            defer { try? handle.close() }
             let next = Preferences(automaticRecording: true, liveText: true,
-                                   callsFolder: root.appendingPathComponent("next"))
+                                   callsFolder: root.appendingPathComponent("a-longer-next-folder"))
             try store.write(next)
+            #expect(try handle.readToEnd() == firstData)
             #expect(store.read() == next)
             #expect(try JSONDecoder().decode(Preferences.self, from: Data(contentsOf: file)) == next)
         }

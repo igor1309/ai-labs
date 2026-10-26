@@ -13,11 +13,19 @@ struct PreferencesCompositionTests {
             let store = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
             for automatic in [false, true] {
                 let folder = root.appendingPathComponent("calls-\(automatic)")
+                // Only the stored folder of the second pass exists.
+                if automatic { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
                 try store.write(Preferences(automaticRecording: automatic, callsFolder: folder))
-                let (recording, _) = composeRecordingWithPreferences(preferences: store, makePieces: { _ in
+                let (recording, conditions) = composeRecordingWithPreferences(preferences: store, makePieces: { _ in
                     preconditionFailure("An idle recording must not build a session")
                 })
                 #expect(await recording.snapshot() == RecordingState(automatic: automatic))
+                conditions.refresh()
+                for await state in await recording.states() where !state.missing.contains(.callAudioAccess) {
+                    // Call audio is always available, so its arrival marks the refresh.
+                    #expect(state.missing.contains(.callsFolder) != automatic)
+                    break
+                }
                 await recording.end()
             }
         }
