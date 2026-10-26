@@ -1,7 +1,33 @@
 import Testing
+import TranscriptWriting
 
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptWritingTests {
+
+    @Test func unreadUpdatesKeepOnlyTheLatestText() async {
+
+        let executor = TestExecutor()
+        let call = FakeCallText<String>(
+            startGate: nil, stopGate: nil, startText: nil, lastText: nil,
+            switchText: { $0 ? "live text on" : "live text off" }, changed: executor.notify
+        )
+        let transcript = FakeTranscript<String>(holds: [:], changed: executor.notify)
+        let report = FakeFailureReport(events: Events(), gate: nil, changed: executor.notify)
+        let subject = TranscriptWriting(callText: call, transcript: transcript, failureReport: report)
+        let texts = ["first draft", "first revised\nsecond draft", "first final\nsecond final\nthird"]
+        let task = Task(executorPreference: executor) {
+            await subject.start()
+            for text in texts { call.send(text) }
+            await subject.stop()
+            var received: [String] = []
+            for await text in subject.updates { received.append(text) }
+            executor.complete()
+            return received
+        }
+        await executor.finish()
+        #expect(await task.value == [texts[texts.count - 1]])
+        #expect(transcript.kept == texts.last)
+    }
 
     @Test func eachUpdateIsWrittenWholeInOrderAndPassedOnAtOnce() async {
 

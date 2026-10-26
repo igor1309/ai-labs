@@ -19,7 +19,7 @@ public actor TranscriptWriting<Text: Sendable> {
         self.callText = callText
         self.transcript = transcript
         self.failureReport = failureReport
-        (updates, continuation) = AsyncStream.makeStream()
+        (updates, continuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
     }
 
     public func start(enabled: Bool = true) async {
