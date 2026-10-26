@@ -144,6 +144,10 @@ describe("DIG's FIELD GUIDE in a wide-short window", () => {
       if (language === "en") {
         // A column: the picture over the name over the count.
         expect([room.value("flex-wrap") || "nowrap", card.rowGap()]).toEqual(["nowrap", 6]);
+        for (const each of cards) {
+          const style = styleAt(each, size);
+          expect([style.value("flex").replace("0px", "0"), style.value("min-width"), style.value("flex-direction")]).toEqual(["1 1 0", "0px", "column"]);
+        }
         const picture = at(".dig-guide-picture");
         expect([picture.value("width"), picture.value("flex-shrink"), picture.value("object-fit")]).toEqual(["min(100%, 180px)", "1", "contain"]);
         const across = Math.min(content, 180);
@@ -153,7 +157,8 @@ describe("DIG's FIELD GUIDE in a wide-short window", () => {
         // Three over two, the two centred: the name across the card, over
         // its picture beside its count.
         expect([room.value("display"), room.value("grid-template-rows"), room.value("grid-template-columns"), card.value("grid-column"), card.value("display")]).toEqual(["grid", "repeat(2, minmax(0, 1fr))", "repeat(6, minmax(0, 1fr))", "span 2", "grid"]);
-        expect(styleAt(cards[3]!, size).value("grid-column")).toBe("2 / span 2");
+        expect([styleAt(cards[3]!, size).value("grid-column"), styleAt(cards[4]!, size).value("grid-column")]).toEqual(["2 / span 2", "span 2"]);
+        expect([card.value("grid-template-columns"), card.value("min-width")]).toEqual(["1fr 1fr", "0px"]);
         expect([card.value("grid-template-rows"), at(".dig-guide-picture").value("height")]).toEqual(["auto minmax(0, 1fr)", "100%"]);
         expect([card.rowGap(), card.columnGap()]).toEqual([4, 8]);
         expect(room.value("align-items")).toBe("stretch");
