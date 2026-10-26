@@ -7,6 +7,38 @@ import TrackFile
 @Suite(.timeLimit(.minutes(1)))
 struct SessionFailureTests {
 
+    @Test(arguments: [SessionSide.microphone, .call])
+    func failedTrackOpenLeavesTheOtherCaptureRecording(side: SessionSide) async throws {
+
+        try await withSessionRig { rig, folder in
+            let pieces = rig.pieces
+            let made = try await pieces.create()
+            let name = side == .microphone ? "microphone.caf" : "call.caf"
+            let blocked = folder.appendingPathComponent(name)
+            try Data("existing track".utf8).write(to: blocked)
+            let failed = side == .microphone ? pieces.microphoneTrack : pieces.callTrack
+            let other = side == .microphone ? pieces.callTrack : pieces.microphoneTrack
+            await #expect(throws: POSIXError(.EEXIST)) { try await failed.open(in: made) }
+            try await other.open(in: made)
+            try await pieces.transcript.open(in: made)
+            try await pieces.start(enabled: true)
+            try await pieces.microphoneCapture.start()
+            try await pieces.callCapture.start(selection: .everyAppButAudelin)
+            try await pieces.microphoneCapture.stop()
+            try await pieces.callCapture.stop()
+            try await failed.close()
+            try await other.close()
+            try await pieces.stop()
+            try await pieces.transcript.close()
+            #expect(rig.microphone.starts.all == (side == .microphone ? [] : [true]))
+            #expect(rig.call.starts.all == (side == .call ? [] : [true]))
+            #expect(try String(contentsOf: blocked, encoding: .utf8) == "existing track")
+            let otherName = side == .microphone ? "call.caf" : "microphone.caf"
+            #expect(try recordedSamples(folder.appendingPathComponent(otherName))
+                == (side == .microphone ? [-0.25, 0.5, -0.125] : [0.25, -0.5, 0.125]))
+        }
+    }
+
     @Test(arguments: [SessionSide.microphone, .call], [false, true])
     func failedWriteAndItsFailedStopReachSessionBeforeEnd(side: SessionSide, stopEndsStream: Bool) async throws {
 

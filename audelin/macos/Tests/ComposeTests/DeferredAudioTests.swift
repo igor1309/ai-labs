@@ -12,6 +12,7 @@ struct DeferredAudioTests {
         let listening = Signal()
         let audio = DeferredAudio(listening: { listening.send() })
         #expect(audio.capturedThrough == 0)
+        #expect(!audio.hasCapture)
         let feed = FakeCaptureAudio()
         defer { feed.finish(); audio.finish(); listening.end() }
         let received = Values<Audio>()
@@ -25,6 +26,7 @@ struct DeferredAudioTests {
             listener = Task { await audio.listen { received.append($0) } }
         }
         defer { listener.cancel() }
+        #expect(audio.hasCapture)
         feed.give(.init(start: 0, samples: [0.25, -0.5], sampleRate: 48_000))
         feed.finish()
         await withTaskCancellationHandler { await listener.value } onCancel: { listener.cancel() }

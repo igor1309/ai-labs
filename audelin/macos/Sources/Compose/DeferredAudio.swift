@@ -18,6 +18,7 @@ final class DeferredAudio: SideText.LiveAudio, Sendable {
     private let listening: @Sendable () -> Void
 
     var capturedThrough: Double { capture.withLock { $0?.capturedThrough ?? 0 } }
+    var hasCapture: Bool { capture.withLock { $0 != nil } }
 
     init(
         listening: @escaping @Sendable () -> Void = {},
