@@ -39285,6 +39285,3880 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "i8ROL",
+      "x": 0,
+      "y": 18800,
+      "name": "Screen 9 — App icon",
+      "width": 1500,
+      "fill": "#2e2e32",
+      "layout": "vertical",
+      "gap": 40,
+      "padding": 56,
+      "children": [
+        {
+          "type": "frame",
+          "id": "QU699",
+          "name": "Info",
+          "width": 1100,
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "dbWv2",
+              "name": "Number",
+              "fill": "#0E9F92",
+              "content": "GLASS LEDGER · SCREEN 9",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "text",
+              "id": "Hcsnt",
+              "name": "Title",
+              "fill": "#111318",
+              "content": "App icon",
+              "fontFamily": "IBM Plex Mono",
+              "fontSize": 38,
+              "fontWeight": "600",
+              "letterSpacing": -1
+            },
+            {
+              "type": "text",
+              "id": "eP2MT",
+              "name": "Idea",
+              "fill": "#444444",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Audelin's icon for Finder, the microphone and call audio permission prompts and System Settings › Privacy (LAB-609). The menu bar item is Screen 7. A Glass Ledger panel on the dark theme: four lines alternating me teal and them amber beside the time gutter, the recording dot in the gutter's first mark. Chosen over a centred dialogue layout (owner, 2026-10-26).",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Hmj9e",
+              "name": "Open",
+              "fill": "#B4540A",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Proposed, not decided: one icon for both appearances (no separate light icon).",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "apbY7",
+          "name": "Sizes",
+          "gap": 56,
+          "alignItems": "end",
+          "children": [
+            {
+              "type": "frame",
+              "id": "i2yMzw",
+              "name": "AppIcon 1024",
+              "theme": {
+                "mode": "dark"
+              },
+              "width": 1024,
+              "height": 1024,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "MfuE7",
+                  "x": 100,
+                  "y": 100,
+                  "name": "Tile",
+                  "clip": true,
+                  "width": 824,
+                  "height": 824,
+                  "fill": "$glass",
+                  "cornerRadius": 185,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "ellipse",
+                      "id": "mBBmB",
+                      "x": 120,
+                      "y": 200,
+                      "name": "Rec dot",
+                      "fill": "$rec",
+                      "width": 64,
+                      "height": 64
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 32,
+                      "id": "aW77T",
+                      "x": 224,
+                      "y": 200,
+                      "name": "Line",
+                      "fill": "$me",
+                      "width": 480,
+                      "height": 64
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 14,
+                      "id": "v377Fw",
+                      "x": 124,
+                      "y": 338,
+                      "name": "Gutter tick",
+                      "fill": "$gutter",
+                      "width": 56,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 32,
+                      "id": "GFDDn",
+                      "x": 224,
+                      "y": 320,
+                      "name": "Line",
+                      "fill": "$them",
+                      "width": 400,
+                      "height": 64
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 14,
+                      "id": "OwLj4",
+                      "x": 124,
+                      "y": 458,
+                      "name": "Gutter tick",
+                      "fill": "$gutter",
+                      "width": 56,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 32,
+                      "id": "y6WoVY",
+                      "x": 224,
+                      "y": 440,
+                      "name": "Line",
+                      "fill": "$me",
+                      "width": 480,
+                      "height": 64
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 14,
+                      "id": "P1DjNH",
+                      "x": 124,
+                      "y": 578,
+                      "name": "Gutter tick",
+                      "fill": "$gutter",
+                      "width": 56,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 32,
+                      "id": "vtsxQ",
+                      "x": 224,
+                      "y": 560,
+                      "name": "Line",
+                      "fill": "$them",
+                      "width": 304,
+                      "height": 64
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "wbP8s",
+      "x": 1700,
+      "y": 18800,
+      "name": "Screen 9 — App icon, alternative: two tracks",
+      "width": 1860,
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 40,
+      "padding": 56,
+      "children": [
+        {
+          "type": "frame",
+          "id": "d2142u",
+          "name": "Info",
+          "width": 1100,
+          "layout": "vertical",
+          "gap": 12,
+          "children": [
+            {
+              "type": "text",
+              "id": "XKJVG",
+              "name": "Number",
+              "fill": "#0E9F92",
+              "content": "GLASS LEDGER · SCREEN 9 · ALTERNATIVE",
+              "fontFamily": "Inter",
+              "fontSize": 12,
+              "fontWeight": "600",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "text",
+              "id": "NleBY",
+              "name": "Title",
+              "fill": "#111318",
+              "content": "App icon — two tracks",
+              "fontFamily": "IBM Plex Mono",
+              "fontSize": 38,
+              "fontWeight": "600",
+              "letterSpacing": -1
+            },
+            {
+              "type": "text",
+              "id": "QstM8",
+              "name": "Idea",
+              "fill": "#444444",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Audelin records two tracks, my microphone and the call. The icon draws them as one conversation on a shared baseline: my track rises in me teal, theirs falls in them amber, and the two take turns, so the mark reads as a dialogue even at 16 px. A silent track rests as a row of dots, the ledger's time gutter; the recording dot sits in the quiet corner. The tile is the dark glass panel, lit from the top.",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 15,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "XH3Is",
+              "name": "Open",
+              "fill": "#B4540A",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "Proposed, not decided: this composition against A and B; a five-bar master for 16 and 32 px instead of eleven bars; one icon for both appearances.",
+              "lineHeight": 1.5,
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "hAcBT",
+          "name": "Body",
+          "width": "fill_container",
+          "gap": 56,
+          "children": [
+            {
+              "type": "frame",
+              "id": "s4dMHh",
+              "name": "AppIcon C — two tracks",
+              "theme": {
+                "mode": "dark"
+              },
+              "width": 1024,
+              "height": 1024,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "C5M86D",
+                  "x": 100,
+                  "y": 100,
+                  "name": "Tile",
+                  "clip": true,
+                  "width": 824,
+                  "height": 824,
+                  "fill": {
+                    "type": "gradient",
+                    "gradientType": "linear",
+                    "enabled": true,
+                    "rotation": 180,
+                    "size": {
+                      "height": 1
+                    },
+                    "colors": [
+                      {
+                        "color": "$card",
+                        "position": 0
+                      },
+                      {
+                        "color": "$win",
+                        "position": 1
+                      }
+                    ]
+                  },
+                  "cornerRadius": 185,
+                  "stroke": {
+                    "type": "gradient",
+                    "gradientType": "linear",
+                    "enabled": true,
+                    "rotation": 180,
+                    "size": {
+                      "height": 1
+                    },
+                    "colors": [
+                      {
+                        "color": "#FFFFFF33",
+                        "position": 0
+                      },
+                      {
+                        "color": "#FFFFFF00",
+                        "position": 0.55
+                      }
+                    ]
+                  },
+                  "strokeWidth": 3,
+                  "strokeAlignment": "inner",
+                  "effect": {
+                    "type": "shadow",
+                    "shadowType": "outer",
+                    "color": "$shadow",
+                    "offset": {
+                      "x": 0,
+                      "y": 12
+                    },
+                    "blur": 28
+                  },
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "DsWmo",
+                      "x": 124,
+                      "y": 292,
+                      "name": "Me",
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 110
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "O2iGu3",
+                      "x": 124,
+                      "y": 422,
+                      "name": "Them rest",
+                      "opacity": 0.3,
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 36
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "Agurs",
+                      "x": 178,
+                      "y": 202,
+                      "name": "Me",
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 200
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "RrtVe",
+                      "x": 178,
+                      "y": 422,
+                      "name": "Them rest",
+                      "opacity": 0.3,
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 36
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "hN3ke",
+                      "x": 232,
+                      "y": 132,
+                      "name": "Me",
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 270
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "Rjp5C",
+                      "x": 232,
+                      "y": 422,
+                      "name": "Them rest",
+                      "opacity": 0.3,
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 36
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "RyCUy",
+                      "x": 286,
+                      "y": 232,
+                      "name": "Me",
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 170
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "Nc6KS",
+                      "x": 286,
+                      "y": 422,
+                      "name": "Them rest",
+                      "opacity": 0.3,
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 36
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "E8gOey",
+                      "x": 340,
+                      "y": 172,
+                      "name": "Me",
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 230
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "mDuQH",
+                      "x": 340,
+                      "y": 422,
+                      "name": "Them rest",
+                      "opacity": 0.3,
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 36
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "SdFie",
+                      "x": 394,
+                      "y": 312,
+                      "name": "Me",
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 90
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "vTp3v",
+                      "x": 394,
+                      "y": 422,
+                      "name": "Them",
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 100
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "dvovY",
+                      "x": 448,
+                      "y": 366,
+                      "name": "Me rest",
+                      "opacity": 0.3,
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 36
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "Y1chJ",
+                      "x": 448,
+                      "y": 422,
+                      "name": "Them",
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 240
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "JRlBa",
+                      "x": 502,
+                      "y": 366,
+                      "name": "Me rest",
+                      "opacity": 0.3,
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 36
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "Ki9Le",
+                      "x": 502,
+                      "y": 422,
+                      "name": "Them",
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 180
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "cSpSD",
+                      "x": 556,
+                      "y": 366,
+                      "name": "Me rest",
+                      "opacity": 0.3,
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 36
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "rs446",
+                      "x": 556,
+                      "y": 422,
+                      "name": "Them",
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 270
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "gnBRG",
+                      "x": 610,
+                      "y": 366,
+                      "name": "Me rest",
+                      "opacity": 0.3,
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 36
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "wGCdy",
+                      "x": 610,
+                      "y": 422,
+                      "name": "Them",
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 150
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "bnAWX",
+                      "x": 664,
+                      "y": 366,
+                      "name": "Me rest",
+                      "opacity": 0.3,
+                      "fill": "$me",
+                      "width": 36,
+                      "height": 36
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": 18,
+                      "id": "OQibA",
+                      "x": 664,
+                      "y": 422,
+                      "name": "Them",
+                      "fill": "$them",
+                      "width": 36,
+                      "height": 96
+                    },
+                    {
+                      "type": "ellipse",
+                      "id": "AJzZV",
+                      "x": 616,
+                      "y": 132,
+                      "name": "Rec dot",
+                      "fill": "$rec",
+                      "width": 84,
+                      "height": 84,
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "#F2555A73",
+                        "blur": 40
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bajJ1",
+              "name": "In use",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "VRhfp",
+                  "name": "Label",
+                  "fill": "#6B7079",
+                  "content": "AT EVERY SIZE · 11 BARS FROM 64 PX, 5 BARS AT 32 AND 16",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                  "letterSpacing": 1.5
+                },
+                {
+                  "type": "frame",
+                  "id": "QMoQR",
+                  "name": "Desktop dark",
+                  "theme": {
+                    "mode": "dark"
+                  },
+                  "width": "fill_container",
+                  "fill": "$back",
+                  "cornerRadius": "$radius-card",
+                  "gap": 48,
+                  "padding": [
+                    40,
+                    64
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "K73sGa",
+                      "name": "128 px",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "bHwRK",
+                          "name": "Icon 128",
+                          "theme": {
+                            "mode": "dark"
+                          },
+                          "width": 128,
+                          "height": 128,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "So3E5",
+                              "x": 12.5,
+                              "y": 12.5,
+                              "name": "Tile",
+                              "clip": true,
+                              "width": 103,
+                              "height": 103,
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "$card",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "$win",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "cornerRadius": 23.125,
+                              "stroke": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#FFFFFF33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#FFFFFF00",
+                                    "position": 0.55
+                                  }
+                                ]
+                              },
+                              "strokeWidth": 1,
+                              "strokeAlignment": "inner",
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "$shadow",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 1.5
+                                },
+                                "blur": 3.5
+                              },
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "eeAei",
+                                  "x": 15.5,
+                                  "y": 36.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 13.75
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "Bbr87",
+                                  "x": 15.5,
+                                  "y": 52.75,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "k9TT8e",
+                                  "x": 22.25,
+                                  "y": 25.25,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "F2KNHQ",
+                                  "x": 22.25,
+                                  "y": 52.75,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "Hhxrf",
+                                  "x": 29,
+                                  "y": 16.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 33.75
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "Dioc3",
+                                  "x": 29,
+                                  "y": 52.75,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "rmsMO",
+                                  "x": 35.75,
+                                  "y": 29,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 21.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "UDraf",
+                                  "x": 35.75,
+                                  "y": 52.75,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "MsbxJ",
+                                  "x": 42.5,
+                                  "y": 21.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 28.75
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "Wnd3b",
+                                  "x": 42.5,
+                                  "y": 52.75,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "yOCJR",
+                                  "x": 49.25,
+                                  "y": 39,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 11.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "tBq74",
+                                  "x": 49.25,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 12.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "FuEFf",
+                                  "x": 56,
+                                  "y": 45.75,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "BGJ5X",
+                                  "x": 56,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 30
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "k8TW1w",
+                                  "x": 62.75,
+                                  "y": 45.75,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "kUtfg",
+                                  "x": 62.75,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 22.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "uhkGD",
+                                  "x": 69.5,
+                                  "y": 45.75,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "t9gEA",
+                                  "x": 69.5,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 33.75
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "q3Yn8",
+                                  "x": 76.25,
+                                  "y": 45.75,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "KKL23",
+                                  "x": 76.25,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 18.75
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "eqnJ7",
+                                  "x": 83,
+                                  "y": 45.75,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "Dr5xK",
+                                  "x": 83,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 12
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "ujqQI",
+                                  "x": 77,
+                                  "y": 16.5,
+                                  "name": "Rec dot",
+                                  "fill": "$rec",
+                                  "width": 10.5,
+                                  "height": 10.5,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#F2555A73",
+                                    "blur": 5
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "Bha5F",
+                          "name": "Size",
+                          "fill": "$gutter",
+                          "content": "128",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "xWkVv",
+                      "name": "64 px",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "QnvRd",
+                          "name": "Icon 64",
+                          "theme": {
+                            "mode": "dark"
+                          },
+                          "width": 64,
+                          "height": 64,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "jS3gt",
+                              "x": 6.25,
+                              "y": 6.25,
+                              "name": "Tile",
+                              "clip": true,
+                              "width": 51.5,
+                              "height": 51.5,
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "$card",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "$win",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "cornerRadius": 11.5625,
+                              "stroke": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#FFFFFF33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#FFFFFF00",
+                                    "position": 0.55
+                                  }
+                                ]
+                              },
+                              "strokeWidth": 1,
+                              "strokeAlignment": "inner",
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "$shadow",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 0.75
+                                },
+                                "blur": 1.75
+                              },
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "g5zewa",
+                                  "x": 7.75,
+                                  "y": 18.25,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 6.875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "dGTKP",
+                                  "x": 7.75,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "yYgUz",
+                                  "x": 11.125,
+                                  "y": 12.625,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 12.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "c0Aah",
+                                  "x": 11.125,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "f4s0bk",
+                                  "x": 14.5,
+                                  "y": 8.25,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 16.875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "jD7on",
+                                  "x": 14.5,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "fVUqo",
+                                  "x": 17.875,
+                                  "y": 14.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 10.625
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "v36vV",
+                                  "x": 17.875,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "CylzC",
+                                  "x": 21.25,
+                                  "y": 10.75,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 14.375
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "Uh0zT",
+                                  "x": 21.25,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "HsEQ6",
+                                  "x": 24.625,
+                                  "y": 19.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 5.625
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "j4kLDN",
+                                  "x": 24.625,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 6.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "DFGkP",
+                                  "x": 28,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "wKPoJ",
+                                  "x": 28,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 15
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "MUL8t",
+                                  "x": 31.375,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "AFNHR",
+                                  "x": 31.375,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 11.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "o7hlP",
+                                  "x": 34.75,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "Pwv6h",
+                                  "x": 34.75,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 16.875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "PH3xf",
+                                  "x": 38.125,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "kaqbK",
+                                  "x": 38.125,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 9.375
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "joDFp",
+                                  "x": 41.5,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "YSvUu",
+                                  "x": 41.5,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "dl6Mt",
+                                  "x": 38.5,
+                                  "y": 8.25,
+                                  "name": "Rec dot",
+                                  "fill": "$rec",
+                                  "width": 5.25,
+                                  "height": 5.25,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#F2555A73",
+                                    "blur": 2.5
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "aY5ir",
+                          "name": "Size",
+                          "fill": "$gutter",
+                          "content": "64",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "y4stl5",
+                      "name": "32 px",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "Q2KLZt",
+                          "name": "Icon 32",
+                          "theme": {
+                            "mode": "dark"
+                          },
+                          "width": 32,
+                          "height": 32,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "O7A2p4",
+                              "x": 3.125,
+                              "y": 3.125,
+                              "name": "Tile",
+                              "clip": true,
+                              "width": 25.75,
+                              "height": 25.75,
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "$card",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "$win",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "cornerRadius": 5.78125,
+                              "stroke": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#FFFFFF33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#FFFFFF00",
+                                    "position": 0.55
+                                  }
+                                ]
+                              },
+                              "strokeWidth": 1,
+                              "strokeAlignment": "inner",
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "$shadow",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 0.375
+                                },
+                                "blur": 0.875
+                              },
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "fQwGM",
+                                  "x": 5,
+                                  "y": 7,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 5.3125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "WwwqD",
+                                  "x": 5,
+                                  "y": 13.4375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "l13OH4",
+                                  "x": 8.375,
+                                  "y": 3.875,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 8.4375
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "wUXn1",
+                                  "x": 8.375,
+                                  "y": 13.4375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "X5svbB",
+                                  "x": 11.75,
+                                  "y": 10.0625,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "RJNqt",
+                                  "x": 11.75,
+                                  "y": 13.4375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 6.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "FcTuI",
+                                  "x": 15.125,
+                                  "y": 10.0625,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "b5HKfK",
+                                  "x": 15.125,
+                                  "y": 13.4375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 8.4375
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "EGnzs",
+                                  "x": 18.5,
+                                  "y": 10.0625,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "giC7P",
+                                  "x": 18.5,
+                                  "y": 13.4375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 4.375
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "STtrQ",
+                                  "x": 17,
+                                  "y": 3.875,
+                                  "name": "Rec dot",
+                                  "fill": "$rec",
+                                  "width": 3.75,
+                                  "height": 3.75,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#F2555A73",
+                                    "blur": 1.25
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "fvx8X",
+                          "name": "Size",
+                          "fill": "$gutter",
+                          "content": "32",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "AlJwW",
+                      "name": "16 px",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "N32TU6",
+                          "name": "Icon 16",
+                          "theme": {
+                            "mode": "dark"
+                          },
+                          "width": 16,
+                          "height": 16,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "uSh36",
+                              "x": 1.5625,
+                              "y": 1.5625,
+                              "name": "Tile",
+                              "clip": true,
+                              "width": 12.875,
+                              "height": 12.875,
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "$card",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "$win",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "cornerRadius": 2.890625,
+                              "stroke": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#FFFFFF33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#FFFFFF00",
+                                    "position": 0.55
+                                  }
+                                ]
+                              },
+                              "strokeWidth": 1,
+                              "strokeAlignment": "inner",
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "$shadow",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 0.1875
+                                },
+                                "blur": 0.4375
+                              },
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "KkRgg",
+                                  "x": 2.5,
+                                  "y": 3.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 1.125,
+                                  "height": 2.65625
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "IsNhc",
+                                  "x": 2.5,
+                                  "y": 6.71875,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 1.125,
+                                  "height": 1.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "R77IC9",
+                                  "x": 4.1875,
+                                  "y": 1.9375,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 1.125,
+                                  "height": 4.21875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "T383j",
+                                  "x": 4.1875,
+                                  "y": 6.71875,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 1.125,
+                                  "height": 1.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "GiRHF",
+                                  "x": 5.875,
+                                  "y": 5.03125,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 1.125,
+                                  "height": 1.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "CFAp8",
+                                  "x": 5.875,
+                                  "y": 6.71875,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 1.125,
+                                  "height": 3.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "XYLJB",
+                                  "x": 7.5625,
+                                  "y": 5.03125,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 1.125,
+                                  "height": 1.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "bD01X",
+                                  "x": 7.5625,
+                                  "y": 6.71875,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 1.125,
+                                  "height": 4.21875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "WNozc",
+                                  "x": 9.25,
+                                  "y": 5.03125,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 1.125,
+                                  "height": 1.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "WOL50",
+                                  "x": 9.25,
+                                  "y": 6.71875,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 1.125,
+                                  "height": 2.1875
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "v7JfO0",
+                                  "x": 8.5,
+                                  "y": 1.9375,
+                                  "name": "Rec dot",
+                                  "fill": "$rec",
+                                  "width": 1.875,
+                                  "height": 1.875,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#F2555A73",
+                                    "blur": 0.625
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "Sa5dM",
+                          "name": "Size",
+                          "fill": "$gutter",
+                          "content": "16",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "nDEJn",
+                  "name": "Desktop light",
+                  "theme": {
+                    "mode": "light"
+                  },
+                  "width": "fill_container",
+                  "fill": "$back",
+                  "cornerRadius": "$radius-card",
+                  "gap": 48,
+                  "padding": [
+                    40,
+                    64
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "end",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "rm5pN",
+                      "name": "128 px",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "PLSNY",
+                          "name": "Icon 128",
+                          "theme": {
+                            "mode": "dark"
+                          },
+                          "width": 128,
+                          "height": 128,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "lWlNF",
+                              "x": 12.5,
+                              "y": 12.5,
+                              "name": "Tile",
+                              "clip": true,
+                              "width": 103,
+                              "height": 103,
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "$card",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "$win",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "cornerRadius": 23.125,
+                              "stroke": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#FFFFFF33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#FFFFFF00",
+                                    "position": 0.55
+                                  }
+                                ]
+                              },
+                              "strokeWidth": 1,
+                              "strokeAlignment": "inner",
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "$shadow",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 1.5
+                                },
+                                "blur": 3.5
+                              },
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "TY2yF",
+                                  "x": 15.5,
+                                  "y": 36.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 13.75
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "zNlCg",
+                                  "x": 15.5,
+                                  "y": 52.75,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "B99l76",
+                                  "x": 22.25,
+                                  "y": 25.25,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "A05kWw",
+                                  "x": 22.25,
+                                  "y": 52.75,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "QXxBr",
+                                  "x": 29,
+                                  "y": 16.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 33.75
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "JQc1X",
+                                  "x": 29,
+                                  "y": 52.75,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "kDuMm",
+                                  "x": 35.75,
+                                  "y": 29,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 21.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "QNYYx",
+                                  "x": 35.75,
+                                  "y": 52.75,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "aRXFJ",
+                                  "x": 42.5,
+                                  "y": 21.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 28.75
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "Rg6bG",
+                                  "x": 42.5,
+                                  "y": 52.75,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "B8bklu",
+                                  "x": 49.25,
+                                  "y": 39,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 11.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "WUnKZ",
+                                  "x": 49.25,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 12.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "Q57pn",
+                                  "x": 56,
+                                  "y": 45.75,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "lEHJZ",
+                                  "x": 56,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 30
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "i2lavv",
+                                  "x": 62.75,
+                                  "y": 45.75,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "fgOK9",
+                                  "x": 62.75,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 22.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "JiH7K",
+                                  "x": 69.5,
+                                  "y": 45.75,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "KprM1",
+                                  "x": 69.5,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 33.75
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "E4o5m",
+                                  "x": 76.25,
+                                  "y": 45.75,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "Vf0dR",
+                                  "x": 76.25,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 18.75
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "AyejY",
+                                  "x": 83,
+                                  "y": 45.75,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 4.5,
+                                  "height": 4.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 2.25,
+                                  "id": "D45rMd",
+                                  "x": 83,
+                                  "y": 52.75,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 4.5,
+                                  "height": 12
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "uCYAf",
+                                  "x": 77,
+                                  "y": 16.5,
+                                  "name": "Rec dot",
+                                  "fill": "$rec",
+                                  "width": 10.5,
+                                  "height": 10.5,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#F2555A73",
+                                    "blur": 5
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "amfjZ",
+                          "name": "Size",
+                          "fill": "$gutter",
+                          "content": "128",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vKHS2",
+                      "name": "64 px",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "zwBQv",
+                          "name": "Icon 64",
+                          "theme": {
+                            "mode": "dark"
+                          },
+                          "width": 64,
+                          "height": 64,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "Vv6Nk",
+                              "x": 6.25,
+                              "y": 6.25,
+                              "name": "Tile",
+                              "clip": true,
+                              "width": 51.5,
+                              "height": 51.5,
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "$card",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "$win",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "cornerRadius": 11.5625,
+                              "stroke": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#FFFFFF33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#FFFFFF00",
+                                    "position": 0.55
+                                  }
+                                ]
+                              },
+                              "strokeWidth": 1,
+                              "strokeAlignment": "inner",
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "$shadow",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 0.75
+                                },
+                                "blur": 1.75
+                              },
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "i0zFi",
+                                  "x": 7.75,
+                                  "y": 18.25,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 6.875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "Hehn2",
+                                  "x": 7.75,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "JNYGb",
+                                  "x": 11.125,
+                                  "y": 12.625,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 12.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "pJrVW",
+                                  "x": 11.125,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "Z7KFmu",
+                                  "x": 14.5,
+                                  "y": 8.25,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 16.875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "lDTR4",
+                                  "x": 14.5,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "Mpd5U",
+                                  "x": 17.875,
+                                  "y": 14.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 10.625
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "vDK1d",
+                                  "x": 17.875,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "jaoLp",
+                                  "x": 21.25,
+                                  "y": 10.75,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 14.375
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "RR0is",
+                                  "x": 21.25,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "lqtrO",
+                                  "x": 24.625,
+                                  "y": 19.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 5.625
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "ZW3VL",
+                                  "x": 24.625,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 6.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "gvb8u",
+                                  "x": 28,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "S5yclv",
+                                  "x": 28,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 15
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "Zxp61",
+                                  "x": 31.375,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "Q7CBNp",
+                                  "x": 31.375,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 11.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "aF9w9",
+                                  "x": 34.75,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "v2QpJ",
+                                  "x": 34.75,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 16.875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "t3b52a",
+                                  "x": 38.125,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "pi55p",
+                                  "x": 38.125,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 9.375
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "N46vfw",
+                                  "x": 41.5,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "OId7j",
+                                  "x": 41.5,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "zrRpK",
+                                  "x": 38.5,
+                                  "y": 8.25,
+                                  "name": "Rec dot",
+                                  "fill": "$rec",
+                                  "width": 5.25,
+                                  "height": 5.25,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#F2555A73",
+                                    "blur": 2.5
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "EVHFl",
+                          "name": "Size",
+                          "fill": "$gutter",
+                          "content": "64",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vZURP",
+                      "name": "32 px",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "chT5Z",
+                          "name": "Icon 32",
+                          "theme": {
+                            "mode": "dark"
+                          },
+                          "width": 32,
+                          "height": 32,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "kBSIy",
+                              "x": 3.125,
+                              "y": 3.125,
+                              "name": "Tile",
+                              "clip": true,
+                              "width": 25.75,
+                              "height": 25.75,
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "$card",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "$win",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "cornerRadius": 5.78125,
+                              "stroke": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#FFFFFF33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#FFFFFF00",
+                                    "position": 0.55
+                                  }
+                                ]
+                              },
+                              "strokeWidth": 1,
+                              "strokeAlignment": "inner",
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "$shadow",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 0.375
+                                },
+                                "blur": 0.875
+                              },
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "ER5QK",
+                                  "x": 5,
+                                  "y": 7,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 5.3125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "Q6NFw",
+                                  "x": 5,
+                                  "y": 13.4375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "FghEU",
+                                  "x": 8.375,
+                                  "y": 3.875,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 8.4375
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "V8IzO6",
+                                  "x": 8.375,
+                                  "y": 13.4375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "W8oTP",
+                                  "x": 11.75,
+                                  "y": 10.0625,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "XLqKZ",
+                                  "x": 11.75,
+                                  "y": 13.4375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 6.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "qi2Ug",
+                                  "x": 15.125,
+                                  "y": 10.0625,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "YJ18T",
+                                  "x": 15.125,
+                                  "y": 13.4375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 8.4375
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "hMtj9",
+                                  "x": 18.5,
+                                  "y": 10.0625,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "SQele",
+                                  "x": 18.5,
+                                  "y": 13.4375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 4.375
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "sGnX1",
+                                  "x": 17,
+                                  "y": 3.875,
+                                  "name": "Rec dot",
+                                  "fill": "$rec",
+                                  "width": 3.75,
+                                  "height": 3.75,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#F2555A73",
+                                    "blur": 1.25
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "v41mH",
+                          "name": "Size",
+                          "fill": "$gutter",
+                          "content": "32",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LCmcN",
+                      "name": "16 px",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "N1rgm",
+                          "name": "Icon 16",
+                          "theme": {
+                            "mode": "dark"
+                          },
+                          "width": 16,
+                          "height": 16,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "lMub2",
+                              "x": 1.5625,
+                              "y": 1.5625,
+                              "name": "Tile",
+                              "clip": true,
+                              "width": 12.875,
+                              "height": 12.875,
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "$card",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "$win",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "cornerRadius": 2.890625,
+                              "stroke": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#FFFFFF33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#FFFFFF00",
+                                    "position": 0.55
+                                  }
+                                ]
+                              },
+                              "strokeWidth": 1,
+                              "strokeAlignment": "inner",
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "$shadow",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 0.1875
+                                },
+                                "blur": 0.4375
+                              },
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "l8zw7M",
+                                  "x": 2.5,
+                                  "y": 3.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 1.125,
+                                  "height": 2.65625
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "L4bxv",
+                                  "x": 2.5,
+                                  "y": 6.71875,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 1.125,
+                                  "height": 1.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "pGxH9",
+                                  "x": 4.1875,
+                                  "y": 1.9375,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 1.125,
+                                  "height": 4.21875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "q79Euf",
+                                  "x": 4.1875,
+                                  "y": 6.71875,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 1.125,
+                                  "height": 1.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "n2vUn",
+                                  "x": 5.875,
+                                  "y": 5.03125,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 1.125,
+                                  "height": 1.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "Z0zTls",
+                                  "x": 5.875,
+                                  "y": 6.71875,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 1.125,
+                                  "height": 3.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "MXxsr",
+                                  "x": 7.5625,
+                                  "y": 5.03125,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 1.125,
+                                  "height": 1.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "Vf0XW",
+                                  "x": 7.5625,
+                                  "y": 6.71875,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 1.125,
+                                  "height": 4.21875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "uuMpd",
+                                  "x": 9.25,
+                                  "y": 5.03125,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 1.125,
+                                  "height": 1.125
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 0.5625,
+                                  "id": "wR9ti",
+                                  "x": 9.25,
+                                  "y": 6.71875,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 1.125,
+                                  "height": 2.1875
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "ANTjR",
+                                  "x": 8.5,
+                                  "y": 1.9375,
+                                  "name": "Rec dot",
+                                  "fill": "$rec",
+                                  "width": 1.875,
+                                  "height": 1.875,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#F2555A73",
+                                    "blur": 0.625
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "nulvb",
+                          "name": "Size",
+                          "fill": "$gutter",
+                          "content": "16",
+                          "fontFamily": "$font-data",
+                          "fontSize": "$type-caption",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "cySfB",
+                  "name": "Label",
+                  "fill": "#6B7079",
+                  "content": "WHERE IT IS SEEN FIRST",
+                  "fontFamily": "Inter",
+                  "fontSize": 12,
+                  "fontWeight": "600",
+                  "letterSpacing": 1.5
+                },
+                {
+                  "type": "frame",
+                  "id": "b9cHFa",
+                  "name": "Prompt on desktop",
+                  "theme": {
+                    "mode": "light"
+                  },
+                  "width": "fill_container",
+                  "fill": "$back",
+                  "cornerRadius": "$radius-card",
+                  "padding": 48,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Muf5n",
+                      "name": "Permission prompt",
+                      "width": 300,
+                      "fill": "#F2F2F2F5",
+                      "cornerRadius": 14,
+                      "stroke": "#0000001A",
+                      "strokeWidth": 1,
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "#00000040",
+                        "offset": {
+                          "x": 0,
+                          "y": 16
+                        },
+                        "blur": 40
+                      },
+                      "layout": "vertical",
+                      "gap": 12,
+                      "padding": [
+                        24,
+                        20,
+                        20,
+                        20
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "GslCW",
+                          "name": "Icon 64",
+                          "theme": {
+                            "mode": "dark"
+                          },
+                          "width": 64,
+                          "height": 64,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "nkP9M",
+                              "x": 6.25,
+                              "y": 6.25,
+                              "name": "Tile",
+                              "clip": true,
+                              "width": 51.5,
+                              "height": 51.5,
+                              "fill": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "$card",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "$win",
+                                    "position": 1
+                                  }
+                                ]
+                              },
+                              "cornerRadius": 11.5625,
+                              "stroke": {
+                                "type": "gradient",
+                                "gradientType": "linear",
+                                "enabled": true,
+                                "rotation": 180,
+                                "size": {
+                                  "height": 1
+                                },
+                                "colors": [
+                                  {
+                                    "color": "#FFFFFF33",
+                                    "position": 0
+                                  },
+                                  {
+                                    "color": "#FFFFFF00",
+                                    "position": 0.55
+                                  }
+                                ]
+                              },
+                              "strokeWidth": 1,
+                              "strokeAlignment": "inner",
+                              "effect": {
+                                "type": "shadow",
+                                "shadowType": "outer",
+                                "color": "$shadow",
+                                "offset": {
+                                  "x": 0,
+                                  "y": 0.75
+                                },
+                                "blur": 1.75
+                              },
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "M73WR2",
+                                  "x": 7.75,
+                                  "y": 18.25,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 6.875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "BXHut",
+                                  "x": 7.75,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "n6dP2",
+                                  "x": 11.125,
+                                  "y": 12.625,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 12.5
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "z43JIL",
+                                  "x": 11.125,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "rVcIL",
+                                  "x": 14.5,
+                                  "y": 8.25,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 16.875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "AicLI",
+                                  "x": 14.5,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "p5Vys",
+                                  "x": 17.875,
+                                  "y": 14.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 10.625
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "IvVbe",
+                                  "x": 17.875,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "qYt3O",
+                                  "x": 21.25,
+                                  "y": 10.75,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 14.375
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "Hh7lb",
+                                  "x": 21.25,
+                                  "y": 26.375,
+                                  "name": "Them rest",
+                                  "opacity": 0.3,
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "zyxkf",
+                                  "x": 24.625,
+                                  "y": 19.5,
+                                  "name": "Me",
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 5.625
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "CWsdF",
+                                  "x": 24.625,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 6.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "d8zLBG",
+                                  "x": 28,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "wnCpq",
+                                  "x": 28,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 15
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "igH3D",
+                                  "x": 31.375,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "vD1th",
+                                  "x": 31.375,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 11.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "zC2NH",
+                                  "x": 34.75,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "HyBSY",
+                                  "x": 34.75,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 16.875
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "tYI1a",
+                                  "x": 38.125,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "NHCGQ",
+                                  "x": 38.125,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 9.375
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "uwpfS",
+                                  "x": 41.5,
+                                  "y": 22.875,
+                                  "name": "Me rest",
+                                  "opacity": 0.3,
+                                  "fill": "$me",
+                                  "width": 2.25,
+                                  "height": 2.25
+                                },
+                                {
+                                  "type": "rectangle",
+                                  "cornerRadius": 1.125,
+                                  "id": "HlHBr",
+                                  "x": 41.5,
+                                  "y": 26.375,
+                                  "name": "Them",
+                                  "fill": "$them",
+                                  "width": 2.25,
+                                  "height": 6
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "fURKk",
+                                  "x": 38.5,
+                                  "y": 8.25,
+                                  "name": "Rec dot",
+                                  "fill": "$rec",
+                                  "width": 5.25,
+                                  "height": 5.25,
+                                  "effect": {
+                                    "type": "shadow",
+                                    "shadowType": "outer",
+                                    "color": "#F2555A73",
+                                    "blur": 2.5
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "NzlkQ",
+                          "name": "H",
+                          "fill": "#1D1D1F",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "“Audelin” would like to access the microphone.",
+                          "lineHeight": 1.35,
+                          "textAlign": "center",
+                          "fontFamily": "Inter",
+                          "fontSize": 13,
+                          "fontWeight": "700"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Her6b",
+                          "name": "Body",
+                          "fill": "#4A4A4F",
+                          "textGrowth": "fixed-width",
+                          "width": "fill_container",
+                          "content": "Audelin records your side of the call on this Mac. Nothing leaves it.",
+                          "lineHeight": 1.4,
+                          "textAlign": "center",
+                          "fontFamily": "Inter",
+                          "fontSize": 11,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "frame",
+                          "id": "NeJCm",
+                          "name": "Buttons",
+                          "width": "fill_container",
+                          "gap": 8,
+                          "padding": [
+                            4,
+                            0,
+                            0,
+                            0
+                          ],
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "rYA4W",
+                              "name": "Don’t Allow",
+                              "width": "fill_container",
+                              "height": 28,
+                              "fill": "#0000000F",
+                              "cornerRadius": 7,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "e7Zv5",
+                                  "name": "Label",
+                                  "fill": "#1D1D1F",
+                                  "content": "Don’t Allow",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "eTgUb",
+                              "name": "Allow",
+                              "width": "fill_container",
+                              "height": 28,
+                              "fill": "#0A84FF",
+                              "cornerRadius": 7,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "LiHuf",
+                                  "name": "Label",
+                                  "fill": "#FFFFFF",
+                                  "content": "Allow",
+                                  "fontFamily": "Inter",
+                                  "fontSize": 13,
+                                  "fontWeight": "500"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "yliMO",
+      "x": 3700,
+      "y": 18800,
+      "name": "Screen 9 — App icon, two tracks, Liquid Glass edition",
+      "fill": "#FFFFFF",
+      "layout": "vertical",
+      "gap": 32,
+      "padding": 56,
+      "children": [
+        {
+          "type": "text",
+          "id": "yHuUe",
+          "name": "Title",
+          "fill": "#111318",
+          "content": "App icon — two tracks, Liquid Glass edition",
+          "fontFamily": "Inter",
+          "fontSize": 40,
+          "fontWeight": "600"
+        },
+        {
+          "type": "text",
+          "id": "H8WfYd",
+          "name": "Idea",
+          "fill": "#444444",
+          "textGrowth": "fixed-width",
+          "width": 1100,
+          "content": "The two-tracks design (frame at left, kept as drawn) split into Icon Composer layers: my track, their track, the record dot. Audelin.icon stacks them over the system gradient with glass, shadow and translucency.",
+          "fontFamily": "Inter",
+          "fontSize": 18,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "c38r2S",
+          "name": "Icon Composer layers",
+          "theme": {
+            "mode": "dark"
+          },
+          "gap": 40,
+          "children": [
+            {
+              "type": "frame",
+              "id": "QI4eu",
+              "name": "layer-me",
+              "width": 1024,
+              "height": 1024,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "oqmgR",
+                  "x": 154.09708737864077,
+                  "y": 362.87378640776694,
+                  "name": "Me",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 136.6990291262136
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "o3OPq",
+                  "x": 221.20388349514562,
+                  "y": 251.0291262135922,
+                  "name": "Me",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 248.54368932038832
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "NjOq1",
+                  "x": 288.31067961165047,
+                  "y": 164.0388349514563,
+                  "name": "Me",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 335.53398058252424
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "X3WOF",
+                  "x": 355.4174757281553,
+                  "y": 288.31067961165047,
+                  "name": "Me",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 211.2621359223301
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "DKUwI",
+                  "x": 422.5242718446602,
+                  "y": 213.74757281553397,
+                  "name": "Me",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 285.8252427184466
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "uObs4",
+                  "x": 489.631067961165,
+                  "y": 387.72815533980577,
+                  "name": "Me",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 111.84466019417475
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "R5P7U",
+                  "x": 556.7378640776699,
+                  "y": 454.83495145631065,
+                  "name": "Me rest",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 44.7378640776699
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "nBYtv",
+                  "x": 623.8446601941747,
+                  "y": 454.83495145631065,
+                  "name": "Me rest",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 44.7378640776699
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "zKmmL",
+                  "x": 690.9514563106795,
+                  "y": 454.83495145631065,
+                  "name": "Me rest",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 44.7378640776699
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "G0jwMB",
+                  "x": 758.0582524271844,
+                  "y": 454.83495145631065,
+                  "name": "Me rest",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 44.7378640776699
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "W7mVvi",
+                  "x": 825.1650485436893,
+                  "y": 454.83495145631065,
+                  "name": "Me rest",
+                  "fill": "$me",
+                  "width": 44.7378640776699,
+                  "height": 44.7378640776699
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZlTwz",
+              "name": "layer-them",
+              "width": 1024,
+              "height": 1024,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "IuWAS",
+                  "x": 154.09708737864077,
+                  "y": 524.4271844660194,
+                  "name": "Them rest",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 44.7378640776699
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "j7pUm3",
+                  "x": 221.20388349514562,
+                  "y": 524.4271844660194,
+                  "name": "Them rest",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 44.7378640776699
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "v574Gw",
+                  "x": 288.31067961165047,
+                  "y": 524.4271844660194,
+                  "name": "Them rest",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 44.7378640776699
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "yraTt",
+                  "x": 355.4174757281553,
+                  "y": 524.4271844660194,
+                  "name": "Them rest",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 44.7378640776699
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "MF07x",
+                  "x": 422.5242718446602,
+                  "y": 524.4271844660194,
+                  "name": "Them rest",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 44.7378640776699
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "cuGm0",
+                  "x": 489.631067961165,
+                  "y": 524.4271844660194,
+                  "name": "Them",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 124.27184466019416
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "zLGZi",
+                  "x": 556.7378640776699,
+                  "y": 524.4271844660194,
+                  "name": "Them",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 298.252427184466
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "Tevug",
+                  "x": 623.8446601941747,
+                  "y": 524.4271844660194,
+                  "name": "Them",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 223.6893203883495
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "HqnyH",
+                  "x": 690.9514563106795,
+                  "y": 524.4271844660194,
+                  "name": "Them",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 335.53398058252424
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "HOwFO",
+                  "x": 758.0582524271844,
+                  "y": 524.4271844660194,
+                  "name": "Them",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 186.40776699029124
+                },
+                {
+                  "type": "rectangle",
+                  "cornerRadius": 22.36893203883495,
+                  "id": "RM36r",
+                  "x": 825.1650485436893,
+                  "y": 524.4271844660194,
+                  "name": "Them",
+                  "fill": "$them",
+                  "width": 44.7378640776699,
+                  "height": 119.3009708737864
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "oWxOH",
+              "name": "layer-rec",
+              "width": 1024,
+              "height": 1024,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "JCTnn",
+                  "x": 765.514563106796,
+                  "y": 164.0388349514563,
+                  "name": "Rec dot",
+                  "fill": "$rec",
+                  "width": 104.3883495145631,
+                  "height": 104.3883495145631
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
