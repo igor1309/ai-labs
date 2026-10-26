@@ -134,7 +134,7 @@ Current screens:
 | 6 — Settings | Release build; debug build; confirm move; moving; move failed; during a recording |
 | 7 — Menu bar item | Waiting for a call; recording started by the call; recording without live text |
 | 8 — Errors | No call audio; no microphone; disk full |
-| 9 — App icon | The icon at 1024 px, exported to `macos/AppIcon/` (`AppIcon.icns`, `AppIcon-1024.png`) |
+| 9 — App icon | Three frames: the ledger icon (not chosen); "two tracks", the chosen flat design (owner, 2026-10-26); and its Liquid Glass edition, whose Icon Composer layers (me, them, rec) are exported to `macos/AppIcon/Audelin.icon` |
 
 Earlier frames are in git history: the four proposals and the brief at
 d5542163, the original Screens 1–8 at 32626465, v2 at dbd22607, v3 at
