@@ -10,7 +10,8 @@ public final class CallRecordingSubscription: Sendable {
 
     public init(
         calls: AsyncThrowingStream<CallEvent, any Error>, recording: Recording,
-        beforeCallStarted: (@Sendable () -> Void)? = nil
+        beforeCallStarted: (@Sendable () -> Void)? = nil,
+        startedApp: (@Sendable (String) -> Void)? = nil
     ) {
 
         let destination = Mutex(Destination(recording: recording))
@@ -20,8 +21,9 @@ public final class CallRecordingSubscription: Sendable {
                     let forwarded = destination.withLock { state in
                         guard !state.stopped else { return false }
                         switch event {
-                        case .started:
+                        case let .started(app):
                             state.callOn = true
+                            startedApp?(app)
                             beforeCallStarted?()
                             state.recording?.send(.callStarted)
                         case .ended:
@@ -70,12 +72,13 @@ public final class CallRecordingSubscription: Sendable {
 /// The caller owns the detector's lifetime and stops it when detection is no longer needed.
 public func composeCalls(
     _ processes: CoreAudioProcesses, to recording: Recording,
-    conditions: RecordingConditions? = nil
+    conditions: RecordingConditions? = nil,
+    startedApp: (@Sendable (String) -> Void)? = nil
 ) throws -> CallRecordingSubscription {
 
     try processes.start()
     return CallRecordingSubscription(
         calls: processes.calls, recording: recording,
-        beforeCallStarted: { conditions?.refresh() }
+        beforeCallStarted: { conditions?.refresh() }, startedApp: startedApp
     )
 }
