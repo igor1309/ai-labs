@@ -49,7 +49,7 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | clipdeck (`clipdeck/test/*.test.ts`), typecheck | `clipdeck-core` | the `clipdeck` filter | runs |
 | ntfy-sender (`ntfy-sender/tests/*.test.js`), in Chromium | `ntfy-sender-core` | the `ntfy-sender` filter | runs |
 | noreta (`noreta/tests/*.test.ts`), typecheck | `noreta-core` | the `noreta` filter, with `noreta/docs/qa.md` | runs |
-| agonara (`agonara/tests/*.test.js`), OpenAPI check and lint, Docker build | `agonara-core` | the `agonara` filter, with the documents, skills and root `docs/loc-dashboard.html` its tests read | runs |
+| agonara (`agonara/tests/*.test.js`, `agonara/showcase/*.test.mjs`), OpenAPI check and lint, Docker build | `agonara-core` | the `agonara` filter, with the documents, skills and root `docs/loc-dashboard.html` its tests read | runs |
 | foliotell iOS (`foliotell/ios/Tests/`), build, archive | `foliotell-core` | the `foliotell` filter | runs |
 | foliotell Android (`:core:test`), debug build | `foliotell-android-core` | the `foliotell-android` filter | runs |
 | notio backend (`notio/backend/Tests/`) | `notio-core` | the `notio` filter | runs |

@@ -446,6 +446,7 @@ function close(server) {
       }
       resolve();
     });
+    server.closeAllConnections();
   });
 }
 
@@ -465,6 +466,9 @@ test("materialContentReader_shouldRenderAcceptedContentForStudent_onStudentPanel
 
     await page.locator("[data-action='open-material-content']").click();
     await expect(page.locator("#material-content-body")).toContainText("Full basis text");
+    const panel = await page.locator("#navigation-student-panel").boundingBox();
+    const section = await page.locator("#navigation-section").boundingBox();
+    expect(panel.x + panel.width).toBeLessThanOrEqual(section.x + section.width);
     await expect(page.locator("#material-content-status")).toContainText("markdown");
     await expect(page.locator("#navigation-material-backlinks")).toContainText("Basis");
     await expect(page.locator("#navigation-material-backlinks")).toContainText("Vector spaces");
@@ -637,7 +641,7 @@ async function startContentHarness() {
   const entries = Array.isArray(accepted) ? accepted : [accepted];
   const material = entries.find($0 => $0.acceptedKind === "material_reference") ?? entries[0];
   await fetch(`${baseUrl}/materials/revisions/${material.revisionId}/content`, {
-    body: JSON.stringify({ content: "# Full basis text\\nDetailed reading.", contentFormat: "markdown" }),
+    body: JSON.stringify({ content: `# Full basis text\\nDetailed reading. ${"A basis spans the space and is linearly independent. ".repeat(12)}`, contentFormat: "markdown" }),
     headers: {
       cookie: bootstrap.cookie,
       "content-type": "application/json",

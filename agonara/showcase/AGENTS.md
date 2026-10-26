@@ -5,6 +5,18 @@ The public README lives in `public/README.md`; never copy the private README
 or other prose docs into it. Read the public README for private context,
 internal tools, home paths and assumptions a stranger cannot follow.
 
+Retake the screenshots when the `/learn` or `/admin` screens they show
+change. From `agonara/`, `node showcase/screenshots.mjs <directory>` seeds a
+demo program through the API on an in-memory instance and captures student
+navigation, a Quick Check attempt, the curator's coverage gaps and the
+Admin board. Convert each to WebP with `cwebp -q 82 -resize 1600 0
+-resize_mode down_only` into `public/screenshots/`, and look at every one
+before committing it.
+
+Rewrite the public README when its modules, screens, setup commands or
+screenshots no longer match the app. The owner approves each rewrite
+before it is pushed.
+
 The export carries the app, its tests, the OpenAPI document and what
 `compose.yaml` needs to build and run it locally. The deployment, backup,
 restore, rollback and smoke scripts, the staging and production compose

@@ -673,4 +673,9 @@ test('agonara settings export the app, its tests and local compose while keeping
   }
   assert.deepEqual(settings.allow_marker.map(({ marker }) => marker), ['/Users/']);
   assert.equal(readFileSync(join(root, 'agonara/showcase/public/.gitignore'), 'utf8'), 'node_modules/\n');
+  const readme = readFileSync(join(root, 'agonara/showcase/public/README.md'), 'utf8');
+  assert.match(readme, /^# Agonara\n\n\S/);
+  const images = [...readme.matchAll(/!\[[^\]]*\]\((screenshots\/[^)]+)\)/g)].map(([, path]) => path);
+  assert.equal(images.length, 4);
+  for (const path of images) assert.equal(existsSync(join(root, 'agonara/showcase/public', path)), true, path);
 });
