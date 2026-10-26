@@ -83,6 +83,59 @@ struct SessionRecordingTests {
         }
     }
 
+    @Test(arguments: [SessionSide.microphone, .call], [false, true])
+    func uncapturedAudioEndsAtTrackCloseBeforeTextStops(side: SessionSide, closeFails: Bool) async throws {
+
+        let closing = Signal(), release = Signal(), transcript = Signal()
+        defer { closing.end(); release.end(); transcript.end() }
+        var hooks = SessionPieces.Hooks()
+        hooks.beforeTranscriptFeed = { await transcript.next() }
+        hooks.textStarted = { text in
+            for await state in text.updates {
+                if state.status == .listening { break }
+            }
+        }
+        hooks.closeTrack = { closingSide, track in
+            if closingSide == side {
+                closing.send()
+                await release.next()
+            }
+            try await track.close()
+            if closingSide == side && closeFails { throw ScriptFailure.failed }
+        }
+        try await withSessionRig(hooks: hooks) { rig, _ in
+            let pieces = rig.pieces
+            let folder = try await pieces.create()
+            try await pieces.microphoneTrack.open(in: folder)
+            try await pieces.callTrack.open(in: folder)
+            try await pieces.transcript.open(in: folder)
+            try await pieces.start(enabled: true)
+            let text = try #require(await pieces.text)
+            let recognizer = side == .microphone ? rig.mine : rig.theirs
+            try await pieces.closeTrack(side == .microphone ? .call : .microphone)
+            let close = Task { try await pieces.closeTrack(side) }
+            await closing.next()
+            #expect(await text.state.status == .listening)
+            #expect(await recognizer.finishes == 0)
+            release.end()
+            if closeFails {
+                await #expect(throws: ScriptFailure.failed) { try await close.value }
+            } else {
+                try await close.value
+            }
+            for await state in text.updates {
+                if state.status == .finished { break }
+            }
+            #expect(await text.state.status == .finished)
+            #expect(await recognizer.finishes == 1)
+            #expect(rig.microphone.starts.all.isEmpty)
+            #expect(rig.call.starts.all.isEmpty)
+            try await pieces.stop()
+            transcript.end()
+            try await pieces.transcript.close()
+        }
+    }
+
     @Test func liveTextSwitchesForwardToTheRunningReader() async throws {
 
         try await withSessionRig { rig, folder in
