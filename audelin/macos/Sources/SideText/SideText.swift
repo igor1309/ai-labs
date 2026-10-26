@@ -68,7 +68,7 @@ public actor SideText {
     }
 
     /// Freezes visible text while retaining live text for the next switch on.
-    /// In-flight work may finish invisibly so its consumed cursor is retained.
+    /// Abandons filling in and cancels hearing; late results stay invisible.
     public func setEnabled(_ enabled: Bool) async {
 
         guard listener != nil, !ending, !stopping, enabled != self.enabled else { return }
@@ -79,6 +79,9 @@ public actor SideText {
             generation += 1
             state.status = .off
             publish()
+            let abandoned = Array(fills.values)
+            for run in abandoned { await run.abandon() }
+            await text.cancelHearing()
             if sourceEnded { await end(.finished) }
         }
     }

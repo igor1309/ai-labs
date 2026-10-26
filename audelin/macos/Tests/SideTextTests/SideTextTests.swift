@@ -44,7 +44,7 @@ struct SideTextTests {
         let filling = Gate()
         let plan = FillPlan(
             through: 3, prefixThrough: 1, afterPrefix: filling,
-            failure: failing ? "late fill failure" : nil
+            failure: failing ? "late fill failure" : nil, returnsAfterAbandon: true
         )
         await withRig(plans: [plan, FillPlan()]) { rig in
             rig.audio.capture(tones(1...3))
@@ -52,6 +52,8 @@ struct SideTextTests {
             await filling.entered()
             #expect(await rig.side.state == expected(1...1, status: .fillingIn))
             await rig.side.setEnabled(false)
+            #expect(await rig.fills[0].abandoned)
+            #expect(await filling.isHeld)
             await rig.audio.deliver(tones(2...3))
             let frozen = expected(1...1, status: .off)
             #expect(await rig.side.state == frozen)
@@ -66,6 +68,35 @@ struct SideTextTests {
                 #expect(await rig.fills[1].starts == [3])
                 #expect(await rig.text.samples == [1, 2, 3])
             }
+        }
+    }
+
+    @Test func switchingOffAbandonsEachFillInAndResumesFromItsConsumedPrefix() async {
+
+        let first = Gate(), second = Gate()
+        let plans = [first, second].map {
+            FillPlan(through: 3, prefixThrough: 1, afterPrefix: $0)
+        } + [FillPlan()]
+        await withRig(plans: plans) { rig in
+            rig.audio.capture(tones(1...3))
+            await rig.side.start()
+            for (index, filling) in [first, second].enumerated() {
+                await filling.entered()
+                #expect(await rig.fills[index].abandoned == false)
+                #expect(await rig.fills[index].starts == [index == 0 ? 0 : 1])
+                await rig.side.setEnabled(false)
+                #expect(await rig.fills[index].abandoned)
+                #expect(await filling.isHeld)
+                #expect(await rig.side.state == expected(1...1, status: .off))
+                #expect(await rig.text.stopCalls == 0)
+                await filling.release()
+                await rig.side.waitForWork()
+                await rig.side.setEnabled(true)
+            }
+            #expect(await rig.listening() == expected(1...3, later: 2..<4))
+            #expect(await rig.fills[2].starts == [1])
+            #expect(await rig.fills[2].abandoned == false)
+            #expect(await rig.text.samples == [1, 2, 3])
         }
     }
 
@@ -106,6 +137,30 @@ struct SideTextTests {
             #expect(await rig.listening() == expected(1...2, later: 2..<3))
             #expect(await rig.fills[1].starts == [2])
             #expect(await rig.text.samples == [1, 2])
+        }
+    }
+
+    @Test func switchingOffCancelsHeldHearingAndReplaysItOnSwitchOn() async {
+
+        let hearing = Gate()
+        await withRig(plans: [FillPlan(), FillPlan()], releasesCancelledHearing: true) { rig in
+            await rig.side.start()
+            await rig.listening()
+            await rig.audio.send(tones(1...1))
+            await rig.text.holdNextHearing(hearing)
+            let delivery = Task { await rig.audio.send(tones(2...2)) }
+            await hearing.entered()
+            await rig.side.setEnabled(false)
+            await delivery.value
+            #expect(await rig.text.cancelHearingCalls == 1)
+            #expect(await rig.text.stopCalls == 0)
+            #expect(await rig.text.samples == [1])
+            await rig.audio.send(tones(3...3))
+            #expect(await rig.side.state == expected(1...1, status: .off))
+            await rig.side.setEnabled(true)
+            #expect(await rig.listening() == expected(1...3, later: 2..<4))
+            #expect(await rig.fills[1].starts == [1])
+            #expect(await rig.text.samples == [1, 2, 3])
         }
     }
 

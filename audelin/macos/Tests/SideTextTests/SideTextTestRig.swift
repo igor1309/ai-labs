@@ -110,18 +110,25 @@ actor ToneText: LiveText {
     private let failWord: Int?
     private let failFinish: Bool
     private var hearing: Gate?
+    private var activeHearing: Gate?
+    private let releasesCancelledHearing: Bool
     private let stopping: Gate?
     private(set) var samples: [Float] = []
     private(set) var stopCalls = 0
     private(set) var stopped = false
     private(set) var finishCalls = 0
+    private(set) var cancelHearingCalls = 0
 
-    init(failWord: Int?, failFinish: Bool, finishOnlyWord: Int?, hearing: Gate?, stopping: Gate?) {
+    init(
+        failWord: Int?, failFinish: Bool, finishOnlyWord: Int?, hearing: Gate?,
+        releasesCancelledHearing: Bool, stopping: Gate?
+    ) {
 
         self.failWord = failWord
         self.failFinish = failFinish
         self.finishOnlyWord = finishOnlyWord
         self.hearing = hearing
+        self.releasesCancelledHearing = releasesCancelledHearing
         self.stopping = stopping
     }
 
@@ -131,7 +138,11 @@ actor ToneText: LiveText {
 
         let held = hearing
         hearing = nil
+        activeHearing = held
+        let cancellations = cancelHearingCalls
+        defer { activeHearing = nil }
         await held?.wait()
+        if releasesCancelledHearing, cancelHearingCalls != cancellations { throw CancellationError() }
         for (index, sample) in audio.samples.enumerated() {
             let word = Int(sample)
             if word == failWord { throw CuedFailure(description: "hearing failed") }
@@ -147,6 +158,12 @@ actor ToneText: LiveText {
             }
         }
         return words
+    }
+
+    func cancelHearing() async {
+
+        cancelHearingCalls += 1
+        if releasesCancelledHearing { await activeHearing?.release() }
     }
 
     func finish() throws -> [Text] {
@@ -178,6 +195,7 @@ struct FillPlan: Sendable {
     var prefixThrough: Double? = nil
     var afterPrefix: Gate? = nil
     var failure: String? = nil
+    var returnsAfterAbandon = false
 }
 
 /// Produces fill results from captured tones, independently of live delivery.
@@ -201,11 +219,11 @@ actor FakeFill: FillingIn {
         starts.append(from)
         let boundary = plan.through ?? audio.capturedThrough
         await plan.before?.wait()
-        guard !abandoned else { return }
+        guard !abandoned || plan.returnsAfterAbandon else { return }
         if let prefix = plan.prefixThrough {
             try await read(from: from, through: prefix, receive: receive)
             await plan.afterPrefix?.wait()
-            guard !abandoned else { return }
+            guard !abandoned || plan.returnsAfterAbandon else { return }
             if let failure = plan.failure { throw CuedFailure(description: failure) }
             try await read(from: prefix, through: boundary, receive: receive)
         } else {
@@ -302,14 +320,15 @@ struct Rig: Sendable {
 
 func withRig(
     plans: [FillPlan] = [FillPlan()], failWord: Int? = nil, failFinish: Bool = false,
-    finishOnlyWord: Int? = nil, hearing: Gate? = nil, stopping: Gate? = nil,
+    finishOnlyWord: Int? = nil, hearing: Gate? = nil,
+    releasesCancelledHearing: Bool = false, stopping: Gate? = nil,
     body: (Rig) async -> Void
 ) async {
 
     let audio = CueAudio()
     let text = ToneText(
         failWord: failWord, failFinish: failFinish, finishOnlyWord: finishOnlyWord,
-        hearing: hearing, stopping: stopping
+        hearing: hearing, releasesCancelledHearing: releasesCancelledHearing, stopping: stopping
     )
     let fills = plans.map { FakeFill(audio: audio, text: text, plan: $0) }
     let factory = FillFactory(fills)

@@ -30,31 +30,19 @@ extension TrackText: TextEngine {}
 struct CallSide: CallText.Side {
 
     private let side: SideReader
-    private let hearing: SideHearing
-    private let fills: FillingRuns
 
     init(audio: any SideText.LiveAudio, text: any TextEngine, written: any FillIn.WrittenTrack, sampleRate: Double) {
 
         let audio = SideAudio(source: audio)
         let hearing = SideHearing(text: text)
-        self.hearing = hearing
-        let fills = FillingRuns(written: written, text: text, audio: audio, sampleRate: sampleRate)
-        self.fills = fills
-        side = SideReader(audio: audio, text: hearing, fillIn: { fills.make() })
+        side = SideReader(audio: audio, text: hearing, fillIn: {
+            Filling(written: written, text: text, audio: audio, sampleRate: sampleRate)
+        })
     }
 
     func start(enabled: Bool) async { await side.start(enabled: enabled) }
 
-    func setEnabled(_ enabled: Bool) async {
-
-        await side.setEnabled(enabled)
-        // The engine retains an accepted hearing for replay; releasing its
-        // waiting caller lets capture drain even if recognition is still held.
-        if !enabled {
-            await fills.abandon()
-            await hearing.cancelHearing()
-        }
-    }
+    func setEnabled(_ enabled: Bool) async { await side.setEnabled(enabled) }
 
     func stop() async { await side.stop() }
     func abandon() async { await side.abandon() }
@@ -184,34 +172,5 @@ private struct FillFailure: Error, CustomStringConvertible {
         switch failure {
         case .gettingReady(let message), .reading(let message), .hearing(let message): message
         }
-    }
-}
-
-private final class FillingRuns: Sendable {
-
-    private let written: any FillIn.WrittenTrack
-    private let text: any TextEngine
-    private let audio: any FillIn.LiveAudioPosition
-    private let sampleRate: Double
-    private let latest = Mutex<Filling?>(nil)
-
-    init(written: any FillIn.WrittenTrack, text: any TextEngine, audio: any FillIn.LiveAudioPosition, sampleRate: Double) {
-
-        self.written = written
-        self.text = text
-        self.audio = audio
-        self.sampleRate = sampleRate
-    }
-
-    func make() -> Filling {
-
-        let run = Filling(written: written, text: text, audio: audio, sampleRate: sampleRate)
-        latest.withLock { $0 = run }
-        return run
-    }
-
-    func abandon() async {
-
-        if let run = latest.withLock({ $0 }) { await run.abandon() }
     }
 }

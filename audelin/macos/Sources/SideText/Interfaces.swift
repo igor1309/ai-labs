@@ -28,6 +28,8 @@ public protocol LiveText: Sendable {
 
     /// Returns the complete text, including revisions of earlier segments.
     func hear(_ audio: Audio) async throws -> [Text]
+    /// Cancels the waiting hearing, retaining live text for replay on switch on.
+    func cancelHearing() async
     func finish() async throws -> [Text]
     /// Releases live text, returning only once it has stopped.
     func stop() async
