@@ -33,10 +33,12 @@ struct SessionCaptureReportingTests {
 
         let delivery = Signal(), written = Signal()
         defer { delivery.end(); written.end() }
-        var hooks = SessionPieces.Hooks()
-        hooks.beforeAudioDelivery = { await delivery.next() }
-        hooks.recordingTrack = { _, track in ReportingTrack(track: track, written: written) }
-        try await withSessionRig(hooks: hooks) { rig, _ in
+        var construction = SessionConstruction()
+        construction.makeCaptureAudio = { _, live in
+            HeldCaptureAudio(base: LiveCaptureAudio(capture: live), release: { await delivery.next() })
+        }
+        construction.recordingTrack = { _, track in ReportingTrack(track: track, written: written) }
+        try await withSessionRig(construction: construction) { rig, _ in
             defer { delivery.end() }
             rig.session.send(.begin(liveText: false))
             _ = try await rig.state { $0.phase == .recording }

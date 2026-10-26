@@ -6,26 +6,45 @@ import protocol TranscriptWriting.CallText
 import protocol TranscriptWriting.Transcript
 import protocol TranscriptWriting.FailureReport
 
-struct WritingCallText: TranscriptWriting.CallText {
+public struct WritingCallText: TranscriptWriting.CallText {
 
     let text: CallReader
 
-    var updates: AsyncStream<State> { text.updates }
-    func start(enabled: Bool) async { await text.start(enabled: enabled) }
-    func setEnabled(_ enabled: Bool) async { await text.setEnabled(enabled) }
-    func stop() async { await text.stop() }
+    public init(text: CallReader) { self.text = text }
+
+    public var updates: AsyncStream<State> { text.updates }
+    public func start(enabled: Bool) async { await text.start(enabled: enabled) }
+    public func setEnabled(_ enabled: Bool) async { await text.setEnabled(enabled) }
+    public func stop() async { await text.stop() }
 }
 
-struct WritingTranscript: TranscriptWriting.Transcript {
+/// A recording's transcript destination, kept open until its text has stopped.
+public protocol SessionTranscriptFile: Sendable {
+
+    func write(_ state: State) async throws
+
+    func close() async
+}
+
+struct TranscriptDestination: TranscriptWriting.Transcript {
+
+    let file: any SessionTranscriptFile
+
+    func write(_ state: State) async throws { try await file.write(state) }
+}
+
+public struct WritingTranscript: SessionTranscriptFile {
 
     let file: TranscriptFile
-    let beforeWrite: @Sendable (State) async throws -> Void
 
-    func write(_ state: State) async throws {
+    public init(file: TranscriptFile) { self.file = file }
 
-        try await beforeWrite(state)
+    public func write(_ state: State) async throws {
+
         try await file.write(Compose.Transcript.segments(from: state))
     }
+
+    public func close() async { await file.close() }
 }
 
 final class TranscriptFailureReport: FailureReport, Sendable {

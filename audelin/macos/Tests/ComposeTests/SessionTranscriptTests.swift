@@ -15,16 +15,17 @@ struct SessionTranscriptTests {
         let binding = TranscriptBindingSpy()
         let message = "transcript \(operation.rawValue)"
         let news = Values<String>()
-        var hooks = SessionPieces.Hooks()
-        hooks.openTranscript = { try TranscriptFile(url: $0, binding: binding) }
-        hooks.beforeTranscriptWrite = { state in
-            if state.entries.count == 2, !failed.withLock({ value in
-                let previous = value
-                value = true
-                return previous
-            }) { binding.arm(operation) }
+        var construction = SessionConstruction()
+        construction.openTranscript = { url in
+            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+                if state.entries.count == 2, !failed.withLock({ value in
+                    let previous = value
+                    value = true
+                    return previous
+                }) { binding.arm(operation) }
+            })
         }
-        try await withSessionRig(hooks: hooks, beforeForward: { event in
+        try await withSessionRig(construction: construction, beforeForward: { event in
             if case let .pieceFailed(.transcript, error) = event { news.append(error) }
         }) { rig, folder in
             rig.session.send(.begin(liveText: true))
@@ -61,12 +62,13 @@ struct SessionTranscriptTests {
         let message = "transcript \(operation.rawValue)"
         let forwarded = Values<SessionEvent>(), forwarding = Signal(), release = DrainGate()
         defer { forwarding.end(); release.release() }
-        var hooks = SessionPieces.Hooks()
-        hooks.openTranscript = { try TranscriptFile(url: $0, binding: binding) }
-        hooks.beforeTranscriptWrite = { state in
-            if state.status == .finished { binding.arm(operation) }
+        var construction = SessionConstruction()
+        construction.openTranscript = { url in
+            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+                if state.status == .finished { binding.arm(operation) }
+            })
         }
-        try await withSessionRig(hooks: hooks, beforeForward: { event in
+        try await withSessionRig(construction: construction, beforeForward: { event in
             forwarding.send()
             await release.wait()
             forwarded.append(event)
@@ -100,12 +102,13 @@ struct SessionTranscriptTests {
         let message = "transcript \(operation.rawValue)"
         let news = Values<SessionEvent>(), reported = Signal(), release = DrainGate()
         defer { reported.end(); release.release() }
-        var hooks = SessionPieces.Hooks()
-        hooks.openTranscript = { try TranscriptFile(url: $0, binding: binding) }
-        hooks.beforeTranscriptWrite = { state in
-            if state.status == .finished { binding.arm(operation) }
+        var construction = SessionConstruction()
+        construction.openTranscript = { url in
+            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+                if state.status == .finished { binding.arm(operation) }
+            })
         }
-        try await withSessionRig(hooks: hooks, connect: { pieces, session in
+        try await withSessionRig(construction: construction, connect: { pieces, session in
             Task {
                 for await event in pieces.events {
                     news.append(event)
@@ -137,12 +140,12 @@ struct SessionTranscriptTests {
     @Test(arguments: [false, true])
     func failedTranscriptOpenStillStartsSwitchesAndStopsCallText(enabled: Bool) async throws {
 
-        var hooks = SessionPieces.Hooks()
-        hooks.openTranscript = { url in
+        var construction = SessionConstruction()
+        construction.openTranscript = { url in
             try Data("existing transcript".utf8).write(to: url)
-            return try TranscriptFile(url: url)
+            return try WritingTranscript(file: TranscriptFile(url: url))
         }
-        try await withSessionRig(hooks: hooks) { rig, folder in
+        try await withSessionRig(construction: construction) { rig, folder in
             rig.session.send(.begin(liveText: enabled))
             let recording = try await rig.state { $0.phase == .recording }
             #expect(recording.failures.map(\.piece) == ["transcript"])
