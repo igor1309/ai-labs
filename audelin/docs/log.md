@@ -2,6 +2,9 @@
 
 ## 2026-10-25
 
+- Fill in gets one side's live text ready, recovers its missed written audio,
+  and preserves the text so far on abandonment or failure (LAB-554).
+
 - A failed write's automatic capture stop reports its failure immediately,
   once, while Session-requested stops report through shutdown (LAB-553b).
 

@@ -10,6 +10,7 @@ let package = Package(
         .library(name: "CallText", targets: ["CallText"]),
         .library(name: "Compose", targets: ["Compose"]),
         .library(name: "CoreAudioProcesses", targets: ["CoreAudioProcesses"]),
+        .library(name: "FillIn", targets: ["FillIn"]),
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveAudio", targets: ["LiveAudio"]),
         .library(name: "LiveText", targets: ["LiveText"]),
@@ -22,6 +23,7 @@ let package = Package(
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Session", targets: ["Session"]),
+        .library(name: "SideText", targets: ["SideText"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
         .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
@@ -45,10 +47,13 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "Session", "CallText", "LiveText", "TrackFile", "TranscriptFile", "MicrophoneCapture", "SystemAudioCapture"]
+            dependencies: ["LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "Session", "CallText", "SideText", "FillIn", "LiveText", "TrackFile", "TranscriptFile", "MicrophoneCapture", "SystemAudioCapture"]
         ),
         .target(
             name: "CoreAudioProcesses"
+        ),
+        .target(
+            name: "FillIn"
         ),
         .target(
             name: "GlassLedger",
@@ -107,6 +112,9 @@ let package = Package(
             dependencies: ["Machine"]
         ),
         .target(
+            name: "SideText"
+        ),
+        .target(
             name: "SystemAudioCapture"
         ),
         .target(
@@ -147,6 +155,10 @@ let package = Package(
         .testTarget(
             name: "CoreAudioProcessesTests",
             dependencies: ["CoreAudioProcesses"]
+        ),
+        .testTarget(
+            name: "FillInTests",
+            dependencies: ["FillIn"]
         ),
         .testTarget(
             name: "LiveAudioTests",
@@ -195,6 +207,10 @@ let package = Package(
         .testTarget(
             name: "SessionTests",
             dependencies: ["Session", "Machine"]
+        ),
+        .testTarget(
+            name: "SideTextTests",
+            dependencies: ["SideText"]
         ),
         .testTarget(
             name: "SystemAudioCaptureTests",

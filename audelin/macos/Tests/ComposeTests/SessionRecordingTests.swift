@@ -34,30 +34,105 @@ struct SessionRecordingTests {
         }
     }
 
-    @Test func endingBeforeCapturesEndsBothWaitingListeners() async throws {
+    @Test(arguments: [false, true], [nil, SessionSide.microphone, .call])
+    func endingDuringBringUpKeepsAllWords(microphoneStarted: Bool, closeFailure: SessionSide?) async throws {
 
-        let started = Signal(), release = Signal(), listening = Signal()
-        let listenersEnded = Values<SessionSide>()
+        let started = Signal(), release = Signal(), transcript = Signal()
         var hooks = SessionPieces.Hooks()
-        hooks.textStarted = { _ in started.send(); await release.next() }
-        hooks.audioListening = { _ in listening.send() }
-        hooks.audioEnded = { listenersEnded.append($0) }
-        try await withSessionRig(hooks: hooks) { rig, folder in
-            defer { release.end(); started.end(); listening.end() }
+        hooks.beforeTranscriptFeed = { await transcript.next() }
+        hooks.textStarted = { text in
+            for await state in text.updates {
+                if state.status == .listening { break }
+            }
+            transcript.end()
+            if !microphoneStarted { started.send(); await release.next() }
+        }
+        hooks.closeTrack = { side, track in
+            if side == closeFailure { throw ScriptFailure.failed }
+            try await track.close()
+        }
+        try await withSessionRig(hooks: hooks, beforeMicrophoneStartReturns: {
+            started.send()
+            await release.next()
+        }) { rig, folder in
+            defer { started.end(); release.end(); transcript.end() }
             rig.session.send(.begin(liveText: true))
             await started.next()
-            await listening.next()
-            await listening.next()
             rig.session.send(.end)
             _ = try await rig.state { $0.phase == .ending }
             release.end()
             let ended = try await rig.state { $0.phase == .ended }
-            #expect(ended.failures.isEmpty)
-            #expect(Set(listenersEnded.all) == [.microphone, .call])
+            #expect(ended.failures == closeFailure.map { [SessionFailure(piece: "\($0) track", message: "failed")] } ?? [])
+            #expect(ended.microphoneTrack == .closed)
+            #expect(ended.callTrack == .closed)
+            #expect(ended.callText == .closed)
+            #expect(ended.transcript == .closed)
+            let text = try #require(await rig.pieces.text)
+            #expect(await text.state.status == .finished)
+            #expect(rig.microphone.starts.all == (microphoneStarted ? [true] : []))
+            #expect(rig.microphone.stops.all == (microphoneStarted ? [true] : []))
+            #expect(rig.call.starts.all.isEmpty)
+            #expect(rig.call.stops.all.isEmpty)
+            #expect(await rig.mine.chunks.flatMap(\.samples) == (microphoneStarted ? [0.25, -0.5, 0.125] : []))
+            #expect(await rig.theirs.chunks.isEmpty)
+            #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf"))
+                == (microphoneStarted ? [0.25, -0.5, 0.125] : []))
+            #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [])
+            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+                == "# Transcript\n\n" + (microphoneStarted ? "**Me** 00:00:00\nmine final\n" : "No text was heard.\n"))
+        }
+    }
+
+    @Test(arguments: [SessionSide.microphone, .call], [false, true])
+    func uncapturedAudioEndsAtTrackCloseBeforeTextStops(side: SessionSide, closeFails: Bool) async throws {
+
+        let closing = Signal(), release = Signal(), transcript = Signal()
+        defer { closing.end(); release.end(); transcript.end() }
+        var hooks = SessionPieces.Hooks()
+        hooks.beforeTranscriptFeed = { await transcript.next() }
+        hooks.textStarted = { text in
+            for await state in text.updates {
+                if state.status == .listening { break }
+            }
+        }
+        hooks.closeTrack = { closingSide, track in
+            if closingSide == side {
+                closing.send()
+                await release.next()
+            }
+            try await track.close()
+            if closingSide == side && closeFails { throw ScriptFailure.failed }
+        }
+        try await withSessionRig(hooks: hooks) { rig, _ in
+            let pieces = rig.pieces
+            let folder = try await pieces.create()
+            try await pieces.microphoneTrack.open(in: folder)
+            try await pieces.callTrack.open(in: folder)
+            try await pieces.transcript.open(in: folder)
+            try await pieces.start(enabled: true)
+            let text = try #require(await pieces.text)
+            let recognizer = side == .microphone ? rig.mine : rig.theirs
+            try await pieces.closeTrack(side == .microphone ? .call : .microphone)
+            let close = Task { try await pieces.closeTrack(side) }
+            await closing.next()
+            #expect(await text.state.status == .listening)
+            #expect(await recognizer.finishes == 0)
+            release.end()
+            if closeFails {
+                await #expect(throws: ScriptFailure.failed) { try await close.value }
+            } else {
+                try await close.value
+            }
+            for await state in text.updates {
+                if state.status == .finished { break }
+            }
+            #expect(await text.state.status == .finished)
+            #expect(await recognizer.finishes == 1)
             #expect(rig.microphone.starts.all.isEmpty)
             #expect(rig.call.starts.all.isEmpty)
-            #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == [])
-            #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [])
+            try await pieces.stop()
+            transcript.end()
+            try await pieces.transcript.close()
         }
     }
 

@@ -140,6 +140,8 @@ through a machine.
 | Call app processes | Dependency of Session's handler: which processes to capture |
 | System audio capture | Dependency of Session's handler: the call's track |
 | Call text | Dependency of Session's handler; its updates feed Reading |
+| Side text | Inside call text, one per side: that side's text to its end |
+| Fill in | Inside side text: gets live text ready and reads it what it missed |
 | Live text, the recognizers, model loading | Inside call text, behind its ports; model loading also feeds the conditions | The UI targets (`PanelUI`,
 `SettingsUI`, a menu bar target) stay renderers.
 

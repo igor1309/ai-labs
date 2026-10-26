@@ -45,6 +45,8 @@ TARGETS = {
     "TwoPassRecognizer": ("text", "draft + final,\nany two recognisers", 2),
     "NemotronRecognizer": ("text", "Nemotron 3.5, streaming", 3),
     "ParakeetRecognizer": ("text", "Parakeet v3 in its own windows", 4),
+    "SideText": ("text", "one side's text,\nswitches and fills in", 8),
+    "FillIn": ("text", "readies one side's live text,\nfills in its missed audio", 5),
     "ModelLoading": ("text", "shares one model load", 7),
     "AudioConversion": ("text", "sample-rate conversion\nkeeping filter state", 6),
     "MicrophoneCapture": ("capture", "AVAudioEngine input", 0),

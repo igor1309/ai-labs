@@ -1,13 +1,16 @@
-import CallText
+import struct SideText.Audio
+import protocol SideText.LiveAudio
+import struct FillIn.Audio
+import protocol FillIn.WrittenTrack
 import LiveText
 import Synchronization
 
-/// A delivery acknowledges completion of CallText's hearing, including cancellation.
+/// A delivery acknowledges the side's receipt, including cancellation.
 final class TextAudio: LiveAudio, Sendable {
 
     private struct Delivery: Sendable {
 
-        let audio: Audio
+        let audio: SideText.Audio
         let handled: Signal
     }
 
@@ -21,7 +24,7 @@ final class TextAudio: LiveAudio, Sendable {
         (stream, continuation) = AsyncStream.makeStream()
     }
 
-    func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async {
+    func listen(_ receive: @escaping @Sendable (SideText.Audio) async -> Void) async {
 
         for await delivery in stream {
             await receive(delivery.audio)
@@ -29,22 +32,24 @@ final class TextAudio: LiveAudio, Sendable {
         }
     }
 
-    func send(_ audio: Audio) async {
+    func send(_ audio: SideText.Audio) async {
 
-        position.withLock { $0 = audio.end }
+        capture(audio)
         let handled = Signal()
         continuation.yield(Delivery(audio: audio, handled: handled))
         await handled.next()
     }
 
+    func capture(_ audio: SideText.Audio) { position.withLock { $0 = max($0, audio.end) } }
+
     func end() { continuation.finish() }
 }
 
-struct TextTrack: WrittenTrack {
+struct TextTrack: FillIn.WrittenTrack {
 
-    let chunks: [Audio]
+    let chunks: [FillIn.Audio]
 
-    func read(from: Double, through: Double) async throws -> [Audio] {
+    func read(from: Double, through: Double) async throws -> [FillIn.Audio] {
 
         chunks.filter { $0.end > from && $0.start < through }
     }

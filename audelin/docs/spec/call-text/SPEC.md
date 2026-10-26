@@ -15,12 +15,11 @@ window.
 
 ## Decided
 
-- Live text hears the audio as it comes and never waits for the files:
-  reading files would put the disk between the speaker and the text for no
-  gain (owner, 2026-10-22).
-- The written tracks are read only to fill in: the start of a call heard
-  while the models load, and a call whose live text is switched on
-  mid-call. Those words were never heard live, and the files hold them.
+- Each side is a side text (`../side-text/SPEC.md`), which reads that
+  side's audio as it comes and its written track only to fill in; call
+  text marks whose it is, switches both, and shows their status as one.
+- Live text never waits for the files: reading files would put the disk
+  between the speaker and the text for no gain (owner, 2026-10-22).
 - The mic track's text is mine and the call track's is theirs: live text
   leaves whose track it is to its client.
 - Reading never waits for the models: until they are in, the client can
@@ -31,8 +30,11 @@ window.
   text as written later (the design's Added late group,
   `HIqfu`, Screen 3);
   switched off, it keeps the text so far (user spec S-8).
-- Live text failing ends the text and is told; the recording is not call
-  text's (user spec S-9).
+- Live text failing is told and ends call text: the other side is
+  abandoned, not stopped, since its audio may go on. The recording is not
+  call text's (user spec S-9).
+- Call text ends once both sides have ended and let go of their live
+  text: each ends with its audio, and stopping stops both (LAB-554).
 
 ```gherkin
 Feature: Reading a call's text as it is recorded
@@ -76,6 +78,16 @@ Feature: Reading a call's text as it is recorded
     Given a recorded call with live text on, and its audio not yet written
     When I speak
     Then I can read what I say while I am saying it
+
+  Scenario: S-10 One side ending leaves the other reading
+    Given a recorded call with live text on
+    When my side's audio ends
+    Then I can read all of my text, and what they say goes on coming
+
+  Scenario: S-11 Stopping ends with both sides' text
+    Given a call with live text on and ready, its captures stopped
+    When I stop call text
+    Then I can read both sides' text to its end, and tell it ended
 ```
 
 S-3 ("Nothing is read before it is recorded") is retired: live text reads

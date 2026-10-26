@@ -1,9 +1,8 @@
-import struct CallText.Audio
-import struct CallText.Text
-import protocol CallText.TrackText
+import struct SideText.Audio
+import struct SideText.Text
 import LiveText
 
-public actor TrackText: CallText.TrackText {
+public actor TrackText {
 
     public enum Failure: Error, Equatable {
 
@@ -101,7 +100,7 @@ public actor TrackText: CallText.TrackText {
         let task = Task(executorPreference: executor) { await live.listen(to: Source(stream: source.stream)) }
         let requests = AsyncStream<Reply>.makeStream()
         // The session owns replies; cancelling a caller leaves its accepted
-        // interval and update available when call text replays that interval.
+        // interval and update available when side text replays that interval.
         let reading = Task(executorPreference: executor) {
             var updates = live.updates.makeAsyncIterator()
             for await reply in requests.stream {

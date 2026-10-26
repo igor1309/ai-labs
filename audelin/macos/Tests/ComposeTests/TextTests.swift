@@ -1,4 +1,6 @@
-import Compose
+@testable import Compose
+import struct SideText.Audio
+import struct SideText.Text
 import Testing
 @testable import CallText
 @testable import LiveText
@@ -101,14 +103,14 @@ struct TextTests {
         let other = TextAudio()
         defer { microphone.end(); other.end(); release.end() }
         let call = CallText(
-            microphone: Track(
+            microphone: CallSide(
                 audio: microphone,
-                written: TextTrack(chunks: [.init(start: 1, samples: [0.5], sampleRate: 1)]),
-                text: Compose.TrackText(recognizer: recognizer)
+                text: Compose.TrackText(recognizer: recognizer),
+                written: TextTrack(chunks: [.init(start: 1, samples: [0.5], sampleRate: 1)]), sampleRate: 1
             ),
-            call: Track(audio: other, written: TextTrack(chunks: []), text: Compose.TrackText(recognizer: ScriptRecognizer(
+            call: CallSide(audio: other, text: Compose.TrackText(recognizer: ScriptRecognizer(
                 hearings: [], endings: [.success(.init(words: []))]
-            )))
+            )), written: TextTrack(chunks: []), sampleRate: 1)
         )
         await call.start()
         var states = call.updates.makeAsyncIterator()
@@ -116,6 +118,7 @@ struct TextTests {
         release.send()
         await microphone.send(.init(start: 0, samples: [0.25], sampleRate: 1))
         await began.next()
+        while let state = await states.next(), state.entries.isEmpty {}
         let before = await call.state
         #expect(before.entries.map(\.text) == [.init(id: 0, start: 0, end: 1, settled: "earlier")])
         let hearing = Task { await microphone.send(.init(start: 1, samples: [0.5], sampleRate: 1)) }
@@ -127,13 +130,15 @@ struct TextTests {
         await call.setEnabled(true)
         release.end()
         while let state = await states.next() {
-            if state.status == .listening || state.status == .finished { break }
+            if state.status == .listening, state.entries.first?.text.pending == "later" { break }
         }
         let resumed = await call.state
         #expect(resumed.status == .listening)
         #expect(resumed.entries.map(\.text) == [
             .init(id: 0, start: 0, end: 2, settled: "earlier", pending: "later"),
         ])
+        microphone.end()
+        other.end()
         await call.stop()
         #expect(await recognizer.chunks == [
             .init(samples: [0.25], sampleRate: 1),
