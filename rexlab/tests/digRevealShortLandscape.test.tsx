@@ -102,7 +102,9 @@ describe("DIG's reveal in a wide-short window", () => {
     const button = styleAt(screen.getByRole("button", { name: TEXTS[language].digAgain }), size);
     const ways = at(".dig-reveal-ways");
     expect([card.value("height"), level.value("height"), switchStyle.px("padding-top"), button.value("height"), ways.rowGap()]).toEqual(["44px", "44px", 4, "48px", 6]);
-    const tallest = name * 1.2 + card.px("height") + celebration.px("height") + 3 * reward.rowGap() + 2 * 4 + level.px("height") + ways.rowGap() + button.px("height");
+    const actions = at(".dig-reveal-screen .result-actions");
+    const switchHeight = switchStyle.px("border-top-width") + switchStyle.px("padding-top") + level.px("height") + switchStyle.px("padding-bottom") + switchStyle.px("border-bottom-width");
+    const tallest = name * Number(nameStyle.value("line-height")) + card.px("height") + celebration.px("height") + 3 * reward.rowGap() + switchHeight + ways.rowGap() + actions.px("padding-top") + button.px("height");
     expect(tallest).toBeLessThanOrEqual(height - 8 - 12 - insets.bottom - 48 - 8);
   });
 
@@ -114,10 +116,19 @@ describe("DIG's reveal in a wide-short window", () => {
     const letters = (words: string) => [...words].reduce((sum, glyph) => sum + (/[\d/]/.test(glyph) ? DIGIT : LETTER), 0);
 
     // The card at its fullest: its star, its words, 52/52, NEW!, the
-    // trophy and the 🦴 badge.
+    // trophy and the 🦴 badge. A first find has no trophy or badge, so
+    // theirs are put in the card to read the sizes it gives them.
+    const cardElement = part(".dig-card");
+    cardElement.insertAdjacentHTML("beforeend", '<span class="dig-card-trophy"><svg></svg></span><span class="level-badge">🦴</span>');
     const card = at(".dig-card");
-    expect([card.px("font-size"), card.columnGap(), card.px("padding-left"), card.px("padding-right"), at(".dig-card-star").value("width"), at(".dig-card-count").px("font-size")]).toEqual([14, 6, 4, 12, "32px", 16]);
-    const fullest = 4 + 32 + letters(text.dugUp) * 14 + letters("52/52") * 16 + letters(text.dugUpNew) * 14 + 20 + 28 + 5 * 6 + 12;
+    const words = at(".dig-card-words");
+    const count = at(".dig-card-count");
+    const trophy = styleAt(part(".dig-card-trophy svg", cardElement), size);
+    const badge = at(".dig-card .level-badge");
+    expect([card.px("font-size"), card.columnGap(), card.px("padding-left"), card.px("padding-right"), at(".dig-card-star").value("width"), count.px("font-size"), trophy.value("width"), badge.value("width")]).toEqual([14, 6, 4, 12, "32px", 16, "20px", "28px"]);
+    const spaced = (glyphs: string, style: ReturnType<typeof styleAt>) => letters(glyphs) * style.px("font-size") + [...glyphs].length * (style.px("letter-spacing") || 0);
+    const parts = [at(".dig-card-star").px("width"), spaced(text.dugUp, words), spaced("52/52", count), letters(text.dugUpNew) * card.px("font-size"), trophy.px("width"), badge.px("width")];
+    const fullest = card.px("padding-left") + parts.reduce((sum, each) => sum + each, 0) + (parts.length - 1) * card.columnGap() + card.px("padding-right");
     expect(fullest).toBeLessThanOrEqual(COLUMN);
 
     // DIG AGAIN beside HOME, each its words and symbol, 12 apart.
