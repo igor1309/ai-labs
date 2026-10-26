@@ -153,7 +153,7 @@ export async function project({ skillsDir, manifestPath, assetsDir, outDir, upst
 
   for (const rel of listStagedFiles(outDir).filter($0 => $0.endsWith("/SKILL.md"))) {
     const bucket = rel.split("/")[0];
-    const roleRoot = join(outDir, bucket);
+    const roleRoot = resolve(outDir, bucket);
     const skillPath = join(outDir, rel);
     for (const link of relativeLinkTargets(readFileSync(skillPath, "utf8"))) {
       const target = resolve(dirname(skillPath), link);
