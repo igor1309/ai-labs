@@ -152,6 +152,7 @@ jobs:
               - "rexlab/public/**"
               - "rexlab/package.json"
               - "rexlab/package-lock.json"
+              - "rexlab/patches/**"
               - "rexlab/tsconfig.json"
               - "rexlab/vite.config.ts"
               - "rexlab/wrangler.toml"
