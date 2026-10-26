@@ -9606,7 +9606,7 @@ html[data-size="wide-short"] .dig-reveal-name {
 html[data-size="wide-short"] .dig-card {
   height: 44px;
   padding: 0 12px 0 4px;
-  gap: 6px;
+  gap: 4px;
   border-radius: 22px;
   font-size: 14px;
 }
@@ -9657,7 +9657,7 @@ html[data-size="wide-short"] .dig-reveal-screen .play-again-button,
 html[data-size="wide-short"] .dig-reveal-screen .result-actions .home-button {
   flex: 1 1 auto;
   height: 48px;
-  padding: 0 16px;
+  padding: 0 14px;
   justify-content: center;
   gap: 8px;
   border-radius: 16px;

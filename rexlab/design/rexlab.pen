@@ -115524,7 +115524,7 @@
                   "height": 44,
                   "fill": "#00000033",
                   "cornerRadius": 22,
-                  "gap": 6,
+                  "gap": 4,
                   "padding": [
                     0,
                     12,
@@ -115621,7 +115621,7 @@
                   "id": "ZQV2Y",
                   "name": "Level Switch",
                   "width": "fill_container",
-                  "height": 72,
+                  "height": 54,
                   "fill": "#00000033",
                   "cornerRadius": 26,
                   "stroke": "$fm-line",
@@ -115785,7 +115785,7 @@
                       "cornerRadius": 16,
                       "padding": [
                         0,
-                        16
+                        14
                       ],
                       "justifyContent": "center",
                       "alignItems": "center",
@@ -115811,7 +115811,7 @@
                       "cornerRadius": 16,
                       "padding": [
                         0,
-                        16
+                        14
                       ],
                       "justifyContent": "center",
                       "alignItems": "center",

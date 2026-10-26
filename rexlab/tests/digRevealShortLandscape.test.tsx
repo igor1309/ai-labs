@@ -6,6 +6,7 @@ import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { digUp, finishBoard, openDigApp, placeBoard } from "./digApp.tsx";
+import { WORD_EMS } from "./digRevealWords.ts";
 import { appStylesheet, type SafeArea } from "./stylesheet.ts";
 import { homeTile, manualViewport, memoryStorage } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
@@ -23,14 +24,17 @@ const EVERY = PHONES.flatMap((phone) => LANGUAGES.map((language) => [...phone, l
 
 const LAYOUTS: PortraitLayouts = { home: ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"] };
 
-// Every glyph of the reveal's capitals is at most 0.75 of its type wide,
-// and a digit or slash at most 0.68, in Lexend and the system face.
-const LETTER = 0.75;
+// A digit or slash is at most 0.68 of its type wide, and a capital of a
+// word not measured at most 0.85, ДОМОЙ's widest, in Lexend and the
+// system face.
 const DIGIT = 0.68;
+const LETTER = 0.85;
 // The longest of the 52 names, PACHYCEPHALOSAURUS, in ems with its spacing.
 const LONGEST_NAME = 12.7;
-// The column's width at most.
+// The column's width at most, and the least the dinosaur keeps beside it
+// at 568 wide: half its picture's 4:3 height under the bar.
 const COLUMN = 340;
+const LEAST_DINOSAUR = 160;
 
 // jsdom has no animation engine: the offer's reward and dismissal take
 // no time.
@@ -87,7 +91,8 @@ describe("DIG's reveal in a wide-short window", () => {
     expect([reward.value("flex-basis"), reward.value("flex-direction"), reward.rowGap()]).toEqual([`${COLUMN}px`, "column", 6]);
     const inner = width - 40 - insets.left - insets.right;
     const column = Math.min(COLUMN, inner - 20);
-    expect(inner - 20 - column).toBeGreaterThanOrEqual(160);
+    expect(art.value("flex-basis")).toBe("0px");
+    expect(inner - 20 - column).toBeGreaterThanOrEqual(LEAST_DINOSAUR);
 
     // The column, its tallest: the name, DUG UP, a celebration, the
     // switch and the buttons, under the bar.
@@ -113,7 +118,7 @@ describe("DIG's reveal in a wide-short window", () => {
     reveal(size, PHONES[0][2], language);
     const at = (selector: string) => styleAt(part(selector), size);
     const text = TEXTS[language];
-    const letters = (words: string) => [...words].reduce((sum, glyph) => sum + (/[\d/]/.test(glyph) ? DIGIT : LETTER), 0);
+    const letters = (words: string) => WORD_EMS[words] ?? [...words].reduce((sum, glyph) => sum + (/[\d/]/.test(glyph) ? DIGIT : LETTER), 0);
 
     // The card at its fullest: its star, its words, 52/52, NEW!, the
     // trophy and the 🦴 badge. A first find has no trophy or badge, so
@@ -125,9 +130,9 @@ describe("DIG's reveal in a wide-short window", () => {
     const count = at(".dig-card-count");
     const trophy = styleAt(part(".dig-card-trophy svg", cardElement), size);
     const badge = at(".dig-card .level-badge");
-    expect([card.px("font-size"), card.columnGap(), card.px("padding-left"), card.px("padding-right"), at(".dig-card-star").value("width"), count.px("font-size"), trophy.value("width"), badge.value("width")]).toEqual([14, 6, 4, 12, "32px", 16, "20px", "28px"]);
+    expect([card.px("font-size"), card.columnGap(), card.px("padding-left"), card.px("padding-right"), at(".dig-card-star").value("width"), count.px("font-size"), trophy.value("width"), badge.value("width")]).toEqual([14, 4, 4, 12, "32px", 16, "20px", "28px"]);
     const spaced = (glyphs: string, style: ReturnType<typeof styleAt>) => letters(glyphs) * style.px("font-size") + [...glyphs].length * (style.px("letter-spacing") || 0);
-    const parts = [at(".dig-card-star").px("width"), spaced(text.dugUp, words), spaced("52/52", count), letters(text.dugUpNew) * card.px("font-size"), trophy.px("width"), badge.px("width")];
+    const parts = [at(".dig-card-star").px("width"), spaced(text.dugUp, words), spaced("52/52", count), spaced(text.dugUpNew, at(".dig-card-new")), trophy.px("width"), badge.px("width")];
     const fullest = card.px("padding-left") + parts.reduce((sum, each) => sum + each, 0) + (parts.length - 1) * card.columnGap() + card.px("padding-right");
     expect(fullest).toBeLessThanOrEqual(COLUMN);
 
@@ -136,7 +141,7 @@ describe("DIG's reveal in a wide-short window", () => {
     expect([actions.value("flex-direction"), actions.columnGap()]).toEqual(["row", 12]);
     const widthOf = (label: string) => {
       const button = styleAt(screen.getByRole("button", { name: label }), size);
-      expect([button.value("flex-grow"), button.value("flex-basis"), button.value("white-space"), button.px("padding-left"), button.columnGap()]).toEqual(["1", "auto", "nowrap", 16, 8]);
+      expect([button.value("flex-grow"), button.value("flex-basis"), button.value("white-space"), button.px("padding-left"), button.columnGap()]).toEqual(["1", "auto", "nowrap", 14, 8]);
       const symbol = styleAt(part("svg", screen.getByRole("button", { name: label })), size);
       expect(symbol.value("width")).toBe("22px");
       return 2 * button.px("padding-left") + symbol.px("width") + button.columnGap() + letters(label) * button.px("font-size");
@@ -163,7 +168,7 @@ describe("DIG's reveal in a wide-short window", () => {
     expect(screen.getByRole("group", { name: text.ageLevelSwitch })).toBeTruthy();
   });
 
-  it("keeps the celebration, when there is one, 36 tall with 16-pixel words", () => {
+  it("keeps a first find's celebration 36 tall with 16-pixel words", () => {
     const size: WindowSize = [667, 375];
     reveal(size, PHONES[1][2]);
     const chip = document.querySelector<HTMLElement>(".dig-reveal-screen .celebration");
