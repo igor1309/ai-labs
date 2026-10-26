@@ -23,6 +23,7 @@ struct Rig {
         held: Set<String> = [],
         failing: Set<String> = [],
         selection: SessionProcessSelection = .init(id: "chosen-app"),
+        callAudioSelection: SessionCallCaptureSelection? = nil,
         callFolder: SessionCallFolder = .init(id: "made-folder")
     ) {
 
@@ -36,7 +37,7 @@ struct Rig {
         self.callTrack = callTrack
         self.transcript = transcript
         microphoneCapture = TestCapture(name: "microphone", output: output, track: microphoneTrack)
-        let callCapture = TestCapture(name: "call", output: output, track: callTrack)
+        let callCapture = TestCapture(name: "call", output: output, track: callTrack, audioSelection: callAudioSelection)
         self.callCapture = callCapture
         callText = TestCallText(output: output, transcript: transcript)
         let handler = SessionEffectHandler(
@@ -81,7 +82,7 @@ actor TestOutput {
     private var failing: Set<String>
     private var waiters: [String: [UInt64: CheckedContinuation<Void, Never>]] = [:]
     private var nextWaiter: UInt64 = 0
-    private var selections: [String: SessionProcessSelection] = [:]
+    private var selections: [String: SessionCallCaptureSelection] = [:]
 
     init(held: Set<String>, failing: Set<String>) {
 
@@ -103,8 +104,8 @@ actor TestOutput {
 
     func values() -> [String] { entries }
 
-    func recordSelection(_ name: String, _ selection: SessionProcessSelection) { selections[name] = selection }
-    func selection(for name: String) -> SessionProcessSelection? { selections[name] }
+    func recordSelection(_ name: String, _ selection: SessionCallCaptureSelection) { selections[name] = selection }
+    func selection(for name: String) -> SessionCallCaptureSelection? { selections[name] }
 
     func waitUntilHeld(_ label: String) async {
 
@@ -188,17 +189,21 @@ actor TestCapture: SessionMicrophoneCapture, SessionCallCapture {
     let name: String
     let output: TestOutput
     let track: TestTrack
-    init(name: String, output: TestOutput, track: TestTrack) { self.name = name; self.output = output; self.track = track }
+    let audioSelection: SessionCallCaptureSelection?
+    init(name: String, output: TestOutput, track: TestTrack, audioSelection: SessionCallCaptureSelection? = nil) {
+        self.name = name; self.output = output; self.track = track; self.audioSelection = audioSelection
+    }
     private var started = false
-    func start(selection: SessionProcessSelection?) async throws {
-        if let selection { await output.recordSelection(name, selection) }
+    private var selection: SessionCallCaptureSelection?
+    func start(selection: SessionCallCaptureSelection) async throws {
+        self.selection = selection
+        await output.recordSelection(name, selection)
         try await start()
     }
     func start() async throws {
         try await output.perform("\(name).capture.start")
         started = true
-        await output.performUnchecked("\(name).audio")
-        await track.appendAudio("\(name)-first")
+        await sendAudio("\(name)-first")
     }
     func stop() async throws {
         try await output.perform("\(name).capture.stop")
@@ -206,6 +211,7 @@ actor TestCapture: SessionMicrophoneCapture, SessionCallCapture {
     }
     func sendAudio(_ audio: String? = nil) async {
         guard started else { return }
+        guard audioSelection == nil || selection == audioSelection else { return }
         await output.performUnchecked("\(name).audio")
         await track.appendAudio(audio ?? "\(name)-audio")
     }

@@ -1,5 +1,6 @@
 import CallAppProcesses
 import CallFolder
+import Darwin
 import Foundation
 import struct MicrophoneCapture.AudioPiece
 import Session
@@ -11,6 +12,19 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct SessionSelectionTests {
+
+    @Test func everyAppButAudelinExcludesThisProcess() async throws {
+
+        try await withSessionRig { rig, folder in
+            let made = try await rig.pieces.create()
+            try await rig.pieces.callTrack.open(in: made)
+            try await rig.pieces.callCapture.start(selection: .everyAppButAudelin)
+            try await rig.pieces.callCapture.stop()
+            try await rig.pieces.callTrack.close()
+            #expect(rig.selections.all == [.allExcept([getpid()])])
+            #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
+        }
+    }
 
     @Test(arguments: [false, true])
     func selectionIDsRetainTheirOwnAnswer(allExcept: Bool) async throws {
@@ -44,10 +58,10 @@ struct SessionSelectionTests {
             let otherRecording = pieces()
             let foreign = try await otherRecording.select()
             await #expect(throws: SessionPieces.Failure.unknownSelection(foreign.id)) {
-                try await recording.callCapture.start(selection: foreign)
+                try await recording.callCapture.start(selection: .chosen(foreign))
             }
             try await recording.callTrack.open(in: folder)
-            try await recording.callCapture.start(selection: first)
+            try await recording.callCapture.start(selection: .chosen(first))
             try await recording.callCapture.stop()
             try await recording.callTrack.close()
             #expect(selections.all == [allExcept ? .allExcept([17]) : .only([17])])
