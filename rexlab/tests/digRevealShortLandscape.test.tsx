@@ -137,13 +137,18 @@ describe("DIG's reveal in a wide-short window", () => {
     const widthOf = (label: string) => {
       const button = styleAt(screen.getByRole("button", { name: label }), size);
       expect([button.value("flex-grow"), button.value("flex-basis"), button.value("white-space"), button.px("padding-left"), button.columnGap()]).toEqual(["1", "auto", "nowrap", 16, 8]);
-      return 2 * button.px("padding-left") + 22 + button.columnGap() + letters(label) * button.px("font-size");
+      const symbol = styleAt(part("svg", screen.getByRole("button", { name: label })), size);
+      expect(symbol.value("width")).toBe("22px");
+      return 2 * button.px("padding-left") + symbol.px("width") + button.columnGap() + letters(label) * button.px("font-size");
     };
     expect(widthOf(text.digAgain) + actions.columnGap() + widthOf(text.home)).toBeLessThanOrEqual(COLUMN);
 
     // The longer celebration, its symbol 20.
     const longest = Math.max(...Object.values(text.celebrations).map((each) => letters(each.text)));
-    expect(16 + 20 + 8 + longest * 16 + 12).toBeLessThanOrEqual(COLUMN);
+    const chip = at(".dig-reveal-screen .celebration");
+    const chipSymbol = at(".dig-reveal-screen .celebration svg");
+    expect([chip.px("padding-left"), chipSymbol.value("width"), chip.columnGap(), chip.px("font-size"), chip.px("padding-right")]).toEqual([12, "20px", 8, 16, 16]);
+    expect(chip.px("padding-left") + chipSymbol.px("width") + chip.columnGap() + longest * chip.px("font-size") + chip.px("padding-right")).toBeLessThanOrEqual(COLUMN);
   });
 
   it.each(LANGUAGES)("shows the level switch's pictures alone, its names kept for screen readers, in %s", (language) => {
