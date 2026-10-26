@@ -37,14 +37,12 @@ struct SessionRecordingTests {
     @Test(arguments: [false, true], [nil, SessionSide.microphone, .call])
     func endingDuringBringUpKeepsAllWords(microphoneStarted: Bool, closeFailure: SessionSide?) async throws {
 
-        let started = Signal(), release = Signal(), transcript = Signal()
+        let started = Signal(), release = Signal()
         var hooks = SessionPieces.Hooks()
-        hooks.beforeTranscriptFeed = { await transcript.next() }
         hooks.textStarted = { text in
             for await state in text.updates {
                 if state.status == .listening { break }
             }
-            transcript.end()
             if !microphoneStarted { started.send(); await release.next() }
         }
         hooks.closeTrack = { side, track in
@@ -55,7 +53,7 @@ struct SessionRecordingTests {
             started.send()
             await release.next()
         }) { rig, folder in
-            defer { started.end(); release.end(); transcript.end() }
+            defer { started.end(); release.end() }
             rig.session.send(.begin(liveText: true))
             await started.next()
             rig.session.send(.end)
@@ -86,10 +84,9 @@ struct SessionRecordingTests {
     @Test(arguments: [SessionSide.microphone, .call], [false, true])
     func uncapturedAudioEndsAtTrackCloseBeforeTextStops(side: SessionSide, closeFails: Bool) async throws {
 
-        let closing = Signal(), release = Signal(), transcript = Signal()
-        defer { closing.end(); release.end(); transcript.end() }
+        let closing = Signal(), release = Signal()
+        defer { closing.end(); release.end() }
         var hooks = SessionPieces.Hooks()
-        hooks.beforeTranscriptFeed = { await transcript.next() }
         hooks.textStarted = { text in
             for await state in text.updates {
                 if state.status == .listening { break }
@@ -123,7 +120,8 @@ struct SessionRecordingTests {
             } else {
                 try await close.value
             }
-            for await state in text.updates {
+            let writing = try #require(await pieces.writing)
+            for await state in writing.updates {
                 if state.status == .finished { break }
             }
             #expect(await text.state.status == .finished)
@@ -131,7 +129,6 @@ struct SessionRecordingTests {
             #expect(rig.microphone.starts.all.isEmpty)
             #expect(rig.call.starts.all.isEmpty)
             try await pieces.stop()
-            transcript.end()
             try await pieces.transcript.close()
         }
     }

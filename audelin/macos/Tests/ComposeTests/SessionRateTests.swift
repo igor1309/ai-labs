@@ -11,15 +11,11 @@ struct SessionRateTests {
     @Test(arguments: [[16_000.0, 16_000], [24_000, 24_000], [44_100, 44_100], [96_000, 96_000], [24_000, 96_000]])
     func injectedCaptureRatesReachRecognizersAndTrackDurations(rates: [Double]) async throws {
 
-        let ready = Signal()
-        defer { ready.end() }
         var hooks = SessionPieces.Hooks()
-        hooks.beforeTranscriptFeed = { await ready.next() }
         hooks.textStarted = { text in
             for await state in text.updates {
                 if state.status == .listening { break }
             }
-            ready.end()
         }
         try await withSessionRig(hooks: hooks, rates: rates) { rig, folder in
             rig.session.send(.begin(liveText: true))
