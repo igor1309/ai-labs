@@ -84,7 +84,8 @@ struct SessionTranscriptTests {
             #expect(ended.health(of: .transcript) == .failed(message))
             #expect(ended.callText == .closed)
             #expect(ended.transcript == .closed)
-            #expect(await rig.pieces.textStopped == true)
+            let text = try #require(await rig.pieces.text)
+            #expect(await text.state.status == .finished)
             release.release()
             await rig.subscription.value
             #expect(forwarded.all == [.liveTextChanged(true)])
@@ -121,7 +122,8 @@ struct SessionTranscriptTests {
             rig.session.send(.end)
             await reported.next()
             let ended = try await rig.state { $0.phase == .ended }
-            #expect(await rig.pieces.textStopped)
+            let text = try #require(await rig.pieces.text)
+            #expect(await text.state.status == .finished)
             #expect(ended.callText == .closed)
             #expect(ended.transcript == .closed)
             #expect(ended.failures.isEmpty)
