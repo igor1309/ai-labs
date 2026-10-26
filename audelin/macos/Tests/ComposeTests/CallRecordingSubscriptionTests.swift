@@ -187,7 +187,7 @@ private final class CallSession: RecordingSession {
     func end(id: UInt64) async { effects.append(.endSession(id: id)) }
 }
 
-private struct CallBinding: ProcessBinding {
+struct CallBinding: ProcessBinding {
 
     let fails: Bool
 
@@ -205,7 +205,7 @@ private struct CallBinding: ProcessBinding {
     func onProcessChange(_ object: ProcessObject, _ changed: @escaping @Sendable () -> Void) throws -> Cancellation { Cancellation {} }
 }
 
-private struct UnusedCallClock: CallClock {
+struct UnusedCallClock: CallClock {
 
     func after(_ delay: Duration, _ fire: @escaping @Sendable () -> Void) -> Cancellation {
 

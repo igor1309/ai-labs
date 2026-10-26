@@ -169,6 +169,22 @@ struct RecordingPiecesTests {
         #expect(observed.all == ["meeting", "other", "other"])
         #expect(beforeStarts.all == ["meeting", "other", "other"])
         #expect(app.current == "other")
+
+        let detectedApp = RecordingCallApp(), detected = Values<String>()
+        let detectorRecording = composeRecording(makePieces: { _ in
+            preconditionFailure("Automatic recording is off")
+        }, liveText: { false })
+        let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
+        defer { processes.stop() }
+        let subscription = try composeCalls(processes, to: detectorRecording, startedApp: {
+            detectedApp.started($0)
+            detected.append($0)
+        })
+        processes.stop()
+        await subscription.wait()
+        await detectorRecording.end()
+        #expect(detected.all == ["us.zoom.xos"])
+        #expect(detectedApp.current == "us.zoom.xos")
     }
 }
 
@@ -190,8 +206,8 @@ private struct RecordingPiecesRig: Sendable {
     let callsURL: URL
     let callApp = RecordingCallApp()
     let timeZone = RecordingPiecesTimeZone()
-    let microphones = Values<CaptureScript<MicrophoneCapture.AudioPiece>>()
-    let calls = Values<CaptureScript<SystemAudioCapture.AudioPiece>>()
+    let microphones = Values<RecordingPiecesCapture<MicrophoneCapture.AudioPiece>>()
+    let calls = Values<RecordingPiecesCapture<SystemAudioCapture.AudioPiece>>()
     let selections = Values<SystemAudioCapture.ProcessSelection>()
     let recognizers = Values<SessionRecognizer>()
     let makePieces: @Sendable (UInt64) -> SessionPieces
@@ -208,19 +224,23 @@ private struct RecordingPiecesRig: Sendable {
             processes: CoreAudioProcesses(binding: RecordingPiecesBinding(), clock: RecordingPiecesClock()),
             now: { Date(timeIntervalSince1970: 0) }, timeZone: { timeZone.value.withLock { $0 } },
             startMicrophone: {
-                let capture = CaptureScript<MicrophoneCapture.AudioPiece>(
-                    first: .init(samples: [0.25], sampleRate: 48_000), last: .init(samples: [0.5], sampleRate: 48_000), fails: false
-                )
-                microphones.append(capture)
-                return try capture.start()
+                try await startProductionMicrophone(makeCapture: {
+                    let capture = RecordingPiecesCapture<MicrophoneCapture.AudioPiece>(
+                        first: .init(samples: [0.25], sampleRate: 48_000), last: .init(samples: [0.5], sampleRate: 48_000)
+                    )
+                    microphones.append(capture)
+                    return capture
+                })
             },
-            startCall: {
-                selections.append($0)
-                let capture = CaptureScript<SystemAudioCapture.AudioPiece>(
-                    first: .init(samples: [-0.25], sampleRate: 48_000), last: .init(samples: [-0.5], sampleRate: 48_000), fails: false
-                )
-                calls.append(capture)
-                return try capture.start()
+            startCall: { selection in
+                try await startProductionCallAudio(selection, makeCapture: {
+                    selections.append($0)
+                    let capture = RecordingPiecesCapture<SystemAudioCapture.AudioPiece>(
+                        first: .init(samples: [-0.25], sampleRate: 48_000), last: .init(samples: [-0.5], sampleRate: 48_000)
+                    )
+                    calls.append(capture)
+                    return capture
+                })
             },
             recognizerSource: {
                 let recognizer = SessionRecognizer(name: "live")
@@ -235,6 +255,30 @@ private struct RecordingPiecesRig: Sendable {
         for microphone in microphones.all { microphone.end() }
         for call in calls.all { call.end() }
     }
+}
+
+private final class RecordingPiecesCapture<Piece: Sendable>: AudioCapture {
+
+    let audio: AsyncThrowingStream<Piece, any Error>
+    let stops = Values<Bool>()
+    private let continuation: AsyncThrowingStream<Piece, any Error>.Continuation
+    private let last: Piece
+
+    init(first: Piece, last: Piece) {
+
+        (audio, continuation) = AsyncThrowingStream.makeStream(of: Piece.self)
+        self.last = last
+        continuation.yield(first)
+    }
+
+    func stop() {
+
+        stops.append(true)
+        continuation.yield(last)
+        continuation.finish()
+    }
+
+    func end() { continuation.finish() }
 }
 
 private final class RecordingPiecesTimeZone: Sendable {
