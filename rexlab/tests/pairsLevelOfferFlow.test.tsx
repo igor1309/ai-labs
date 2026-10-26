@@ -305,6 +305,14 @@ describe("an offer shown as the iPad turns", () => {
   const GLIDE = 240;
   const turned = (session: Session, to: "portrait" | "landscape") => {
     act(() => session.viewport.turn(to));
+    expect(document.documentElement.hasAttribute("data-turning")).toBe(true);
+    // Mid-glide the offer and everything around it stay shown, and nothing inerts it.
+    const dialog = screen.getByRole("dialog");
+    for (let el: Element | null = dialog; el; el = el.parentElement) {
+      const { display, visibility } = getComputedStyle(el);
+      expect([display, visibility]).toEqual([expect.not.stringMatching(/^none$/), expect.not.stringMatching(/^hidden$/)]);
+    }
+    expect(dialog.closest("[inert]")).toBeNull();
     act(() => session.clock.fire(GLIDE));
     expect(document.documentElement.hasAttribute("data-turning")).toBe(false);
   };
