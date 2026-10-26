@@ -66,6 +66,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     public nonisolated var events: AsyncStream<SessionEvent> { news.stream }
 
     let news = AsyncStream<SessionEvent>.makeStream()
+    nonisolated let transcriptFailures: TranscriptFailureReport
     let folder: CallFolder
     let processes: CallAppProcesses
     let startMicrophone: @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>
@@ -115,6 +116,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         self.microphoneRecognizer = microphoneRecognizer
         self.callRecognizer = callRecognizer
         self.hooks = hooks
+        transcriptFailures = TranscriptFailureReport(news: news.continuation)
         sides = Dictionary(uniqueKeysWithValues: [SessionSide.microphone, .call].map { side in
             (side, Side(audio: DeferredAudio(beforeDelivery: hooks.beforeAudioDelivery)))
         })
@@ -193,7 +195,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         let writing = TranscriptWriting(
             callText: WritingCallText(text: text),
             transcript: transcriptFile.map { WritingTranscript(file: $0, beforeWrite: hooks.beforeTranscriptWrite) },
-            failureReport: TranscriptFailureReport(news: news.continuation)
+            failureReport: transcriptFailures
         )
         self.writing = writing
         await writing.start(enabled: enabled)

@@ -96,6 +96,7 @@ final class DrainExecutor: TaskExecutor {
 func withDrainRig(
     hooks: SessionPieces.Hooks,
     recognizers: (any Recognizer, any Recognizer)? = nil,
+    beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in },
     _ body: (SessionRig, URL) async throws -> Void
 ) async throws {
 
@@ -109,7 +110,8 @@ func withDrainRig(
         }
         let rig = SessionRig(
             root: root, microphoneFails: false, processesFail: false, hooks: prepared,
-            stopFailure: nil, stopEndsStream: true, rates: nil, recognizers: recognizers
+            stopFailure: nil, stopEndsStream: true, rates: nil, recognizers: recognizers,
+            beforeForward: beforeForward
         )
         do {
             let folder = try await rig.pieces.create()

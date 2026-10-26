@@ -27,12 +27,25 @@ struct WritingTranscript: TranscriptWriting.Transcript {
     }
 }
 
-struct TranscriptFailureReport: FailureReport {
+actor TranscriptFailureReport: FailureReport {
 
     let news: AsyncStream<SessionEvent>.Continuation
+    private var pending: [CheckedContinuation<Void, Never>] = []
+
+    init(news: AsyncStream<SessionEvent>.Continuation) { self.news = news }
 
     func transcriptFailed(_ error: any Error) async {
 
-        news.yield(.pieceFailed(.transcript, error: String(describing: error)))
+        await withCheckedContinuation { delivered in
+            pending.append(delivered)
+            news.yield(.pieceFailed(.transcript, error: String(describing: error)))
+        }
+    }
+
+    func forwarded(_ event: SessionEvent) {
+
+        guard case .pieceFailed(.transcript, _) = event, !pending.isEmpty else { return }
+        // The subscription acknowledges in stream order, after enqueueing in Session.
+        pending.removeFirst().resume()
     }
 }

@@ -17,6 +17,7 @@ func subscribe(
             await beforeForward(event)
             guard !Task.isCancelled else { return }
             session.send(event)
+            await pieces.transcriptFailures.forwarded(event)
         }
     }
 }
