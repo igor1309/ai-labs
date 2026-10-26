@@ -11,6 +11,12 @@ func subscribe(
     beforeForward: @escaping @Sendable (SessionEvent) async -> Void
 ) -> Task<Void, Never> {
 
+    let news = pieces.news.continuation
+    // Enqueue before stop returns, without making the pieces retain their Session.
+    pieces.transcriptFailures.connect(deliver: { [weak session] event in
+        if let session { session.send(event) }
+        else { news.yield(event) }
+    })
     let events = pieces.events
     return Task {
         for await event in events {

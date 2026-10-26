@@ -48,23 +48,21 @@ struct SessionTextShutdownTests {
 
         let finalization = DrainGate(), executor = DrainExecutor()
         let stopped = Values<Bool>()
-        let transcript = DrainGate()
         let mine = HeldSessionRecognizer(finalization: side == .microphone ? finalization : nil)
         let theirs = HeldSessionRecognizer(finalization: side == .call ? finalization : nil)
         var hooks = SessionPieces.Hooks()
         hooks.executor = executor
-        hooks.beforeTranscriptFeed = { await transcript.wait() }
         let configured = hooks
         let task = Task(executorPreference: executor) {
             defer { executor.complete() }
             try await withDrainRig(hooks: configured, recognizers: (mine, theirs)) { rig, folder in
                 let text = try #require(await rig.pieces.text)
-                for await state in text.updates {
+                let writing = try #require(await rig.pieces.writing)
+                for await state in writing.updates {
                     if state.entries.count == 2 { break }
                 }
                 try await rig.pieces.setEnabled(false)
                 let frozen = await text.state.entries
-                transcript.release()
                 #expect(frozen.map(\.text.pending) == ["kept", "kept"])
                 try await rig.pieces.stopCapture(.microphone)
                 try await rig.pieces.stopCapture(.call)
@@ -80,7 +78,7 @@ struct SessionTextShutdownTests {
                     == "# Transcript\n\n**Me** 00:00:00\nkept\n\n**Them** 00:00:00\nkept\n")
             }
         }
-        defer { finalization.release(); transcript.release(); executor.run() }
+        defer { finalization.release(); executor.run() }
         await executor.run(until: { finalization.entered })
         #expect(finalization.entered)
         #expect(stopped.all.isEmpty)
@@ -93,18 +91,14 @@ struct SessionTextShutdownTests {
     @Test func endingWithTextOffJoinsBothAdaptersWhileTheRecordingStaysAlive() async throws {
 
         let mine = HeldSessionRecognizer(), theirs = HeldSessionRecognizer()
-        let releaseTranscript = Signal()
-        defer { releaseTranscript.end() }
-        var hooks = SessionPieces.Hooks()
-        hooks.beforeTranscriptFeed = { await releaseTranscript.next() }
-        try await withSessionRig(hooks: hooks, recognizers: (mine, theirs)) { rig, folder in
+        try await withSessionRig(recognizers: (mine, theirs)) { rig, folder in
             rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             let text = try #require(await rig.pieces.text)
-            for await state in text.updates {
+            let writing = try #require(await rig.pieces.writing)
+            for await state in writing.updates {
                 if state.entries.count == 2 { break }
             }
-            releaseTranscript.end()
             rig.microphone.source.continuation.yield(.init(samples: [0.5], sampleRate: 48_000))
             rig.call.source.continuation.yield(.init(samples: [-0.5], sampleRate: 48_000))
             await mine.hearing.next()

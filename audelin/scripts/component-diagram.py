@@ -40,6 +40,7 @@ TARGETS = {
     "TranscriptFile": ("storage", "the call's transcript", 2),
     "TrackFileCrashWriter": ("storage", "test helper: killed mid-write", 3),
     "TranscriptFileCrashWriter": ("storage", "test helper: killed mid-write", 4),
+    "TranscriptWriting": ("storage", "keeps call text's latest text\nin the transcript", 5),
     "CallText": ("text", "both sides' text;\nswitches live text", 0),
     "LiveText": ("text", "cuts recognised text into\nsegments, partial or settled", 1),
     "TwoPassRecognizer": ("text", "draft + final,\nany two recognisers", 2),

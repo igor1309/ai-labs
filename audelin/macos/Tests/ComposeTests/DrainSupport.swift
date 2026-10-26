@@ -15,6 +15,9 @@ final class DrainGate: Sendable {
     }
 
     private let state = Mutex(State())
+    private let onEntry: @Sendable () -> Void
+
+    init(onEntry: @escaping @Sendable () -> Void = {}) { self.onEntry = onEntry }
 
     var entered: Bool { state.withLock { $0.entered } }
 
@@ -27,6 +30,7 @@ final class DrainGate: Sendable {
                 state.waiting.append(continuation)
                 return false
             }
+            onEntry()
             if resume { continuation.resume() }
         }
     }
@@ -54,8 +58,10 @@ final class DrainExecutor: TaskExecutor {
 
         let job = UnownedJob(job)
         jobs.withLock { $0.append(job) }
-        enqueued.send()
+        notify()
     }
+
+    func notify() { enqueued.send() }
 
     func complete() {
 
@@ -90,28 +96,22 @@ final class DrainExecutor: TaskExecutor {
 func withDrainRig(
     hooks: SessionPieces.Hooks,
     recognizers: (any Recognizer, any Recognizer)? = nil,
+    beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in },
     _ body: (SessionRig, URL) async throws -> Void
 ) async throws {
 
     try await withComposeFolder { root in
-        let ready = DrainGate()
-        defer { ready.release() }
-        // Read readiness before the transcript claims the same update stream.
         var prepared = hooks
-        prepared.beforeTranscriptFeed = {
-            await ready.wait()
-            try await hooks.beforeTranscriptFeed()
-        }
         prepared.textStarted = { text in
             await hooks.textStarted(text)
             for await state in text.updates {
                 if state.status == .listening { break }
             }
-            ready.release()
         }
         let rig = SessionRig(
             root: root, microphoneFails: false, processesFail: false, hooks: prepared,
-            stopFailure: nil, stopEndsStream: true, rates: nil, recognizers: recognizers
+            stopFailure: nil, stopEndsStream: true, rates: nil, recognizers: recognizers,
+            beforeForward: beforeForward
         )
         do {
             let folder = try await rig.pieces.create()

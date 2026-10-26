@@ -27,6 +27,7 @@ let package = Package(
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
         .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
+        .library(name: "TranscriptWriting", targets: ["TranscriptWriting"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
     dependencies: [
@@ -47,7 +48,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "Session", "CallText", "SideText", "FillIn", "LiveText", "TrackFile", "TranscriptFile", "MicrophoneCapture", "SystemAudioCapture"]
+            dependencies: ["LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "Session", "CallText", "SideText", "FillIn", "LiveText", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -127,6 +128,9 @@ let package = Package(
         ),
         .target(
             name: "TranscriptFile"
+        ),
+        .target(
+            name: "TranscriptWriting"
         ),
         .executableTarget(
             name: "TranscriptFileCrashWriter",
@@ -223,6 +227,10 @@ let package = Package(
         .testTarget(
             name: "TranscriptFileTests",
             dependencies: ["TranscriptFile", "TranscriptFileCrashWriter"]
+        ),
+        .testTarget(
+            name: "TranscriptWritingTests",
+            dependencies: ["TranscriptWriting"]
         ),
         .testTarget(
             name: "TwoPassRecognizerTests",
