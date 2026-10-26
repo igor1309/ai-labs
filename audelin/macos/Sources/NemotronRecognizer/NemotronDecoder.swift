@@ -1,3 +1,4 @@
+import Dispatch
 import FluidAudio
 import ModelLoading
 import Synchronization
@@ -22,11 +23,12 @@ extension NemotronRecognizer {
 
     /// Builds decoders that all take their models from one load.
     static func sharedDecoders<Model: Sendable>(
+        loadQueue: DispatchQueue = DispatchQueue(label: "audelin.NemotronModelLoading"),
         load: @escaping @Sendable () async throws -> Model,
         makeDecoder: @escaping @Sendable (Model) async throws -> any TokenDecoder
     ) -> @Sendable () async throws -> any TokenDecoder {
 
-        let models = SharedModel(load: load)
+        let models = SharedModel(loadQueue: loadQueue, load: load)
         return { try await makeDecoder(models.load().value) }
     }
 }
