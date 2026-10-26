@@ -46,6 +46,10 @@ The first is rexlab (LAB-461), then foliotell (LAB-462), then agister
   and workflows that compose, every run resolved before it starts and
   recorded whole. Pages: [how a run executes](https://igor1309.dev/agister/run-architecture/),
   [how settings resolve](https://igor1309.dev/agister/settings-architecture/).
+- **[Agonara](https://github.com/igor1309/agonara)**: a
+  bring-your-own-agent environment for learning programs, with `/learn`
+  and `/admin` web UIs and an operator CLI over one HTTP API, built with
+  Node.js and SQLite. [Live instance](https://agonara.enoa.ai).
 
 Agister has no screenshots; its picture is how a run executes:
 
