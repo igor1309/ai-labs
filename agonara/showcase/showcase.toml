@@ -1,6 +1,6 @@
 repo = "igor1309/agonara"
 description = "A bring-your-own-agent environment for learning programs: a Node backend, /learn and /admin web UIs and an operator CLI."
-homepage = "https://agonara.enoa.ai"
+homepage = "https://agonara.enoa.ai/learn"
 topics = ["nodejs", "sqlite", "ai-agents", "learning", "openapi"]
 check = "npm ci && npm test"
 
