@@ -94,22 +94,17 @@ final class DrainExecutor: TaskExecutor {
 
 // Direct calls keep Machine's detached effects outside the controlled task graph.
 func withDrainRig(
-    hooks: SessionPieces.Hooks,
+    construction: SessionConstruction,
     recognizers: (any Recognizer, any Recognizer)? = nil,
     beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in },
     _ body: (SessionRig, URL) async throws -> Void
 ) async throws {
 
     try await withComposeFolder { root in
-        var prepared = hooks
-        prepared.textStarted = { text in
-            await hooks.textStarted(text)
-            for await state in text.updates {
-                if state.status == .listening { break }
-            }
-        }
+        var prepared = construction
+        prepared.makeCallText = { ReadyCallText(text: $0) }
         let rig = SessionRig(
-            root: root, microphoneFails: false, processesFail: false, hooks: prepared,
+            root: root, microphoneFails: false, processesFail: false, construction: prepared,
             stopFailure: nil, stopEndsStream: true, rates: nil, recognizers: recognizers,
             beforeForward: beforeForward
         )

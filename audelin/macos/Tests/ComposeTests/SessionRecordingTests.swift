@@ -38,18 +38,17 @@ struct SessionRecordingTests {
     func endingDuringBringUpKeepsAllWords(microphoneStarted: Bool, closeFailure: SessionSide?) async throws {
 
         let started = Signal(), release = Signal()
-        var hooks = SessionPieces.Hooks()
-        hooks.textStarted = { text in
-            for await state in text.updates {
-                if state.status == .listening { break }
-            }
-            if !microphoneStarted { started.send(); await release.next() }
+        var construction = SessionConstruction()
+        construction.makeCallText = { text in
+            ReadyCallText(text: text, afterStart: {
+                if !microphoneStarted { started.send(); await release.next() }
+            })
         }
-        hooks.closeTrack = { side, track in
+        construction.closeTrack = { side, track in
             if side == closeFailure { throw ScriptFailure.failed }
             try await track.close()
         }
-        try await withSessionRig(hooks: hooks, beforeMicrophoneStartReturns: {
+        try await withSessionRig(construction: construction, beforeMicrophoneStartReturns: {
             started.send()
             await release.next()
         }) { rig, folder in
@@ -86,13 +85,9 @@ struct SessionRecordingTests {
 
         let closing = Signal(), release = Signal()
         defer { closing.end(); release.end() }
-        var hooks = SessionPieces.Hooks()
-        hooks.textStarted = { text in
-            for await state in text.updates {
-                if state.status == .listening { break }
-            }
-        }
-        hooks.closeTrack = { closingSide, track in
+        var construction = SessionConstruction()
+        construction.makeCallText = { ReadyCallText(text: $0) }
+        construction.closeTrack = { closingSide, track in
             if closingSide == side {
                 closing.send()
                 await release.next()
@@ -100,7 +95,7 @@ struct SessionRecordingTests {
             try await track.close()
             if closingSide == side && closeFails { throw ScriptFailure.failed }
         }
-        try await withSessionRig(hooks: hooks) { rig, _ in
+        try await withSessionRig(construction: construction) { rig, _ in
             let pieces = rig.pieces
             let folder = try await pieces.create()
             try await pieces.microphoneTrack.open(in: folder)

@@ -2,7 +2,7 @@ import protocol SideText.LiveAudio
 import struct SideText.Audio
 import Synchronization
 
-protocol CaptureAudio: Sendable {
+public protocol CaptureAudio: Sendable {
 
     var capturedThrough: Double { get }
     func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async
@@ -20,16 +20,12 @@ final class DeferredAudio: SideText.LiveAudio, Sendable {
     var capturedThrough: Double { capture.withLock { $0?.capturedThrough ?? 0 } }
     var hasCapture: Bool { capture.withLock { $0 != nil } }
 
-    init(
-        listening: @escaping @Sendable () -> Void = {},
-        beforeDelivery: @escaping @Sendable () async -> Void = {}
-    ) {
+    init(listening: @escaping @Sendable () -> Void = {}) {
 
         self.listening = listening
         let attachment = attachment.stream, audio = audio.continuation
         translating = Task {
             defer { audio.finish() }
-            await beforeDelivery()
             for await capture in attachment {
                 await capture.listen { audio.yield($0) }
             }

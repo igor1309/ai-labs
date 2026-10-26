@@ -93,7 +93,7 @@ struct SessionRig: Sendable {
     let selections = Values<SystemAudioCapture.ProcessSelection>()
 
     init(
-        root: URL, microphoneFails: Bool, processesFail: Bool, hooks: SessionPieces.Hooks,
+        root: URL, microphoneFails: Bool, processesFail: Bool, construction: SessionConstruction,
         stopFailure: SessionSide?, stopEndsStream: Bool, rates: [Double]?,
         recognizers: (any Recognizer, any Recognizer)?,
         connect: (@Sendable (SessionPieces, Session) -> Task<Void, Never>)? = nil,
@@ -131,7 +131,10 @@ struct SessionRig: Sendable {
                 return started
             },
             startCall: { selection in selections.append(selection); return try call.start() },
-            microphoneRecognizer: recognizers?.0 ?? mine, callRecognizer: recognizers?.1 ?? theirs, hooks: hooks
+            microphoneRecognizer: recognizers?.0 ?? mine, callRecognizer: recognizers?.1 ?? theirs,
+            executor: construction.executor, recordingTrack: construction.recordingTrack,
+            closeTrack: construction.closeTrack, makeCaptureAudio: construction.makeCaptureAudio,
+            openTranscript: construction.openTranscript, makeCallText: construction.makeCallText
         )
         session = Session(handler: pieces.handler())
         subscription = connect?(pieces, session) ?? subscribe(pieces, to: session, beforeForward: beforeForward)
@@ -159,7 +162,7 @@ struct SessionRig: Sendable {
 }
 
 func withSessionRig(
-    microphoneFails: Bool = false, processesFail: Bool = false, hooks: SessionPieces.Hooks = .init(),
+    microphoneFails: Bool = false, processesFail: Bool = false, construction: SessionConstruction = .init(),
     stopFailure: SessionSide? = nil, stopEndsStream: Bool = true, rates: [Double]? = nil,
     recognizers: (any Recognizer, any Recognizer)? = nil,
     connect: (@Sendable (SessionPieces, Session) -> Task<Void, Never>)? = nil,
@@ -170,7 +173,7 @@ func withSessionRig(
 
     try await withComposeFolder { root in
         let rig = SessionRig(
-            root: root, microphoneFails: microphoneFails, processesFail: processesFail, hooks: hooks,
+            root: root, microphoneFails: microphoneFails, processesFail: processesFail, construction: construction,
             stopFailure: stopFailure, stopEndsStream: stopEndsStream, rates: rates, recognizers: recognizers,
             connect: connect, beforeForward: beforeForward, beforeMicrophoneStartReturns: beforeMicrophoneStartReturns
         )

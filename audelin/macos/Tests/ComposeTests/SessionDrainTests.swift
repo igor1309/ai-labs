@@ -1,6 +1,7 @@
 import Foundation
 import Session
 import Testing
+import TranscriptFile
 @testable import Compose
 
 @Suite(.timeLimit(.minutes(1)))
@@ -13,18 +14,16 @@ struct SessionDrainTests {
         let delivery = DrainGate(onEntry: executor.notify)
         let stopped = Values<Bool>(), captureStops = Values<Bool>(), resumed = Values<Bool>()
         let stopExecutor = CaptureStopExecutor(base: executor, captureStops: captureStops, resumed: resumed)
-        var hooks = SessionPieces.Hooks()
-        hooks.executor = executor
-        hooks.beforeAudioDelivery = { await delivery.wait() }
-        hooks.textStarted = { writing in
-            for await state in writing.updates {
-                if state.status == .listening { break }
-            }
+        var construction = SessionConstruction()
+        construction.executor = executor
+        construction.makeCallText = { ReadyCallText(text: $0) }
+        construction.makeCaptureAudio = { _, live in
+            HeldCaptureAudio(base: LiveCaptureAudio(capture: live), release: { await delivery.wait() })
         }
-        let configured = hooks
+        let configured = construction
         let task = Task(executorPreference: executor) {
             defer { executor.complete() }
-            try await withSessionRig(hooks: configured, stopFailure: stopFails ? side : nil) { rig, _ in
+            try await withSessionRig(construction: configured, stopFailure: stopFails ? side : nil) { rig, _ in
                 let folder = try await rig.pieces.create()
                 try await rig.pieces.microphoneTrack.open(in: folder)
                 try await rig.pieces.callTrack.open(in: folder)
@@ -91,15 +90,17 @@ struct SessionDrainTests {
         let executor = DrainExecutor()
         let snapshot = DrainGate(onEntry: executor.notify)
         let stopped = Values<Bool>()
-        var hooks = SessionPieces.Hooks()
-        hooks.executor = executor
-        hooks.beforeTranscriptWrite = { state in
-            if state.status == .finished { await snapshot.wait() }
+        var construction = SessionConstruction()
+        construction.executor = executor
+        construction.openTranscript = { url in
+            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url)), beforeWrite: { state in
+                if state.status == .finished { await snapshot.wait() }
+            })
         }
-        let configured = hooks
+        let configured = construction
         let task = Task(executorPreference: executor) {
             defer { executor.complete() }
-            try await withDrainRig(hooks: configured) { rig, folder in
+            try await withDrainRig(construction: configured) { rig, folder in
                 try await rig.pieces.stopCapture(.microphone)
                 try await rig.pieces.stopCapture(.call)
                 try await rig.pieces.microphoneTrack.close()

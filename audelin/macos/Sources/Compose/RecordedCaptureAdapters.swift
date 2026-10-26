@@ -116,11 +116,13 @@ actor CaptureAdapter<Piece: Sendable>: LiveAudio.Capture {
     }
 }
 
-struct CaptureTrack: RecordingTrack {
+public struct CaptureTrack: RecordingTrack {
 
     let track: TrackFile
 
-    func write(_ samples: [Float], sampleRate: Double) async throws {
+    public init(track: TrackFile) { self.track = track }
+
+    public func write(_ samples: [Float], sampleRate: Double) async throws {
 
         try await track.write(samples, sampleRate: sampleRate)
     }
