@@ -221,7 +221,7 @@ struct ParakeetRecognizerTests {
     @Test func audioAtAnotherSampleRateIsHeard() async throws {
 
         let sentence = "Давай сначала соберем всех по этому проекту."
-        let samples = try spoken(sentence, sampleRate: 48_000)
+        let samples = try await spoken(sentence, sampleRate: 48_000)
         let chunks = stride(from: 0, to: samples.count, by: 4_800).map {
             AudioChunk(samples: Array(samples[$0..<min($0 + 4_800, samples.count)]), sampleRate: 48_000)
         }
@@ -278,7 +278,7 @@ struct ParakeetRecognizerTests {
     }
 
     /// The system's Russian voice reading the text, mono at the sample rate.
-    private func spoken(_ text: String, sampleRate: Int) throws -> [Float] {
+    private func spoken(_ text: String, sampleRate: Int) async throws -> [Float] {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -288,8 +288,14 @@ struct ParakeetRecognizerTests {
         let say = Process()
         say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
         say.arguments = ["-v", "Milena", "--file-format=WAVE", "--data-format=LEF32@\(sampleRate)", "-o", url.path, text]
-        try say.run()
-        say.waitUntilExit()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            say.terminationHandler = { _ in continuation.resume() }
+            do { try say.run() }
+            catch {
+                say.terminationHandler = nil
+                continuation.resume(throwing: error)
+            }
+        }
         try #require(say.terminationStatus == 0)
 
         let file = try AVAudioFile(forReading: url)

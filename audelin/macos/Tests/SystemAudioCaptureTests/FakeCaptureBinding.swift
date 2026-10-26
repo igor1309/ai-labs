@@ -27,21 +27,31 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
     private var inFlight = 0
     private var removing = false
     private var cleaned = false
+    private var removalWaiters: [CheckedContinuation<Void, Never>] = []
+    private var cleanupWaiters: [CheckedContinuation<Void, Never>] = []
     private let callbackKey = UUID().uuidString
     private let listenerKey = UUID().uuidString
 
-    func waitForRemoval() {
+    func waitForRemoval() async {
 
-        callbacks.lock()
-        defer { callbacks.unlock() }
-        while !removing { callbacks.wait() }
+        await withCheckedContinuation { continuation in
+            callbacks.lock()
+            let ready = removing
+            if !ready { removalWaiters.append(continuation) }
+            callbacks.unlock()
+            if ready { continuation.resume() }
+        }
     }
 
-    func waitForCleanup() {
+    func waitForCleanup() async {
 
-        callbacks.lock()
-        defer { callbacks.unlock() }
-        while !cleaned { callbacks.wait() }
+        await withCheckedContinuation { continuation in
+            callbacks.lock()
+            let ready = cleaned
+            if !ready { cleanupWaiters.append(continuation) }
+            callbacks.unlock()
+            if ready { continuation.resume() }
+        }
     }
 
     var events: [String] { state.withLock { $0.events } }
@@ -82,8 +92,10 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
         state.withLock { $0.events.append("destroy tap") }
         callbacks.lock()
         cleaned = true
-        callbacks.broadcast()
+        let waiters = cleanupWaiters
+        cleanupWaiters.removeAll()
         callbacks.unlock()
+        for waiter in waiters { waiter.resume() }
     }
 
     func createDevice(_ request: DeviceRequest) throws -> UInt32 {
@@ -127,7 +139,12 @@ final class FakeCaptureBinding: CaptureBinding, @unchecked Sendable {
         callbacks.lock()
         state.withLock { $0.events.append("remove io"); $0.receive = nil }
         removing = true
-        callbacks.broadcast()
+        let waiters = removalWaiters
+        removalWaiters.removeAll()
+        callbacks.unlock()
+        for waiter in waiters { waiter.resume() }
+        callbacks.lock()
+        // The capture's dedicated cleanup queue waits for native IO to return.
         while inFlight > 0 { callbacks.wait() }
         callbacks.unlock()
     }
