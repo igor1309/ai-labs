@@ -12,24 +12,40 @@ struct SessionFailureTests {
 
         try await withSessionRig { rig, folder in
             let pieces = rig.pieces
-            let made = try await pieces.create()
+            let handler = pieces.handler()
             let name = side == .microphone ? "microphone.caf" : "call.caf"
             let blocked = folder.appendingPathComponent(name)
-            try Data("existing track".utf8).write(to: blocked)
-            let failed = side == .microphone ? pieces.microphoneTrack : pieces.callTrack
-            let other = side == .microphone ? pieces.callTrack : pieces.microphoneTrack
-            await #expect(throws: POSIXError(.EEXIST)) { try await failed.open(in: made) }
-            try await other.open(in: made)
-            try await pieces.transcript.open(in: made)
-            try await pieces.start(enabled: true)
-            try await pieces.microphoneCapture.start()
-            try await pieces.callCapture.start(selection: .everyAppButAudelin)
-            try await pieces.microphoneCapture.stop()
-            try await pieces.callCapture.stop()
-            try await failed.close()
-            try await other.close()
-            try await pieces.stop()
-            try await pieces.transcript.close()
+            let unavailable = String(describing: SessionPieces.Failure.unavailableTrack(side))
+            let trackFailure = String(describing: POSIXError(.EEXIST) as NSError)
+            var state = SessionState()
+            for command in [SessionEvent.begin(liveText: true), .end] {
+                var event = command
+                while true {
+                    let (updated, effect) = SessionReducer.reduce(state, event)
+                    state = updated
+                    guard let effect else { break }
+                    event = await handler.handle(effect)
+                    if case .createFolder = effect {
+                        try Data("existing track".utf8).write(to: blocked)
+                    }
+                }
+                #expect(state.phase == (command == .end ? .ended : .recording))
+                #expect(state.callText == .down)
+                #expect(side == .microphone ? state.microphoneCapture == .down : state.callCapture == .down)
+                #expect(state.health(of: .track(side)) == .failed(trackFailure))
+                #expect(state.health(of: .callText) == .failed(unavailable))
+                #expect(state.health(of: .capture(side)) == .failed(unavailable))
+                #expect(state.failures == [
+                    .init(piece: "\(side) track", message: trackFailure),
+                    .init(piece: "call text", message: unavailable),
+                    .init(piece: "\(side) capture", message: unavailable),
+                ])
+                let other: SessionSide = side == .microphone ? .call : .microphone
+                #expect(state.health(of: .track(other)) == .fine)
+                #expect(state.health(of: .capture(other)) == .fine)
+                let otherCapture = side == .microphone ? state.callCapture : state.microphoneCapture
+                #expect(otherCapture == (command == .end ? .closed : .up))
+            }
             #expect(rig.microphone.starts.all == (side == .microphone ? [] : [true]))
             #expect(rig.call.starts.all == (side == .call ? [] : [true]))
             #expect(try String(contentsOf: blocked, encoding: .utf8) == "existing track")

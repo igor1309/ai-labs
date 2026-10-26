@@ -32,6 +32,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
         case unknownFolder(String)
         case unknownSelection(String)
+        case unavailableTrack(SessionSide)
     }
 
     struct Hooks: Sendable {
@@ -167,8 +168,12 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
     public func start(enabled: Bool) async throws {
 
-        guard let microphone = track(.microphone, recognizer: microphoneRecognizer),
-              let call = track(.call, recognizer: callRecognizer) else { return }
+        guard let microphone = track(.microphone, recognizer: microphoneRecognizer) else {
+            throw Failure.unavailableTrack(.microphone)
+        }
+        guard let call = track(.call, recognizer: callRecognizer) else {
+            throw Failure.unavailableTrack(.call)
+        }
         let text = CallText(microphone: microphone, call: call)
         self.text = text
         let writing = TranscriptWriting(
