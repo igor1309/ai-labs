@@ -151,7 +151,7 @@ struct NemotronRecognizerTests {
     @Test func audioAtAnotherSampleRateIsHeard() async throws {
 
         let sentence = "Давай сначала соберем всех. Потом решим, кто за что отвечает, и назначим следующую встречу на четверг."
-        let samples = try spoken(sentence)
+        let samples = try await spoken(sentence)
         let chunks = stride(from: 0, to: samples.count, by: 4_800).map {
             AudioChunk(samples: Array(samples[$0..<min($0 + 4_800, samples.count)]), sampleRate: 48_000)
         }
@@ -319,7 +319,7 @@ struct NemotronRecognizerTests {
             .filter { !$0.isEmpty }
     }
 
-    private func spoken(_ text: String) throws -> [Float] {
+    private func spoken(_ text: String) async throws -> [Float] {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -328,8 +328,14 @@ struct NemotronRecognizerTests {
         let say = Process()
         say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
         say.arguments = ["-v", "Milena", "--file-format=WAVE", "--data-format=LEF32@48000", "-o", url.path, text]
-        try say.run()
-        say.waitUntilExit()
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            say.terminationHandler = { _ in continuation.resume() }
+            do { try say.run() }
+            catch {
+                say.terminationHandler = nil
+                continuation.resume(throwing: error)
+            }
+        }
         try #require(say.terminationStatus == 0)
 
         let file = try AVAudioFile(forReading: url)
