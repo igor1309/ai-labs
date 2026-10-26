@@ -24,7 +24,7 @@ Implemented by [Corpus Storage and Curator Acceptance HTTP API Implementation Pl
 - HTTP route adapters, session/CSRF handling, pagination, response shaping, and status mapping: [server.js](../../src/server.js)
 - Delegated Corpus command/query boundary: [corpus.js](../../src/corpus.js)
 - Focused HTTP route, session, CSRF, pagination, redaction, and out-of-scope coverage: [http-api-corpus-sources.test.js](../../tests/http-api-corpus-sources.test.js), [http-api-corpus-candidates.test.js](../../tests/http-api-corpus-candidates.test.js), [http-api-corpus-candidate-decisions.test.js](../../tests/http-api-corpus-candidate-decisions.test.js), [http-api-corpus-accepted.test.js](../../tests/http-api-corpus-accepted.test.js), [http-api-corpus-events.test.js](../../tests/http-api-corpus-events.test.js)
-- End-to-end executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- End-to-end executable acceptance coverage: [executable-acceptance-corpus-navigation.test.js](../../tests/executable-acceptance-corpus-navigation.test.js)
 
 The implemented API exposes Program source routes, Corpus candidate list/create routes, candidate acceptance/rejection routes, accepted corpus current and historical revision reads, and Corpus event reads over the existing Identity session, CSRF, envelope, pagination, and redaction conventions. It delegates policy to the implemented Corpus command/query boundary and preserves the slice boundary by excluding UI, CLI, material storage, LLM execution, assessment, Student Workspace state, and new Corpus domain rules.
 

@@ -49,7 +49,7 @@ describe("the result's level switch, in the sorting game and the quiz", () => {
   });
 
   it.each(AGE_LEVELS)("reports a choice of %s without navigating or changing the finished round; the caller moves the mark", async (level) => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const view = openResult();
     const main = screen.getByRole("main");
 

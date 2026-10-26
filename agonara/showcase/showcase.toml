@@ -1,0 +1,39 @@
+repo = "igor1309/agonara"
+description = "A bring-your-own-agent environment for learning programs: a Node backend, /learn and /admin web UIs and an operator CLI."
+homepage = "https://agonara.enoa.ai/learn"
+topics = ["nodejs", "sqlite", "ai-agents", "learning", "openapi"]
+check = "npm ci && npm test"
+
+include = [
+  "src/**",
+  "tests/**",
+  "docs/api/openapi.yml",
+  "docs/api/redocly.yaml",
+  "index.html",
+  "package.json",
+  "package-lock.json",
+  "playwright.config.js",
+  "Dockerfile",
+  ".dockerignore",
+  "compose.yaml",
+  "scripts/generate-agonara-openapi.mjs",
+]
+exclude = [
+  # These tests check the private deployment, smoke and skills tooling, or private docs.
+  "tests/deployment-scaffold.test.js",
+  "tests/public-prod-routes-smoke-script.test.js",
+  "tests/open-answer-evaluator-smoke-script.test.js",
+  "tests/operator-skill-contract.test.js",
+  "tests/public-skills-publish-workflow.test.js",
+  "tests/public-skills-projection.test.js",
+  "tests/material-content-closeout.test.js",
+]
+
+# These tests assert that no home path reaches a response; their paths are placeholders.
+[[allow_marker]]
+marker = "/Users/"
+paths = [
+  "tests/http-api-assessment-validation.test.js",
+  "tests/http-api-corpus-events.test.js",
+  "tests/http-api-quick-check-ui.test.js",
+]

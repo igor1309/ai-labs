@@ -60,7 +60,7 @@ function openHomePage(
   featured: HomeGame = "compare"
 ) {
   render(<App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pageAtRest()} {...pictures} />);
-  return { user: userEvent.setup(), card: featuredCard() };
+  return { user: userEvent.setup({ delay: null }), card: featuredCard() };
 }
 
 // The home page with COMPARE's tile in the row, the large card CARE's.
@@ -122,7 +122,7 @@ function renderHomePage(taps: number[]) {
     />,
     withPictures
   );
-  return { user: userEvent.setup(), card: homeTile("SORT") };
+  return { user: userEvent.setup({ delay: null }), card: homeTile("SORT") };
 }
 
 // The name of every symbol an element shows, in order.
@@ -616,7 +616,7 @@ describe("the home page", () => {
 
   it.each(QUIZ_DOORS)("brightens the %s under a pointer", async (_, door) => {
     const card = door();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     expect(brightness(card)).toBe(1);
 
     await user.hover(card);
@@ -628,7 +628,7 @@ describe("the home page", () => {
 
   it.each(QUIZ_DOORS)("shows the %s pressed before the round opens", async (_, door) => {
     const card = door();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
 
     await user.pointer({ keys: "[TouchA>]", target: card });
 
@@ -641,7 +641,7 @@ describe("the home page", () => {
   });
 
   it.each(QUIZ_DOORS)("starts a round of 10 questions on a tap on the %s", async (_, door) => {
-    await userEvent.setup().click(door());
+    await userEvent.setup({ delay: null }).click(door());
 
     expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
     expect(within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("button")).toHaveLength(2);
@@ -726,7 +726,7 @@ describe("the large card", () => {
     const { container, unmount } = render(
       <App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
     );
-    await tap(userEvent.setup());
+    await tap(userEvent.setup({ delay: null }));
     const asked: string[] = [];
     for (let loading = pictures.loading(); loading.length > 0; loading = pictures.loading()) {
       asked.push(...loading);

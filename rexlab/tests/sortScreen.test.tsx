@@ -173,7 +173,7 @@ describe("a basket's measured layout", () => {
 
 describe("dragging a card", () => {
   it("lights the basket under it, and lands it in its right basket with a ✓, counted as right", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("legs");
     const opened = openBoard(sorting);
     layOutBaskets(sorting);
@@ -204,7 +204,7 @@ describe("dragging a card", () => {
   });
 
   it("slides a card dropped on the wrong basket back to its place, with its right basket's symbol as a hint, and glows that basket", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("diet");
     const opened = openBoard(sorting);
     layOutBaskets(sorting);
@@ -235,7 +235,7 @@ describe("dragging a card", () => {
   });
 
   it("slides back again from a second wrong drop, and glows the right basket anew", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("horns");
     openBoard(sorting);
     layOutBaskets(sorting);
@@ -257,7 +257,7 @@ describe("dragging a card", () => {
   });
 
   it("slides a card let go away from the baskets back, counting nothing, and it counts as right when then dropped on its basket", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("feathers");
     const opened = openBoard(sorting);
     layOutBaskets(sorting);
@@ -276,7 +276,7 @@ describe("dragging a card", () => {
   });
 
   it("moves one card at a time: a second finger moves nothing while one card is dragged", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("size");
     const opened = openBoard(sorting);
     layOutBaskets(sorting);
@@ -344,7 +344,7 @@ describe("a card whose picture is not shown", () => {
   it.each(NOT_SHOWN.flatMap((shown) => MOVES.map((move) => [...shown, ...move] as const)))(
     "lands, its picture %s, in its right basket by %s, named and counted right, its place there shimmering, then as the picture ends",
     async (_, before, after, looks, __, move) => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const pictures = manualPictures();
       const sorting = sortingBy("diet");
       const opened = openBoard(sorting, "en", pictures);
@@ -364,7 +364,7 @@ describe("a card whose picture is not shown", () => {
   );
 
   it.each(NOT_SHOWN)("slides back to its place on a miss, its picture %s, named and hinted, its place shimmering, and glows its right basket", async (_, before, after, looks) => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const pictures = manualPictures();
     const sorting = sortingBy("diet");
     openBoard(sorting, "en", pictures);
@@ -384,7 +384,7 @@ describe("a card whose picture is not shown", () => {
   });
 
   it.each(NOT_SHOWN)("slides back to its place when let go away from the baskets, its picture %s, its place shimmering, and nothing counts", async (_, before, after, looks) => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const pictures = manualPictures();
     const sorting = sortingBy("diet");
     const opened = openBoard(sorting, "en", pictures);
@@ -403,7 +403,7 @@ describe("a card whose picture is not shown", () => {
 
 describe("tapping", () => {
   it("picks a card up, and a tap on a basket drops it there, as if dragged", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("legs");
     const opened = openBoard(sorting);
     const [first, second] = [nthCard(sorting, 0), nthCard(sorting, 1)];
@@ -431,7 +431,7 @@ describe("tapping", () => {
     ["the prompt", () => screen.getByRole("heading")],
     ["a sorted card", (sorting) => basketButton(nthCard(sorting, 0).basket as Basket).querySelector(".sorted-card") as HTMLElement]
   ])("puts a picked card down at a tap on %s, and nothing counts", async (_, target) => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("diet");
     const opened = openBoard(sorting);
     const [sorted, card] = [nthCard(sorting, 0), nthCard(sorting, 1)];
@@ -447,7 +447,7 @@ describe("tapping", () => {
   });
 
   it("picks another card up instead at a tap on it", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("diet");
     openBoard(sorting);
     const [first, second] = [nthCard(sorting, 0), nthCard(sorting, 1)];
@@ -459,7 +459,7 @@ describe("tapping", () => {
   });
 
   it("puts a picked card down when another card is dragged, and the dragged one moves", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("diet");
     openBoard(sorting);
     layOutBaskets(sorting);
@@ -477,7 +477,7 @@ describe("tapping", () => {
   });
 
   it("changes nothing at a tap on a basket with no card picked up", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("horns");
     const opened = openBoard(sorting);
     const before = document.body.innerHTML;
@@ -489,7 +489,7 @@ describe("tapping", () => {
   });
 
   it("does not move a sorted card, dragged or tapped, nor change the score", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("legs");
     const opened = openBoard(sorting);
     layOutBaskets(sorting);
@@ -515,7 +515,7 @@ describe("tapping", () => {
 
 describe("the round on the board", () => {
   it("fills one progress step, with no numbers, for each card sorted", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("size");
     openBoard(sorting);
 
@@ -530,7 +530,7 @@ describe("the round on the board", () => {
   });
 
   it("shows SEE RESULT with a trophy once the last card lands, and it leads to the result", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("feathers");
     const opened = openBoard(sorting);
     const cards = cardsOf(sorting);
@@ -552,7 +552,7 @@ describe("the round on the board", () => {
   });
 
   it("leaves at HOME without asking", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const opened = openBoard(sortingBy("legs"));
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
@@ -562,7 +562,7 @@ describe("the round on the board", () => {
   });
 
   it("asks to turn the iPad in portrait, and keeps the cards sorted and the wrong drop when turned back", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("diet");
     const opened = openBoard(sorting);
     const cards = cardsOf(sorting).slice(0, 3);

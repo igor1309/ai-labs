@@ -52,7 +52,7 @@ async function openResult(size: WindowSize, {
   language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets), ageLevel, layouts = PORTRAIT_LAYOUTS
 }: { language?: Language; insets?: SafeArea; viewport?: Viewport; ageLevel?: AgeLevelSetting; layouts?: PortraitLayouts } = {}) {
   openWindow(...size);
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   render(<App
     {...featuring()}
     dinosaurs={SHIPPED_DINOSAURS}

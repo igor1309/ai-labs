@@ -39,7 +39,7 @@ async function openPage(size: WindowSize, {
 }: { language?: Language; id?: string; insets?: SafeArea; viewport?: Viewport } = {}) {
   openWindow(...size);
   const pictures = recordedSharedPictures();
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   render(<App
     {...featuring()}
     dinosaurs={SHIPPED_DINOSAURS}

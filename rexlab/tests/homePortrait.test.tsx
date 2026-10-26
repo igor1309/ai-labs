@@ -116,7 +116,7 @@ function openUpright(
       {...loadedPictures()}
     />
   );
-  return { viewport, user: userEvent.setup() };
+  return { viewport, user: userEvent.setup({ delay: null }) };
 }
 
 // The properties a sum reads or assumes, as the rules that match in a

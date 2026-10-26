@@ -14,6 +14,14 @@ test("ciPathFilters_shouldRunAgonaraCore_onPackageLockChanges", () => {
   assert.ok(agonaraFilter.includes('"agonara/package-lock.json"'));
 });
 
+test("ciPathFilters_shouldRunScreenshotTests_onAgonaraShowcaseCodeChanges", () => {
+  for (const file of ["agonara/showcase/screenshots.mjs", "agonara/showcase/screenshots.test.mjs"]) {
+    assert.equal(jobRuns("agonara-core", [file]), true, `${file} does not run agonara-core`);
+  }
+  const core = readFileSync(new URL(".github/workflows/agonara-core.yml", repoRoot), "utf8");
+  assert.match(core, /node --test agonara\/showcase\/\*\.test\.mjs/);
+});
+
 test("ciPathFilters_shouldNotTreatDashboardScriptAsSharedInfrastructure", () => {
   const sharedFilter = filterSection("shared", "nomos");
 

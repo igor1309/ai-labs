@@ -70,7 +70,7 @@ function openApp({
       {...pageAtRest()}
     />
   );
-  return userEvent.setup();
+  return userEvent.setup({ delay: null });
 }
 
 const entry = (id: string): CatalogueEntry => {

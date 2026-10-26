@@ -21,7 +21,7 @@ Implemented in the Topic and Period Readiness Checks plan:
 - Storage and backup/restore coverage: [storage.test.js](../../tests/storage.test.js), [backup-restore.test.js](../../tests/backup-restore.test.js)
 - Corpus/domain coverage: [corpus.test.js](../../tests/corpus.test.js), [corpus-executable-acceptance.test.js](../../tests/corpus-executable-acceptance.test.js)
 - Student Workspace coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
-- HTTP and executable acceptance coverage: [http-api-readiness-checks.test.js](../../tests/http-api-readiness-checks.test.js), [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- HTTP and executable acceptance coverage: [http-api-readiness-checks.test.js](../../tests/http-api-readiness-checks.test.js), [executable-acceptance-corpus-navigation.test.js](../../tests/executable-acceptance-corpus-navigation.test.js)
 - Browser coverage: [topic-period-readiness-checks.playwright.js](../../tests/topic-period-readiness-checks.playwright.js)
 - Runtime surfaces: [Corpus domain service](../../src/corpus.js), [Student Workspace domain service](../../src/student-workspace.js), [HTTP adapter](../../src/server.js), [`/learn` product UI](../../src/learn-ui.js)
 

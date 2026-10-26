@@ -43,7 +43,7 @@ async function openPage(size: WindowSize, insets: SafeArea, language: Language =
   onTestFinished(() => sheet.remove());
   const viewport = manualViewport("landscape", { left: insets.left, right: insets.right });
   viewport.resize("wide-short", false);
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   render(<App
     {...featuring()}
     dinosaurs={SHIPPED_DINOSAURS}

@@ -653,3 +653,29 @@ test('rexlab settings export required runtime and build files while keeping priv
   assert.match(readFileSync(join(root, 'rexlab/showcase/public/LICENSE'), 'utf8'), /MIT License\n\nCopyright \(c\) 2026 Igor Malyarov/);
   assert.equal(existsSync(join(root, 'rexlab/tests/catalogueSources.test.ts')), true);
 });
+
+test('agonara settings export the app, its tests and local compose while keeping deployment and private docs out', () => {
+  const root = resolve(import.meta.dirname, '../../..');
+  const settings = readSettings(readFileSync(join(root, 'agonara/showcase/showcase.toml'), 'utf8'));
+  assert.equal(settings.repo, 'igor1309/agonara');
+  assert.equal(settings.check, 'npm ci && npm test');
+  assert.equal(settings.homepage, 'https://agonara.enoa.ai/learn');
+  for (const path of ['src/server.js', 'src/cli.js', 'tests/executable-acceptance-identity-programs.test.js', 'tests/support/http-api.js', 'docs/api/openapi.yml',
+    'docs/api/redocly.yaml', 'index.html', 'package.json', 'package-lock.json', 'playwright.config.js', 'Dockerfile', '.dockerignore', 'compose.yaml',
+    'scripts/generate-agonara-openapi.mjs']) {
+    assert.equal(isIncluded(path, settings), true, path);
+  }
+  for (const path of ['compose.prod.yml', 'compose.staging.yml', 'scripts/deploy-prod.sh', 'scripts/backup-staging.sh', 'scripts/restore-prod.sh',
+    'scripts/rollback-prod.sh', 'scripts/smoke-public-prod-routes.mjs', 'scripts/project-public-skills.mjs', 'scripts/publish-guard.mjs',
+    'tests/deployment-scaffold.test.js', 'tests/material-content-closeout.test.js', 'docs/intent/intent_learning_program_app.md', 'research/x.md',
+    'backlog/x.md', 'skills/x/SKILL.md', 'README.md', 'AGENTS.md', 'CLAUDE.md', 'architecture.html', 'showcase/showcase.toml', 'showcase/AGENTS.md']) {
+    assert.equal(isIncluded(path, settings), false, path);
+  }
+  assert.deepEqual(settings.allow_marker.map(({ marker }) => marker), ['/Users/']);
+  assert.equal(readFileSync(join(root, 'agonara/showcase/public/.gitignore'), 'utf8'), 'node_modules/\n');
+  const readme = readFileSync(join(root, 'agonara/showcase/public/README.md'), 'utf8');
+  assert.match(readme, /^# Agonara\n\n\S/);
+  const images = [...readme.matchAll(/!\[[^\]]*\]\((screenshots\/[^)]+)\)/g)].map(([, path]) => path);
+  assert.equal(images.length, 4);
+  for (const path of images) assert.equal(existsSync(join(root, 'agonara/showcase/public', path)), true, path);
+});

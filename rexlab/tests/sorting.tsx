@@ -195,7 +195,7 @@ export function openSortingGame({ storage = memoryStorage(), seed = 1, language 
   const random = seededRandom(seed);
   let last: Sorting | undefined;
   const nextBoard = () => (last = startBoard(SHIPPED_SORTABLES, "hatchling", random, last));
-  return { user: userEvent.setup(), storage, homes, nextBoard, unmount };
+  return { user: userEvent.setup({ delay: null }), storage, homes, nextBoard, unmount };
 }
 
 // Sorts the first `count` cards of `sorting` by taps, a card then a

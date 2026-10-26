@@ -113,7 +113,7 @@ async function openAnswered(from: Window, { reduced = false }: { reduced?: boole
     />
   );
   act(() => pictures.finishAll());
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   await user.click(gameDoor(TEXTS.en.quizCard));
   act(() => pictures.finishAll());
   const right = correctOf(shownQuestion());

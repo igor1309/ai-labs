@@ -250,7 +250,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
     />
   );
   act(() => pictures.finishAll());
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   // The native transition paints above the document until a viewport
   // change cancels it, independently of the app's turn animations.
   let nativeDrawing: HTMLElement | undefined;

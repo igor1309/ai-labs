@@ -90,7 +90,7 @@ function openApp({ storage = memoryStorage(), language = "en" }: { storage?: Mem
       {...timers}
     />
   );
-  return { user: userEvent.setup(), timers, unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), timers, unmount: view.unmount };
 }
 
 const levelButton = (language: Language = "en") => screen.getByRole("button", { name: LABELS[language] });

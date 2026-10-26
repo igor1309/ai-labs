@@ -225,7 +225,7 @@ describe("the featured game in the app", () => {
     const store = featuredSpy(record(STARTS, { game: "skeletons", on: TODAY }));
     const clock = { time: new Date(2026, 9, 18, 23, 59) };
     const view = openApp(store, clock, 0);
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     expect(featuredGame()).toBe("skeletons");
 
     clock.time = new Date(2026, 9, 19, 8, 0);

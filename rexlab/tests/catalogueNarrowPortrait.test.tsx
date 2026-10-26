@@ -62,7 +62,7 @@ async function openNarrow(width: number, height: number, language: Language = "e
   openWindow(width, height);
   const viewport = manualViewport("portrait");
   viewport.resize("tall-narrow", true);
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   render(
     <App
       {...featuring()}
