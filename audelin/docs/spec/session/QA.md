@@ -122,3 +122,10 @@ For each track file and the transcript, recording with audio and text
 kept, ended, that piece failing on cue as it closes: every other piece
 still goes down; the state reads ended and names the failure; the output
 keeps what was sent before. Evidence: `closeFailureIsNamedAndEndingContinues`.
+
+## S-14 A failed choice of processes still hears the call
+
+The processes fake fails its choice; every other piece comes up. The call
+capture fake sends numbered audio only when started for every app but
+Audelin's. The state names the processes failure and shows both tracks
+recording, and the call track holds that numbered audio. Evidence: `failedProcessChoiceHearsEveryAppButAudelin`.
