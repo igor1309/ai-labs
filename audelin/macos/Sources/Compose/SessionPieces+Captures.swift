@@ -61,7 +61,7 @@ extension SessionPieces {
         do {
             try await recorded.start()
             let news = news.continuation
-            let failures = Task {
+            let failures = Task(executorPreference: hooks.executor) {
                 var stopFailure: (any Error)?
                 for await failure in recorded.failures {
                     switch failure {
