@@ -120,7 +120,7 @@ func withDrainRig(
             try await rig.pieces.transcript.open(in: folder)
             try await rig.pieces.start(enabled: true)
             try await rig.pieces.microphoneCapture.start()
-            try await rig.pieces.callCapture.start(selection: nil)
+            try await rig.pieces.callCapture.start(selection: .everyAppButAudelin)
             try await body(rig, root.appendingPathComponent("1970.01.01-0000"))
             await rig.session.end()
             rig.subscription.cancel()

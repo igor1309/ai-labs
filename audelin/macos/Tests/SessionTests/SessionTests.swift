@@ -18,7 +18,7 @@ struct SessionTests {
             (.trackFinished(.call, error: nil), .openTranscript, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .up, transcript: .starting, processSelection: .init(id: "chosen-app"))),
             (.transcriptFinished(error: nil), .startCallText(enabled: true), SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .up, transcript: .up, callText: .starting, processSelection: .init(id: "chosen-app"))),
             (.callTextFinished(error: nil), .startMicrophoneCapture, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .up, microphoneCapture: .starting, transcript: .up, callText: .up, processSelection: .init(id: "chosen-app"))),
-            (.captureFinished(.microphone, error: nil), .startCallCapture(selection: .init(id: "chosen-app")), SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .up, microphoneCapture: .up, callCapture: .starting, transcript: .up, callText: .up, processSelection: .init(id: "chosen-app"))),
+            (.captureFinished(.microphone, error: nil), .startCallCapture(selection: .chosen(.init(id: "chosen-app"))), SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .up, microphoneCapture: .up, callCapture: .starting, transcript: .up, callText: .up, processSelection: .init(id: "chosen-app"))),
         ]
 
         for (event, expected, expectedState) in steps {
@@ -70,7 +70,7 @@ struct SessionTests {
             "microphone.audio", "call.capture.start", "call.audio"
         ])
         #expect(await rig.output.selection(for: "microphone") == nil)
-        #expect(await rig.output.selection(for: "call") == .init(id: "chosen-app"))
+        #expect(await rig.output.selection(for: "call") == .chosen(.init(id: "chosen-app")))
         #expect(await rig.microphoneTrack.values() == ["microphone-first"])
         #expect(await rig.callTrack.values() == ["call-first"])
         #expect(await rig.transcript.values() == ["callText-first"])
@@ -642,7 +642,21 @@ struct SessionTests {
         await rig.begin(liveText: false)
         _ = await rig.waitFor { $0.phase == .recording }
         #expect(await rig.output.selection(for: "microphone") == nil)
-        #expect(await rig.output.selection(for: "call") == .init(id: "fallback-apps"))
+        #expect(await rig.output.selection(for: "call") == .chosen(.init(id: "fallback-apps")))
+        await end(rig)
+    }
+
+    @Test func failedProcessChoiceHearsEveryAppButAudelin() async {
+
+        let rig = Rig(failing: ["processes.select"], callAudioSelection: .everyAppButAudelin)
+        await rig.begin(liveText: false)
+        let state = await rig.waitFor { $0.phase == .recording }
+        #expect(state.failures == [.init(piece: "processes", message: "processes.select failed")])
+        #expect(state.microphoneCapture == .up)
+        #expect(state.callCapture == .up)
+        await rig.callCapture.sendAudio("call-1")
+        await rig.callCapture.sendAudio("call-2")
+        #expect(await rig.callTrack.values() == ["call-first", "call-1", "call-2"])
         await end(rig)
     }
 

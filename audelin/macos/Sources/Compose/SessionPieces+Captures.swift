@@ -30,13 +30,14 @@ extension SessionPieces {
         try await startCapture(capture, side: .microphone)
     }
 
-    func startCallCapture(selection: SessionProcessSelection?) async throws {
+    func startCallCapture(selection: SessionCallCaptureSelection) async throws {
 
         let resolved: SystemAudioCapture.ProcessSelection
-        if let selection {
+        switch selection {
+        case let .chosen(selection):
             guard let known = selections[selection.id] else { throw Failure.unknownSelection(selection.id) }
             resolved = known
-        } else {
+        case .everyAppButAudelin:
             resolved = .allExcept([getpid()])
         }
         let startCall = startCall

@@ -13,7 +13,7 @@ struct SessionOrderTests {
                 try await pieces.microphoneTrack.open(in: .init(id: "unknown"))
             }
             await #expect(throws: SessionPieces.Failure.unknownSelection("unknown")) {
-                try await pieces.callCapture.start(selection: .init(id: "unknown"))
+                try await pieces.callCapture.start(selection: .chosen(.init(id: "unknown")))
             }
             await #expect(throws: SessionPieces.Failure.outOfOrder("microphone track is not open")) {
                 try await pieces.start(enabled: true)
@@ -28,7 +28,7 @@ struct SessionOrderTests {
             _ = try await rig.state { $0.phase == .recording }
             let selection = try #require((await rig.session.snapshot()).processSelection)
             await #expect(throws: SessionPieces.Failure.unknownSelection(selection.id + "-other")) {
-                try await pieces.callCapture.start(selection: .init(id: selection.id + "-other"))
+                try await pieces.callCapture.start(selection: .chosen(.init(id: selection.id + "-other")))
             }
             let made = try #require(await pieces.made)
             await #expect(throws: SessionPieces.Failure.outOfOrder("folder already created")) {

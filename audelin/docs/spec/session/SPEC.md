@@ -13,16 +13,17 @@ what failed (user S-8, S-9, S-15, S-16, S-7, S-17 in `../SPEC.md`).
 - **Bring-down keeps everything:** captures stop first, each track file
   closes after its last audio, call text finishes, the transcript closes
   after its last text, so a call is kept to its last word (S-7, S-17).
-- **Ended means nothing is left:** an end waits for the step in flight.
-- **A piece failing to close is named;** bring-down goes on, what was kept
+- **Ended means nothing is left:** an end waits for the step in flight. A
+  piece failing to close is named; bring-down goes on, what was kept
   stays, and the Session still ends, so the next call is never stranded.
 - **A failure that leaves no track** (the folder, or both sides) makes it
   say it cannot record, and why; Recording ends it (LAB-510). Any other
   failing piece, or a side whose access is lost (compose feeds each side's
   access), is named, its output kept, and the rest goes on (S-9).
-- **Live text is the Session's own:** it starts from the preference, and
-  the preference or panel switch changes it, as call text says (S-8).
-  Getting ready is call text's, shown beside the tracks (S-15, S-16).
+- **No processes chosen hears every app but Audelin,** so their side is
+  kept, as with no call app running (call app processes S-6) (S-14).
+- **Live text is the Session's own:** set by the preference and switch, as
+  call text says (S-8); getting ready is shown beside the tracks (S-15, S-16).
 
 ```gherkin
 Feature: Bringing a recording up and down
@@ -91,4 +92,9 @@ Feature: Bringing a recording up and down
     Given a Session is being ended
     When a piece fails to close
     Then I can read that it ended, which failed, and with what was kept
+
+  Scenario: S-14 A failed choice of processes still hears the call
+    Given choosing the call app's processes fails
+    When the call is captured
+    Then I can read that the choice failed, and their side is recorded
 ```
