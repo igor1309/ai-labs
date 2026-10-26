@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { PortraitLayouts } from "../src/App.tsx";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import type { AgeLevel, AgeLevelSetting } from "../src/ageLevel.ts";
@@ -47,10 +48,11 @@ async function begin({
   progress = {},
   storage = memoryStorage({ [PROGRESS_KEY]: pairsRecord(entry(progress)) }),
   viewport = manualViewport("landscape"),
+  portraitLayouts = {},
   settingsStorage
-}: { ageLevel?: AgeLevel; progress?: Partial<StoredPairs>; storage?: MemoryStorage; settingsStorage?: MemoryStorage; viewport?: ManualViewport } = {}) {
+}: { ageLevel?: AgeLevel; progress?: Partial<StoredPairs>; storage?: MemoryStorage; settingsStorage?: MemoryStorage; viewport?: ManualViewport; portraitLayouts?: PortraitLayouts } = {}) {
   const clock = manualPictures();
-  const app = openPairsApp({ storage, viewport, ageLevel: picked(ageLevel), clock, ...(settingsStorage && { settingsStorage }) });
+  const app = openPairsApp({ storage, viewport, portraitLayouts, ageLevel: picked(ageLevel), clock, ...(settingsStorage && { settingsStorage }) });
   await app.user.click(button("FIND THE PAIR"));
   // The board dealt last, which the next one is dealt after.
   return { ...app, clock, viewport, previous: undefined as Board | undefined };
@@ -294,6 +296,41 @@ describe("a level whose offer was turned down", () => {
     expect(savedOffer(session)).toEqual(offerOf("hatchling", 0, "hatchling"));
     expect((storedPairs(session.storage) as StoredPairs).levelChoice).toBeUndefined();
     expect(session.ageLevels.items.get(AGE_LEVEL_KEY)).toBe(before);
+  });
+});
+
+describe("an offer shown as the iPad turns", () => {
+  const UPRIGHT: PortraitLayouts = { home: ["tall"], "pairs-welcome": ["tall"], "pairs-board": ["tall"], "pairs-result": ["tall"] };
+  // A turn glides its parts for 240 ms, the page untouchable meanwhile.
+  const GLIDE = 240;
+  const turned = (session: Session, to: "portrait" | "landscape") => {
+    act(() => session.viewport.turn(to));
+    expect(document.documentElement.hasAttribute("data-turning")).toBe(true);
+    // Mid-glide the offer and everything around it stay shown, and nothing inerts it.
+    const dialog = screen.getByRole("dialog");
+    for (let el: Element | null = dialog; el; el = el.parentElement) {
+      const { display, visibility } = getComputedStyle(el);
+      expect([display, visibility]).toEqual([expect.not.stringMatching(/^none$/), expect.not.stringMatching(/^hidden$/)]);
+    }
+    expect(dialog.closest("[inert]")).toBeNull();
+    act(() => session.clock.fire(GLIDE));
+    expect(document.documentElement.hasAttribute("data-turning")).toBe(false);
+  };
+
+  it.each(["portrait", "landscape"] as const)("stays, and its YES still plays the next level, after turning to %s and back", async (first) => {
+    const session = await begin({ progress: { offer: offerOf("hatchling", 2) }, portraitLayouts: UPRIGHT, viewport: manualViewport(first === "portrait" ? "landscape" : "portrait") });
+    await result(session, "PLAY", HATCHLING, 6);
+    expect(asked()).toBe(asks("explorer"));
+    turned(session, first);
+    expect([asked(), screen.getByRole("dialog").closest("[inert]")]).toEqual([asks("explorer"), null]);
+    turned(session, first === "portrait" ? "landscape" : "portrait");
+    expect(asked()).toBe(asks("explorer"));
+    await session.user.click(button("YES"));
+    settle(session);
+    expect(asked()).toBeNull();
+    expect((storedPairs(session.storage) as StoredPairs).levelChoice).toEqual({ level: "explorer", revision: "picked-hatchling" });
+    await deal(session, "PLAY AGAIN", EXPLORER);
+    expect(pairCards()).toHaveLength(18);
   });
 });
 
