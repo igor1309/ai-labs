@@ -142,6 +142,7 @@ through a machine.
 | Call text | Dependency of Session's handler; its updates feed Reading |
 | Side text | Inside call text, one per side: that side's text to its end |
 | Fill in | Inside side text: gets live text ready and reads it what it missed |
+| Transcript writing | Around call text, a decorator at the root: keeps its text in the transcript file |
 | Live text, the recognizers, model loading | Inside call text, behind its ports; model loading also feeds the conditions | The UI targets (`PanelUI`,
 `SettingsUI`, a menu bar target) stay renderers.
 
