@@ -19,6 +19,7 @@ let package = Package(
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
+        .library(name: "Preferences", targets: ["Preferences"]),
         .library(name: "RecordedCapture", targets: ["RecordedCapture"]),
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
@@ -48,7 +49,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture"]
+            dependencies: ["LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -96,6 +97,9 @@ let package = Package(
                 "ModelLoading",
                 .product(name: "FluidAudio", package: "FluidAudio"),
             ]
+        ),
+        .target(
+            name: "Preferences"
         ),
         .target(
             name: "RecordedCapture"
@@ -195,6 +199,10 @@ let package = Package(
         .testTarget(
             name: "ParakeetRecognizerTests",
             dependencies: ["ParakeetRecognizer"]
+        ),
+        .testTarget(
+            name: "PreferencesTests",
+            dependencies: ["Preferences"]
         ),
         .testTarget(
             name: "RecordedCaptureTests",
