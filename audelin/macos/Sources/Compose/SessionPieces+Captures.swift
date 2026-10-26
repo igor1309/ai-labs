@@ -49,26 +49,19 @@ extension SessionPieces {
 
     func stopCapture(_ side: SessionSide) async throws {
 
-        guard let destination = sides[side], !destination.captureStopping,
-              let stop = destination.stopCapture else {
-            throw Failure.outOfOrder("\(side) capture is not running")
-        }
-        sides[side]?.captureStopping = true
-        defer { sides[side]?.stopCapture = nil }
-        try await stop()
+        try await sides[side]?.stopCapture?()
     }
 
     private func startCapture<Piece>(_ capture: CaptureAdapter<Piece>, side: SessionSide) async throws {
 
-        let track = try captureTrack(side)
+        guard let track = sides[side]?.track else { throw Failure.unavailableTrack(side) }
         let live = LiveAudio(capture: capture)
         let recorded = RecordedCapture(capture: RecordedInput(capture: live), track: hooks.recordingTrack(side, track))
         sides[side]?.audio.attach(LiveCaptureAudio(capture: live))
-        defer { sides[side]?.captureStarting = false }
         do {
             try await recorded.start()
             let news = news.continuation
-            let failures = Task {
+            let failures = Task(executorPreference: hooks.executor) {
                 var stopFailure: (any Error)?
                 for await failure in recorded.failures {
                     switch failure {
@@ -92,17 +85,5 @@ extension SessionPieces {
         } catch let RecordingFailure.capture(error) {
             throw error
         }
-    }
-
-    private func captureTrack(_ side: SessionSide) throws -> TrackFile {
-
-        guard let destination = sides[side], let track = destination.track, !destination.closed else {
-            throw Failure.outOfOrder("\(side) track is not open")
-        }
-        guard !destination.captureAttempted else { throw Failure.outOfOrder("\(side) capture already started") }
-        guard !textStopped, !textStopping else { throw Failure.outOfOrder("call text already stopped") }
-        sides[side]?.captureAttempted = true
-        sides[side]?.captureStarting = true
-        return track
     }
 }

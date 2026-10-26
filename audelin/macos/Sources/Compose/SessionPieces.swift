@@ -30,9 +30,9 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
     public enum Failure: Error, Equatable {
 
-        case outOfOrder(String)
         case unknownFolder(String)
         case unknownSelection(String)
+        case unavailableTrack(SessionSide)
     }
 
     struct Hooks: Sendable {
@@ -55,10 +55,6 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
         let audio: DeferredAudio
         var track: TrackFile?
-        var closed = false
-        var captureAttempted = false
-        var captureStarting = false
-        var captureStopping = false
         var stopCapture: (@Sendable () async throws -> Void)?
     }
 
@@ -78,10 +74,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     var selections: [String: SystemAudioCapture.ProcessSelection] = [:]
     var sides: [SessionSide: Side]
     var transcriptFile: TranscriptFile?
-    var transcriptClosed = false
     var text: CallText?
-    var textStopped = false
-    var textStopping = false
     var writing: TranscriptWriting<State>?
 
     public init(
@@ -125,7 +118,6 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
     public func create() throws -> SessionCallFolder {
 
-        guard made == nil else { throw Failure.outOfOrder("folder already created") }
         let made = try folder.make()
         self.made = made
         return SessionCallFolder(id: made.url.path)
@@ -151,46 +143,37 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     func openTrack(_ side: SessionSide, in folder: SessionCallFolder) throws {
 
         let made = try places(in: folder)
-        guard sides[side]?.track == nil else { throw Failure.outOfOrder("\(side) track already opened") }
         sides[side]?.track = try TrackFile(url: side == .microphone ? made.microphoneURL : made.callURL)
     }
 
     func closeTrack(_ side: SessionSide) async throws {
 
-        guard let destination = sides[side], let track = destination.track, !destination.closed else {
-            throw Failure.outOfOrder("\(side) track is not open")
-        }
-        guard !destination.captureStarting, destination.stopCapture == nil else {
-            throw Failure.outOfOrder("\(side) capture is still running")
-        }
-        sides[side]?.closed = true
+        let destination = sides[side]!
         // Without a capture, closing the track is the audio source's end.
-        defer { if !destination.captureAttempted { destination.audio.finish() } }
-        try await hooks.closeTrack(side, track)
+        defer { if !destination.audio.hasCapture { destination.audio.finish() } }
+        if let track = destination.track { try await hooks.closeTrack(side, track) }
     }
 
     func openTranscript(in folder: SessionCallFolder) throws {
 
         let made = try places(in: folder)
-        guard transcriptFile == nil else { throw Failure.outOfOrder("transcript already opened") }
         transcriptFile = try hooks.openTranscript(made.transcriptURL)
     }
 
     func closeTranscript() async throws {
 
-        guard let transcriptFile, !transcriptClosed else { throw Failure.outOfOrder("transcript is not open") }
-        guard text == nil || textStopped else { throw Failure.outOfOrder("call text is still running") }
-        transcriptClosed = true
         defer { news.continuation.finish() }
-        await transcriptFile.close()
+        await transcriptFile?.close()
     }
 
     public func start(enabled: Bool) async throws {
 
-        guard text == nil else { throw Failure.outOfOrder("call text already started") }
-        let microphone = try track(.microphone, recognizer: microphoneRecognizer)
-        let call = try track(.call, recognizer: callRecognizer)
-        guard !transcriptClosed else { throw Failure.outOfOrder("transcript is not open") }
+        guard let microphone = track(.microphone, recognizer: microphoneRecognizer) else {
+            throw Failure.unavailableTrack(.microphone)
+        }
+        guard let call = track(.call, recognizer: callRecognizer) else {
+            throw Failure.unavailableTrack(.call)
+        }
         let text = CallText(microphone: microphone, call: call)
         self.text = text
         let writing = TranscriptWriting(
@@ -205,26 +188,17 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
     public func setEnabled(_ enabled: Bool) async throws {
 
-        guard let writing, !textStopped, !textStopping else { throw Failure.outOfOrder("call text is not running") }
-        await writing.setEnabled(enabled)
+        await writing?.setEnabled(enabled)
     }
 
     public func stop() async throws {
 
-        guard let writing, !textStopped, !textStopping else { throw Failure.outOfOrder("call text is not running") }
-        guard sides.values.allSatisfy({ !$0.captureStarting && $0.stopCapture == nil }) else {
-            throw Failure.outOfOrder("capture is still running")
-        }
-        textStopping = true
-        await writing.stop()
-        textStopped = true
+        await writing?.stop()
     }
 
-    private func track(_ side: SessionSide, recognizer: any Recognizer) throws -> CallSide {
+    private func track(_ side: SessionSide, recognizer: any Recognizer) -> CallSide? {
 
-        guard let destination = sides[side], let file = destination.track, !destination.closed else {
-            throw Failure.outOfOrder("\(side) track is not open")
-        }
+        guard let destination = sides[side], let file = destination.track else { return nil }
         let adapter = TrackText(recognizer: recognizer, executor: hooks.executor)
         return CallSide(audio: destination.audio, text: adapter, written: WrittenTrack(track: file), sampleRate: TrackFile.sampleRate)
     }
