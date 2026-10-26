@@ -89,22 +89,24 @@ final class TestExecutor: TaskExecutor {
     }
 }
 
-final class FakeCallText: CallText, Sendable {
+final class FakeCallText<Text: Sendable>: CallText, Sendable {
 
     enum Call: Equatable {
         case subscribe, start(Bool), switchTo(Bool), stop
     }
 
     private let calls = Mutex<[Call]>([])
-    private let source = AsyncStream<String>.makeStream()
+    private let source = AsyncStream<Text>.makeStream()
     private let startGate: Gate?
     private let stopGate: Gate?
-    private let startText: String?
-    private let lastText: String?
+    private let startText: Text?
+    private let lastText: Text?
+    private let switchText: @Sendable (Bool) -> Text
     private let changed: @Sendable () -> Void
 
     init(
-        startGate: Gate?, stopGate: Gate?, startText: String?, lastText: String?,
+        startGate: Gate?, stopGate: Gate?, startText: Text?, lastText: Text?,
+        switchText: @escaping @Sendable (Bool) -> Text,
         changed: @escaping @Sendable () -> Void
     ) {
 
@@ -112,12 +114,13 @@ final class FakeCallText: CallText, Sendable {
         self.stopGate = stopGate
         self.startText = startText
         self.lastText = lastText
+        self.switchText = switchText
         self.changed = changed
     }
 
     var recorded: [Call] { calls.withLock { $0 } }
 
-    var updates: AsyncStream<String> {
+    var updates: AsyncStream<Text> {
         record(.subscribe)
         return source.stream
     }
@@ -132,7 +135,7 @@ final class FakeCallText: CallText, Sendable {
     func setEnabled(_ enabled: Bool) async {
 
         record(.switchTo(enabled))
-        send(enabled ? "live text on" : "live text off")
+        send(switchText(enabled))
     }
 
     func stop() async {
@@ -143,7 +146,9 @@ final class FakeCallText: CallText, Sendable {
         await stopGate?.wait()
     }
 
-    func send(_ text: String) { source.continuation.yield(text) }
+    func send(_ text: Text) { source.continuation.yield(text) }
+
+    func finishUpdates() { source.continuation.finish() }
 
     private func record(_ call: Call) {
 
@@ -152,88 +157,133 @@ final class FakeCallText: CallText, Sendable {
     }
 }
 
-final class FakeTranscript: Transcript, Sendable {
+struct WriteFailure: Error, Equatable {
+
+    let message: String
+}
+
+final class FakeTranscript<Text: Hashable & Sendable>: Transcript, Sendable {
 
     private struct State {
-        var writes: [String] = []
-        var kept: String?
+        var writes: [Text] = []
+        var kept: Text?
     }
 
     private let state = Mutex(State())
-    private let holds: [String: Gate]
+    private let holds: [Text: Gate]
+    private let failures: [Text: WriteFailure]
     private let changed: @Sendable () -> Void
 
-    init(holds: [String: Gate], changed: @escaping @Sendable () -> Void) {
+    init(
+        holds: [Text: Gate], failures: [Text: WriteFailure] = [:],
+        changed: @escaping @Sendable () -> Void
+    ) {
 
         self.holds = holds
+        self.failures = failures
         self.changed = changed
     }
 
-    var writes: [String] { state.withLock { $0.writes } }
-    var kept: String? { state.withLock { $0.kept } }
+    var writes: [Text] { state.withLock { $0.writes } }
+    var kept: Text? { state.withLock { $0.kept } }
 
-    func write(_ text: String) async throws {
+    func write(_ text: Text) async throws {
 
         state.withLock { $0.writes.append(text) }
         changed()
         await holds[text]?.wait()
+        if let failure = failures[text] { throw failure }
         state.withLock { $0.kept = text }
         changed()
     }
 }
 
+enum RunEvent: Equatable {
+
+    case transcriptFailed(WriteFailure?)
+    case stopReturned(Int)
+}
+
+final class Events: Sendable {
+
+    private let events = Mutex<[RunEvent]>([])
+    var recorded: [RunEvent] { events.withLock { $0 } }
+    func record(_ event: RunEvent) { events.withLock { $0.append(event) } }
+}
+
 final class FakeFailureReport: FailureReport, Sendable {
 
-    private let failures = Mutex<[String]>([])
-    var recorded: [String] { failures.withLock { $0 } }
+    private let failures = Mutex<[WriteFailure?]>([])
+    private let events: Events
+    private let gate: Gate?
+    private let changed: @Sendable () -> Void
+
+    init(events: Events, gate: Gate?, changed: @escaping @Sendable () -> Void) {
+
+        self.events = events
+        self.gate = gate
+        self.changed = changed
+    }
+
+    var recorded: [WriteFailure?] { failures.withLock { $0 } }
 
     func transcriptFailed(_ error: any Error) async {
 
-        failures.withLock { $0.append(String(describing: error)) }
+        let failure = error as? WriteFailure
+        failures.withLock { $0.append(failure) }
+        events.record(.transcriptFailed(failure))
+        changed()
+        await gate?.wait()
     }
 }
 
-final class Observation: Sendable {
+final class Observation<Text: Sendable>: Sendable {
 
     private struct State {
-        var texts: [String] = []
+        var texts: [Text] = []
         var started = false
         var stopped = false
     }
 
     private let state = Mutex(State())
 
-    var texts: [String] { state.withLock { $0.texts } }
+    var texts: [Text] { state.withLock { $0.texts } }
     var started: Bool { state.withLock { $0.started } }
     var stopped: Bool { state.withLock { $0.stopped } }
 
-    func receive(_ text: String) { state.withLock { $0.texts.append(text) } }
+    func receive(_ text: Text) { state.withLock { $0.texts.append(text) } }
     func didStart() { state.withLock { $0.started = true } }
     func didStop() { state.withLock { $0.stopped = true } }
 }
 
 struct Run {
 
-    let observed = Observation()
-    let report = FakeFailureReport()
-    let call: FakeCallText
-    let transcript: FakeTranscript
+    let observed = Observation<String>()
+    let events = Events()
+    let report: FakeFailureReport
+    let call: FakeCallText<String>
+    let transcript: FakeTranscript<String>
+    let subject: TranscriptWriting<String>
     let task: Task<Void, Never>
     private let commands = AsyncStream<Bool>.makeStream()
 
     init(
         executor: TestExecutor, enabled: Bool, holds: [String: Gate],
         startGate: Gate? = nil, stopGate: Gate? = nil,
-        startText: String? = nil, lastText: String? = nil
+        startText: String? = nil, lastText: String? = nil,
+        failures: [String: WriteFailure] = [:], reportGate: Gate? = nil,
+        hasTranscript: Bool = true
     ) {
 
         call = FakeCallText(
             startGate: startGate, stopGate: stopGate, startText: startText,
-            lastText: lastText, changed: executor.notify
+            lastText: lastText, switchText: { $0 ? "live text on" : "live text off" },
+            changed: executor.notify
         )
-        transcript = FakeTranscript(holds: holds, changed: executor.notify)
-        let subject = TranscriptWriting(callText: call, transcript: transcript, failureReport: report)
-        task = Task(executorPreference: executor) { [commands, observed] in
+        transcript = FakeTranscript(holds: holds, failures: failures, changed: executor.notify)
+        report = FakeFailureReport(events: events, gate: reportGate, changed: executor.notify)
+        subject = TranscriptWriting(callText: call, transcript: hasTranscript ? transcript : nil, failureReport: report)
+        task = Task(executorPreference: executor) { [commands, observed, subject, events] in
             let reader = Task {
                 for await text in subject.updates {
                     observed.receive(text)
@@ -245,6 +295,7 @@ struct Run {
             executor.notify()
             for await enabled in commands.stream { await subject.setEnabled(enabled) }
             await subject.stop()
+            events.record(.stopReturned(1))
             observed.didStop()
             executor.notify()
             await reader.value

@@ -9,6 +9,7 @@ public actor TranscriptWriting<Text: Sendable> {
     private let failureReport: any FailureReport
     private var listener: Task<Void, Never>?
     private var writer: Task<Void, Never>?
+    private var stopping: Task<Void, Never>?
 
     public init(
         callText: any CallText<Text>, transcript: (any Transcript<Text>)?,
@@ -26,9 +27,13 @@ public actor TranscriptWriting<Text: Sendable> {
         guard listener == nil else { return }
         let incoming = callText.updates
         let pending = AsyncStream<Text>.makeStream(bufferingPolicy: .bufferingNewest(1))
-        writer = Task { [transcript] in
+        writer = Task { [transcript, failureReport] in
             for await text in pending.stream {
-                try? await transcript?.write(text)
+                do {
+                    try await transcript?.write(text)
+                } catch {
+                    await failureReport.transcriptFailed(error)
+                }
             }
         }
         listener = Task { [continuation] in
@@ -49,9 +54,17 @@ public actor TranscriptWriting<Text: Sendable> {
 
     public func stop() async {
 
-        await callText.stop()
-        await listener?.value
-        await writer?.value
+        if let stopping {
+            await stopping.value
+            return
+        }
+        let stopping = Task { [callText, listener, writer] in
+            await callText.stop()
+            await listener?.value
+            await writer?.value
+        }
+        self.stopping = stopping
+        await stopping.value
     }
 
     deinit {
