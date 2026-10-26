@@ -25,7 +25,7 @@ Implemented by [Student Workspace Open-Answer Attempt HTTP API Implementation Pl
 - Student Workspace submit/detail/list commands: [student-workspace.js](../../src/student-workspace.js)
 - HTTP route coverage: [http-api-open-answer-attempt-submission.test.js](../../tests/http-api-open-answer-attempt-submission.test.js), [http-api-open-answer-attempt-detail.test.js](../../tests/http-api-open-answer-attempt-detail.test.js), [http-api-open-answer-attempt-list.test.js](../../tests/http-api-open-answer-attempt-list.test.js), [http-api-open-answer-attempt-acceptance.test.js](../../tests/http-api-open-answer-attempt-acceptance.test.js), [http-api-server.test.js](../../tests/http-api-server.test.js)
 - Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
-- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- Executable acceptance coverage: [executable-acceptance-corpus-navigation.test.js](../../tests/executable-acceptance-corpus-navigation.test.js)
 
 The implemented attempt API supports session-backed submission with CSRF and idempotency headers, owner-only detail reads, Program-scoped owner-only listing, status/check filters, bounded opaque cursors, rejection/status mapping, production composition wiring, executable acceptance, and redaction of sessions, CSRF tokens, idempotency keys, raw evaluator artifacts, diagnostics, and infrastructure details. It does not implement Student UI, Admin UI, Curator UI, CLI commands, HTTP evaluation mutation routes, provider calls, human review, mastery, weak-area, progress, quick-check, topic-level, period-level, or institutional grading behavior.
 

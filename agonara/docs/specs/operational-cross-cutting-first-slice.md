@@ -24,7 +24,7 @@ Implemented by [Identity and Operations First-Slice Implementation Plan](../plan
 - Focused HTTP operational coverage for request IDs, health, diagnostics, fault redaction, completion logs, rejected logs, and sensitive-value redaction: [http-api-logging.test.js](../../tests/http-api-logging.test.js), [http-api-server.test.js](../../tests/http-api-server.test.js), [http-api-assessment-validation.test.js](../../tests/http-api-assessment-validation.test.js)
 - Backup/restore operational log coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
 - CLI diagnostic redaction and usage-error coverage: [cli.test.js](../../tests/cli.test.js)
-- End-to-end acceptance coverage for Admin-only diagnostics and request correlation: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- End-to-end acceptance coverage for Admin-only diagnostics and request correlation: [executable-acceptance-curation-operations.test.js](../../tests/executable-acceptance-curation-operations.test.js)
 
 The implemented operational slice provides request ID generation/propagation, structured completion logs for accepted/rejected/faulted HTTP requests, generic redacted fault responses, unauthenticated health, Admin-only diagnostics, and backup/restore operational log events. The shipped health response also includes a `version` field from the later accepted health-version extension, while preserving the operational boundary against secrets, dependency topology, authorization state, product analytics, learner progress, and curator decisions.
 
