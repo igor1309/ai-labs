@@ -26,7 +26,7 @@ Implemented by [Student Workspace Open-Answer Evaluator Orchestration Implementa
 - Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
 - Storage coverage: [storage.test.js](../../tests/storage.test.js)
 - Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
-- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- Executable acceptance coverage: [executable-acceptance-corpus-navigation.test.js](../../tests/executable-acceptance-corpus-navigation.test.js)
 
 The implemented orchestration slice supports scheduling evaluator jobs, claim and renewal leases, leased evidence recording, leased completion, retry/failure behavior, cancellation, timeout recovery, claimable-job reads, backup/restore preservation, redaction, and duplicate-safe final evaluation. It does not implement public evaluator mutation routes, queue technology, provider calls, prompt construction, human-review queues, UI, mastery/progress surfaces, deployment topology, or infrastructure ports.
 

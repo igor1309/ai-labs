@@ -410,7 +410,7 @@ Verification evidence:
 - [Backup/restore tests](../../tests/backup-restore.test.js)
 - [Curator Workspace tests](../../tests/curator-workspace.test.js)
 - [http-api-llm-suggestions.test.js](../../tests/http-api-llm-suggestions.test.js)
-- [Executable HTTP acceptance tests](../../tests/executable-acceptance.test.js)
+- [Executable HTTP acceptance tests](../../tests/executable-acceptance-curation-operations.test.js)
 - [Suggestion browser tests](../../tests/llm-assisted-curation-suggestions.playwright.js)
 
 The implemented first slice uses deterministic provider fakes supplied by composition. It does not add real provider credential management, direct provider network calls from Curator Workspace, provider observability dashboards, Student/Admin suggestion UI, or automatic accepted-corpus promotion. Accepting a suggestion materializes one draft candidate, and existing candidate acceptance remains the only path into accepted Program corpus.

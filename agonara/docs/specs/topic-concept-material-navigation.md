@@ -21,7 +21,7 @@ Primary implementation and verification:
 
 - [Storage and backup/restore](../../src/storage.js), with graph invariant coverage in [storage tests](../../tests/storage.test.js) and [backup/restore tests](../../tests/backup-restore.test.js).
 - [Corpus domain commands and student-safe queries](../../src/corpus.js), with domain coverage in [Corpus tests](../../tests/corpus.test.js) and [Corpus executable acceptance](../../tests/corpus-executable-acceptance.test.js).
-- [HTTP route adapter](../../src/server.js), with route coverage in [http-api-navigation.test.js](../../tests/http-api-navigation.test.js) and [HTTP executable acceptance](../../tests/executable-acceptance.test.js).
+- [HTTP route adapter](../../src/server.js), with route coverage in [http-api-navigation.test.js](../../tests/http-api-navigation.test.js) and [HTTP executable acceptance](../../tests/executable-acceptance-corpus-navigation.test.js).
 - [`/learn` product UI](../../src/learn-ui.js), with browser coverage in [navigation Playwright tests](../../tests/topic-concept-material-navigation.playwright.js).
 
 ## Public interface
