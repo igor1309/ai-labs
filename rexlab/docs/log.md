@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-26
+
+- DIG's reveal fits an iPhone on its side: the dinosaur dug up on the left, its name, DUG UP, the level switch and DIG AGAIN beside HOME beside it, nothing cut off (LAB-588).
+
 ## 2026-10-25
 
 - DIG's WHO IS IT? fits an iPhone on its side: the sand on the left and the choices stacked beside it, every name in its card (LAB-587).

@@ -115224,6 +115224,617 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "OpXpm",
+      "x": 9627,
+      "y": 42350,
+      "name": "Dig · iPhone on its side 852×393 — Reveal · Hatchling · Triceratops dug up, new star 1/52 · DIG AGAIN beside HOME (LAB-588)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 852,
+      "height": 393,
+      "fill": "$fm-base",
+      "layout": "vertical",
+      "gap": 8,
+      "padding": [
+        8,
+        79,
+        33,
+        79
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "WSTmq",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 48,
+          "gap": 8,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "u40Hm3",
+              "x": 0,
+              "y": 0,
+              "name": "Home Button",
+              "enabled": false,
+              "width": 48,
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "uvpPm",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "E9hJn",
+                  "x": 50,
+                  "y": 16.5,
+                  "name": "Home Text",
+                  "enabled": false,
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AKnHY",
+              "name": "Title",
+              "width": "fill_container",
+              "gap": 14,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "k1sUn",
+                  "name": "Title Mark",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "#B98A45",
+                  "cornerRadius": 12,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "fnm02",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "brush",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "k7CwC",
+                  "name": "Title Text",
+                  "fill": "$fm-on-base",
+                  "content": "DIG",
+                  "fontFamily": "Lexend",
+                  "fontSize": 24,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "hUgxB",
+              "x": 1048,
+              "y": 0,
+              "name": "Museum Button",
+              "enabled": false,
+              "height": 56,
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "padding": [
+                0,
+                22,
+                0,
+                18
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "YqZ9k",
+                  "name": "Museum Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "landmark",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "jgZGA",
+                  "name": "Museum Text",
+                  "fill": "$fm-ink",
+                  "content": "MUSEUM",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                }
+              ]
+            },
+            {
+              "id": "MYpvp",
+              "type": "ref",
+              "ref": "tpBai",
+              "enabled": false,
+              "height": 48,
+              "name": "Brush Picker"
+            },
+            {
+              "type": "frame",
+              "id": "wWi5C",
+              "name": "Field Guide Button",
+              "height": 48,
+              "fill": "#00000033",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 6,
+              "padding": [
+                0,
+                10,
+                0,
+                8
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "az0lG",
+                  "name": "Field Guide Icon",
+                  "width": 26,
+                  "height": 26,
+                  "icon": "book-open",
+                  "library": "lucide",
+                  "fill": "#B98A45"
+                },
+                {
+                  "type": "text",
+                  "id": "mZ6Ua",
+                  "name": "Field Guide Count",
+                  "fill": "$fm-ink",
+                  "content": "3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JSE63",
+              "x": 609,
+              "y": 4,
+              "name": "Dug Up Count",
+              "enabled": false,
+              "height": 40,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 20,
+              "gap": 6,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "mgDxI",
+                  "name": "Best Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "star",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "U7S2FP",
+                  "name": "Best Text",
+                  "fill": "$fm-ink",
+                  "content": "4/39",
+                  "fontFamily": "Lexend",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "rFdGB",
+          "name": "Body",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 20,
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "rtH6H",
+              "name": "Dinosaur",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/triceratops.webp",
+                "mode": "contain"
+              }
+            },
+            {
+              "type": "frame",
+              "id": "tEL5r",
+              "name": "Reward Column",
+              "width": 340,
+              "layout": "vertical",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "kTl6g",
+                  "name": "Name",
+                  "fill": "$fm-on-base",
+                  "content": "TRICERATOPS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 25,
+                  "fontWeight": "700",
+                  "letterSpacing": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "ih1JS",
+                  "name": "Dug Up Card",
+                  "height": 44,
+                  "fill": "#00000033",
+                  "cornerRadius": 22,
+                  "gap": 4,
+                  "padding": [
+                    0,
+                    12,
+                    0,
+                    4
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fMOtL",
+                      "name": "Star",
+                      "width": 32,
+                      "height": 32,
+                      "fill": "$fm-amber",
+                      "cornerRadius": 16,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "O1dXA",
+                          "name": "Star Mark",
+                          "fill": "#1d2742",
+                          "content": "★",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "L9XS2u",
+                      "name": "Words",
+                      "fill": "$fm-on-base",
+                      "content": "DUG UP",
+                      "fontFamily": "Lexend",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "c5dNIB",
+                      "name": "Count",
+                      "fill": "$fm-amber",
+                      "content": "1/52",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "text",
+                      "id": "yuYwc",
+                      "name": "New",
+                      "fill": "$fm-amber",
+                      "content": "NEW!",
+                      "fontFamily": "Lexend",
+                      "fontSize": 14,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Uz8mO",
+                  "name": "Celebration",
+                  "height": 36,
+                  "fill": "$fm-amber",
+                  "cornerRadius": 18,
+                  "gap": 8,
+                  "padding": [
+                    0,
+                    16,
+                    0,
+                    12
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "vYf09",
+                      "name": "Celebration Words",
+                      "fill": "#1d2742",
+                      "content": "🏆 FIRST BEST!",
+                      "fontFamily": "Lexend",
+                      "fontSize": 16,
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ZQV2Y",
+                  "name": "Level Switch",
+                  "width": "fill_container",
+                  "height": 54,
+                  "fill": "#00000033",
+                  "cornerRadius": 26,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "gap": 4,
+                  "padding": 4,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "dTHcU",
+                      "name": "HATCHLING Segment",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "$fm-on-base",
+                      "cornerRadius": 22,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "tyqUe",
+                          "name": "HATCHLING Picture",
+                          "fill": "$fm-on-base",
+                          "content": "🥚",
+                          "fontFamily": "Inter",
+                          "fontSize": 22,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Kgfy3",
+                          "x": 19.5,
+                          "y": 12,
+                          "name": "HATCHLING Name",
+                          "enabled": false,
+                          "fill": "$fm-on-base",
+                          "content": "HATCHLING",
+                          "fontFamily": "Lexend",
+                          "fontSize": 16,
+                          "fontWeight": "700",
+                          "letterSpacing": 0.5
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "czaYB",
+                      "name": "EXPLORER Segment",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "#00000000",
+                      "cornerRadius": 22,
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "outer",
+                        "color": "$fm-shadow",
+                        "offset": {
+                          "x": 0,
+                          "y": 4
+                        },
+                        "blur": 10
+                      },
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "jES6b",
+                          "name": "EXPLORER Picture",
+                          "fill": "$fm-base",
+                          "content": "🦖",
+                          "fontFamily": "Inter",
+                          "fontSize": 22,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "huZBL",
+                          "x": 25.5,
+                          "y": 12,
+                          "name": "EXPLORER Name",
+                          "enabled": false,
+                          "fill": "$fm-base",
+                          "content": "EXPLORER",
+                          "fontFamily": "Lexend",
+                          "fontSize": 16,
+                          "fontWeight": "800",
+                          "letterSpacing": 0.5
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fboXX",
+                      "name": "PALEONTOLOGIST Segment",
+                      "width": "fill_container",
+                      "height": 44,
+                      "fill": "#00000000",
+                      "cornerRadius": 22,
+                      "gap": 8,
+                      "padding": [
+                        0,
+                        10
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "RQ8uM",
+                          "name": "PALEONTOLOGIST Picture",
+                          "fill": "$fm-on-base",
+                          "content": "🦴",
+                          "fontFamily": "Inter",
+                          "fontSize": 22,
+                          "fontWeight": "normal"
+                        },
+                        {
+                          "type": "text",
+                          "id": "pMRTG",
+                          "x": -7.5,
+                          "y": 12,
+                          "name": "PALEONTOLOGIST Name",
+                          "enabled": false,
+                          "fill": "$fm-on-base",
+                          "content": "PALEONTOLOGIST",
+                          "fontFamily": "Lexend",
+                          "fontSize": 16,
+                          "fontWeight": "600",
+                          "letterSpacing": 0.5
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "vWPrz",
+                  "name": "Actions",
+                  "width": "fill_container",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "vn96C",
+                      "name": "↻ DIG AGAIN",
+                      "width": "fill_container",
+                      "height": 48,
+                      "fill": "$fm-amber",
+                      "cornerRadius": 16,
+                      "padding": [
+                        0,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "PRtmU",
+                          "name": "Label",
+                          "fill": "#1d2742",
+                          "content": "↻ DIG AGAIN",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "fQX5W",
+                      "name": "⌂ HOME",
+                      "height": 48,
+                      "fill": "#FFFFFF1A",
+                      "cornerRadius": 16,
+                      "padding": [
+                        0,
+                        14
+                      ],
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "RSCdQ",
+                          "name": "Label",
+                          "fill": "$fm-on-base",
+                          "content": "⌂ HOME",
+                          "fontFamily": "Lexend",
+                          "fontSize": 18,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
