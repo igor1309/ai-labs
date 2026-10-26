@@ -8,7 +8,10 @@ public final class CallRecordingSubscription: Sendable {
     private let task: Task<Void, Never>
     private let stop: @Sendable () -> Void
 
-    public init(calls: AsyncThrowingStream<CallEvent, any Error>, recording: Recording) {
+    public init(
+        calls: AsyncThrowingStream<CallEvent, any Error>, recording: Recording,
+        beforeCallStarted: (@Sendable () -> Void)? = nil
+    ) {
 
         let destination = Mutex(Destination(recording: recording))
         let task = Task {
@@ -19,6 +22,7 @@ public final class CallRecordingSubscription: Sendable {
                         switch event {
                         case .started:
                             state.callOn = true
+                            beforeCallStarted?()
                             state.recording?.send(.callStarted)
                         case .ended:
                             state.callOn = false
@@ -64,8 +68,14 @@ public final class CallRecordingSubscription: Sendable {
 }
 
 /// The caller owns the detector's lifetime and stops it when detection is no longer needed.
-public func composeCalls(_ processes: CoreAudioProcesses, to recording: Recording) throws -> CallRecordingSubscription {
+public func composeCalls(
+    _ processes: CoreAudioProcesses, to recording: Recording,
+    conditions: RecordingConditions? = nil
+) throws -> CallRecordingSubscription {
 
     try processes.start()
-    return CallRecordingSubscription(calls: processes.calls, recording: recording)
+    return CallRecordingSubscription(
+        calls: processes.calls, recording: recording,
+        beforeCallStarted: { conditions?.refresh() }
+    )
 }
