@@ -9505,8 +9505,8 @@ html[data-size="wide-short"] .dig-field-guide-screen .dig-chip {
    8 apart, under the board's bar: each its picture, its name and its
    count, the name sized to GOLDEN's 4.5 ems. Russian's ОКАМЕНЕЛОСТЬ, 8.4
    ems, is too long for a fifth, so in Russian the cards stand three over
-   two, the two centred, each its name across it over its picture and its
-   count. */
+   two, the two centred, in two rows that halve the height, each its name
+   across it over its picture and its count. */
 html[data-size="wide-short"] .dig-guide-cards {
   gap: 8px;
 }
@@ -9538,20 +9538,27 @@ html[data-size="wide-short"] .dig-guide-unknown {
 }
 
 html[data-size="wide-short"][lang="ru"] .dig-guide-cards {
-  flex-wrap: wrap;
-  align-content: stretch;
-  justify-content: center;
+  display: grid;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 html[data-size="wide-short"][lang="ru"] .dig-guide-card {
-  flex: 0 0 calc((100% - 16px) / 3);
+  grid-column: span 2;
   height: auto;
   min-height: 0;
+  min-width: 0;
   padding: 8px;
   display: grid;
-  grid-template: "name name" auto "picture count" minmax(0, 1fr) / 1fr 1fr;
+  grid-template-areas: "name name" "picture count";
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: 1fr 1fr;
   align-items: center;
   gap: 4px 8px;
+}
+
+html[data-size="wide-short"][lang="ru"] .dig-guide-card:nth-child(4) {
+  grid-column: 2 / span 2;
 }
 
 html[data-size="wide-short"][lang="ru"] .dig-guide-picture,

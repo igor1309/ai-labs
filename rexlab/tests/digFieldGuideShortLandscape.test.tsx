@@ -147,7 +147,9 @@ describe("DIG's FIELD GUIDE in a wide-short window", () => {
       } else {
         // Three over two, the two centred: the name across the card, over
         // its picture beside its count.
-        expect([room.value("flex-wrap"), room.value("justify-content"), card.value("flex-basis"), card.value("display")]).toEqual(["wrap", "center", "calc(0.3333333333333333*(100% - 16px))", "grid"]);
+        expect([room.value("display"), room.value("grid-template-rows"), room.value("grid-template-columns"), card.value("grid-column"), card.value("display")]).toEqual(["grid", "repeat(2, minmax(0, 1fr))", "repeat(6, minmax(0, 1fr))", "span 2", "grid"]);
+        expect(styleAt(cards[3]!, size).value("grid-column")).toBe("2 / span 2");
+        expect([card.value("grid-template-rows"), at(".dig-guide-picture").value("height")]).toEqual(["auto minmax(0, 1fr)", "100%"]);
         expect([card.rowGap(), card.columnGap()]).toEqual([4, 8]);
         expect(cardHeight - sides - named - card.rowGap(), kind).toBeGreaterThanOrEqual(LEAST_PICTURE);
         expect(3 * DIGIT * count.px("font-size")).toBeLessThanOrEqual((content - card.columnGap()) / 2);
