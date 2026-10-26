@@ -119,7 +119,7 @@ function openApp({
       {...timers}
     />
   );
-  return { user: userEvent.setup(), unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), unmount: view.unmount };
 }
 
 const describeElement = (element: Element) =>
@@ -787,7 +787,7 @@ describe("the sorting board", () => {
   it.each((["light", "dark"] as const).flatMap((theme) => PROPERTIES.map((property) => [theme, property] as const)))("is in the %s theme in every state, sorting by %s, with every basket's symbol", async (theme, property) => {
     document.documentElement.dataset.theme = theme;
     try {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const sorting = sortingBy(property);
       const { unmount } = openBoard(sorting);
       layOutBaskets(sorting);
@@ -826,7 +826,7 @@ describe("the sorting board", () => {
   it.each(["light", "dark"] as const)("marks a sorted card's ✓ and each hint at least 3:1 against what they are on, in the %s theme", async (theme) => {
     document.documentElement.dataset.theme = theme;
     try {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const sorting = sortingBy("diet");
       const { unmount } = openBoard(sorting);
       const [first, second] = boardState(sorting).cards;

@@ -92,7 +92,7 @@ async function openList(
   { language = "en", viewport = manualViewport("portrait"), chipWidths = emChipWidths() }: { language?: Language; viewport?: ManualViewport; chipWidths?: ChipWidths } = {}
 ) {
   openWindow(width, height);
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   render(
     <App
       {...featuring()}

@@ -121,7 +121,7 @@ export function openHomeApp({
   };
   const view = render(<App {...props} />);
   if (loadHome) loadShownPictures(pictures);
-  return { user: userEvent.setup(), storage, pictures, viewport, visibility, ageLevels, unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), storage, pictures, viewport, visibility, ageLevels, unmount: view.unmount };
 }
 
 // The age level a parent picked as Hatchling, whose puzzle of four pieces

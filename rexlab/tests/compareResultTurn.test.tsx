@@ -112,7 +112,7 @@ async function openResult(from: Window, { reduced = false }: { reduced?: boolean
     />
   );
   act(() => pictures.finishAll());
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   await user.click(gameDoor(TEXTS.en.quizCard));
   while (screen.queryByRole("group", { name: TEXTS.en.creatures })) {
     act(() => pictures.finishAll());

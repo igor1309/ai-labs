@@ -77,7 +77,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       {...loadedPictures()}
     />
   );
-  return userEvent.setup();
+  return userEvent.setup({ delay: null });
 }
 
 // Starts a round and answers its first `count` questions, the first

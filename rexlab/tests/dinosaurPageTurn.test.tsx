@@ -215,7 +215,7 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
     />
   );
   act(() => pictures.finishAll());
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
   act(() => pictures.finishAll());
   const card = document.querySelector<HTMLElement>(`.catalogue-card[data-id="${id}"]`)!;

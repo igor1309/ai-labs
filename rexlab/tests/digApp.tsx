@@ -95,7 +95,7 @@ export function openDigApp({
     />
   );
   document.documentElement.dataset.theme = theme;
-  return { user: userEvent.setup(), timers, storage, settingsStorage: settings, featured, viewport, visibility, unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), timers, storage, settingsStorage: settings, featured, viewport, visibility, unmount: view.unmount };
 }
 
 // The dig game's board, read and brushed as a test sees it. It is found

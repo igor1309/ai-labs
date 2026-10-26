@@ -225,7 +225,7 @@ function openTurning(
   // The animations of the parts themselves, apart from their frames' and
   // the fades.
   const glides = () => animations.filter(ownGlide);
-  return { pictures, animations, frames, extended, fades, own, drawn, resize, halfWay, updateFade, endFade, waiting, paint, glides, user: userEvent.setup() };
+  return { pictures, animations, frames, extended, fades, own, drawn, resize, halfWay, updateFade, endFade, waiting, paint, glides, user: userEvent.setup({ delay: null }) };
 }
 
 const turning = () => document.documentElement.hasAttribute("data-turning");

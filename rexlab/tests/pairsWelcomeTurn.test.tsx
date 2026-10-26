@@ -107,7 +107,7 @@ function openWelcome(from: Window, { reduced = false }: { reduced?: boolean } = 
   return {
     animations, fades, boxes,
     open: async () => {
-      await userEvent.setup().click(gameDoor(TEXTS.en.pairs));
+      await userEvent.setup({ delay: null }).click(gameDoor(TEXTS.en.pairs));
       act(() => pictures.finishAll());
     },
     resize: (to: Window) => {

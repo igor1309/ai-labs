@@ -62,7 +62,7 @@ function openApp({ language = "en", theme = "light", found = [] }: { language?: 
       {...pageAtRest()}
     />
   );
-  return userEvent.setup();
+  return userEvent.setup({ delay: null });
 }
 
 type User = ReturnType<typeof userEvent.setup>;

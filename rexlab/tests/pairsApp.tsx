@@ -121,7 +121,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
     />
   );
   loadShownPictures(clock);
-  return { user: userEvent.setup(), clock, storage, ageLevels, unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), clock, storage, ageLevels, unmount: view.unmount };
 }
 
 // Find the pair's entry as it is stored, under the names it kept from

@@ -42,7 +42,7 @@ const narrowWords = (width: number) => dinosaurWordsWidth(width, 0, 0, 0, NARROW
 async function openPage(size: WindowSize, { language = "en", id = "pachycephalosaurus", viewport = manualViewport("portrait") }: { language?: Language; id?: string; viewport?: ReturnType<typeof manualViewport> & Viewport } = {}) {
   openWindow(...size);
   viewport.resize(size[0] < 600 ? "tall-narrow" : "tall", true);
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   render(<App
     {...featuring()}
     dinosaurs={SHIPPED_DINOSAURS}

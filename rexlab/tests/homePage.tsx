@@ -60,7 +60,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
     />,
     withPictures
   );
-  return { user: userEvent.setup(), opened, unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), opened, unmount: view.unmount };
 }
 
 // The parts of a tile or the large card: its symbol's square, the row or
