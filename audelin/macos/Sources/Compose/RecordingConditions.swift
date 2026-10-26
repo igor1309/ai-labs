@@ -59,7 +59,7 @@ public func composeRecordingConditions(recording: Recording, callsURL: URL) -> R
     RecordingConditions(
         recording: recording,
         microphoneAccess: { AVCaptureDevice.authorizationStatus(for: .audio) == .authorized },
-        // Process taps have no access status; a denied capture reports through Session.
+        // Process taps have no access status, and a denied tap gives silence (LAB-604).
         callAudioAccess: { true },
         callsFolder: {
             isCallsDirectory(callsURL) && FileManager.default.isWritableFile(atPath: callsURL.path)
