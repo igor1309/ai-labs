@@ -62,7 +62,7 @@ describe("a button", () => {
   });
 
   it("never brightens under a finger, even on a device whose trackpad has just left it", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const taps: string[] = [];
     render(<Button onClick={() => taps.push("GO")}>GO</Button>);
     const button = screen.getByRole("button", { name: "GO" });

@@ -174,7 +174,7 @@ describe("the screen changes of the app", () => {
         <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(15)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
       </Profiler>
     );
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(gameDoor("COMPARE"));
     act(() => pictures.loading().forEach(pictures.finish));
     const [first, second] = cards();
@@ -208,7 +208,7 @@ function openApp(catalogue = SHIPPED_CATALOGUE) {
   render(
     <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={catalogue} bodyPicture={fakeBodyPicture} random={seededRandom(15)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />
   );
-  return userEvent.setup();
+  return userEvent.setup({ delay: null });
 }
 
 // The transition types added since the last call.

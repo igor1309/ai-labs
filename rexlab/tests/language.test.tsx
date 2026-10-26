@@ -108,7 +108,7 @@ function openApp({
       {...timers}
     />
   );
-  return { user: userEvent.setup(), unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), unmount: view.unmount };
 }
 
 // The app is in a language when the page says so and the home page's quiz
@@ -439,7 +439,7 @@ describe("the sorting board", () => {
   it.each(LANGUAGES.flatMap((language) => (Object.keys(BASKET_NAMES[language]) as Property[]).map((property) => [language, property] as const)))(
     "reads in %s, sorting by %s, every text for children in capitals",
     async (language, property) => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const sorting = sortingBy(property);
       openBoard(sorting, language);
       const [missed, ...rest] = boardState(sorting).cards;

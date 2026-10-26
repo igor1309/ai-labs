@@ -263,7 +263,7 @@ describe("the tip picker", () => {
 
   it("closes on Escape, outside clicks and Tab without losing focus to a hidden option", async () => {
     const app = openScreen();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     fireEvent.click(app.trigger());
     fireEvent.keyDown(document.activeElement!, { key: "Escape" });
     expect(document.activeElement).toBe(app.trigger());

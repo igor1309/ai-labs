@@ -79,7 +79,7 @@ function openApp({
       {...pictures}
     />
   );
-  return { user: userEvent.setup(), unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), unmount: view.unmount };
 }
 
 const button = (name: string) => screen.getByRole("button", { name });

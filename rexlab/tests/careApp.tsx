@@ -87,7 +87,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
     />
   );
   loadShownPictures(clock);
-  return { user: userEvent.setup(), clock, storage, unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), clock, storage, unmount: view.unmount };
 }
 
 export function shipped(id: string): Visitor {

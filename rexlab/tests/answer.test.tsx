@@ -70,7 +70,7 @@ const progress = () => screen.getByLabelText("PROGRESS").textContent;
 
 function startRound(seed: number, pictures: ManualPictures | ReturnType<typeof loadedPictures> = loadedPictures()) {
   render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(seed)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />);
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   // Taps COMPARE and, with manual pictures, lets the first question's
   // pictures finish loading.
   const start = async () => {
@@ -117,7 +117,7 @@ describe("answering a question", () => {
       const { rerender } = render(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />, withPictures);
       expect(screen.getByRole("heading").textContent).toContain(prompt);
 
-      await userEvent.setup().click(cardOf(tapped));
+      await userEvent.setup({ delay: null }).click(cardOf(tapped));
       expect(chosen).toEqual([tapped.id]);
       rerender(<QuestionScreen language="en" {...questionView(question, "en", tapped.id)} {...handlers} />);
 
@@ -150,7 +150,7 @@ describe("answering a question", () => {
     rerender(<QuestionScreen language="ru" {...questionView(question, "ru")} {...handlers} />);
     expect(screen.getByRole("heading").textContent).toContain("КТО ЛЕГЧЕ?");
     rerender(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />);
-    await userEvent.setup().click(cardOf(light));
+    await userEvent.setup({ delay: null }).click(cardOf(light));
     rerender(<QuestionScreen language="en" {...questionView(question, "en", light.id)} {...handlers} />);
 
     expect(marksOn(cardOf(light))).toEqual(["check RIGHT"]);
@@ -172,7 +172,7 @@ describe("answering a question", () => {
     rerender(<QuestionScreen language="ru" {...questionView(question, "ru")} {...handlers} />);
     expect(screen.getByRole("heading").textContent).toContain("КТО НИЖЕ?");
     rerender(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />);
-    await userEvent.setup().click(cardOf(short));
+    await userEvent.setup({ delay: null }).click(cardOf(short));
     rerender(<QuestionScreen language="en" {...questionView(question, "en", short.id)} {...handlers} />);
 
     expect(marksOn(cardOf(short))).toEqual(["check RIGHT"]);
@@ -193,12 +193,12 @@ describe("answering a question", () => {
     expect(symbolOf(screen.getByRole("heading"))).toBe("move-horizontal");
     rerender(<QuestionScreen language="ru" {...questionView(question, "ru")} {...handlers} />);
     expect(screen.getByRole("heading").textContent).toContain("КТО ДЛИННЕЕ?");
-    await userEvent.setup().click(within(screen.getByRole("group", { name: "ЖИВОТНЫЕ" })).getByRole("button", { name: long.name.ru }));
+    await userEvent.setup({ delay: null }).click(within(screen.getByRole("group", { name: "ЖИВОТНЫЕ" })).getByRole("button", { name: long.name.ru }));
     rerender(<QuestionScreen language="ru" {...questionView(question, "ru", long.id)} {...handlers} />);
     expect(within(screen.getByRole("group", { name: "ЖИВОТНЫЕ" })).getByText("22 М")).toBeDefined();
     expect(within(screen.getByRole("group", { name: "ЖИВОТНЫЕ" })).getByText("12 М")).toBeDefined();
     rerender(<QuestionScreen language="en" {...questionView(question, "en")} {...handlers} />);
-    await userEvent.setup().click(cardOf(long));
+    await userEvent.setup({ delay: null }).click(cardOf(long));
     rerender(<QuestionScreen language="en" {...questionView(question, "en", long.id)} {...handlers} />);
 
     expect(marksOn(cardOf(long))).toEqual(["check RIGHT"]);

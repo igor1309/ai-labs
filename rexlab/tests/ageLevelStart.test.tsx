@@ -96,7 +96,7 @@ function openApp(storage: MemoryStorage) {
       {...manualTimers()}
     />
   );
-  return { user: userEvent.setup(), container: view.container, unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), container: view.container, unmount: view.unmount };
 }
 
 const button = (name: string) => screen.getByRole("button", { name });

@@ -91,7 +91,7 @@ function openApp<C extends PictureClock = ManualTimers>(
       {...clock}
     />
   );
-  return { user: userEvent.setup(), clock, storage, featured };
+  return { user: userEvent.setup({ delay: null }), clock, storage, featured };
 }
 
 type Opened = ReturnType<typeof openApp<ManualTimers>>;
