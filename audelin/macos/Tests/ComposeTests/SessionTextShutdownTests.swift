@@ -44,7 +44,7 @@ actor HeldSessionRecognizer: Recognizer {
 struct SessionTextShutdownTests {
 
     @Test(arguments: [SessionSide.microphone, .call])
-    func shutdownWaitsForHeldFinalizationWithoutChangingText(side: SessionSide) async throws {
+    func stoppingWaitsForHeldFinalizationWithoutChangingText(side: SessionSide) async throws {
 
         let finalization = DrainGate(), executor = DrainExecutor()
         let stopped = Values<Bool>()
@@ -70,10 +70,8 @@ struct SessionTextShutdownTests {
                 try await rig.pieces.stopCapture(.call)
                 try await rig.pieces.microphoneTrack.close()
                 try await rig.pieces.callTrack.close()
-                let adapters = await rig.pieces.trackTexts
-                await adapters[side == .microphone ? 0 : 1].shutdown()
-                stopped.append(true)
                 try await rig.pieces.stop()
+                stopped.append(true)
                 #expect(await mine.finalized)
                 #expect(await theirs.finalized)
                 #expect(await text.state.entries == frozen)
@@ -127,8 +125,6 @@ struct SessionTextShutdownTests {
             #expect(await text.state.entries == frozen)
             #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
                 == "# Transcript\n\n**Me** 00:00:00\nkept\n\n**Them** 00:00:00\nkept\n")
-            #expect(await rig.pieces.trackTexts.count == 2)
-            for adapter in await rig.pieces.trackTexts { await adapter.shutdown() }
         }
     }
 }

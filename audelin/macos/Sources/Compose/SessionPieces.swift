@@ -42,8 +42,9 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         }
         var beforeTranscriptFeed: @Sendable () async throws -> Void = {}
         var textStarted: @Sendable (CallText) async -> Void = { _ in }
-        var audioListening: @Sendable (SessionSide) -> Void = { _ in }
-        var audioEnded: @Sendable (SessionSide) -> Void = { _ in }
+        var closeTrack: @Sendable (SessionSide, TrackFile) async throws -> Void = { _, track in
+            try await track.close()
+        }
         var beforeAudioDelivery: @Sendable () async -> Void = {}
         var beforeTranscriptWrite: @Sendable (State) async throws -> Void = { _ in }
     }
@@ -76,7 +77,6 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     var transcriptFile: TranscriptFile?
     var transcriptClosed = false
     var text: CallText?
-    var trackTexts: [TrackText] = []
     var textStopped = false
     var textStopping = false
     var transcriptFeed: Task<Void, any Error>?
@@ -114,10 +114,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         self.callRecognizer = callRecognizer
         self.hooks = hooks
         sides = Dictionary(uniqueKeysWithValues: [SessionSide.microphone, .call].map { side in
-            (side, Side(audio: DeferredAudio(
-                listening: { hooks.audioListening(side) }, finished: { hooks.audioEnded(side) },
-                beforeDelivery: hooks.beforeAudioDelivery
-            )))
+            (side, Side(audio: DeferredAudio(beforeDelivery: hooks.beforeAudioDelivery)))
         })
     }
 
@@ -162,7 +159,9 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
             throw Failure.outOfOrder("\(side) capture is still running")
         }
         sides[side]?.closed = true
-        try await track.close()
+        // Without a capture, closing the track is the audio source's end.
+        defer { if !destination.captureAttempted { destination.audio.finish() } }
+        try await hooks.closeTrack(side, track)
     }
 
     func openTranscript(in folder: SessionCallFolder) throws {
@@ -216,10 +215,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
             throw Failure.outOfOrder("capture is still running")
         }
         textStopping = true
-        for side in sides.values { side.audio.finish() }
-        for side in sides.values { await side.audio.wait() }
         await text.stop()
-        for adapter in trackTexts { await adapter.shutdown() }
         textStopped = true
     }
 
@@ -229,7 +225,6 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
             throw Failure.outOfOrder("\(side) track is not open")
         }
         let adapter = TrackText(recognizer: recognizer, executor: hooks.executor)
-        trackTexts.append(adapter)
         return CallSide(audio: destination.audio, text: adapter, written: WrittenTrack(track: file), sampleRate: TrackFile.sampleRate)
     }
 }
