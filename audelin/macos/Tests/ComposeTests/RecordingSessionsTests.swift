@@ -130,10 +130,27 @@ struct RecordingSessionsTests {
             #expect(ids.all.isEmpty)
             #expect(await adapter.begin(id: 8) == .ready)
             await adapter.end(id: 8)
+            #expect(connection.cancelled.all == [true])
             await adapter.end(id: 8)
             #expect(ids.all == [8])
             #expect(connection.joined.all == [true])
             #expect(connection.reports.all.isEmpty)
+        }
+    }
+
+    @Test func anEndBeforeItsBeginLeavesNothingRecording() async throws {
+
+        try await withSessionRig(connect: disconnected) { rig, _ in
+            let connection = RecordingConnection(), ids = Values<UInt64>()
+            let adapter = RecordingSessions(makePieces: { id in ids.append(id); return rig.pieces }, liveText: { false },
+                                            report: connection.report, connect: connection.connect)
+            await adapter.end(id: 5)
+            #expect(await adapter.begin(id: 5) == .ended)
+            #expect(ids.all.isEmpty)
+            #expect(connection.sessions.all.isEmpty)
+            #expect(await adapter.begin(id: 6) == .ready)
+            await adapter.end(id: 6)
+            #expect(ids.all == [6])
         }
     }
 
@@ -181,6 +198,7 @@ private final class RecordingConnection: Sendable {
     let reports = Values<SessionReport>()
     let reported = Signal()
     let joined = Values<Bool>()
+    let cancelled = Values<Bool>()
 
     var session: Session { sessions.all[0] }
 
@@ -197,8 +215,12 @@ private final class RecordingConnection: Sendable {
         return Task {
             await withTaskCancellationHandler {
                 await subscription.value
+                // Stay alive until cancelled, so only the adapter's cancel can end this.
+                let (held, _) = AsyncStream<Void>.makeStream()
+                for await _ in held {}
                 joined.append(true)
             } onCancel: {
+                cancelled.append(true)
                 subscription.cancel()
             }
         }

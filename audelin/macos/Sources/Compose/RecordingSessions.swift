@@ -22,6 +22,8 @@ public actor RecordingSessions: RecordingSession {
     private let report: @Sendable (UInt64, RecordingSessionReport) -> Void
     private let connect: @Sendable (SessionPieces, Session) -> Task<Void, Never>
     private var running: [UInt64: Running] = [:]
+    // Recording's effects run independently, so an end can arrive before its begin.
+    private var endedBeforeBegin: Set<UInt64> = []
 
     public init(
         makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
@@ -47,6 +49,7 @@ public actor RecordingSessions: RecordingSession {
 
     public func begin(id: UInt64) async -> RecordingSessionReport {
 
+        if endedBeforeBegin.remove(id) != nil { return .ended }
         if running[id] == nil {
             let pieces = makePieces(id)
             let session = Session(handler: pieces.handler())
@@ -69,7 +72,10 @@ public actor RecordingSessions: RecordingSession {
 
     public func end(id: UInt64) async {
 
-        guard var entry = running[id] else { return }
+        guard var entry = running[id] else {
+            endedBeforeBegin.insert(id)
+            return
+        }
         if !entry.endRequested {
             entry.endRequested = true
             if entry.started { entry.session.send(.end) }
