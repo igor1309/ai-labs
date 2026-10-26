@@ -273,6 +273,11 @@ export const learnUiHtml = `<!doctype html>
       min-height: 88px;
     }
 
+    #material-content-body {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
     .list button {
       width: 100%;
       background: var(--surface-muted);
