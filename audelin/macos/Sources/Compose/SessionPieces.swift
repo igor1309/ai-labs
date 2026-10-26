@@ -73,6 +73,17 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     var text: CallReader?
     var writing: WritingReader?
 
+    @usableFromInline
+    static let defaultRecordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = { _, track in CaptureTrack(track: track) }
+    @usableFromInline
+    static let defaultCloseTrack: @Sendable (SessionSide, TrackFile) async throws -> Void = { _, track in try await track.close() }
+    @usableFromInline
+    static let defaultMakeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = { _, capture in LiveCaptureAudio(capture: capture) }
+    @usableFromInline
+    static let defaultOpenTranscript: @Sendable (URL) throws -> any SessionTranscriptFile = { try WritingTranscript(file: TranscriptFile(url: $0)) }
+    @usableFromInline
+    static let defaultMakeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = { WritingCallText(text: $0) }
+
     public init(
         folder: CallFolder,
         processes: CallAppProcesses,
@@ -82,11 +93,11 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         callRecognizer: any Recognizer,
         executor: (any TaskExecutor)? = nil,
         openTrack: @escaping @Sendable (URL) throws -> TrackFile = { try TrackFile(url: $0) },
-        recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = { _, track in CaptureTrack(track: track) },
-        closeTrack: @escaping @Sendable (SessionSide, TrackFile) async throws -> Void = { (_: SessionSide, track: TrackFile) async throws in try await track.close() },
-        makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = { _, capture in LiveCaptureAudio(capture: capture) },
-        openTranscript: @escaping @Sendable (URL) throws -> any SessionTranscriptFile = { try WritingTranscript(file: TranscriptFile(url: $0)) },
-        makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = { WritingCallText(text: $0) }
+        recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
+        closeTrack: @escaping @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack,
+        makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
+        openTranscript: @escaping @Sendable (URL) throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
+        makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
     ) {
 
         self.folder = folder

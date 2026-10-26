@@ -4,18 +4,17 @@ import LiveAudio
 import Session
 import struct SideText.Audio
 import TrackFile
-import TranscriptFile
 import protocol TranscriptWriting.CallText
 @testable import Compose
 
 struct SessionConstruction: Sendable {
 
     var executor: (any TaskExecutor)?
-    var recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordingTrack = { _, track in CaptureTrack(track: track) }
-    var closeTrack: @Sendable (SessionSide, TrackFile) async throws -> Void = { _, track in try await track.close() }
-    var makeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = { _, live in LiveCaptureAudio(capture: live) }
-    var openTranscript: @Sendable (URL) throws -> any SessionTranscriptFile = { try WritingTranscript(file: TranscriptFile(url: $0)) }
-    var makeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = { WritingCallText(text: $0) }
+    var recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordingTrack = SessionPieces.defaultRecordingTrack
+    var closeTrack: @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack
+    var makeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio
+    var openTranscript: @Sendable (URL) throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript
+    var makeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
 }
 
 /// Forwards the real text and holds start until both sides are listening.
