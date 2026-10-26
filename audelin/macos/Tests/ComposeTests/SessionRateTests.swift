@@ -11,13 +11,9 @@ struct SessionRateTests {
     @Test(arguments: [[16_000.0, 16_000], [24_000, 24_000], [44_100, 44_100], [96_000, 96_000], [24_000, 96_000]])
     func injectedCaptureRatesReachRecognizersAndTrackDurations(rates: [Double]) async throws {
 
-        var hooks = SessionPieces.Hooks()
-        hooks.textStarted = { text in
-            for await state in text.updates {
-                if state.status == .listening { break }
-            }
-        }
-        try await withSessionRig(hooks: hooks, rates: rates) { rig, folder in
+        var construction = SessionConstruction()
+        construction.makeCallText = { ReadyCallText(text: $0) }
+        try await withSessionRig(construction: construction, rates: rates) { rig, folder in
             rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.mine.heard.next()

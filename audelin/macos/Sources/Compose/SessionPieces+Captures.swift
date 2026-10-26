@@ -6,13 +6,15 @@ import Session
 import enum SystemAudioCapture.ProcessSelection
 import TrackFile
 
-struct LiveCaptureAudio: CaptureAudio {
+public struct LiveCaptureAudio: CaptureAudio {
 
     let capture: LiveAudio
 
-    var capturedThrough: Double { capture.capturedThrough }
+    public init(capture: LiveAudio) { self.capture = capture }
 
-    func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async {
+    public var capturedThrough: Double { capture.capturedThrough }
+
+    public func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async {
 
         for await piece in await capture.listen() {
             await receive(Audio(start: piece.start, samples: piece.samples, sampleRate: piece.sampleRate))
@@ -56,12 +58,12 @@ extension SessionPieces {
 
         guard let track = sides[side]?.track else { throw Failure.unavailableTrack(side) }
         let live = LiveAudio(capture: capture)
-        let recorded = RecordedCapture(capture: RecordedInput(capture: live), track: hooks.recordingTrack(side, track))
-        sides[side]?.audio.attach(LiveCaptureAudio(capture: live))
+        let recorded = RecordedCapture(capture: RecordedInput(capture: live), track: recordingTrack(side, track))
+        sides[side]?.audio.attach(makeCaptureAudio(side, live))
         do {
             try await recorded.start()
             let news = news.continuation
-            let failures = Task(executorPreference: hooks.executor) {
+            let failures = Task(executorPreference: executor) {
                 var stopFailure: (any Error)?
                 for await failure in recorded.failures {
                     switch failure {

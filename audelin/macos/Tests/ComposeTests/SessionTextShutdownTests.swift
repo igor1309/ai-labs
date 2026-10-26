@@ -50,12 +50,12 @@ struct SessionTextShutdownTests {
         let stopped = Values<Bool>()
         let mine = HeldSessionRecognizer(finalization: side == .microphone ? finalization : nil)
         let theirs = HeldSessionRecognizer(finalization: side == .call ? finalization : nil)
-        var hooks = SessionPieces.Hooks()
-        hooks.executor = executor
-        let configured = hooks
+        var construction = SessionConstruction()
+        construction.executor = executor
+        let configured = construction
         let task = Task(executorPreference: executor) {
             defer { executor.complete() }
-            try await withDrainRig(hooks: configured, recognizers: (mine, theirs)) { rig, folder in
+            try await withDrainRig(construction: configured, recognizers: (mine, theirs)) { rig, folder in
                 let text = try #require(await rig.pieces.text)
                 let writing = try #require(await rig.pieces.writing)
                 for await state in writing.updates {

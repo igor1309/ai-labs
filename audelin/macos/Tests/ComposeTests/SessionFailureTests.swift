@@ -58,12 +58,12 @@ struct SessionFailureTests {
     @Test(arguments: [SessionSide.microphone, .call], [false, true])
     func failedWriteAndItsFailedStopReachSessionBeforeEnd(side: SessionSide, stopEndsStream: Bool) async throws {
 
-        var hooks = SessionPieces.Hooks()
-        hooks.recordingTrack = { current, track in
+        var construction = SessionConstruction()
+        construction.recordingTrack = { current, track in
             if current == side { return FailingTrack(track: track) }
             return CaptureTrack(track: track)
         }
-        try await withSessionRig(hooks: hooks, stopFailure: side, stopEndsStream: stopEndsStream) { rig, folder in
+        try await withSessionRig(construction: construction, stopFailure: side, stopEndsStream: stopEndsStream) { rig, folder in
             rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.mine.heard.next()
@@ -87,12 +87,12 @@ struct SessionFailureTests {
     @Test(arguments: [SessionSide.microphone, .call])
     func failedWriteReachesSessionBeforeEnd(side: SessionSide) async throws {
 
-        var hooks = SessionPieces.Hooks()
-        hooks.recordingTrack = { current, track in
+        var construction = SessionConstruction()
+        construction.recordingTrack = { current, track in
             if current == side { return FailingTrack(track: track) }
             return CaptureTrack(track: track)
         }
-        try await withSessionRig(hooks: hooks) { rig, folder in
+        try await withSessionRig(construction: construction) { rig, folder in
             rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.mine.heard.next()
