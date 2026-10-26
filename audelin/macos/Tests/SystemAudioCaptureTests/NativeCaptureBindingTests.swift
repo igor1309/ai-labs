@@ -72,18 +72,18 @@ struct NativeCaptureBindingTests {
         #expect(calls.state.withLock { $0.subscribedFormatReads } == 1)
     }
 
-    @Test func nativeFailedFormatReadDuringInstallRemovesListenerWithoutIO() throws {
+    @Test func nativeFailedFormatReadDuringInstallRemovesListenerWithoutIO() async throws {
 
-        try expectInstallFormatFailure(format: .float32MonoLittleEndian, readRefused: true)
+        try await expectInstallFormatFailure(format: .float32MonoLittleEndian, readRefused: true)
     }
 
     @Test(arguments: NativeTapFormat.allCases.filter { $0 != .float32MonoLittleEndian })
-    func nativeRefusedFormatDuringInstallRemovesListenerWithoutIO(format: NativeTapFormat) throws {
+    func nativeRefusedFormatDuringInstallRemovesListenerWithoutIO(format: NativeTapFormat) async throws {
 
-        try expectInstallFormatFailure(format: format, readRefused: false)
+        try await expectInstallFormatFailure(format: format, readRefused: false)
     }
 
-    private func expectInstallFormatFailure(format: NativeTapFormat, readRefused: Bool) throws {
+    private func expectInstallFormatFailure(format: NativeTapFormat, readRefused: Bool) async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let (binding, tap, device) = try calls.makeDevice()
@@ -104,7 +104,7 @@ struct NativeCaptureBindingTests {
         }
         let registration = try #require(calls.state.withLock { $0.lastFormatListener })
         // Listener removal can leave an already queued notification.
-        calls.fire([registration.address], on: tap, through: registration)
+        await calls.fire([registration.address], on: tap, through: registration)
         #expect(deliveries.withLock { $0 } == 0)
         let resources = calls.state.withLock { ($0.made, $0.released) }
         #expect(resources.0 == [
@@ -128,7 +128,7 @@ struct NativeCaptureBindingTests {
         try calls.deliver(samples: samples[0])
         try calls.deliver(samples: samples[1])
         calls.state.withLock { $0.format.mSampleRate = 24_000 }
-        try calls.notifyFormat()
+        try await calls.notifyFormat()
         try calls.deliver(samples: samples[2])
         try calls.deliver(samples: samples[3])
         capture.stop()
@@ -137,7 +137,7 @@ struct NativeCaptureBindingTests {
         #expect(pieces.map(\.sampleRate) == [48_000, 48_000, 24_000, 24_000])
     }
 
-    @Test func nativeIOCallbackMakesNoNativeCalls() throws {
+    @Test func nativeIOCallbackMakesNoNativeCalls() async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let (binding, tap, device) = try calls.makeDevice()
@@ -152,7 +152,7 @@ struct NativeCaptureBindingTests {
         #expect(pieces.withLock { $0.map(\.sampleRate) } == [48_000])
         #expect(calls.state.withLock { $0.nativeCalls.filter { $0.role == .io } }.isEmpty)
         #expect(calls.state.withLock { $0.events } == ["tap", "device", "format", "format watch", "io"])
-        try calls.notifyFormat()
+        try await calls.notifyFormat()
         try calls.deliver(samples: [0.5])
         #expect(pieces.withLock { $0.map(\.sampleRate) } == [48_000, 24_000])
         #expect(calls.state.withLock { $0.nativeCalls.filter { $0.role == .io } }.isEmpty)
@@ -160,14 +160,14 @@ struct NativeCaptureBindingTests {
     }
 
     @Test(arguments: NativeTapFormat.allCases.filter { $0 != .float32MonoLittleEndian })
-    func nativeRefusedFormatNotificationsFailOnceAndSuppressLaterBuffers(format: NativeTapFormat) throws {
+    func nativeRefusedFormatNotificationsFailOnceAndSuppressLaterBuffers(format: NativeTapFormat) async throws {
 
-        try expectFormatFailure(format: format, readRefused: false)
+        try await expectFormatFailure(format: format, readRefused: false)
     }
 
-    @Test func nativeFailedFormatReadNotificationFailsOnceAndSuppressesLaterBuffers() throws {
+    @Test func nativeFailedFormatReadNotificationFailsOnceAndSuppressesLaterBuffers() async throws {
 
-        try expectFormatFailure(format: .float32MonoLittleEndian, readRefused: true)
+        try await expectFormatFailure(format: .float32MonoLittleEndian, readRefused: true)
     }
 
     @Test(arguments: [false, true])
@@ -197,7 +197,10 @@ struct NativeCaptureBindingTests {
         }
         defer { binding.removeIO(device, io) }
         let held = Task {
-            try calls.deliver(samples: [0.25])
+            // The held native callback blocks, so it runs outside the cooperative pool.
+            try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
+                DispatchQueue.global().async { done.resume(with: Result { try calls.deliver(samples: [0.25]) }) }
+            }
         }
         var copiedIterator = copied.stream.makeAsyncIterator()
         _ = await copiedIterator.next()
@@ -208,8 +211,8 @@ struct NativeCaptureBindingTests {
                 $0.format.mSampleRate = 0
             }
         }
-        try calls.notifyFormat()
-        try calls.notifyFormat()
+        try await calls.notifyFormat()
+        try await calls.notifyFormat()
         try calls.deliver(samples: [0.5])
         #expect(results.withLock { $0.count } == 1)
         let failure = try #require(results.withLock { $0.first })
@@ -227,7 +230,7 @@ struct NativeCaptureBindingTests {
         #expect(try delivered.last?.0.get().sampleRate == 48_000)
     }
 
-    @Test func nativeFormatListenerIsRemovedBeforeIOAndIgnoresLateNotifications() throws {
+    @Test func nativeFormatListenerIsRemovedBeforeIOAndIgnoresLateNotifications() async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let (binding, tap, device) = try calls.makeDevice()
@@ -243,7 +246,7 @@ struct NativeCaptureBindingTests {
         binding.removeIO(device, io)
         let before = calls.state.withLock { $0.nativeCalls }
         calls.state.withLock { $0.refuse = "format" }
-        calls.fire([registration.address], on: tap, through: registration)
+        await calls.fire([registration.address], on: tap, through: registration)
         #expect(deliveries.withLock { $0 } == 0)
         #expect(calls.state.withLock { $0.nativeCalls } == before)
         let resources = calls.state.withLock { ($0.made, $0.released) }
@@ -290,7 +293,7 @@ struct NativeCaptureBindingTests {
         calls.state.withLock {
             if readRefused { $0.refuse = "format" } else { $0.format.mSampleRate = 0 }
         }
-        try calls.notifyFormat()
+        try await calls.notifyFormat()
         capture.stop()
         var pieces: [AudioPiece] = []
         var failure: (any Error)?
@@ -303,7 +306,7 @@ struct NativeCaptureBindingTests {
         #expect(calls.state.withLock { $0.released } == calls.expectedReleases)
     }
 
-    private func expectFormatFailure(format: NativeTapFormat, readRefused: Bool) throws {
+    private func expectFormatFailure(format: NativeTapFormat, readRefused: Bool) async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let (binding, tap, device) = try calls.makeDevice()
@@ -318,11 +321,11 @@ struct NativeCaptureBindingTests {
             $0.format = format.value
             if readRefused { $0.refuse = "format" }
         }
-        try calls.notifyFormat()
-        try calls.notifyFormat()
+        try await calls.notifyFormat()
+        try await calls.notifyFormat()
         try calls.deliver(samples: [0.5])
         calls.state.withLock { $0.refuse = nil; $0.format = NativeTapFormat.float32MonoLittleEndian.value }
-        try calls.notifyFormat()
+        try await calls.notifyFormat()
         try calls.deliver(samples: [0.75])
         let delivered = results.withLock { $0 }
         #expect(delivered.count == 2)
@@ -365,7 +368,7 @@ struct NativeCaptureBindingTests {
     }
 
     @Test(arguments: StopNotification.allCases, NativeDeviceState.allCases)
-    func nativeStopNotificationsReadTheirOwnDeviceState(notification: StopNotification, deviceState: NativeDeviceState) throws {
+    func nativeStopNotificationsReadTheirOwnDeviceState(notification: StopNotification, deviceState: NativeDeviceState) async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         let binding = CoreAudioBinding(native: calls.native)
@@ -387,7 +390,7 @@ struct NativeCaptureBindingTests {
             mSelector: notification.selector, mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
-        calls.fire([address], on: 22, through: registration)
+        await calls.fire([address], on: 22, through: registration)
         #expect(calls.state.withLock { $0.propertyReads } == notification.expectedReads)
         #expect(stops.withLock { $0 } == (notification.reportsStop(in: deviceState) ? 1 : 0))
     }
@@ -407,7 +410,7 @@ struct NativeCaptureBindingTests {
             mSelector: kAudioDevicePropertyDeviceIsRunning,
             mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain
         )
-        calls.fire([address], on: 22, through: registration)
+        await calls.fire([address], on: 22, through: registration)
         try calls.deliver(samples: [0.25, -0.5])
         capture.stop()
         let pieces = try await drain(capture)
@@ -415,7 +418,7 @@ struct NativeCaptureBindingTests {
         #expect(pieces.map(\.sampleRate) == [48_000])
     }
 
-    @Test func nativeStopNotificationsRequireMatchingSubscriptions() throws {
+    @Test func nativeStopNotificationsRequireMatchingSubscriptions() async throws {
 
         let notification = AudioObjectPropertyAddress(
             mSelector: kAudioDevicePropertyIOStoppedAbnormally,
@@ -441,7 +444,7 @@ struct NativeCaptureBindingTests {
             #expect(native.addListener(subscription.device, &address, queue, block) == noErr)
             defer { _ = native.removeListener(subscription.device, &address, queue, block) }
             let registration = try #require(calls.state.withLock { $0.listener })
-            calls.fire([notification], on: 22, through: registration)
+            await calls.fire([notification], on: 22, through: registration)
             #expect(stops.withLock { $0 } == (subscription.reportsStop ? 1 : 0))
         }
     }
@@ -782,10 +785,10 @@ final class RecordingCaptureCalls: Sendable {
         }
     }
 
-    func notifyFormat() throws {
+    func notifyFormat() async throws {
 
         let registration = try #require(state.withLock { $0.formatListener })
-        fire([registration.address], on: 11, through: registration)
+        await fire([registration.address], on: 11, through: registration)
     }
 
     private func record(_ name: String) {
@@ -821,22 +824,25 @@ final class RecordingCaptureCalls: Sendable {
     }
 
     /// Delivers matching notifications and drains the queue, including stale blocks.
-    func fire(_ addresses: [AudioObjectPropertyAddress], on device: AudioObjectID, through registration: ListenerRegistration) {
+    func fire(_ addresses: [AudioObjectPropertyAddress], on device: AudioObjectID, through registration: ListenerRegistration) async {
 
-        registration.queue.sync {
-            let previous = Thread.current.threadDictionary["audelin.native-role"]
-            Thread.current.threadDictionary["audelin.native-role"] = NativeThreadRole.event.rawValue
-            defer { Thread.current.threadDictionary["audelin.native-role"] = previous }
-            guard registration.device == device else { return }
-            let subscription = registration.address
-            let addresses = addresses.filter {
-                (subscription.mSelector == kAudioObjectPropertySelectorWildcard || subscription.mSelector == $0.mSelector)
-                    && (subscription.mScope == kAudioObjectPropertyScopeWildcard || subscription.mScope == $0.mScope)
-                    && (subscription.mElement == kAudioObjectPropertyElementWildcard || subscription.mElement == $0.mElement)
-            }
-            guard !addresses.isEmpty else { return }
-            addresses.withUnsafeBufferPointer {
-                registration.block(UInt32($0.count), $0.baseAddress!)
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            registration.queue.async {
+                defer { continuation.resume() }
+                let previous = Thread.current.threadDictionary["audelin.native-role"]
+                Thread.current.threadDictionary["audelin.native-role"] = NativeThreadRole.event.rawValue
+                defer { Thread.current.threadDictionary["audelin.native-role"] = previous }
+                guard registration.device == device else { return }
+                let subscription = registration.address
+                let addresses = addresses.filter {
+                    (subscription.mSelector == kAudioObjectPropertySelectorWildcard || subscription.mSelector == $0.mSelector)
+                        && (subscription.mScope == kAudioObjectPropertyScopeWildcard || subscription.mScope == $0.mScope)
+                        && (subscription.mElement == kAudioObjectPropertyElementWildcard || subscription.mElement == $0.mElement)
+                }
+                guard !addresses.isEmpty else { return }
+                addresses.withUnsafeBufferPointer {
+                    registration.block(UInt32($0.count), $0.baseAddress!)
+                }
             }
         }
     }

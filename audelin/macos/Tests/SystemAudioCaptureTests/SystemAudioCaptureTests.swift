@@ -34,7 +34,7 @@ struct SystemAudioCaptureTests {
         binding.play([10])
         let finish = try #require(binding.beginBuffer([20]))
         binding.systemStops()
-        binding.waitForRemoval()
+        await binding.waitForRemoval()
         #expect(!binding.events.contains("destroy device"))
         #expect(!binding.events.contains("destroy tap"))
         finish()
@@ -72,7 +72,7 @@ struct SystemAudioCaptureTests {
         binding.play([10])
         let finish = try #require(binding.beginBuffer([20]))
         capture.stop()
-        binding.waitForRemoval()
+        await binding.waitForRemoval()
         #expect(!binding.events.contains("destroy device"))
         #expect(!binding.events.contains("destroy tap"))
         finish()
@@ -111,7 +111,7 @@ struct SystemAudioCaptureTests {
         }
         reader.cancel()
         try await reader.value
-        binding.waitForCleanup()
+        await binding.waitForCleanup()
         #expect(binding.events.suffix(5) == ["stop", "unwatch", "remove io", "destroy device", "destroy tap"])
         #expect(throws: CaptureError.stopped) { try capture.name(.only([20])) }
     }
@@ -291,7 +291,7 @@ struct SystemAudioCaptureTests {
         capture.stop()
         capture.stop()
         // Stop queues cleanup, so later playback follows its completion.
-        binding.waitForCleanup()
+        await binding.waitForCleanup()
         binding.play([10])
         let pieces = try await drain(capture)
         #expect(pieces.count == 1)
