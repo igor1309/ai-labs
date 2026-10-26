@@ -31,6 +31,8 @@ access for its clean install. The push also needs an existing
 credentials, and a clean ai-labs worktree. The exporter never creates
 repositories.
 
-Commit `showcase/public/` along with each intended change. The exporter reads
-HEAD, so edits and untracked files are not published. After the first sync,
-pin `igor1309/agonara` on the owner's GitHub profile manually.
+The public `.gitignore` stands in for the ai-labs one, which the export
+does not carry. Commit `showcase/public/` along with each intended change.
+The exporter reads HEAD, so edits and untracked files are not published.
+After the first sync, pin `igor1309/agonara` on the owner's GitHub profile
+manually.

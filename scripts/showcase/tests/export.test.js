@@ -672,4 +672,5 @@ test('agonara settings export the app, its tests and local compose while keeping
     assert.equal(isIncluded(path, settings), false, path);
   }
   assert.deepEqual(settings.allow_marker.map(({ marker }) => marker), ['/Users/']);
+  assert.equal(readFileSync(join(root, 'agonara/showcase/public/.gitignore'), 'utf8'), 'node_modules/\n');
 });
