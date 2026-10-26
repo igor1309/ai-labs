@@ -7,6 +7,54 @@ import TrackFile
 @Suite(.timeLimit(.minutes(1)))
 struct SessionFailureTests {
 
+    @Test(arguments: [SessionSide.microphone, .call])
+    func failedTrackOpenLeavesTheOtherCaptureRecording(side: SessionSide) async throws {
+
+        try await withSessionRig { rig, folder in
+            let pieces = rig.pieces
+            let handler = pieces.handler()
+            let name = side == .microphone ? "microphone.caf" : "call.caf"
+            let blocked = folder.appendingPathComponent(name)
+            let unavailable = String(describing: SessionPieces.Failure.unavailableTrack(side))
+            let trackFailure = String(describing: POSIXError(.EEXIST) as NSError)
+            var state = SessionState()
+            for command in [SessionEvent.begin(liveText: true), .end] {
+                var event = command
+                while true {
+                    let (updated, effect) = SessionReducer.reduce(state, event)
+                    state = updated
+                    guard let effect else { break }
+                    event = await handler.handle(effect)
+                    if case .createFolder = effect {
+                        try Data("existing track".utf8).write(to: blocked)
+                    }
+                }
+                #expect(state.phase == (command == .end ? .ended : .recording))
+                #expect(state.callText == .down)
+                #expect(side == .microphone ? state.microphoneCapture == .down : state.callCapture == .down)
+                #expect(state.health(of: .track(side)) == .failed(trackFailure))
+                #expect(state.health(of: .callText) == .failed(unavailable))
+                #expect(state.health(of: .capture(side)) == .failed(unavailable))
+                #expect(state.failures == [
+                    .init(piece: "\(side) track", message: trackFailure),
+                    .init(piece: "call text", message: unavailable),
+                    .init(piece: "\(side) capture", message: unavailable),
+                ])
+                let other: SessionSide = side == .microphone ? .call : .microphone
+                #expect(state.health(of: .track(other)) == .fine)
+                #expect(state.health(of: .capture(other)) == .fine)
+                let otherCapture = side == .microphone ? state.callCapture : state.microphoneCapture
+                #expect(otherCapture == (command == .end ? .closed : .up))
+            }
+            #expect(rig.microphone.starts.all == (side == .microphone ? [] : [true]))
+            #expect(rig.call.starts.all == (side == .call ? [] : [true]))
+            #expect(try String(contentsOf: blocked, encoding: .utf8) == "existing track")
+            let otherName = side == .microphone ? "call.caf" : "microphone.caf"
+            #expect(try recordedSamples(folder.appendingPathComponent(otherName))
+                == (side == .microphone ? [-0.25, 0.5, -0.125] : [0.25, -0.5, 0.125]))
+        }
+    }
+
     @Test(arguments: [SessionSide.microphone, .call], [false, true])
     func failedWriteAndItsFailedStopReachSessionBeforeEnd(side: SessionSide, stopEndsStream: Bool) async throws {
 
