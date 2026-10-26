@@ -1,4 +1,8 @@
+import { createRequire } from "node:module";
 import { afterEach, expect, it } from "vitest";
+
+// jsdom's own objects behind the page's, where it keeps a sheet's index.
+const { implForWrapper } = createRequire(import.meta.url)("jsdom/lib/generated/idl/utils.js") as { implForWrapper: (wrapper: object) => { _ruleIndex?: object | null } };
 
 // jsdom looks up an element's rules in an index of each sheet's rules, by
 // the id, class and tag they name. A style read must see the sheets as
@@ -86,4 +90,23 @@ it("applies a media rule only while its query matches the window", () => {
   addSheet("@media (min-width: 100000px) { .probe { color: rgb(1, 1, 1); } }");
   const element = addElement('<span class="probe">x</span>');
   expect(getComputedStyle(element).color).not.toBe("rgb(1, 1, 1)");
+});
+
+it("indexes a sheet once for every element read, and again only after the sheet changes", () => {
+  const style = addSheet(".probe { color: rgb(1, 1, 1); }");
+  const sheet = style.sheet as CSSStyleSheet;
+  const [first, second] = [addElement('<span class="probe">x</span>'), addElement("<b>y</b>")];
+  getComputedStyle(first).color;
+  const index = implForWrapper(sheet)._ruleIndex;
+  expect(index).toBeTruthy();
+
+  getComputedStyle(second).color;
+  first.classList.add("other");
+  getComputedStyle(first).color;
+  expect(implForWrapper(sheet)._ruleIndex).toBe(index);
+
+  sheet.insertRule("b { color: rgb(2, 2, 2); }", 1);
+  expect(getComputedStyle(second).color).toBe("rgb(2, 2, 2)");
+  expect(implForWrapper(sheet)._ruleIndex).toBeTruthy();
+  expect(implForWrapper(sheet)._ruleIndex).not.toBe(index);
 });

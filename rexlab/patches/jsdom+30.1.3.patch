@@ -10,19 +10,15 @@
      } else if (this.ownerNode) {
 --- a/node_modules/jsdom/lib/jsdom/living/css/helpers/computed-style.js
 +++ b/node_modules/jsdom/lib/jsdom/living/css/helpers/computed-style.js
-@@ -148,19 +148,73 @@
+@@ -148,16 +148,94 @@
    return candidateStyles;
  }
  
--// `parentImpl` is a style sheet or a grouping rule; both expose `cssRules`.
--function collectCandidateStylesFrom(parentImpl, elementImpl, candidateStyles) {
--  for (const ruleImpl of parentImpl.cssRules._list) {
--    if (CSSImportRule.isImpl(ruleImpl)) {
--      if (ruleImpl.styleSheet !== null && evaluateMediaList(ruleImpl.media._list)) {
--        collectCandidateStylesFrom(ruleImpl.styleSheet, elementImpl, candidateStyles);
 +// A sheet's style rules, bucketed by the id, class or tag their selector
 +// subjects require, so an element is only tested against rules that name
 +// something it has. Built once per sheet, dropped when the sheet changes.
++// An imported sheet fills in when it loads, without telling its parent, so
++// it is kept as one entry and walked whole at each collection.
 +function ruleIndexOf(sheetImpl, elementImpl) {
 +  if (sheetImpl._ruleIndex) {
 +    return sheetImpl._ruleIndex;
@@ -42,9 +38,7 @@
 +  const walk = (parentImpl, media) => {
 +    for (const ruleImpl of parentImpl.cssRules._list) {
 +      if (CSSImportRule.isImpl(ruleImpl)) {
-+        if (ruleImpl.styleSheet !== null) {
-+          walk(ruleImpl.styleSheet, [...media, ruleImpl.media]);
-+        }
++        index.any.push({ imported: ruleImpl, media, order: order++ });
 +      } else if (CSSMediaRule.isImpl(ruleImpl)) {
 +        walk(ruleImpl, [...media, ruleImpl.media]);
 +      } else if (CSSStyleRule.isImpl(ruleImpl)) {
@@ -61,13 +55,7 @@
 +          else if (keys.tag) add(index.byTag, keys.tag.toLowerCase(), entry);
 +          else if (index.any[index.any.length - 1] !== entry) index.any.push(entry);
 +        }
-       }
--    } else if (CSSMediaRule.isImpl(ruleImpl)) {
--      if (evaluateMediaList(ruleImpl.media._list)) {
--        collectCandidateStylesFrom(ruleImpl, elementImpl, candidateStyles);
--      }
--    } else if (CSSStyleRule.isImpl(ruleImpl) && ruleMightMatchElement(ruleImpl, elementImpl)) {
--      candidateStyles.push({ rule: ruleImpl, matched: null, specificity: null });
++      }
 +    }
 +  };
 +  walk(sheetImpl, []);
@@ -91,8 +79,32 @@
 +    return result;
 +  };
 +  for (const entry of [...entries].sort((a, b) => a.order - b.order)) {
-+    if (entry.media.every(inMedia) && ruleMightMatchElement(entry.rule, elementImpl)) {
++    if (!entry.media.every(inMedia)) {
++      continue;
++    }
++    if (entry.imported) {
++      if (entry.imported.styleSheet !== null && inMedia(entry.imported.media)) {
++        collectCandidateStylesWalking(entry.imported.styleSheet, elementImpl, candidateStyles);
++      }
++    } else if (ruleMightMatchElement(entry.rule, elementImpl)) {
 +      candidateStyles.push({ rule: entry.rule, matched: null, specificity: null });
-     }
-   }
- }
++    }
++  }
++}
++
+ // `parentImpl` is a style sheet or a grouping rule; both expose `cssRules`.
+-function collectCandidateStylesFrom(parentImpl, elementImpl, candidateStyles) {
++function collectCandidateStylesWalking(parentImpl, elementImpl, candidateStyles) {
+   for (const ruleImpl of parentImpl.cssRules._list) {
+     if (CSSImportRule.isImpl(ruleImpl)) {
+       if (ruleImpl.styleSheet !== null && evaluateMediaList(ruleImpl.media._list)) {
+-        collectCandidateStylesFrom(ruleImpl.styleSheet, elementImpl, candidateStyles);
++        collectCandidateStylesWalking(ruleImpl.styleSheet, elementImpl, candidateStyles);
+       }
+     } else if (CSSMediaRule.isImpl(ruleImpl)) {
+       if (evaluateMediaList(ruleImpl.media._list)) {
+-        collectCandidateStylesFrom(ruleImpl, elementImpl, candidateStyles);
++        collectCandidateStylesWalking(ruleImpl, elementImpl, candidateStyles);
+       }
+     } else if (CSSStyleRule.isImpl(ruleImpl) && ruleMightMatchElement(ruleImpl, elementImpl)) {
+       candidateStyles.push({ rule: ruleImpl, matched: null, specificity: null });
