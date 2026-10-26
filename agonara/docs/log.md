@@ -2,6 +2,7 @@
 
 ## 2026-10-26
 
+- `/learn` shows whether a Quick Check attempt matched the answer key. LAB-530.
 - `/learn` wraps long lines in the material reader, so a long material no longer pushes the student navigation past the page edge. LAB-530.
 
 ## 2026-07-01

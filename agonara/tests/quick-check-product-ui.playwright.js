@@ -155,6 +155,7 @@ test("quickCheckProductUiStudent_shouldListDeliverySubmitRetryAndReadOwnedAttemp
 
     await page.locator("#quick-check-attempt-list").getByRole("button").click();
     await expect(page.locator("#quick-check-attempt-detail")).toContainText("Student closure check");
+    await expect(page.locator("#quick-check-attempt-detail")).toContainText("Result: matched");
     await expect(page.locator("#quick-check-attempt-detail")).not.toContainText("idempotency");
   } finally {
     await harness.close();

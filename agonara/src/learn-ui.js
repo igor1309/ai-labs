@@ -3935,6 +3935,7 @@ export const learnUiHtml = `<!doctype html>
           delivery ? delivery.title : "Quick Check attempt",
           delivery ? delivery.prompt : attempt.checkRevisionId,
           "Selected: " + (selectedOption ? selectedOption.text : "Unavailable"),
+          "Result: " + (attempt.matched ? "matched" : "not matched"),
         ].join("\\n");
       }
 

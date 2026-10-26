@@ -156,8 +156,10 @@ export async function capture(browser, baseUrl, programId, outputDirectory) {
   await atStep("learn-quick-check.png", async () => {
     await page.locator("#quick-check-delivery-list").getByRole("button", { name: checkTitle, exact: true }).click();
     await expect(page.locator("#quick-check-delivery-detail")).toContainText("What is the probability of rolling an even number");
-    await page.locator("#quick-check-attempt-list").getByRole("button", { name: checkTitle, exact: true }).click();
+    // The attempt's label depends on whether deliveries loaded first, so select it by id.
+    await page.locator("#quick-check-attempt-list button[data-attempt-id]").click();
     await expect(page.locator("#quick-check-attempt-detail")).toContainText("Selected: 1/2 — three of the six outcomes");
+    await expect(page.locator("#quick-check-attempt-detail")).toContainText("Result: matched");
     await shot("#student-panel", "learn-quick-check.png");
   });
   await atStep("learn-coverage-gaps.png", async () => {
