@@ -31,7 +31,8 @@ const LEAST_NAME = 16;
 const LEAST_PICTURE = 48;
 const SPACE = 0.3;
 const DIGIT = 0.68;
-const everyKind = { shell: 1, tooth: 2, amber: 1, "egg-nest": 1, "golden-fossil": 12 };
+// Four kinds found, amber not yet.
+const kinds = { shell: 1, tooth: 2, amber: 0, "egg-nest": 1, "golden-fossil": 12 };
 
 const part = (selector: string, root: ParentNode = document) => {
   const found = root.querySelector<HTMLElement>(selector);
@@ -58,7 +59,7 @@ function lines(name: string, room: number): number {
   return count;
 }
 
-// The FIELD GUIDE, every kind found, opened from DIG's board in a
+// The FIELD GUIDE, four kinds found, opened from DIG's board in a
 // wide-short window of `size` with the insets `insets`.
 function openGuide(size: WindowSize, insets: SafeArea, language: Language = "en") {
   openWindow(...size);
@@ -70,7 +71,7 @@ function openGuide(size: WindowSize, insets: SafeArea, language: Language = "en"
   });
   const viewport = manualViewport("landscape", { left: insets.left, right: insets.right });
   viewport.resize("wide-short", false);
-  const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { dig: { dug: [], badges: [], treasures: everyKind } } }) });
+  const storage = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { dig: { dug: [], badges: [], treasures: kinds } } }) });
   openDigApp({ viewport, portraitLayouts: LAYOUTS, ageLevel: { level: "hatchling", revision: "parent" }, storage, language });
   fireEvent.click(homeTile(TEXTS[language].dig));
   fireEvent.click(screen.getByRole("button", { name: TEXTS[language].fieldGuide }));
@@ -143,7 +144,11 @@ describe("DIG's FIELD GUIDE in a wide-short window", () => {
       if (language === "en") {
         // A column: the picture over the name over the count.
         expect([room.value("flex-wrap") || "nowrap", card.rowGap()]).toEqual(["nowrap", 6]);
-        expect(cardHeight - sides - named - count.px("font-size") - 2 * card.rowGap(), kind).toBeGreaterThanOrEqual(LEAST_PICTURE);
+        const picture = at(".dig-guide-picture");
+        expect([picture.value("width"), picture.value("flex-shrink"), picture.value("object-fit")]).toEqual(["min(100%, 180px)", "1", "contain"]);
+        const across = Math.min(content, 180);
+        const high = cardHeight - sides - named - count.px("font-size") - 2 * card.rowGap();
+        expect(Math.min(across, high), kind).toBeGreaterThanOrEqual(LEAST_PICTURE);
       } else {
         // Three over two, the two centred: the name across the card, over
         // its picture beside its count.
@@ -151,7 +156,14 @@ describe("DIG's FIELD GUIDE in a wide-short window", () => {
         expect(styleAt(cards[3]!, size).value("grid-column")).toBe("2 / span 2");
         expect([card.value("grid-template-rows"), at(".dig-guide-picture").value("height")]).toEqual(["auto minmax(0, 1fr)", "100%"]);
         expect([card.rowGap(), card.columnGap()]).toEqual([4, 8]);
-        expect(cardHeight - sides - named - card.rowGap(), kind).toBeGreaterThanOrEqual(LEAST_PICTURE);
+        expect(room.value("align-items")).toBe("stretch");
+        expect([card.value("height"), card.value("grid-template-areas")]).toEqual(["auto", '"name name" "picture count"']);
+        expect([name.value("grid-area"), count.value("grid-area"), at(".dig-guide-unknown").value("grid-area")]).toEqual(["name", "count", "count"]);
+        const picture = at(".dig-guide-picture");
+        expect([picture.value("grid-area"), at(".dig-guide-outline").value("grid-area"), picture.value("width"), picture.value("max-width"), picture.value("height"), picture.value("aspect-ratio")]).toEqual(["picture", "picture", "auto", "100%", "100%", "1 / 1"]);
+        const across = (content - card.columnGap()) / 2;
+        const high = cardHeight - sides - named - card.rowGap();
+        expect(Math.min(across, high), kind).toBeGreaterThanOrEqual(LEAST_PICTURE);
         expect(3 * DIGIT * count.px("font-size")).toBeLessThanOrEqual((content - card.columnGap()) / 2);
       }
     }

@@ -9541,6 +9541,7 @@ html[data-size="wide-short"][lang="ru"] .dig-guide-cards {
   display: grid;
   grid-template-rows: repeat(2, minmax(0, 1fr));
   grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: stretch;
 }
 
 html[data-size="wide-short"][lang="ru"] .dig-guide-card {
