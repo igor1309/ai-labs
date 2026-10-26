@@ -19,6 +19,12 @@ public struct SessionProcessSelection: Equatable, Sendable {
     }
 }
 
+public enum SessionCallCaptureSelection: Equatable, Sendable {
+
+    case chosen(SessionProcessSelection)
+    case everyAppButAudelin
+}
+
 /// An opaque destination passed from folder creation to each file opener.
 public struct SessionCallFolder: Equatable, Sendable {
 
@@ -48,8 +54,7 @@ public protocol SessionMicrophoneCapture: Sendable {
 
 public protocol SessionCallCapture: Sendable {
 
-    /// A missing choice leaves fallback selection to the call-capture adapter.
-    func start(selection: SessionProcessSelection?) async throws
+    func start(selection: SessionCallCaptureSelection) async throws
     func stop() async throws
 }
 
@@ -240,7 +245,7 @@ public enum SessionEffect: Equatable, Sendable {
     case openTranscript
     case startCallText(enabled: Bool)
     case startMicrophoneCapture
-    case startCallCapture(selection: SessionProcessSelection?)
+    case startCallCapture(selection: SessionCallCaptureSelection)
     case stopCapture(SessionSide)
     case closeTrack(SessionSide)
     case stopCallText
@@ -450,7 +455,8 @@ public enum SessionReducer {
 
         if state.callCapture == .down && state.health(of: .access(.call)) == .fine && state.health(of: .capture(.call)) == .fine {
             state.callCapture = .starting
-            return (state, .startCallCapture(selection: state.processSelection))
+            let selection = state.processSelection.map(SessionCallCaptureSelection.chosen) ?? .everyAppButAudelin
+            return (state, .startCallCapture(selection: selection))
         }
         return finishCaptureBringUp(&state)
     }

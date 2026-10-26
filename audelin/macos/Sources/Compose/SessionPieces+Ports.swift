@@ -14,7 +14,7 @@ public extension SessionPieces {
 
         let pieces: SessionPieces
 
-        public func start(selection: SessionProcessSelection?) async throws {
+        public func start(selection: SessionCallCaptureSelection) async throws {
 
             try await pieces.startCallCapture(selection: selection)
         }
