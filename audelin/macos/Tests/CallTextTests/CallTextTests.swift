@@ -106,6 +106,51 @@ struct CallTextTests {
         await rig.call.stop()
     }
 
+    @Test(arguments: [false, true], [false, true])
+    func overlappingSwitchesKeepTheLatestRequest(enabled: Bool, duringStart: Bool) async {
+
+        let executor = CueExecutor()
+        let held = CueGate(changed: executor.notify), requestLatest = CueGate(changed: executor.notify)
+        let observed = CallObservation(changed: executor.notify)
+        let microphone = CueSide(loading: false, start: duringStart ? held : nil,
+                                 switching: duringStart ? nil : held, changed: executor.notify)
+        let other = CueSide(loading: false, changed: executor.notify)
+        let call = CallText(microphone: microphone, call: other)
+        let task = Task(executorPreference: executor) {
+            defer { executor.complete() }
+            if !duringStart { await call.start(enabled: enabled) }
+            let listener = Task { await observed.listen(to: call) }
+            let earlier = Task {
+                if duringStart { await call.start(enabled: !enabled) }
+                else { await call.setEnabled(!enabled) }
+            }
+            await requestLatest.wait()
+            let latest = Task { await call.setEnabled(enabled) }
+            await earlier.value
+            await latest.value
+            await call.setEnabled(enabled)
+            #expect(await microphone.enabled == enabled)
+            #expect(await other.enabled == enabled)
+            #expect(await call.state.status == (enabled ? .listening : .off))
+            await call.stop()
+            await listener.value
+        }
+        defer { held.open(); requestLatest.open(); executor.run() }
+        await executor.run(until: {
+            held.entered && observed.latest?.status == (enabled ? .off : .gettingReady)
+        })
+        #expect(held.entered)
+        requestLatest.open()
+        await executor.run(until: {
+            enabled
+                ? observed.latest?.status == .gettingReady || observed.latest?.status == .listening
+                : observed.latest?.status == .off
+        })
+        held.open()
+        await executor.finish()
+        await task.value
+    }
+
     @Test func liveRevisionsReplaceEarlierText() async {
 
         let rig = Rig()
@@ -363,7 +408,7 @@ private actor CueSide: Side {
 
     private let delivery = AsyncStream<Delivery>.makeStream()
     private var loading: Bool
-    private var enabled = false
+    private(set) var enabled = false
     private var ended = false
     private var spoken: [SideState.Entry] = []
     private var visible: [SideState.Entry] = []
@@ -371,6 +416,8 @@ private actor CueSide: Side {
     private let finishWord: Int?
     private let release: CueGate?
     private let stopHold: CueGate?
+    private let startHold: CueGate?
+    private var switchHold: CueGate?
     private var pendingDelivery: Task<Void, Never>?
     private var ending: Task<Void, Never>?
     private(set) var written: [Int] = []
@@ -386,13 +433,16 @@ private actor CueSide: Side {
 
     init(
         loading: Bool, finishWord: Int? = nil, release: CueGate? = nil,
-        stop: CueGate? = nil, changed: @escaping @Sendable () -> Void = {}
+        stop: CueGate? = nil, start: CueGate? = nil, switching: CueGate? = nil,
+        changed: @escaping @Sendable () -> Void = {}
     ) {
 
         self.loading = loading
         self.finishWord = finishWord
         self.release = release
         stopHold = stop
+        startHold = start
+        switchHold = switching
         stopRequested = CueGate(changed: changed)
         stopReturned = CueGate(changed: changed)
     }
@@ -407,12 +457,16 @@ private actor CueSide: Side {
 
     func start(enabled: Bool) async {
 
+        await startHold?.wait()
         self.enabled = enabled
         await publish()
     }
 
     func setEnabled(_ enabled: Bool) async {
 
+        let hold = switchHold
+        switchHold = nil
+        await hold?.wait()
         switches.append(enabled)
         self.enabled = enabled
         if enabled {

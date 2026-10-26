@@ -11,6 +11,7 @@ public actor CallText {
     private var endedSides = [false, false]
     private var abandoning: Task<Void, Never>?
     private var stopping: Task<Void, Never>?
+    private var switching: Task<Void, Never>?
     private var started = false
     private var enabled = false
     private var ended = false
@@ -34,7 +35,11 @@ public actor CallText {
             }
         }
         publish()
-        for side in sides { await side.start(enabled: enabled) }
+        let operation = Task { [sides] in
+            for side in sides { await side.start(enabled: enabled) }
+        }
+        switching = operation
+        await operation.value
     }
 
     public func setEnabled(_ enabled: Bool) async {
@@ -45,7 +50,13 @@ public actor CallText {
             .init(status: snapshot.status == .finished ? .finished : (enabled ? .gettingReady : .off), entries: snapshot.entries)
         }
         publish()
-        for side in sides { await side.setEnabled(enabled) }
+        // Side calls suspend, so each switch must wait for earlier propagation.
+        let operation = Task { [sides, previous = switching] in
+            await previous?.value
+            for side in sides { await side.setEnabled(enabled) }
+        }
+        switching = operation
+        await operation.value
     }
 
     public func stop() async {
