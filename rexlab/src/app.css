@@ -7115,6 +7115,7 @@ html[data-size="wide-short"] .pairs-welcome .narrow-hidden {
 html[data-size="tall"] .upright-hidden,
 html[data-size="tall-narrow"] .upright-hidden,
 html[data-size="wide-short"] .dig-board-screen .home-button .upright-hidden,
+html[data-size="wide-short"] .dig-field-guide-screen .home-button .upright-hidden,
 html[data-size="wide-short"] .pairs-bar .home-button .upright-hidden {
   position: absolute;
   width: 1px;
@@ -9410,7 +9411,8 @@ html[data-size="tall-narrow"] .dig-chip {
    picker's buttons and the FIELD GUIDE 44 and 48 tall, DUG UP 40, and the
    title shrinks to the room they leave; the sand is as tall as the room
    under the bar. */
-html[data-size="wide-short"] .dig-board-screen {
+html[data-size="wide-short"] .dig-board-screen,
+html[data-size="wide-short"] .dig-field-guide-screen {
   padding:
     calc(8px + env(safe-area-inset-top))
     calc(20px + var(--screen-right))
@@ -9419,17 +9421,20 @@ html[data-size="wide-short"] .dig-board-screen {
   row-gap: 8px;
 }
 
-html[data-size="wide-short"] .dig-board-screen .stratum-1 {
+html[data-size="wide-short"] .dig-board-screen .stratum-1,
+html[data-size="wide-short"] .dig-field-guide-screen .stratum-1 {
   height: 24px;
 }
 
 html[data-size="wide-short"] .dig-board-screen .dig-bar,
-html[data-size="wide-short"] .dig-reveal-screen .dig-bar {
+html[data-size="wide-short"] .dig-reveal-screen .dig-bar,
+html[data-size="wide-short"] .dig-field-guide-screen .dig-bar {
   height: 48px;
   gap: 8px;
 }
 
-html[data-size="wide-short"] .dig-board-screen .home-button {
+html[data-size="wide-short"] .dig-board-screen .home-button,
+html[data-size="wide-short"] .dig-field-guide-screen .home-button {
   width: 48px;
   height: 48px;
   min-height: 48px;
@@ -9439,25 +9444,29 @@ html[data-size="wide-short"] .dig-board-screen .home-button {
 }
 
 html[data-size="wide-short"] .dig-board-screen .dig-title,
-html[data-size="wide-short"] .dig-reveal-screen .dig-title {
+html[data-size="wide-short"] .dig-reveal-screen .dig-title,
+html[data-size="wide-short"] .dig-field-guide-screen .dig-title {
   gap: 8px;
 }
 
 html[data-size="wide-short"] .dig-board-screen .dig-mark,
-html[data-size="wide-short"] .dig-reveal-screen .dig-mark {
+html[data-size="wide-short"] .dig-reveal-screen .dig-mark,
+html[data-size="wide-short"] .dig-field-guide-screen .dig-mark {
   width: 40px;
   height: 40px;
   border-radius: 12px;
 }
 
 html[data-size="wide-short"] .dig-board-screen .dig-mark svg,
-html[data-size="wide-short"] .dig-reveal-screen .dig-mark svg {
+html[data-size="wide-short"] .dig-reveal-screen .dig-mark svg,
+html[data-size="wide-short"] .dig-field-guide-screen .dig-mark svg {
   width: 24px;
   height: 24px;
 }
 
 html[data-size="wide-short"] .dig-board-screen .dig-title-words,
-html[data-size="wide-short"] .dig-reveal-screen .dig-title-words {
+html[data-size="wide-short"] .dig-reveal-screen .dig-title-words,
+html[data-size="wide-short"] .dig-field-guide-screen .dig-title-words {
   font-size: min(24px, (100cqi - 48px) / (var(--letters) * 0.75));
 }
 
@@ -9483,12 +9492,86 @@ html[data-size="wide-short"] .dig-reveal-screen .dig-field-guide-button {
   font-size: 18px;
 }
 
-html[data-size="wide-short"] .dig-board-screen .dig-chip {
+html[data-size="wide-short"] .dig-board-screen .dig-chip,
+html[data-size="wide-short"] .dig-field-guide-screen .dig-chip {
   height: 40px;
   padding: 0 10px;
   gap: 6px;
   border-radius: 20px;
   font-size: 16px;
+}
+
+/* On its side, the FIELD GUIDE's five cards stand in one row of fifths,
+   8 apart, under the board's bar: each its picture, its name and its
+   count, the name sized to GOLDEN's 4.5 ems. Russian's ОКАМЕНЕЛОСТЬ, 8.4
+   ems, is too long for a fifth, so in Russian the cards stand three over
+   two, the two centred, each its name across it over its picture and its
+   count. */
+html[data-size="wide-short"] .dig-guide-cards {
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .dig-guide-card {
+  max-height: none;
+  padding: 12px 8px;
+  gap: 6px;
+  border-radius: 18px;
+}
+
+html[data-size="wide-short"] .dig-guide-picture,
+html[data-size="wide-short"] .dig-guide-outline {
+  flex-shrink: 1;
+  min-height: 0;
+}
+
+html[data-size="wide-short"] .dig-guide-name {
+  font-size: min(22px, 100cqi / 4.5);
+  line-height: 1.15;
+}
+
+html[data-size="wide-short"] .dig-guide-count {
+  font-size: 24px;
+}
+
+html[data-size="wide-short"] .dig-guide-unknown {
+  font-size: 48px;
+}
+
+html[data-size="wide-short"][lang="ru"] .dig-guide-cards {
+  flex-wrap: wrap;
+  align-content: stretch;
+  justify-content: center;
+}
+
+html[data-size="wide-short"][lang="ru"] .dig-guide-card {
+  flex: 0 0 calc((100% - 16px) / 3);
+  height: auto;
+  min-height: 0;
+  padding: 8px;
+  display: grid;
+  grid-template: "name name" auto "picture count" minmax(0, 1fr) / 1fr 1fr;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+html[data-size="wide-short"][lang="ru"] .dig-guide-picture,
+html[data-size="wide-short"][lang="ru"] .dig-guide-outline {
+  grid-area: picture;
+  justify-self: end;
+  width: auto;
+  max-width: 100%;
+  height: 100%;
+}
+
+html[data-size="wide-short"][lang="ru"] .dig-guide-name {
+  grid-area: name;
+  font-size: min(22px, 100cqi / 8.4);
+}
+
+html[data-size="wide-short"][lang="ru"] .dig-guide-count,
+html[data-size="wide-short"][lang="ru"] .dig-guide-unknown {
+  grid-area: count;
+  justify-self: start;
 }
 
 /* On its side, a board that asks WHO IS IT? keeps a 216-pixel column at
