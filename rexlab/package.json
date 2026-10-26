@@ -8,7 +8,8 @@
     "dev": "vite",
     "smoke": "tsx scripts/smoke-deployed-version.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "patch-package --error-on-fail"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.3",
@@ -18,6 +19,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "jsdom": "^30.1.3",
+    "patch-package": "8.0.1",
     "sharp": "^0.35.5",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
