@@ -115835,6 +115835,531 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "ijslC",
+      "x": 10559,
+      "y": 42350,
+      "name": "Dig · iPhone on its side 568×320 — Light · FIELD GUIDE · Russian · 2/5 kinds, three over two (LAB-589)",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 568,
+      "height": 320,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 8,
+      "padding": [
+        8,
+        20,
+        12,
+        20
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "d4zyl",
+          "name": "Top Bar",
+          "width": "fill_container",
+          "height": 48,
+          "gap": 8,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "nTeKx",
+              "name": "Home Button",
+              "width": 48,
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "ypUJE",
+                  "name": "Home Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "MCE0A",
+                  "x": 50,
+                  "y": 18.5,
+                  "name": "Home Text",
+                  "enabled": false,
+                  "fill": "$fm-ink",
+                  "content": "ДОМОЙ",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "o5Cujs",
+              "name": "Back Button",
+              "width": 48,
+              "height": 48,
+              "fill": "$fm-surface",
+              "cornerRadius": 14,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "gap": 10,
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "bStZ2",
+                  "name": "Back Icon",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "arrow-left",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "FZSvt",
+                  "x": 50,
+                  "y": 18.5,
+                  "name": "Back Text",
+                  "enabled": false,
+                  "fill": "$fm-ink",
+                  "content": "НАЗАД",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "yUcL1",
+              "name": "Title",
+              "width": "fill_container",
+              "height": 40,
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "NfdXW",
+                  "name": "Title Mark",
+                  "width": 40,
+                  "height": 40,
+                  "fill": "#B98A45",
+                  "cornerRadius": 12,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "Jp8Bc",
+                      "name": "Title Mark Icon",
+                      "width": 28,
+                      "height": 28,
+                      "icon": "book-open",
+                      "library": "lucide",
+                      "fill": "#FFFFFF"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "OHNKx",
+                  "name": "Title Text",
+                  "fill": "$fm-ink",
+                  "content": "ПОЛЕВОЙ ДНЕВНИК",
+                  "fontFamily": "Lexend",
+                  "fontSize": 24,
+                  "fontWeight": "700"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "bsuvC",
+              "name": "Kinds Count",
+              "height": 40,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 20,
+              "gap": 6,
+              "padding": [
+                0,
+                10
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "UVAm8",
+                  "name": "Kinds Icon",
+                  "width": 20,
+                  "height": 20,
+                  "icon": "gem",
+                  "library": "lucide",
+                  "fill": "#E0A526"
+                },
+                {
+                  "type": "text",
+                  "id": "y1Jkw",
+                  "name": "Kinds Text",
+                  "fill": "$fm-ink",
+                  "content": "2/5",
+                  "fontFamily": "Lexend",
+                  "fontSize": 16,
+                  "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "YjbIV",
+          "name": "Cards",
+          "width": "fill_container",
+          "height": "fill_container",
+          "layout": "vertical",
+          "gap": 8,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "woMrc",
+              "name": "Row 1",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 8,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "g4Fwei",
+                  "name": "Card SHELL",
+                  "width": 170,
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "mNmmS",
+                      "name": "Name SHELL",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "РАКУШКА",
+                      "lineHeight": 1.15,
+                      "textAlign": "center",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "YW1Bx",
+                      "name": "Picture and count SHELL",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "gap": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "k1GGmC",
+                          "name": "Picture SHELL",
+                          "width": 54,
+                          "height": 54,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/dig-treasure-shell.webp",
+                            "mode": "contain"
+                          },
+                          "layout": "none"
+                        },
+                        {
+                          "type": "text",
+                          "id": "i6CaZ7",
+                          "name": "Count SHELL",
+                          "fill": "#B98A45",
+                          "content": "×3",
+                          "fontFamily": "Lexend",
+                          "fontSize": 24,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "G6pgWe",
+                  "name": "Card TOOTH",
+                  "width": 170,
+                  "height": "fill_container",
+                  "fill": "#e6e2d9",
+                  "cornerRadius": 18,
+                  "stroke": "#1d27421f",
+                  "strokeWidth": 2,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "M0E74B",
+                      "name": "Picture and count TOOTH",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "gap": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "oamaD",
+                          "name": "Picture TOOTH",
+                          "width": 54,
+                          "height": 54,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/dig-treasure-tooth-outline.webp",
+                            "mode": "contain"
+                          },
+                          "layout": "none"
+                        },
+                        {
+                          "type": "text",
+                          "id": "IYRWd",
+                          "name": "Unknown TOOTH",
+                          "fill": "#1d274266",
+                          "content": "?",
+                          "fontFamily": "Lexend",
+                          "fontSize": 48,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "brnWm",
+                  "name": "Card AMBER",
+                  "width": 170,
+                  "height": "fill_container",
+                  "fill": "#e6e2d9",
+                  "cornerRadius": 18,
+                  "stroke": "#1d27421f",
+                  "strokeWidth": 2,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "augRe",
+                      "name": "Picture and count AMBER",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "gap": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "f7njJU",
+                          "name": "Picture AMBER",
+                          "width": 54,
+                          "height": 54,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/dig-treasure-amber-outline.webp",
+                            "mode": "contain"
+                          },
+                          "layout": "none"
+                        },
+                        {
+                          "type": "text",
+                          "id": "RyHGZ",
+                          "name": "Unknown AMBER",
+                          "fill": "#1d274266",
+                          "content": "?",
+                          "fontFamily": "Lexend",
+                          "fontSize": 48,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "U6Jq7",
+              "name": "Row 2",
+              "width": "fill_container",
+              "height": "fill_container",
+              "gap": 8,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "k7NG4",
+                  "name": "Card EGG NEST",
+                  "width": 170,
+                  "height": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 18,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "TxuNe",
+                      "name": "Name EGG NEST",
+                      "fill": "$fm-ink",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "ГНЕЗДО С ЯЙЦАМИ",
+                      "lineHeight": 1.15,
+                      "textAlign": "center",
+                      "fontFamily": "Lexend",
+                      "fontSize": 18,
+                      "fontWeight": "700"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "gTpMJ",
+                      "name": "Picture and count EGG NEST",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "gap": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "PMZjZ",
+                          "name": "Picture EGG NEST",
+                          "width": 54,
+                          "height": 54,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/dig-treasure-egg-nest.webp",
+                            "mode": "contain"
+                          },
+                          "layout": "none"
+                        },
+                        {
+                          "type": "text",
+                          "id": "bc6O6",
+                          "name": "Count EGG NEST",
+                          "fill": "#B98A45",
+                          "content": "×1",
+                          "fontFamily": "Lexend",
+                          "fontSize": 24,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wsDC8",
+                  "name": "Card GOLDEN FOSSIL",
+                  "width": 170,
+                  "height": "fill_container",
+                  "fill": "#e6e2d9",
+                  "cornerRadius": 18,
+                  "stroke": "#1d27421f",
+                  "strokeWidth": 2,
+                  "layout": "vertical",
+                  "gap": 4,
+                  "padding": 8,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "FXlMf",
+                      "name": "Picture and count GOLDEN FOSSIL",
+                      "width": "fill_container",
+                      "height": "fill_container",
+                      "gap": 8,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "jcJH8",
+                          "name": "Picture GOLDEN FOSSIL",
+                          "width": 54,
+                          "height": 54,
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/dig-treasure-golden-fossil-outline.webp",
+                            "mode": "contain"
+                          },
+                          "layout": "none"
+                        },
+                        {
+                          "type": "text",
+                          "id": "ImvxA",
+                          "name": "Unknown GOLDEN FOSSIL",
+                          "fill": "#1d274266",
+                          "content": "?",
+                          "fontFamily": "Lexend",
+                          "fontSize": 48,
+                          "fontWeight": "700"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
