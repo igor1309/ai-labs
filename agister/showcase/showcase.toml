@@ -11,6 +11,7 @@ include = [
   "go.sum",
   "home/**",
   "skills/**",
+  "docs/index.html",
   "docs/run-architecture/index.html",
   "docs/settings-architecture/index.html",
   "scripts/check-public.sh",
@@ -20,7 +21,7 @@ exclude = [
   "research/**",
   "backlog/**",
   ".agister/**",
-  # Only the two architecture pages leave docs/.
+  # Only the Pages site (index and the two architecture pages) leaves docs/.
   "docs/**/*.go",
   "docs/**/*.feature",
   "**/AGENTS.md",

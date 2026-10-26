@@ -2,6 +2,7 @@
 
 ## 2026-10-25
 
+- DIG's WHO IS IT? fits an iPhone on its side: the sand on the left and the choices stacked beside it, every name in its card (LAB-587).
 - DIG's board at Hatchling fits an iPhone on its side: a short bar of HOME, the brushes and the FIELD GUIDE over the sand, as tall as the window allows (LAB-586).
 - Find the pair's offer of the next level fits an iPhone on its side instead of running off the screen (LAB-584).
 - Find the pair's result fits an iPhone on its side: the dinosaurs found beside the tries, the stars and the actions, nothing cut off (LAB-582).
