@@ -26,6 +26,7 @@ LANES = {
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
+    "Audelin": ("compose", "launches recording and the menu bar", 0),
     "RecordedCapture": ("compose", "records one capture to its track", 3),
     "LiveAudio": ("compose", "hears and reads one capture,\nkeeps its time", 4),
     "Compose": ("compose", "wires one recording's pieces\nbehind Session's ports", 1),
@@ -58,7 +59,6 @@ TARGETS = {
 }
 
 PLANNED = [
-    ("compose", "App and menu bar", "planned: LAB-401, LAB-509", 0),
     ("compose", "Reading", "planned: LAB-507", 2),
 ]
 

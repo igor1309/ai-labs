@@ -5,9 +5,11 @@ Meet) in Russian with English professional terms. It records both sides as
 two tracks, shows a smooth, selectable live transcript in a floating panel,
 and, from v2, explains a selected term in Russian through bb.
 
-Status: starting over (2026-10-22): no architecture decision, specs or code
-yet. The spike that tested Parakeet v3 live recognition lives with the
-research.
+Status: the menu bar app records detected calls using stored preferences.
+The live panel and settings UI are not connected yet.
+
+Build: `cd audelin/macos && sh scripts/bundle.sh`.
+Run: `open .build/Audelin.app` from `audelin/macos`.
 
 | Path | What it holds |
 |---|---|

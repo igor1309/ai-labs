@@ -35,6 +35,10 @@ let package = Package(
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
     ],
     targets: [
+        .executableTarget(
+            name: "Audelin",
+            dependencies: ["Compose", "Recording", "Preferences"]
+        ),
         .target(
             name: "AudioConversion"
         ),

@@ -61,3 +61,7 @@ jobs:
       - name: Run preview app tests
         working-directory: audelin/macos/PreviewApps
         run: sh ../../scripts/swift-test-bounded.sh 120
+
+      - name: Build the app bundle
+        working-directory: audelin/macos
+        run: AUDELIN_SIGN_IDENTITY=- sh scripts/bundle.sh
