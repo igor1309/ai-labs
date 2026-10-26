@@ -319,6 +319,24 @@ test("projectPublicSkills_shouldFailOnDanglingLinkButPassInSubfolderLink_inPubli
   assert.equal(good.failures.some($0 => $0.rule === "R10"), false);
 });
 
+test("projectPublicSkills_shouldPassInSubfolderLink_whenOutDirIsRelative", async () => {
+  const tree = makeUpstreamTree();
+  writeFileSync(
+    join(tree.skillsDir, "stu-alpha", "SKILL.md"),
+    "# Student Alpha\n\nBuilds on [foundation](../foundation-one/SKILL.md).\n",
+  );
+
+  const result = await project({
+    skillsDir: tree.skillsDir,
+    manifestPath: tree.manifestPath,
+    assetsDir: tree.assetsDir,
+    upstreamSha: SHA,
+    outDir: relative(process.cwd(), tree.outDir),
+  });
+
+  assert.deepEqual(result.failures, []);
+});
+
 test("projectPublicSkills_shouldFailOnRouteCitationAbsentFromOpenApi_butPassWhenPresent", async () => {
   const tree = makeUpstreamTree();
   const opts = {

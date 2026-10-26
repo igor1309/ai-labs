@@ -1,4 +1,5 @@
 import AVFoundation
+import Dispatch
 import Foundation
 import LiveText
 import Testing
@@ -8,6 +9,23 @@ import Testing
 /// and concurrent downloads into the same model folder break each other.
 @Suite(.serialized)
 struct ParakeetRecognizerTests {
+
+    @Test func modelLoadingStaysOnItsQueueAcrossNonisolatedAsyncCalls() async throws {
+
+        let queue = DispatchQueue(label: "test.ParakeetModelLoading")
+        let makeReader = ParakeetRecognizer.sharedReaders(
+            loadQueue: queue,
+            load: { await loadModelOnQueue(queue) },
+            makeReader: { model in
+                ScriptedReader([[WindowWord(String(model), start: 0.1, end: 0.4)]])
+            }
+        )
+        let recognizer = ParakeetRecognizer(reader: try await makeReader())
+
+        let hearing = try await recognizer.hear(silence(6))
+
+        #expect(hearing.words == [Word("42", start: 0.1, end: 0.4)])
+    }
 
     @Test func recognizersBuiltTogetherShareOneModelLoad() async throws {
 
@@ -303,6 +321,14 @@ struct ParakeetRecognizerTests {
         try file.read(into: buffer)
         return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
     }
+}
+
+private nonisolated func loadModelOnQueue(_ queue: DispatchQueue) async -> Int {
+
+    dispatchPrecondition(condition: .onQueue(queue))
+    await Task.yield()
+    dispatchPrecondition(condition: .onQueue(queue))
+    return 42
 }
 
 /// Holds every load until the test finishes it; a load after that returns

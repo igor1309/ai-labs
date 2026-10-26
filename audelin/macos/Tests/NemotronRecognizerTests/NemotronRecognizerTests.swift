@@ -1,4 +1,5 @@
 import AVFoundation
+import Dispatch
 import Foundation
 import LiveText
 import Testing
@@ -7,6 +8,23 @@ import Testing
 /// One test at a time: a test replaces the process-wide decoder builder.
 @Suite(.serialized)
 struct NemotronRecognizerTests {
+
+    @Test func modelLoadingStaysOnItsQueueAcrossNonisolatedAsyncCalls() async throws {
+
+        let queue = DispatchQueue(label: "test.NemotronModelLoading")
+        let makeDecoder = NemotronRecognizer.sharedDecoders(
+            loadQueue: queue,
+            load: { await loadModelOnQueue(queue) },
+            makeDecoder: { model in
+                ScriptedDecoder([[DecodedToken("▁\(model)", start: 0.1, end: 0.4)]])
+            }
+        )
+        let recognizer = NemotronRecognizer(decoder: try await makeDecoder())
+
+        let hearing = try await recognizer.hear(silence(1.12))
+
+        #expect(hearing.words == [Word("42", start: 0.1, end: 0.4)])
+    }
 
     @Test func recognizersBuiltTogetherShareOneModelLoad() async throws {
 
@@ -345,6 +363,14 @@ struct NemotronRecognizerTests {
         try #require(buffer.frameLength > 0)
         return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
     }
+}
+
+private nonisolated func loadModelOnQueue(_ queue: DispatchQueue) async -> Int {
+
+    dispatchPrecondition(condition: .onQueue(queue))
+    await Task.yield()
+    dispatchPrecondition(condition: .onQueue(queue))
+    return 42
 }
 
 /// Holds every load until the test finishes it; a load after that returns

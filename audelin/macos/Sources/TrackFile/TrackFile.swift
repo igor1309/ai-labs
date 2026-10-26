@@ -1,3 +1,4 @@
+import Dispatch
 import Foundation
 
 /// Each result contains only this write's audio, drained through its end.
@@ -8,6 +9,10 @@ protocol TrackFileConversion {
 
 /// One mono recording. Its times are seconds from its first sample.
 public actor TrackFile {
+
+    // Blocking file operations must not occupy the cooperative thread pool.
+    nonisolated let queue = DispatchSerialQueue(label: "audelin.TrackFile")
+    public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     public enum Failure: Error, Equatable {
 
