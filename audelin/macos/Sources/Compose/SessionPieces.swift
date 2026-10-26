@@ -62,7 +62,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         var stopCapture: (@Sendable () async throws -> Void)?
     }
 
-    /// Runtime failures from both sides, buffered as Session events.
+    /// Runtime failures, with transcript failures sent directly when a Session is connected.
     public nonisolated var events: AsyncStream<SessionEvent> { news.stream }
 
     let news = AsyncStream<SessionEvent>.makeStream()
@@ -116,7 +116,8 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         self.microphoneRecognizer = microphoneRecognizer
         self.callRecognizer = callRecognizer
         self.hooks = hooks
-        transcriptFailures = TranscriptFailureReport(news: news.continuation)
+        let continuation = news.continuation
+        transcriptFailures = TranscriptFailureReport(deliver: { continuation.yield($0) })
         sides = Dictionary(uniqueKeysWithValues: [SessionSide.microphone, .call].map { side in
             (side, Side(audio: DeferredAudio(beforeDelivery: hooks.beforeAudioDelivery)))
         })

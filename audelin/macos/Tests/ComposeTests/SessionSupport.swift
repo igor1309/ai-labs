@@ -96,6 +96,7 @@ struct SessionRig: Sendable {
         root: URL, microphoneFails: Bool, processesFail: Bool, hooks: SessionPieces.Hooks,
         stopFailure: SessionSide?, stopEndsStream: Bool, rates: [Double]?,
         recognizers: (any Recognizer, any Recognizer)?,
+        connect: (@Sendable (SessionPieces, Session) -> Task<Void, Never>)? = nil,
         beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in },
         beforeMicrophoneStartReturns: @escaping @Sendable () async -> Void = {}
     ) {
@@ -133,7 +134,7 @@ struct SessionRig: Sendable {
             microphoneRecognizer: recognizers?.0 ?? mine, callRecognizer: recognizers?.1 ?? theirs, hooks: hooks
         )
         session = Session(handler: pieces.handler())
-        subscription = subscribe(pieces, to: session, beforeForward: beforeForward)
+        subscription = connect?(pieces, session) ?? subscribe(pieces, to: session, beforeForward: beforeForward)
     }
 
     func state(where matches: (SessionState) -> Bool) async throws -> SessionState {
@@ -161,6 +162,7 @@ func withSessionRig(
     microphoneFails: Bool = false, processesFail: Bool = false, hooks: SessionPieces.Hooks = .init(),
     stopFailure: SessionSide? = nil, stopEndsStream: Bool = true, rates: [Double]? = nil,
     recognizers: (any Recognizer, any Recognizer)? = nil,
+    connect: (@Sendable (SessionPieces, Session) -> Task<Void, Never>)? = nil,
     beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in },
     beforeMicrophoneStartReturns: @escaping @Sendable () async -> Void = {},
     _ body: (SessionRig, URL) async throws -> Void
@@ -170,7 +172,7 @@ func withSessionRig(
         let rig = SessionRig(
             root: root, microphoneFails: microphoneFails, processesFail: processesFail, hooks: hooks,
             stopFailure: stopFailure, stopEndsStream: stopEndsStream, rates: rates, recognizers: recognizers,
-            beforeForward: beforeForward, beforeMicrophoneStartReturns: beforeMicrophoneStartReturns
+            connect: connect, beforeForward: beforeForward, beforeMicrophoneStartReturns: beforeMicrophoneStartReturns
         )
         do {
             try await body(rig, root.appendingPathComponent("1970.01.01-0000"))

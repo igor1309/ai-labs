@@ -1,5 +1,6 @@
 import struct CallText.State
 import Session
+import Synchronization
 import TranscriptFile
 import protocol TranscriptWriting.CallText
 import protocol TranscriptWriting.Transcript
@@ -27,25 +28,24 @@ struct WritingTranscript: TranscriptWriting.Transcript {
     }
 }
 
-actor TranscriptFailureReport: FailureReport {
+final class TranscriptFailureReport: FailureReport, Sendable {
 
-    let news: AsyncStream<SessionEvent>.Continuation
-    private var pending: [CheckedContinuation<Void, Never>] = []
+    private let delivery: Mutex<@Sendable (SessionEvent) -> Void>
 
-    init(news: AsyncStream<SessionEvent>.Continuation) { self.news = news }
+    init(deliver: @escaping @Sendable (SessionEvent) -> Void) {
 
-    func transcriptFailed(_ error: any Error) async {
-
-        await withCheckedContinuation { delivered in
-            pending.append(delivered)
-            news.yield(.pieceFailed(.transcript, error: String(describing: error)))
-        }
+        delivery = Mutex(deliver)
     }
 
-    func forwarded(_ event: SessionEvent) {
+    func connect(deliver: @escaping @Sendable (SessionEvent) -> Void) {
 
-        guard case .pieceFailed(.transcript, _) = event, !pending.isEmpty else { return }
-        // The subscription acknowledges in stream order, after enqueueing in Session.
-        pending.removeFirst().resume()
+        delivery.withLock { $0 = deliver }
+    }
+
+    func transcriptFailed(_ error: any Error) {
+
+        delivery.withLock { deliver in
+            deliver(.pieceFailed(.transcript, error: String(describing: error)))
+        }
     }
 }
