@@ -1,14 +1,16 @@
-import { act, fireEvent, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished } from "vitest";
 import type { PortraitLayouts } from "../src/App.tsx";
+import { DigRevealScreen } from "../src/DigRevealScreen.tsx";
 import { STAR_LANDS } from "../src/digGame.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { digUp, finishBoard, openDigApp, placeBoard } from "./digApp.tsx";
 import { WORD_EMS } from "./digRevealWords.ts";
+import { withPictures } from "./pictures.tsx";
 import { appStylesheet, type SafeArea } from "./stylesheet.ts";
-import { homeTile, manualViewport, memoryStorage } from "./support.ts";
+import { fakeBodyPicture, homeTile, manualTimers, manualViewport, memoryStorage } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 
 // DIG's reveal on an iPhone on its side, full screen: the smallest, two
@@ -71,6 +73,18 @@ function reveal(size: WindowSize, insets: SafeArea, language: Language = "en") {
   return app;
 }
 
+// The reveal's fullest DUG UP card, the 52nd find with its badge, drawn
+// beside the app's reveal; its card is returned, and a call to take it
+// away.
+function fullestReveal(language: Language) {
+  const host = document.body.appendChild(document.createElement("div"));
+  const { unmount } = render(
+    <DigRevealScreen language={language} name="PACHYCEPHALOSAURUS" picture={fakeBodyPicture("pachycephalosaurus")} dugUp={52} total={52} treasures={128} newStar celebration="new-best" badge landed startTimer={manualTimers().startTimer} landingWait={STAR_LANDS.motion} onLanded={() => {}} level="paleontologist" onLevel={() => {}} onDigAgain={() => {}} onHome={() => {}} />,
+    { ...withPictures, container: host }
+  );
+  return [part(".dig-card", host), () => { unmount(); host.remove(); }] as const;
+}
+
 describe("DIG's reveal in a wide-short window", () => {
   it.each(EVERY)("stands the dinosaur beside its column under a 48-pixel bar, all within the height, at %i by %i in %s", (width, height, insets, language) => {
     const size: WindowSize = [width, height];
@@ -80,7 +94,14 @@ describe("DIG's reveal in a wide-short window", () => {
     const page = at(".dig-reveal-screen");
     expect([page.px("padding-top"), page.px("padding-right"), page.px("padding-bottom"), page.px("padding-left"), page.rowGap()]).toEqual([8, 20 + insets.right, 12 + insets.bottom, 20 + insets.left, 8]);
     const bar = at(".dig-reveal-screen .dig-bar");
-    expect([bar.value("height"), bar.columnGap(), at(".dig-reveal-screen .dig-mark").value("width"), at(".dig-reveal-screen .dig-field-guide-button").value("height")]).toEqual(["48px", 8, "40px", "48px"]);
+    expect([bar.value("height"), bar.columnGap()]).toEqual(["48px", 8]);
+    // The board's bar parts, the title sized to the room as on the board.
+    const mark = at(".dig-reveal-screen .dig-mark");
+    const markSymbol = at(".dig-reveal-screen .dig-mark svg");
+    expect([at(".dig-reveal-screen .dig-title").columnGap(), mark.value("width"), mark.value("height"), markSymbol.value("width"), markSymbol.value("height")]).toEqual([8, "40px", "40px", "24px", "24px"]);
+    expect(at(".dig-reveal-screen .dig-title-words").value("font-size")).toBe("min(24px, (100cqi - 48px) / (var(--letters) * 0.75))");
+    const guide = at(".dig-reveal-screen .dig-field-guide-button");
+    expect([guide.value("height"), guide.px("padding-left"), guide.px("padding-right"), guide.columnGap(), guide.px("font-size")]).toEqual(["48px", 8, 10, 6, 18]);
 
     // The dinosaur, as large as the room left of the column, 20 from it.
     const body = at(".dig-reveal");
@@ -107,6 +128,8 @@ describe("DIG's reveal in a wide-short window", () => {
     const button = styleAt(screen.getByRole("button", { name: TEXTS[language].digAgain }), size);
     const ways = at(".dig-reveal-ways");
     expect([card.value("height"), level.value("height"), switchStyle.px("padding-top"), button.value("height"), ways.rowGap()]).toEqual(["44px", "44px", 4, "48px", 6]);
+    const levelMark = at(".dig-reveal-screen .level-switch-mark");
+    expect([levelMark.px("top"), levelMark.px("bottom"), levelMark.px("left"), levelMark.value("width")]).toEqual([4, 4, 4, "calc(0.3333333333333333 * (100% - 16px))"]);
     const actions = at(".dig-reveal-screen .result-actions");
     const switchHeight = switchStyle.px("border-top-width") + switchStyle.px("padding-top") + level.px("height") + switchStyle.px("padding-bottom") + switchStyle.px("border-bottom-width");
     const tallest = name * Number(nameStyle.value("line-height")) + card.px("height") + celebration.px("height") + 3 * reward.rowGap() + switchHeight + ways.rowGap() + actions.px("padding-top") + button.px("height");
@@ -120,21 +143,25 @@ describe("DIG's reveal in a wide-short window", () => {
     const text = TEXTS[language];
     const letters = (words: string) => WORD_EMS[words] ?? [...words].reduce((sum, glyph) => sum + (/[\d/]/.test(glyph) ? DIGIT : LETTER), 0);
 
-    // The card at its fullest: its star, its words, 52/52, NEW!, the
-    // trophy and the 🦴 badge. A first find has no trophy or badge, so
-    // theirs are put in the card to read the sizes it gives them.
-    const cardElement = part(".dig-card");
-    cardElement.insertAdjacentHTML("beforeend", '<span class="dig-card-trophy"><svg></svg></span><span class="level-badge">🦴</span>');
-    const card = at(".dig-card");
-    const words = at(".dig-card-words");
-    const count = at(".dig-card-count");
-    const trophy = styleAt(part(".dig-card-trophy svg", cardElement), size);
-    const badge = at(".dig-card .level-badge");
-    expect([card.px("font-size"), card.columnGap(), card.px("padding-left"), card.px("padding-right"), at(".dig-card-star").value("width"), count.px("font-size"), trophy.value("width"), badge.value("width")]).toEqual([14, 4, 4, 12, "32px", 16, "20px", "28px"]);
+    // The card at its fullest, as the reveal of the 52nd find with the
+    // badge draws it: each of its parts, a word at its width or a picture
+    // at its size.
+    const [fullestCard, takeAway] = fullestReveal(language);
+    const card = styleAt(fullestCard, size);
+    expect([card.px("font-size"), card.columnGap(), card.px("padding-left"), card.px("padding-right")]).toEqual([14, 4, 4, 12]);
     const spaced = (glyphs: string, style: ReturnType<typeof styleAt>) => letters(glyphs) * style.px("font-size") + [...glyphs].length * (style.px("letter-spacing") || 0);
-    const parts = [at(".dig-card-star").px("width"), spaced(text.dugUp, words), spaced("52/52", count), spaced(text.dugUpNew, at(".dig-card-new")), trophy.px("width"), badge.px("width")];
+    const parts = [...fullestCard.children].map((child) => {
+      const style = styleAt(child, size);
+      const symbol = child.querySelector("svg");
+      if (symbol) return Math.max(style.px("width") || 0, styleAt(symbol, size).px("width"));
+      if (style.value("width").endsWith("px")) return style.px("width");
+      return spaced(child.textContent ?? "", style);
+    });
+    expect(parts).toHaveLength(6);
+    expect(parts.slice(0, 1).concat(parts.slice(4))).toEqual([32, 20, 28]);
     const fullest = card.px("padding-left") + parts.reduce((sum, each) => sum + each, 0) + (parts.length - 1) * card.columnGap() + card.px("padding-right");
     expect(fullest).toBeLessThanOrEqual(COLUMN);
+    takeAway();
 
     // DIG AGAIN beside HOME, each its words and symbol, 12 apart.
     const actions = at(".dig-reveal-screen .result-actions");
