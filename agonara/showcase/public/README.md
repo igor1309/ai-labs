@@ -12,8 +12,9 @@ Agonara instance; the agent drafts, quizzes and evaluates, but only a
 person accepts program content. The agent skills are published at
 [igor1309/agonara-skills](https://github.com/igor1309/agonara-skills).
 
-The `/learn` and `/admin` web UIs, the operator CLI and the agents all use
-the same HTTP API, described in [`docs/api/openapi.yml`](docs/api/openapi.yml).
+The `/learn` and `/admin` web UIs and the agents all use the same HTTP API,
+described in [`docs/api/openapi.yml`](docs/api/openapi.yml). The operator CLI
+only checks and creates the first Admin, directly in the database.
 
 | A student reads a program | and answers a Quick Check |
 |---|---|
