@@ -2,6 +2,7 @@ import class CallAppProcesses.CallAppProcesses
 import CallFolder
 import class CallText.CallText
 import struct CallText.State
+import Dispatch
 import Foundation
 import LiveText
 import struct MicrophoneCapture.AudioPiece
@@ -27,6 +28,10 @@ public struct StartedCapture<Piece: Sendable>: Sendable {
 
 /// Owns one recording's concrete pieces and exposes their distinct Session roles.
 public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
+
+    // Folder creation and synchronous file initializers perform blocking disk I/O.
+    nonisolated let queue = DispatchSerialQueue(label: "audelin.SessionPieces")
+    public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     public enum Failure: Error, Equatable {
 
