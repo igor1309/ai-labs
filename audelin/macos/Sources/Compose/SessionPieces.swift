@@ -1,6 +1,7 @@
 import class CallAppProcesses.CallAppProcesses
 import CallFolder
-import CallText
+import class CallText.CallText
+import struct CallText.State
 import Foundation
 import LiveText
 import struct MicrophoneCapture.AudioPiece
@@ -9,6 +10,7 @@ import struct SystemAudioCapture.AudioPiece
 import enum SystemAudioCapture.ProcessSelection
 import TrackFile
 import TranscriptFile
+import class TranscriptWriting.TranscriptWriting
 
 /// One started capture and the operation that ends its stream.
 public struct StartedCapture<Piece: Sendable>: Sendable {
@@ -40,12 +42,12 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         var recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordingTrack = { _, track in
             CaptureTrack(track: track)
         }
-        var beforeTranscriptFeed: @Sendable () async throws -> Void = {}
-        var textStarted: @Sendable (CallText) async -> Void = { _ in }
+        var textStarted: @Sendable (TranscriptWriting<State>) async -> Void = { _ in }
         var closeTrack: @Sendable (SessionSide, TrackFile) async throws -> Void = { _, track in
             try await track.close()
         }
         var beforeAudioDelivery: @Sendable () async -> Void = {}
+        var openTranscript: @Sendable (URL) throws -> TranscriptFile = { try TranscriptFile(url: $0) }
         var beforeTranscriptWrite: @Sendable (State) async throws -> Void = { _ in }
     }
 
@@ -79,7 +81,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     var text: CallText?
     var textStopped = false
     var textStopping = false
-    var transcriptFeed: Task<Void, any Error>?
+    var writing: TranscriptWriting<State>?
 
     public init(
         folder: CallFolder,
@@ -168,7 +170,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
         let made = try places(in: folder)
         guard transcriptFile == nil else { throw Failure.outOfOrder("transcript already opened") }
-        transcriptFile = try TranscriptFile(url: made.transcriptURL)
+        transcriptFile = try hooks.openTranscript(made.transcriptURL)
     }
 
     func closeTranscript() async throws {
@@ -177,11 +179,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         guard text == nil || textStopped else { throw Failure.outOfOrder("call text is still running") }
         transcriptClosed = true
         defer { news.continuation.finish() }
-        // Closing still releases the file when the feed reports a write failure.
-        let result: Result<Void, any Error>?
-        if let transcriptFeed { result = await transcriptFeed.result } else { result = nil }
         await transcriptFile.close()
-        try result?.get()
     }
 
     public func start(enabled: Bool) async throws {
@@ -189,33 +187,33 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         guard text == nil else { throw Failure.outOfOrder("call text already started") }
         let microphone = try track(.microphone, recognizer: microphoneRecognizer)
         let call = try track(.call, recognizer: callRecognizer)
-        guard let transcriptFile, !transcriptClosed else { throw Failure.outOfOrder("transcript is not open") }
+        guard !transcriptClosed else { throw Failure.outOfOrder("transcript is not open") }
         let text = CallText(microphone: microphone, call: call)
         self.text = text
-        let beforeFeed = hooks.beforeTranscriptFeed
-        let beforeWrite = hooks.beforeTranscriptWrite
-        transcriptFeed = Task(executorPreference: hooks.executor) {
-            try await beforeFeed()
-            try await Transcript.feed(text.updates, to: transcriptFile, beforeWrite: beforeWrite)
-        }
-        await text.start(enabled: enabled)
-        await hooks.textStarted(text)
+        let writing = TranscriptWriting(
+            callText: WritingCallText(text: text),
+            transcript: transcriptFile.map { WritingTranscript(file: $0, beforeWrite: hooks.beforeTranscriptWrite) },
+            failureReport: TranscriptFailureReport(news: news.continuation)
+        )
+        self.writing = writing
+        await writing.start(enabled: enabled)
+        await hooks.textStarted(writing)
     }
 
     public func setEnabled(_ enabled: Bool) async throws {
 
-        guard let text, !textStopped, !textStopping else { throw Failure.outOfOrder("call text is not running") }
-        await text.setEnabled(enabled)
+        guard let writing, !textStopped, !textStopping else { throw Failure.outOfOrder("call text is not running") }
+        await writing.setEnabled(enabled)
     }
 
     public func stop() async throws {
 
-        guard let text, !textStopped, !textStopping else { throw Failure.outOfOrder("call text is not running") }
+        guard let writing, !textStopped, !textStopping else { throw Failure.outOfOrder("call text is not running") }
         guard sides.values.allSatisfy({ !$0.captureStarting && $0.stopCapture == nil }) else {
             throw Failure.outOfOrder("capture is still running")
         }
         textStopping = true
-        await text.stop()
+        await writing.stop()
         textStopped = true
     }
 

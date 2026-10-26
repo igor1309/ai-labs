@@ -13,22 +13,4 @@ public enum Transcript {
             )
         }
     }
-
-    public static func feed(_ updates: AsyncStream<State>, to file: TranscriptFile) async throws {
-
-        try await feed(updates, to: file, beforeWrite: { _ in })
-    }
-
-    static func feed(
-        _ updates: AsyncStream<State>, to file: TranscriptFile,
-        beforeWrite: @escaping @Sendable (State) async throws -> Void
-    ) async throws {
-
-        for await state in updates {
-            try Task.checkCancellation()
-            try await beforeWrite(state)
-            try await file.write(segments(from: state))
-        }
-        try Task.checkCancellation()
-    }
 }

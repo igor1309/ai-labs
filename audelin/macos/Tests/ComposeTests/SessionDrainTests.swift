@@ -26,10 +26,11 @@ struct SessionDrainTests {
         }
     }
 
-    @Test func transcriptClosesAfterItsHeldFinalSnapshot() async throws {
+    @Test func stopWaitsForFinalTranscriptWriteAndCloseKeepsText() async throws {
 
-        let snapshot = DrainGate(), closing = DrainGate(), executor = DrainExecutor()
-        let closed = Values<Bool>()
+        let executor = DrainExecutor()
+        let snapshot = DrainGate(onEntry: executor.notify)
+        let stopped = Values<Bool>()
         var hooks = SessionPieces.Hooks()
         hooks.executor = executor
         hooks.beforeTranscriptWrite = { state in
@@ -44,24 +45,21 @@ struct SessionDrainTests {
                 try await rig.pieces.microphoneTrack.close()
                 try await rig.pieces.callTrack.close()
                 try await rig.pieces.stop()
-                await closing.wait()
+                stopped.append(true)
+                let url = folder.appendingPathComponent("transcript.md")
+                let expected = "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n"
+                #expect(try String(contentsOf: url, encoding: .utf8) == expected)
                 try await rig.pieces.transcript.close()
-                closed.append(true)
-                _ = await rig.pieces.transcriptFeed?.result
-                #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
-                    == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
+                #expect(try String(contentsOf: url, encoding: .utf8) == expected)
             }
         }
-        defer { snapshot.release(); closing.release(); executor.run() }
-        await executor.run(until: { snapshot.entered && closing.entered })
+        defer { snapshot.release(); executor.run() }
+        await executor.run(until: { snapshot.entered })
         #expect(snapshot.entered)
-        #expect(closing.entered)
-        closing.release()
-        executor.run()
-        #expect(closed.all.isEmpty)
+        #expect(stopped.all.isEmpty)
         snapshot.release()
         await executor.finish()
         try await task.value
-        #expect(closed.all == [true])
+        #expect(stopped.all == [true])
     }
 }
