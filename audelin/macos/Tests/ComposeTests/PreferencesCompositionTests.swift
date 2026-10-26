@@ -21,11 +21,8 @@ struct PreferencesCompositionTests {
                 })
                 #expect(await recording.snapshot() == RecordingState(automatic: automatic))
                 conditions.refresh()
-                for await state in await recording.states() where !state.missing.contains(.callAudioAccess) {
-                    // Call audio is always available, so its arrival marks the refresh.
-                    #expect(state.missing.contains(.callsFolder) != automatic)
-                    break
-                }
+                // A snapshot reads after every event already sent is reduced.
+                #expect(await recording.snapshot().missing.contains(.callsFolder) != automatic)
                 await recording.end()
             }
         }
