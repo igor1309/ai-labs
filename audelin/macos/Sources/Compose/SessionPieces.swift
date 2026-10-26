@@ -57,8 +57,8 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     let processes: CallAppProcesses
     let startMicrophone: @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>
     let startCall: @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>
-    let microphoneRecognizer: any Recognizer
-    let callRecognizer: any Recognizer
+    let microphoneRecognizerSource: @Sendable () async throws -> any Recognizer
+    let callRecognizerSource: @Sendable () async throws -> any Recognizer
     let executor: (any TaskExecutor)?
     let openTrackFile: @Sendable (URL) throws -> TrackFile
     let recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track
@@ -100,12 +100,36 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
     ) {
 
+        self.init(
+            folder: folder, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
+            microphoneRecognizerSource: { microphoneRecognizer }, callRecognizerSource: { callRecognizer },
+            executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
+            makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText
+        )
+    }
+
+    public init(
+        folder: CallFolder,
+        processes: CallAppProcesses,
+        startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
+        startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
+        microphoneRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
+        callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
+        executor: (any TaskExecutor)? = nil,
+        openTrack: @escaping @Sendable (URL) throws -> TrackFile = { try TrackFile(url: $0) },
+        recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
+        closeTrack: @escaping @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack,
+        makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
+        openTranscript: @escaping @Sendable (URL) throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
+        makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
+    ) {
+
         self.folder = folder
         self.processes = processes
         self.startMicrophone = startMicrophone
         self.startCall = startCall
-        self.microphoneRecognizer = microphoneRecognizer
-        self.callRecognizer = callRecognizer
+        self.microphoneRecognizerSource = microphoneRecognizerSource
+        self.callRecognizerSource = callRecognizerSource
         self.executor = executor
         self.openTrackFile = openTrack
         self.recordingTrack = recordingTrack
@@ -172,10 +196,10 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
     public func start(enabled: Bool) async throws {
 
-        guard let microphone = track(.microphone, recognizer: microphoneRecognizer) else {
+        guard let microphone = track(.microphone, recognizerSource: microphoneRecognizerSource) else {
             throw Failure.unavailableTrack(.microphone)
         }
-        guard let call = track(.call, recognizer: callRecognizer) else {
+        guard let call = track(.call, recognizerSource: callRecognizerSource) else {
             throw Failure.unavailableTrack(.call)
         }
         let text = CallReader(microphone: microphone, call: call)
@@ -199,10 +223,10 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         await writing?.stop()
     }
 
-    private func track(_ side: SessionSide, recognizer: any Recognizer) -> CallSide? {
+    private func track(_ side: SessionSide, recognizerSource: @escaping @Sendable () async throws -> any Recognizer) -> CallSide? {
 
         guard let destination = sides[side], let file = destination.track else { return nil }
-        let adapter = TrackText(recognizer: recognizer, executor: executor)
+        let adapter = TrackText(recognizerSource: recognizerSource, executor: executor)
         return CallSide(audio: destination.audio, text: adapter, written: WrittenTrack(track: file), sampleRate: TrackFile.sampleRate)
     }
 }

@@ -75,8 +75,42 @@ public actor TrackText {
         let reply: Reply
     }
 
-    private let recognizer: any Recognizer
+    private actor RecognizerReply {
+
+        private var result: Result<any Recognizer, any Error>?
+        private var waiting: [Int: AsyncStream<Result<any Recognizer, any Error>>.Continuation] = [:]
+        private var nextID = 0
+
+        func complete(_ result: Result<any Recognizer, any Error>) {
+
+            self.result = result
+            for continuation in waiting.values {
+                continuation.yield(result)
+                continuation.finish()
+            }
+            waiting.removeAll()
+        }
+
+        func recognizer() async throws -> any Recognizer {
+
+            try Task.checkCancellation()
+            if let result { return try result.get() }
+            let id = nextID
+            nextID += 1
+            let reply = AsyncStream<Result<any Recognizer, any Error>>.makeStream()
+            waiting[id] = reply.continuation
+            defer { waiting[id] = nil }
+            var iterator = reply.stream.makeAsyncIterator()
+            let result = await iterator.next()
+            try Task.checkCancellation()
+            guard let result else { throw CancellationError() }
+            return try result.get()
+        }
+    }
+
+    private let recognizerSource: @Sendable () async throws -> any Recognizer
     private let executor: (any TaskExecutor)?
+    private var loading: (reply: RecognizerReply, task: Task<Void, Never>)?
     private var listening: Listening?
     private var accepted: Accepted?
 
@@ -87,12 +121,35 @@ public actor TrackText {
 
     init(recognizer: any Recognizer, executor: (any TaskExecutor)?) {
 
-        self.recognizer = recognizer
+        self.init(recognizerSource: { recognizer }, executor: executor)
+    }
+
+    public init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer) {
+
+        self.init(recognizerSource: recognizerSource, executor: nil)
+    }
+
+    init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer, executor: (any TaskExecutor)?) {
+
+        self.recognizerSource = recognizerSource
         self.executor = executor
     }
 
-    public func prepare() throws {
+    public func prepare() async throws {
 
+        try Task.checkCancellation()
+        guard listening == nil else { return }
+        if loading == nil {
+            let reply = RecognizerReply(), source = recognizerSource
+            // A cancelled prepare ends only its wait; another prepare can use
+            // the same load even when the source does not honor cancellation.
+            let task = Task(executorPreference: executor) {
+                do { await reply.complete(.success(try await source())) }
+                catch { await reply.complete(.failure(error)) }
+            }
+            loading = (reply, task)
+        }
+        let recognizer = try await loading!.reply.recognizer()
         try Task.checkCancellation()
         guard listening == nil else { return }
         let live = LiveText(recognizer: recognizer)
@@ -197,6 +254,7 @@ public actor TrackText {
 
     deinit {
 
+        loading?.task.cancel()
         listening?.stop()
     }
 
