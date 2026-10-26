@@ -1,5 +1,10 @@
 # Log
 
+## 2026-10-26
+
+- Recording, transcript writes and call-folder creation keep blocking disk
+  work off Swift's cooperative thread pool (LAB-593).
+
 ## 2026-10-25
 
 - Fill in gets one side's live text ready, recovers its missed written audio,

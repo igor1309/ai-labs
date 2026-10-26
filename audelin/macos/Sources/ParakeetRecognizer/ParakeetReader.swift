@@ -1,3 +1,4 @@
+import Dispatch
 import FluidAudio
 import LiveText
 import ModelLoading
@@ -20,11 +21,12 @@ extension ParakeetRecognizer {
 
     /// Builds readers that all take their model from one load.
     static func sharedReaders<Model: Sendable>(
+        loadQueue: DispatchQueue = DispatchQueue(label: "audelin.ParakeetModelLoading"),
         load: @escaping @Sendable () async throws -> Model,
         makeReader: @escaping @Sendable (Model) async throws -> any WindowReader
     ) -> @Sendable () async throws -> any WindowReader {
 
-        let models = SharedModel(load: load)
+        let models = SharedModel(loadQueue: loadQueue, load: load)
         return { try await makeReader(models.load().value) }
     }
 }
