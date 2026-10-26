@@ -117,7 +117,7 @@ without one.
 ## Status
 
 Agonara runs as a private instance at
-[agonara.enoa.ai](https://agonara.enoa.ai). Identity, membership, corpus
+[agonara.enoa.ai](https://agonara.enoa.ai/learn). Identity, membership, corpus
 curation, navigation, material reading, open-answer and Quick Check
 assessment, learner state, readiness checks, coverage gaps and LLM-assisted
 curation suggestions are implemented, with `/learn` screens for each.

@@ -659,7 +659,7 @@ test('agonara settings export the app, its tests and local compose while keeping
   const settings = readSettings(readFileSync(join(root, 'agonara/showcase/showcase.toml'), 'utf8'));
   assert.equal(settings.repo, 'igor1309/agonara');
   assert.equal(settings.check, 'npm ci && npm test');
-  assert.equal(settings.homepage, 'https://agonara.enoa.ai');
+  assert.equal(settings.homepage, 'https://agonara.enoa.ai/learn');
   for (const path of ['src/server.js', 'src/cli.js', 'tests/executable-acceptance-identity-programs.test.js', 'tests/support/http-api.js', 'docs/api/openapi.yml',
     'docs/api/redocly.yaml', 'index.html', 'package.json', 'package-lock.json', 'playwright.config.js', 'Dockerfile', '.dockerignore', 'compose.yaml',
     'scripts/generate-agonara-openapi.mjs']) {
