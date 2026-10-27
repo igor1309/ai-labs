@@ -1,0 +1,47 @@
+name: Mizan BLE Core
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      # Swift 6.2 and the iOS 26 SDK: take the image's newest Xcode, as
+      # audelin-core does.
+      - name: Select newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
+
+      - name: Check the generated tokens
+        working-directory: mizan-ble/ios
+        run: python3 -I scripts/generate-tokens.py --check
+
+      - name: Build tests
+        working-directory: mizan-ble/ios
+        run: swift build --build-tests
+
+      # The tests run in seconds; the step's limit fails a hang at once.
+      - name: Run tests
+        working-directory: mizan-ble/ios
+        timeout-minutes: 5
+        run: swift test
+
+      # The app runs on iOS; the tests run on macOS. While the package has
+      # one library, Xcode names its scheme after the package.
+      - name: Build for iOS
+        working-directory: mizan-ble/ios
+        run: xcodebuild -scheme MizanBLE -destination 'generic/platform=iOS' build
