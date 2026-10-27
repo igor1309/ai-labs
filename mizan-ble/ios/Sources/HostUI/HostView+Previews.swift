@@ -283,7 +283,7 @@ public extension HostState {
     private static var goingOnAirPreview: HostState {
         var state = framePreviews[1].state
         state.status = "Going on air"
-        state.steps[1].detail = "Going on air"
+        state.steps[1] = SessionStep(state.steps[1].state, title: state.steps[1].title, detail: "Going on air")
         state.explanation = "Going on air as MIZAN-7F3A. The amount is locked."
         state.exchange.message = "going on air"
         state.exchange.clientCode = "C —"

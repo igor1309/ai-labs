@@ -2,20 +2,6 @@ import DesignSystem
 
 /// A presentation value: all copy and countdown values come from the caller.
 public struct HostState: Equatable, Sendable {
-    public struct Step: Equatable, Sendable {
-        public var state: StepState
-        public var title: String
-        public var detail: String
-
-        public init(_ state: StepState, title: String, detail: String) {
-            self.state = state
-            self.title = title
-            self.detail = detail
-        }
-
-        var sessionStep: SessionStep { .init(state, title: title, detail: detail) }
-    }
-
     public struct Exchange: Equatable, Sendable {
         public var hostCode: String
         public var hostDetail: String
@@ -86,7 +72,7 @@ public struct HostState: Equatable, Sendable {
     public var statusTone: StatusPill.State
     public var deviceCode: String
     public var deviceMeta: String
-    public var steps: [Step]
+    public var steps: [SessionStep]
     public var amountTitle: String
     public var amount: String
     public var explanation: String
@@ -100,7 +86,7 @@ public struct HostState: Equatable, Sendable {
 
     public init(
         eyebrow: String, status: String, statusTone: StatusPill.State,
-        deviceCode: String, deviceMeta: String, steps: [Step],
+        deviceCode: String, deviceMeta: String, steps: [SessionStep],
         amountTitle: String, amount: String, explanation: String,
         exchange: Exchange, panel: Panel, buttons: [HostAction], notice: Notice? = nil,
         isSettingsEnabled: Bool, isAmountMuted: Bool = false, accent: Message.Tone = .host

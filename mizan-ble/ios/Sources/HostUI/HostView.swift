@@ -25,7 +25,7 @@ public struct HostView: View {
             },
             isSettingsEnabled: state.isSettingsEnabled
         ) {
-            HostRail(state.steps.map(\.sessionStep))
+            HostRail(state.steps)
         } content: {
             HStack(spacing: Tokens.space12) {
                 amount
@@ -112,7 +112,8 @@ public struct HostView: View {
                 .offset(y: -Tokens.space4)
             case let .connection(title, detail, secondsRemaining):
                 VStack(spacing: Tokens.space5) {
-                    BluetoothMark().foregroundStyle(Tokens.clientHi)
+                    BluetoothSymbol().foregroundStyle(Tokens.clientHi)
+                        .frame(width: Tokens.space12, height: Tokens.space12)
                         .frame(width: Tokens.space14 * 2, height: Tokens.space14 * 2)
                         .background(Tokens.clientTint, in: Circle())
                         .accessibilityHidden(true)

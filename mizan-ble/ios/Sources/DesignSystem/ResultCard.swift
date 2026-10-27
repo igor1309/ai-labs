@@ -55,7 +55,8 @@ public struct ResultMark: View {
 
         Group {
             if outcome == .linkLost {
-                BluetoothMark(isLost: true)
+                BluetoothSymbol(isSlashed: true)
+                    .frame(width: Tokens.space12, height: Tokens.space12)
             } else {
                 Image(systemName: outcome.symbol)
                     .font(.system(size: 44, weight: .semibold))
