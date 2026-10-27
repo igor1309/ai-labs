@@ -11,9 +11,10 @@ component. It knows no flow and no state: each view takes plain values.
 
 ## Decided
 
-- **Tokens are generated, never typed:** a script reads `tokens.json`, the
-  snapshot of the `.pen` file's variables, and writes the Swift; a check
-  mode fails when the Swift is stale, as audelin does it.
+- **Tokens are generated, never typed:** a script reads the variables
+  straight from the `.pen` file, which is JSON, and writes the Swift; a
+  check mode fails when the Swift no longer matches the design, and CI
+  runs it on any change to the design file.
 - **Only `mz-*` variables are tokens;** the rest belong to the
   explorations and are not generated.
 - **Fonts ship with the app:** Space Grotesk, Inter and JetBrains Mono,
