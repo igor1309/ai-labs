@@ -127290,6 +127290,3744 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "mKMl6",
+      "x": 24316,
+      "y": -383.5,
+      "name": "Labyrinth · EXPLORER · iPad Safari 1024×670 · LAB-668",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1024,
+      "height": 670,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 12,
+      "padding": 16,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "SW5sc",
+          "name": "Navigation and selected level",
+          "width": "fill_container",
+          "height": 56,
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "ROD8S",
+              "name": "HOME",
+              "fill": "$fm-surface",
+              "cornerRadius": 12,
+              "gap": 10,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "rPh0Q",
+                  "name": "house",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "nsCKG",
+                  "name": "HOME label",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "n9mT8B",
+              "name": "EXPLORER",
+              "fill": "$fm-surface",
+              "cornerRadius": 12,
+              "gap": 10,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "Aetxk",
+                  "name": "route",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "route",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "KXCds",
+                  "name": "EXPLORER label",
+                  "fill": "$fm-ink",
+                  "content": "EXPLORER",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "VjAdj",
+              "name": "HINT",
+              "fill": "$fm-surface",
+              "cornerRadius": 12,
+              "gap": 10,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "wZqvv",
+                  "name": "lightbulb",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "lightbulb",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "UTCXk",
+                  "name": "HINT label",
+                  "fill": "$fm-ink",
+                  "content": "HINT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "G4Jr9h",
+          "name": "Maze with 4 route decisions",
+          "fill": "$fm-base",
+          "layout": "vertical",
+          "padding": 4,
+          "children": [
+            {
+              "type": "frame",
+              "id": "D8vnky",
+              "name": "Maze row 0",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "gD2cd",
+                  "name": "Path 0,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "iuz5L",
+                      "name": "Baby start",
+                      "width": 36,
+                      "height": 30,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "GCmCb",
+                  "name": "Path 1,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "g6UnT",
+                      "name": "Available step",
+                      "width": 24,
+                      "height": 24,
+                      "icon": "footprints",
+                      "library": "lucide",
+                      "fill": "$fm-ink"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "xDiVB",
+                  "name": "Path 2,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "nesdx",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "aBGRl",
+                  "name": "Path 4,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "M2hph",
+                  "name": "Path 5,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "crkxE",
+                  "name": "Path 6,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "bt7tG",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "LEmfD",
+                  "name": "Path 8,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "pjAvv",
+                  "name": "Path 9,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "fgZFg",
+                  "name": "Path 10,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "P1RDA",
+                  "name": "Path 11,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "W2VZTp",
+                  "name": "Path 12,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Ilm2K",
+                  "name": "Path 13,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "S7AywL",
+                  "name": "Path 14,0",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "U93Br",
+              "name": "Maze row 1",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "XJH7k",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "mnfss",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ghXx0",
+                  "name": "Path 2,1",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "SlMbE",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "yhkIw",
+                  "name": "Path 4,1",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "nQ7jq",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "v9TL3V",
+                  "name": "Path 6,1",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "AAntA",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "uXCSQ",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "gfRjF",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Qiq6M",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "RclSn",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "B75yP",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Y3qXO7",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "lZ2qr",
+                  "name": "Path 14,1",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "DwoWF",
+              "name": "Maze row 2",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "CcHf5",
+                  "name": "Path 0,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "nqkcn",
+                  "name": "Path 1,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "xLkF4",
+                  "name": "Path 2,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "gQj4A",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "zSjqs",
+                  "name": "Path 4,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "v975F",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "cx9ML",
+                  "name": "Path 6,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Ll8n9",
+                  "name": "Path 7,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "JiaHY",
+                  "name": "Path 8,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "xMgXs",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "b3sckt",
+                  "name": "Path 10,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "HAGTa",
+                  "name": "Path 11,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "GDRla",
+                  "name": "Path 12,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "jZ97z",
+                  "name": "Path 13,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "iYL6D",
+                  "name": "Path 14,2",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "RSVBl",
+              "name": "Maze row 3",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "qD9qv",
+                  "name": "Path 0,3",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "jmIhq",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "fwolN",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "wSNFg",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "B0Yii",
+                  "name": "Path 4,3",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "B55o3",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "IiDrw",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "KnoZu",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "V9xWr",
+                  "name": "Path 8,3",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Q5cimw",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "QrSZi",
+                  "name": "Path 10,3",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "uI4yq",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "muQPA",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ivotE",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Xg7n7",
+                  "name": "Path 14,3",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "RNWoy",
+              "name": "Maze row 4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Lxp1v",
+                  "name": "Path 0,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "c75KRu",
+                  "name": "Path 1,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "jlNSV",
+                  "name": "Path 2,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "QBilB",
+                  "name": "Path 3,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Uov5F",
+                  "name": "Path 4,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "t8LHpo",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "SUunv",
+                  "name": "Path 6,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "TanzV",
+                  "name": "Path 7,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "xHfxC",
+                  "name": "Path 8,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "DHYpK",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "OD1oL",
+                  "name": "Path 10,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "AzruB",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "BdAte",
+                  "name": "Path 12,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "G34mK",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "T7YTBx",
+                  "name": "Path 14,4",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "O9mjb",
+              "name": "Maze row 5",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "t4ch0",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "YOhPC",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "I6XRw",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "U3NHU",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "SLoAV",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "I34HQJ",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "LFHEG",
+                  "name": "Path 6,5",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "gmXCW",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "T9kIU",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "XYvJv",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "LCc2a",
+                  "name": "Path 10,5",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "SfKNS",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "f7bcj",
+                  "name": "Path 12,5",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "rUpD4",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "YpLfB",
+                  "name": "Path 14,5",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "BJ5re",
+              "name": "Maze row 6",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "wPZQh",
+                  "name": "Path 0,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "tEUim",
+                  "name": "Path 1,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "X12bO",
+                  "name": "Path 2,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "F6u5A",
+                  "name": "Path 3,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "lI4uo",
+                  "name": "Path 4,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "vbqiE",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "iWV6o",
+                  "name": "Path 6,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "r6mbG",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "RyK7M",
+                  "name": "Path 8,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "GsVNO",
+                  "name": "Path 9,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "d4csR",
+                  "name": "Path 10,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "DxjpW",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "BjvXQ",
+                  "name": "Path 12,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "cWxoH",
+                  "name": "Path 13,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ikD8i",
+                  "name": "Path 14,6",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "JtiZ1",
+              "name": "Maze row 7",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ot48V",
+                  "name": "Path 0,7",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "TJXcS",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "MYfzk",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "YHXGZ",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "PHiuu",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "RNTjd",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "PNtgI",
+                  "name": "Path 6,7",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "uuAgl",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Org90",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "zvduX",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "LQhQw",
+                  "name": "Path 10,7",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "fXlDl",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "QrHtb",
+                  "name": "Path 12,7",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "VPWEk",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "K7p5cH",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "A9oHuk",
+              "name": "Maze row 8",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "VJcY9",
+                  "name": "Path 0,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "P0DhM",
+                  "name": "Path 1,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Z4W4M",
+                  "name": "Path 2,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "gtCzh",
+                  "name": "Path 3,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "S8CTr",
+                  "name": "Path 4,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "hv06N",
+                  "name": "Path 5,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ptbXx",
+                  "name": "Path 6,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "DZwRH",
+                  "name": "Path 7,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "dLO6L",
+                  "name": "Path 8,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "tPdJq",
+                  "name": "Path 9,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "T6m4v9",
+                  "name": "Path 10,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Q4SOe",
+                  "name": "Wall",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "MmR4i",
+                  "name": "Path 12,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "j50Zok",
+                  "name": "Path 13,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "OGb8Q",
+                  "name": "Path 14,8",
+                  "width": 54,
+                  "height": 54,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fyPEV",
+                      "name": "Parent destination",
+                      "width": 46,
+                      "height": 40,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "tvHgU",
+          "name": "Goal instruction",
+          "fill": "$fm-ink",
+          "content": "BRING THE BABY HOME · TAP TO TAKE A STEP",
+          "fontFamily": "Lexend",
+          "fontSize": 18,
+          "fontWeight": "600"
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "JwOGY",
+      "x": 25440,
+      "y": -383.5,
+      "name": "Labyrinth · PALEONTOLOGIST · iPad Safari 1024×670 · LAB-668",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1024,
+      "height": 670,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 12,
+      "padding": 16,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "E6jxIf",
+          "name": "Navigation and selected level",
+          "width": "fill_container",
+          "height": 56,
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "aRPW6",
+              "name": "HOME",
+              "fill": "$fm-surface",
+              "cornerRadius": 12,
+              "gap": 10,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "K65jd",
+                  "name": "house",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "house",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "ZLLbo",
+                  "name": "HOME label",
+                  "fill": "$fm-ink",
+                  "content": "HOME",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "U0Y40",
+              "name": "PALEONTOLOGIST",
+              "fill": "$fm-surface",
+              "cornerRadius": 12,
+              "gap": 10,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "issKM",
+                  "name": "route",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "route",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "xvWIT",
+                  "name": "PALEONTOLOGIST label",
+                  "fill": "$fm-ink",
+                  "content": "PALEONTOLOGIST",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "N0s71q",
+              "name": "HINT",
+              "fill": "$fm-surface",
+              "cornerRadius": 12,
+              "gap": 10,
+              "padding": 12,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "cpLz8",
+                  "name": "lightbulb",
+                  "width": 24,
+                  "height": 24,
+                  "icon": "lightbulb",
+                  "library": "lucide",
+                  "fill": "$fm-ink"
+                },
+                {
+                  "type": "text",
+                  "id": "ek2Jv",
+                  "name": "HINT label",
+                  "fill": "$fm-ink",
+                  "content": "HINT",
+                  "fontFamily": "Lexend",
+                  "fontSize": 18,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "UAwsV",
+          "name": "Maze with 6 route decisions",
+          "fill": "$fm-base",
+          "layout": "vertical",
+          "padding": 4,
+          "children": [
+            {
+              "type": "frame",
+              "id": "pQwuy",
+              "name": "Maze row 0",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "PgDie",
+                  "name": "Path 0,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "qIrja",
+                      "name": "Baby start",
+                      "width": 36,
+                      "height": 30,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "J0Da3",
+                  "name": "Path 1,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "HDh1V",
+                      "name": "Available step",
+                      "width": 24,
+                      "height": 24,
+                      "icon": "footprints",
+                      "library": "lucide",
+                      "fill": "$fm-ink"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "PcfTd",
+                  "name": "Path 2,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "BKtLk",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Y5AWS1",
+                  "name": "Path 4,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "HHp5z",
+                  "name": "Path 5,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "S2qpMX",
+                  "name": "Path 6,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "T4wuP",
+                  "name": "Path 7,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "h7Vyr4",
+                  "name": "Path 8,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "eiAot",
+                  "name": "Path 9,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "VDTFC",
+                  "name": "Path 10,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "FV2gv",
+                  "name": "Path 11,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Z5DHW",
+                  "name": "Path 12,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Ss4xD",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "LEtPY",
+                  "name": "Path 14,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "AltpW",
+                  "name": "Path 15,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "N7AFU4",
+                  "name": "Path 16,0",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "X3Nd9a",
+              "name": "Maze row 1",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AMLMF",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "B8n8xX",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "y0EgNi",
+                  "name": "Path 2,1",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "L4t0Xa",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "HUSCc",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "MCBi8",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "XCJ2D",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Jtx24",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "hIDUB",
+                  "name": "Path 8,1",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "SQX5M",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Sachf",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "m5oax",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Zcu0C",
+                  "name": "Path 12,1",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "NTZBm",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "PEHNK",
+                  "name": "Path 14,1",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "wwbzw",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Q9uGM",
+                  "name": "Path 16,1",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AP6L1",
+              "name": "Maze row 2",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "cYy5V",
+                  "name": "Path 0,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ZwnEu",
+                  "name": "Path 1,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "JBzCQ",
+                  "name": "Path 2,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "wGceO",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "czv2o",
+                  "name": "Path 4,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "jW8VE",
+                  "name": "Path 5,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "n4tKA",
+                  "name": "Path 6,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ldwV6",
+                  "name": "Path 7,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "d0mMi",
+                  "name": "Path 8,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "PFkkk",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "arluh",
+                  "name": "Path 10,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ks3aF",
+                  "name": "Path 11,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "mqSrN",
+                  "name": "Path 12,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "lBEEW",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "N07HC",
+                  "name": "Path 14,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "C2tgT",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "pVXrd",
+                  "name": "Path 16,2",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IrHpo",
+              "name": "Maze row 3",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "dPu7x",
+                  "name": "Path 0,3",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "f03RIg",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "vxndv",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "yZqJ1",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "pqneo",
+                  "name": "Path 4,3",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "GxESc",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "awxrW",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "nZVjR",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "wLp0f",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "qiRBQ",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "xvUCa",
+                  "name": "Path 10,3",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "VgUwJ",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "m4uqQ",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "gCgqG",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "H4saY2",
+                  "name": "Path 14,3",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "V8DgEH",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "aogrt",
+                  "name": "Path 16,3",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LwMd0",
+              "name": "Maze row 4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "JTY5O",
+                  "name": "Path 0,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "SyETE",
+                  "name": "Path 1,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "iajES",
+                  "name": "Path 2,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "v5y8a",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "EUwq1",
+                  "name": "Path 4,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "O4HbD",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "v4qM5",
+                  "name": "Path 6,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "PQ4dW",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "E6CMGi",
+                  "name": "Path 8,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "plOUd",
+                  "name": "Path 9,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Mc58Y",
+                  "name": "Path 10,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "g7sYV8",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "A7aH6",
+                  "name": "Path 12,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Cfit5",
+                  "name": "Path 13,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "qpcdt",
+                  "name": "Path 14,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "r9EvAe",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ksaoo",
+                  "name": "Path 16,4",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "gG0D5",
+              "name": "Maze row 5",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Sfh63",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "lvuqc",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "E3ahi7",
+                  "name": "Path 2,5",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "QpGrB",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ZYnaX",
+                  "name": "Path 4,5",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "HMhsy",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "y4Gjd",
+                  "name": "Path 6,5",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "en4cp",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "m2KCI",
+                  "name": "Path 8,5",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "MpIOe",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "FRW9f",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "dQ1bF",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "tvG9B",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "e95nl",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Cs8K1",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "G8m1A",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ETnpt",
+                  "name": "Path 16,5",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "CyZlj",
+              "name": "Maze row 6",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "A4B5Q",
+                  "name": "Path 0,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "hdV2S",
+                  "name": "Path 1,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "DzLFf",
+                  "name": "Path 2,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "TbRbA",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "UXwnC",
+                  "name": "Path 4,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "WpJcl",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "C7P1vR",
+                  "name": "Path 6,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "GFTfm",
+                  "name": "Path 7,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "h6VnB",
+                  "name": "Path 8,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "kGPcG",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "NWaXd",
+                  "name": "Path 10,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "kVAgK",
+                  "name": "Path 11,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "PI6e1",
+                  "name": "Path 12,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "aadrw",
+                  "name": "Path 13,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "nDdcl",
+                  "name": "Path 14,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "R0g1Mj",
+                  "name": "Path 15,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "MItUT",
+                  "name": "Path 16,6",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "GVpVW",
+              "name": "Maze row 7",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ERgVB",
+                  "name": "Path 0,7",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "tVdED",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "NqGfi",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "RIKpL",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "KxpIx",
+                  "name": "Path 4,7",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "JxdFz",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ZOQPN",
+                  "name": "Path 6,7",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "NAuhv",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "JdvJg",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "r3o4i1",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "a06wMa",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "DyK3j",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "tY4bt",
+                  "name": "Path 12,7",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "TQASJ",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Cf4C7",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "TfTwM",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "VMNru",
+                  "name": "Path 16,7",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nKiPz",
+              "name": "Maze row 8",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "GJoGF",
+                  "name": "Path 0,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "ai20k",
+                  "name": "Path 1,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "cS9iQ",
+                  "name": "Path 2,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "t7feZc",
+                  "name": "Path 3,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "zvA9w",
+                  "name": "Path 4,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "mZWzQ",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "How8T",
+                  "name": "Path 6,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "OM7qw",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "i427sL",
+                  "name": "Path 8,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "kJh3M",
+                  "name": "Path 9,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "v6PNbJ",
+                  "name": "Path 10,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "mVsfU",
+                  "name": "Path 11,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "U2I6uS",
+                  "name": "Path 12,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "K7w9HL",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "CmQ9x",
+                  "name": "Path 14,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "kLnZb",
+                  "name": "Path 15,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "oaXcd",
+                  "name": "Path 16,8",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xNJh8",
+              "name": "Maze row 9",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ZwSSL",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "lmkse",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "YtrkY",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "wEiaP",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Z7awA6",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "OMDJz",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "uWauO",
+                  "name": "Path 6,9",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "S29p0l",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "J0B5xe",
+                  "name": "Path 8,9",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "AyPx5",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "bUSZ4",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "MhRRO",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "oGnGb",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "jG1FT",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "Y1g6z0",
+                  "name": "Path 14,9",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "EIBsE",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "OXWuR",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "QrJu1",
+              "name": "Maze row 10",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "tJGqU",
+                  "name": "Path 0,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "BsVfZ",
+                  "name": "Path 1,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "CjwTN",
+                  "name": "Path 2,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "R17N3",
+                  "name": "Path 3,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "lEBHb",
+                  "name": "Path 4,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "zT4Gm",
+                  "name": "Path 5,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "wfVBj",
+                  "name": "Path 6,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "fDxzJ",
+                  "name": "Path 7,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "l4758c",
+                  "name": "Path 8,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "BczBY",
+                  "name": "Wall",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-base",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "W1GGmm",
+                  "name": "Path 10,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "p5ZFRG",
+                  "name": "Path 11,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "eUk3U",
+                  "name": "Path 12,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "e42OGv",
+                  "name": "Path 13,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "FOCPv",
+                  "name": "Path 14,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "b9dJe2",
+                  "name": "Path 15,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center"
+                },
+                {
+                  "type": "frame",
+                  "id": "NPWip",
+                  "name": "Path 16,10",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "$fm-surface-2",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "k3ZOV",
+                      "name": "Parent destination",
+                      "width": 46,
+                      "height": 40,
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "wDPxn",
+          "name": "Goal instruction",
+          "fill": "$fm-ink",
+          "content": "BRING THE BABY HOME · TAP TO TAKE A STEP",
+          "fontFamily": "Lexend",
+          "fontSize": 18,
+          "fontWeight": "600"
+        }
+      ]
     }
   ],
   "themes": {
