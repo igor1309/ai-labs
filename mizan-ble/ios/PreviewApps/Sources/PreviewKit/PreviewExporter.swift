@@ -16,11 +16,12 @@ public enum PreviewExporter {
     /// Each state is rendered without window chrome, at one pixel per point.
     @MainActor
     public static func export<Content: View>(
-        _ snapshots: [PreviewSnapshot<Content>], to folder: URL
+        _ snapshots: [PreviewSnapshot<Content>], to folder: URL,
+        devices: [PreviewDeviceSize] = PreviewDeviceSize.allCases
     ) throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         for snapshot in snapshots {
-            for device in PreviewDeviceSize.allCases {
+            for device in devices {
                 for scheme in [ColorScheme.light, .dark] {
                     let appearance = scheme == .light ? "light" : "dark"
                     let name = "\(snapshot.name)-\(device.rawValue)-\(appearance).png"

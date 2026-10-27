@@ -35,16 +35,17 @@ public struct HostView: View {
     }
 
     private var amount: some View {
-        VStack(alignment: .leading, spacing: Tokens.space6) {
+        VStack(alignment: .leading, spacing: Tokens.space5) {
             if let notice = state.notice { note(notice) }
             Text(state.amountTitle).typeRole(.lead)
             AmountView(state.amount, size: .xl, digitsColor: state.isAmountMuted ? Tokens.text2 : Tokens.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.5)
-            Rectangle().fill(state.accent.color)
-                .frame(width: Tokens.space20 + Tokens.space10, height: Tokens.space1)
+            Rectangle().fill(state.accent == .idle ? Tokens.lineStrong : state.accent.color)
+                .frame(width: Tokens.space20 + Tokens.space10, height: Tokens.space1 / 2)
             if !state.explanation.isEmpty {
                 Text(state.explanation).typeRole(.body)
+                    .lineSpacing(Tokens.space1)
                     .fixedSize(horizontal: false, vertical: true)
             }
             ExchangeStrip(
@@ -72,7 +73,8 @@ public struct HostView: View {
                 Text(notice.detail).typeRole(.small).foregroundStyle(Tokens.text2)
             }
         }
-        .padding(Tokens.space4)
+        .padding(.horizontal, Tokens.space5)
+        .padding(.vertical, Tokens.space3)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             notice.isFailure ? Tokens.badTint : Tokens.hostTint,
@@ -103,13 +105,11 @@ public struct HostView: View {
                         secondsText: countdown.seconds, caption: countdown.caption,
                         accessibilityLabel: countdown.accessibilityLabel, fraction: countdown.fraction
                     )
-                    .padding(.bottom, Tokens.space8 + Tokens.space1)
                     Text(title).font(Tokens.text(Tokens.sizeLead, .semibold)).foregroundStyle(Tokens.text)
                     Text(detail).typeRole(.eyebrow).multilineTextAlignment(.center)
                     buttons
                 }
                 .padding(Tokens.space7)
-                .offset(y: -Tokens.space4)
             case let .connection(title, detail, secondsRemaining):
                 VStack(spacing: Tokens.space5) {
                     BluetoothSymbol().foregroundStyle(Tokens.clientHi)
@@ -119,12 +119,16 @@ public struct HostView: View {
                         .accessibilityHidden(true)
                     Text(title).typeRole(.lead).foregroundStyle(Tokens.text)
                     Text(detail).typeRole(.eyebrow).multilineTextAlignment(.center)
-                    if let secondsRemaining {
-                        Text(secondsRemaining).typeRole(.code).foregroundStyle(Tokens.hostHi)
-                    }
                     buttons
                 }
                 .padding(Tokens.space7)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .bottom) {
+                    if let secondsRemaining {
+                        Text(secondsRemaining).typeRole(.code).foregroundStyle(Tokens.hostHi)
+                            .padding(Tokens.space7)
+                    }
+                }
             case let .result(outcome, title):
                 ResultCard(outcome, title: title) { buttons }
             case let .processor(eyebrow, title):
@@ -154,17 +158,20 @@ public struct HostView: View {
         .opacity(action.isEnabled ? 1 : 0.5)
     }
 
+    @ViewBuilder
     private var buttons: some View {
-        VStack(spacing: Tokens.space5) {
-            ForEach(state.buttons.indices, id: \.self) { index in
-                let action = state.buttons[index]
-                Button { send(action) } label: {
-                    Label(action.title, systemImage: action.symbol)
+        if !state.buttons.isEmpty {
+            VStack(spacing: Tokens.space5) {
+                ForEach(state.buttons.indices, id: \.self) { index in
+                    let action = state.buttons[index]
+                    Button { send(action) } label: {
+                        Label(action.title, systemImage: action.symbol)
+                    }
+                    .buttonStyle(.action(action.kind))
+                    .disabled(!action.isEnabled)
+                    .allowsHitTesting(action.isEnabled && isEnabled)
+                    .opacity(action.isEnabled ? 1 : 0.5)
                 }
-                .buttonStyle(.action(action.kind))
-                .disabled(!action.isEnabled)
-                .allowsHitTesting(action.isEnabled && isEnabled)
-                .opacity(action.isEnabled ? 1 : 0.5)
             }
         }
     }
