@@ -13,6 +13,7 @@ import enum SystemAudioCapture.ProcessSelection
 public final class AudelinRecording: Sendable {
 
     public let recording: Recording
+    public let detectionFailures: AsyncStream<any Error>
     private let conditions: RecordingConditions
     private let delivery: ApplicationDelivery
 
@@ -60,6 +61,7 @@ public final class AudelinRecording: Sendable {
             Task { await recording.end() }
             throw error
         }
+        detectionFailures = calls.failures
         delivery = ApplicationDelivery(processes: processes, calls: calls, model: startModel())
     }
 

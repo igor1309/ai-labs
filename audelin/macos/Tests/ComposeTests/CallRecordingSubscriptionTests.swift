@@ -63,6 +63,9 @@ struct CallRecordingSubscriptionTests {
             rig.calls.yield(.started(app: "another meeting"))
             rig.calls.finish(throwing: ScriptFailure.failed)
             await rig.forwarding.wait()
+            for await _ in rig.forwarding.failures {
+                Issue.record("Cancellation must not report a detector failure")
+            }
             #expect(await rig.recording.snapshot() == before)
             #expect(rig.session.effects.all == [.beginSession(id: 1)])
         }
@@ -92,19 +95,25 @@ struct CallRecordingSubscriptionTests {
         #expect(session.effects.all.isEmpty)
     }
 
-    @Test func compositionStartsDetectionAndReturnsStartFailure() async throws {
+    @Test func compositionReportsStartupAndRuntimeFailure() async throws {
 
         let session = CallSession()
         let recording = Recording(handler: .init(session: session), initial: .init(automatic: true, missing: []))
-        let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
+        let binding = CallBinding(fails: false)
+        let processes = CoreAudioProcesses(binding: binding, clock: UnusedCallClock())
         let forwarding = try composeCalls(processes, to: recording)
         defer { forwarding.cancel(); processes.stop() }
         for await state in await recording.states() {
             if state.phase == .recording { break }
         }
         #expect(await recording.snapshot().session == .init(id: 1, origin: .call))
-        processes.stop()
+        binding.fail()
         await forwarding.wait()
+        var failures = [ScriptFailure]()
+        for await error in forwarding.failures {
+            failures.append(try #require(error as? ScriptFailure))
+        }
+        #expect(failures == [.failed])
         for await state in await recording.states() {
             if state.phase == .idle { break }
         }
@@ -123,6 +132,11 @@ private func assertDetectionLossEndsCall(error: (any Error)?) async throws {
         _ = try await rig.state(in: .recording)
         rig.calls.finish(throwing: error)
         await rig.forwarding.wait()
+        var failures = [ScriptFailure]()
+        for await failure in rig.forwarding.failures {
+            failures.append(try #require(failure as? ScriptFailure))
+        }
+        #expect(failures == (error == nil ? [] : [.failed]))
         let ended = try await rig.state(in: .idle)
         #expect(!ended.callOn)
         #expect(ended.session == nil)
@@ -190,9 +204,9 @@ private final class CallSession: RecordingSession {
 
 final class CallBinding: ProcessBinding {
 
-    let fails: Bool
     private struct State {
 
+        var fails: Bool
         var input: Bool
         var listeners: [Int: @Sendable () -> Void] = [:]
         var nextListener = 0
@@ -201,8 +215,7 @@ final class CallBinding: ProcessBinding {
 
     init(fails: Bool, input: Bool = true) {
 
-        self.fails = fails
-        state = Mutex(State(input: input))
+        state = Mutex(State(fails: fails, input: input))
     }
 
     var activeListeners: Int { state.withLock { $0.listeners.count } }
@@ -218,9 +231,15 @@ final class CallBinding: ProcessBinding {
         queuedNotifications().forEach { $0() }
     }
 
+    func fail() {
+
+        state.withLock { $0.fails = true }
+        queuedNotifications().forEach { $0() }
+    }
+
     func processObjects() throws -> [ProcessObject] {
 
-        if fails { throw ScriptFailure.failed }
+        if state.withLock({ $0.fails }) { throw ScriptFailure.failed }
         return [1]
     }
 

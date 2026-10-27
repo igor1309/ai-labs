@@ -33,6 +33,7 @@ private final class MenuBarModel {
     private let preferences: PreferencesStore
     private let application: AudelinRecording?
     private var observation: Task<Void, Never>?
+    private var detectionObservation: Task<Void, Never>?
 
     var item: MenuBarItem { .from(state, liveText: preferences.read().liveText) }
     var stateLine: String { failure ?? item.stateLine }
@@ -49,6 +50,12 @@ private final class MenuBarModel {
                 for await state in await recording.states() {
                     guard let self else { return }
                     self.state = state
+                }
+            }
+            detectionObservation = Task { [weak self, failures = application.detectionFailures] in
+                for await error in failures {
+                    guard let self else { return }
+                    self.failure = "Наблюдение за звонками остановлено: \(error)"
                 }
             }
         } catch {
@@ -77,5 +84,9 @@ private final class MenuBarModel {
         }
     }
 
-    isolated deinit { observation?.cancel() }
+    isolated deinit {
+
+        observation?.cancel()
+        detectionObservation?.cancel()
+    }
 }

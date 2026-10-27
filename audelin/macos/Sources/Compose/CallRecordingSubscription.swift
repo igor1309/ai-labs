@@ -5,6 +5,9 @@ import Synchronization
 /// Forwards detection until the stream ends or the caller cancels.
 public final class CallRecordingSubscription: Sendable {
 
+    /// Detection failures buffered until observed; errors after cancellation are suppressed.
+    public let failures: AsyncStream<any Error>
+
     private let task: Task<Void, Never>
     private let stop: @Sendable () -> Void
 
@@ -15,7 +18,10 @@ public final class CallRecordingSubscription: Sendable {
     ) {
 
         let destination = Mutex(Destination(recording: recording))
+        let (failures, output) = AsyncStream<any Error>.makeStream()
+        self.failures = failures
         let task = Task {
+            defer { output.finish() }
             do {
                 for try await event in calls {
                     let forwarded = destination.withLock { state in
@@ -35,7 +41,10 @@ public final class CallRecordingSubscription: Sendable {
                     if !forwarded { return }
                 }
             } catch {
-                // Losing detection ends its call just as a finished stream does.
+                destination.withLock { state in
+                    guard !state.stopped else { return }
+                    output.yield(error)
+                }
             }
             destination.withLock { state in
                 guard !state.stopped else { return }
