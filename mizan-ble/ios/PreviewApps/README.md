@@ -1,6 +1,6 @@
 # Preview apps
 
-macOS apps that show one UI module in isolation, with plain stand-in screens.
+macOS apps that show one UI module in isolation, with controls and PNG export.
 They live in a separate package so the product never depends on them. Requires
 macOS 26 and Swift 6.2.
 
@@ -9,6 +9,8 @@ From this directory:
 ```sh
 swift run ModeSwitchPreview
 swift run ModeSwitchPreview --export /tmp/mizan-mode-switch
+swift run HostPreview
+swift run HostPreview --export /tmp/mizan-host
 swift run SettingsPreview
 swift run SettingsPreview --export /tmp/mizan-settings
 ```
@@ -24,31 +26,34 @@ in light and dark. Files are named `<side>-<enabled|disabled>-<device>-<light|da
 The iPad images are 1194 × 834 pixels and the iPhone images 393 × 852 pixels,
 without preview controls or window chrome.
 
-`SettingsPreview` shows every entry of `SettingsUI`'s preview list at iPad size,
-with a state picker, light/dark appearance and an event log. Countdown taps and
-Done only log events; choose a preview to change the displayed state. Export
-writes 10 PNGs, one per state in each appearance, named
+`HostPreview` shows every named `HostUI` preview at iPad size. Taps add to
+the event log; the picker alone changes the screen. Export writes 28 PNGs
+(14 states in both appearances), named `<preview-name>-iPad-<light|dark>.png`,
+at 1194 × 834 pixels.
+
+`SettingsPreview` shows every entry of `SettingsUI`'s preview list at iPad
+size. Countdown taps and Done add to the event log; the picker alone changes
+the screen. Export writes 10 PNGs, one per state in each appearance, named
 `s1-settings-<seconds>s-iPad-<light|dark>.png`, at 1194 × 834 pixels.
+
+Each has a state picker, light/dark appearance and the event log.
 
 `PreviewKit` provides `PreviewWindow` (content over a backdrop on the left,
 controls, appearance and events on the right), `PreviewDeviceSize` dimensions, and
 `PreviewExporter`. To add an app, give it an executable target depending on
 `PreviewKit` and the feature's products. Supply one named `PreviewSnapshot` per
-state to the exporter; it renders each on both devices in both appearances by
-default. Pass `devices: [.iPad]` for an iPad-only screen.
+state to the exporter; it renders each in both appearances, on both devices
+unless the app passes a smaller `devices` list.
 There are no tests in this package; compare the exports with the design.
 
 ## What a preview app holds
 
-A preview app runs the real view, not a picture of it. Its state lives in
-the app (`@State`). A state-catalogue app such as `SettingsPreview` logs events
-and changes the displayed state only through its picker. An app demonstrating
-transitions changes state on events, so a tap shows the next screen.
-For a screen a machine drives, the app runs the package's real
-machine and stubs only what reaches outside: timers, Bluetooth, the
-processor. Fixtures are named states for the exporter and the controls.
+A preview app runs the real view. `HostPreview` and `SettingsPreview` hold only the selected
+preview and the event log: a tap is logged, and the picker alone changes the
+screen. The picker and the exporter read the module's named preview list.
+`ModeSwitchPreview` also lets the tap change the chosen side.
 
-A preview app is as large as that stand-in needs to be: a toggle for the
-mode switch, a machine and its stubs for a payment screen. It copies no
-feature code; when it needs a type the product lacks, the type belongs in
-the product.
+A preview app copies no feature code; when it needs a type the product lacks,
+the type belongs in the product. Driving a screen live with its real
+machines, and timers, Bluetooth and the processor stubbed, is later work, once
+the machines exist.
