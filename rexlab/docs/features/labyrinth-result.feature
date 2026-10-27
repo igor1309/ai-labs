@@ -25,5 +25,13 @@ Feature: A happy reunion reward
     Then the shared three-level switch appears above AGAIN
     And AGAIN starts the chosen level with its own best score
     And the three stars have the same value at every level
-    And after three consecutive solved rounds without hints at a lower level the shared next-level offer appears
+    And before a declined offer, after three consecutive solved rounds without hints at a lower level the shared next-level offer appears
     And accepting or declining follows the shared level-offer rules
+
+  Scenario: Declining a level offer
+    Given the child declines or leaves an unanswered level offer at Hatchling
+    When the child solves three and then four consecutive Hatchling rounds without hints
+    Then no offer appears
+    When the child solves the fifth consecutive Hatchling round without hints
+    Then Explorer is offered
+    And a hinted round or a round at another level resets the streak

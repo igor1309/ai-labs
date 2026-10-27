@@ -1,12 +1,13 @@
 Feature: Guide a baby dinosaur home
   The global age level chooses Hatchling, Explorer or Paleontologist.
   Explorer is the default. A level switch is available on the result.
-  A per-game choice follows the shared override and reset rules.
+  A per-game choice is remembered until the global age level changes, which resets it.
+  Both walls and paths occupy grid cells. Mazes are connected trees without loops.
   Each round has one fixed maze, with no timer, lives or moving threats.
 
   Scenario: A clear board
     Given a labyrinth round starts
-    Then the whole maze is visible in iPad landscape at 1024 by 670, 1024 by 690, 1024 by 768, 1133 by 670 and 1133 by 744, including all controls
+    Then the whole maze is visible in iPad landscape at 1920 by 1080, 1440 by 900, 1376 by 1032, 1024 by 670, 1024 by 690, 1024 by 768, 1133 by 670 and 1133 by 744, including all controls
     And the baby and its larger parent use the same existing dinosaur picture
     And the parent is visibly marked as the goal
     And each path cell has a touch target at least 48 CSS pixels wide and high
@@ -25,15 +26,14 @@ Feature: Guide a baby dinosaur home
 
   Scenario: Optional help
     When the child taps the hint control
-    Then only the next space on a route from the current position to the parent is highlighted
+    Then only the next space on the unique route from the current position to the parent is highlighted
     And the baby does not move
     And using hints does not reduce the reward
     When the child makes a legal move
     Then the old hint clears
 
   Scenario: A maze worth exploring
-    Then every shipped maze has a reachable goal and at least one branching dead end
-    And there are at least three different maze layouts
+    Then every shipped maze has a reachable goal and satisfies its level difficulty requirements
     And the next round chooses a layout different from the previous round
     And all path cells are reachable from the start
 
@@ -50,7 +50,7 @@ Feature: Guide a baby dinosaur home
     Then its board has <columns> columns and <rows> rows
     And its shortest solution has at least <steps> single-space moves
     And at least <decisions> junctions on the solution have a wrong branch
-    And at least <detours> of those wrong branches run for 4 or more moves before ending
+    And at least <detours> wrong branches have a path from the solution junction to a dead end of 4 or more moves, measured along their longest simple path
     And the board is selected from at least 6 qualifying layouts at this level
     And no route or correct direction is marked unless HINT is explicitly tapped
     And footprints indicate all legal adjacent spaces equally, including wrong turns
@@ -65,4 +65,4 @@ Feature: Guide a baby dinosaur home
     Then automated graph checks prove the length, junction and detour requirements for every layout
     And every layout is connected and solvable
     And retrying or asking for help never moves the child to an easier level
-    And the current simple maze is retained only among Hatchling layouts if it qualifies
+    And the existing fern, grove and brook layouts are kept at Hatchling when they satisfy its thresholds, with additional qualifying layouts to reach six
