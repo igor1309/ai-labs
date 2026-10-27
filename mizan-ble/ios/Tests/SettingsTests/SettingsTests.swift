@@ -43,6 +43,8 @@ struct SettingsTests {
             (.pickerAlpha, \.pickerAlpha, 0.3, [0.049, 1.01]),
             (.pickerWindowSeconds, \.pickerWindowSeconds, 1, [0.49, 5.01]),
             (.pickerFade, \.pickerFade, 2, [0.49, 10.01]),
+            (.pickerFloor, \.pickerFloor, -65, [0, -100.5, -29.5]),
+            (.pickerMargin, \.pickerMargin, 6, [-0.5, 20.5]),
         ]
         for (key, property, fallback, outside) in cases {
             for value in outside + [.nan, -.infinity, .infinity] {
@@ -55,8 +57,6 @@ struct SettingsTests {
         let integerCases: [(Settings.Key, KeyPath<Settings, Int>, Int, [Double])] = [
             (.countdown, \.countdown, 60, [0, 45, 121, 30.5]),
             (.pickerWindowReadings, \.pickerWindowReadings, 5, [0, 21, 1.5]),
-            (.pickerFloor, \.pickerFloor, -65, [0, -101, -29, -65.5]),
-            (.pickerMargin, \.pickerMargin, 6, [-1, 21, 6.5]),
         ]
         for (key, property, fallback, outside) in integerCases {
             for value in outside + [.nan, -.infinity, .infinity, Double.greatestFiniteMagnitude] {
@@ -93,6 +93,8 @@ struct SettingsTests {
             (.pickerAlpha, \.pickerAlpha, [0.05, 0.4, 1]),
             (.pickerWindowSeconds, \.pickerWindowSeconds, [0.5, 3, 5]),
             (.pickerFade, \.pickerFade, [0.5, 4, 10]),
+            (.pickerFloor, \.pickerFloor, [-100, -70.5, -30]),
+            (.pickerMargin, \.pickerMargin, [0, 6.5, 20]),
         ]
         for (key, property, values) in realCases {
             for value in values {
@@ -102,8 +104,6 @@ struct SettingsTests {
         }
         let integerCases: [(Settings.Key, KeyPath<Settings, Int>, [Int])] = [
             (.pickerWindowReadings, \.pickerWindowReadings, [1, 8, 20]),
-            (.pickerFloor, \.pickerFloor, [-100, -70, -30]),
-            (.pickerMargin, \.pickerMargin, [0, 8, 20]),
         ]
         for (key, property, values) in integerCases {
             for value in values {
