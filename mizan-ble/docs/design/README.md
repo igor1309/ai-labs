@@ -30,5 +30,8 @@ as the refreshed snapshot and the regenerated Swift:
    `Sources/DesignSystem/Tokens.swift` from the `mz-*` variables;
    `--check` exits 1 when that file is stale, and CI runs it.
 
-The design system has one appearance. A `mz-*` variable given a theme fails
-the generator until the app learns to switch appearances.
+Each `mz-*` colour has a dark and a light value on the `mode` theme axis.
+Dark remains the reference design. The module picks the value from the
+SwiftUI environment's colour scheme, following the device's appearance.
+Unthemed colours use the same value in both appearances; numbers and
+strings remain unthemed.

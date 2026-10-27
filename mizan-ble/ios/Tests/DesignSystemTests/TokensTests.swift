@@ -6,7 +6,8 @@ import Testing
 
 struct TokensTests {
 
-    @Test func matchTheDesignsVariables() throws {
+    @Test(arguments: [ColorScheme.light, .dark])
+    func matchTheDesignsVariables(scheme: ColorScheme) throws {
 
         let design = try designTokens()
 
@@ -14,8 +15,18 @@ struct TokensTests {
         for (name, entry) in design {
             let token = try #require(Tokens.byName[name], "\(name) has no token")
             switch (token, entry["value"]) {
-            case let (.color(color), hex as String):
-                #expect(rgba(color) == rgba(hex), "\(name)")
+            case let (.color(color), value):
+                let hex: String
+                if let unthemed = value as? String {
+                    hex = unthemed
+                } else {
+                    let entries = try #require(value as? [[String: Any]], "\(name)")
+                    let mode = scheme == .dark ? "dark" : "light"
+                    let matches = entries.filter { ($0["theme"] as? [String: String]) == ["mode": mode] }
+                    #expect(matches.count == 1, "\(name): expected one \(mode) value")
+                    hex = try #require(matches.first?["value"] as? String, "\(name)")
+                }
+                #expect(rgba(color, scheme: scheme) == rgba(hex), "\(name) in \(scheme)")
             case let (.number(number), value as NSNumber):
                 #expect(number == CGFloat(value.doubleValue), "\(name)")
             case let (.string(string), value as String):
@@ -70,9 +81,11 @@ private struct RGBA: Equatable {
     let red, green, blue, alpha: Int
 }
 
-private func rgba(_ color: Color) -> RGBA {
+private func rgba(_ color: Color, scheme: ColorScheme) -> RGBA {
 
-    let resolved = color.resolve(in: EnvironmentValues())
+    var environment = EnvironmentValues()
+    environment.colorScheme = scheme
+    let resolved = color.resolve(in: environment)
     func byte(_ value: Float) -> Int { Int((value * 255).rounded()) }
     return RGBA(
         red: byte(resolved.red),

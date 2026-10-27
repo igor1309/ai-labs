@@ -44,6 +44,25 @@ struct RenderTests {
         try save(gallery, "gallery-\(scheme == .dark ? "dark" : "light")")
     }
 
+    @Test func galleryDrawsTheGroundForEachAppearance() throws {
+
+        var samples: [[UInt8]] = []
+        for scheme in [ColorScheme.light, .dark] {
+            let image = try #require(render(DesignSystemGallery().environment(\.colorScheme, scheme), scale: 1))
+            // The gallery's padding leaves this pixel entirely on its ground.
+            let offset = (2 * image.width + 2) * 4
+            let sample = Array(pixels(image)[offset..<(offset + 4)])
+            var environment = EnvironmentValues()
+            environment.colorScheme = scheme
+            let ground = Tokens.ground.resolve(in: environment)
+            let expected = [ground.red, ground.green, ground.blue, ground.opacity]
+                .map { UInt8(($0 * 255).rounded()) }
+            #expect(sample == expected, "ground in \(scheme)")
+            samples.append(sample)
+        }
+        #expect(samples[0] != samples[1])
+    }
+
     private var components: [(String, AnyView)] {
 
         var views: [(String, AnyView)] = []
@@ -86,8 +105,8 @@ private func pixels(_ image: CGImage) -> [UInt8] {
         height: image.height,
         bitsPerComponent: 8,
         bytesPerRow: image.width * 4,
-        space: CGColorSpaceCreateDeviceRGB(),
-        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        space: CGColorSpace(name: CGColorSpace.sRGB),
+        bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
     )
     context?.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
     return bytes
