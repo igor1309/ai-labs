@@ -2,6 +2,12 @@
 
 ## 2026-10-27
 
+- A light appearance: every design system colour has a light value, and
+  the app's components follow the device's light or dark setting (LAB-633).
+- The design system module: the design's tokens, generated from a snapshot
+  of the design file, the bundled fonts, the Mizan sign, and the buttons,
+  amount, countdown, mode header and result card the screens are built
+  from (LAB-627).
 - Design: the design system is locked, with host orange and client blue and
   the mode switch in every header; paired host and client frames cover the
   flow; the Mizan sign is a turned M with a tail and two bars; earlier
