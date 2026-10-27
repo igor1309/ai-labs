@@ -24,17 +24,13 @@ frame.
 
 ## Tokens
 
-The app's tokens are generated from [tokens.json](tokens.json), a snapshot of
-this file's variables. A token change in the design ships in the same commit
-as the refreshed snapshot and the regenerated Swift:
-
-1. Through the pencil MCP, run `execute` on this file with
-   `Print(JSON.stringify(GetVariables()))`.
-2. Write the printed JSON to `tokens.json` with a 2-space indent and a final
-   newline, so the diff shows only the changed tokens.
-3. In `mizan-ble/ios`, run `python3 -I scripts/generate-tokens.py`. It writes
-   `Sources/DesignSystem/Tokens.swift` from the `mz-*` variables;
-   `--check` exits 1 when that file is stale, and CI runs it.
+The app's tokens are generated straight from this file's variables; a
+`.pen` file is JSON. A token change in the design ships in the same commit
+as the regenerated Swift: in `mizan-ble/ios`, run
+`python3 -I scripts/generate-tokens.py`. It writes
+`Sources/DesignSystem/Tokens.swift` from the `mz-*` variables. CI runs it
+with `--check`, which exits 1 when that file no longer matches the design,
+and on any change to this file.
 
 Each `mz-*` colour has a dark and a light value on the `mode` theme axis.
 Dark remains the reference design. The module picks the value from the

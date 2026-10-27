@@ -289,7 +289,7 @@ jobs:
               - "audelin/scripts/swift-test-bounded.sh"
             mizan-ble:
               - "mizan-ble/ios/**"
-              - "mizan-ble/docs/design/tokens.json"
+              - "mizan-ble/docs/design/mizan-ble.pen"
             mizan-ble-ci:
               - ".github/workflows/mizan-ble-core.yml"
             claude-insights:

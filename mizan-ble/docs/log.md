@@ -2,6 +2,9 @@
 
 ## 2026-10-27
 
+- The tokens are generated straight from the design file, and CI fails
+  when the design and the app's tokens differ; the hand-made snapshot is
+  gone.
 - The rest of the design system in the module: named type roles, the
   status pill, the host rail and client stepper, device chips, messages and
   the exchange strip, keypad keys, and the iPad and iPhone screen shells
