@@ -2,6 +2,7 @@
 
 ## 2026-10-27
 
+- ClientPaymentUI gives the payer amount review, confirm and decline progress, the host's result and clear cancelled or lost-link outcomes (LAB-674).
 - ModeSwitchUI shows the chosen host or client screen with its header switch dimmed during a payment (LAB-670).
 - ModeSwitchPreview lets you try both device shells and compare every switch state in light and dark as device-sized PNGs (LAB-670).
 - SessionCrypto derives a fresh transaction key, seals and opens authenticated messages, and refuses replays and messages after closure (LAB-649).
