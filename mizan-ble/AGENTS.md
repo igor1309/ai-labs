@@ -48,9 +48,9 @@ How behaviour is specified before it is built, after audelin's process.
 
 ## Building
 
-- Test-first: each test is run red before the code exists, failing on its
-  assertion (the API stubbed first), and the red run is shown with the
-  green one.
+- Cores and adapters are built test-first: each test is run red before
+  the code exists, failing on its assertion (the API stubbed first), and
+  the red run is shown with the green one.
 - A core is tested with fakes of its interfaces and a fake clock. No test
   proves something did not happen by sleeping; it asserts the state that
   says so.
@@ -60,6 +60,23 @@ How behaviour is specified before it is built, after audelin's process.
   iPhone proves the binding.
 - A change to behaviour, a fix included, goes spec change, then build, then
   review.
+
+## UI modules
+
+- A UI module renders a state it is given and sends the person's taps
+  through an event closure it owns. It implements no scenario: the
+  scenarios are its machines' behaviour, proved by their tests and the
+  user spec.
+- The first step for a UI module is its state shape: a value type that can
+  express every situation its spec's scenarios name, with all text already
+  formatted. The view, its events and its previews follow from it.
+- No observable objects (`ObservableObject`, `@Observable`) in a UI module,
+  and no logic: the view reads the state and calls the closure.
+- No tests in a UI module. Each one has previews that render every state
+  exactly as its design frame draws it; a UI module is verified by matching
+  its preview snapshots with the design, and gets no Agister review.
+- One UI module per piece of work: build, compare with the design, and
+  merge one before starting the next.
 
 ## Design
 
