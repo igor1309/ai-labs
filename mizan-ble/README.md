@@ -17,7 +17,7 @@ explicit handshake (v0.1.0) and the foreground app (v0.2.0).
 | [NOTES.md](NOTES.md) | How it is built: choosing the host by signal strength, encrypting each exchange with a per-session key |
 | [ios/](ios/) | The Swift package: the `DesignSystem` module so far. `swift test` runs its tests |
 | [docs/design/](docs/design/) | The design in pen.dev (`mizan-ble.pen`) and its previews: the design system, the host and client screens and the paired flow, and the Mizan sign candidates |
-| [docs/research/](docs/research/) | Research notes: how existing proximity payments work (Sber's «Вжух» so far) |
+| [docs/research/](docs/research/) | Research notes on proximity payments, including an architecture proposal candidate for discussion |
 | [docs/log.md](docs/log.md) | What changed for the product, newest first |
 
 Each mode has its own colour, orange for the host and cyan for the

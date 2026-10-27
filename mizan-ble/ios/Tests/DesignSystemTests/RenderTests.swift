@@ -63,6 +63,51 @@ struct RenderTests {
         #expect(samples[0] != samples[1])
     }
 
+    @Test(arguments: [ColorScheme.light, .dark])
+    func typeRolesApplyDefaultsAndAllowForegroundOverrides(scheme: ColorScheme) throws {
+        for role in TypeRole.allCases {
+            let styles = [
+                AnyShapeStyle(role.color),
+                AnyShapeStyle(Tokens.bad),
+                AnyShapeStyle(LinearGradient(colors: [Tokens.host, Tokens.client], startPoint: .leading, endPoint: .trailing)),
+            ]
+            for (index, style) in styles.enumerated() {
+                let base = Text("Mizan 47").typeRole(role)
+                let styled = index == 0 ? base : base.foregroundStyle(style)
+                let explicit = Text("Mizan 47").font(role.font).tracking(role.tracking).foregroundStyle(style)
+                let actual = try #require(render(styled.environment(\.colorScheme, scheme)))
+                let expected = try #require(render(explicit.environment(\.colorScheme, scheme)))
+                #expect(actual.width == expected.width && actual.height == expected.height, "\(role)")
+                let matches = pixels(actual) == pixels(expected)
+                #expect(matches, "\(role): style \(index) in \(scheme)")
+            }
+        }
+    }
+
+    @Test func railOmitsTheFinalConnector() throws {
+        let step = SessionStep(.done, title: "Amount", detail: "Locked")
+        let connected = try #require(render(HostRailStep(step, number: 1).frame(width: 244), scale: 1))
+        let last = try #require(render(HostRailStep(step, number: 1, isLast: true).frame(width: 244), scale: 1))
+        #expect(connected.height == 76)
+        #expect(last.height == 52)
+        #expect(pixels(connected)[(60 * connected.width + 14) * 4 + 3] > 0)
+        #expect(pixels(last)[(48 * last.width + 14) * 4 + 3] == 0)
+        let rail = try #require(render(HostRail([step, step]).frame(width: 244), scale: 1))
+        #expect(rail.height == 128)
+        #expect(pixels(rail)[(124 * rail.width + 14) * 4 + 3] == 0)
+    }
+
+    @Test func stepperOmitsTheFinalConnector() throws {
+        let step = SessionStep(.done, title: "Find", detail: "Ready")
+        let connected = try #require(render(ClientStepperStep(step, number: 1).frame(width: 100), scale: 1))
+        let last = try #require(render(ClientStepperStep(step, number: 1, isLast: true).frame(width: 100), scale: 1))
+        #expect(pixels(connected)[(12 * connected.width + 80) * 4 + 3] > 0)
+        #expect(pixels(last)[(12 * last.width + 80) * 4 + 3] == 0)
+        let row = try #require(render(ClientStepper([step, step]).frame(width: 200), scale: 1))
+        #expect(pixels(row)[(12 * row.width + 80) * 4 + 3] > 0)
+        #expect(pixels(row)[(12 * row.width + 180) * 4 + 3] == 0)
+    }
+
     private var components: [(String, AnyView)] {
 
         var views: [(String, AnyView)] = []
@@ -82,6 +127,49 @@ struct RenderTests {
         }
         for outcome in Outcome.allCases {
             views.append(("result card \(outcome)", AnyView(ResultCard(outcome, title: "Title").frame(width: 320))))
+        }
+        for role in TypeRole.allCases {
+            views.append(("type \(role)", AnyView(Text("Mizan 47").typeRole(role))))
+        }
+        for state in StatusPill.State.allCases {
+            views.append(("pill \(state)", AnyView(StatusPill("Status", state: state))))
+        }
+        let steps = StepState.allCases.map { SessionStep($0, title: "Step", detail: "Detail") }
+        for (index, step) in steps.enumerated() {
+            views.append(("rail \(step.state)", AnyView(HostRailStep(step, number: index + 1).frame(width: 244))))
+            views.append(("stepper \(step.state)", AnyView(ClientStepperStep(step, number: index + 1).frame(width: 120))))
+        }
+        views.append(("host rail", AnyView(HostRail(steps).frame(width: 244))))
+        views.append(("client stepper", AnyView(ClientStepper(steps).frame(width: 353))))
+        for kind in DeviceChip.Kind.allCases {
+            views.append(("chip \(kind)", AnyView(DeviceChip(kind, code: "H2", state: "Ready"))))
+        }
+        for direction in Message.Direction.allCases {
+            for tone in Message.Tone.allCases {
+                views.append(("message \(direction) \(tone)", AnyView(
+                    Message("Handshake", direction: direction, tone: tone).frame(width: 240)
+                )))
+            }
+        }
+        views.append(("exchange strip", AnyView(ExchangeStrip(
+            host: DeviceChip(.host, code: "H2", state: "Advertising"),
+            message: Message("advertise · on lock", tone: .host),
+            client: DeviceChip(.client, code: "C1", state: "Ready")
+        ).frame(width: 560))))
+        views.append(("digit key", AnyView(KeypadKey("7") {})))
+        views.append(("icon key", AnyView(KeypadKey(systemImage: "delete.left", accessibilityLabel: "Delete") {})))
+        for size in [(1194.0, 834.0), (1024.0, 768.0)] {
+            views.append(("iPad shell \(size)", AnyView(IPadShell(
+                eyebrow: "STEP 2 OF 5 · ADVERTISE", status: StatusPill("Advertising", state: .host),
+                deviceCode: "MIZAN-7F3A", deviceMeta: "Advertised name · 60 s", onSwitch: { _ in }, onSettings: {}
+            ) { HostRail(steps) } content: { Text("Content").typeRole(.body) }
+                .frame(width: size.0, height: size.1))))
+        }
+        for size in [(393.0, 852.0), (430.0, 932.0)] {
+            views.append(("iPhone shell \(size)", AnyView(IPhoneShell(
+                eyebrow: "STEP 1 OF 4 · FIND", status: StatusPill("Idle"), onSwitch: { _ in }
+            ) { ClientStepper(steps) } content: { Text("Content").typeRole(.body) }
+                .frame(width: size.0, height: size.1))))
         }
         return views
     }
