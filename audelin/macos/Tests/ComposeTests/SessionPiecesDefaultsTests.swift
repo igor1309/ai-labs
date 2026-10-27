@@ -53,7 +53,10 @@ struct SessionPiecesDefaultsTests {
                 try await pieces.stop()
                 try await pieces.transcript.close()
 
-                let delivered = try #require(await updates.next())
+                // Lossless delivery retains the intermediate revisions before completion.
+                var last = await updates.next()
+                while let state = await updates.next() { last = state }
+                let delivered = try #require(last)
                 #expect(delivered.status == .finished)
                 #expect(delivered.entries.map(\.speaker) == [.mine, .theirs])
                 #expect(delivered.entries.map(\.text.settled) == ["mine final", "theirs final"])

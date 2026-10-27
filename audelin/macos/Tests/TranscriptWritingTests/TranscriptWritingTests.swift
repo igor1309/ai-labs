@@ -4,7 +4,7 @@ import TranscriptWriting
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptWritingTests {
 
-    @Test func unreadUpdatesKeepOnlyTheLatestText() async {
+    @Test func unreadUpdatesRetainEverySnapshot() async {
 
         let executor = TestExecutor()
         let call = FakeCallText<String>(
@@ -25,7 +25,7 @@ struct TranscriptWritingTests {
             return received
         }
         await executor.finish()
-        #expect(await task.value == [texts[texts.count - 1]])
+        #expect(await task.value == texts)
         #expect(transcript.kept == texts.last)
     }
 

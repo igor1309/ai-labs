@@ -5,6 +5,32 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct CallTextTests {
 
+    @Test func heldConsumerReceivesOmissionsBeforeReusedIDs() async {
+
+        let rig = Rig()
+        await rig.call.start()
+        var updates = rig.call.updates.makeAsyncIterator()
+        while let state = await updates.next() {
+            if state.status == .listening { break }
+        }
+        let original = [SideState.Entry(text: Text(id: 7, start: 2, end: 3, pending: "old"))]
+        let reused = [SideState.Entry(text: Text(id: 7, start: 12, end: 13, pending: "new"))]
+        await rig.microphone.revise(original)
+        await rig.microphone.revise([])
+        await rig.microphone.revise(reused)
+        await rig.call.stop()
+
+        var listening: [State] = []
+        while let state = await updates.next() {
+            if state.status == .listening { listening.append(state) }
+        }
+        #expect(Array(listening.prefix(3)) == [original, [], reused].map { entries in
+            State(status: .listening, entries: entries.map {
+                .init(speaker: .mine, text: $0.text, writtenLater: $0.writtenLater)
+            })
+        })
+    }
+
     @Test func microphoneWordsAppearAsMineBeforeTheNextWord() async {
 
         let rig = Rig()

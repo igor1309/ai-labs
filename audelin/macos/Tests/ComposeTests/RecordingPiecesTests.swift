@@ -152,7 +152,7 @@ struct RecordingPiecesTests {
         let app = RecordingCallApp(), observed = Values<String>(), beforeStarts = Values<String?>()
         let recording = await composeRecording(makePieces: { _ in
             preconditionFailure("Automatic recording is off")
-        }, liveText: { false })
+        }, liveText: { false }, panel: ReadingClockSpy().panel())
         let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
         let forwarding = CallRecordingSubscription(
             calls: source.stream, recording: recording,
@@ -173,7 +173,7 @@ struct RecordingPiecesTests {
         let detectedApp = RecordingCallApp(), detected = Values<String>()
         let detectorRecording = await composeRecording(makePieces: { _ in
             preconditionFailure("Automatic recording is off")
-        }, liveText: { false })
+        }, liveText: { false }, panel: ReadingClockSpy().panel())
         let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
         defer { processes.stop() }
         let subscription = try composeCalls(processes, to: detectorRecording, startedApp: {

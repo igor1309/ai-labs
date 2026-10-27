@@ -33,6 +33,12 @@ enum Offscreen {
         return view.subviews.lazy.compactMap(textView(in:)).first
     }
 
+    static func heldText(in view: NSView) -> [NSTextField] {
+
+        let own = (view as? NSTextField).flatMap { $0.accessibilityIdentifier() == "held-text" ? $0 : nil }
+        return (own.map { [$0] } ?? []) + view.subviews.flatMap { heldText(in: $0) }
+    }
+
     static func snapshot(_ view: NSView) -> NSBitmapImageRep? {
 
         view.display()

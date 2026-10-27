@@ -2,6 +2,12 @@
 
 ## 2026-10-27
 
+- The panel stays empty until recording begins and gives reused speech IDs
+  fresh times and positions even when reading falls behind (LAB-645).
+
+- Each recording feeds its own panel state with call text and elapsed time;
+  held selections stay visible while live text prepares again (LAB-507, LAB-641).
+
 - Reading decides the panel's call order, held selections and following,
   keeping prior text when live text is off or fails (LAB-507).
 

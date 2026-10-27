@@ -130,7 +130,7 @@ final class LiveCall {
         let recording: PanelState.Recording = isRecording
             ? .on(elapsed: String(format: "%02d:%02d:%02d", elapsed / 3600, elapsed / 60 % 60, elapsed % 60))
             : .off
-        return .init(recording: recording, log: loadingSince != nil ? .preparing : .lines(lines))
+        return .init(recording: recording, log: loadingSince != nil ? .preparing(holds: lines.holds) : .lines(lines))
     }
 
     func handle(_ event: PanelEvent) {
