@@ -15,5 +15,13 @@ let package = Package(
                 .product(name: "ModeSwitchUI", package: "ios"),
             ]
         ),
+        .executableTarget(
+            name: "SettingsPreview",
+            dependencies: [
+                "PreviewKit",
+                .product(name: "DesignSystem", package: "ios"),
+                .product(name: "SettingsUI", package: "ios"),
+            ]
+        ),
     ]
 )
