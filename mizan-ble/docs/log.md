@@ -4,6 +4,7 @@
 
 - HostPreview lets the operator inspect every host screen and its events, and export iPad PNGs in light and dark for comparison with the design (LAB-676).
 - SettingsPreview lets the operator inspect every iPad settings state, log taps and export light/dark PNGs for comparison with the design (LAB-677).
+- ClientPreview lets you inspect every payer find/connect state, log its actions and export iPhone PNGs in light and dark for comparison with the design (LAB-678).
 - SettingsUI gives the operator countdown choices with a full-ring preview and shows the advertised name, currency and processor read-only (LAB-672).
 - ClientUI gives the payer find and connect screens for nearby tills, connection progress and failures, with start, cancel and retry actions (LAB-673).
 - HostUI gives the operator an amount pad, broadcast countdown, connection and payment screens, with controls for cancelling, retrying and picking the mock result (LAB-671).
