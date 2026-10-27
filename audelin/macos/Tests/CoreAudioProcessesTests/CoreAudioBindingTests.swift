@@ -1,4 +1,6 @@
+import AVFAudio
 import CoreAudioProcesses
+import Darwin
 import Foundation
 import Synchronization
 import Testing
@@ -27,16 +29,11 @@ struct CoreAudioBindingTests {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
-        let sound = directory.appendingPathComponent("speech.aiff")
-        let say = Process()
-        say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
-        say.arguments = ["-o", sound.path, "-r", "80", String(repeating: "Audio process contract. ", count: 30)]
-        let speechExit = ProcessExit(say)
-        try say.run()
-        await speechExit.wait()
-        #expect(say.terminationStatus == 0)
+        // Process discovery needs an open audio file, independent of speech synthesis.
+        let sound = directory.appendingPathComponent("tone.wav")
+        try writeTone(to: sound)
         let size = try FileManager.default.attributesOfItem(atPath: sound.path)[.size] as? NSNumber
-        try #require((size?.intValue ?? 0) > 0, "say must produce audio before afplay can open it")
+        try #require((size?.intValue ?? 0) > 0, "The fixture must contain audio before afplay can open it")
 
         let binding = CoreAudioBinding()
         let adapter = CoreAudioProcesses(binding: binding, clock: FakeClock())
@@ -56,9 +53,9 @@ struct CoreAudioBindingTests {
         let player = Process()
         player.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
         player.arguments = ["-v", "0", sound.path]
-        let playerExit = ProcessExit(player)
         try player.run()
-        pid.withLock { $0 = player.processIdentifier }
+        let childPID = player.processIdentifier
+        pid.withLock { $0 = childPID }
         inspect()
         let result = await withTaskGroup(of: AudioProcess?.self) { group in
             group.addTask {
@@ -72,44 +69,27 @@ struct CoreAudioBindingTests {
             defer { group.cancelAll() }
             return await group.next() ?? nil
         }
-        if player.isRunning { player.terminate() }
-        await playerExit.wait()
+        let origin = ContinuousClock.now
+        try await PlayerShutdown(
+            isAlive: { kill(childPID, 0) == 0 || errno != ESRCH },
+            terminate: { _ = kill(childPID, SIGTERM) },
+            forceKill: { _ = kill(childPID, SIGKILL) },
+            now: { origin.duration(to: .now) },
+            pause: { try? await Task.sleep(for: .milliseconds(20)) }
+        ).stop()
         return try #require(result, "Core Audio must report the afplay child")
     }
-}
 
-/// Retains an exit delivered before the caller starts awaiting it.
-private final class ProcessExit: Sendable {
+    private func writeTone(to sound: URL) throws {
 
-    private struct State {
-        var exited = false
-        var waiters: [CheckedContinuation<Void, Never>] = []
-    }
-
-    private let state = Mutex(State())
-
-    init(_ process: Process) {
-
-        process.terminationHandler = { [self] _ in
-            let waiters = state.withLock {
-                $0.exited = true
-                let waiters = $0.waiters
-                $0.waiters.removeAll()
-                return waiters
-            }
-            for waiter in waiters { waiter.resume() }
+        let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 1))
+        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 48_000 * 40))
+        buffer.frameLength = buffer.frameCapacity
+        let samples = try #require(buffer.floatChannelData?[0])
+        for index in 0..<Int(buffer.frameLength) {
+            samples[index] = Float(0.25 * sin(2 * .pi * 440 * Double(index) / 48_000))
         }
-    }
-
-    func wait() async {
-
-        await withCheckedContinuation { continuation in
-            let exited = state.withLock {
-                if $0.exited { return true }
-                $0.waiters.append(continuation)
-                return false
-            }
-            if exited { continuation.resume() }
-        }
+        let file = try AVAudioFile(forWriting: sound, settings: format.settings)
+        try file.write(from: buffer)
     }
 }
