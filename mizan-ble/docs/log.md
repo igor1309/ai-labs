@@ -2,6 +2,7 @@
 
 ## 2026-10-27
 
+- HostPicker chooses a clear nearest host from smoothed signal readings, asks to hold closer when uncertain, and forgets faded hosts (LAB-650).
 - SessionCrypto derives a fresh transaction key, seals and opens authenticated messages, and refuses replays and messages after closure (LAB-649).
 - MessageCodec encodes and decodes session characteristics, sealed frames and message bodies, refusing unreadable bytes (LAB-648).
 - Settings supplies validated countdown and picker values with defaults, and keeps the till's advertised name across reads (LAB-647).
