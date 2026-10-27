@@ -2,6 +2,7 @@
 
 ## 2026-10-27
 
+- SettingsUI gives the operator countdown choices with a full-ring preview and shows the advertised name, currency and processor read-only (LAB-672).
 - ModeSwitchUI shows the chosen host or client screen with its header switch dimmed during a payment (LAB-670).
 - ModeSwitchPreview lets you try both device shells and compare every switch state in light and dark as device-sized PNGs (LAB-670).
 - SessionCrypto derives a fresh transaction key, seals and opens authenticated messages, and refuses replays and messages after closure (LAB-649).
