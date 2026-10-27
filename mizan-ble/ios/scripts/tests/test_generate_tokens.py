@@ -22,15 +22,15 @@ class GenerateTokensTests(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory()
         self.addCleanup(folder.cleanup)
-        self.snapshot = Path(folder.name) / "tokens.json"
+        self.design = Path(folder.name) / "design.pen"
         self.output = Path(folder.name) / "Sources/Tokens.swift"
 
     def run_generator(self, variables, *arguments):
-        self.snapshot.write_text(json.dumps({"variables": variables}))
+        self.design.write_text(json.dumps({"variables": variables}))
         output = io.StringIO()
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
             status = generator.main([
-                "--snapshot", str(self.snapshot),
+                "--design", str(self.design),
                 "--output", str(self.output), *arguments,
             ])
         return status, output.getvalue()

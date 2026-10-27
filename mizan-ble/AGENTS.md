@@ -68,7 +68,7 @@ How behaviour is specified before it is built, after audelin's process.
   nobody set marked "Proposed, not decided".
 - Open, edit and save the `.pen` only as the repo's `AGENTS.md` § Designing
   in pen.dev says.
-- A token change ships with the refreshed `tokens.json` and the
-  regenerated Swift in one commit.
+- A token change in the `.pen` ships with the regenerated Swift in one
+  commit; CI fails when they differ.
 - A screen built in code matches its frame; a screen with no frame says so
   in its spec's `## Decided` as proposed.

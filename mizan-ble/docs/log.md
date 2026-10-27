@@ -2,6 +2,9 @@
 
 ## 2026-10-27
 
+- The tokens are generated straight from the design file, and CI fails
+  when the design and the app's tokens differ; the hand-made snapshot is
+  gone.
 - Specified v0.0.1: the architecture names the components, each with its
   own spec, and the Bluetooth layout. Each side runs a chain of flows to
   a secure link and then to the result; the client picks the nearest
