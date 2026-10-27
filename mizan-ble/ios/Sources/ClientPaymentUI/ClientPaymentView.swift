@@ -20,7 +20,7 @@ public struct ClientPaymentView: View {
         ) {
             ClientStepper([
                 state.steps.find, state.steps.connect, state.steps.review, state.steps.result
-            ].map { SessionStep($0.state, title: $0.title, detail: $0.detail) })
+            ])
         } content: {
             VStack(spacing: Tokens.space3) {
                 ExchangeStrip(

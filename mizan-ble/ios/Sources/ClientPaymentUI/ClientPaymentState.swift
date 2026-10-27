@@ -2,25 +2,13 @@ import DesignSystem
 
 /// Presentation values supplied by the caller, including all formatted copy.
 public struct ClientPaymentState: Equatable, Sendable {
-    public struct Step: Equatable, Sendable {
-        public var state: StepState
-        public var title: String
-        public var detail: String
-
-        public init(_ state: StepState, title: String, detail: String) {
-            self.state = state
-            self.title = title
-            self.detail = detail
-        }
-    }
-
     public struct Steps: Equatable, Sendable {
-        public var find: Step
-        public var connect: Step
-        public var review: Step
-        public var result: Step
+        public var find: SessionStep
+        public var connect: SessionStep
+        public var review: SessionStep
+        public var result: SessionStep
 
-        public init(find: Step, connect: Step, review: Step, result: Step) {
+        public init(find: SessionStep, connect: SessionStep, review: SessionStep, result: SessionStep) {
             self.find = find
             self.connect = connect
             self.review = review

@@ -7,7 +7,10 @@ let package = Package(
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
+        .library(name: "HostUI", targets: ["HostUI"]),
         .library(name: "ModeSwitchUI", targets: ["ModeSwitchUI"]),
+        .library(name: "SettingsUI", targets: ["SettingsUI"]),
+        .library(name: "ClientUI", targets: ["ClientUI"]),
         .library(name: "ClientPaymentUI", targets: ["ClientPaymentUI"]),
         .library(name: "Machine", targets: ["Machine"]),
         .library(name: "Settings", targets: ["Settings"]),
@@ -15,7 +18,10 @@ let package = Package(
         .library(name: "SessionCrypto", targets: ["SessionCrypto"]),
     ],
     targets: [
+        .target(name: "HostUI", dependencies: ["DesignSystem"]),
         .target(name: "ModeSwitchUI", dependencies: ["DesignSystem"]),
+        .target(name: "SettingsUI", dependencies: ["DesignSystem"]),
+        .target(name: "ClientUI", dependencies: ["DesignSystem"]),
         .target(name: "ClientPaymentUI", dependencies: ["DesignSystem"]),
         .target(name: "Machine"),
         .testTarget(name: "MachineTests", dependencies: ["Machine"]),
