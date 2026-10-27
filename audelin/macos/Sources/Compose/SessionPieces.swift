@@ -73,6 +73,16 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     var transcriptFile: (any SessionTranscriptFile)?
     var text: CallReader?
     var writing: WritingReader?
+    private var readingOutput: AsyncStream<State>.Continuation?
+    private var readingObservation: Task<Void, Never>?
+
+    // Register before Session begins so its first text state cannot be missed.
+    func readingText() -> AsyncStream<State> {
+
+        let (stream, output) = AsyncStream<State>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        readingOutput = output
+        return stream
+    }
 
     @usableFromInline
     static let defaultRecordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = { _, track in CaptureTrack(track: track) }
@@ -219,7 +229,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
     func closeTranscript() async throws {
 
-        defer { news.continuation.finish() }
+        defer { news.continuation.finish(); readingOutput?.finish() }
         await transcriptFile?.close()
     }
 
@@ -239,6 +249,12 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
             failureReport: transcriptFailures
         )
         self.writing = writing
+        if let output = readingOutput {
+            readingObservation = Task {
+                for await state in writing.updates { output.yield(state) }
+                output.finish()
+            }
+        }
         await writing.start(enabled: enabled)
     }
 
@@ -250,6 +266,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     public func stop() async throws {
 
         await writing?.stop()
+        await readingObservation?.value
     }
 
     private func track(_ side: SessionSide, recognizerSource: @escaping @Sendable () async throws -> any Recognizer) -> CallSide? {

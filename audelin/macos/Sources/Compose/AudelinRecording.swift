@@ -14,6 +14,7 @@ import enum SystemAudioCapture.ProcessSelection
 public final class AudelinRecording: Sendable {
 
     public let recording: Recording
+    public let panel: AudelinPanel
     public let detectionFailures: AsyncStream<any Error>
     private let conditions: RecordingConditions
     private let delivery: ApplicationDelivery
@@ -45,6 +46,8 @@ public final class AudelinRecording: Sendable {
     ) async throws {
 
         let app = RecordingCallApp()
+        let panel = AudelinPanel()
+        self.panel = panel
         let (recording, conditions) = await composeRecordingWithPreferences(
             preferences: preferences,
             makePieces: composeRecordingPieces(
@@ -52,7 +55,7 @@ public final class AudelinRecording: Sendable {
                 now: now, timeZone: timeZone, startMicrophone: startMicrophone,
                 startCall: startCall, recognizerSource: recognizerSource
             ),
-            makeConditions: makeConditions
+            makeConditions: makeConditions, panel: panel
         )
         self.recording = recording
         self.conditions = conditions

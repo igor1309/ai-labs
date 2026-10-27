@@ -29,7 +29,7 @@ extension PanelState {
 
     static let preparing = PanelState(
         recording: .on(elapsed: "00:00:12"),
-        log: .preparing
+        log: .preparing(holds: [.init(entryID: 0, text: "Сохранённые слова")])
     )
 
     static let liveTextOff = PanelState(

@@ -9,6 +9,7 @@ public actor RecordingSessions: RecordingSession {
         let session: Session
         let subscription: Task<Void, Never>
         var observation: Task<Void, Never>?
+        var reading: ReadingSubscription?
         var first: RecordingSessionReport?
         var beginners: [CheckedContinuation<RecordingSessionReport, Never>] = []
         var enders: [CheckedContinuation<Void, Never>] = []
@@ -17,6 +18,7 @@ public actor RecordingSessions: RecordingSession {
         var reportedFailure = false
     }
 
+    public nonisolated let panel: AudelinPanel
     private let makePieces: @Sendable (UInt64) -> SessionPieces
     private let liveText: @Sendable () -> Bool
     private let report: @Sendable (UInt64, RecordingSessionReport) -> Void
@@ -29,10 +31,11 @@ public actor RecordingSessions: RecordingSession {
     public init(
         makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
         liveText: @escaping @Sendable () -> Bool,
-        report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void
+        report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void,
+        panel: AudelinPanel = AudelinPanel()
     ) {
 
-        self.init(makePieces: makePieces, liveText: liveText, report: report, connect: subscribe, sink: SystemLogSink())
+        self.init(makePieces: makePieces, liveText: liveText, report: report, connect: subscribe, sink: SystemLogSink(), panel: panel)
     }
 
     init(
@@ -40,9 +43,11 @@ public actor RecordingSessions: RecordingSession {
         liveText: @escaping @Sendable () -> Bool,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void,
         connect: @escaping @Sendable (SessionPieces, Session) -> Task<Void, Never>,
-        sink: any LogSink
+        sink: any LogSink,
+        panel: AudelinPanel? = nil
     ) {
 
+        self.panel = panel ?? AudelinPanel(sink: sink)
         self.makePieces = makePieces
         self.liveText = liveText
         self.report = report
@@ -61,6 +66,9 @@ public actor RecordingSessions: RecordingSession {
             running[id]?.observation = Task {
                 // Register before begin so even a short-lived state is retained.
                 let states = await session.states()
+                let text = await pieces.readingText()
+                let reading = await self.panel.begin(id: id, text: text)
+                self.running[id]?.reading = reading
                 self.start(id: id, liveText: enabled)
                 for await state in states {
                     StateLog(sink: self.sink).session(state, id: id)
@@ -112,7 +120,10 @@ public actor RecordingSessions: RecordingSession {
                 deliver(.ended, id: id, entry: &entry)
             }
             let subscription = entry.subscription, observation = entry.observation, session = entry.session
+            let reading = entry.reading
             Task {
+                await self.panel.end(id: id)
+                await reading?.end()
                 subscription.cancel()
                 await subscription.value
                 await session.end()
