@@ -22,7 +22,7 @@ public struct ClientPaymentView: View {
                 state.steps.find, state.steps.connect, state.steps.review, state.steps.result
             ])
         } content: {
-            VStack(spacing: Tokens.space3) {
+            VStack(spacing: Tokens.space4) {
                 ExchangeStrip(
                     host: DeviceChip(.host, code: state.exchange.hostCode, state: state.exchange.hostDetail),
                     message: Message(
@@ -49,48 +49,64 @@ public struct ClientPaymentView: View {
     @ViewBuilder
     private var content: some View {
         switch state.content {
-        case let .review(title, amount, detail):
+        case let .review(title, digits, detail):
             VStack(spacing: Tokens.space2) {
                 Text(title).typeRole(.title)
-                AmountView(amount, size: .l)
-                Text(detail).typeRole(.body).fixedSize(horizontal: false, vertical: true)
+                amount(digits)
+                detailText(detail)
             }
-            .padding(.bottom, Tokens.space2)
             .multilineTextAlignment(.center)
         case let .result(mark, title, detail):
-            VStack(spacing: Tokens.space6) {
+            VStack(spacing: Tokens.space5) {
                 ResultMark(mark)
-                VStack(spacing: Tokens.space3) {
+                VStack(spacing: Tokens.space2) {
                     Text(title).typeRole(.title)
-                    Text(detail).typeRole(.body).fixedSize(horizontal: false, vertical: true)
+                    detailText(detail)
                 }
             }
             .multilineTextAlignment(.center)
-        case let .processing(amount, rows):
-            VStack(spacing: Tokens.space4) {
-                AmountView(amount, size: .l)
-                VStack(alignment: .leading, spacing: Tokens.space3) {
+        case let .processing(digits, rows):
+            VStack(alignment: .leading, spacing: Tokens.space4) {
+                amount(digits)
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(rows.indices, id: \.self) { index in
-                        if index != rows.startIndex { Divider().overlay(Tokens.line) }
                         receiptRow(rows[index])
+                            .padding(.vertical, Tokens.space3)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .overlay(alignment: .bottom) {
+                                if index != rows.indices.last {
+                                    Rectangle().fill(Tokens.lineSoft).frame(height: 1)
+                                }
+                            }
                     }
                 }
-                .padding(Tokens.space4)
+                .padding(.horizontal, Tokens.space4)
+                .padding(.vertical, Tokens.space1)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Tokens.raised, in: RoundedRectangle(cornerRadius: Tokens.radiusLg))
             }
-        case let .paid(title, amount, detail):
+        case let .paid(title, digits, detail):
             VStack(spacing: Tokens.space5) {
                 ResultMark(.success)
                 VStack(spacing: Tokens.space2) {
                     Text(title).typeRole(.title)
-                    AmountView(amount, size: .l)
-                    Text(detail).typeRole(.body).fixedSize(horizontal: false, vertical: true)
+                    amount(digits)
+                    detailText(detail)
                 }
             }
-            .padding(.bottom, Tokens.space1)
             .multilineTextAlignment(.center)
         }
+    }
+
+    private func amount(_ digits: String) -> some View {
+        AmountView(digits, size: .l, isMonospaced: false)
+    }
+
+    private func detailText(_ text: String) -> some View {
+        Text(text).typeRole(.body)
+            .lineSpacing(Tokens.space1)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(minHeight: Tokens.space6)
     }
 
     private func receiptRow(_ row: ClientPaymentState.ReceiptRow) -> some View {
@@ -103,7 +119,8 @@ public struct ClientPaymentView: View {
             VStack(alignment: .leading, spacing: Tokens.space1) {
                 Text(row.title).typeRole(.labelS)
                     .foregroundStyle(row.isComplete ? Tokens.text : Tokens.clientHi)
-                Text(row.detail).typeRole(.eyebrow)
+                Text(row.detail).font(Tokens.mono(Tokens.sizeEyebrow, .regular))
+                    .foregroundStyle(Tokens.text2)
             }
         }
     }
