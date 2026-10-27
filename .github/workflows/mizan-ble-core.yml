@@ -26,6 +26,10 @@ jobs:
       - name: Select newest Xcode
         run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
 
+      - name: Test the token generator
+        working-directory: mizan-ble/ios
+        run: python3 -I -m unittest discover -s scripts/tests
+
       - name: Check the generated tokens
         working-directory: mizan-ble/ios
         run: python3 -I scripts/generate-tokens.py --check

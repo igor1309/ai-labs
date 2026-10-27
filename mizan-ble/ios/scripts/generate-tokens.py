@@ -9,11 +9,13 @@ output for mizan-ble.pen. The design README says how to refresh it.
 
 Only the design system's `mz-*` variables become tokens; the rest belong to
 the explorations. Names drop the prefix and camel-case the kebab:
-`mz-host-hi` is `hostHi`, `mz-space-12` is `space12`. The design system has
-one appearance, so a themed `mz-*` variable is an error.
+`mz-host-hi` is `hostHi`, `mz-space-12` is `space12`. Colours can have one
+value or a dark/light pair on the `mode` axis; other tokens are unthemed.
 """
 
+import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -28,7 +30,9 @@ def swift_name(token):
     return head + "".join(part[:1].upper() + part[1:] for part in rest)
 
 
-def color(hex_value):
+def color(name, hex_value):
+    if not isinstance(hex_value, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?", hex_value):
+        raise ValueError(f"{name}: expected a #RRGGBB or #RRGGBBAA colour")
     digits = hex_value.lstrip("#")
     rgb, alpha = digits[:6], digits[6:] or "FF"
     return f"Color.hex(0x{rgb.upper()}, 0x{alpha.upper()})"
@@ -36,12 +40,32 @@ def color(hex_value):
 
 def declaration(name, token):
     kind, raw = token["type"], token["value"]
-    if not isinstance(raw, (str, int, float)):
-        sys.exit(f"{name} is themed; the design system has one appearance")
     if kind == "color":
-        return f"public static let {swift_name(name)} = {color(raw)}"
+        if isinstance(raw, str):
+            value = color(name, raw)
+        else:
+            modes = {}
+            if not isinstance(raw, list):
+                raise ValueError(f"{name}: expected dark and light entries on the mode axis")
+            for entry in raw:
+                if not isinstance(entry, dict) or not isinstance(entry.get("theme"), dict) or set(entry["theme"]) != {"mode"}:
+                    raise ValueError(f"{name}: each colour entry must have only the mode axis")
+                mode = entry["theme"]["mode"]
+                if mode not in ("dark", "light") or mode in modes:
+                    raise ValueError(f"{name}: unknown or repeated mode {mode!r}")
+                modes[mode] = color(name, entry.get("value"))
+            if set(modes) != {"dark", "light"}:
+                raise ValueError(f"{name}: expected exactly one dark and one light mode")
+            value = f'Color(AppearanceColor(dark: {modes["dark"]}, light: {modes["light"]}))'
+        return f"public static let {swift_name(name)} = {value}"
+    if isinstance(raw, (list, dict)):
+        raise ValueError(f"{name}: themed {kind} tokens are not supported")
     if kind == "string":
+        if not isinstance(raw, str):
+            raise ValueError(f"{name}: expected a string")
         return f"public static let {swift_name(name)} = {json.dumps(raw, ensure_ascii=False)}"
+    if kind != "number" or type(raw) not in (int, float):
+        raise ValueError(f"{name}: expected a number or string token")
     return f"public static let {swift_name(name)}: CGFloat = {raw:g}"
 
 
@@ -76,20 +100,30 @@ def render(variables):
     return "\n".join(lines), len(tokens)
 
 
-def main():
-    variables = json.loads(SNAPSHOT.read_text())["variables"]
-    swift, count = render(variables)
-    if "--check" in sys.argv[1:]:
-        current = OUTPUT.read_text() if OUTPUT.exists() else ""
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--snapshot", type=Path, default=SNAPSHOT)
+    parser.add_argument("--output", type=Path, default=OUTPUT)
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args(argv)
+    variables = json.loads(args.snapshot.read_text())["variables"]
+    try:
+        swift, count = render(variables)
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 1
+    if args.check:
+        current = args.output.read_text() if args.output.exists() else ""
         if current != swift:
-            print(f"stale: {OUTPUT.relative_to(ROOT)}; run scripts/generate-tokens.py")
-            sys.exit(1)
+            print(f"stale: {args.output}; run scripts/generate-tokens.py")
+            return 1
         print(f"ok: {count} tokens")
-        return
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(swift)
-    print(f"wrote {count} tokens to {OUTPUT.relative_to(ROOT)}")
+        return 0
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(swift)
+    print(f"wrote {count} tokens to {args.output}")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
