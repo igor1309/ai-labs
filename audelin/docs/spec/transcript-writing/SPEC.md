@@ -20,8 +20,8 @@ What it keeps, Session has in the transcript it closes next.
   while starting (session, Bring-up puts each destination before its source).
 - **The write in flight finishes, then only the latest text waiting is
   written,** never an older one after a newer: each write replaces the
-  whole text (`../transcript-file/SPEC.md`), and call text itself keeps
-  only its newest update for a slow reader.
+  whole text (`../transcript-file/SPEC.md`). The reading feed retains every
+  snapshot, including listening omissions that retire entry identities.
 - **Stopping returns once call text has stopped and its last text is
   written,** so Session closes the transcript after its last text
   (session, Bring-down keeps everything); a second stop waits for the

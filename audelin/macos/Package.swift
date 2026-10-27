@@ -55,7 +55,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture"]
+            dependencies: ["MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI", "Machine"]
         ),
         .target(
             name: "CoreAudioProcesses"
