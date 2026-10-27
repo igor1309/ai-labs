@@ -11,7 +11,7 @@ public final class AudelinRecording: Sendable {
     private let calls: CallRecordingSubscription
     private let model: Task<Void, any Error>
 
-    public init(preferences: PreferencesStore) throws {
+    public convenience init(preferences: PreferencesStore) throws {
 
         let processes = CoreAudioProcesses(binding: CoreAudioBinding(), clock: ContinuousCallClock())
         let app = RecordingCallApp()
@@ -19,9 +19,20 @@ public final class AudelinRecording: Sendable {
             preferences: preferences,
             makePieces: composeRecordingPieces(preferences: preferences, callApp: app, processes: processes)
         )
+        try self.init(
+            recording: recording, conditions: conditions, processes: processes, callApp: app,
+            startModel: { startLiveModelLoading() }
+        )
+    }
+
+    init(
+        recording: Recording, conditions: RecordingConditions, processes: CoreAudioProcesses,
+        callApp: RecordingCallApp, startModel: () -> Task<Void, any Error>
+    ) throws {
+
         conditions.refresh()
         do {
-            calls = try composeCalls(processes, to: recording, conditions: conditions, startedApp: { app.started($0) })
+            calls = try composeCalls(processes, to: recording, conditions: conditions, startedApp: { callApp.started($0) })
         } catch {
             processes.stop()
             Task { await recording.end() }
@@ -30,7 +41,7 @@ public final class AudelinRecording: Sendable {
         self.processes = processes
         self.recording = recording
         self.conditions = conditions
-        model = startLiveModelLoading()
+        model = startModel()
     }
 
     public func quit(terminate: @Sendable () async -> Void) async {

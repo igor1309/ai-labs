@@ -2,6 +2,7 @@ import CoreAudioProcesses
 import Recording
 import Testing
 import Compose
+import Synchronization
 
 @Suite(.timeLimit(.minutes(1)))
 struct CallRecordingSubscriptionTests {
@@ -187,9 +188,35 @@ private final class CallSession: RecordingSession {
     func end(id: UInt64) async { effects.append(.endSession(id: id)) }
 }
 
-struct CallBinding: ProcessBinding {
+final class CallBinding: ProcessBinding {
 
     let fails: Bool
+    private struct State {
+
+        var input: Bool
+        var listeners: [Int: @Sendable () -> Void] = [:]
+        var nextListener = 0
+    }
+    private let state: Mutex<State>
+
+    init(fails: Bool, input: Bool = true) {
+
+        self.fails = fails
+        state = Mutex(State(input: input))
+    }
+
+    var activeListeners: Int { state.withLock { $0.listeners.count } }
+
+    func queuedNotifications() -> [@Sendable () -> Void] {
+
+        state.withLock { Array($0.listeners.values) }
+    }
+
+    func setInput(_ input: Bool) {
+
+        state.withLock { $0.input = input }
+        queuedNotifications().forEach { $0() }
+    }
 
     func processObjects() throws -> [ProcessObject] {
 
@@ -200,9 +227,19 @@ struct CallBinding: ProcessBinding {
     func pid(of object: ProcessObject) -> Int32? { 42 }
     func bundleID(of object: ProcessObject) -> String? { "us.zoom.xos" }
     func name(of object: ProcessObject) -> String { "meeting" }
-    func isRunningInput(_ object: ProcessObject) -> Bool { true }
-    func onProcessListChange(_ changed: @escaping @Sendable () -> Void) throws -> Cancellation { Cancellation {} }
-    func onProcessChange(_ object: ProcessObject, _ changed: @escaping @Sendable () -> Void) throws -> Cancellation { Cancellation {} }
+    func isRunningInput(_ object: ProcessObject) -> Bool { state.withLock { $0.input } }
+    func onProcessListChange(_ changed: @escaping @Sendable () -> Void) throws -> Cancellation { listen(changed) }
+    func onProcessChange(_ object: ProcessObject, _ changed: @escaping @Sendable () -> Void) throws -> Cancellation { listen(changed) }
+
+    private func listen(_ changed: @escaping @Sendable () -> Void) -> Cancellation {
+
+        let id = state.withLock {
+            $0.nextListener += 1
+            $0.listeners[$0.nextListener] = changed
+            return $0.nextListener
+        }
+        return Cancellation { [weak self] in self?.state.withLock { _ = $0.listeners.removeValue(forKey: id) } }
+    }
 }
 
 struct UnusedCallClock: CallClock {
