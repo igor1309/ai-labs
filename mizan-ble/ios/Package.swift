@@ -6,6 +6,7 @@ let package = Package(
     name: "MizanBLE",
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
+        .library(name: "AmountEntry", targets: ["AmountEntry"]),
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
         .library(name: "HostUI", targets: ["HostUI"]),
         .library(name: "ModeSwitchUI", targets: ["ModeSwitchUI"]),
@@ -18,6 +19,8 @@ let package = Package(
         .library(name: "HostPicker", targets: ["HostPicker"]),
     ],
     targets: [
+        .target(name: "AmountEntry"),
+        .testTarget(name: "AmountEntryTests", dependencies: ["AmountEntry"]),
         .target(name: "HostUI", dependencies: ["DesignSystem"]),
         .target(name: "ModeSwitchUI", dependencies: ["DesignSystem"]),
         .target(name: "SettingsUI", dependencies: ["DesignSystem"]),

@@ -7,6 +7,7 @@
 - HostUI gives the operator an amount pad, broadcast countdown, connection and payment screens, with controls for cancelling, retrying and picking the mock result (LAB-671).
 - ModeSwitchUI shows the chosen host or client screen with its header switch dimmed during a payment (LAB-670).
 - ModeSwitchPreview lets you try both device shells and compare every switch state in light and dark as device-sized PNGs (LAB-670).
+- AmountEntry keeps the keypad's typed amount within six whole digits and two decimals, and allows locking a positive amount only while Bluetooth is available (LAB-651).
 - HostPicker chooses a clear nearest host from smoothed signal readings, asks to hold closer when uncertain, and forgets faded hosts (LAB-650).
 - SessionCrypto derives a fresh transaction key, seals and opens authenticated messages, and refuses replays and messages after closure (LAB-649).
 - MessageCodec encodes and decodes session characteristics, sealed frames and message bodies, refusing unreadable bytes (LAB-648).
