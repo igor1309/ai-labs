@@ -111,9 +111,12 @@ final class ReadingSubscription: Sendable {
         await receive(reading.snapshot())
         let states = await reading.states()
         observation = Task {
+            var began = false
             for await state in states {
+                if case .on = state.recording { began = true }
+                // Text starts before capture; retain it without presenting a running log yet.
+                await receive(began ? state : .init())
                 StateLog(sink: sink).reading(state)
-                await receive(state)
             }
         }
         self.text = Task {

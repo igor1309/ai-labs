@@ -10,6 +10,51 @@ import protocol TranscriptWriting.CallText
 
 struct ReadingCompositionTests {
 
+    @Test func heldReadingConsumerRetiresAnOmittedIDBeforeItIsReused() async throws {
+
+        let clock = ReadingClockSpy(), text = PanelCallTextSpy()
+        let panel = clock.panel()
+        var construction = SessionConstruction()
+        construction.makeCallText = { _ in text }
+        try await withSessionRig(construction: construction) { rig, _ in
+            let incoming = await rig.pieces.readingText()
+            var consumer = incoming.makeAsyncIterator()
+            rig.session.send(.begin(liveText: true))
+            _ = try await rig.state { $0.phase == .recording }
+            let original = callEntry(.mine, 3, start: 2, settled: "old")
+            let other = callEntry(.theirs, 9, start: 8, settled: "other")
+            text.input.continuation.yield(.init(status: .listening, entries: [original, other]))
+            let feed = AsyncStream<State>.makeStream()
+            defer { feed.continuation.finish() }
+            try await withReading(panel, id: 1, text: feed.stream) {
+                var states = await panel.states().makeAsyncIterator()
+                while let state = await consumer.next() {
+                    feed.continuation.yield(state)
+                    if state.status == .listening { break }
+                }
+                let first = try await nextPanel(&states) { $0.lines?.entries.count == 2 }
+                #expect(first.lines?.entries.map(\.id) == [0, 1])
+                await panel.send(.scrolled(atBottom: false))
+                _ = try await nextPanel(&states) { $0.lines?.followsLive == false }
+
+                // The Reading consumer stays held until every remaining snapshot is queued.
+                text.input.continuation.yield(.init(status: .listening, entries: [other]))
+                text.input.continuation.yield(.init(status: .listening, entries: [
+                    other, callEntry(.mine, 3, start: 12, settled: "reused"),
+                ]))
+                rig.session.send(.end)
+                _ = try await rig.state { $0.phase == .ended }
+                while let state = await consumer.next() { feed.continuation.yield(state) }
+
+                let shown = try await nextPanel(&states) { $0.lines?.entries.last?.settled == "reused" }
+                #expect(shown.lines == .init(entries: [
+                    .init(id: 1, time: "00:08", speaker: .them, settled: "other"),
+                    .init(id: 2, time: "00:12", speaker: .me, settled: "reused"),
+                ], newBelow: 1, followsLive: false))
+            }
+        }
+    }
+
     @Test func textUpdatesReachPanelAndLogsContainOnlyModesAndCounts() async throws {
 
         let clock = ReadingClockSpy(), sink = ReadingLogSpy()
@@ -159,7 +204,14 @@ struct ReadingCompositionTests {
 
     @Test func sessionConstructionConnectsItsTextAndEndsThePanel() async throws {
 
-        let clock = ReadingClockSpy(), sink = ReadingLogSpy(), text = PanelCallTextSpy()
+        let observed = Signal()
+        defer { observed.end() }
+        let clock = ReadingClockSpy(), text = PanelCallTextSpy()
+        let sink = ReadingLogSpy(didWrite: { entry in
+            if entry.category == .reading && (entry.message.contains("log=preparing") || entry.message.contains("rows=1")) {
+                observed.send()
+            }
+        })
         let panel = AudelinPanel(now: clock.now, ticks: clock.ticks, sink: sink)
         var construction = SessionConstruction()
         construction.makeCallText = { _ in text }
@@ -169,18 +221,26 @@ struct ReadingCompositionTests {
             starting.send()
             await release.next()
         }) { rig, _ in
-            let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
+            let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { true },
                                              report: { _, _ in }, connect: subscribe, sink: sink, panel: panel)
             let begin = Task { await sessions.begin(id: 11) }
             await starting.next()
+            await observed.next()
             var preparing = await panel.states().makeAsyncIterator()
-            #expect(await preparing.next()?.recording == .off)
+            #expect(await preparing.next() == .init(recording: .off, log: .empty))
+            text.input.continuation.yield(.init(status: .listening, entries: [callEntry(.theirs, 9, settled: "first text")]))
+            await observed.next()
+            var beforeRecording = await panel.states().makeAsyncIterator()
+            #expect(await beforeRecording.next() == .init(recording: .off, log: .empty))
             clock.advance(65)
             release.send()
             #expect(await begin.value == .ready)
             do {
                 var states = await panel.states().makeAsyncIterator()
-                _ = try await nextPanel(&states) { $0.recording == .on(elapsed: "00:00:00") }
+                let first = try await nextPanel(&states) { $0.recording == .on(elapsed: "00:00:00") }
+                #expect(first == .init(recording: .on(elapsed: "00:00:00"), log: .lines(.init(entries: [
+                    .init(id: 0, time: "00:00", speaker: .them, settled: "first text"),
+                ]))))
                 clock.advance(2)
                 _ = try await nextPanel(&states) { $0.recording == .on(elapsed: "00:00:02") }
                 text.input.continuation.yield(.init(status: .listening, entries: [callEntry(.theirs, 9, settled: "session text")]))
@@ -270,14 +330,18 @@ final class ReadingClockSpy: Sendable {
 private struct ReadingLogSpy: LogSink {
 
     let entries = Values<LogEntry>()
-    func write(_ entry: LogEntry) { entries.append(entry) }
+    var didWrite: @Sendable (LogEntry) -> Void = { _ in }
+    func write(_ entry: LogEntry) { entries.append(entry); didWrite(entry) }
 }
 
 private final class PanelCallTextSpy: TranscriptWriting.CallText {
 
     let input = AsyncStream<State>.makeStream()
     var updates: AsyncStream<State> { input.stream }
-    func start(enabled: Bool) async {}
+    func start(enabled: Bool) async {
+
+        input.continuation.yield(.init(status: enabled ? .gettingReady : .off, entries: []))
+    }
     func setEnabled(_ enabled: Bool) async {}
     func stop() async { input.continuation.finish() }
 }

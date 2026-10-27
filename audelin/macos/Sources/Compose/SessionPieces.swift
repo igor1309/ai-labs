@@ -79,7 +79,8 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     // Register before Session begins so its first text state cannot be missed.
     func readingText() -> AsyncStream<State> {
 
-        let (stream, output) = AsyncStream<State>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        // Listening omissions retire identities even when a later snapshot reuses them.
+        let (stream, output) = AsyncStream<State>.makeStream()
         readingOutput = output
         return stream
     }
