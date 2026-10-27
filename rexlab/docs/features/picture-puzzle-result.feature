@@ -2,6 +2,10 @@ Feature: Completing a dinosaur picture
   A completed picture becomes a living-color reveal, with the dinosaur's
   large name and one visible-feature fact in the chosen language.
   Facts use the project's trusted science sources.
+  A level's collection score is the number of distinct dinosaurs completed
+  at that level, from zero to three, independently of the shared collection.
+  Its first completion celebrates a first best; a larger count celebrates
+  a new best. Repeating a dinosaur at that level keeps the count unchanged.
 
   Scenario: The last piece earns one completion
     Given one piece remains
@@ -31,3 +35,13 @@ Feature: Completing a dinosaur picture
     When I open and complete a puzzle
     Then I can play and see my earned star without a crash
     And unavailable storage is never presented as a verified historical best
+
+  Scenario: The same dinosaur earns independent level bests
+    Given no puzzle has been completed
+    When I complete Tyrannosaurus at Hatchling
+    Then Hatchling has a first best of 1 and the shared collection holds 1 dinosaur
+    When I complete Tyrannosaurus at Explorer
+    Then Explorer has a first best of 1 and the shared collection still holds 1 dinosaur
+    When I complete Triceratops at Explorer
+    Then Explorer celebrates a new best of 2 and the shared collection holds 2 dinosaurs
+    And Hatchling still has a best of 1

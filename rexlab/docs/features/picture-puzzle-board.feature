@@ -21,8 +21,10 @@ Feature: Assembling a dinosaur picture
     Then a matching picture tile follows my finger without scrolling the page
     When its center is released in its home slot or within 24 CSS pixels of that slot
     Then the piece snaps into exact alignment once and stays fitted
-    And a neighboring wrong slot never accepts the piece
-    And only its own home bounds determine acceptance
+    And tolerance accepts only releases outside the board or inside its own slot
+    And a release inside a different slot is rejected even within 24 pixels of home
+    And exactly 24 pixels beyond the home bounds is accepted when outside the board
+    And greater than 24 pixels beyond the home bounds is rejected
     When I tap another tray piece and then its empty home slot
     Then it fits in the same way
     And I can also select and place using keyboard buttons
