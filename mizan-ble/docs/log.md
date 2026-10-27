@@ -4,7 +4,8 @@
 
 - Decided: the client picks the nearest host by smoothed signal strength and
   never guesses between two close ones, and every message after the
-  handshake is encrypted with a key made for that one transaction.
+  handshake is encrypted with a key made for that one transaction. Both
+  are in v0.0.1; a 4-digit match against fake tills comes later.
 - Research: Sber's «Вжух» pays over BLE with the iPhone as central and the
   terminal as peripheral, choosing the nearest terminal by smoothed RSSI and
   sending an encrypted token in GATT fragments; the terminal goes online, so

@@ -72,15 +72,21 @@ another.
   no Core Bluetooth in it, tested for a round trip, a tampered message, a
   replay, a wrong session and an expired one.
 
+### When they land
+
+- Both the choice of host and the per-session encryption are in v0.0.1
+  (the owner, 2026-10-27). They shape the GATT characteristics and both
+  state machines, which is cheaper to design once than to retrofit.
+
+### Fake tills
+
+- Any device can advertise as a host, and the per-session key keeps out a
+  passive listener, not a fake till. v0.0.1 accepts that. A later version
+  adds a cheap check: both screens show the same 4 digits derived from the
+  shared key, as Bluetooth pairing does with numeric comparison, and the
+  payer confirms they match. Hosts holding keys the client trusts need a
+  backend and belong past the proof of concept (the owner, 2026-10-27).
+
 ## Open
 
-- **When they land.** Suggested: both in v0.0.1. They shape the GATT
-  characteristics and the state machines, which is cheaper to design once
-  than to retrofit, and neither is much code. The owner decides when v0.0.1
-  is planned.
-- **Is it really the till?** Any device can advertise as a host. The
-  per-session key keeps out a passive listener, not a fake till. A cheap
-  check for a later version: both screens show the same 4 digits derived
-  from the shared key, as Bluetooth pairing does with numeric comparison.
-  Something stronger, such as hosts holding keys the client trusts, needs a
-  backend and belongs past the proof of concept.
+None.
