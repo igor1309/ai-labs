@@ -5,6 +5,14 @@
 - The tokens are generated straight from the design file, and CI fails
   when the design and the app's tokens differ; the hand-made snapshot is
   gone.
+- Specified v0.0.1: the architecture names the components, each with its
+  own spec, and the Bluetooth layout. Each side runs a chain of flows to
+  a secure link and then to the result; the client picks the nearest
+  host and never guesses. The host's countdown stops once the amount is
+  sent, a host cancel reaches the payer as a sealed end message, and
+  a link lost after a confirm shows the payer "result unknown". The
+  architecture is SOLID by composition, with each component's contracts,
+  and weighs an outside candidate (LAB-626).
 - The rest of the design system in the module: named type roles, the
   status pill, the host rail and client stepper, device chips, messages and
   the exchange strip, keypad keys, and the iPad and iPhone screen shells

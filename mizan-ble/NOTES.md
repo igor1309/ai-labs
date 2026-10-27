@@ -10,10 +10,11 @@ description: "Mizan BLE — how it is built: choosing the host by signal strengt
 
 ### Roles
 
-- The host (iPad) is the BLE peripheral: it advertises one Mizan service
-  and serves its characteristics. The client (iPhone) is the central: it
-  scans, connects and reads, writes and subscribes. These are the roles
-  Sber's «Вжух» uses between a phone and a till
+- The prototype's choice: the host (iPad) is the BLE peripheral: it
+  advertises one Mizan service and serves its characteristics. The client
+  (iPhone) is the central: it scans, connects and reads, writes and
+  subscribes. These are the roles the reconstruction of Sber's «Вжух»
+  suggests between a phone and a till
   ([research/vzhuh.md](docs/research/vzhuh.md)).
 
 ### Choosing the host by signal strength
@@ -23,13 +24,16 @@ rather than the first it hears, so a payment never goes to the till next
 door.
 
 - **Scan:** filtered by the Mizan service UUID, with
-  `CBCentralManagerScanOptionAllowDuplicatesKey` on, so each advertisement
-  brings a fresh RSSI. That option works only in the foreground, which is
+  `CBCentralManagerScanOptionAllowDuplicatesKey` on, so discoveries keep
+  coming with a fresh RSSI, though not one per advertisement: iOS may slow
+  a foreground scan over time. That option works only in the foreground, which is
   where v0.0.1 runs anyway. A reading of 127 means "not available" and is
   dropped.
 - **Smoothing:** an exponential moving average per host,
   `ema = α·rssi + (1 − α)·ema`, with α = 0.3 to start (the value in Sber's
-  patent example). A host not heard for 2 s leaves the candidate list.
+  patent example). A host not heard for 2 s leaves the candidate list: its
+  evidence is too old, not proof it stopped advertising. The fade and
+  window are measured during a long foreground scan, not only at its start.
 - **Decision:** after a window of at least 1 s and 5 readings for the
   leader, the client takes the host with the strongest average if it is
   above a floor and leads the runner-up by a margin. Starting values: floor
@@ -60,14 +64,22 @@ another.
   decline, the acknowledgement, the result) is sealed with AES-GCM. The
   authenticated data is the session id, the message type and a counter per
   direction; a receiver rejects a wrong session, a counter it has seen and
-  anything after the countdown ends.
-- **Not JWE:** «Вжух» wraps its payload in JWE because the phone and the
-  till are built by different teams. Both ends here are ours, so CryptoKit
-  alone does it, with no JOSE library.
-- **Size:** a compressed key is 33 bytes and the AES-GCM overhead 28, so
-  every message fits one write. Before writing, the client checks
-  `maximumWriteValueLength(for:)` and fails the transaction on a message
-  that does not fit, rather than fragmenting.
+  anything after its session closed.
+- **Deadline:** the host's countdown is the handshake's deadline. If the
+  link is not secure when it ends, the host closes the session. Once the
+  link is secure there is no deadline: the payer reviews and the operator
+  picks the outcome in their own time, as the design shows.
+- **Not JWE:** the patent variant of «Вжух» described in the research
+  wraps its payload in JWE, a format other parties can read. This prototype talks only to itself and needs no such
+  interoperability, so CryptoKit alone does it, with no JOSE library.
+- **Size:** the client's key is 33 bytes compressed, and the largest
+  frame, the amount, is 41 (kind 1, counter 4, nonce 12, amount 8, tag
+  16). Every sender checks its own direction's limit before sending: the
+  client `maximumWriteValueLength(for: .withResponse)`, the host the
+  central's `maximumUpdateValueLength`. A message that does not fit fails
+  the transaction rather than being fragmented. A link left at the
+  default 23-byte MTU would be too small; iOS negotiates a larger one
+  between current devices.
 - **Seam:** sealing, opening and the counter check live in one type with
   no Core Bluetooth in it, tested for a round trip, a tampered message, a
   replay, a wrong session and an expired one.
@@ -75,7 +87,7 @@ another.
 ### When they land
 
 - Both the choice of host and the per-session encryption are in v0.0.1
-  (the owner, 2026-10-27). They shape the GATT characteristics and both
+  (the owner, 2026-10-27). They shape the GATT characteristics and the
   state machines, which is cheaper to design once than to retrofit.
 
 ### Fake tills
