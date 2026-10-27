@@ -97,6 +97,18 @@ struct SessionCryptoTests {
         #expect(try host.open(second, kind: 2) == [1])
     }
 
+    @Test func noNonceRepeatsUnderTheSharedKey() throws {
+        let (host, client) = try pair()
+        var sealed: [Session.SealedMessage] = []
+        for _ in 0..<3 {
+            sealed.append(try host.seal([1], kind: 2))
+            sealed.append(try client.seal([1], kind: 2))
+        }
+
+        #expect(Set(sealed.map { $0.counter }) == [0, 1, 2])
+        #expect(Set(sealed.map { Array($0.sealedBox.prefix(12)) }).count == sealed.count)
+    }
+
     @Test func lowerCounterIsRefused() throws {
         let (host, client) = try pair()
         let messages = try (0...3).map { try host.seal([UInt8($0)], kind: 1) }
