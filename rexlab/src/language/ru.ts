@@ -1,6 +1,11 @@
 import type { Texts } from "./texts.ts";
 
 export const ru: Texts = {
+  labyrinthBoard: {
+    title: "ЛАБИРИНТ", hint: "ПОДСКАЗКА", maze: "ЛАБИРИНТ", goal: "ДОМ", baby: "МАЛЫШ", parent: "РОДИТЕЛЬ",
+    bringHome: "ПРИВЕДИ МАЛЫША ДОМОЙ", tapStep: "НАЖМИ НА СЛЕДЫ, ЧТОБЫ СДЕЛАТЬ ШАГ",
+    cell: (column, row) => `ДОРОЖКА ${column}, ${row}`
+  },
   greeting: "ВЫБЕРИ ИГРУ",
   quizCard: "СРАВНИ",
   quizCardPicture: "ДВА ДИНОЗАВРА",

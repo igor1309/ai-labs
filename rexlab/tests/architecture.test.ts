@@ -44,6 +44,7 @@ const SCREENS = [
   "DinosaurPage.tsx",
   "FriendsScreen.tsx",
   "HomePage.tsx",
+  "LabyrinthBoardScreen.tsx",
   "LevelResultScreen.tsx",
   "OrientationGate.tsx",
   "PairsBoardScreen.tsx",
@@ -127,6 +128,11 @@ const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps maze rules pure and the board independent of the game model", () => {
+    expect(GRAPH.get("labyrinth/index.ts")).toEqual([]);
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/"), (target) => target.startsWith("labyrinth/"))).toEqual([]);
+  });
+
   it("is read from the source", () => {
     expect(GRAPH.get("quizGame.tsx")).toContain("quiz/index.ts");
     expect(GRAPH.get("main.tsx")).toContain("root.ts");
