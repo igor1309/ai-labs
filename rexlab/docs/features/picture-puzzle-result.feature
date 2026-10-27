@@ -15,6 +15,7 @@ Feature: Completing a dinosaur picture
     And I earn one round star at every level, even on a replay
     And my collection marks that dinosaur as completed
     And a first collection best or a larger collection best for this level is celebrated
+    And the result displays the played level and its collection score out of 3
     And the shared collection across levels never loses dinosaurs
     And the result offers replay, another picture and home
 
@@ -24,6 +25,7 @@ Feature: Completing a dinosaur picture
     Then its tray is freshly shuffled
     And completing it earns a round star without duplicating its collection entry
     And it celebrates a collection best only if that level's best grows
+    And the result still displays that level's unchanged collection score out of 3
 
   Scenario: Progress survives a new session
     Given I have completed a dinosaur
@@ -40,8 +42,13 @@ Feature: Completing a dinosaur picture
     Given no puzzle has been completed
     When I complete Tyrannosaurus at Hatchling
     Then Hatchling has a first best of 1 and the shared collection holds 1 dinosaur
+    And the result shows Hatchling 1/3
     When I complete Tyrannosaurus at Explorer
     Then Explorer has a first best of 1 and the shared collection still holds 1 dinosaur
+    And the result shows Explorer 1/3
     When I complete Triceratops at Explorer
     Then Explorer celebrates a new best of 2 and the shared collection holds 2 dinosaurs
+    And the result shows Explorer 2/3
     And Hatchling still has a best of 1
+    When I replay Tyrannosaurus at Hatchling
+    Then the result shows Hatchling 1/3 without a new-best celebration

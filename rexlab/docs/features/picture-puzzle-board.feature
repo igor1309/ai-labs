@@ -25,6 +25,9 @@ Feature: Assembling a dinosaur picture
     And a release inside a different slot is rejected even within 24 pixels of home
     And exactly 24 pixels beyond the home bounds is accepted when outside the board
     And greater than 24 pixels beyond the home bounds is rejected
+    And tolerance uses rectangular home bounds expanded by 24 pixels on each side
+    And outside-board corner releases 20 or exactly 24 pixels beyond both edges fit
+    And a corner release 25 pixels beyond either edge is rejected
     When I tap another tray piece and then its empty home slot
     Then it fits in the same way
     And I can also select and place using keyboard buttons
