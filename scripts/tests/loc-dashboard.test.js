@@ -110,6 +110,7 @@ it('links product cards to existing local landing pages', () => {
     '../agonara/index.html',
     '../audelin/index.html',
     '../cairana/index.html',
+    '../mizan-ble/index.html',
     '../oracle/apps/am-i-done-web/src/landing.html',
     '../dev-skills/index.html',
     '../reinix/docs/landing.html',

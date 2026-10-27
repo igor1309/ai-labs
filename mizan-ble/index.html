@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mizan BLE</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; min-height: 100vh; display: grid; place-items: center;
+    background: #101418; color: #E6EDF3;
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  }
+  main {
+    max-width: 560px; padding: 40px; border-radius: 16px;
+    background: #131A20EB; border: 1px solid #FFFFFF14;
+    box-shadow: 0 20px 60px #00000080;
+  }
+  h1 { margin: 0 0 4px; font-size: 32px; }
+  .tag { color: #9AA7B4; margin: 0 0 24px; }
+  .host { color: #5AB0FF; }
+  .client { color: #E8C468; }
+  ul { padding-left: 20px; }
+  a { color: #5AB0FF; }
+  footer { margin-top: 24px; color: #6E7A86; font-size: 13px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Mizan BLE</h1>
+  <p class="tag">Pay in Mizan between two devices over Bluetooth LE.</p>
+  <p>One app, two modes: the <span class="host">host</span> on an iPad enters
+    an amount and advertises it; the <span class="client">client</span> on an
+    iPhone finds it, shows the amount, and confirms or declines.</p>
+  <ul>
+    <li>v0.0.1: both apps in the foreground, explicit handshake, mocked payment</li>
+    <li>v0.1.0: no explicit handshake</li>
+    <li>v0.2.0: no app in the foreground, if iOS allows it</li>
+  </ul>
+  <p><a href="README.md">README</a> · <a href="docs/poc.md">Proof of concept</a> · <a href="docs/log.md">Log</a></p>
+  <footer>Planning stage · 2026-10-27</footer>
+</main>
+</body>
+</html>
