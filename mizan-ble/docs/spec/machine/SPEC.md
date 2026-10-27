@@ -80,6 +80,11 @@ Feature: Running a state machine
     Given a machine ended while an effect was running
     When that effect returns a result that would ask for more work
     Then I can read the state as it was when the machine ended, and no more work was done
+
+  Scenario: S-11 A result can ask for the next step's work
+    Given a reducer that answers an effect's result with another effect
+    When the first effect returns that result and the second is carried out
+    Then I can read the state the second result leads to
 ```
 
 Not the machine's: what any state, event or effect means (each flow's

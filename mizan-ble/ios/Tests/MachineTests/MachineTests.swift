@@ -26,7 +26,21 @@ struct MachineTests {
         #expect(effects.output == [1])
     }
 
-    @Test func secondEffectFinishesWhileFirstIsHeld() async throws {
+    @Test func resultThatAsksForWorkStartsTheNextEffect() async {
+        let effects = HeldEffects(results: [1: .work(2), 2: .value(22)])
+        let machine = makeMachine(effects)
+        defer { effects.releaseAll(); machine.end() }
+
+        machine.send(.work(1))
+        effects.release(1)
+        effects.release(2)
+        await machine.waitForEffects()
+
+        #expect(machine.state == [1, 2, 22])
+        #expect(effects.output == [1, 2])
+    }
+
+    @Test func secondEffectFinishesWhileFirstIsHeld()async throws {
         let effects = HeldEffects(results: [1: .value(11), 2: .value(22)])
         let machine = makeMachine(effects)
         defer { effects.releaseAll(); machine.end() }

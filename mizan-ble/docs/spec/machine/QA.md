@@ -45,3 +45,7 @@ The machine ended, then an event answered with an effect, every effect released:
 ## S-10 An ended machine drops a late result
 
 An effect held whose result asks for more work; the machine ended and the effect released: the state is the one at the end, and the output holds only the first entry. Evidence: `MachineTests.endedMachineDropsLateResultAndFurtherWork`.
+
+## S-11 A result can ask for the next step's work
+
+An effect whose result asks for a second effect, both released: the state lists the first event, the second and its result, and the output holds both entries. Evidence: `MachineTests.resultThatAsksForWorkStartsTheNextEffect`.
