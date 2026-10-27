@@ -35,6 +35,10 @@ let package = Package(
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
     ],
     targets: [
+        .executableTarget(
+            name: "Audelin",
+            dependencies: ["Compose", "Recording", "Preferences"]
+        ),
         .target(
             name: "AudioConversion"
         ),
@@ -49,7 +53,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture"]
+            dependencies: ["Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -60,6 +64,10 @@ let package = Package(
         .target(
             name: "GlassLedger",
             resources: [.copy("Resources/Fonts")]
+        ),
+        .target(
+            name: "Lifecycle",
+            dependencies: ["Machine"]
         ),
         .target(
             name: "LiveAudio"
@@ -167,6 +175,10 @@ let package = Package(
         .testTarget(
             name: "FillInTests",
             dependencies: ["FillIn"]
+        ),
+        .testTarget(
+            name: "LifecycleTests",
+            dependencies: ["Lifecycle", "Recording", "Compose"]
         ),
         .testTarget(
             name: "LiveAudioTests",

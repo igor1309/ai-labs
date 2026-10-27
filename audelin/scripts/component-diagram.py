@@ -17,7 +17,7 @@ from pathlib import Path
 LANES = {
     "compose": ("Composition", "#60a5fa", 560, 110, 1240, 130, 5),
     "ui": ("UI", "#7dd3fc", 40, 280, 460, 210, 2),
-    "machines": ("State machines", "#fbbf24", 560, 280, 760, 130, 3),
+    "machines": ("State machines", "#fbbf24", 560, 280, 1000, 130, 4),
     "text": ("Live text", "#bef264", 40, 530, 820, 300, 3),
     "capture": ("Capture and processes", "#fb923c", 900, 530, 440, 210, 2),
     "storage": ("Storage", "#a78bfa", 1380, 530, 460, 390, 2),
@@ -26,12 +26,14 @@ LANES = {
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
+    "Audelin": ("compose", "launches recording and the menu bar", 0),
     "RecordedCapture": ("compose", "records one capture to its track", 3),
     "LiveAudio": ("compose", "hears and reads one capture,\nkeeps its time", 4),
     "Compose": ("compose", "wires one recording's pieces\nbehind Session's ports", 1),
     "PanelUI": ("ui", "the live panel and its transcript", 0),
     "SettingsUI": ("ui", "the Settings window", 1),
     "GlassLedger": ("ui", "design tokens for both views", 2),
+    "Lifecycle": ("machines", "drains recording before termination", 3),
     "Machine": ("machines", "reducer + effect handler loop", 1),
     "Recording": ("machines", "decides whether a recording runs", 2),
     "Session": ("machines", "brings one recording's\npieces up and down", 0),
@@ -58,7 +60,6 @@ TARGETS = {
 }
 
 PLANNED = [
-    ("compose", "App and menu bar", "planned: LAB-401, LAB-509", 0),
     ("compose", "Reading", "planned: LAB-507", 2),
 ]
 
