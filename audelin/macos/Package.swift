@@ -22,6 +22,7 @@ let package = Package(
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
         .library(name: "Preferences", targets: ["Preferences"]),
         .library(name: "RecordedCapture", targets: ["RecordedCapture"]),
+        .library(name: "Reading", targets: ["Reading"]),
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Session", targets: ["Session"]),
@@ -115,6 +116,10 @@ let package = Package(
         ),
         .target(
             name: "RecordedCapture"
+        ),
+        .target(
+            name: "Reading",
+            dependencies: ["Machine"]
         ),
         .target(
             name: "Recording",
@@ -227,6 +232,10 @@ let package = Package(
         .testTarget(
             name: "RecordedCaptureTests",
             dependencies: ["RecordedCapture"]
+        ),
+        .testTarget(
+            name: "ReadingTests",
+            dependencies: ["Reading"]
         ),
         .testTarget(
             name: "RecordingTests",
