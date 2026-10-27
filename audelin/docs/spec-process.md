@@ -96,7 +96,17 @@ the red runs, and its review finds the missing tests afterwards (six on
 2026-10-22).
 
 A review runs on a detached worktree at the candidate commit, and nothing
-is committed to the reviewed branch while it runs.
+is committed to the reviewed branch while it runs. Start builders with
+`scripts/build-step.sh` and reviews with `scripts/review-step.sh`, never by
+hand. The first checks the brief's parts and adds `scripts/brief-rules.md`,
+so no builder edits another target after an unrelated test times out. The
+second merges trunk first, so no review reports trunk's newer work as
+removed (each happened three times on 2026-10-27).
+
+Never wait for CI. Once a step passes its gate, the next step branches from
+that step's branch and its builder starts at once; its PR goes up after
+the earlier one lands, and a fix CI asks for is merged forward (owner,
+2026-10-27). Only a step whose predecessor is still in review waits.
 
 A run left unattended goes through `scripts/agister-retry.sh`: it runs again
 only after a rate limit, stops on any other end, and prints a line per try

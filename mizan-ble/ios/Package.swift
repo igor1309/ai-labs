@@ -7,6 +7,7 @@ let package = Package(
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
+        .library(name: "ModeSwitchUI", targets: ["ModeSwitchUI"]),
         .library(name: "Machine", targets: ["Machine"]),
         .library(name: "Settings", targets: ["Settings"]),
         .library(name: "MessageCodec", targets: ["MessageCodec"]),
@@ -14,6 +15,7 @@ let package = Package(
         .library(name: "HostPicker", targets: ["HostPicker"]),
     ],
     targets: [
+        .target(name: "ModeSwitchUI", dependencies: ["DesignSystem"]),
         .target(name: "Machine"),
         .testTarget(name: "MachineTests", dependencies: ["Machine"]),
         .target(name: "Settings"),

@@ -19,7 +19,8 @@ public actor CallText {
     public init(microphone: any Side, call: any Side) {
 
         sides = [microphone, call]
-        (updates, continuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
+        // An omitted entry can return under the same producer id in the next snapshot.
+        (updates, continuation) = AsyncStream.makeStream()
     }
 
     public func start(enabled: Bool = true) async {

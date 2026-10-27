@@ -75,6 +75,7 @@ struct ReadingTests {
         state = send(state, .recordingChanged(.off))
         #expect(state.log == .lines(heldOnly))
         state = update(state, [], status: .gettingReady)
+        #expect(state.log == .preparing(holds: [first, second]))
         state = update(state, [], status: .failed("unavailable"))
         state = update(state, [], status: .finished)
         #expect(try lines(state).holds == [first, second])
@@ -129,7 +130,7 @@ struct ReadingTests {
         state = send(state, .recordingChanged(.on(elapsed: 12)))
         #expect(state.log == .liveTextOff(kept: nil))
         state = update(state, [], status: .gettingReady)
-        #expect(state.log == .preparing)
+        #expect(state.log == .preparing(holds: []))
         #expect(state.recording == .on(elapsed: "00:00:12"))
         state = update(state, [])
         #expect(try lines(state).entries.isEmpty)
@@ -139,7 +140,7 @@ struct ReadingTests {
         state = update(state, [], status: .off)
         #expect(state.log == .liveTextOff(kept: shown))
         state = update(state, [], status: .gettingReady)
-        #expect(state.log == .preparing)
+        #expect(state.log == .preparing(holds: []))
         state = update(state, [], status: .failed("could not restart"))
         #expect(state.log == .lines(shown))
         state = update(state, [entry])
@@ -164,7 +165,7 @@ struct ReadingTests {
             let added = text(.mine, 1, start: 3, settled: "new words")
             state = update(state, [revised, added], status: status)
             if status == .gettingReady {
-                #expect(state.log == .preparing)
+                #expect(state.log == .preparing(holds: []))
                 state = update(state, [], status: .finished)
             }
             let after = try lines(state).entries

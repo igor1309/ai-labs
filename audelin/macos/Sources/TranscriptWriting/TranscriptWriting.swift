@@ -19,7 +19,8 @@ public actor TranscriptWriting<Text: Sendable> {
         self.callText = callText
         self.transcript = transcript
         self.failureReport = failureReport
-        (updates, continuation) = AsyncStream.makeStream(bufferingPolicy: .bufferingNewest(1))
+        // Readers need every snapshot; only pending whole-file writes may coalesce.
+        (updates, continuation) = AsyncStream.makeStream()
     }
 
     public func start(enabled: Bool = true) async {

@@ -16,6 +16,10 @@ public struct ModeHeader: View {
     let layout: Layout
     let onSwitch: (Side) -> Void
 
+    @Environment(\.modeSwitch) private var modeSwitch
+
+    private var chosenSide: Side { modeSwitch?.side ?? side }
+
     public init(side: Side, layout: Layout, onSwitch: @escaping (Side) -> Void) {
 
         self.side = side
@@ -29,15 +33,23 @@ public struct ModeHeader: View {
         case .rail:
             VStack(alignment: .leading, spacing: Tokens.space5) {
                 wordmark
-                ModeSwitch(selection: side, onSelect: onSwitch)
+                headerSwitch
             }
         case .bar:
             HStack {
                 wordmark
                 Spacer(minLength: Tokens.space3)
-                ModeSwitch(selection: side, onSelect: onSwitch)
+                headerSwitch
             }
         }
+    }
+
+    private var headerSwitch: some View {
+        ModeSwitch(
+            selection: chosenSide,
+            isEnabled: modeSwitch?.isEnabled ?? true,
+            onSelect: modeSwitch?.onSelect ?? onSwitch
+        )
     }
 
     private var wordmark: some View {
@@ -51,7 +63,7 @@ public struct ModeHeader: View {
                 .foregroundStyle(Tokens.onAccent)
                 .padding(.vertical, Tokens.space1)
                 .padding(.horizontal, Tokens.space2)
-                .background(side.accent, in: RoundedRectangle(cornerRadius: Tokens.radiusSm))
+                .background(chosenSide.accent, in: RoundedRectangle(cornerRadius: Tokens.radiusSm))
         }
         .fixedSize()
         .accessibilityElement(children: .combine)
@@ -62,11 +74,17 @@ public struct ModeHeader: View {
 public struct ModeSwitch: View {
 
     let selection: Side
+    let isEnabled: Bool
     let onSelect: (Side) -> Void
 
-    public init(selection: Side, onSelect: @escaping (Side) -> Void) {
+    @Environment(\.isEnabled) private var environmentIsEnabled
+
+    private var enabled: Bool { isEnabled && environmentIsEnabled }
+
+    public init(selection: Side, isEnabled: Bool = true, onSelect: @escaping (Side) -> Void) {
 
         self.selection = selection
+        self.isEnabled = isEnabled
         self.onSelect = onSelect
     }
 
@@ -80,13 +98,18 @@ public struct ModeSwitch: View {
         .padding(Tokens.space1)
         .background(Tokens.overlay, in: RoundedRectangle(cornerRadius: Tokens.radiusMd))
         .fixedSize()
+        .disabled(!enabled)
+        .allowsHitTesting(enabled)
     }
 
     private func segment(_ side: Side) -> some View {
 
         let selected = side == selection
 
-        return Button { onSelect(side) } label: {
+        return Button {
+            guard enabled else { return }
+            onSelect(side)
+        } label: {
             HStack(spacing: Tokens.space2) {
                 Image(systemName: side.symbol)
                     .font(.system(size: 13, weight: .semibold))
@@ -94,10 +117,13 @@ public struct ModeSwitch: View {
                 Text(side.title)
                     .font(Tokens.text(Tokens.sizeSmall, .semibold))
             }
-            .foregroundStyle(selected ? Tokens.onAccent : Tokens.text3)
+            .foregroundStyle(selected && enabled ? Tokens.onAccent : Tokens.text3)
             .padding(.vertical, Tokens.space2)
             .padding(.horizontal, Tokens.space3)
-            .background(selected ? side.accent : .clear, in: RoundedRectangle(cornerRadius: Tokens.radiusSm))
+            .background(
+                selected ? (enabled ? side.accent : side.tint) : .clear,
+                in: RoundedRectangle(cornerRadius: Tokens.radiusSm)
+            )
             .contentShape(RoundedRectangle(cornerRadius: Tokens.radiusSm))
         }
         .buttonStyle(.plain)

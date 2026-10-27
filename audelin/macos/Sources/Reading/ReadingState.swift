@@ -11,7 +11,7 @@ public struct ReadingState: Equatable, Sendable {
 
         case empty
         case liveTextOff(kept: Lines?)
-        case preparing
+        case preparing(holds: [Held])
         case lines(Lines)
     }
 
@@ -80,7 +80,7 @@ public struct ReadingState: Equatable, Sendable {
             let kept = lines.rows.isEmpty && lines.holds.isEmpty ? nil : lines
             return recording == .off ? kept.map(Log.lines) ?? .empty : .liveTextOff(kept: kept)
         case .gettingReady:
-            return .preparing
+            return .preparing(holds: lines.holds)
         case .listening, .failed, .finished:
             return .lines(lines)
         }
