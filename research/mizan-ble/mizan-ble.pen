@@ -38046,6 +38046,609 @@
             },
             {
               "type": "frame",
+              "id": "BpbJK",
+              "name": "Candidates · Round 3",
+              "gap": "$mz-space-6",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "WVeym",
+                  "name": "Candidate K · Turned M, tail",
+                  "fill": "$mz-raised",
+                  "cornerRadius": "$mz-radius-xl",
+                  "layout": "vertical",
+                  "gap": "$mz-space-4",
+                  "padding": "$mz-space-6",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "WSPIW",
+                      "name": "Glyph",
+                      "width": 160,
+                      "height": 160,
+                      "fill": "#00000033",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "path",
+                          "id": "pxU9d",
+                          "x": 48.69565217391305,
+                          "y": 30,
+                          "name": "Sign",
+                          "geometry": "M0 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-72 49l13 0 0 48-13 0z",
+                          "fill": "#ffffff",
+                          "width": 62.608695652173914,
+                          "height": 100
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "odXEF",
+                      "name": "In use",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "nLS91",
+                          "name": "Small",
+                          "width": 10.017391304347827,
+                          "height": 16,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "path",
+                              "id": "KdFj0",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Sign",
+                              "geometry": "M0 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-72 49l13 0 0 48-13 0z",
+                              "fill": "#ffffff",
+                              "width": 10.017391304347827,
+                              "height": 16
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "e9w7D",
+                          "name": "Digits",
+                          "fill": "#ffffff",
+                          "content": "124.50",
+                          "fontFamily": "$mz-font-display",
+                          "fontSize": 22,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "I09l8",
+                      "name": "Label",
+                      "fill": "$mz-text-2",
+                      "content": "K · Turned M, tail",
+                      "fontFamily": "$mz-font-mono",
+                      "fontSize": "$mz-size-small",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "L1SpB",
+                  "name": "Candidate L · Turned M, tail + bars",
+                  "fill": "$mz-raised",
+                  "cornerRadius": "$mz-radius-xl",
+                  "layout": "vertical",
+                  "gap": "$mz-space-4",
+                  "padding": "$mz-space-6",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "d2hL0",
+                      "name": "Glyph",
+                      "width": 160,
+                      "height": 160,
+                      "fill": "#00000033",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "path",
+                          "id": "RZqtn",
+                          "x": 45.12605042016806,
+                          "y": 30,
+                          "name": "Sign",
+                          "geometry": "M11 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-72 49l13 0 0 52-13 0z m-11 25l35 0 0 7-35 0z m0 12l35 0 0 7-35 0z",
+                          "fill": "#ffffff",
+                          "width": 69.74789915966387,
+                          "height": 100
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "eyB2a",
+                      "name": "In use",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "zotQk",
+                          "name": "Small",
+                          "width": 11.159663865546218,
+                          "height": 16,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "path",
+                              "id": "gjGkO",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Sign",
+                              "geometry": "M11 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-72 49l13 0 0 52-13 0z m-11 25l35 0 0 7-35 0z m0 12l35 0 0 7-35 0z",
+                              "fill": "#ffffff",
+                              "width": 11.159663865546218,
+                              "height": 16
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "KWKMo",
+                          "name": "Digits",
+                          "fill": "#ffffff",
+                          "content": "124.50",
+                          "fontFamily": "$mz-font-display",
+                          "fontSize": 22,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "xR7kX",
+                      "name": "Label",
+                      "fill": "$mz-text-2",
+                      "content": "L · Turned M, tail + bars",
+                      "fontFamily": "$mz-font-mono",
+                      "fontSize": "$mz-size-small",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "icFES",
+                  "name": "Candidate M · Turned M, base tail",
+                  "fill": "$mz-raised",
+                  "cornerRadius": "$mz-radius-xl",
+                  "layout": "vertical",
+                  "gap": "$mz-space-4",
+                  "padding": "$mz-space-6",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fS74b",
+                      "name": "Glyph",
+                      "width": 160,
+                      "height": 160,
+                      "fill": "#00000033",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "path",
+                          "id": "VBYFQ",
+                          "x": 29,
+                          "y": 31.5,
+                          "name": "Sign",
+                          "geometry": "M30 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-102 49l30 0 0 13-30 0z m0 0l13 0 0 30-13 0z",
+                          "fill": "#ffffff",
+                          "width": 102,
+                          "height": 97
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "rEsaM",
+                      "name": "In use",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "D487q7",
+                          "name": "Small",
+                          "width": 16.824742268041238,
+                          "height": 16,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "path",
+                              "id": "fVJbf",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Sign",
+                              "geometry": "M30 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-102 49l30 0 0 13-30 0z m0 0l13 0 0 30-13 0z",
+                              "fill": "#ffffff",
+                              "width": 16.824742268041238,
+                              "height": 16
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "tN3bL",
+                          "name": "Digits",
+                          "fill": "#ffffff",
+                          "content": "124.50",
+                          "fontFamily": "$mz-font-display",
+                          "fontSize": 22,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "uQ4JH",
+                      "name": "Label",
+                      "fill": "$mz-text-2",
+                      "content": "M · Turned M, base tail",
+                      "fontFamily": "$mz-font-mono",
+                      "fontSize": "$mz-size-small",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "lT5Fd",
+                  "name": "Candidate N · Turned M, arrow tail",
+                  "fill": "$mz-raised",
+                  "cornerRadius": "$mz-radius-xl",
+                  "layout": "vertical",
+                  "gap": "$mz-space-4",
+                  "padding": "$mz-space-6",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Dotq0",
+                      "name": "Glyph",
+                      "width": 160,
+                      "height": 160,
+                      "fill": "#00000033",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "path",
+                          "id": "eTYOv",
+                          "x": 31,
+                          "y": 40,
+                          "name": "Sign",
+                          "geometry": "M26 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-98 15.5l54 0 0 13-54 0z",
+                          "fill": "#ffffff",
+                          "width": 98,
+                          "height": 80
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "z2W5I",
+                      "name": "In use",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "vmIeG",
+                          "name": "Small",
+                          "width": 19.6,
+                          "height": 16,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "path",
+                              "id": "w5Wor4",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Sign",
+                              "geometry": "M26 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-98 15.5l54 0 0 13-54 0z",
+                              "fill": "#ffffff",
+                              "width": 19.6,
+                              "height": 16
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "MJCtx",
+                          "name": "Digits",
+                          "fill": "#ffffff",
+                          "content": "124.50",
+                          "fontFamily": "$mz-font-display",
+                          "fontSize": 22,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "LgtEl",
+                      "name": "Label",
+                      "fill": "$mz-text-2",
+                      "content": "N · Turned M, arrow tail",
+                      "fontFamily": "$mz-font-mono",
+                      "fontSize": "$mz-size-small",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "i00R0N",
+                  "name": "Candidate O · Kufic meem, notch",
+                  "fill": "$mz-raised",
+                  "cornerRadius": "$mz-radius-xl",
+                  "layout": "vertical",
+                  "gap": "$mz-space-4",
+                  "padding": "$mz-space-6",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "sucyo",
+                      "name": "Glyph",
+                      "width": 160,
+                      "height": 160,
+                      "fill": "#00000033",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "path",
+                          "id": "g408p",
+                          "x": 46.35514018691589,
+                          "y": 30,
+                          "name": "Sign",
+                          "geometry": "M0 0l72 0 0 13-72 0z m59 0l13 0 0 72-13 0z m-59 59l72 0 0 13-72 0z m0-59l13 0 0 72-13 0z m59 52l-25-16 25-16z m-59 7l13 0 0 48-13 0z",
+                          "fill": "#ffffff",
+                          "width": 67.28971962616822,
+                          "height": 100
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Uolsa",
+                      "name": "In use",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "L5QUH",
+                          "name": "Small",
+                          "width": 10.766355140186915,
+                          "height": 16,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "path",
+                              "id": "g9q6RQ",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Sign",
+                              "geometry": "M0 0l72 0 0 13-72 0z m59 0l13 0 0 72-13 0z m-59 59l72 0 0 13-72 0z m0-59l13 0 0 72-13 0z m59 52l-25-16 25-16z m-59 7l13 0 0 48-13 0z",
+                              "fill": "#ffffff",
+                              "width": 10.766355140186915,
+                              "height": 16
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "bHOH5",
+                          "name": "Digits",
+                          "fill": "#ffffff",
+                          "content": "124.50",
+                          "fontFamily": "$mz-font-display",
+                          "fontSize": 22,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "qXw4X",
+                      "name": "Label",
+                      "fill": "$mz-text-2",
+                      "content": "O · Kufic meem, notch",
+                      "fontFamily": "$mz-font-mono",
+                      "fontSize": "$mz-size-small",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "cnFFO",
+                  "name": "Candidate P · Kufic meem, one bar",
+                  "fill": "$mz-raised",
+                  "cornerRadius": "$mz-radius-xl",
+                  "layout": "vertical",
+                  "gap": "$mz-space-4",
+                  "padding": "$mz-space-6",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "rIBL5",
+                      "name": "Glyph",
+                      "width": 160,
+                      "height": 160,
+                      "fill": "#00000033",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "path",
+                          "id": "VEHev",
+                          "x": 45.137614678899084,
+                          "y": 30,
+                          "name": "Sign",
+                          "geometry": "M12 0l64 0 0 13-64 0z m51 0l13 0 0 64-13 0z m-51 51l64 0 0 13-64 0z m0-51l13 0 0 64-13 0z m0 51l13 0 0 58-13 0z m-12 33l37 0 0 8-37 0z",
+                          "fill": "#ffffff",
+                          "width": 69.72477064220183,
+                          "height": 100
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "oAqGc",
+                      "name": "In use",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "ywCer",
+                          "name": "Small",
+                          "width": 11.155963302752294,
+                          "height": 16,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "path",
+                              "id": "kw44U",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Sign",
+                              "geometry": "M12 0l64 0 0 13-64 0z m51 0l13 0 0 64-13 0z m-51 51l64 0 0 13-64 0z m0-51l13 0 0 64-13 0z m0 51l13 0 0 58-13 0z m-12 33l37 0 0 8-37 0z",
+                              "fill": "#ffffff",
+                              "width": 11.155963302752294,
+                              "height": 16
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "sopWd",
+                          "name": "Digits",
+                          "fill": "#ffffff",
+                          "content": "124.50",
+                          "fontFamily": "$mz-font-display",
+                          "fontSize": 22,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "iP5EQ",
+                      "name": "Label",
+                      "fill": "$mz-text-2",
+                      "content": "P · Kufic meem, one bar",
+                      "fontFamily": "$mz-font-mono",
+                      "fontSize": "$mz-size-small",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VCjOK",
+                  "name": "Candidate Q · Kufic meem, hooked",
+                  "fill": "$mz-raised",
+                  "cornerRadius": "$mz-radius-xl",
+                  "layout": "vertical",
+                  "gap": "$mz-space-4",
+                  "padding": "$mz-space-6",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "q4SCiY",
+                      "name": "Glyph",
+                      "width": 160,
+                      "height": 160,
+                      "fill": "#00000033",
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "path",
+                          "id": "BEgwz",
+                          "x": 33,
+                          "y": 31.5,
+                          "name": "Sign",
+                          "geometry": "M30 0l64 0 0 13-64 0z m51 0l13 0 0 64-13 0z m-51 51l64 0 0 13-64 0z m0-51l13 0 0 64-13 0z m0 51l13 0 0 46-13 0z m-30 33l43 0 0 13-43 0z",
+                          "fill": "#ffffff",
+                          "width": 94,
+                          "height": 97
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "frUvo",
+                      "name": "In use",
+                      "gap": 6,
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "lgzvm",
+                          "name": "Small",
+                          "width": 15.505154639175258,
+                          "height": 16,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "path",
+                              "id": "SkGyA",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Sign",
+                              "geometry": "M30 0l64 0 0 13-64 0z m51 0l13 0 0 64-13 0z m-51 51l64 0 0 13-64 0z m0-51l13 0 0 64-13 0z m0 51l13 0 0 46-13 0z m-30 33l43 0 0 13-43 0z",
+                              "fill": "#ffffff",
+                              "width": 15.505154639175258,
+                              "height": 16
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "k055c",
+                          "name": "Digits",
+                          "fill": "#ffffff",
+                          "content": "124.50",
+                          "fontFamily": "$mz-font-display",
+                          "fontSize": 22,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "d46dGZ",
+                      "name": "Label",
+                      "fill": "$mz-text-2",
+                      "content": "Q · Kufic meem, hooked",
+                      "fontFamily": "$mz-font-mono",
+                      "fontSize": "$mz-size-small",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
               "id": "BhoqH",
               "name": "Candidates · Round 2",
               "gap": "$mz-space-6",
