@@ -45,6 +45,7 @@ const SCREENS = [
   "FriendsScreen.tsx",
   "HomePage.tsx",
   "LabyrinthBoardScreen.tsx",
+  "LabyrinthResultScreen.tsx",
   "LevelResultScreen.tsx",
   "OrientationGate.tsx",
   "PairsBoardScreen.tsx",

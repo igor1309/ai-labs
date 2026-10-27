@@ -195,6 +195,21 @@ describe("the labyrinth board's motion", () => {
   });
 });
 
+describe("the labyrinth reunion's motion", () => {
+  it("arrives and rewards with shared motion that becomes a short fade", () => {
+    expect(declared(PLAIN, ".labyrinth-result-screen").animation).toBe("rise-in var(--motion-screen) var(--ease-out) both");
+    expect(declared(PLAIN, ".star-won").animation).toBe("pop-in var(--motion-standard) var(--ease-overshoot) both");
+    expect(declared(PLAIN, ".star-won")["animation-delay"]).toBe("calc(var(--star) * var(--motion-stagger) * 1.5)");
+    for (const name of ["rise-in", "pop-in"]) {
+      const frames = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === `@keyframes ${name}`)!.body);
+      const from = declared(frames, "from");
+      expect(from.opacity).toBe("0");
+      expect(from.translate ?? from.scale).toContain("var(--motion-amount)");
+    }
+    expect(tokensOf(REDUCED)).toMatchObject({ "--motion-amount": "0", "--motion-screen": "160ms", "--motion-standard": "160ms", "--motion-stagger": "0ms" });
+  });
+});
+
 describe("the dig board's collection star", () => {
   it("flies from the dinosaur at --star-x and --star-y to the chip, and only fades in with reduced motion", () => {
     const flight = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-board-star")?.body ?? "")

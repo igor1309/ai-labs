@@ -1,6 +1,7 @@
 import type { Texts } from "./texts.ts";
 
 export const en: Texts = {
+  labyrinthResult: { title: "HOME TOGETHER!", earned: "+3 STARS", total: (stars) => `TOTAL ${stars}`, again: "AGAIN" },
   labyrinthBoard: {
     title: "LABYRINTH", hint: "HINT", maze: "MAZE", goal: "HOME", baby: "BABY", parent: "PARENT",
     bringHome: "BRING THE BABY HOME", tapStep: "TAP A FOOTPRINT TO TAKE A STEP",
