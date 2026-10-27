@@ -33,6 +33,7 @@ TARGETS = {
     "PanelUI": ("ui", "the live panel and its transcript", 0),
     "SettingsUI": ("ui", "the Settings window", 1),
     "GlassLedger": ("ui", "design tokens for both views", 2),
+    "MenuBar": ("ui", "menu item, entries and actions", 3),
     "Lifecycle": ("machines", "drains recording before termination", 3),
     "Machine": ("machines", "reducer + effect handler loop", 1),
     "Recording": ("machines", "decides whether a recording runs", 2),
