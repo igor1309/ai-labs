@@ -44,10 +44,6 @@ Confirm-on-its-way fixture: the confirm marked Sending, no button enabled. Evide
 
 Decline-on-its-way fixture: the decline marked Sending, no button enabled. Evidence: Missing.
 
-## S-11 A confirm too large to send
-
-Too-large-confirm fixture: the payment-failed mark, nothing sent or charged, Finish enabled. Evidence: Missing.
-
 ## S-12 The host cancelled as I confirmed
 
 Host-cancelled-after-confirm fixture: the declined mark, the host-cancelled words, not charged, Finish enabled. Evidence: Missing.
@@ -55,3 +51,7 @@ Host-cancelled-after-confirm fixture: the declined mark, the host-cancelled word
 ## S-13 Paid to a host with no name
 
 Paid fixture with no host name: "Mizan till" as the payee, the amount paid, Finish enabled. Evidence: Missing.
+
+## S-14 The host cancelled as I declined
+
+Host-cancelled-after-decline fixture: the declined mark, the host-cancelled words, not charged, Finish enabled. Evidence: Missing.

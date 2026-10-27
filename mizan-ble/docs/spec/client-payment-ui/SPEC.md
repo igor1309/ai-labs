@@ -65,11 +65,6 @@ Feature: The payer's screens from the amount to the result
     When I look at the iPhone
     Then I see my decline marked on its way, and cannot change it
 
-  Scenario: S-11 A confirm too large to send
-    Given my confirm did not fit one write
-    When I look at the iPhone
-    Then I see that the payment failed and nothing was sent or charged, and can finish
-
   Scenario: S-12 The host cancelled as I confirmed
     Given my confirm was on its way and not yet acknowledged
     When the host cancelled
@@ -79,6 +74,11 @@ Feature: The payer's screens from the amount to the result
     Given the host's name never arrived
     When the host reported success
     Then I see the amount paid to "Mizan till", and can finish
+
+  Scenario: S-14 The host cancelled as I declined
+    Given my decline was on its way and not yet acknowledged
+    When the host cancelled
+    Then I see that the host cancelled and I was not charged, and can finish
 ```
 
 Not the client payment UI's: what a step means (client review, client

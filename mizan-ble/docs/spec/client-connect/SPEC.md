@@ -16,7 +16,9 @@ session, open a message, close) and a deadline.
 - **A handshake gets 10 s,** then fails, so a silent host cannot hold the
   payer on "Connecting…"; a nearby connect, read and write take far less.
 - **A key too large for one write fails the handshake,** as `NOTES.md`
-  has the client check every write before writing it.
+  has the client check every write before writing it. So does a link whose
+  largest write is under a sealed decision (34 bytes), checked before the
+  hand-over, so the payer never decides what cannot be sent.
 - **A failure stays on screen until the payer tries again** (M4's "Try
   again"), so it is read before a new host replaces it.
 - **Every failure closes the session and drops the link** at once, but
@@ -74,6 +76,11 @@ Feature: Opening a secure link with the chosen host
     Given the client could not connect
     When the payer tries again
     Then I can read that the transaction is over
+
+  Scenario: S-11 A decision would not fit one write
+    Given the session key is derived
+    When the link's largest write is smaller than a sealed decision
+    Then I can read that the client could not connect, and that it can try again
 ```
 
 Not this machine's: choosing a host (client find, host picker), the review

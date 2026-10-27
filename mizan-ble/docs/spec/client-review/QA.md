@@ -48,10 +48,6 @@ Confirm sent, an end message: the state reads host cancelled, not charged. Evide
 
 Confirm, the sender fake answers with an ATT error: the link dropped; the state reads lost, not charged. Evidence: Missing.
 
-## S-12 A decision too large to send
-
-Largest write 20, confirm: the sender fake holds nothing; the state reads failed, nothing sent. Evidence: Missing.
-
 ## S-13 A message that does not open
 
 Reviewing, a message the session fake refuses: the state still reads reviewing. Evidence: Missing.
@@ -59,3 +55,7 @@ Reviewing, a message the session fake refuses: the state still reads reviewing. 
 ## S-14 Done
 
 Declined, done: the state reads over. Evidence: Missing.
+
+## S-15 The host cancels as the payer declines
+
+Decline sent, the sender fake's answer held back, then an end message: the state reads host cancelled, nothing charged; the session fake closed. Evidence: Missing.

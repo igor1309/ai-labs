@@ -13,8 +13,8 @@ largest write and answers when the host accepted it, and a link to drop.
 - **A decision counts once the host acknowledges it.** From the tap it is
   on its way; the write's answer changes nothing visible, and only a
   refusal ends the review.
-- **A decision too large for one write fails the payment** rather than
-  being split, as `NOTES.md` decides; nothing was sent.
+- **A decision always fits one write:** confirm and decline seal to the
+  same size, and client connect checked it before the hand-over.
 - **A refused write, or Bluetooth lost, is a dropped link.**
 - **A link lost after a confirm was sent** leaves the result unknown: the
   host may have read it.
@@ -80,11 +80,6 @@ Feature: Reviewing the amount and deciding
     When the host refuses the write
     Then I can read that the link was lost and nothing was charged
 
-  Scenario: S-12 A decision too large to send
-    Given the payer is reviewing the amount
-    When the payer confirms and the sealed confirm does not fit one write
-    Then I can read that the payment failed and nothing was sent
-
   Scenario: S-13 A message that does not open
     Given the payer is reviewing the amount
     When a message arrives that the session refuses
@@ -94,6 +89,11 @@ Feature: Reviewing the amount and deciding
     Given the review has ended
     When the payer is done
     Then I can read that the transaction is over
+
+  Scenario: S-15 The host cancels as the payer declines
+    Given the payer's decline is not yet acknowledged
+    When the host's end message arrives
+    Then I can read that the host cancelled and nothing was charged
 ```
 
 Not this machine's: the handshake (client connect), the result (client

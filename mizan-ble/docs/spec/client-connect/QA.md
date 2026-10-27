@@ -43,3 +43,7 @@ Connecting, cancel: the link dropped, the session closed; the state reads over. 
 ## S-10 Trying again
 
 Could not connect, try again: the state reads over. Evidence: Missing.
+
+## S-11 A decision would not fit one write
+
+Session derived, the link fake's largest write 33: the state reads could not connect, try again offered; no amount handed over. Evidence: Missing.
