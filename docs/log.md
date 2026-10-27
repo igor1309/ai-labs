@@ -1,5 +1,15 @@
 # Log
 
+## 2026-10-27
+
+- Mizan BLE: land the new product (proof of concept for paying in Mizan
+  between two iOS devices over Bluetooth LE, planning stage). Moved the draft
+  plan to `mizan-ble/docs/poc.md` and added `mizan-ble/README.md`,
+  `mizan-ble/docs/log.md` and `mizan-ble/index.html`; registered it in
+  `scripts/loc-dashboard.sh`, `docs/loc-dashboard.html`, the README
+  Components table and the `index.html` and `docs/products.html` landing
+  pages. No release unit or CI yet.
+
 ## 2026-10-25
 
 - ALI: land the new product (AI Learning Agent, concept stage; working
