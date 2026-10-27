@@ -2,6 +2,7 @@
 
 ## 2026-10-27
 
+- Settings supplies validated countdown and picker values with defaults, and keeps the till's advertised name across reads (LAB-647).
 - Machine runs reducers in order, carries out independent effects and delivers each state change to every subscriber (LAB-646).
 - The tokens are generated straight from the design file, and CI fails
   when the design and the app's tokens differ; the hand-made snapshot is

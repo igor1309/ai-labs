@@ -8,10 +8,13 @@ let package = Package(
     products: [
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
         .library(name: "Machine", targets: ["Machine"]),
+        .library(name: "Settings", targets: ["Settings"]),
     ],
     targets: [
         .target(name: "Machine"),
         .testTarget(name: "MachineTests", dependencies: ["Machine"]),
+        .target(name: "Settings"),
+        .testTarget(name: "SettingsTests", dependencies: ["Settings"]),
         .target(
             name: "DesignSystem",
             resources: [.copy("Resources/Fonts")]
