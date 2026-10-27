@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreAudio
 import Testing
 @testable import MicrophoneCapture
 
@@ -61,7 +62,7 @@ struct NativeMicrophoneBindingTests {
             group.addTask {
                 try await Task.sleep(for: .seconds(30))
                 capture.stop()
-                throw MicrophoneSilent()
+                throw MicrophoneSilent(input: defaultInputDescription())
             }
             defer { group.cancelAll() }
             try await group.next()
@@ -69,4 +70,40 @@ struct NativeMicrophoneBindingTests {
     }
 }
 
-private struct MicrophoneSilent: Error {}
+/// Names the default input, so a silent run says which device heard nothing:
+/// AirPods as the input delivered no audio at all (LAB-680).
+private struct MicrophoneSilent: Error, CustomStringConvertible {
+
+    let input: String
+    var description: String { "No audio within 30 s from the default input: \(input)" }
+}
+
+private func defaultInputDescription() -> String {
+
+    guard let device = try? NativeMicrophoneBinding.readDefaultInput() else { return "unknown" }
+    var nameAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioObjectPropertyName,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+    var name: Unmanaged<CFString>?
+    var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+    let named = AudioObjectGetPropertyData(device, &nameAddress, 0, nil, &size, &name) == noErr
+    var transportAddress = AudioObjectPropertyAddress(
+        mSelector: kAudioDevicePropertyTransportType,
+        mScope: kAudioObjectPropertyScopeGlobal,
+        mElement: kAudioObjectPropertyElementMain
+    )
+    var transport: UInt32 = 0
+    size = UInt32(MemoryLayout<UInt32>.size)
+    _ = AudioObjectGetPropertyData(device, &transportAddress, 0, nil, &size, &transport)
+    let kind = switch transport {
+    case kAudioDeviceTransportTypeBuiltIn: "built-in"
+    case kAudioDeviceTransportTypeBluetooth, kAudioDeviceTransportTypeBluetoothLE: "Bluetooth"
+    case kAudioDeviceTransportTypeUSB: "USB"
+    case kAudioDeviceTransportTypeVirtual: "virtual"
+    default: "transport \(transport)"
+    }
+    let label = named ? (name?.takeRetainedValue() as String? ?? "device \(device)") : "device \(device)"
+    return "\(label) (\(kind))"
+}
