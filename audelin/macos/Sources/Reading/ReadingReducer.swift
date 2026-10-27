@@ -17,12 +17,16 @@ public enum ReadingReducer {
             // Only listening replaces the log; a status transition cannot
             // take away what was read before recognition was interrupted.
             switch update.status {
-            case .listening: state.text.removeAll(keepingCapacity: true)
+            case .listening:
+                let present = Set(update.entries.map(\.id))
+                state.anchors = state.anchors.filter { present.contains($0.key) }
+                state.text.removeAll(keepingCapacity: true)
             case .off, .gettingReady, .failed, .finished: break
             }
             for entry in update.entries {
                 if state.anchors[entry.id] == nil {
-                    state.anchors[entry.id] = .init(id: state.anchors.count, start: entry.start)
+                    state.anchors[entry.id] = .init(id: state.nextDisplayID, start: entry.start)
+                    state.nextDisplayID += 1
                     if !state.lines.followsLive { state.lines.newBelow += 1 }
                 }
                 state.text[entry.id] = entry

@@ -68,7 +68,12 @@ struct ReadingTests {
         state = send(state, .jumpToLive)
         state = send(state, .recordingChanged(.off))
         state = update(state, [], status: .off)
-        #expect(try lines(state).holds == [first, second])
+        let heldOnly = try lines(state)
+        #expect(heldOnly.holds == [first, second])
+        state = send(state, .recordingChanged(.on(elapsed: 12)))
+        #expect(state.log == .liveTextOff(kept: heldOnly))
+        state = send(state, .recordingChanged(.off))
+        #expect(state.log == .lines(heldOnly))
         state = update(state, [], status: .gettingReady)
         state = update(state, [], status: .failed("unavailable"))
         state = update(state, [], status: .finished)
@@ -94,6 +99,8 @@ struct ReadingTests {
         let late = text(.theirs, 1, start: 2, late: true)
         let next = text(.mine, 2, start: 12)
         state = update(state, [next, late, settled])
+        let arrivals = try lines(state).entries
+        #expect(Set(arrivals.map(\.id)).count == arrivals.count)
         #expect(try lines(state).newBelow == 2)
         #expect(try !lines(state).followsLive)
         state = update(state, [settled, late, next])
@@ -106,6 +113,8 @@ struct ReadingTests {
         #expect(try lines(state).newBelow == 0)
         state = send(state, .scrolled(atBottom: false))
         state = update(state, [settled, late, next, text(.theirs, 2, start: 15)])
+        let moreArrivals = try lines(state).entries
+        #expect(Set(moreArrivals.map(\.id)).count == moreArrivals.count)
         #expect(try lines(state).newBelow == 1)
         state = send(state, .jumpToLive)
         #expect(try lines(state).followsLive)
@@ -122,6 +131,8 @@ struct ReadingTests {
         state = update(state, [], status: .gettingReady)
         #expect(state.log == .preparing)
         #expect(state.recording == .on(elapsed: "00:00:12"))
+        state = update(state, [])
+        #expect(try lines(state).entries.isEmpty)
         let entry = text(.mine, 0, start: 1, settled: "read so far")
         state = update(state, [entry])
         let shown = try lines(state)
@@ -140,9 +151,11 @@ struct ReadingTests {
         state = send(state, .recordingChanged(.off))
         #expect(state.log == .lines(shown))
         #expect(state.recording == .off)
+        state = update(state, [], status: .off)
+        #expect(state.log == .lines(shown))
     }
 
-    @Test func anOmittedEntryKeepsItsIdentityWhenItReturns() throws {
+    @Test func anOmittedEntryGetsAFreshIdentityWhenItReturns() throws {
 
         let entry = text(.mine, 1, start: 4)
         var state = update(.init(), [entry])
@@ -151,8 +164,47 @@ struct ReadingTests {
         state = update(state, [])
         #expect(try lines(state).entries.isEmpty)
         state = update(state, [entry])
-        #expect(try lines(state).entries == original)
+        let returned = try #require(lines(state).entries.first)
+        #expect(returned.id > original[0].id)
+        #expect(returned.time == original[0].time)
+        #expect(try lines(state).newBelow == 1)
+    }
+
+    @Test func reusedPendingSlotsGetFreshTimesAndIDsWithoutChangingHolds() throws {
+
+        let pending = text(.mine, 0, start: 2, pending: "held draft")
+        let other = text(.theirs, 0, start: 5, settled: "still here")
+        var state = update(.init(), [pending, other])
+        let original = try lines(state).entries
+        let held = ReadingState.Held(entryID: original[0].id, text: "held draft")
+        state = send(state, .hold(held))
+        state = send(state, .scrolled(atBottom: false))
+        state = update(state, [other])
+        #expect(try lines(state).entries == [original[1]])
         #expect(try lines(state).newBelow == 0)
+        #expect(try lines(state).holds == [held])
+
+        let reused = text(.mine, 0, start: 12, pending: "new speech")
+        state = update(state, [reused, other])
+        let returned = try lines(state).entries
+        #expect(returned.map(\.speaker) == [.theirs, .mine])
+        #expect(returned.map(\.time) == ["00:05", "00:12"])
+        #expect(returned[0] == original[1])
+        #expect(returned[1].id > original.map(\.id).max()!)
+        #expect(returned[1].pending == "new speech")
+        #expect(Set(returned.map(\.id)).count == returned.count)
+        #expect(try lines(state).newBelow == 1)
+        #expect(try lines(state).holds == [held])
+
+        state = update(state, [other, text(.mine, 0, start: 11, settled: "new speech")])
+        let settled = try lines(state).entries
+        #expect(settled.map(\.id) == returned.map(\.id))
+        #expect(settled.map(\.time) == returned.map(\.time))
+        #expect(settled[1].settled == "new speech")
+        #expect(try lines(state).newBelow == 1)
+        #expect(try lines(state).holds == [held])
+        state = send(state, .letGo(held))
+        #expect(try lines(state).holds.isEmpty)
     }
 }
 
@@ -182,9 +234,9 @@ private func update(
 private func lines(_ state: ReadingState) throws -> ReadingState.Lines {
 
     switch state.log {
-    case let .lines(lines), let .liveTextOff(.some(lines)): return lines
+    case let .lines(lines): return lines
     default:
-        Issue.record("Expected readable lines, got \(state.log)")
+        Issue.record("Expected the lines log mode, got \(state.log)")
         throw MissingLines()
     }
 }

@@ -86,8 +86,8 @@ public struct ReadingState: Equatable, Sendable {
         }
     }
 
-    // Anchors outlive snapshots: settling and temporary omissions must not
-    // give an entry another identity, position, or new-below count.
+    // Anchors keep revisions in place while an entry remains present.
+    // Listening omissions retire them because producer ids can be reused.
     struct Anchor: Equatable, Sendable {
 
         let id: Int
@@ -96,6 +96,7 @@ public struct ReadingState: Equatable, Sendable {
 
     var status: ReadingTextUpdate.Status = .off
     var anchors: [ReadingTextUpdate.Entry.ID: Anchor] = [:]
+    var nextDisplayID = 0
     var text: [ReadingTextUpdate.Entry.ID: ReadingTextUpdate.Entry] = [:]
     var lines = Lines()
 

@@ -10,9 +10,13 @@ S-15 and S-16.
 ## Decided
 
 - Entries are ordered by their first reported start time. Each speaker's
-  local id gets a unique display id; later snapshots update its words
-  without changing that identity or its original time and position.
-  Equal start times keep first arrival order.
+  local id gets a unique display id; while present, later snapshots update
+  its words without changing that identity or its original time and position.
+  A listening snapshot that omits an entry retires its identity and time.
+  If the producer reuses that local id, it gets a fresh, monotonically
+  increasing display id and the newly reported start time. Held selections
+  keep their original display ids and text. Equal start times keep first
+  arrival order.
 - Recording time is elapsed `HH:MM:SS`; entry times are elapsed `MM:SS`,
   with minutes continuing past 59. Fractions are rounded down.
 - Consecutive written-later entries form a group at their place in call
@@ -22,7 +26,8 @@ S-15 and S-16.
   Only letting that selection go removes it, even if its entry disappears.
 - Scrolling away pauses following. Each previously unseen entry counts
   toward new-below, including recovered speech from earlier in the call.
-  Revisions and returning identities do not count. Reaching the bottom or
+  Revisions do not count; ids returning after a listening omission count
+  as new entries. Reaching the bottom or
   jumping to live resumes following and clears the count.
 - Text updates are complete snapshots while listening.
   Preparing, off, failed and finished updates retain prior entries absent from the
@@ -57,6 +62,13 @@ Feature: Reading one recording
     When entries arrive or change
     Then only new identities increase new-below
     And reaching the bottom or jumping to live clears the count and follows again
+
+  Scenario: A reused speech slot belongs at its new time
+    Given pending speech is held and then omitted from a listening snapshot
+    When new speech arrives with the same speaker and local id
+    Then it has a fresh display id and appears at its newly reported time
+    And it increases new-below if the reader is not following
+    And the held selection keeps its original identity and exact text
 
   Scenario: Live text prepares while recording
     Given a recording is running
