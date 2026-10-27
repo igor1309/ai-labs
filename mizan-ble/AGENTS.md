@@ -9,7 +9,7 @@ Issues are in the Multica workspace `ai-labs` (parent of v0.0.1: LAB-625).
   settings. Re-read the grounding before designing, specifying or building.
 - A new component, module or dependency changes `ARCHITECTURE.md` and its
   diagram in the same commit, and gets its spec folder before its code.
-- No component imports another. Only the UI modules import `MizanDesign`.
+- No component imports another. Only the UI modules import `DesignSystem`.
   Only the app target knows concrete types.
 
 ## Specs

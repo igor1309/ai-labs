@@ -12,39 +12,6 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct MenuBarTests {
 
-    @Test func idleShowsWaitingOrMissingConditions() {
-
-        for (automatic, missing, message): (Bool, Set<RecordingCondition>, String) in [
-            (true, [], "Ждёт звонка"),
-            (false, [], "Не записывает"),
-            (true, [.microphoneAccess], "Нет доступа к микрофону"),
-            (true, [.callAudioAccess], "Нет доступа к звуку звонка"),
-            (true, [.callsFolder], "Папка звонков недоступна"),
-            (true, [.room], "Недостаточно места для записи"),
-        ] {
-            let item = MenuBarItem.from(RecordingState(automatic: automatic, missing: missing), liveText: true)
-            #expect(item.title == "Audelin")
-            #expect(item.symbol == "text.alignleft")
-            #expect(item.stateLine == message)
-        }
-    }
-
-    @Test func recordingStartedByTheCall() {
-
-        let item = MenuBarItem.from(running(), liveText: true)
-        #expect(item.title == "Запись")
-        #expect(item.symbol == "record.circle.fill")
-        #expect(item.stateLine == "Запись · звонок")
-    }
-
-    @Test func recordingWithoutLiveText() {
-
-        let item = MenuBarItem.from(running(), liveText: false)
-        #expect(item.title == "Запись")
-        #expect(item.symbol == "record.circle.fill")
-        #expect(item.stateLine == "Запись без текста")
-    }
-
     @Test func applicationConnectsStartupAndStopsDetectionBeforeDraining() async throws {
 
         for failureAfterStartup in [false, true] {
@@ -143,15 +110,6 @@ struct MenuBarTests {
         }
     }
 
-    private func running() -> RecordingState {
-
-        var state = RecordingState(automatic: true, missing: [])
-        state.phase = .recording
-        state.callOn = true
-        state.lastSessionID = 1
-        state.session = .init(id: 1, origin: .call)
-        return state
-    }
 }
 
 private final class QueuedCallClock: CallClock {

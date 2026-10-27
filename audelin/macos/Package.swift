@@ -15,12 +15,14 @@ let package = Package(
         .library(name: "LiveAudio", targets: ["LiveAudio"]),
         .library(name: "LiveText", targets: ["LiveText"]),
         .library(name: "Machine", targets: ["Machine"]),
+        .library(name: "MenuBar", targets: ["MenuBar"]),
         .library(name: "MicrophoneCapture", targets: ["MicrophoneCapture"]),
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
         .library(name: "ParakeetRecognizer", targets: ["ParakeetRecognizer"]),
         .library(name: "Preferences", targets: ["Preferences"]),
         .library(name: "RecordedCapture", targets: ["RecordedCapture"]),
+        .library(name: "Reading", targets: ["Reading"]),
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Session", targets: ["Session"]),
@@ -37,7 +39,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Audelin",
-            dependencies: ["Compose", "Recording", "Preferences"]
+            dependencies: ["Compose", "MenuBar", "Preferences"]
         ),
         .target(
             name: "AudioConversion"
@@ -53,7 +55,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture"]
+            dependencies: ["MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -77,6 +79,9 @@ let package = Package(
         ),
         .target(
             name: "Machine"
+        ),
+        .target(
+            name: "MenuBar"
         ),
         .target(
             name: "MicrophoneCapture"
@@ -111,6 +116,10 @@ let package = Package(
         ),
         .target(
             name: "RecordedCapture"
+        ),
+        .target(
+            name: "Reading",
+            dependencies: ["Machine"]
         ),
         .target(
             name: "Recording",
@@ -193,6 +202,10 @@ let package = Package(
             dependencies: ["Machine"]
         ),
         .testTarget(
+            name: "MenuBarTests",
+            dependencies: ["MenuBar"]
+        ),
+        .testTarget(
             name: "MicrophoneCaptureTests",
             dependencies: ["MicrophoneCapture"]
         ),
@@ -219,6 +232,10 @@ let package = Package(
         .testTarget(
             name: "RecordedCaptureTests",
             dependencies: ["RecordedCapture"]
+        ),
+        .testTarget(
+            name: "ReadingTests",
+            dependencies: ["Reading"]
         ),
         .testTarget(
             name: "RecordingTests",

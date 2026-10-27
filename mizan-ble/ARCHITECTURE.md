@@ -75,7 +75,7 @@ nothing; what a screen offers follows from the state.
 | Host picker | `HostPicker` | Core | Choosing the nearest host from timestamped signal readings |
 | Message codec | `MessageCodec` | Core | The bytes of each message and of the session characteristic |
 | Settings | `Settings` | Core | The settings, their defaults and allowed values |
-| Design system | `MizanDesign` | UI | Tokens generated from the design, and its components as SwiftUI views |
+| Design system | `DesignSystem` | UI | Tokens generated from the design, and its components as SwiftUI views |
 | Host UI | `HostUI` | UI | The host's screens, drawn from the host machines' state |
 | Settings UI | `SettingsUI` | UI | The host's settings sheet, opened from the gear |
 | Client UI | `ClientUI` | UI | The client's find and connect screens, drawn from client find's and client connect's state |
@@ -88,7 +88,7 @@ nothing; what a screen offers follows from the state.
 | App | `MizanBLE` (app target) | Root | Builds everything, wires each interface, decorates with logging |
 
 All modules but the app target live in one Swift package under
-`mizan-ble/ios/`. The app targets iOS 17. The UI modules depend on `MizanDesign` only; that is the
+`mizan-ble/ios/`. The app targets iOS 17. The UI modules depend on `DesignSystem` only; that is the
 one dependency between modules, since a design system is a library the
 screens are drawn in, not a collaborator.
 
@@ -98,11 +98,11 @@ flowchart TB
     Log[logging decorators]
   end
   subgraph UI
-    ModeSwitchUI --> MizanDesign
-    HostUI --> MizanDesign
-    SettingsUI --> MizanDesign
-    ClientUI --> MizanDesign
-    ClientPaymentUI --> MizanDesign
+    ModeSwitchUI --> DesignSystem
+    HostUI --> DesignSystem
+    SettingsUI --> DesignSystem
+    ClientUI --> DesignSystem
+    ClientPaymentUI --> DesignSystem
   end
   subgraph Core
     Machine
@@ -131,7 +131,7 @@ flowchart TB
 
 The root is the only node with outgoing arrows to components: no core,
 adapter or UI module imports another, except the UI modules' use of
-`MizanDesign`.
+`DesignSystem`.
 
 ## Data flow
 

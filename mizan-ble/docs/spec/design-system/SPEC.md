@@ -5,7 +5,7 @@ UI, mode switch), which draw every screen from this module's tokens and
 components. They keep their scenarios only if what they draw matches the
 locked design (`../../design/README.md`).
 
-`MizanDesign` holds the design's `mz-*` tokens as Swift, generated from a
+`DesignSystem` holds the design's `mz-*` tokens as Swift, generated from a
 snapshot of the design's variables, and one SwiftUI view per `DS /`
 component. It knows no flow and no state: each view takes plain values.
 
@@ -21,7 +21,9 @@ component. It knows no flow and no state: each view takes plain values.
   with no network.
 - **The Mizan sign is a vector shape** drawn from the design's path, so it
   scales with the amount's size.
-- **Dark only:** the design has one palette, on a dark ground.
+- **Light and dark follow the device:** each `mz-*` colour has a dark and
+  a light value, and a view takes the one for the SwiftUI colour scheme.
+  Dark is the reference design; light accents are darker, to keep 4.5:1.
 
 ```gherkin
 Feature: Drawing from the locked design
@@ -50,6 +52,10 @@ Feature: Drawing from the locked design
     Given a component drawn with the design's sample values
     When it is compared with the design's preview of that component
     Then I can see the same colours, type, spacing and radii
+  Scenario: S-6 The device's appearance
+    Given a component and a device set to light
+    When I draw it
+    Then I can see the token's light value, and its dark value once the device is set to dark
 ```
 
 Not the design system's: screens (host UI, settings UI, client UI, client

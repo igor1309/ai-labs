@@ -1,0 +1,21 @@
+// swift-tools-version: 6.2
+import PackageDescription
+
+// The app runs on iOS; macOS is here so the tests run with `swift test`.
+let package = Package(
+    name: "MizanBLE",
+    platforms: [.iOS(.v26), .macOS(.v26)],
+    products: [
+        .library(name: "DesignSystem", targets: ["DesignSystem"]),
+    ],
+    targets: [
+        .target(
+            name: "DesignSystem",
+            resources: [.copy("Resources/Fonts")]
+        ),
+        .testTarget(
+            name: "DesignSystemTests",
+            dependencies: ["DesignSystem"]
+        ),
+    ]
+)

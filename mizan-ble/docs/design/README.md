@@ -14,6 +14,17 @@ showing its own step and the other side's. The frame "Mizan · Design
 System" shows the tokens, the type scale, spacing and radii, the Mizan sign
 and the components.
 
+The light appearance draws from the same tokens with `theme: {mode:
+"light"}`: "Mizan · Design System · Light" and "Mizan · Paired Flow ·
+Light" show it, the latter for five moments of the flow. Light accents are
+darker than dark ones, so text on them and on the light ground keeps
+4.5:1. Dark remains the reference design.
+
+The app's `DesignSystem` module (`mizan-ble/ios/Sources/DesignSystem/`)
+draws the same components from the same tokens. Its
+`DesignSystemGallery` shows them all on one page, to compare with the
+frame.
+
 Rules for new frames:
 
 - Use an `mz-*` token for every colour, font, size, radius and gap. The
@@ -43,17 +54,23 @@ Rules for new frames:
 | Spacing | `mz-space-<n>` is n × 4: 1 to 8, 10, 12, 14, 18 and 20 |
 | Radius | `mz-radius-sm` 6, `-md` 12, `-lg` 16, `-xl` 24, `-2xl` 40, `-pill`; device corners `-ipad` 28 and `-iphone` 44 |
 
-The app's tokens are generated from `tokens.json`, a snapshot of this
-file's `mz-*` variables, kept beside it. A token change in the design ships
-in the same commit as the refreshed snapshot and the regenerated Swift:
+The hex values above are the dark ones. The app's tokens are generated
+from [tokens.json](tokens.json), a snapshot of this file's variables. A
+token change in the design ships in the same commit as the refreshed
+snapshot and the regenerated Swift:
 
 1. Through the pencil MCP, run `execute` on this file with
    `Print(JSON.stringify(GetVariables()))`.
-2. Write the `mz-*` entries to `tokens.json` with a 2-space indent and a
-   final newline, so the diff shows only the changed tokens.
-3. In `mizan-ble/ios`, run `python3 -I scripts/generate-tokens.py`; it
-   writes `MizanDesign`'s tokens, and `--check` exits 1 when they are
-   stale.
+2. Write the printed JSON to `tokens.json` with a 2-space indent and a final
+   newline, so the diff shows only the changed tokens.
+3. In `mizan-ble/ios`, run `python3 -I scripts/generate-tokens.py`. It writes
+   `Sources/DesignSystem/Tokens.swift` from the `mz-*` variables;
+   `--check` exits 1 when that file is stale, and CI runs it.
+
+Each `mz-*` colour has a dark and a light value on the `mode` theme axis;
+the module picks the value from the SwiftUI environment's colour scheme.
+Unthemed colours use the same value in both appearances; numbers and
+strings remain unthemed.
 
 ## Components
 
@@ -87,6 +104,7 @@ The components without the `DS /` prefix (`Status Bar`, `Mode Switch`,
 |---|---|
 | x = 0 | Mizan · Design System (`pHq12`): header, colour, type, spacing and radius, the Mizan sign with its candidates, components |
 | x = 2800 | Mizan · Paired Flow (`OKjZH`): one row per moment, the iPad and the iPhone side by side with the message between them |
+| — | Mizan · Design System · Light and Mizan · Paired Flow · Light: the same, in the light appearance |
 | x < 0 | Mizan · Explorations (`omPk6`): earlier covers, palettes and flows, kept as they were; not current |
 
 The paired flow, top to bottom:

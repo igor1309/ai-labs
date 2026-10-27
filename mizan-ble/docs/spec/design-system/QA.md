@@ -22,3 +22,7 @@ The amount view at XL: a snapshot matches the design's export of DS / Amount / X
 ## S-5 A component matches its frame
 
 Each component at its sample values: a snapshot matches the design's export. Evidence: Missing.
+
+## S-6 The device's appearance
+
+A component rendered under a light and under a dark colour scheme: each reads its token's value for that scheme. Evidence: Missing.

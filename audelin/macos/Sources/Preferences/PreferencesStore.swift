@@ -1,7 +1,7 @@
 import Foundation
 import Synchronization
 
-public final class PreferencesStore: Sendable {
+public final class PreferencesStore: PreferenceSettingsStorage, Sendable {
 
     private let fileURL: URL
     private let access = Mutex<Void>(())

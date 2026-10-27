@@ -1,5 +1,13 @@
 # Log
 
+## 2026-10-27
+
+- Reading decides the panel's call order, held selections and following,
+  keeping prior text when live text is off or fails (LAB-507).
+
+- The menu bar starts and stops recording, saves automatic recording and live
+  text choices, and turns red while a recording begins or runs (LAB-509, LAB-464).
+
 ## 2026-10-26
 
 - Recording, transcript writes and call-folder creation keep blocking disk
