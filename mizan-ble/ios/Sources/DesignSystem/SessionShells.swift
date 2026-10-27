@@ -9,6 +9,7 @@ public struct IPadShell<Steps: View, Content: View>: View {
     let deviceMeta: String
     let onSwitch: (Side) -> Void
     let onSettings: () -> Void
+    let isSettingsEnabled: Bool
     let steps: Steps
     let content: Content
 
@@ -16,6 +17,7 @@ public struct IPadShell<Steps: View, Content: View>: View {
         side: Side = .host, eyebrow: String, status: StatusPill,
         deviceCode: String, deviceMeta: String,
         onSwitch: @escaping (Side) -> Void, onSettings: @escaping () -> Void,
+        isSettingsEnabled: Bool = true,
         @ViewBuilder steps: () -> Steps, @ViewBuilder content: () -> Content
     ) {
         self.side = side
@@ -25,6 +27,7 @@ public struct IPadShell<Steps: View, Content: View>: View {
         self.deviceMeta = deviceMeta
         self.onSwitch = onSwitch
         self.onSettings = onSettings
+        self.isSettingsEnabled = isSettingsEnabled
         self.steps = steps()
         self.content = content()
     }
@@ -73,16 +76,35 @@ public struct IPadShell<Steps: View, Content: View>: View {
                 Text(deviceMeta).font(Tokens.text(Tokens.sizeEyebrow)).foregroundStyle(Tokens.text3)
             }
             Spacer(minLength: Tokens.space1)
-            Button(action: onSettings) {
-                Image(systemName: "gearshape").font(.system(size: 20)).foregroundStyle(Tokens.text)
-                    .frame(width: Tokens.space10, height: Tokens.space10)
-                    .background(Tokens.overlay, in: RoundedRectangle(cornerRadius: Tokens.radiusMd))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Settings")
+            SettingsGear(isEnabled: isSettingsEnabled, action: onSettings)
         }
         .padding(.top, Tokens.space5)
         .overlay(alignment: .top) { Rectangle().fill(Tokens.line).frame(height: 1) }
+    }
+}
+
+struct SettingsGear: View {
+    let isEnabled: Bool
+    let action: () -> Void
+
+    @Environment(\.isEnabled) private var environmentIsEnabled
+
+    private var enabled: Bool { isEnabled && environmentIsEnabled }
+
+    var body: some View {
+        Button {
+            guard enabled else { return }
+            action()
+        } label: {
+            Image(systemName: "gearshape").font(.system(size: 20))
+                .foregroundStyle(enabled ? Tokens.text : Tokens.text3)
+                .frame(width: Tokens.space10, height: Tokens.space10)
+                .background(Tokens.overlay, in: RoundedRectangle(cornerRadius: Tokens.radiusMd))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+        .allowsHitTesting(enabled)
+        .accessibilityLabel("Settings")
     }
 }
 

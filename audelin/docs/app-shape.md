@@ -84,8 +84,11 @@ Decides what the panel shows.
 
 - **Events:** call text's updates; the panel's hold, let go, scroll and
   jump to live; the recording's state.
-- **Effects:** none expected. If none appear, it is a reducer without a
-  handler.
+- **Effects:** none. Compose creates a Reading with each Session, feeds its
+  call text updates and elapsed time once a second until the Session ends,
+  and exposes translated panel states and reading actions through
+  `AudelinPanel`. Preparing carries held selections, so they remain visible
+  while live text gets ready again.
 
 User scenarios: S-3, S-4, S-5, S-11 to S-14. Closes LAB-507.
 

@@ -182,7 +182,9 @@ private extension PanelView {
                     .lineHeight(tokens.leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
                     .foregroundStyle(tokens.me)
 
-            case .preparing:
+            case let .preparing(holds):
+                holdsView(holds)
+
                 Text("Живой текст готовится — звонок уже записывается.")
                     .font(tokens.ui(tokens.typeBody))
                     .lineHeight(tokens.leading(tokens.fontUi, tokens.typeBody, config.lineHeight))
@@ -207,20 +209,23 @@ private extension PanelView {
 
         TranscriptLog(lines: lines, tokens: tokens, config: config, event: event)
 
-        if !lines.holds.isEmpty {
-
-            VStack(spacing: tokens.space4) {
-
-                ForEach(Array(lines.holds.enumerated()), id: \.offset) { _, held in
-
-                    heldView(held)
-                }
-            }
-        }
+        holdsView(lines.holds)
 
         if lines.newBelow > 0 {
 
             newBelowPill(lines.newBelow)
+        }
+    }
+
+    @ViewBuilder
+    func holdsView(_ holds: [PanelState.Held]) -> some View {
+
+        if !holds.isEmpty {
+            VStack(spacing: tokens.space4) {
+                ForEach(Array(holds.enumerated()), id: \.offset) { _, held in
+                    heldView(held)
+                }
+            }
         }
     }
 
@@ -232,11 +237,7 @@ private extension PanelView {
                 .font(.system(size: 14))
                 .foregroundStyle(tokens.me)
 
-            Text("«\(held.text)»")
-                .font(tokens.data(tokens.typeSmall))
-                .foregroundStyle(tokens.text)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            HeldTextLabel(text: "«\(held.text)»", tokens: tokens)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Button { event(.letGo(held)) } label: {

@@ -33,7 +33,7 @@ public extension PanelState {
         case liveTextOff(kept: Lines?)
         /// The call is recorded while the speech models load; live text
         /// catches up from the call's start once they are in.
-        case preparing
+        case preparing(holds: [Held])
         case lines(Lines)
     }
 

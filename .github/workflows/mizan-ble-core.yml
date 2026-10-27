@@ -38,6 +38,10 @@ jobs:
         working-directory: mizan-ble/ios
         run: swift build --build-tests
 
+      - name: Build preview apps
+        working-directory: mizan-ble/ios/PreviewApps
+        run: swift build
+
       # The tests run in seconds; the step's limit fails a hang at once.
       - name: Run tests
         working-directory: mizan-ble/ios

@@ -8,6 +8,8 @@ let package = Package(
     products: [
         .library(name: "AmountEntry", targets: ["AmountEntry"]),
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
+        .library(name: "ModeSwitchUI", targets: ["ModeSwitchUI"]),
+        .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Machine", targets: ["Machine"]),
         .library(name: "Settings", targets: ["Settings"]),
         .library(name: "MessageCodec", targets: ["MessageCodec"]),
@@ -17,6 +19,8 @@ let package = Package(
     targets: [
         .target(name: "AmountEntry"),
         .testTarget(name: "AmountEntryTests", dependencies: ["AmountEntry"]),
+        .target(name: "ModeSwitchUI", dependencies: ["DesignSystem"]),
+        .target(name: "SettingsUI", dependencies: ["DesignSystem"]),
         .target(name: "Machine"),
         .testTarget(name: "MachineTests", dependencies: ["Machine"]),
         .target(name: "Settings"),

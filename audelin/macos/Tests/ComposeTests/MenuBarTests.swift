@@ -3,6 +3,7 @@ import CoreAudioProcesses
 import Foundation
 import struct MicrophoneCapture.AudioPiece
 import Preferences
+import PanelUI
 import struct SystemAudioCapture.AudioPiece
 import enum SystemAudioCapture.ProcessSelection
 import Recording
@@ -31,6 +32,8 @@ struct MenuBarTests {
                     processes.stop(); model.cancel(); stopping.end(); release.end()
                     microphone.continuation.finish(); call.continuation.finish()
                 }
+                let panelClock = ReadingClockSpy()
+                let panel = panelClock.panel()
                 let app = try await AudelinRecording(
                     preferences: preferences, processes: processes,
                     now: { Date(timeIntervalSince1970: 0) }, timeZone: { TimeZone(secondsFromGMT: 0)! },
@@ -58,8 +61,11 @@ struct MenuBarTests {
                             callAudioAccess: { true }, callsFolder: { true }, room: { true }
                         )
                     },
-                    startModel: { events.append("model started"); return model }
+                    startModel: { events.append("model started"); return model }, panel: panel
                 )
+                #expect(app.panel === panel)
+                var panelStates = await app.panel.states().makeAsyncIterator()
+                #expect(await panelStates.next() == .init(recording: .off, log: .empty))
                 let initial = await app.recording.snapshot()
                 #expect(initial.phase == .idle && initial.missing.isEmpty && initial.automatic)
                 #expect(selections.all.isEmpty)
@@ -88,6 +94,18 @@ struct MenuBarTests {
                         break
                     }
                 }
+                var recordingPanel: PanelState?
+                while let state = await panelStates.next() {
+                    if state.recording == .on(elapsed: "00:00:00") {
+                        recordingPanel = state
+                        break
+                    }
+                }
+                #expect(recordingPanel == .init(recording: .on(elapsed: "00:00:00"), log: .liveTextOff(kept: nil)))
+                panelClock.advance(3)
+                while let state = await panelStates.next() {
+                    if state.recording == .on(elapsed: "00:00:03") { break }
+                }
                 #expect(selections.all == [.only([42])])
                 #expect(checks.all == ["microphone", "microphone"])
                 binding.setInput(false)
@@ -105,6 +123,8 @@ struct MenuBarTests {
                 #expect(events.all == ["model started", "microphone started", "stopping", "terminated"])
                 #expect(await app.recording.snapshot().lastSessionID == 1)
                 #expect(await app.recording.snapshot().phase == .idle)
+                var terminal = await app.panel.states().makeAsyncIterator()
+                #expect(await terminal.next() == .init(recording: .off, log: .empty))
                 #expect(model.isCancelled)
             }
         }
