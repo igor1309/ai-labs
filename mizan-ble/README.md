@@ -14,8 +14,10 @@ explicit handshake (v0.1.0) and the foreground app (v0.2.0).
 |---|---|
 | [docs/poc.md](docs/poc.md) | The proof of concept: versions, the host and client flows, design notes, research leads |
 | [NOTES.md](NOTES.md) | How it is built: choosing the host by signal strength, encrypting each exchange with a per-session key |
+| [docs/design/](docs/design/) | The design in pen.dev (`mizan-ble.pen`) and its previews: the design system, the host and client screens and the paired flow, and the Mizan sign candidates |
 | [docs/research/](docs/research/) | Research notes: how existing proximity payments work (Sber's «Вжух» so far) |
 | [docs/log.md](docs/log.md) | What changed for the product, newest first |
 
-The Mizan currency symbol comes from the blackchain project in the
-[cortagora](https://github.com/igor1309/cortagora) repo.
+Each mode has its own colour, orange for the host and blue for the
+client, and the mode switch sits in every header. The Mizan sign is a
+turned M with a tail and two bars.

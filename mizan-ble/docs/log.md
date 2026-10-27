@@ -2,6 +2,10 @@
 
 ## 2026-10-27
 
+- Design: the design system is locked, with host orange and client blue and
+  the mode switch in every header; paired host and client frames cover the
+  flow; the Mizan sign is a turned M with a tail and two bars; earlier
+  designs moved to an Explorations area (LAB-612, LAB-613, LAB-614).
 - Decided: the client picks the nearest host by smoothed signal strength and
   never guesses between two close ones, and every message after the
   handshake is encrypted with a key made for that one transaction. Both
