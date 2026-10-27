@@ -4,6 +4,14 @@ import Observation
 import Preferences
 import Recording
 
+struct MenuApplication {
+
+    let states: () async -> AsyncStream<RecordingState>
+    let failures: AsyncStream<any Error>
+    let send: (RecordingEvent) -> Void
+    let quit: () async -> Void
+}
+
 @MainActor @Observable
 public final class AudelinMenu {
 
@@ -28,45 +36,65 @@ public final class AudelinMenu {
         terminate: @escaping @Sendable () async -> Void
     ) {
 
-        do {
-            let application = try AudelinRecording(preferences: preferences)
-            self.init(
-                storage: preferences,
-                send: { application.recording.send($0) }, openFolder: openCallsFolder,
-                quit: { await application.quit(terminate: terminate) }
-            )
-            observation = Task { [weak self, recording = application.recording] in
-                for await state in await recording.states() {
-                    guard let self else { return }
-                    self.state = state
-                }
-            }
-            detectionObservation = Task { [weak self, failures = application.detectionFailures] in
-                for await error in failures {
-                    guard let self else { return }
-                    self.failure = "Наблюдение за звонками остановлено: \(error)"
-                }
-            }
-        } catch {
-            self.init(
-                storage: preferences,
-                send: { _ in }, openFolder: openCallsFolder, quit: { await terminate() }
-            )
-            failure = "Не удалось начать наблюдение за звонками: \(error)"
-        }
+        self.init(
+            storage: preferences,
+            makeApplication: {
+                let application = try AudelinRecording(preferences: preferences)
+                return MenuApplication(
+                    states: { await application.recording.states() },
+                    failures: application.detectionFailures,
+                    send: { application.recording.send($0) },
+                    quit: { await application.quit(terminate: terminate) }
+                )
+            },
+            openFolder: openCallsFolder, terminate: { await terminate() }, didDeliver: {}
+        )
     }
 
+    // Delivery is acknowledged after the observable state or failure has been updated.
     init(
         storage: any PreferenceSettingsStorage,
-        send: @escaping (RecordingEvent) -> Void,
+        makeApplication: () throws -> MenuApplication,
         openFolder: @escaping (URL) -> Void,
-        quit: @escaping () async -> Void
+        terminate: @escaping () async -> Void,
+        didDeliver: @escaping () -> Void
     ) {
 
+        let application: MenuApplication?
+        do {
+            application = try makeApplication()
+        } catch {
+            application = nil
+            failure = "Не удалось начать наблюдение за звонками: \(error)"
+        }
+        let send = application?.send ?? { _ in }
         settings = PreferenceSettings(storage: storage, automaticChanged: { send(.automaticChanged($0)) })
         self.send = send
         self.openFolder = openFolder
-        self.quit = quit
+        self.quit = application?.quit ?? terminate
+        if let application {
+            observation = Task { [weak self, states = application.states] in
+                for await state in await states() {
+                    guard let self else { return }
+                    self.state = state
+                    didDeliver()
+                }
+            }
+            detectionObservation = Task { [weak self, failures = application.failures] in
+                for await error in failures {
+                    guard let self else { return }
+                    self.failure = "Наблюдение за звонками остановлено: \(error)"
+                    didDeliver()
+                }
+            }
+        }
+    }
+
+    /// Waits for both observers after their input streams finish.
+    func waitForObservers() async {
+
+        await observation?.value
+        await detectionObservation?.value
     }
 
     public func perform(_ action: MenuBarAction) async {
