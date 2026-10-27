@@ -125309,6 +125309,1903 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "G80jY",
+      "x": 20924,
+      "y": -383.5,
+      "name": "Picture puzzle · Choose · Light · Explorer 24 pieces",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1133,
+      "height": 744,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 24,
+      "padding": [
+        32,
+        40,
+        48,
+        40
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "agy3N",
+          "name": "Top bar",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "ZLoWm",
+              "name": "Home",
+              "fill": "$fm-ink",
+              "content": "⌂ HOME",
+              "fontFamily": "Lexend",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "NncS2",
+              "name": "Title",
+              "fill": "$fm-ink",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "🧩 PICTURE PUZZLE",
+              "fontFamily": "Lexend",
+              "fontSize": 30,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "sZh92",
+              "name": "Collection",
+              "fill": "$fm-ink",
+              "content": "★ 1 / 3",
+              "fontFamily": "Lexend",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Vx1Pq",
+          "name": "Age level switch",
+          "width": "fill_container",
+          "gap": 14,
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "r1ZXo",
+              "name": "Hatchling",
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "padding": [
+                14,
+                28
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "Zla1e",
+                  "name": "Hatchling label",
+                  "fill": "$fm-ink",
+                  "content": "🥚 12",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "u98MM",
+              "name": "Explorer",
+              "fill": "$fm-base",
+              "cornerRadius": 16,
+              "padding": [
+                14,
+                28
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "JnWQK",
+                  "name": "Explorer label",
+                  "fill": "$fm-on-base",
+                  "content": "🦖 24",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "j8tZNE",
+              "name": "Paleontologist",
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "padding": [
+                14,
+                28
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "DGjSz",
+                  "name": "Paleontologist label",
+                  "fill": "$fm-ink",
+                  "content": "🦴 36",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "DvFo9",
+          "name": "Choose prompt",
+          "fill": "$fm-ink",
+          "content": "CHOOSE YOUR DINOSAUR",
+          "fontFamily": "Lexend",
+          "fontSize": 24,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "c0lVDs",
+          "name": "Dinosaur choices",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 20,
+          "children": [
+            {
+              "type": "frame",
+              "id": "n3U6M",
+              "name": "TYRANNOSAURUS choice",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AhKiR",
+                  "name": "TYRANNOSAURUS picture",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "../src/assets/dinos/tyrannosaurus/body.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "LYnSt",
+                  "name": "TYRANNOSAURUS name",
+                  "fill": "$fm-ink",
+                  "content": "TYRANNOSAURUS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "J4PPOT",
+                  "name": "TYRANNOSAURUS star",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AJfVj",
+              "name": "TRICERATOPS choice",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Q7eB4",
+                  "name": "TRICERATOPS picture",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "../src/assets/dinos/triceratops/body.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "PXmQO",
+                  "name": "TRICERATOPS name",
+                  "fill": "$fm-ink",
+                  "content": "TRICERATOPS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "n9JCn",
+                  "name": "TRICERATOPS star",
+                  "fill": "$fm-amber",
+                  "content": "☆",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "G0GoR",
+              "name": "STEGOSAURUS choice",
+              "width": "fill_container",
+              "height": "fill_container",
+              "fill": "$fm-surface",
+              "cornerRadius": 24,
+              "stroke": "$fm-line",
+              "strokeWidth": 1,
+              "layout": "vertical",
+              "gap": 14,
+              "padding": 20,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "p5yWYO",
+                  "name": "STEGOSAURUS picture",
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "../src/assets/dinos/stegosaurus/body.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "oIEBf",
+                  "name": "STEGOSAURUS name",
+                  "fill": "$fm-ink",
+                  "content": "STEGOSAURUS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "fucHY",
+                  "name": "STEGOSAURUS star",
+                  "fill": "$fm-amber",
+                  "content": "☆",
+                  "fontFamily": "Lexend",
+                  "fontSize": 32,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "z3tubP",
+      "x": 22157,
+      "y": -383.5,
+      "name": "Picture puzzle · Board · Light · Hatchling 12 pieces",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1133,
+      "height": 744,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": [
+        28,
+        36,
+        48,
+        36
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "l4k9T",
+          "name": "Puzzle header",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "bhEdU",
+              "name": "Back",
+              "fill": "$fm-ink",
+              "content": "← PICTURES",
+              "fontFamily": "Lexend",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "fW7aY",
+              "name": "Dinosaur title",
+              "fill": "$fm-ink",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "TRICERATOPS",
+              "fontFamily": "Lexend",
+              "fontSize": 30,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "LJBCy",
+              "name": "Placed count",
+              "fill": "$fm-ink",
+              "content": "🧩 3 / 12",
+              "fontFamily": "Lexend",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "yWts3",
+          "name": "Board and tray",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "PIY5m",
+              "name": "4 by 3 puzzle board",
+              "clip": true,
+              "width": 680,
+              "height": 510,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 12,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "C7r53",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Faint full picture guide",
+                  "width": 680,
+                  "height": 510,
+                  "fill": {
+                    "type": "image",
+                    "opacity": 0.18,
+                    "enabled": true,
+                    "url": "../src/assets/dinos/triceratops/body.webp",
+                    "mode": "contain"
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "y8oku9",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Slot 1",
+                  "width": 170,
+                  "height": 170,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "../src/assets/dinos/triceratops/body.webp",
+                    "mode": "stretch",
+                    "transform": [
+                      4,
+                      0,
+                      0,
+                      3,
+                      0,
+                      0
+                    ]
+                  },
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "V9ZWZ",
+                  "x": 170,
+                  "y": 0,
+                  "name": "Slot 2",
+                  "width": 170,
+                  "height": 170,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "../src/assets/dinos/triceratops/body.webp",
+                    "mode": "stretch",
+                    "transform": [
+                      4,
+                      0,
+                      0,
+                      3,
+                      -1,
+                      0
+                    ]
+                  },
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "H9uNw",
+                  "x": 340,
+                  "y": 0,
+                  "name": "Slot 3",
+                  "width": 170,
+                  "height": 170,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "../src/assets/dinos/triceratops/body.webp",
+                    "mode": "stretch",
+                    "transform": [
+                      4,
+                      0,
+                      0,
+                      3,
+                      -2,
+                      0
+                    ]
+                  },
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "QDrYU",
+                  "x": 510,
+                  "y": 0,
+                  "name": "Slot 4",
+                  "width": 170,
+                  "height": 170,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "mRJ7s",
+                  "x": 0,
+                  "y": 170,
+                  "name": "Slot 5",
+                  "width": 170,
+                  "height": 170,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "EMtxx",
+                  "x": 170,
+                  "y": 170,
+                  "name": "Slot 6",
+                  "width": 170,
+                  "height": 170,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "k9qhTJ",
+                  "x": 340,
+                  "y": 170,
+                  "name": "Slot 7",
+                  "width": 170,
+                  "height": 170,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "OlYSx",
+                  "x": 510,
+                  "y": 170,
+                  "name": "Slot 8",
+                  "width": 170,
+                  "height": 170,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "INqPv",
+                  "x": 0,
+                  "y": 340,
+                  "name": "Slot 9",
+                  "width": 170,
+                  "height": 170,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "WR2yt",
+                  "x": 170,
+                  "y": 340,
+                  "name": "Slot 10",
+                  "width": 170,
+                  "height": 170,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "L7rQc",
+                  "x": 340,
+                  "y": 340,
+                  "name": "Slot 11",
+                  "width": 170,
+                  "height": 170,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "mDaDW",
+                  "x": 510,
+                  "y": 340,
+                  "name": "Slot 12",
+                  "width": 170,
+                  "height": 170,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "w5wK1",
+              "name": "Four piece tray and controls",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "AzAKB",
+                  "name": "Tray tiles",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "iYKHb",
+                      "name": "Tray row 0",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "WDEyf",
+                          "name": "Piece 7",
+                          "width": "fill_container",
+                          "height": 140,
+                          "fill": [
+                            {
+                              "type": "gradient",
+                              "gradientType": "linear",
+                              "enabled": true,
+                              "rotation": 45,
+                              "size": {
+                                "height": 1
+                              },
+                              "colors": [
+                                {
+                                  "color": "#BEDCD8",
+                                  "position": 0
+                                },
+                                {
+                                  "color": "#E7C98F",
+                                  "position": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "../src/assets/dinos/triceratops/body.webp",
+                              "mode": "stretch",
+                              "transform": [
+                                4,
+                                0,
+                                0,
+                                3,
+                                -2,
+                                -1
+                              ]
+                            }
+                          ],
+                          "cornerRadius": 8,
+                          "stroke": "$fm-base",
+                          "strokeWidth": 3
+                        },
+                        {
+                          "type": "frame",
+                          "id": "KEThB",
+                          "name": "Piece 5",
+                          "width": "fill_container",
+                          "height": 140,
+                          "fill": [
+                            {
+                              "type": "gradient",
+                              "gradientType": "linear",
+                              "enabled": true,
+                              "rotation": 45,
+                              "size": {
+                                "height": 1
+                              },
+                              "colors": [
+                                {
+                                  "color": "#BEDCD8",
+                                  "position": 0
+                                },
+                                {
+                                  "color": "#E7C98F",
+                                  "position": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "../src/assets/dinos/triceratops/body.webp",
+                              "mode": "stretch",
+                              "transform": [
+                                4,
+                                0,
+                                0,
+                                3,
+                                0,
+                                -1
+                              ]
+                            }
+                          ],
+                          "cornerRadius": 8,
+                          "stroke": "$fm-base",
+                          "strokeWidth": 1
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "E41QzC",
+                      "name": "Tray row 1",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "XRWRb",
+                          "name": "Piece 11",
+                          "width": "fill_container",
+                          "height": 140,
+                          "fill": [
+                            {
+                              "type": "gradient",
+                              "gradientType": "linear",
+                              "enabled": true,
+                              "rotation": 45,
+                              "size": {
+                                "height": 1
+                              },
+                              "colors": [
+                                {
+                                  "color": "#BEDCD8",
+                                  "position": 0
+                                },
+                                {
+                                  "color": "#E7C98F",
+                                  "position": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "../src/assets/dinos/triceratops/body.webp",
+                              "mode": "stretch",
+                              "transform": [
+                                4,
+                                0,
+                                0,
+                                3,
+                                -2,
+                                -2
+                              ]
+                            }
+                          ],
+                          "cornerRadius": 8,
+                          "stroke": "$fm-base",
+                          "strokeWidth": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Zs0Sl",
+                          "name": "Piece 10",
+                          "width": "fill_container",
+                          "height": 140,
+                          "fill": [
+                            {
+                              "type": "gradient",
+                              "gradientType": "linear",
+                              "enabled": true,
+                              "rotation": 45,
+                              "size": {
+                                "height": 1
+                              },
+                              "colors": [
+                                {
+                                  "color": "#BEDCD8",
+                                  "position": 0
+                                },
+                                {
+                                  "color": "#E7C98F",
+                                  "position": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "../src/assets/dinos/triceratops/body.webp",
+                              "mode": "stretch",
+                              "transform": [
+                                4,
+                                0,
+                                0,
+                                3,
+                                -1,
+                                -2
+                              ]
+                            }
+                          ],
+                          "cornerRadius": 8,
+                          "stroke": "$fm-base",
+                          "strokeWidth": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "jYqVL",
+                  "name": "‹     🧩     ›",
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 12,
+                  "padding": 14,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "bXwgo",
+                      "name": "‹     🧩     › label",
+                      "fill": "$fm-ink",
+                      "content": "‹     🧩     ›",
+                      "fontFamily": "Lexend",
+                      "fontSize": 20,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "iJBVY",
+                  "name": "◉ PREVIEW",
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 12,
+                  "padding": 14,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "pgoQJ",
+                      "name": "◉ PREVIEW label",
+                      "fill": "$fm-ink",
+                      "content": "◉ PREVIEW",
+                      "fontFamily": "Lexend",
+                      "fontSize": 20,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "xfosS",
+                  "name": "💡 HINT",
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 12,
+                  "padding": 14,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "mmdEr",
+                      "name": "💡 HINT label",
+                      "fill": "$fm-ink",
+                      "content": "💡 HINT",
+                      "fontFamily": "Lexend",
+                      "fontSize": 20,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "ldrgZ",
+      "x": 23390,
+      "y": -383.5,
+      "name": "Picture puzzle · Reveal · Light · First Explorer best",
+      "theme": {
+        "mode": "light"
+      },
+      "clip": true,
+      "width": 1133,
+      "height": 744,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 22,
+      "padding": [
+        32,
+        40,
+        48,
+        40
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "X2KN7Q",
+          "name": "Result header",
+          "width": "fill_container",
+          "justifyContent": "space_between",
+          "children": [
+            {
+              "type": "text",
+              "id": "P8tUS",
+              "name": "Home",
+              "fill": "$fm-ink",
+              "content": "⌂ HOME",
+              "fontFamily": "Lexend",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "SjuGb",
+              "name": "Collection score",
+              "fill": "$fm-ink",
+              "content": "★ COLLECTION 1 / 3",
+              "fontFamily": "Lexend",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "BJYUG",
+          "name": "Full dinosaur and discovery",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 36,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "W2l2L1",
+              "name": "Completed picture",
+              "width": 600,
+              "height": 450,
+              "fill": [
+                {
+                  "type": "gradient",
+                  "gradientType": "linear",
+                  "enabled": true,
+                  "rotation": 45,
+                  "size": {
+                    "height": 1
+                  },
+                  "colors": [
+                    {
+                      "color": "#BEDCD8",
+                      "position": 0
+                    },
+                    {
+                      "color": "#E7C98F",
+                      "position": 1
+                    }
+                  ]
+                },
+                {
+                  "type": "image",
+                  "enabled": true,
+                  "url": "../src/assets/dinos/triceratops/body.webp",
+                  "mode": "contain"
+                }
+              ],
+              "cornerRadius": 14
+            },
+            {
+              "type": "frame",
+              "id": "trFNs",
+              "name": "Dinosaur reward",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 22,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "XeWEv",
+                  "name": "Round star",
+                  "fill": "$fm-amber",
+                  "content": "★",
+                  "fontFamily": "Lexend",
+                  "fontSize": 64,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "LYwzu",
+                  "name": "Dinosaur name",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "TRICERATOPS",
+                  "fontFamily": "Lexend",
+                  "fontSize": 30,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "r8D4xK",
+                  "name": "Visible feature fact",
+                  "fill": "$fm-ink",
+                  "textGrowth": "fixed-width",
+                  "width": "fill_container",
+                  "content": "THREE HORNS ON ITS HEAD",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "SXVl8",
+                  "name": "Level best celebration",
+                  "fill": "$fm-ink-soft",
+                  "content": "🏆 FIRST BEST · 1 / 3",
+                  "fontFamily": "Lexend",
+                  "fontSize": 20,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Va81m",
+          "name": "Next actions",
+          "width": "fill_container",
+          "gap": 20,
+          "justifyContent": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "rffxq",
+              "name": "↻ AGAIN",
+              "fill": "$fm-base",
+              "cornerRadius": 16,
+              "padding": [
+                18,
+                28
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "hJncu",
+                  "name": "↻ AGAIN label",
+                  "fill": "$fm-on-base",
+                  "content": "↻ AGAIN",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "IF7KV",
+              "name": "🧩 ANOTHER PICTURE",
+              "fill": "$fm-surface",
+              "cornerRadius": 16,
+              "padding": [
+                18,
+                28
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "iUvF4",
+                  "name": "🧩 ANOTHER PICTURE label",
+                  "fill": "$fm-ink",
+                  "content": "🧩 ANOTHER PICTURE",
+                  "fontFamily": "Lexend",
+                  "fontSize": 22,
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "v6og0",
+      "x": 22157,
+      "y": 460.5,
+      "name": "Picture puzzle · Board · Dark · Paleontologist 36 pieces",
+      "theme": {
+        "mode": "dark"
+      },
+      "clip": true,
+      "width": 1133,
+      "height": 744,
+      "fill": "$fm-bg",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": [
+        28,
+        36,
+        48,
+        36
+      ],
+      "children": [
+        {
+          "type": "frame",
+          "id": "X3koLl",
+          "name": "Puzzle header",
+          "width": "fill_container",
+          "gap": 24,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "dAIRU",
+              "name": "Back",
+              "fill": "$fm-ink",
+              "content": "← PICTURES",
+              "fontFamily": "Lexend",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Kdg0B",
+              "name": "Dinosaur title",
+              "fill": "$fm-ink",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "content": "TRICERATOPS",
+              "fontFamily": "Lexend",
+              "fontSize": 30,
+              "fontWeight": "normal"
+            },
+            {
+              "type": "text",
+              "id": "Fxbjs",
+              "name": "Placed count",
+              "fill": "$fm-ink",
+              "content": "🧩 3 / 36",
+              "fontFamily": "Lexend",
+              "fontSize": 22,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "hTyRT",
+          "name": "Board and tray",
+          "width": "fill_container",
+          "height": "fill_container",
+          "gap": 28,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "QCIN1",
+              "name": "6 by 6 puzzle board",
+              "clip": true,
+              "width": 680,
+              "height": 510,
+              "fill": "$fm-surface-2",
+              "cornerRadius": 12,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "M8wsbn",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Slot 1",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "../src/assets/dinos/triceratops/body.webp",
+                    "mode": "stretch",
+                    "transform": [
+                      6,
+                      0,
+                      0,
+                      6,
+                      0,
+                      0
+                    ]
+                  },
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "uZxkG",
+                  "x": 113.33333333333333,
+                  "y": 0,
+                  "name": "Slot 2",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "../src/assets/dinos/triceratops/body.webp",
+                    "mode": "stretch",
+                    "transform": [
+                      6,
+                      0,
+                      0,
+                      6,
+                      -1,
+                      0
+                    ]
+                  },
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "Ry3hb",
+                  "x": 226.66666666666666,
+                  "y": 0,
+                  "name": "Slot 3",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "../src/assets/dinos/triceratops/body.webp",
+                    "mode": "stretch",
+                    "transform": [
+                      6,
+                      0,
+                      0,
+                      6,
+                      -2,
+                      0
+                    ]
+                  },
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "adt28",
+                  "x": 340,
+                  "y": 0,
+                  "name": "Slot 4",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "v7F5cs",
+                  "x": 453.3333333333333,
+                  "y": 0,
+                  "name": "Slot 5",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "Z3XZ9",
+                  "x": 566.6666666666666,
+                  "y": 0,
+                  "name": "Slot 6",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "ZRSP2",
+                  "x": 0,
+                  "y": 85,
+                  "name": "Slot 7",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "pGeck",
+                  "x": 113.33333333333333,
+                  "y": 85,
+                  "name": "Slot 8",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "PyHyz",
+                  "x": 226.66666666666666,
+                  "y": 85,
+                  "name": "Slot 9",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "FF8Xb",
+                  "x": 340,
+                  "y": 85,
+                  "name": "Slot 10",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "EBs2m",
+                  "x": 453.3333333333333,
+                  "y": 85,
+                  "name": "Slot 11",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "JrnZu",
+                  "x": 566.6666666666666,
+                  "y": 85,
+                  "name": "Slot 12",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "G1ZBwm",
+                  "x": 0,
+                  "y": 170,
+                  "name": "Slot 13",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "P08tml",
+                  "x": 113.33333333333333,
+                  "y": 170,
+                  "name": "Slot 14",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "uSPI7",
+                  "x": 226.66666666666666,
+                  "y": 170,
+                  "name": "Slot 15",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "F6II8b",
+                  "x": 340,
+                  "y": 170,
+                  "name": "Slot 16",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "vfKQD",
+                  "x": 453.3333333333333,
+                  "y": 170,
+                  "name": "Slot 17",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "f9mjq",
+                  "x": 566.6666666666666,
+                  "y": 170,
+                  "name": "Slot 18",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "gHUTa",
+                  "x": 0,
+                  "y": 255,
+                  "name": "Slot 19",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "o9Cj3",
+                  "x": 113.33333333333333,
+                  "y": 255,
+                  "name": "Slot 20",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "Y9WDwc",
+                  "x": 226.66666666666666,
+                  "y": 255,
+                  "name": "Slot 21",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "VRNvo",
+                  "x": 340,
+                  "y": 255,
+                  "name": "Slot 22",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "DhsxP",
+                  "x": 453.3333333333333,
+                  "y": 255,
+                  "name": "Slot 23",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "wAshq",
+                  "x": 566.6666666666666,
+                  "y": 255,
+                  "name": "Slot 24",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "EPPLz",
+                  "x": 0,
+                  "y": 340,
+                  "name": "Slot 25",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "C9vFP",
+                  "x": 113.33333333333333,
+                  "y": 340,
+                  "name": "Slot 26",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "j4qfE",
+                  "x": 226.66666666666666,
+                  "y": 340,
+                  "name": "Slot 27",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "RnQtM",
+                  "x": 340,
+                  "y": 340,
+                  "name": "Slot 28",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "xGLrd",
+                  "x": 453.3333333333333,
+                  "y": 340,
+                  "name": "Slot 29",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "aSMAM",
+                  "x": 566.6666666666666,
+                  "y": 340,
+                  "name": "Slot 30",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "TmIwZ",
+                  "x": 0,
+                  "y": 425,
+                  "name": "Slot 31",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "pQDvu",
+                  "x": 113.33333333333333,
+                  "y": 425,
+                  "name": "Slot 32",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "S2SmN",
+                  "x": 226.66666666666666,
+                  "y": 425,
+                  "name": "Slot 33",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "ttaVW",
+                  "x": 340,
+                  "y": 425,
+                  "name": "Slot 34",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "d118X",
+                  "x": 453.3333333333333,
+                  "y": 425,
+                  "name": "Slot 35",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                },
+                {
+                  "type": "frame",
+                  "id": "fWHL1",
+                  "x": 566.6666666666666,
+                  "y": 425,
+                  "name": "Slot 36",
+                  "width": 113.33333333333333,
+                  "height": 85,
+                  "stroke": "$fm-line",
+                  "strokeWidth": 1
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "d5H2P",
+              "name": "Four piece tray and controls",
+              "width": "fill_container",
+              "layout": "vertical",
+              "gap": 16,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "mgsho",
+                  "name": "Tray tiles",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": 12,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "GVJEf",
+                      "name": "Tray row 0",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "ueBbd",
+                          "name": "Piece 14",
+                          "width": "fill_container",
+                          "height": 105,
+                          "fill": [
+                            {
+                              "type": "gradient",
+                              "gradientType": "linear",
+                              "enabled": true,
+                              "rotation": 45,
+                              "size": {
+                                "height": 1
+                              },
+                              "colors": [
+                                {
+                                  "color": "#BEDCD8",
+                                  "position": 0
+                                },
+                                {
+                                  "color": "#E7C98F",
+                                  "position": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "../src/assets/dinos/triceratops/body.webp",
+                              "mode": "stretch",
+                              "transform": [
+                                6,
+                                0,
+                                0,
+                                6,
+                                -1,
+                                -2
+                              ]
+                            }
+                          ],
+                          "cornerRadius": 8,
+                          "stroke": "$fm-base",
+                          "strokeWidth": 3
+                        },
+                        {
+                          "type": "frame",
+                          "id": "kZtDD",
+                          "name": "Piece 9",
+                          "width": "fill_container",
+                          "height": 105,
+                          "fill": [
+                            {
+                              "type": "gradient",
+                              "gradientType": "linear",
+                              "enabled": true,
+                              "rotation": 45,
+                              "size": {
+                                "height": 1
+                              },
+                              "colors": [
+                                {
+                                  "color": "#BEDCD8",
+                                  "position": 0
+                                },
+                                {
+                                  "color": "#E7C98F",
+                                  "position": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "../src/assets/dinos/triceratops/body.webp",
+                              "mode": "stretch",
+                              "transform": [
+                                6,
+                                0,
+                                0,
+                                6,
+                                -2,
+                                -1
+                              ]
+                            }
+                          ],
+                          "cornerRadius": 8,
+                          "stroke": "$fm-base",
+                          "strokeWidth": 1
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "deOn2",
+                      "name": "Tray row 1",
+                      "width": "fill_container",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "xG6S9",
+                          "name": "Piece 27",
+                          "width": "fill_container",
+                          "height": 105,
+                          "fill": [
+                            {
+                              "type": "gradient",
+                              "gradientType": "linear",
+                              "enabled": true,
+                              "rotation": 45,
+                              "size": {
+                                "height": 1
+                              },
+                              "colors": [
+                                {
+                                  "color": "#BEDCD8",
+                                  "position": 0
+                                },
+                                {
+                                  "color": "#E7C98F",
+                                  "position": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "../src/assets/dinos/triceratops/body.webp",
+                              "mode": "stretch",
+                              "transform": [
+                                6,
+                                0,
+                                0,
+                                6,
+                                -2,
+                                -4
+                              ]
+                            }
+                          ],
+                          "cornerRadius": 8,
+                          "stroke": "$fm-base",
+                          "strokeWidth": 1
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Dj5kc",
+                          "name": "Piece 34",
+                          "width": "fill_container",
+                          "height": 105,
+                          "fill": [
+                            {
+                              "type": "gradient",
+                              "gradientType": "linear",
+                              "enabled": true,
+                              "rotation": 45,
+                              "size": {
+                                "height": 1
+                              },
+                              "colors": [
+                                {
+                                  "color": "#BEDCD8",
+                                  "position": 0
+                                },
+                                {
+                                  "color": "#E7C98F",
+                                  "position": 1
+                                }
+                              ]
+                            },
+                            {
+                              "type": "image",
+                              "enabled": true,
+                              "url": "../src/assets/dinos/triceratops/body.webp",
+                              "mode": "stretch",
+                              "transform": [
+                                6,
+                                0,
+                                0,
+                                6,
+                                -3,
+                                -5
+                              ]
+                            }
+                          ],
+                          "cornerRadius": 8,
+                          "stroke": "$fm-base",
+                          "strokeWidth": 1
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "s2vWap",
+                  "name": "‹     🧩     ›",
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 12,
+                  "padding": 14,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "z8EO0",
+                      "name": "‹     🧩     › label",
+                      "fill": "$fm-ink",
+                      "content": "‹     🧩     ›",
+                      "fontFamily": "Lexend",
+                      "fontSize": 20,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "l95lt",
+                  "name": "◉ PREVIEW",
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 12,
+                  "padding": 14,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "uS2TJ",
+                      "name": "◉ PREVIEW label",
+                      "fill": "$fm-ink",
+                      "content": "◉ PREVIEW",
+                      "fontFamily": "Lexend",
+                      "fontSize": 20,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "euiI6",
+                  "name": "💡 HINT",
+                  "width": "fill_container",
+                  "fill": "$fm-surface",
+                  "cornerRadius": 12,
+                  "padding": 14,
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "xS4Gg",
+                      "name": "💡 HINT label",
+                      "fill": "$fm-ink",
+                      "content": "💡 HINT",
+                      "fontFamily": "Lexend",
+                      "fontSize": 20,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
