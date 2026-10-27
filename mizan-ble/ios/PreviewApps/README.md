@@ -1,6 +1,6 @@
 # Preview apps
 
-macOS apps that show one UI module in isolation, with plain stand-in screens.
+macOS apps that show one UI module in isolation, with controls and PNG export.
 They live in a separate package so the product never depends on them. Requires
 macOS 26 and Swift 6.2.
 
@@ -9,6 +9,8 @@ From this directory:
 ```sh
 swift run ModeSwitchPreview
 swift run ModeSwitchPreview --export /tmp/mizan-mode-switch
+swift run HostPreview
+swift run HostPreview --export /tmp/mizan-host
 ```
 
 `ModeSwitchPreview` shows `ModeSwitchUI` in the DesignSystem iPad or iPhone
@@ -22,22 +24,24 @@ in light and dark. Files are named `<side>-<enabled|disabled>-<device>-<light|da
 The iPad images are 1194 × 834 pixels and the iPhone images 393 × 852 pixels,
 without preview controls or window chrome.
 
+`HostPreview` shows every named `HostUI` preview at the iPad size. Pick a
+state, switch between light and dark, and inspect the events sent by the view.
+Taps only add to the event log; the picker alone changes the displayed state.
+Export writes 28 PNGs (14 states in both appearances), named
+`<preview-name>-iPad-<light|dark>.png`, at 1194 × 834 pixels over the backdrop.
+
 `PreviewKit` provides `PreviewWindow` (content over a backdrop on the left,
 controls, appearance and events on the right), `PreviewDeviceSize` dimensions, and
 `PreviewExporter`. To add an app, give it an executable target depending on
 `PreviewKit` and the feature's products. Supply one named `PreviewSnapshot` per
-state to the exporter; it renders each on both devices in both appearances.
+state to the exporter; it renders each on both devices in both appearances
+unless the app supplies a smaller `devices` list.
 There are no tests in this package; compare the exports with the design.
 
 ## What a preview app holds
 
-A preview app runs the real view, not a picture of it. Its state lives in
-the app (`@State`) and each event changes it, so a tap shows the next
-screen. For a screen a machine drives, the app runs the package's real
-machine and stubs only what reaches outside: timers, Bluetooth, the
-processor. Fixtures are named states for the exporter and the controls.
-
-A preview app is as large as that stand-in needs to be: a toggle for the
-mode switch, a machine and its stubs for a payment screen. It copies no
-feature code; when it needs a type the product lacks, the type belongs in
-the product.
+A preview app runs the real view. `ModeSwitchPreview` holds the chosen mode
+and the stand-in screens' tap counts. `HostPreview` holds only the preview
+selection and event log: it runs no flow or machine. Named presentation states
+supply its picker and exporter. Preview apps copy no feature code. Driving a
+screen with its real machines and external dependencies stubbed is later work.

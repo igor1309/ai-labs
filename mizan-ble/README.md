@@ -20,7 +20,7 @@ explicit handshake (v0.1.0) and the foreground app (v0.2.0).
 | [docs/poc.md](docs/poc.md) | The proof of concept: versions, the host and client flows, design notes, research leads |
 | [NOTES.md](NOTES.md) | How it is built: choosing the host by signal strength, encrypting each exchange with a per-session key |
 | [ios/](ios/) | The Swift package: `DesignSystem`, and the UI modules `ModeSwitchUI` (the mode and its header switch), `HostUI` (the operator's iPad screens), `SettingsUI` (the host's settings sheet) and `ClientUI` (the payer's find and connect screens). Run `swift build` and `swift test` here |
-| [ios/PreviewApps/](ios/PreviewApps/) | `ModeSwitchPreview`: try the switch in either device shell and export every state to light/dark PNGs |
+| [ios/PreviewApps/](ios/PreviewApps/) | `ModeSwitchPreview`: try either device shell; `HostPreview`: pick host states and inspect events; both export light/dark PNGs |
 | [docs/design/](docs/design/) | The design in pen.dev (`mizan-ble.pen`), its index and previews: the design system, the host and client screens and the paired flow, and the Mizan sign candidates |
 | [docs/research/](docs/research/) | Research notes on proximity payments, including an architecture candidate the architecture weighs |
 | [docs/log.md](docs/log.md) | What changed for the product, newest first |
