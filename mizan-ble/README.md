@@ -13,6 +13,7 @@ explicit handshake (v0.1.0) and the foreground app (v0.2.0).
 | Path | What it holds |
 |---|---|
 | [docs/poc.md](docs/poc.md) | The proof of concept: versions, the host and client flows, design notes, research leads |
+| [docs/research/](docs/research/) | Research notes: how existing proximity payments work (Sber's «Вжух» so far) |
 | [docs/log.md](docs/log.md) | What changed for the product, newest first |
 
 The Mizan currency symbol comes from the blackchain project in the
