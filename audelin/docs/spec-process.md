@@ -103,6 +103,11 @@ so no builder edits another target after an unrelated test times out. The
 second merges trunk first, so no review reports trunk's newer work as
 removed (each happened three times on 2026-10-27).
 
+Never wait for CI. Once a step passes its gate, the next step branches from
+that step's branch and its builder starts at once; its PR goes up after
+the earlier one lands, and a fix CI asks for is merged forward (owner,
+2026-10-27). Only a step whose predecessor is still in review waits.
+
 A run left unattended goes through `scripts/agister-retry.sh`: it runs again
 only after a rate limit, stops on any other end, and prints a line per try
 for a watcher. Capacity is agister's to wait out, in the run's session. A run that completes without committing is
