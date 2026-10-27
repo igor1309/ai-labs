@@ -21,6 +21,7 @@ public actor RecordingSessions: RecordingSession {
     private let liveText: @Sendable () -> Bool
     private let report: @Sendable (UInt64, RecordingSessionReport) -> Void
     private let connect: @Sendable (SessionPieces, Session) -> Task<Void, Never>
+    private let sink: any LogSink
     private var running: [UInt64: Running] = [:]
     // Recording's effects run independently, so an end can arrive before its begin.
     private var endedBeforeBegin: Set<UInt64> = []
@@ -38,13 +39,15 @@ public actor RecordingSessions: RecordingSession {
         makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
         liveText: @escaping @Sendable () -> Bool,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void,
-        connect: @escaping @Sendable (SessionPieces, Session) -> Task<Void, Never>
+        connect: @escaping @Sendable (SessionPieces, Session) -> Task<Void, Never>,
+        sink: any LogSink = SystemLogSink()
     ) {
 
         self.makePieces = makePieces
         self.liveText = liveText
         self.report = report
         self.connect = connect
+        self.sink = sink
     }
 
     public func begin(id: UInt64) async -> RecordingSessionReport {
@@ -52,7 +55,7 @@ public actor RecordingSessions: RecordingSession {
         if endedBeforeBegin.remove(id) != nil { return .ended }
         if running[id] == nil {
             let pieces = makePieces(id)
-            let session = Session(handler: pieces.handler())
+            let session = Session(handler: pieces.handler(sink: sink))
             let enabled = liveText()
             running[id] = Running(session: session, subscription: connect(pieces, session))
             running[id]?.observation = Task {
@@ -60,6 +63,7 @@ public actor RecordingSessions: RecordingSession {
                 let states = await session.states()
                 self.start(id: id, liveText: enabled)
                 for await state in states {
+                    StateLog(sink: self.sink).session(state, id: id)
                     if self.receive(state, id: id) { return }
                 }
             }

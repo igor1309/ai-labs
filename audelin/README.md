@@ -10,6 +10,7 @@ The live panel and settings UI are not connected yet.
 
 Build: `cd audelin/macos && sh scripts/bundle.sh`.
 Run: `open .build/Audelin.app` from `audelin/macos`.
+Logs: `log stream --predicate 'subsystem == "dev.igor1309.audelin"'`.
 
 | Path | What it holds |
 |---|---|

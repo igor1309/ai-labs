@@ -11,12 +11,22 @@ public final class CallRecordingSubscription: Sendable {
     private let task: Task<Void, Never>
     private let stop: @Sendable () -> Void
 
-    public init(
+    public convenience init(
         calls: AsyncThrowingStream<CallEvent, any Error>, recording: Recording,
         beforeCallStarted: (@Sendable () -> Void)? = nil,
         startedApp: (@Sendable (String) -> Void)? = nil
     ) {
 
+        self.init(calls: calls, recording: recording, beforeCallStarted: beforeCallStarted,
+                  startedApp: startedApp, sink: SystemLogSink())
+    }
+
+    init(
+        calls: AsyncThrowingStream<CallEvent, any Error>, recording: Recording,
+        beforeCallStarted: (@Sendable () -> Void)? = nil,
+        startedApp: (@Sendable (String) -> Void)? = nil,
+        sink: any LogSink
+    ) {
         let destination = Mutex(Destination(recording: recording))
         let (failures, output) = AsyncStream<any Error>.makeStream()
         self.failures = failures
@@ -28,11 +38,13 @@ public final class CallRecordingSubscription: Sendable {
                         guard !state.stopped else { return false }
                         switch event {
                         case let .started(app):
+                            sink.write(.init(category: .calls, message: "started app=\(app)"))
                             state.callOn = true
                             startedApp?(app)
                             beforeCallStarted?()
                             state.recording?.send(.callStarted)
                         case .ended:
+                            sink.write(.init(category: .calls, message: "ended"))
                             state.callOn = false
                             state.recording?.send(.callEnded)
                         }
@@ -43,12 +55,16 @@ public final class CallRecordingSubscription: Sendable {
             } catch {
                 destination.withLock { state in
                     guard !state.stopped else { return }
+                    sink.write(.init(category: .calls, message: "detection failed", error: String(describing: error)))
                     output.yield(error)
                 }
             }
             destination.withLock { state in
                 guard !state.stopped else { return }
-                if state.callOn { state.recording?.send(.callEnded) }
+                if state.callOn {
+                    sink.write(.init(category: .calls, message: "ended (detection stream ended)"))
+                    state.recording?.send(.callEnded)
+                }
                 state.callOn = false
                 state.stopped = true
             }

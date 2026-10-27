@@ -11,7 +11,7 @@ public func composeRecording(
     let sessions = RecordingSessions(makePieces: makePieces, liveText: liveText, report: { id, report in
         destination.withLock { $0.recording }?.send(.sessionReported(id: id, report))
     })
-    let recording = Recording(handler: RecordingEffectHandler(session: sessions), initial: initial)
+    let recording = Recording(handler: RecordingEffectHandler(session: LoggingRecordingSession(base: sessions, sink: SystemLogSink())), initial: initial)
     destination.withLock { $0.recording = recording }
     return recording
 }

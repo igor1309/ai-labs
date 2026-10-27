@@ -19,6 +19,7 @@ public final class AudelinMenu {
     public var preferences: Preferences { settings.snapshot }
     public private(set) var quitting = false
     private var failure: String?
+    private let sink: any LogSink
     private let settings: PreferenceSettings
     private let send: (RecordingEvent) -> Void
     private let openFolder: (URL) -> Void
@@ -57,13 +58,16 @@ public final class AudelinMenu {
         makeApplication: () throws -> MenuApplication,
         openFolder: @escaping (URL) -> Void,
         terminate: @escaping () async -> Void,
-        didDeliver: @escaping () -> Void
+        didDeliver: @escaping () -> Void,
+        sink: any LogSink = SystemLogSink()
     ) {
 
+        self.sink = sink
         let application: MenuApplication?
         do {
             application = try makeApplication()
         } catch {
+            sink.write(.init(category: .menu, message: "startup failed", error: String(describing: error)))
             application = nil
             failure = "Не удалось начать наблюдение за звонками: \(error)"
         }
@@ -76,13 +80,16 @@ public final class AudelinMenu {
             observation = Task { [weak self, states = application.states] in
                 for await state in await states() {
                     guard let self else { return }
+                    StateLog(sink: sink).recording(state)
                     self.state = state
+                    sink.write(.init(category: .menu, message: "item symbol=\(self.menu.item.symbol) red=\(self.menu.item.isRed)"))
                     didDeliver()
                 }
             }
             detectionObservation = Task { [weak self, failures = application.failures] in
                 for await error in failures {
                     guard let self else { return }
+                    sink.write(.init(category: .menu, message: "detection failed", error: String(describing: error)))
                     self.failure = "Наблюдение за звонками остановлено: \(error)"
                     didDeliver()
                 }
@@ -100,6 +107,7 @@ public final class AudelinMenu {
     public func perform(_ action: MenuBarAction) async {
 
         guard !quitting else { return }
+        sink.write(.init(category: .menu, message: "action=\(action)"))
         switch action {
         case .start: send(.userStart)
         case .stop: send(.userStop)

@@ -2,6 +2,7 @@ import AppKit
 import Compose
 import MenuBar
 import Preferences
+import os
 import SwiftUI
 
 @main
@@ -13,6 +14,10 @@ struct AudelinApp: App {
         openCallsFolder: { NSWorkspace.shared.open($0) },
         terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } }
     )
+
+    init() {
+        Logger(subsystem: "dev.igor1309.audelin", category: "menu").notice("app launched")
+    }
 
     var body: some Scene {
         MenuBarExtra {
