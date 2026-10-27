@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreAudioProcesses
 import Foundation
 import Lifecycle
@@ -19,6 +20,7 @@ public final class AudelinRecording: Sendable {
 
     public convenience init(preferences: PreferencesStore) throws {
 
+        createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
         try self.init(
             preferences: preferences,
             processes: CoreAudioProcesses(binding: CoreAudioBinding(), clock: ContinuousCallClock()),
@@ -28,6 +30,8 @@ public final class AudelinRecording: Sendable {
             makeConditions: composeRecordingConditions,
             startModel: { startLiveModelLoading() }
         )
+        // Reading the status never asks; without this request macOS never prompts.
+        AVCaptureDevice.requestAccess(for: .audio) { [conditions] _ in conditions.refresh() }
     }
 
     init(
@@ -107,4 +111,12 @@ struct ApplicationRecording: LifecycleRecording {
             output.onTermination = { _ in task.cancel() }
         }
     }
+}
+
+/// Creates the calls folder only when it is the default one: a folder the user
+/// chose and later lost stays unavailable rather than being made anew.
+func createDefaultCallsFolder(_ folder: URL, default defaultFolder: URL) {
+
+    guard folder.standardizedFileURL == defaultFolder.standardizedFileURL else { return }
+    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
 }
