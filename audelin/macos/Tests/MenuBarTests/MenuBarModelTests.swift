@@ -1,27 +1,24 @@
 import MenuBar
-import Preferences
-import Recording
 import Testing
 
 struct MenuBarModelTests {
 
     @Test func idleEntriesReflectReadinessAndStoredChecks() {
 
-        for (automatic, missing, reason, line): (Bool, Set<RecordingCondition>, String?, String) in [
+        for (automatic, missing, reason, line): (Bool, Set<MenuBarBlocker>, String?, String) in [
             (true, [], nil, "Ждёт звонка"),
             (false, [], nil, "Не записывает"),
-            (true, [.microphoneAccess], nil, "Нет доступа к микрофону"),
-            (true, [.callAudioAccess], nil, "Нет доступа к звуку звонка"),
-            (true, [.callsFolder], nil, "Папка звонков недоступна"),
-            (true, [.room], nil, "Недостаточно места для записи"),
-            (true, [.room, .microphoneAccess], nil, "Нет доступа к микрофону; Недостаточно места для записи"),
+            (true, [.microphone], nil, "Нет доступа к микрофону"),
+            (true, [.callAudio], nil, "Нет доступа к звуку звонка"),
+            (true, [.folder], nil, "Папка звонков недоступна"),
+            (true, [.space], nil, "Недостаточно места для записи"),
+            (true, [.space, .microphone], "Ошибка записи", "Нет доступа к микрофону; Недостаточно места для записи"),
             (false, [], "Запись недоступна", "Запись недоступна"),
         ] {
             for liveText in [false, true] {
-                var state = RecordingState(automatic: automatic, missing: missing)
-                state.cannotRecord = reason
-                let preferences = Preferences(automaticRecording: automatic, liveText: liveText)
-                let menu = MenuBarModel(state: state, preferences: preferences)
+                let recording = MenuBarRecording.idle(automatic: automatic, unavailable: missing, failure: reason)
+                let preferences = MenuBarPreferences(automatic: automatic, liveText: liveText)
+                let menu = MenuBarModel(recording: recording, preferences: preferences)
                 #expect(menu.item.title == "Audelin")
                 #expect(menu.item.symbol == "text.alignleft")
                 #expect(menu.item.stateLine == line)
@@ -34,36 +31,33 @@ struct MenuBarModelTests {
 
     @Test func activeEntriesCoverCallHandAndRecordingWithoutText() {
 
-        for origin: RecordingState.Origin in [.call, .hand] {
+        for byCall in [false, true] {
             for liveText in [false, true] {
-                for phase: RecordingState.Phase in [.beginning, .recording, .ending] {
-                    var state = RecordingState(automatic: false, missing: [])
-                    state.phase = phase
-                    state.session = .init(id: 1, origin: origin)
-                    state.callOn = origin == .call
-                    let line = phase == .ending ? "Завершает запись" : (
-                        !liveText ? "Запись без текста" : (origin == .call ? "Запись · звонок" : "Запись")
+                for recording: MenuBarRecording in [.recording(call: byCall), .ending] {
+                    let line = recording == .ending ? "Завершает запись" : (
+                        !liveText ? "Запись без текста" : (byCall ? "Запись · звонок" : "Запись")
                     )
-                    let menu = MenuBarModel(state: state, preferences: Preferences(liveText: liveText))
+                    let menu = MenuBarModel(recording: recording,
+                                            preferences: MenuBarPreferences(automatic: true, liveText: liveText))
                     #expect(menu.item.title == "Запись")
                     #expect(menu.item.symbol == "record.circle.fill")
                     #expect(menu.item.stateLine == line)
                     #expect(menu.entries == [.stateLine(line)]
-                        + (phase == .ending ? [] : [.button("Остановить запись", .stop)])
+                        + (recording == .ending ? [] : [.button("Остановить запись", .stop)])
                         + controls(automatic: true, liveText: liveText))
                 }
             }
         }
     }
 
-    @Test func itemIsRedOnlyDuringBringUpAndRecording() {
+    @Test func itemIsRedOnlyWhileRecording() {
 
-        for (phase, red): (RecordingState.Phase, Bool) in [
-            (.idle, false), (.beginning, true), (.recording, true), (.ending, false),
+        for (recording, red): (MenuBarRecording, Bool) in [
+            (.idle(automatic: true, unavailable: [], failure: nil), false),
+            (.recording(call: false), true), (.recording(call: true), true), (.ending, false),
         ] {
-            var state = RecordingState()
-            state.phase = phase
-            let menu = MenuBarModel(state: state, preferences: Preferences(), statusLine: "Ошибка наблюдения")
+            let menu = MenuBarModel(recording: recording,
+                preferences: MenuBarPreferences(automatic: true, liveText: true), statusLine: "Ошибка наблюдения")
             #expect(menu.item.isRed == red)
             #expect(menu.entries.first == .stateLine("Ошибка наблюдения"))
         }

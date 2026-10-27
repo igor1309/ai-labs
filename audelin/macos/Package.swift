@@ -80,8 +80,7 @@ let package = Package(
             name: "Machine"
         ),
         .target(
-            name: "MenuBar",
-            dependencies: ["Recording", "Preferences"]
+            name: "MenuBar"
         ),
         .target(
             name: "MicrophoneCapture"

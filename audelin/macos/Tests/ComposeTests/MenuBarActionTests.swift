@@ -17,8 +17,8 @@ struct MenuBarActionTests {
         var folders: [URL] = []
         var quits = 0
         let menu = AudelinMenu(
-            readPreferences: { stored },
-            writePreferences: { stored = $0; writes.append($0) },
+            storage: MenuPreferenceStorage(readValue: { stored },
+                writeValue: { stored = $0; writes.append($0) }),
             send: { event in
                 if case let .automaticChanged(enabled) = event {
                     #expect(stored.automaticRecording == enabled)
@@ -51,31 +51,46 @@ struct MenuBarActionTests {
         #expect(menu.quitting)
     }
 
-    @Test func failedPreferenceWritesKeepChecksAndDoNotChangeRecording() async {
+    @Test func presentationInputsTranslateRecordingAndPreferences() {
 
-        struct WriteFailure: Error {}
-        for enabled in [false, true] {
-            let stored = Preferences(automaticRecording: enabled, liveText: enabled,
-                                     callsFolder: URL(fileURLWithPath: "/calls"))
-            var writes: [Preferences] = []
-            var events: [RecordingEvent] = []
-            let menu = AudelinMenu(
-                readPreferences: { stored },
-                writePreferences: { writes.append($0); throw WriteFailure() },
-                send: { events.append($0) }, openFolder: { _ in Issue.record("Unexpected folder action") },
-                quit: { Issue.record("Unexpected quit") }
-            )
-            let before = menu.menu
-            await menu.perform(.setAutomatic(!enabled))
-            #expect(menu.menu == before)
-            await menu.perform(.setLiveText(!enabled))
-            #expect(menu.menu == before)
-            #expect(menu.preferences == stored)
-            #expect(events.isEmpty)
-            #expect(writes == [
-                Preferences(automaticRecording: !enabled, liveText: enabled, callsFolder: stored.callsFolder),
-                Preferences(automaticRecording: enabled, liveText: !enabled, callsFolder: stored.callsFolder),
-            ])
+        for automatic in [false, true] {
+            for liveText in [false, true] {
+                let stored = Preferences(automaticRecording: automatic, liveText: liveText,
+                                         callsFolder: URL(fileURLWithPath: "/calls"))
+                #expect(menuBarPreferences(stored) == MenuBarPreferences(automatic: automatic, liveText: liveText))
+            }
+            for (missing, blockers): (Set<RecordingCondition>, Set<MenuBarBlocker>) in [
+                ([], []), ([.microphoneAccess], [.microphone]), ([.callAudioAccess], [.callAudio]),
+                ([.callsFolder], [.folder]), ([.room], [.space]),
+                (Set(RecordingCondition.allCases), Set(MenuBarBlocker.allCases)),
+            ] {
+                for failure: String? in [nil, "Ошибка записи"] {
+                    var state = RecordingState(automatic: automatic, missing: missing)
+                    state.cannotRecord = failure
+                    #expect(menuBarRecording(state) == .idle(automatic: automatic, unavailable: blockers, failure: failure))
+                }
+            }
+        }
+        for origin: RecordingState.Origin? in [nil, .call, .hand] {
+            for phase: RecordingState.Phase in [.beginning, .recording, .ending] {
+                var state = RecordingState()
+                state.phase = phase
+                state.session = origin.map { .init(id: 42, origin: $0) }
+                state.callOn = origin != .call
+                let input = menuBarRecording(state)
+                #expect(input == (phase == .ending ? .ending : .recording(call: origin == .call)))
+                let item = MenuBarItem.from(input, liveText: true)
+                #expect(item.isRed == (phase != .ending))
+            }
         }
     }
+}
+
+private struct MenuPreferenceStorage: PreferenceSettingsStorage {
+
+    let readValue: () -> Preferences
+    let writeValue: (Preferences) throws -> Void
+
+    func read() -> Preferences { readValue() }
+    func write(_ preferences: Preferences) throws { try writeValue(preferences) }
 }

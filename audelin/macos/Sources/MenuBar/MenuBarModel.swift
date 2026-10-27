@@ -1,6 +1,3 @@
-import Preferences
-import Recording
-
 public enum MenuBarAction: Equatable, Sendable {
 
     case start, stop
@@ -20,18 +17,20 @@ public struct MenuBarModel: Equatable, Sendable {
     public let item: MenuBarItem
     public let entries: [MenuBarEntry]
 
-    public init(state: RecordingState, preferences: Preferences, statusLine: String? = nil) {
+    public init(recording: MenuBarRecording, preferences: MenuBarPreferences, statusLine: String? = nil) {
 
-        item = .from(state, liveText: preferences.liveText)
+        item = .from(recording, liveText: preferences.liveText)
         var entries: [MenuBarEntry] = [.stateLine(statusLine ?? item.stateLine)]
-        if state.phase == .idle, state.missing.isEmpty {
+        switch recording {
+        case let .idle(_, unavailable, _) where unavailable.isEmpty:
             entries.append(.button("Начать запись", .start))
-        } else if state.phase == .beginning || state.phase == .recording {
+        case .recording:
             entries.append(.button("Остановить запись", .stop))
+        default: break
         }
         entries += [
-            .toggle("Записывать звонки автоматически", checked: preferences.automaticRecording,
-                    .setAutomatic(!preferences.automaticRecording)),
+            .toggle("Записывать звонки автоматически", checked: preferences.automatic,
+                    .setAutomatic(!preferences.automatic)),
             .toggle("Живой текст", checked: preferences.liveText, .setLiveText(!preferences.liveText)),
             .button("Открыть папку звонков", .openCallsFolder),
             .button("Выйти", .quit),

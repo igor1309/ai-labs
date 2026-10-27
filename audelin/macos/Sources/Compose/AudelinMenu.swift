@@ -8,11 +8,10 @@ import Recording
 public final class AudelinMenu {
 
     public private(set) var state = RecordingState()
-    public private(set) var preferences: Preferences
+    public var preferences: Preferences { settings.snapshot }
     public private(set) var quitting = false
     private var failure: String?
-    private let readPreferences: () -> Preferences
-    private let writePreferences: (Preferences) throws -> Void
+    private let settings: PreferenceSettings
     private let send: (RecordingEvent) -> Void
     private let openFolder: (URL) -> Void
     private let quit: () async -> Void
@@ -20,7 +19,7 @@ public final class AudelinMenu {
     private var detectionObservation: Task<Void, Never>?
 
     public var menu: MenuBarModel {
-        MenuBarModel(state: state, preferences: preferences, statusLine: failure)
+        MenuBarModel(recording: menuBarRecording(state), preferences: menuBarPreferences(preferences), statusLine: failure)
     }
 
     public convenience init(
@@ -32,7 +31,7 @@ public final class AudelinMenu {
         do {
             let application = try AudelinRecording(preferences: preferences)
             self.init(
-                readPreferences: { preferences.read() }, writePreferences: { try preferences.write($0) },
+                storage: preferences,
                 send: { application.recording.send($0) }, openFolder: openCallsFolder,
                 quit: { await application.quit(terminate: terminate) }
             )
@@ -50,7 +49,7 @@ public final class AudelinMenu {
             }
         } catch {
             self.init(
-                readPreferences: { preferences.read() }, writePreferences: { try preferences.write($0) },
+                storage: preferences,
                 send: { _ in }, openFolder: openCallsFolder, quit: { await terminate() }
             )
             failure = "Не удалось начать наблюдение за звонками: \(error)"
@@ -58,19 +57,16 @@ public final class AudelinMenu {
     }
 
     init(
-        readPreferences: @escaping () -> Preferences,
-        writePreferences: @escaping (Preferences) throws -> Void,
+        storage: any PreferenceSettingsStorage,
         send: @escaping (RecordingEvent) -> Void,
         openFolder: @escaping (URL) -> Void,
         quit: @escaping () async -> Void
     ) {
 
-        self.readPreferences = readPreferences
-        self.writePreferences = writePreferences
+        settings = PreferenceSettings(storage: storage, automaticChanged: { send(.automaticChanged($0)) })
         self.send = send
         self.openFolder = openFolder
         self.quit = quit
-        preferences = readPreferences()
     }
 
     public func perform(_ action: MenuBarAction) async {
@@ -80,28 +76,13 @@ public final class AudelinMenu {
         case .start: send(.userStart)
         case .stop: send(.userStop)
         case let .setAutomatic(enabled):
-            if updatePreferences({ $0.automaticRecording = enabled }) {
-                send(.automaticChanged(enabled))
-            }
+            settings.setAutomatic(enabled)
         case let .setLiveText(enabled):
-            _ = updatePreferences { $0.liveText = enabled }
-        case .openCallsFolder: openFolder(readPreferences().callsFolder)
+            settings.setLiveText(enabled)
+        case .openCallsFolder: openFolder(settings.callsFolder)
         case .quit:
             quitting = true
             await quit()
-        }
-    }
-
-    private func updatePreferences(_ update: (inout Preferences) -> Void) -> Bool {
-
-        var updated = readPreferences()
-        update(&updated)
-        do {
-            try writePreferences(updated)
-            preferences = updated
-            return true
-        } catch {
-            return false
         }
     }
 
