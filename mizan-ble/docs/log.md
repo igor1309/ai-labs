@@ -2,6 +2,10 @@
 
 ## 2026-10-27
 
+- The rest of the design system in the module: named type roles, the
+  status pill, the host rail and client stepper, device chips, messages and
+  the exchange strip, keypad keys, and the iPad and iPhone screen shells
+  (LAB-634).
 - A light appearance: every design system colour has a light value, and
   the app's components follow the device's light or dark setting (LAB-633).
 - The design system module: the design's tokens, generated from a snapshot
