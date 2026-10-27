@@ -8,12 +8,19 @@ import SwiftUI
 @main
 struct AudelinApp: App {
 
-    @State private var model = AudelinMenu(
-        preferences: PreferencesStore(fileURL: FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".audelin/preferences.json")),
-        openCallsFolder: { NSWorkspace.shared.open($0) },
-        terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } }
-    )
+    @State private var model: AudelinMenu?
+
+    @MainActor
+    private func start() async {
+
+        guard model == nil else { return }
+        model = await AudelinMenu(
+            preferences: PreferencesStore(fileURL: FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".audelin/preferences.json")),
+            openCallsFolder: { NSWorkspace.shared.open($0) },
+            terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } }
+        )
+    }
 
     init() {
         Logger(subsystem: "dev.igor1309.audelin", category: "menu").notice("app launched")
@@ -21,32 +28,38 @@ struct AudelinApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            ForEach(Array(model.menu.entries.enumerated()), id: \.offset) { _, entry in
-                switch entry {
-                case let .stateLine(line):
-                    Text(line)
-                    Divider()
-                case let .button(title, action):
-                    Button(title) { Task { await model.perform(action) } }
-                        .keyboardShortcut(action == .quit ? KeyboardShortcut("q") : nil)
-                case let .toggle(title, checked, action):
-                    Toggle(title, isOn: Binding(
-                        get: { checked }, set: { _ in Task { await model.perform(action) } }
-                    ))
+            if let model {
+                ForEach(Array(model.menu.entries.enumerated()), id: \.offset) { _, entry in
+                    switch entry {
+                    case let .stateLine(line):
+                        Text(line)
+                        Divider()
+                    case let .button(title, action):
+                        Button(title) { Task { await model.perform(action) } }
+                            .keyboardShortcut(action == .quit ? KeyboardShortcut("q") : nil)
+                    case let .toggle(title, checked, action):
+                        Toggle(title, isOn: Binding(
+                            get: { checked }, set: { _ in Task { await model.perform(action) } }
+                        ))
+                    }
                 }
+                .disabled(model.quitting)
             }
-            .disabled(model.quitting)
         } label: {
             Label {
-                Text(model.menu.item.title)
+                Text(model?.menu.item.title ?? "Audelin")
             } icon: {
                 Image(nsImage: menuBarImage)
             }
+            .task { await start() }
         }
     }
 
     private var menuBarImage: NSImage {
-        let item = model.menu.item
+
+        guard let item = model?.menu.item else {
+            return NSImage(systemSymbolName: "waveform", accessibilityDescription: "Audelin") ?? NSImage()
+        }
         let image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)?
             .withSymbolConfiguration(.init(paletteColors: [item.isRed ? .systemRed : .labelColor]))
             ?? NSImage()

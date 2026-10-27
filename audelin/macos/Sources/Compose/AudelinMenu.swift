@@ -35,12 +35,12 @@ public final class AudelinMenu {
         preferences: PreferencesStore,
         openCallsFolder: @escaping (URL) -> Void,
         terminate: @escaping @Sendable () async -> Void
-    ) {
+    ) async {
 
-        self.init(
+        await self.init(
             storage: preferences,
             makeApplication: {
-                let application = try AudelinRecording(preferences: preferences)
+                let application = try await AudelinRecording(preferences: preferences)
                 return MenuApplication(
                     states: { await application.recording.states() },
                     failures: application.detectionFailures,
@@ -48,24 +48,24 @@ public final class AudelinMenu {
                     quit: { await application.quit(terminate: terminate) }
                 )
             },
-            openFolder: openCallsFolder, terminate: { await terminate() }, didDeliver: {}
+            openFolder: openCallsFolder, terminate: { await terminate() }, didDeliver: {}, sink: SystemLogSink()
         )
     }
 
     // Delivery is acknowledged after the observable state or failure has been updated.
     init(
         storage: any PreferenceSettingsStorage,
-        makeApplication: () throws -> MenuApplication,
+        makeApplication: () async throws -> MenuApplication,
         openFolder: @escaping (URL) -> Void,
         terminate: @escaping () async -> Void,
         didDeliver: @escaping () -> Void,
-        sink: any LogSink = SystemLogSink()
-    ) {
+        sink: any LogSink
+    ) async {
 
         self.sink = sink
         let application: MenuApplication?
         do {
-            application = try makeApplication()
+            application = try await makeApplication()
         } catch {
             sink.write(.init(category: .menu, message: "startup failed", error: String(describing: error)))
             application = nil
@@ -80,7 +80,6 @@ public final class AudelinMenu {
             observation = Task { [weak self, states = application.states] in
                 for await state in await states() {
                     guard let self else { return }
-                    StateLog(sink: sink).recording(state)
                     self.state = state
                     sink.write(.init(category: .menu, message: "item symbol=\(self.menu.item.symbol) red=\(self.menu.item.isRed)"))
                     didDeliver()

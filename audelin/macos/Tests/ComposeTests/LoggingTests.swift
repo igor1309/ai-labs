@@ -1,13 +1,19 @@
 @testable import CallText
+import CallAppProcesses
+import CallFolder
 import CoreAudioProcesses
 import Foundation
-import LiveAudio
+import protocol LiveAudio.Capture
+import struct LiveAudio.AudioPiece
+import struct MicrophoneCapture.AudioPiece
+import struct SystemAudioCapture.AudioPiece
 import Preferences
 import Recording
 import Session
 import Testing
 @testable import Compose
 
+@Suite(.timeLimit(.minutes(1)))
 struct LoggingTests {
 
     @Test func portsPreserveResultsArgumentsAndErrorIdentity() async throws {
@@ -52,20 +58,58 @@ struct LoggingTests {
             #expect(entries.allSatisfy { !$0.message.contains(destination.id) })
             #expect(entries.contains { $0.path == destination.id })
         }
+        try await withComposeFolder { root in
+            let sink = LogSpy()
+            let rig = LogPieces(root: root, sink: sink)
+            defer { rig.finish() }
+            let handler = rig.pieces.handler(sink: sink)
+            #expect(await handler.handle(.createFolder) == .folderFinished(error: nil))
+            guard case .processesFinished(_, error: nil) = await handler.handle(.selectProcesses) else {
+                Issue.record("composed process selection failed"); return
+            }
+            let effects: [(SessionEffect, SessionEvent)] = [
+                (.openTrack(.microphone), .trackFinished(.microphone, error: nil)),
+                (.openTrack(.call), .trackFinished(.call, error: nil)),
+                (.openTranscript, .transcriptFinished(error: nil)),
+                (.startCallText(enabled: false), .callTextFinished(error: nil)),
+                (.startMicrophoneCapture, .captureFinished(.microphone, error: nil)),
+                (.startCallCapture(selection: .everyAppButAudelin), .captureFinished(.call, error: nil)),
+                (.setLiveText(.init(id: 1, enabled: false)), .liveTextSet(request: .init(id: 1, enabled: false), error: nil)),
+                (.stopCapture(.microphone), .captureStopped(.microphone, error: nil)),
+                (.stopCapture(.call), .captureStopped(.call, error: nil)),
+                (.closeTrack(.microphone), .trackClosed(.microphone, error: nil)),
+                (.closeTrack(.call), .trackClosed(.call, error: nil)),
+                (.stopCallText, .callTextStopped(error: nil)),
+                (.closeTranscript, .transcriptClosed(error: nil)),
+            ]
+            for (effect, expected) in effects { #expect(await handler.handle(effect) == expected) }
+            let operations = ["folder.create", "processes.select", "microphoneTrack.open", "callTrack.open",
+                "transcript.open", "callText.start enabled=false", "microphoneCapture.start",
+                "callCapture.start selection=everyAppButAudelin", "callText.setEnabled enabled=false",
+                "microphoneCapture.stop", "callCapture.stop", "microphoneTrack.close", "callTrack.close",
+                "callText.stop", "transcript.close"]
+            let entries = sink.entries.all.filter { $0.category == .session }
+            #expect(entries.map(\.message) == operations.flatMap {
+                $0 == "folder.create" ? ["\($0) called", "\($0) succeeded", "folder created"] : ["\($0) called", "\($0) succeeded"]
+            })
+            let path = root.appendingPathComponent("1970.01.01-0000").path
+            #expect(entries.allSatisfy { !$0.message.contains(root.path) && $0.error == nil })
+            #expect(entries.compactMap(\.path) == Array(repeating: path, count: 7))
+        }
     }
 
     @Test func captureLogsOnlyFirstFormatAndFinalCounts() async throws {
         for side in ["microphone", "call"] {
             let sink = LogSpy()
-            let source = AsyncThrowingStream<AudioPiece, any Error>.makeStream()
+            let source = AsyncThrowingStream<LiveAudio.AudioPiece, any Error>.makeStream()
             let spy = CaptureSpy(source: source.stream, stop: { source.continuation.finish() })
             let capture = LoggingCapture(base: spy, sink: sink, side: side)
             let output = try await capture.start()
-            let pieces = [AudioPiece(samples: [0.125, 0.375], sampleRate: 48_000),
-                          AudioPiece(samples: [0.625], sampleRate: 16_000)]
+            let pieces = [LiveAudio.AudioPiece(samples: [0.125, 0.375], sampleRate: 48_000),
+                          LiveAudio.AudioPiece(samples: [0.625], sampleRate: 16_000)]
             pieces.forEach { source.continuation.yield($0) }
             let reader = Task {
-                var received: [AudioPiece] = []
+                var received: [LiveAudio.AudioPiece] = []
                 for try await piece in output { received.append(piece) }
                 return received
             }
@@ -78,12 +122,34 @@ struct LoggingTests {
                 .init(category: .capture, message: "\(side) stream stopped pieces=2 frames=3"),
             ])
         }
+        try await withComposeFolder { root in
+            let sink = LogSpy()
+            let rig = LogPieces(root: root, sink: sink)
+            defer { rig.finish() }
+            let folder = try await rig.pieces.create()
+            try await rig.pieces.microphoneTrack.open(in: folder)
+            try await rig.pieces.callTrack.open(in: folder)
+            try await rig.pieces.microphoneCapture.start()
+            try await rig.pieces.callCapture.start(selection: .everyAppButAudelin)
+            try await rig.pieces.microphoneCapture.stop()
+            try await rig.pieces.callCapture.stop()
+            try await rig.pieces.microphoneTrack.close()
+            try await rig.pieces.callTrack.close()
+            for side in ["microphone", "call"] {
+                #expect(sink.entries.all.filter { $0.category == .capture && $0.message.hasPrefix(side) } == [
+                    .init(category: .capture, message: "\(side) stream start"),
+                    .init(category: .capture, message: "\(side) first piece sampleRate=48000.0 channels=1 frames=2"),
+                    .init(category: .capture, message: "\(side) stream stopped pieces=2 frames=3"),
+                ])
+                #expect(try recordedSamples(URL(fileURLWithPath: folder.id).appendingPathComponent("\(side).caf")) == [0.25, -0.5, 0.125])
+            }
+        }
     }
 
     @Test func emptyCaptureReportsStreamStartAndStopFailures() async throws {
         for stage in ["stream", "start", "stop"] {
             let sink = LogSpy(), failure = LogFailure()
-            let source = AsyncThrowingStream<AudioPiece, any Error>.makeStream()
+            let source = AsyncThrowingStream<LiveAudio.AudioPiece, any Error>.makeStream()
             let spy = CaptureSpy(source: source.stream, failure: stage == "start" ? failure : nil, stop: {
                 if stage == "stop" { throw failure }
                 source.continuation.finish()
@@ -109,41 +175,52 @@ struct LoggingTests {
         }
     }
 
-    @MainActor @Test func recordingSubscriberLogsEveryDeliveredState() async {
-        let sink = LogSpy()
-        let states = AsyncStream<RecordingState>.makeStream()
-        let failures = AsyncStream<any Error>.makeStream()
-        let menu = AudelinMenu(
-            storage: LogPreferencesStorage(),
-            makeApplication: { MenuApplication(states: { states.stream }, failures: failures.stream, send: { _ in }, quit: {}) },
-            openFolder: { _ in }, terminate: {}, didDeliver: {}, sink: sink
-        )
-        var state = RecordingState(automatic: true, missing: [.room, .microphoneAccess])
-        states.continuation.yield(state)
-        state.missing = []
-        state.phase = .beginning
-        state.session = .init(id: 42, origin: .call)
-        states.continuation.yield(state)
-        state.phase = .recording
-        states.continuation.yield(state)
-        state.phase = .ending
-        state.cannotRecord = "disk unavailable"
-        states.continuation.yield(state)
-        state.phase = .idle
-        state.session = nil
-        states.continuation.yield(state)
-        states.continuation.finish()
-        failures.continuation.finish()
-        await menu.waitForObservers()
-        let entries = sink.entries.all.filter { $0.category == .recording }
-        #expect(entries.map { $0.message.components(separatedBy: " ")[1] } == ["phase=idle", "phase=beginning", "phase=recording", "phase=ending", "phase=idle"])
-        #expect(entries[0].message.contains("missing=[microphoneAccess,room]"))
-        #expect(entries[1].message.contains("why=call"))
-        #expect(entries[1].message.contains("session=42 missing=[]"))
-        #expect(entries.suffix(2).allSatisfy { $0.error == "disk unavailable" })
+    @Test func recordingSubscriberLogsEveryDeliveredState() async throws {
+        try await withComposeFolder { root in
+            let sink = LogSpy()
+            let rig = LogPieces(root: root, sink: sink)
+            defer { rig.finish() }
+            let recording = await composeRecording(initial: .init(automatic: true),
+                makePieces: { _ in rig.pieces }, liveText: { false }, sink: sink)
+            let conditions = RecordingConditions(recording: recording, microphoneAccess: { true },
+                callAudioAccess: { true }, callsFolder: { true }, room: { true })
+            conditions.refresh()
+            let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
+            let calls = try composeCalls(processes, to: recording, conditions: conditions)
+            defer { calls.cancel(); processes.stop() }
+            for await state in await recording.states() {
+                if state.phase == .recording { break }
+            }
+            recording.send(.sessionReported(id: 1, .cannotRecord("disk unavailable")))
+            await sink.wait { $0.category == .recording && $0.message.contains("phase=idle") && $0.error == "disk unavailable" }
+            calls.cancel()
+            processes.stop()
+            await calls.wait()
+            await recording.end()
+
+            let failures = AsyncStream<any Error>.makeStream()
+            let menu = await AudelinMenu(storage: LogPreferencesStorage(), makeApplication: {
+                MenuApplication(states: { await recording.states() }, failures: failures.stream,
+                    send: recording.send, quit: {})
+            }, openFolder: { _ in }, terminate: {}, didDeliver: {}, sink: sink)
+            failures.continuation.finish()
+            await menu.waitForObservers()
+            let entries = sink.entries.all.filter { $0.category == .recording && $0.message.hasPrefix("state ") }
+            #expect(entries.map { $0.message.components(separatedBy: " ")[1] } == [
+                "phase=idle", "phase=idle", "phase=idle", "phase=idle", "phase=idle",
+                "phase=beginning", "phase=recording", "phase=ending", "phase=idle",
+            ])
+            #expect(entries[0].message.contains("missing=[callAudioAccess,callsFolder,microphoneAccess,room]"))
+            #expect(entries[4].message.contains("missing=[]"))
+            #expect(entries[5].message.contains("why=call session=1 missing=[]"))
+            #expect(entries.suffix(2).allSatisfy { $0.error == "disk unavailable" })
+            #expect(sink.entries.all.filter { $0.category == .recording && !$0.message.hasPrefix("state ") }.map(\.message) == [
+                "begin id=1 called", "begin id=1 report=ready", "end id=1 called", "end id=1 finished",
+            ])
+        }
     }
 
-    @Test func recordingSessionLogsReportsAndEndAndSessionStateOmitsOpaqueIDs() async {
+    @Test func recordingSessionLogsReportsAndEndAndSessionStateOmitsOpaqueIDs() async throws {
         for report: RecordingSessionReport in [.ready, .cannotRecord("no track"), .ended] {
             let sink = LogSpy(), calls = Values<String>()
             let session = LoggingRecordingSession(base: RecordingSpy(report: report, calls: calls), sink: sink)
@@ -164,6 +241,24 @@ struct LoggingTests {
         #expect(sink.entries.all[0].message.contains("microphoneCapture=closed"))
         #expect(!sink.entries.all[0].message.contains("secret selection"))
         #expect(sink.entries.all[0].error == "no track; microphone: device lost")
+        try await withComposeFolder { root in
+            let delivered = LogSpy()
+            let rig = LogPieces(root: root, sink: delivered)
+            defer { rig.finish() }
+            let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
+                report: { _, _ in Issue.record("normal shutdown must not report an unexpected end") },
+                connect: subscribe, sink: delivered)
+            #expect(await sessions.begin(id: 8) == .ready)
+            await sessions.end(id: 8)
+            let states = delivered.entries.all.filter { $0.category == .session && $0.message.hasPrefix("state ") }
+            let phases = states.map { $0.message.components(separatedBy: " ")[2] }
+            #expect(phases.first == "phase=idle")
+            #expect(phases.last == "phase=ended")
+            #expect(Set(phases) == ["phase=idle", "phase=bringingUp", "phase=recording", "phase=ending", "phase=ended"])
+            #expect(states.allSatisfy { $0.message.hasPrefix("state id=8 ") && !$0.message.contains(root.path) })
+            #expect(states.last?.message.contains("microphoneCapture=closed") == true)
+            #expect(states.last?.message.contains("callCapture=closed") == true)
+        }
     }
 
     @Test func transcriptContentNeverReachesLog() async throws {
@@ -226,7 +321,12 @@ struct LoggingTests {
 
 private final class LogSpy: LogSink {
     let entries = Values<LogEntry>()
-    func write(_ entry: LogEntry) { entries.append(entry) }
+    private let delivery = AsyncStream<LogEntry>.makeStream()
+    func write(_ entry: LogEntry) { entries.append(entry); delivery.continuation.yield(entry) }
+    func wait(where matches: @Sendable (LogEntry) -> Bool) async {
+        for await entry in delivery.stream { if matches(entry) { return } }
+    }
+    deinit { delivery.continuation.finish() }
 }
 
 private final class LogFailure: Error, CustomStringConvertible {
@@ -258,14 +358,14 @@ private final class PortSpy: SessionFolder, SessionProcesses, SessionMicrophoneC
 }
 
 private final class CaptureSpy: Capture {
-    let source: AsyncThrowingStream<AudioPiece, any Error>
+    let source: AsyncThrowingStream<LiveAudio.AudioPiece, any Error>
     let failure: LogFailure?
     let end: @Sendable () throws -> Void
     let calls = Values<String>()
-    init(source: AsyncThrowingStream<AudioPiece, any Error>, failure: LogFailure? = nil, stop: @escaping @Sendable () throws -> Void) {
+    init(source: AsyncThrowingStream<LiveAudio.AudioPiece, any Error>, failure: LogFailure? = nil, stop: @escaping @Sendable () throws -> Void) {
         self.source = source; self.failure = failure; end = stop
     }
-    func start() async throws -> AsyncThrowingStream<AudioPiece, any Error> {
+    func start() async throws -> AsyncThrowingStream<LiveAudio.AudioPiece, any Error> {
         calls.append("start")
         if let failure { throw failure }
         return source
@@ -291,4 +391,29 @@ private struct TextSpy: SessionCallText {
 private struct LogPreferencesStorage: PreferenceSettingsStorage {
     func read() -> Preferences { Preferences() }
     func write(_ preferences: Preferences) {}
+}
+
+private struct LogPieces: Sendable {
+    let pieces: SessionPieces
+    let microphone: CaptureScript<MicrophoneCapture.AudioPiece>
+    let call: CaptureScript<SystemAudioCapture.AudioPiece>
+
+    init(root: URL, sink: any LogSink) {
+        let microphone = CaptureScript<MicrophoneCapture.AudioPiece>(
+            first: .init(samples: [0.25, -0.5], sampleRate: 48_000),
+            last: .init(samples: [0.125], sampleRate: 48_000), fails: false)
+        let call = CaptureScript<SystemAudioCapture.AudioPiece>(
+            first: .init(samples: [0.25, -0.5], sampleRate: 48_000),
+            last: .init(samples: [0.125], sampleRate: 48_000), fails: false)
+        self.microphone = microphone
+        self.call = call
+        pieces = SessionPieces(
+            folder: CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: 0) }, timeZone: TimeZone(secondsFromGMT: 0)!),
+            processes: CallAppProcesses(app: "meeting", list: SessionProcessList(answer: .success([]))),
+            startMicrophone: { try microphone.start() }, startCall: { _ in try call.start() },
+            microphoneRecognizerSource: { preconditionFailure("Live text is disabled") },
+            callRecognizerSource: { preconditionFailure("Live text is disabled") }, captureLogSink: sink)
+    }
+
+    func finish() { microphone.end(); call.end() }
 }

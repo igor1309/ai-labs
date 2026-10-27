@@ -18,10 +18,10 @@ public final class AudelinRecording: Sendable {
     private let conditions: RecordingConditions
     private let delivery: ApplicationDelivery
 
-    public convenience init(preferences: PreferencesStore) throws {
+    public convenience init(preferences: PreferencesStore) async throws {
 
         createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
-        try self.init(
+        try await self.init(
             preferences: preferences,
             processes: CoreAudioProcesses(binding: CoreAudioBinding(), clock: ContinuousCallClock()),
             now: { Date() }, timeZone: { .current },
@@ -42,10 +42,10 @@ public final class AudelinRecording: Sendable {
         recognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         makeConditions: (Recording, URL) -> RecordingConditions,
         startModel: () -> Task<Void, any Error>
-    ) throws {
+    ) async throws {
 
         let app = RecordingCallApp()
-        let (recording, conditions) = composeRecordingWithPreferences(
+        let (recording, conditions) = await composeRecordingWithPreferences(
             preferences: preferences,
             makePieces: composeRecordingPieces(
                 preferences: preferences, callApp: app, processes: processes,

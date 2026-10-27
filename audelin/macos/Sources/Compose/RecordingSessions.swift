@@ -32,7 +32,7 @@ public actor RecordingSessions: RecordingSession {
         report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void
     ) {
 
-        self.init(makePieces: makePieces, liveText: liveText, report: report, connect: subscribe)
+        self.init(makePieces: makePieces, liveText: liveText, report: report, connect: subscribe, sink: SystemLogSink())
     }
 
     init(
@@ -40,7 +40,7 @@ public actor RecordingSessions: RecordingSession {
         liveText: @escaping @Sendable () -> Bool,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void,
         connect: @escaping @Sendable (SessionPieces, Session) -> Task<Void, Never>,
-        sink: any LogSink = SystemLogSink()
+        sink: any LogSink
     ) {
 
         self.makePieces = makePieces

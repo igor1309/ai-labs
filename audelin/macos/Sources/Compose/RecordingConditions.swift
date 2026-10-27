@@ -20,7 +20,7 @@ public final class RecordingConditions: Sendable {
         self.init(
             send: { [weak recording] in recording?.send($0) },
             microphoneAccess: microphoneAccess, callAudioAccess: callAudioAccess,
-            callsFolder: callsFolder, room: room
+            callsFolder: callsFolder, room: room, sink: SystemLogSink()
         )
     }
 
@@ -31,7 +31,7 @@ public final class RecordingConditions: Sendable {
         callAudioAccess: @escaping @Sendable () -> Bool,
         callsFolder: @escaping @Sendable () -> Bool,
         room: @escaping @Sendable () -> Bool,
-        sink: any LogSink = SystemLogSink()
+        sink: any LogSink
     ) {
 
         self.send = { event in
