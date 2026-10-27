@@ -97,8 +97,8 @@ test("ciPathFilters_shouldRunAgisterCore_onEachKindOfFileItsTestsRead", () => {
   }
 });
 
-// The files beyond their code that agonara's and noreta's tests read: a
-// change to any of them must run the project's job (LAB-220).
+// The files beyond their code that agonara's, noreta's and mizan-ble's
+// tests read: a change to any of them must run the project's job (LAB-220).
 test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => {
   const read = {
     "agonara-core": [
@@ -111,6 +111,7 @@ test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => 
       "docs/loc-dashboard.html",
     ],
     "noreta-core": ["noreta/docs/qa.md"],
+    "mizan-ble-core": ["mizan-ble/docs/design/tokens.json"],
   };
 
   for (const [job, files] of Object.entries(read)) {
