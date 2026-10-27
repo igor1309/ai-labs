@@ -111,7 +111,7 @@ test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => 
       "docs/loc-dashboard.html",
     ],
     "noreta-core": ["noreta/docs/qa.md"],
-    "mizan-ble-core": ["mizan-ble/docs/design/tokens.json"],
+    "mizan-ble-core": ["mizan-ble/docs/design/mizan-ble.pen"],
   };
 
   for (const [job, files] of Object.entries(read)) {

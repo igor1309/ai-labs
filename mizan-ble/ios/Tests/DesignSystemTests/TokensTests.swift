@@ -68,10 +68,10 @@ private func defaultWeight(_ font: CTFont) -> Double {
 /// The design file's `mz-*` variables, by name.
 private func designTokens() throws -> [String: [String: Any]] {
 
-    let snapshot = URL(fileURLWithPath: #filePath)
+    let design = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent()
-        .appendingPathComponent("../../../docs/design/tokens.json")
-    let json = try JSONSerialization.jsonObject(with: Data(contentsOf: snapshot)) as? [String: Any]
+        .appendingPathComponent("../../../docs/design/mizan-ble.pen")
+    let json = try JSONSerialization.jsonObject(with: Data(contentsOf: design)) as? [String: Any]
     let variables = try #require(json?["variables"] as? [String: [String: Any]])
     return variables.filter { $0.key.hasPrefix("mz-") }
 }
