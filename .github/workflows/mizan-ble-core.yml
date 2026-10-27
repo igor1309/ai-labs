@@ -44,8 +44,8 @@ jobs:
         timeout-minutes: 5
         run: swift test
 
-      # The app runs on iOS; the tests run on macOS. While the package has
-      # one library, Xcode names its scheme after the package.
+      # The app runs on iOS; the tests run on macOS. The aggregate package
+      # scheme builds every library when the package has several products.
       - name: Build for iOS
         working-directory: mizan-ble/ios
-        run: xcodebuild -scheme MizanBLE -destination 'generic/platform=iOS' build
+        run: xcodebuild -scheme MizanBLE-Package -destination 'generic/platform=iOS' build
