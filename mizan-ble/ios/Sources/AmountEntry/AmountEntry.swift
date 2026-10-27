@@ -22,7 +22,7 @@ public enum AmountEntry {
     }
 
     public struct State: Equatable, Sendable {
-        /// Keeps the decimal point and trailing zeros exactly as entered.
+        /// Keeps the keys exactly as entered; a leading point is drawn with its zero.
         public fileprivate(set) var amount = ""
         public fileprivate(set) var bluetooth: Bluetooth
 
@@ -55,10 +55,7 @@ public enum AmountEntry {
                     next.amount += digit.rawValue
                 }
             case .decimalPoint:
-                if !next.amount.contains(".") {
-                    if next.amount.isEmpty { next.amount = "0" }
-                    next.amount += "."
-                }
+                if !next.amount.contains(".") { next.amount += "." }
             case .delete:
                 if !next.amount.isEmpty { next.amount.removeLast() }
             }

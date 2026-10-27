@@ -77,6 +77,11 @@ struct AmountEntryTests {
         }
     }
 
+    @Test func deleteUndoesALeadingDecimalPointInOnePress() {
+        let state = send(.key(.delete), to: enter(".", bluetooth: .available))
+        #expect(state.amount == "")
+    }
+
     @Test func bluetoothUnavailableReportsTheReasonAndPreventsLocking() {
         var state = enter("124.5", bluetooth: .available)
         for reason in ["off", "unauthorized", "unsupported"] {
@@ -95,7 +100,7 @@ struct AmountEntryTests {
 
     @Test func decimalPointStartsAFraction() {
         let state = enter(".05", bluetooth: .available)
-        #expect(state.amount == "0.05")
+        #expect(state.amount == ".05")
         #expect(state.canLock)
     }
 
