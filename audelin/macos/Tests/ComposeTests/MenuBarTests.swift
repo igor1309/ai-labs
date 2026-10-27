@@ -1,5 +1,10 @@
 @testable import Compose
 import CoreAudioProcesses
+import Foundation
+import struct MicrophoneCapture.AudioPiece
+import Preferences
+import struct SystemAudioCapture.AudioPiece
+import enum SystemAudioCapture.ProcessSelection
 import Recording
 import Synchronization
 import Testing
@@ -42,103 +47,83 @@ struct MenuBarTests {
 
     @Test func applicationConnectsStartupAndStopsDetectionBeforeDraining() async throws {
 
-        let binding = CallBinding(fails: false, input: false)
-        let clock = QueuedCallClock()
-        let processes = CoreAudioProcesses(binding: binding, clock: clock)
-        let callApp = RecordingCallApp()
-        let ending = Signal(), release = Signal()
-        let events = Values<String>(), sessions = Values<UInt64>(), checks = Values<String>()
-        let model = Task<Void, any Error> {}
-        defer { processes.stop(); model.cancel(); ending.end(); release.end() }
-        let session = QuitSession(
-            ending: ending, release: release, events: events,
-            began: { id in
-                #expect(callApp.current == "us.zoom.xos")
-                sessions.append(id)
-            },
-            beforeEnding: {
-                #expect(binding.activeListeners == 0)
-                #expect(!clock.active)
+        try await withComposeFolder { root in
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.write(Preferences(liveText: false, callsFolder: root))
+            let binding = CallBinding(fails: false, input: false)
+            let clock = QueuedCallClock()
+            let processes = CoreAudioProcesses(binding: binding, clock: clock)
+            let checks = Values<String>(), events = Values<String>()
+            let selections = Values<SystemAudioCapture.ProcessSelection>()
+            let microphone = AsyncThrowingStream<MicrophoneCapture.AudioPiece, any Error>.makeStream()
+            let call = AsyncThrowingStream<SystemAudioCapture.AudioPiece, any Error>.makeStream()
+            let stopping = Signal(), release = Signal()
+            let model = Task<Void, any Error> {}
+            defer {
+                processes.stop(); model.cancel(); stopping.end(); release.end()
+                microphone.continuation.finish(); call.continuation.finish()
             }
-        )
-        let recording = Recording(handler: .init(session: session), initial: .init(automatic: true))
-        let conditions = RecordingConditions(
-            recording: recording,
-            microphoneAccess: { checks.append("microphone"); return true },
-            callAudioAccess: { true }, callsFolder: { true }, room: { true }
-        )
-        let app = try AudelinRecording(
-            recording: recording, conditions: conditions, processes: processes, callApp: callApp,
-            startModel: { events.append("model started"); return model }
-        )
-        #expect(app.recording === recording)
-        let initial = await app.recording.snapshot()
-        #expect(initial.phase == .idle && initial.missing.isEmpty)
-        #expect(sessions.all.isEmpty)
-        #expect(callApp.current == nil)
-        #expect(binding.activeListeners == 2)
-        #expect(events.all == ["model started"])
+            let app = try AudelinRecording(
+                preferences: preferences, processes: processes,
+                now: { Date(timeIntervalSince1970: 0) }, timeZone: { TimeZone(secondsFromGMT: 0)! },
+                startMicrophone: {
+                    events.append("microphone started")
+                    return StartedCapture(stream: microphone.stream, stop: {
+                        #expect(binding.activeListeners == 0)
+                        #expect(!clock.active)
+                        events.append("stopping")
+                        stopping.send()
+                        await release.next()
+                        microphone.continuation.finish()
+                    })
+                },
+                startCall: { selection in
+                    selections.append(selection)
+                    return StartedCapture(stream: call.stream, stop: { call.continuation.finish() })
+                },
+                recognizerSource: { preconditionFailure("Live text is disabled") },
+                makeConditions: { recording, folder in
+                    #expect(folder == root)
+                    return RecordingConditions(
+                        recording: recording,
+                        microphoneAccess: { checks.append("microphone"); return true },
+                        callAudioAccess: { true }, callsFolder: { true }, room: { true }
+                    )
+                },
+                startModel: { events.append("model started"); return model }
+            )
+            let initial = await app.recording.snapshot()
+            #expect(initial.phase == .idle && initial.missing.isEmpty && initial.automatic)
+            #expect(selections.all.isEmpty)
+            #expect(binding.activeListeners == 2)
+            #expect(events.all == ["model started"])
 
-        binding.setInput(true)
-        for await state in await recording.states() {
-            if state.phase == .recording {
-                #expect(state.session == .init(id: 1, origin: .call))
-                break
+            binding.setInput(true)
+            for await state in await app.recording.states() {
+                if state.phase == .recording {
+                    #expect(state.session == .init(id: 1, origin: .call))
+                    break
+                }
             }
-        }
-        #expect(checks.all == ["microphone", "microphone"])
-        binding.setInput(false)
-        #expect(clock.active)
-        let lateNotifications = binding.queuedNotifications()
-        let quit = Task { await app.quit { events.append("terminated") } }
-        await ending.next()
-        #expect(events.all == ["model started", "ending"])
-
-        // Core Audio can deliver callbacks queued before listeners were removed.
-        clock.fireQueued()
-        binding.setInput(true)
-        lateNotifications.forEach { $0() }
-        #expect(await recording.snapshot().phase == .ending)
-        #expect(sessions.all == [1])
-        release.send()
-        await quit.value
-        #expect(events.all == ["model started", "ending", "ended", "terminated"])
-        #expect(sessions.all == [1])
-        #expect(await recording.snapshot().lastSessionID == 1)
-        #expect(await recording.snapshot().phase == .idle)
-        #expect(model.isCancelled)
-    }
-
-    @Test func quitWaitsForTheRunningRecording() async {
-
-        // Also cover a call queued before quit but not yet reduced.
-        for queued in [false, true] {
-            let ending = Signal(), release = Signal()
-            defer { ending.end(); release.end() }
-            let events = Values<String>()
-            let session = QuitSession(ending: ending, release: release, events: events, began: { _ in }, beforeEnding: {})
-            let recording = Recording(handler: .init(session: session), initial: queued
-                ? RecordingState(automatic: true, missing: []) : running())
-            if queued { recording.send(.callStarted) }
-            let quit = Task { await quitRecording(recording) { events.append("terminated") } }
-            await ending.next()
-            #expect(events.all == ["ending"])
+            #expect(selections.all == [.only([42])])
+            #expect(checks.all == ["microphone", "microphone"])
+            binding.setInput(false)
+            #expect(clock.active)
+            let lateNotifications = binding.queuedNotifications()
+            let quit = Task { await app.quit { events.append("terminated") } }
+            await stopping.next()
+            #expect(events.all == ["model started", "microphone started", "stopping"])
+            clock.fireQueued()
+            binding.setInput(true)
+            lateNotifications.forEach { $0() }
+            #expect(await app.recording.snapshot().phase == .ending)
             release.send()
             await quit.value
-            #expect(events.all == ["ending", "ended", "terminated"])
-            #expect(await recording.snapshot().phase == .idle)
+            #expect(events.all == ["model started", "microphone started", "stopping", "terminated"])
+            #expect(await app.recording.snapshot().lastSessionID == 1)
+            #expect(await app.recording.snapshot().phase == .idle)
+            #expect(model.isCancelled)
         }
-    }
-
-    @Test func quitWhileIdleTerminatesWithoutASession() async {
-
-        let ending = Signal(), release = Signal()
-        defer { ending.end(); release.end() }
-        let events = Values<String>()
-        let session = QuitSession(ending: ending, release: release, events: events, began: { _ in }, beforeEnding: {})
-        let recording = Recording(handler: .init(session: session))
-        await quitRecording(recording) { events.append("terminated") }
-        #expect(events.all == ["terminated"])
     }
 
     private func running() -> RecordingState {
@@ -149,30 +134,6 @@ struct MenuBarTests {
         state.lastSessionID = 1
         state.session = .init(id: 1, origin: .call)
         return state
-    }
-}
-
-private struct QuitSession: RecordingSession {
-
-    let ending: Signal
-    let release: Signal
-    let events: Values<String>
-    let began: @Sendable (UInt64) -> Void
-    let beforeEnding: @Sendable () -> Void
-
-    func begin(id: UInt64) async -> RecordingSessionReport {
-
-        began(id)
-        return .ready
-    }
-
-    func end(id: UInt64) async {
-
-        beforeEnding()
-        events.append("ending")
-        ending.send()
-        await release.next()
-        events.append("ended")
     }
 }
 
