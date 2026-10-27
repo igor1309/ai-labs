@@ -7,7 +7,7 @@ host, shows the amount, and confirms or declines. The host then shows a
 mocked payment result, and both sides end the transaction.
 
 Status: building v0.0.1 (2026-10-27). The architecture and every
-component's spec are written; the design system module is in the Swift
+component's spec are written; the design system and mode-switch UI are in the Swift
 package under `ios/`, and the app is not built yet. v0.0.1 is the two-mode
 app with both apps in the foreground; later versions try to drop the
 explicit handshake (v0.1.0) and the foreground app (v0.2.0).
@@ -19,7 +19,8 @@ explicit handshake (v0.1.0) and the foreground app (v0.2.0).
 | [AGENTS.md](AGENTS.md) | Rules for agents: the architecture, the spec process, building and the design |
 | [docs/poc.md](docs/poc.md) | The proof of concept: versions, the host and client flows, design notes, research leads |
 | [NOTES.md](NOTES.md) | How it is built: choosing the host by signal strength, encrypting each exchange with a per-session key |
-| [ios/](ios/) | The Swift package: the `DesignSystem` module so far. `swift test` runs its tests |
+| [ios/](ios/) | The Swift package, including `DesignSystem` and `ModeSwitchUI`, which draws the chosen mode and its header switch. Run `swift build` and `swift test` here |
+| [ios/PreviewApps/](ios/PreviewApps/) | `ModeSwitchPreview`: try the switch in either device shell and export every state to light/dark PNGs |
 | [docs/design/](docs/design/) | The design in pen.dev (`mizan-ble.pen`), its index and previews: the design system, the host and client screens and the paired flow, and the Mizan sign candidates |
 | [docs/research/](docs/research/) | Research notes on proximity payments, including an architecture candidate the architecture weighs |
 | [docs/log.md](docs/log.md) | What changed for the product, newest first |

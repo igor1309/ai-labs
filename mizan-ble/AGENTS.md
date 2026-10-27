@@ -77,6 +77,13 @@ How behaviour is specified before it is built, after audelin's process.
   its preview snapshots with the design, and gets no Agister review.
 - One UI module per piece of work: build, compare with the design, and
   merge one before starting the next.
+- Each UI module has a macOS preview app in `ios/PreviewApps` that runs
+  its real view live: taps change the state on screen, so transitions are
+  seen as well as frozen states. A screen with a machine is driven by the
+  real machine, with timers and Bluetooth stubbed, so a whole payment can
+  be clicked through. The no-logic rule binds the UI module, not its
+  preview app: the app is as large as the stand-in its screen needs. It
+  copies no feature code and has no tests.
 
 ## Design
 

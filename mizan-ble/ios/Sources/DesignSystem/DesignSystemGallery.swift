@@ -37,6 +37,13 @@ public struct DesignSystemGallery: View {
                 }
                 .frame(width: 932)
             }
+            section("DISABLED CONTROLS") {
+                HStack(spacing: Tokens.space12) {
+                    ModeSwitch(selection: .host, isEnabled: false) { _ in }
+                    ModeSwitch(selection: .client, isEnabled: false) { _ in }
+                    SettingsGear(isEnabled: false, action: {})
+                }
+            }
             flowComponents
             section("COUNTDOWN & RESULT") {
                 HStack(alignment: .center, spacing: Tokens.space12) {
