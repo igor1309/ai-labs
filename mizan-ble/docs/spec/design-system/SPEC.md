@@ -21,6 +21,8 @@ component. It knows no flow and no state: each view takes plain values.
   with no network.
 - **The Mizan sign is a vector shape** drawn from the design's path, so it
   scales with the amount's size.
+- **The status bar is the system's:** `DS / Status Bar` stands in for it
+  in the design's frames and has no view.
 - **Light and dark follow the device:** each `mz-*` colour has a dark and
   a light value, and a view takes the one for the SwiftUI colour scheme.
   Dark is the reference design; light accents are darker, to keep 4.5:1.
@@ -39,7 +41,7 @@ Feature: Drawing from the locked design
     Then I can read that the Swift is stale
 
   Scenario: S-3 Every component is a view
-    Given a `DS /` component in the design
+    Given a `DS /` component in the design, the status bar aside
     When I draw a screen
     Then I can use it as a view with the same overrides the design has
 

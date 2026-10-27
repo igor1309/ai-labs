@@ -21,13 +21,10 @@ darker than dark ones, so text on them and on the light ground keeps
 4.5:1. Dark remains the reference design.
 
 The app's `DesignSystem` module (`mizan-ble/ios/Sources/DesignSystem/`)
-draws from the same tokens. It has the tokens, the Mizan sign, the amount,
-the buttons, the mode header with its switch, the countdown ring and the
-result mark and card so far, and its `DesignSystemGallery` shows them on
-one page, to compare with the frame. The other `DS /` components below
-(status bar, key, status pill, rail and stepper steps, chips, messages,
-exchange strip, shells) are still to be built, by the sub-issues whose
-screens use them.
+draws the same components from the same tokens, and its
+`DesignSystemGallery` shows them on one page, to compare with the frame.
+It has every `DS /` component below but the status bar, which on a device
+is the system's own.
 
 Rules for new frames:
 
