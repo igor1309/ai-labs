@@ -12,7 +12,7 @@
       "cornerRadius": "$mz-radius-ipad",
       "layout": "vertical",
       "gap": "$mz-space-14",
-      "padding": 72,
+      "padding": "$mz-space-18",
       "children": [
         {
           "type": "frame",
@@ -40,7 +40,7 @@
               "fill": "$mz-text",
               "content": "Beacon · Exchange",
               "fontFamily": "$mz-font-display",
-              "fontSize": 72,
+              "fontSize": "$mz-size-hero",
               "fontWeight": "700",
               "letterSpacing": -2
             },
@@ -54,7 +54,7 @@
               "content": "Dark ground, Host in orange, Client in cyan. Every screen shows its own step and the other side's state. Tokens are the mz-* variables; components are named “DS / …”.",
               "lineHeight": 1.5,
               "fontFamily": "$mz-font-text",
-              "fontSize": 20,
+              "fontSize": "$mz-size-lead",
               "fontWeight": "normal"
             }
           ]
@@ -71,7 +71,7 @@
           "layout": "vertical",
           "gap": "$mz-space-6",
           "padding": [
-            32,
+            "$mz-space-8",
             0,
             0,
             0
@@ -82,7 +82,7 @@
               "id": "qDwGZ",
               "name": "Section Head",
               "layout": "vertical",
-              "gap": 6,
+              "gap": "$mz-space-2",
               "children": [
                 {
                   "type": "text",
@@ -91,7 +91,7 @@
                   "fill": "$mz-text",
                   "content": "Colour",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 32,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600"
                 },
                 {
@@ -101,7 +101,7 @@
                   "fill": "$mz-text-2",
                   "content": "Two mode colours, two status colours, neutrals tuned for the dark ground.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 15,
+                  "fontSize": "$mz-size-label",
                   "fontWeight": "normal"
                 }
               ]
@@ -1206,7 +1206,7 @@
           "layout": "vertical",
           "gap": "$mz-space-6",
           "padding": [
-            32,
+            "$mz-space-8",
             0,
             0,
             0
@@ -1217,7 +1217,7 @@
               "id": "aUVv6",
               "name": "Section Head",
               "layout": "vertical",
-              "gap": 6,
+              "gap": "$mz-space-2",
               "children": [
                 {
                   "type": "text",
@@ -1226,7 +1226,7 @@
                   "fill": "$mz-text",
                   "content": "Type",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 32,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600"
                 },
                 {
@@ -1236,7 +1236,7 @@
                   "fill": "$mz-text-2",
                   "content": "Space Grotesk for numbers and titles, Inter for text, JetBrains Mono for codes and machine state.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 15,
+                  "fontSize": "$mz-size-label",
                   "fontWeight": "normal"
                 }
               ]
@@ -1259,7 +1259,7 @@
                   },
                   "gap": "$mz-space-8",
                   "padding": [
-                    16,
+                    "$mz-space-4",
                     0
                   ],
                   "alignItems": "center",
@@ -1270,7 +1270,7 @@
                       "name": "Meta",
                       "width": 260,
                       "layout": "vertical",
-                      "gap": 4,
+                      "gap": "$mz-space-1",
                       "children": [
                         {
                           "type": "text",
@@ -1309,6 +1309,124 @@
                 },
                 {
                   "type": "frame",
+                  "id": "gI5lm",
+                  "name": "Ring",
+                  "width": "fill_container",
+                  "stroke": "$mz-line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "gap": "$mz-space-8",
+                  "padding": [
+                    "$mz-space-4",
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "MKsM2",
+                      "name": "Meta",
+                      "width": 260,
+                      "layout": "vertical",
+                      "gap": "$mz-space-1",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "RjijS",
+                          "name": "Name",
+                          "fill": "$mz-text",
+                          "content": "Ring",
+                          "fontFamily": "$mz-font-text",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "JFUPp",
+                          "name": "Spec",
+                          "fill": "$mz-text-2",
+                          "content": "display · 84 / 600",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-eyebrow",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "Juao4",
+                      "name": "Sample",
+                      "fill": "$mz-text",
+                      "content": "47",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-ring",
+                      "fontWeight": "600",
+                      "letterSpacing": -2
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "iGGCw",
+                  "name": "Hero",
+                  "width": "fill_container",
+                  "stroke": "$mz-line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "gap": "$mz-space-8",
+                  "padding": [
+                    "$mz-space-4",
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "IPMBt",
+                      "name": "Meta",
+                      "width": 260,
+                      "layout": "vertical",
+                      "gap": "$mz-space-1",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "NCdtX",
+                          "name": "Name",
+                          "fill": "$mz-text",
+                          "content": "Hero",
+                          "fontFamily": "$mz-font-text",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "jWgwK",
+                          "name": "Spec",
+                          "fill": "$mz-text-2",
+                          "content": "display · 72 / 700",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-eyebrow",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "zfNbi",
+                      "name": "Sample",
+                      "fill": "$mz-text",
+                      "content": "Beacon · Exchange",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-hero",
+                      "fontWeight": "700",
+                      "letterSpacing": -2
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "T1dNR",
                   "name": "Amount L · iPhone",
                   "width": "fill_container",
@@ -1318,7 +1436,7 @@
                   },
                   "gap": "$mz-space-8",
                   "padding": [
-                    16,
+                    "$mz-space-4",
                     0
                   ],
                   "alignItems": "center",
@@ -1329,7 +1447,7 @@
                       "name": "Meta",
                       "width": 260,
                       "layout": "vertical",
-                      "gap": 4,
+                      "gap": "$mz-space-1",
                       "children": [
                         {
                           "type": "text",
@@ -1436,7 +1554,7 @@
                   },
                   "gap": "$mz-space-8",
                   "padding": [
-                    16,
+                    "$mz-space-4",
                     0
                   ],
                   "alignItems": "center",
@@ -1447,7 +1565,7 @@
                       "name": "Meta",
                       "width": 260,
                       "layout": "vertical",
-                      "gap": 4,
+                      "gap": "$mz-space-1",
                       "children": [
                         {
                           "type": "text",
@@ -1495,7 +1613,7 @@
                   },
                   "gap": "$mz-space-8",
                   "padding": [
-                    16,
+                    "$mz-space-4",
                     0
                   ],
                   "alignItems": "center",
@@ -1506,7 +1624,7 @@
                       "name": "Meta",
                       "width": 260,
                       "layout": "vertical",
-                      "gap": 4,
+                      "gap": "$mz-space-1",
                       "children": [
                         {
                           "type": "text",
@@ -1603,6 +1721,64 @@
                 },
                 {
                   "type": "frame",
+                  "id": "dDw3N",
+                  "name": "Wordmark",
+                  "width": "fill_container",
+                  "stroke": "$mz-line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "gap": "$mz-space-8",
+                  "padding": [
+                    "$mz-space-4",
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Nq0Ta",
+                      "name": "Meta",
+                      "width": 260,
+                      "layout": "vertical",
+                      "gap": "$mz-space-1",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "BxiFb",
+                          "name": "Name",
+                          "fill": "$mz-text",
+                          "content": "Wordmark",
+                          "fontFamily": "$mz-font-text",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "r3bL2c",
+                          "name": "Spec",
+                          "fill": "$mz-text-2",
+                          "content": "display · 26 / 700",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-eyebrow",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "sRa1T",
+                      "name": "Sample",
+                      "fill": "$mz-text",
+                      "content": "Mizan",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-wordmark",
+                      "fontWeight": "700"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "O3hDO",
                   "name": "Title",
                   "width": "fill_container",
@@ -1612,7 +1788,7 @@
                   },
                   "gap": "$mz-space-8",
                   "padding": [
-                    16,
+                    "$mz-space-4",
                     0
                   ],
                   "alignItems": "center",
@@ -1623,7 +1799,7 @@
                       "name": "Meta",
                       "width": 260,
                       "layout": "vertical",
-                      "gap": 4,
+                      "gap": "$mz-space-1",
                       "children": [
                         {
                           "type": "text",
@@ -1729,7 +1905,7 @@
                   },
                   "gap": "$mz-space-8",
                   "padding": [
-                    16,
+                    "$mz-space-4",
                     0
                   ],
                   "alignItems": "center",
@@ -1740,7 +1916,7 @@
                       "name": "Meta",
                       "width": 260,
                       "layout": "vertical",
-                      "gap": 4,
+                      "gap": "$mz-space-1",
                       "children": [
                         {
                           "type": "text",
@@ -1845,7 +2021,7 @@
                   },
                   "gap": "$mz-space-8",
                   "padding": [
-                    16,
+                    "$mz-space-4",
                     0
                   ],
                   "alignItems": "center",
@@ -1856,7 +2032,7 @@
                       "name": "Meta",
                       "width": 260,
                       "layout": "vertical",
-                      "gap": 4,
+                      "gap": "$mz-space-1",
                       "children": [
                         {
                           "type": "text",
@@ -1903,7 +2079,7 @@
                   },
                   "gap": "$mz-space-8",
                   "padding": [
-                    16,
+                    "$mz-space-4",
                     0
                   ],
                   "alignItems": "center",
@@ -1914,7 +2090,7 @@
                       "name": "Meta",
                       "width": 260,
                       "layout": "vertical",
-                      "gap": 4,
+                      "gap": "$mz-space-1",
                       "children": [
                         {
                           "type": "text",
@@ -1961,7 +2137,7 @@
                   },
                   "gap": "$mz-space-8",
                   "padding": [
-                    16,
+                    "$mz-space-4",
                     0
                   ],
                   "alignItems": "center",
@@ -1972,7 +2148,7 @@
                       "name": "Meta",
                       "width": 260,
                       "layout": "vertical",
-                      "gap": 4,
+                      "gap": "$mz-space-1",
                       "children": [
                         {
                           "type": "text",
@@ -2020,7 +2196,7 @@
                   },
                   "gap": "$mz-space-8",
                   "padding": [
-                    16,
+                    "$mz-space-4",
                     0
                   ],
                   "alignItems": "center",
@@ -2031,7 +2207,7 @@
                       "name": "Meta",
                       "width": 260,
                       "layout": "vertical",
-                      "gap": 4,
+                      "gap": "$mz-space-1",
                       "children": [
                         {
                           "type": "text",
@@ -2066,6 +2242,63 @@
                       "fontWeight": "700"
                     }
                   ]
+                },
+                {
+                  "type": "frame",
+                  "id": "vKRXi",
+                  "name": "Micro",
+                  "width": "fill_container",
+                  "stroke": "$mz-line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "gap": "$mz-space-8",
+                  "padding": [
+                    "$mz-space-4",
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "gZlhR",
+                      "name": "Meta",
+                      "width": 260,
+                      "layout": "vertical",
+                      "gap": "$mz-space-1",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "R4rAS",
+                          "name": "Name",
+                          "fill": "$mz-text",
+                          "content": "Micro",
+                          "fontFamily": "$mz-font-text",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "kBlUA",
+                          "name": "Spec",
+                          "fill": "$mz-text-2",
+                          "content": "text · 11 / 400 · text-2",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-eyebrow",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "r0iFFG",
+                      "name": "Sample",
+                      "fill": "$mz-text-2",
+                      "content": "Secure link",
+                      "fontFamily": "$mz-font-text",
+                      "fontSize": "$mz-size-micro"
+                    }
+                  ]
                 }
               ]
             }
@@ -2083,7 +2316,7 @@
           "layout": "vertical",
           "gap": "$mz-space-6",
           "padding": [
-            32,
+            "$mz-space-8",
             0,
             0,
             0
@@ -2094,7 +2327,7 @@
               "id": "l7g4Q",
               "name": "Section Head",
               "layout": "vertical",
-              "gap": 6,
+              "gap": "$mz-space-2",
               "children": [
                 {
                   "type": "text",
@@ -2103,7 +2336,7 @@
                   "fill": "$mz-text",
                   "content": "Spacing & radius",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 32,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600"
                 }
               ]
@@ -2471,6 +2704,36 @@
                         },
                         {
                           "type": "frame",
+                          "id": "VRVym",
+                          "name": "mz-space-18",
+                          "layout": "vertical",
+                          "gap": "$mz-space-2",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "id": "TGZNx",
+                              "name": "Bar",
+                              "fill": "$mz-host-tint",
+                              "width": 72,
+                              "height": 72,
+                              "stroke": "$mz-host",
+                              "strokeWidth": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "Ip02L",
+                              "name": "Value",
+                              "fill": "$mz-text-2",
+                              "content": "72",
+                              "fontFamily": "$mz-font-mono",
+                              "fontSize": "$mz-size-eyebrow",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
                           "id": "j4PKl",
                           "name": "mz-space-20",
                           "layout": "vertical",
@@ -2797,7 +3060,7 @@
           "layout": "vertical",
           "gap": "$mz-space-6",
           "padding": [
-            32,
+            "$mz-space-8",
             0,
             0,
             0
@@ -2808,7 +3071,7 @@
               "id": "NcpH2",
               "name": "Section Head",
               "layout": "vertical",
-              "gap": 6,
+              "gap": "$mz-space-2",
               "children": [
                 {
                   "type": "text",
@@ -2817,7 +3080,7 @@
                   "fill": "$mz-text",
                   "content": "Mizan sign",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 32,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600"
                 },
                 {
@@ -2827,7 +3090,7 @@
                   "fill": "$mz-text-2",
                   "content": "Three rounds of candidates. L · Turned M, tail + bars is chosen and lives in DS / Mizan Sign; every amount uses it.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 15,
+                  "fontSize": "$mz-size-label",
                   "fontWeight": "normal"
                 }
               ]
@@ -2873,7 +3136,7 @@
                           "x": 33.5,
                           "y": 38.98,
                           "geometry": "M93 39.32l0-8.02-8.94 0 0-31.3-14.84 0-22.74 31.2-22.7-31.2-14.84 0 0 31.3-8.94 0 0 8.02 8.94 0 0 4.2-8.94 0 0 7.98 8.94 0 0 30.94 14.26 0 0-30.94 14.4 0 8.88 12.4 9.04-12.4 14.4 0 0 30.94 14.14 0 0-30.94 8.94 0 0-7.98-8.94 0 0-4.2 8.94 0z m-69.8-18.2l7.32 10.16-7.32 0 0-10.16z m46.72 22.4l-46.72 0 0-4.2 46.72 0 0 4.2z m0-12.24l-7.44 0 7.44-10.18 0 10.18z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 93,
                           "height": 82.44
                         },
@@ -3160,7 +3423,7 @@
                           "x": 49.1054,
                           "y": 134.8026,
                           "opacity": 0.25,
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 0.7003,
                           "height": 0.7003
                         },
@@ -3170,7 +3433,7 @@
                           "x": 73.7792,
                           "y": 134.8026,
                           "opacity": 0.25,
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 0.7003,
                           "height": 0.7003
                         },
@@ -3180,7 +3443,7 @@
                           "x": 82.5394,
                           "y": 137.4654,
                           "opacity": 0.25,
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 0.6057,
                           "height": 0.6057
                         },
@@ -3439,7 +3702,7 @@
                           "x": 52.86,
                           "y": 37.18,
                           "geometry": "M39.48 0c-11.43999 0-19.02 10.26-20.82 22.1-5.5 2.14-9.04 7.1-9.04 13.68l0 16.28-8.6 0c-0.58 0-1.02 0.44-1.02 1.02l0 5.46c0 0.58 0.44 1.02 1.02 1.02l8.6 0 0 3.82-8.6 0c-0.58 0-1.02 0.44-1.02 1.02l0 5.46c0 0.58 0.44 1.02 1.02 1.02l8.6 0 0 16c0 1.02 0.82 1.82 1.82 1.82l3.2 0c4.44 0 8.12-3.54 8.12-8.12l0-9.7 11.2 0c0.58 0 1.02-0.43999 1.02-1.02l0-5.46c0-0.58-0.44-1.02-1.02-1.02l-11.2 0 0-3.82 11.2 0c0.58 0 1.02-0.44 1.02-1.02l0-5.46c0-0.58-0.44-1.02-1.02-1.02l-11.2 0 0-13.32c0-0.9 0.6-1.32 1.26-1.02 6.06001 2.78 12.08 4.22 17.04 4.22 11.72 0 19.38-6.92001 19.38-17.6 0-12.9-9.76-24.34-20.96-24.34z m2.56 28.32c-3.74 0-8.92-1.9-13.14-3.44 2.5-6.78 6-10.6 10.2-10.6 4.64 0 8.5 4.2 8.5 8.72 0 3.42-2.16 5.32-5.56 5.32z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 60.44,
                           "height": 88.7
                         }
@@ -3514,7 +3777,7 @@
                           "x": 37.6032,
                           "y": 47.3888,
                           "geometry": "M0 0l0 8.4416 8.6112 0 0 57.4688 12.848 0 0-35.2352 20.91519 29.1776 20.9888-29.1776 0 35.2352 12.79681 0 0-57.4688 8.71041 0 0-8.4416-84.87041 0z m42.37439 38.8l-21.88479-30.3584 43.88799 0-22.0032 30.3584z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 84.8704,
                           "height": 65.9104
                         },
@@ -3524,7 +3787,7 @@
                           "x": 68.2592,
                           "y": 60.464,
                           "geometry": "M23.5456 0l-23.5456 0 0 6.2688 23.5456 0 0-6.2688z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 23.5456,
                           "height": 6.2688
                         }
@@ -3567,7 +3830,7 @@
                       "name": "Glyph",
                       "width": 160,
                       "height": 160,
-                      "fill": "#00000033",
+                      "fill": "$mz-rail",
                       "layout": "none",
                       "children": [
                         {
@@ -3577,7 +3840,7 @@
                           "y": 30,
                           "name": "Sign",
                           "geometry": "M0 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-72 49l13 0 0 48-13 0z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 62.608695652173914,
                           "height": 100
                         }
@@ -3587,7 +3850,7 @@
                       "type": "frame",
                       "id": "odXEF",
                       "name": "In use",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "alignItems": "center",
                       "children": [
                         {
@@ -3605,7 +3868,7 @@
                               "y": 0,
                               "name": "Sign",
                               "geometry": "M0 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-72 49l13 0 0 48-13 0z",
-                              "fill": "#ffffff",
+                              "fill": "$mz-text",
                               "width": 10.017391304347827,
                               "height": 16
                             }
@@ -3615,10 +3878,10 @@
                           "type": "text",
                           "id": "e9w7D",
                           "name": "Digits",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "content": "124.50",
                           "fontFamily": "$mz-font-display",
-                          "fontSize": 22,
+                          "fontSize": "$mz-size-lead",
                           "fontWeight": "600"
                         }
                       ]
@@ -3654,7 +3917,7 @@
                       "name": "Glyph",
                       "width": 160,
                       "height": 160,
-                      "fill": "#00000033",
+                      "fill": "$mz-rail",
                       "layout": "none",
                       "children": [
                         {
@@ -3664,7 +3927,7 @@
                           "y": 30,
                           "name": "Sign",
                           "geometry": "M11 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-72 49l13 0 0 52-13 0z m-11 25l35 0 0 7-35 0z m0 12l35 0 0 7-35 0z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 69.74789915966387,
                           "height": 100
                         }
@@ -3674,7 +3937,7 @@
                       "type": "frame",
                       "id": "eyB2a",
                       "name": "In use",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "alignItems": "center",
                       "children": [
                         {
@@ -3692,7 +3955,7 @@
                               "y": 0,
                               "name": "Sign",
                               "geometry": "M11 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-72 49l13 0 0 52-13 0z m-11 25l35 0 0 7-35 0z m0 12l35 0 0 7-35 0z",
-                              "fill": "#ffffff",
+                              "fill": "$mz-text",
                               "width": 11.159663865546218,
                               "height": 16
                             }
@@ -3702,10 +3965,10 @@
                           "type": "text",
                           "id": "KWKMo",
                           "name": "Digits",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "content": "124.50",
                           "fontFamily": "$mz-font-display",
-                          "fontSize": 22,
+                          "fontSize": "$mz-size-lead",
                           "fontWeight": "600"
                         }
                       ]
@@ -3739,7 +4002,7 @@
                       "name": "Glyph",
                       "width": 160,
                       "height": 160,
-                      "fill": "#00000033",
+                      "fill": "$mz-rail",
                       "layout": "none",
                       "children": [
                         {
@@ -3749,7 +4012,7 @@
                           "y": 31.5,
                           "name": "Sign",
                           "geometry": "M30 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-102 49l30 0 0 13-30 0z m0 0l13 0 0 30-13 0z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 102,
                           "height": 97
                         }
@@ -3759,7 +4022,7 @@
                       "type": "frame",
                       "id": "rEsaM",
                       "name": "In use",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "alignItems": "center",
                       "children": [
                         {
@@ -3777,7 +4040,7 @@
                               "y": 0,
                               "name": "Sign",
                               "geometry": "M30 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-102 49l30 0 0 13-30 0z m0 0l13 0 0 30-13 0z",
-                              "fill": "#ffffff",
+                              "fill": "$mz-text",
                               "width": 16.824742268041238,
                               "height": 16
                             }
@@ -3787,10 +4050,10 @@
                           "type": "text",
                           "id": "tN3bL",
                           "name": "Digits",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "content": "124.50",
                           "fontFamily": "$mz-font-display",
-                          "fontSize": 22,
+                          "fontSize": "$mz-size-lead",
                           "fontWeight": "600"
                         }
                       ]
@@ -3824,7 +4087,7 @@
                       "name": "Glyph",
                       "width": 160,
                       "height": 160,
-                      "fill": "#00000033",
+                      "fill": "$mz-rail",
                       "layout": "none",
                       "children": [
                         {
@@ -3834,7 +4097,7 @@
                           "y": 40,
                           "name": "Sign",
                           "geometry": "M26 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-98 15.5l54 0 0 13-54 0z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 98,
                           "height": 80
                         }
@@ -3844,7 +4107,7 @@
                       "type": "frame",
                       "id": "z2W5I",
                       "name": "In use",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "alignItems": "center",
                       "children": [
                         {
@@ -3862,7 +4125,7 @@
                               "y": 0,
                               "name": "Sign",
                               "geometry": "M26 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-98 15.5l54 0 0 13-54 0z",
-                              "fill": "#ffffff",
+                              "fill": "$mz-text",
                               "width": 19.6,
                               "height": 16
                             }
@@ -3872,10 +4135,10 @@
                           "type": "text",
                           "id": "MJCtx",
                           "name": "Digits",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "content": "124.50",
                           "fontFamily": "$mz-font-display",
-                          "fontSize": 22,
+                          "fontSize": "$mz-size-lead",
                           "fontWeight": "600"
                         }
                       ]
@@ -3909,7 +4172,7 @@
                       "name": "Glyph",
                       "width": 160,
                       "height": 160,
-                      "fill": "#00000033",
+                      "fill": "$mz-rail",
                       "layout": "none",
                       "children": [
                         {
@@ -3919,7 +4182,7 @@
                           "y": 30,
                           "name": "Sign",
                           "geometry": "M0 0l72 0 0 13-72 0z m59 0l13 0 0 72-13 0z m-59 59l72 0 0 13-72 0z m0-59l13 0 0 72-13 0z m59 52l-25-16 25-16z m-59 7l13 0 0 48-13 0z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 67.28971962616822,
                           "height": 100
                         }
@@ -3929,7 +4192,7 @@
                       "type": "frame",
                       "id": "Uolsa",
                       "name": "In use",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "alignItems": "center",
                       "children": [
                         {
@@ -3947,7 +4210,7 @@
                               "y": 0,
                               "name": "Sign",
                               "geometry": "M0 0l72 0 0 13-72 0z m59 0l13 0 0 72-13 0z m-59 59l72 0 0 13-72 0z m0-59l13 0 0 72-13 0z m59 52l-25-16 25-16z m-59 7l13 0 0 48-13 0z",
-                              "fill": "#ffffff",
+                              "fill": "$mz-text",
                               "width": 10.766355140186915,
                               "height": 16
                             }
@@ -3957,10 +4220,10 @@
                           "type": "text",
                           "id": "bHOH5",
                           "name": "Digits",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "content": "124.50",
                           "fontFamily": "$mz-font-display",
-                          "fontSize": 22,
+                          "fontSize": "$mz-size-lead",
                           "fontWeight": "600"
                         }
                       ]
@@ -3994,7 +4257,7 @@
                       "name": "Glyph",
                       "width": 160,
                       "height": 160,
-                      "fill": "#00000033",
+                      "fill": "$mz-rail",
                       "layout": "none",
                       "children": [
                         {
@@ -4004,7 +4267,7 @@
                           "y": 30,
                           "name": "Sign",
                           "geometry": "M12 0l64 0 0 13-64 0z m51 0l13 0 0 64-13 0z m-51 51l64 0 0 13-64 0z m0-51l13 0 0 64-13 0z m0 51l13 0 0 58-13 0z m-12 33l37 0 0 8-37 0z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 69.72477064220183,
                           "height": 100
                         }
@@ -4014,7 +4277,7 @@
                       "type": "frame",
                       "id": "oAqGc",
                       "name": "In use",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "alignItems": "center",
                       "children": [
                         {
@@ -4032,7 +4295,7 @@
                               "y": 0,
                               "name": "Sign",
                               "geometry": "M12 0l64 0 0 13-64 0z m51 0l13 0 0 64-13 0z m-51 51l64 0 0 13-64 0z m0-51l13 0 0 64-13 0z m0 51l13 0 0 58-13 0z m-12 33l37 0 0 8-37 0z",
-                              "fill": "#ffffff",
+                              "fill": "$mz-text",
                               "width": 11.155963302752294,
                               "height": 16
                             }
@@ -4042,10 +4305,10 @@
                           "type": "text",
                           "id": "sopWd",
                           "name": "Digits",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "content": "124.50",
                           "fontFamily": "$mz-font-display",
-                          "fontSize": 22,
+                          "fontSize": "$mz-size-lead",
                           "fontWeight": "600"
                         }
                       ]
@@ -4079,7 +4342,7 @@
                       "name": "Glyph",
                       "width": 160,
                       "height": 160,
-                      "fill": "#00000033",
+                      "fill": "$mz-rail",
                       "layout": "none",
                       "children": [
                         {
@@ -4089,7 +4352,7 @@
                           "y": 31.5,
                           "name": "Sign",
                           "geometry": "M30 0l64 0 0 13-64 0z m51 0l13 0 0 64-13 0z m-51 51l64 0 0 13-64 0z m0-51l13 0 0 64-13 0z m0 51l13 0 0 46-13 0z m-30 33l43 0 0 13-43 0z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 94,
                           "height": 97
                         }
@@ -4099,7 +4362,7 @@
                       "type": "frame",
                       "id": "frUvo",
                       "name": "In use",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "alignItems": "center",
                       "children": [
                         {
@@ -4117,7 +4380,7 @@
                               "y": 0,
                               "name": "Sign",
                               "geometry": "M30 0l64 0 0 13-64 0z m51 0l13 0 0 64-13 0z m-51 51l64 0 0 13-64 0z m0-51l13 0 0 64-13 0z m0 51l13 0 0 46-13 0z m-30 33l43 0 0 13-43 0z",
-                              "fill": "#ffffff",
+                              "fill": "$mz-text",
                               "width": 15.505154639175258,
                               "height": 16
                             }
@@ -4127,10 +4390,10 @@
                           "type": "text",
                           "id": "k055c",
                           "name": "Digits",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "content": "124.50",
                           "fontFamily": "$mz-font-display",
-                          "fontSize": 22,
+                          "fontSize": "$mz-size-lead",
                           "fontWeight": "600"
                         }
                       ]
@@ -4190,7 +4453,7 @@
                           "x": 52.288,
                           "y": 40.256,
                           "geometry": "M55.712 50.912l0-50.912-55.712 0 0 50.912 32.768 0 0 7.968-7.616 0 0 7.32801 7.616 0 0 4.12799-7.616 0 0 7.23199 7.616 0 0 11.68003 12.352 0 0-11.68003 10.592 0 0-7.23199-10.592 0 0-4.12799 10.592 0 0-7.32801-10.592 0 0-7.968 10.592 0z m-42.56-12.608l0-25.728 29.216 0 0 25.728-29.216 0z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 55.712,
                           "height": 89.248
                         }
@@ -4234,7 +4497,7 @@
                           "x": 33.5,
                           "y": 64.52,
                           "geometry": "M92.98 0l-92.98 0 0 10.48 44.78 0-14.16 18.90001 31.76-0.00001-14.1-18.9 44.7 0 0-10.48z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 92.98,
                           "height": 29.38
                         },
@@ -4244,7 +4507,7 @@
                           "x": 33.5,
                           "y": 94.88,
                           "geometry": "M92.98 0l-92.98 0 0 5.12 92.98 0 0-5.12z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 92.98,
                           "height": 5.12
                         }
@@ -4297,7 +4560,7 @@
                           "x": 17.22,
                           "y": 39.96,
                           "geometry": "M99.4 32.7c-2.54-18.3-18.08-32.7-36.62-32.7-18.54 0-34.28 14.4-36.62 32.7l-26.16 0 0 12.28 26.28 0c2.76 18.16 18.74 31.02 36.5 31.02 17.76 0 33.74-12.86 36.5-31.02l26.28 0 0-12.28-26.16 0z m-36.62-21.52c12.62 0 23.26 9.58 25.22 21.52l-50.52 0c2.11999-11.94 12.67999-21.52 25.3-21.52z m0 53.74c-12.34 0-22.7-9.38-25-19.94l49.88 0c-2.18 10.56-12.54 19.94-24.88 19.94z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 125.56,
                           "height": 76
                         }
@@ -4350,7 +4613,7 @@
                           "x": 57.46,
                           "y": 36.1,
                           "geometry": "M26.34 0c-16.36 0-26.34 16.54-26.34 29.32 0 10.84 6.98 14.92 15.6 14.92l3.62 0 0 10.48-8.4 0c-1.88 0-3.18 1.36-3.18 3.24 0 1.88 1.42 3.28 3.18 3.28l8.4 0 0 6.18-8.4 0c-1.88 0-3.24 1.24001-3.24 3.24 0 1.96 1.54 3.18 3.24 3.18l8.42 0 0 15.02c0 3.32 2.60001 5.76 5.46001 5.76 3.03999 0 5.64-2.52 5.63999-5.76l0-15.02 7.7 0c1.8 0 3.14-1.28 3.14-3.18 0-2.02-1.38-3.24001-3.14-3.24l-7.7 0 0-6.2 7.7 0c1.84 0 3.14-1.42 3.14-3.22 0-1.92-1.44-3.3-3.14-3.3l-7.7 0 0-11.42c9.74-2.2 16.16-8.75999 16.16-19.12 0-13.44-7.66-24.16-20.16-24.16z m-5.56 30.54c-5.88 0-9.75999-0.88-9.76-4.38 0-4.04 5.66-12.9 14-12.9 6.85999 0 10.5 4.92 10.5 9.14 0 5.68-7.3 8.14-14.74 8.14z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 46.5,
                           "height": 94.62
                         }
@@ -4403,7 +4666,7 @@
                           "x": 37.152,
                           "y": 50.688,
                           "geometry": "M85.696 7.36l0-7.36-25.98399 0 0 7.36 4.224 0-21.05601 24.736-20.992-24.736 4.16 0 0-7.36-26.048 0 0 7.36 6.72 0 0 44.064c0 1.312-0.832 1.952-2.56 2.176l-3.872 0.224 0 6.816 25.408 0 0-6.752-3.904-0.288c-1.92-0.16-2.688-0.8-2.688-2.176l-0.128-30.72 21.6 23.552c0.416 0.384 0.8 0.544 1.056 0.544l0 0-0.03199 0c-0.12801 0-0.288 0.192-0.41601 0.448l-12.16 15.392 27.712 0-12.16-15.488c-0.16-0.192-0.288-0.32-0.384-0.352l0.128 0c0.512 0 0.992-0.16 1.312-0.51199l21.12001-23.61601 0 30.752c0 1.312-0.76801 2.01601-2.65601 2.176l-4.03201 0.224 0 6.816 25.504 0 0-6.752-3.96798-0.288c-1.824-0.16-2.52801-0.8-2.52801-2.176l0-44.064 6.624 0z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 85.696,
                           "height": 60.64
                         }
@@ -4457,7 +4720,7 @@
                           "x": 36.7269,
                           "y": 42.3063,
                           "geometry": "M0 0l20.93486 0 22.416 25.36 22.59886-25.36 20.96228 0 0 35.30515-20.592 0 0-5.93829-5.09943 5.93829-35.82629 0-4.84571-5.82858 0 5.82858-20.54857 0 0-35.30515z",
-                          "fill": "#FFFFFF",
+                          "fill": "$mz-text",
                           "width": 86.912,
                           "height": 35.3051
                         },
@@ -4466,7 +4729,7 @@
                           "id": "a0EF5C",
                           "x": 36.7269,
                           "y": 82.6674,
-                          "fill": "#FFFFFF",
+                          "fill": "$mz-text",
                           "width": 20.544,
                           "height": 35.1611
                         },
@@ -4475,7 +4738,7 @@
                           "id": "qKsZm",
                           "x": 103.0469,
                           "y": 82.6674,
-                          "fill": "#FFFFFF",
+                          "fill": "$mz-text",
                           "width": 20.4571,
                           "height": 35.1611
                         },
@@ -4485,7 +4748,7 @@
                           "x": 66.24,
                           "y": 82.6674,
                           "geometry": "M0 0l13.89485 16.56 13.66172-16.56-27.55657 0z",
-                          "fill": "#FFFFFF",
+                          "fill": "$mz-text",
                           "width": 27.5566,
                           "height": 16.56
                         }
@@ -4538,7 +4801,7 @@
                           "x": 29.62,
                           "y": 43.26,
                           "geometry": "M90.36 67.26l0-20.76 7.32 0 0-9.16-7.32 0 0-37.34-16.48 0-23.42 28.46-23.08-28.46-17.02 0 0 37.34-7.38 0 0 9.16 7.38 0 0 20.75999-10.36 0.00001c0.52 8.04001 8.74 14.48001 17.4 14.48 8.88 0 17.3-6.52 17.74-14.48l-10.14 0 0-20.8 50.82 0 0 20.82-10.3 0c0.64 8.02 9.02 14.46001 17.44 14.46 9.26 0 17.24-6.76001 17.72-14.46l-10.32 0 0-0.02z m-65.38-29.94l0-18.5 14.94 18.5-14.94 0z m35.81999 0l14.96001-18.5 0 18.5-14.96 0z",
-                          "fill": "#ffffff",
+                          "fill": "$mz-text",
                           "width": 100.68,
                           "height": 81.74
                         }
@@ -4704,7 +4967,7 @@
           "layout": "vertical",
           "gap": "$mz-space-6",
           "padding": [
-            32,
+            "$mz-space-8",
             0,
             0,
             0
@@ -4715,7 +4978,7 @@
               "id": "OhDXA",
               "name": "Section Head",
               "layout": "vertical",
-              "gap": 6,
+              "gap": "$mz-space-2",
               "children": [
                 {
                   "type": "text",
@@ -4724,7 +4987,7 @@
                   "fill": "$mz-text",
                   "content": "Components",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 32,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600"
                 }
               ]
@@ -4762,7 +5025,7 @@
                       "height": 44,
                       "padding": [
                         0,
-                        24
+                        "$mz-space-6"
                       ],
                       "justifyContent": "space_between",
                       "alignItems": "center",
@@ -4774,14 +5037,14 @@
                           "fill": "$mz-text",
                           "content": "9:41  Tue 27 Oct",
                           "fontFamily": "$mz-font-text",
-                          "fontSize": 15,
+                          "fontSize": "$mz-size-label",
                           "fontWeight": "600"
                         },
                         {
                           "type": "frame",
                           "id": "u3IxUb",
                           "name": "Indicators",
-                          "gap": 6,
+                          "gap": "$mz-space-2",
                           "alignItems": "center",
                           "children": [
                             {
@@ -4827,7 +5090,7 @@
                       "height": 44,
                       "padding": [
                         0,
-                        24
+                        "$mz-space-6"
                       ],
                       "justifyContent": "space_between",
                       "alignItems": "center",
@@ -4839,14 +5102,14 @@
                           "fill": "$mz-text",
                           "content": "9:41",
                           "fontFamily": "$mz-font-text",
-                          "fontSize": 15,
+                          "fontSize": "$mz-size-label",
                           "fontWeight": "600"
                         },
                         {
                           "type": "frame",
                           "id": "nBsmP",
                           "name": "Indicators",
-                          "gap": 6,
+                          "gap": "$mz-space-2",
                           "alignItems": "center",
                           "children": [
                             {
@@ -4907,8 +5170,8 @@
                               "cornerRadius": "$mz-radius-sm",
                               "gap": "$mz-space-2",
                               "padding": [
-                                8,
-                                14
+                                "$mz-space-2",
+                                "$mz-space-3"
                               ],
                               "alignItems": "center",
                               "children": [
@@ -4929,7 +5192,7 @@
                                   "fill": "$mz-on-accent",
                                   "content": "Host",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 14,
+                                  "fontSize": "$mz-size-small",
                                   "fontWeight": "600"
                                 }
                               ]
@@ -4942,8 +5205,8 @@
                               "cornerRadius": "$mz-radius-sm",
                               "gap": "$mz-space-2",
                               "padding": [
-                                8,
-                                14
+                                "$mz-space-2",
+                                "$mz-space-3"
                               ],
                               "alignItems": "center",
                               "children": [
@@ -4964,7 +5227,7 @@
                                   "fill": "$mz-text-3",
                                   "content": "Client",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 14,
+                                  "fontSize": "$mz-size-small",
                                   "fontWeight": "600"
                                 }
                               ]
@@ -4989,8 +5252,8 @@
                               "cornerRadius": "$mz-radius-sm",
                               "gap": "$mz-space-2",
                               "padding": [
-                                8,
-                                14
+                                "$mz-space-2",
+                                "$mz-space-3"
                               ],
                               "alignItems": "center",
                               "children": [
@@ -5011,7 +5274,7 @@
                                   "fill": "$mz-text-3",
                                   "content": "Host",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 14,
+                                  "fontSize": "$mz-size-small",
                                   "fontWeight": "600"
                                 }
                               ]
@@ -5024,8 +5287,8 @@
                               "cornerRadius": "$mz-radius-sm",
                               "gap": "$mz-space-2",
                               "padding": [
-                                8,
-                                14
+                                "$mz-space-2",
+                                "$mz-space-3"
                               ],
                               "alignItems": "center",
                               "children": [
@@ -5046,7 +5309,7 @@
                                   "fill": "$mz-on-accent",
                                   "content": "Client",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 14,
+                                  "fontSize": "$mz-size-small",
                                   "fontWeight": "600"
                                 }
                               ]
@@ -5084,7 +5347,7 @@
                       "height": 60,
                       "fill": "$mz-host",
                       "cornerRadius": "$mz-radius-lg",
-                      "gap": 10,
+                      "gap": "$mz-space-3",
                       "padding": [
                         0,
                         "$mz-space-6"
@@ -5109,7 +5372,7 @@
                           "fill": "$mz-on-accent",
                           "content": "Lock & broadcast",
                           "fontFamily": "$mz-font-text",
-                          "fontSize": 17,
+                          "fontSize": "$mz-size-body",
                           "fontWeight": "600"
                         }
                       ]
@@ -5123,7 +5386,7 @@
                       "height": 60,
                       "fill": "$mz-client",
                       "cornerRadius": "$mz-radius-lg",
-                      "gap": 10,
+                      "gap": "$mz-space-3",
                       "padding": [
                         0,
                         "$mz-space-6"
@@ -5148,7 +5411,7 @@
                           "fill": "$mz-on-accent",
                           "content": "Start handshake",
                           "fontFamily": "$mz-font-text",
-                          "fontSize": 17,
+                          "fontSize": "$mz-size-body",
                           "fontWeight": "600"
                         }
                       ]
@@ -5162,7 +5425,7 @@
                       "height": 60,
                       "fill": "$mz-ok",
                       "cornerRadius": "$mz-radius-lg",
-                      "gap": 10,
+                      "gap": "$mz-space-3",
                       "padding": [
                         0,
                         "$mz-space-6"
@@ -5187,7 +5450,7 @@
                           "fill": "$mz-on-accent",
                           "content": "Success",
                           "fontFamily": "$mz-font-text",
-                          "fontSize": 17,
+                          "fontSize": "$mz-size-body",
                           "fontWeight": "600"
                         }
                       ]
@@ -5201,7 +5464,7 @@
                       "height": 60,
                       "fill": "$mz-bad",
                       "cornerRadius": "$mz-radius-lg",
-                      "gap": 10,
+                      "gap": "$mz-space-3",
                       "padding": [
                         0,
                         "$mz-space-6"
@@ -5226,7 +5489,7 @@
                           "fill": "$mz-on-accent",
                           "content": "Failure",
                           "fontFamily": "$mz-font-text",
-                          "fontSize": 17,
+                          "fontSize": "$mz-size-body",
                           "fontWeight": "600"
                         }
                       ]
@@ -5240,7 +5503,7 @@
                       "height": 60,
                       "fill": "$mz-bad-tint",
                       "cornerRadius": "$mz-radius-lg",
-                      "gap": 10,
+                      "gap": "$mz-space-3",
                       "padding": [
                         0,
                         "$mz-space-6"
@@ -5265,7 +5528,7 @@
                           "fill": "$mz-bad",
                           "content": "Decline",
                           "fontFamily": "$mz-font-text",
-                          "fontSize": 17,
+                          "fontSize": "$mz-size-body",
                           "fontWeight": "600"
                         }
                       ]
@@ -5281,7 +5544,7 @@
                       "cornerRadius": "$mz-radius-lg",
                       "stroke": "$mz-line-strong",
                       "strokeWidth": 1.5,
-                      "gap": 10,
+                      "gap": "$mz-space-3",
                       "padding": [
                         0,
                         "$mz-space-6"
@@ -5306,7 +5569,7 @@
                           "fill": "$mz-text",
                           "content": "Cancel",
                           "fontFamily": "$mz-font-text",
-                          "fontSize": 17,
+                          "fontSize": "$mz-size-body",
                           "fontWeight": "600"
                         }
                       ]
@@ -5442,8 +5705,8 @@
                       "strokeWidth": 1,
                       "gap": "$mz-space-2",
                       "padding": [
-                        8,
-                        14
+                        "$mz-space-2",
+                        "$mz-space-3"
                       ],
                       "alignItems": "center",
                       "children": [
@@ -5462,7 +5725,7 @@
                           "fill": "$mz-text-2",
                           "content": "Idle",
                           "fontFamily": "$mz-font-mono",
-                          "fontSize": 14,
+                          "fontSize": "$mz-size-small",
                           "fontWeight": "500"
                         }
                       ]
@@ -5553,7 +5816,7 @@
                           "width": 112,
                           "height": 112,
                           "fill": "$mz-ok-tint",
-                          "cornerRadius": 56,
+                          "cornerRadius": "$mz-radius-pill",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -5577,7 +5840,7 @@
                           "width": 112,
                           "height": 112,
                           "fill": "$mz-bad-tint",
-                          "cornerRadius": 56,
+                          "cornerRadius": "$mz-radius-pill",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -5601,7 +5864,7 @@
                           "width": 112,
                           "height": 112,
                           "fill": "$mz-overlay",
-                          "cornerRadius": 56,
+                          "cornerRadius": "$mz-radius-pill",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -5625,7 +5888,7 @@
                           "width": 112,
                           "height": 112,
                           "fill": "$mz-bad-tint",
-                          "cornerRadius": 56,
+                          "cornerRadius": "$mz-radius-pill",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -5649,7 +5912,7 @@
                           "width": 112,
                           "height": 112,
                           "fill": "$mz-host-tint",
-                          "cornerRadius": 56,
+                          "cornerRadius": "$mz-radius-pill",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -5709,7 +5972,7 @@
                           "reusable": true,
                           "width": "fill_container",
                           "height": 76,
-                          "gap": 14,
+                          "gap": "$mz-space-3",
                           "children": [
                             {
                               "type": "frame",
@@ -5728,7 +5991,7 @@
                                   "width": 28,
                                   "height": 28,
                                   "fill": "$mz-host",
-                                  "cornerRadius": 14,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -5746,7 +6009,7 @@
                                 },
                                 {
                                   "type": "rectangle",
-                                  "cornerRadius": 1,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "id": "HBA2i",
                                   "name": "Line",
                                   "fill": "$mz-host",
@@ -5761,9 +6024,9 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 3,
+                              "gap": "$mz-space-1",
                               "padding": [
-                                4,
+                                "$mz-space-1",
                                 0,
                                 0,
                                 0
@@ -5800,7 +6063,7 @@
                           "reusable": true,
                           "width": "fill_container",
                           "height": 76,
-                          "gap": 14,
+                          "gap": "$mz-space-3",
                           "children": [
                             {
                               "type": "frame",
@@ -5819,7 +6082,7 @@
                                   "width": 28,
                                   "height": 28,
                                   "fill": "$mz-host-tint",
-                                  "cornerRadius": 14,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "stroke": "$mz-host",
                                   "strokeWidth": 2,
                                   "justifyContent": "center",
@@ -5837,7 +6100,7 @@
                                 },
                                 {
                                   "type": "rectangle",
-                                  "cornerRadius": 1,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "id": "oBgQt",
                                   "name": "Line",
                                   "fill": "$mz-line",
@@ -5852,9 +6115,9 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 3,
+                              "gap": "$mz-space-1",
                               "padding": [
-                                4,
+                                "$mz-space-1",
                                 0,
                                 0,
                                 0
@@ -5891,7 +6154,7 @@
                           "reusable": true,
                           "width": "fill_container",
                           "height": 76,
-                          "gap": 14,
+                          "gap": "$mz-space-3",
                           "children": [
                             {
                               "type": "frame",
@@ -5910,7 +6173,7 @@
                                   "width": 28,
                                   "height": 28,
                                   "fill": "$mz-bad",
-                                  "cornerRadius": 14,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -5928,7 +6191,7 @@
                                 },
                                 {
                                   "type": "rectangle",
-                                  "cornerRadius": 1,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "id": "emPC7",
                                   "name": "Line",
                                   "fill": "$mz-line",
@@ -5943,9 +6206,9 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 3,
+                              "gap": "$mz-space-1",
                               "padding": [
-                                4,
+                                "$mz-space-1",
                                 0,
                                 0,
                                 0
@@ -5982,7 +6245,7 @@
                           "reusable": true,
                           "width": "fill_container",
                           "height": 76,
-                          "gap": 14,
+                          "gap": "$mz-space-3",
                           "children": [
                             {
                               "type": "frame",
@@ -6000,7 +6263,7 @@
                                   "name": "Node",
                                   "width": 28,
                                   "height": 28,
-                                  "cornerRadius": 14,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "stroke": "$mz-line-strong",
                                   "strokeWidth": 1.5,
                                   "justifyContent": "center",
@@ -6013,14 +6276,14 @@
                                       "fill": "$mz-text-3",
                                       "content": "2",
                                       "fontFamily": "$mz-font-mono",
-                                      "fontSize": 12,
+                                      "fontSize": "$mz-size-eyebrow",
                                       "fontWeight": "500"
                                     }
                                   ]
                                 },
                                 {
                                   "type": "rectangle",
-                                  "cornerRadius": 1,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "id": "QaJBh",
                                   "name": "Line",
                                   "fill": "$mz-line",
@@ -6035,9 +6298,9 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 3,
+                              "gap": "$mz-space-1",
                               "padding": [
-                                4,
+                                "$mz-space-1",
                                 0,
                                 0,
                                 0
@@ -6094,7 +6357,7 @@
                       "id": "yYahn",
                       "name": "Stepper Steps",
                       "width": 353,
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "type": "frame",
@@ -6110,7 +6373,7 @@
                               "id": "v0Bfi",
                               "name": "Track",
                               "width": "fill_container",
-                              "gap": 6,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -6120,7 +6383,7 @@
                                   "width": 24,
                                   "height": 24,
                                   "fill": "$mz-client",
-                                  "cornerRadius": 12,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -6138,7 +6401,7 @@
                                 },
                                 {
                                   "type": "rectangle",
-                                  "cornerRadius": 1,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "id": "biqKZ",
                                   "name": "Line",
                                   "fill": "$mz-client",
@@ -6152,7 +6415,7 @@
                               "id": "e5Wylq",
                               "name": "Text",
                               "layout": "vertical",
-                              "gap": 2,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "type": "text",
@@ -6161,7 +6424,7 @@
                                   "fill": "$mz-text",
                                   "content": "Find",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 13,
+                                  "fontSize": "$mz-size-small",
                                   "fontWeight": "600"
                                 },
                                 {
@@ -6171,7 +6434,7 @@
                                   "fill": "$mz-text-2",
                                   "content": "MIZAN-7F3A",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 11,
+                                  "fontSize": "$mz-size-micro",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -6192,7 +6455,7 @@
                               "id": "PjNQS",
                               "name": "Track",
                               "width": "fill_container",
-                              "gap": 6,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -6202,7 +6465,7 @@
                                   "width": 24,
                                   "height": 24,
                                   "fill": "$mz-client-tint",
-                                  "cornerRadius": 12,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "stroke": "$mz-client",
                                   "strokeWidth": 2,
                                   "justifyContent": "center",
@@ -6220,7 +6483,7 @@
                                 },
                                 {
                                   "type": "rectangle",
-                                  "cornerRadius": 1,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "id": "FM9OO",
                                   "name": "Line",
                                   "fill": "$mz-line",
@@ -6234,7 +6497,7 @@
                               "id": "N9Y0I",
                               "name": "Text",
                               "layout": "vertical",
-                              "gap": 2,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "type": "text",
@@ -6243,7 +6506,7 @@
                                   "fill": "$mz-text",
                                   "content": "Connect",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 13,
+                                  "fontSize": "$mz-size-small",
                                   "fontWeight": "600"
                                 },
                                 {
@@ -6253,7 +6516,7 @@
                                   "fill": "$mz-client-hi",
                                   "content": "Secure link",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 11,
+                                  "fontSize": "$mz-size-micro",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -6274,7 +6537,7 @@
                               "id": "J9hBZ5",
                               "name": "Track",
                               "width": "fill_container",
-                              "gap": 6,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -6284,7 +6547,7 @@
                                   "width": 24,
                                   "height": 24,
                                   "fill": "$mz-bad",
-                                  "cornerRadius": 12,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -6302,7 +6565,7 @@
                                 },
                                 {
                                   "type": "rectangle",
-                                  "cornerRadius": 1,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "id": "AxGdY",
                                   "name": "Line",
                                   "fill": "$mz-line",
@@ -6316,7 +6579,7 @@
                               "id": "XPwc9",
                               "name": "Text",
                               "layout": "vertical",
-                              "gap": 2,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "type": "text",
@@ -6325,7 +6588,7 @@
                                   "fill": "$mz-text",
                                   "content": "Review",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 13,
+                                  "fontSize": "$mz-size-small",
                                   "fontWeight": "600"
                                 },
                                 {
@@ -6335,7 +6598,7 @@
                                   "fill": "$mz-bad",
                                   "content": "Stopped",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 11,
+                                  "fontSize": "$mz-size-micro",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -6356,7 +6619,7 @@
                               "id": "m0kUI5",
                               "name": "Track",
                               "width": "fill_container",
-                              "gap": 6,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -6365,7 +6628,7 @@
                                   "name": "Node",
                                   "width": 24,
                                   "height": 24,
-                                  "cornerRadius": 12,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "stroke": "$mz-line-strong",
                                   "strokeWidth": 1.5,
                                   "justifyContent": "center",
@@ -6378,14 +6641,14 @@
                                       "fill": "$mz-text-3",
                                       "content": "2",
                                       "fontFamily": "$mz-font-mono",
-                                      "fontSize": 11,
+                                      "fontSize": "$mz-size-micro",
                                       "fontWeight": "500"
                                     }
                                   ]
                                 },
                                 {
                                   "type": "rectangle",
-                                  "cornerRadius": 1,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "id": "ZN4vs",
                                   "name": "Line",
                                   "fill": "$mz-line",
@@ -6399,7 +6662,7 @@
                               "id": "rjzhv",
                               "name": "Text",
                               "layout": "vertical",
-                              "gap": 2,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "type": "text",
@@ -6408,7 +6671,7 @@
                                   "fill": "$mz-text-3",
                                   "content": "Result",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 13,
+                                  "fontSize": "$mz-size-small",
                                   "fontWeight": "600"
                                 },
                                 {
@@ -6418,7 +6681,7 @@
                                   "fill": "$mz-text-3",
                                   "content": "From host",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 11,
+                                  "fontSize": "$mz-size-micro",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -6463,10 +6726,10 @@
                           "cornerRadius": "$mz-radius-pill",
                           "stroke": "$mz-host",
                           "strokeWidth": 1.5,
-                          "gap": 6,
+                          "gap": "$mz-space-2",
                           "padding": [
-                            7,
-                            12
+                            "$mz-space-2",
+                            "$mz-space-3"
                           ],
                           "alignItems": "center",
                           "children": [
@@ -6487,7 +6750,7 @@
                               "fill": "$mz-text",
                               "content": "Advertising",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 14,
+                              "fontSize": "$mz-size-small",
                               "fontWeight": "500"
                             }
                           ]
@@ -6501,10 +6764,10 @@
                           "cornerRadius": "$mz-radius-pill",
                           "stroke": "$mz-client",
                           "strokeWidth": 1.5,
-                          "gap": 6,
+                          "gap": "$mz-space-2",
                           "padding": [
-                            7,
-                            12
+                            "$mz-space-2",
+                            "$mz-space-3"
                           ],
                           "alignItems": "center",
                           "children": [
@@ -6525,7 +6788,7 @@
                               "fill": "$mz-text",
                               "content": "Ready",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 14,
+                              "fontSize": "$mz-size-small",
                               "fontWeight": "500"
                             }
                           ]
@@ -6535,10 +6798,10 @@
                           "id": "wliID",
                           "name": "DS / Chip / Empty",
                           "reusable": true,
-                          "gap": 6,
+                          "gap": "$mz-space-2",
                           "padding": [
-                            7,
-                            4
+                            "$mz-space-2",
+                            "$mz-space-1"
                           ],
                           "alignItems": "center",
                           "children": [
@@ -6572,10 +6835,10 @@
                       "reusable": true,
                       "width": 240,
                       "layout": "vertical",
-                      "gap": 5,
+                      "gap": "$mz-space-1",
                       "padding": [
                         0,
-                        4
+                        "$mz-space-1"
                       ],
                       "children": [
                         {
@@ -6583,7 +6846,7 @@
                           "id": "CFPyP",
                           "name": "Label",
                           "width": "fill_container",
-                          "gap": 6,
+                          "gap": "$mz-space-2",
                           "alignItems": "center",
                           "children": [
                             {
@@ -6644,10 +6907,10 @@
                       "reusable": true,
                       "width": 240,
                       "layout": "vertical",
-                      "gap": 5,
+                      "gap": "$mz-space-1",
                       "padding": [
                         0,
-                        4
+                        "$mz-space-1"
                       ],
                       "children": [
                         {
@@ -6655,7 +6918,7 @@
                           "id": "Z1lg3S",
                           "name": "Label",
                           "width": "fill_container",
-                          "gap": 6,
+                          "gap": "$mz-space-2",
                           "justifyContent": "end",
                           "alignItems": "center",
                           "children": [
@@ -6723,7 +6986,7 @@
                       },
                       "gap": "$mz-space-2",
                       "padding": [
-                        12,
+                        "$mz-space-3",
                         0
                       ],
                       "alignItems": "center",
@@ -6823,7 +7086,7 @@
                           "width": 240,
                           "height": 240,
                           "layout": "vertical",
-                          "gap": 2,
+                          "gap": "$mz-space-1",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -6834,7 +7097,7 @@
                               "fill": "$mz-text",
                               "content": "47",
                               "fontFamily": "$mz-font-display",
-                              "fontSize": 84,
+                              "fontSize": "$mz-size-ring",
                               "fontWeight": "600",
                               "letterSpacing": -2
                             },
@@ -6884,12 +7147,12 @@
                       "height": "fill_container",
                       "fill": "$mz-rail",
                       "layout": "vertical",
-                      "gap": 36,
+                      "gap": "$mz-space-8",
                       "padding": [
-                        72,
-                        28,
-                        28,
-                        28
+                        "$mz-space-18",
+                        "$mz-space-7",
+                        "$mz-space-7",
+                        "$mz-space-7"
                       ],
                       "children": [
                         {
@@ -6904,7 +7167,7 @@
                               "type": "frame",
                               "id": "M3RIlG",
                               "name": "Wordmark",
-                              "gap": 10,
+                              "gap": "$mz-space-3",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -6914,7 +7177,7 @@
                                   "fill": "$mz-text",
                                   "content": "Mizan",
                                   "fontFamily": "$mz-font-display",
-                                  "fontSize": 26,
+                                  "fontSize": "$mz-size-wordmark",
                                   "fontWeight": "700"
                                 },
                                 {
@@ -6924,8 +7187,8 @@
                                   "fill": "$mz-host",
                                   "cornerRadius": "$mz-radius-sm",
                                   "padding": [
-                                    3,
-                                    8
+                                    "$mz-space-1",
+                                    "$mz-space-2"
                                   ],
                                   "children": [
                                     {
@@ -6935,7 +7198,7 @@
                                       "fill": "$mz-on-accent",
                                       "content": "BLE",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 12,
+                                      "fontSize": "$mz-size-eyebrow",
                                       "fontWeight": "700",
                                       "letterSpacing": 1
                                     }
@@ -6957,7 +7220,7 @@
                           "name": "Session",
                           "width": "fill_container",
                           "layout": "vertical",
-                          "gap": 18,
+                          "gap": "$mz-space-5",
                           "children": [
                             {
                               "type": "text",
@@ -7087,7 +7350,7 @@
                             "top": 1
                           },
                           "padding": [
-                            20,
+                            "$mz-space-5",
                             0,
                             0,
                             0
@@ -7100,7 +7363,7 @@
                               "id": "AtUKU",
                               "name": "Name",
                               "layout": "vertical",
-                              "gap": 3,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "type": "text",
@@ -7109,7 +7372,7 @@
                                   "fill": "$mz-text",
                                   "content": "MIZAN-7F3A",
                                   "fontFamily": "$mz-font-mono",
-                                  "fontSize": 14,
+                                  "fontSize": "$mz-size-small",
                                   "fontWeight": "600"
                                 },
                                 {
@@ -7119,7 +7382,7 @@
                                   "fill": "$mz-text-3",
                                   "content": "Advertised name · 60 s",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 12,
+                                  "fontSize": "$mz-size-eyebrow",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -7160,10 +7423,10 @@
                       "layout": "vertical",
                       "gap": "$mz-space-6",
                       "padding": [
-                        72,
-                        56,
-                        48,
-                        56
+                        "$mz-space-18",
+                        "$mz-space-14",
+                        "$mz-space-12",
+                        "$mz-space-14"
                       ],
                       "children": [
                         {
@@ -7181,7 +7444,7 @@
                               "fill": "$mz-text-2",
                               "content": "STEP 2 OF 5 · ADVERTISE",
                               "fontFamily": "$mz-font-mono",
-                              "fontSize": 13,
+                              "fontSize": "$mz-size-small",
                               "fontWeight": "500",
                               "letterSpacing": 1.5
                             },
@@ -7200,7 +7463,7 @@
                           "slot": [],
                           "width": "fill_container",
                           "height": "fill_container",
-                          "gap": 48
+                          "gap": "$mz-space-12"
                         }
                       ]
                     },
@@ -7243,12 +7506,12 @@
                         28
                       ],
                       "layout": "vertical",
-                      "gap": 22,
+                      "gap": "$mz-space-5",
                       "padding": [
-                        54,
-                        20,
-                        22,
-                        20
+                        "$mz-space-14",
+                        "$mz-space-5",
+                        "$mz-space-5",
+                        "$mz-space-5"
                       ],
                       "children": [
                         {
@@ -7263,7 +7526,7 @@
                               "type": "frame",
                               "id": "i4nWvq",
                               "name": "Wordmark",
-                              "gap": 8,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -7273,7 +7536,7 @@
                                   "fill": "$mz-text",
                                   "content": "Mizan",
                                   "fontFamily": "$mz-font-display",
-                                  "fontSize": 22,
+                                  "fontSize": "$mz-size-lead",
                                   "fontWeight": "700"
                                 },
                                 {
@@ -7283,8 +7546,8 @@
                                   "fill": "$mz-client",
                                   "cornerRadius": "$mz-radius-sm",
                                   "padding": [
-                                    2,
-                                    6
+                                    "$mz-space-1",
+                                    "$mz-space-2"
                                   ],
                                   "children": [
                                     {
@@ -7294,7 +7557,7 @@
                                       "fill": "$mz-on-accent",
                                       "content": "BLE",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 11,
+                                      "fontSize": "$mz-size-micro",
                                       "fontWeight": "700",
                                       "letterSpacing": 1
                                     }
@@ -7321,7 +7584,7 @@
                             "p7MzmO"
                           ],
                           "width": "fill_container",
-                          "gap": 6,
+                          "gap": "$mz-space-2",
                           "children": [
                             {
                               "id": "qNdi9",
@@ -7408,10 +7671,10 @@
                       "layout": "vertical",
                       "gap": "$mz-space-4",
                       "padding": [
-                        22,
-                        20,
-                        34,
-                        20
+                        "$mz-space-5",
+                        "$mz-space-5",
+                        "$mz-space-8",
+                        "$mz-space-5"
                       ],
                       "children": [
                         {
@@ -7429,7 +7692,7 @@
                               "fill": "$mz-text-2",
                               "content": "STEP 1 OF 4 · FIND",
                               "fontFamily": "$mz-font-mono",
-                              "fontSize": 11,
+                              "fontSize": "$mz-size-micro",
                               "fontWeight": "500",
                               "letterSpacing": 1.5
                             },
@@ -7439,12 +7702,12 @@
                               "ref": "T9bcjC",
                               "name": "Status Pill",
                               "padding": [
-                                6,
-                                12
+                                "$mz-space-2",
+                                "$mz-space-3"
                               ],
                               "descendants": {
                                 "IMlHD": {
-                                  "fontSize": 13
+                                  "fontSize": "$mz-size-small"
                                 }
                               }
                             }
@@ -50489,6 +50752,26 @@
     "mz-size-display": {
       "type": "number",
       "value": 56
+    },
+    "mz-space-18": {
+      "type": "number",
+      "value": 72
+    },
+    "mz-size-hero": {
+      "type": "number",
+      "value": 72
+    },
+    "mz-size-ring": {
+      "type": "number",
+      "value": 84
+    },
+    "mz-size-wordmark": {
+      "type": "number",
+      "value": 26
+    },
+    "mz-size-micro": {
+      "type": "number",
+      "value": 11
     }
   },
   "fileToken": "f87482d1-ef37-4128-8435-036a9d5f7dd8"
