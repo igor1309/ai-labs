@@ -9,14 +9,15 @@ One app, two modes:
   - Confirm amount => hide number pad, starts advertising and 60 sec countdown (Settings)
   - On countdown expiration reset state: stop advertising, reset amount, etc
   - Handshake/exchange - BLE - render result: success or failure
-  - Mock payment processing with 2 buttons: success and failure
+  - On client decline - end transaction
+  - On client confirm - mock payment processing with 2 buttons: success and failure
   - Display result
 - Client (use iPhone)
   - Start handshake/exchange - render ui state
   - Failure - stop
   - Success: show amount, 2 buttons: confirm & decline
-  - On decline - ??
-  - On confirm - ??
+  - On decline - notify Host; stop
+  - On confirm - notify Host
   - Acknowledgement
   - Waiting for host response
   - Render host response; failure or success
