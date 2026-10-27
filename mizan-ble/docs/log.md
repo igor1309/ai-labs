@@ -2,6 +2,13 @@
 
 ## 2026-10-27
 
+- Specified v0.0.1: the architecture names the components, each with its
+  own spec, and the Bluetooth layout. Each side runs a chain of flows to
+  a secure link and then to the result; the client picks the nearest
+  host and never guesses. The host's countdown runs until the handshake
+  completes, a host cancel reaches the payer as a sealed end message, and
+  a link lost after a confirm shows the payer "result unknown" (LAB-626).
+
 - Design: the design system is locked, with host orange and client blue and
   the mode switch in every header; paired host and client frames cover the
   flow; the Mizan sign is a turned M with a tail and two bars; earlier

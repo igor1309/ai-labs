@@ -1,0 +1,74 @@
+# AGENTS (mizan-ble)
+
+Issues are in the Multica workspace `ai-labs` (parent of v0.0.1: LAB-625).
+
+## Architecture
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) is the shape of the code: its
+  grounding rules, components, modules, data flow, GATT layout and
+  settings. Re-read the grounding before designing, specifying or building.
+- A new component, module or dependency changes `ARCHITECTURE.md` and its
+  diagram in the same commit, and gets its spec folder before its code.
+- No component imports another. Only the UI modules import `MizanDesign`.
+  Only the app target knows concrete types.
+
+## Specs
+
+How behaviour is specified before it is built, after audelin's process.
+
+- One folder per component under `docs/spec/`, named as in the
+  architecture, holding a `SPEC.md` and a `QA.md` and nothing else.
+  `docs/spec/SPEC.md` is the user's.
+- **A spec over 100 lines is a design defect:** the component does too
+  much. Split it in the architecture before writing on.
+- **One observer,** named before the first scenario: the user for the top
+  level and the UI modules, the client that calls it for everything else.
+- **Gherkin only:** one `Feature`, scenarios `S-<n> <name>` whose ids, once
+  committed, are never renumbered or reused, one line per step.
+- **`Then` is a capability** the observer gains or loses: what it can see,
+  read or do. Never a state, an event or an effect.
+- **One scenario, one case.** A step that reads "A or B" is two scenarios.
+- **No types, fields or values in a scenario** unless the component's job
+  is that value (the codec's bytes, the picker's thresholds).
+- **No duplication across levels.** A spec names the spec that owns a
+  behaviour instead of restating it.
+- **Oracle:** `docs/poc.md`, `NOTES.md`, the design and the owner's
+  rulings; for a component, also the user spec and its client's spec.
+- **Gaps are the agent's, not the owner's.** Where the oracle is silent,
+  research, have Codex challenge the proposal, decide, and write one line
+  in `## Decided` with its grounds. Never hand a gap to the owner as a
+  question.
+- **Every `## Decided` line is challenged by Codex** before it is
+  committed. Repeat until a round finds nothing new.
+- **Every wait and failure the user can see is a scenario.**
+- **`QA.md`** has one row per scenario: how it is driven and what evidence
+  proves it, or `Evidence: Missing`. A drive must be able to fail its
+  scenario: it reads back what the `Then` promises, not that a call was
+  made. Verdicts go in run reports, never in `QA.md`.
+
+## Building
+
+- Test-first: each test is run red before the code exists, failing on its
+  assertion (the API stubbed first), and the red run is shown with the
+  green one.
+- A core is tested with fakes of its interfaces and a fake clock. No test
+  proves something did not happen by sleeping; it asserts the state that
+  says so.
+- An adapter is a thin binding over the system API plus the translation it
+  owns; the translation is tested through a fake of the binding. Core
+  Bluetooth is never the thing under test; the user spec on a real iPad and
+  iPhone proves the binding.
+- A change to behaviour, a fix included, goes spec change, then build, then
+  review.
+
+## Design
+
+- [docs/design/README.md](docs/design/README.md) indexes `mizan-ble.pen`
+  and holds its rules: `mz-*` tokens only, `DS /` components only, a value
+  nobody set marked "Proposed, not decided".
+- Open, edit and save the `.pen` only as the repo's `AGENTS.md` § Designing
+  in pen.dev says.
+- A token change ships with the refreshed `tokens.json` and the
+  regenerated Swift in one commit.
+- A screen built in code matches its frame; a screen with no frame says so
+  in its spec's `## Decided` as proposed.

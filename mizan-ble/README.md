@@ -6,15 +6,19 @@ till) enters an amount and advertises it; the client (an iPhone) finds the
 host, shows the amount, and confirms or declines. The host then shows a
 mocked payment result, and both sides end the transaction.
 
-Status: planning (2026-10-27). No app code yet. v0.0.1 is the two-mode
+Status: specified (2026-10-27). The architecture and every component's
+spec are written; no app code yet. v0.0.1 is the two-mode
 app with both apps in the foreground; later versions try to drop the
 explicit handshake (v0.1.0) and the foreground app (v0.2.0).
 
 | Path | What it holds |
 |---|---|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | How the app is built: grounding rules, components and modules, the GATT layout, settings |
+| [docs/spec/](docs/spec/) | What it does: the user's spec, and one `SPEC.md` and `QA.md` per component |
+| [AGENTS.md](AGENTS.md) | Rules for agents: the architecture, the spec process, building and the design |
 | [docs/poc.md](docs/poc.md) | The proof of concept: versions, the host and client flows, design notes, research leads |
 | [NOTES.md](NOTES.md) | How it is built: choosing the host by signal strength, encrypting each exchange with a per-session key |
-| [docs/design/](docs/design/) | The design in pen.dev (`mizan-ble.pen`) and its previews: the design system, the host and client screens and the paired flow, and the Mizan sign candidates |
+| [docs/design/](docs/design/) | The design in pen.dev (`mizan-ble.pen`), its index and previews: the design system, the host and client screens and the paired flow, and the Mizan sign candidates |
 | [docs/research/](docs/research/) | Research notes: how existing proximity payments work (Sber's «Вжух» so far) |
 | [docs/log.md](docs/log.md) | What changed for the product, newest first |
 
