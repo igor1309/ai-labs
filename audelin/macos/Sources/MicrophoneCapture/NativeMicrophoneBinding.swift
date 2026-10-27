@@ -85,8 +85,15 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         configurationObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
         ) { _ in configurationChanged() }
-        let format = input.outputFormat(forBus: 0)
-        guard format.sampleRate.isFinite, format.sampleRate > 0, format.channelCount > 0,
+        // After switching the device the output format can still describe the
+        // old one; a tap whose rate differs from the hardware's raises an
+        // Objective-C exception that aborts the app (LAB-638), so tap in the
+        // device's own format and refuse anything else as an error.
+        let hardware = input.inputFormat(forBus: 0)
+        guard hardware.sampleRate.isFinite, hardware.sampleRate > 0, hardware.channelCount > 0,
+              let format = AVAudioFormat(
+                  standardFormatWithSampleRate: hardware.sampleRate, channels: hardware.channelCount
+              ),
               format.commonFormat == .pcmFormatFloat32 else { throw CaptureError.unsupportedFormat }
         let tap = NativeTap(receive: receive, readClock: Self.readClock)
         self.tap = tap
