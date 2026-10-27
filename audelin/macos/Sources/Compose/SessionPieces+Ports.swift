@@ -47,9 +47,23 @@ public extension SessionPieces {
 
     nonisolated func handler() -> SessionEffectHandler {
 
+        handler(sink: SystemLogSink())
+    }
+}
+
+extension SessionPieces {
+
+    nonisolated func handler(sink: any LogSink) -> SessionEffectHandler {
+
         SessionEffectHandler(
-            folder: self, processes: self, microphoneCapture: microphoneCapture, callCapture: callCapture,
-            microphoneTrack: microphoneTrack, callTrack: callTrack, callText: self, transcript: transcript
+            folder: LoggingFolder(base: self, log: .init(sink: sink, name: "folder")),
+            processes: LoggingProcesses(base: self, log: .init(sink: sink, name: "processes")),
+            microphoneCapture: LoggingMicrophone(base: microphoneCapture, log: .init(sink: sink, name: "microphoneCapture")),
+            callCapture: LoggingCallCapture(base: callCapture, log: .init(sink: sink, name: "callCapture")),
+            microphoneTrack: LoggingTrack(base: microphoneTrack, log: .init(sink: sink, name: "microphoneTrack")),
+            callTrack: LoggingTrack(base: callTrack, log: .init(sink: sink, name: "callTrack")),
+            callText: LoggingCallText(base: self, log: .init(sink: sink, name: "callText")),
+            transcript: LoggingTranscript(base: transcript, log: .init(sink: sink, name: "transcript"))
         )
     }
 }

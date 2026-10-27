@@ -59,6 +59,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     let startCall: @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>
     let microphoneRecognizerSource: @Sendable () async throws -> any Recognizer
     let callRecognizerSource: @Sendable () async throws -> any Recognizer
+    let captureLogSink: any LogSink
     let executor: (any TaskExecutor)?
     let openTrackFile: @Sendable (URL) throws -> TrackFile
     let recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track
@@ -104,7 +105,8 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
             folder: folder, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
             microphoneRecognizerSource: { microphoneRecognizer }, callRecognizerSource: { callRecognizer },
             executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
-            makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText
+            makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText,
+            captureLogSink: SystemLogSink()
         )
     }
 
@@ -124,12 +126,39 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
     ) {
 
+        self.init(
+            folder: folder, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
+            microphoneRecognizerSource: microphoneRecognizerSource, callRecognizerSource: callRecognizerSource,
+            executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
+            makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText,
+            captureLogSink: SystemLogSink()
+        )
+    }
+
+    init(
+        folder: CallFolder,
+        processes: CallAppProcesses,
+        startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
+        startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
+        microphoneRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
+        callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
+        executor: (any TaskExecutor)? = nil,
+        openTrack: @escaping @Sendable (URL) throws -> TrackFile = { try TrackFile(url: $0) },
+        recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
+        closeTrack: @escaping @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack,
+        makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
+        openTranscript: @escaping @Sendable (URL) throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
+        makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText,
+        captureLogSink: any LogSink
+    ) {
+
         self.folder = folder
         self.processes = processes
         self.startMicrophone = startMicrophone
         self.startCall = startCall
         self.microphoneRecognizerSource = microphoneRecognizerSource
         self.callRecognizerSource = callRecognizerSource
+        self.captureLogSink = captureLogSink
         self.executor = executor
         self.openTrackFile = openTrack
         self.recordingTrack = recordingTrack

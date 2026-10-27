@@ -16,7 +16,7 @@ struct PreferencesCompositionTests {
                 // Only the stored folder of the second pass exists.
                 if automatic { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
                 try store.write(Preferences(automaticRecording: automatic, callsFolder: folder))
-                let (recording, conditions) = composeRecordingWithPreferences(preferences: store, makePieces: { _ in
+                let (recording, conditions) = await composeRecordingWithPreferences(preferences: store, makePieces: { _ in
                     preconditionFailure("An idle recording must not build a session")
                 })
                 #expect(await recording.snapshot() == RecordingState(automatic: automatic))
@@ -36,7 +36,7 @@ struct PreferencesCompositionTests {
                     let store = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
                     var preferences = Preferences(liveText: false, callsFolder: root)
                     try store.write(preferences)
-                    let (recording, _) = composeRecordingWithPreferences(
+                    let (recording, _) = await composeRecordingWithPreferences(
                         preferences: store, makePieces: { $0 == 1 ? first.pieces : second.pieces }
                     )
                     for condition in RecordingCondition.allCases {

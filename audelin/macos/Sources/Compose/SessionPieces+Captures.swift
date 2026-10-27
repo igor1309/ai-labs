@@ -57,7 +57,7 @@ extension SessionPieces {
     private func startCapture<Piece>(_ capture: CaptureAdapter<Piece>, side: SessionSide) async throws {
 
         guard let track = sides[side]?.track else { throw Failure.unavailableTrack(side) }
-        let live = LiveAudio(capture: capture)
+        let live = LiveAudio(capture: LoggingCapture(base: capture, sink: captureLogSink, side: String(describing: side)))
         let recorded = RecordedCapture(capture: RecordedInput(capture: live), track: recordingTrack(side, track))
         sides[side]?.audio.attach(makeCaptureAudio(side, live))
         do {
