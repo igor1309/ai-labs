@@ -11,6 +11,8 @@ swift run ModeSwitchPreview
 swift run ModeSwitchPreview --export /tmp/mizan-mode-switch
 swift run HostPreview
 swift run HostPreview --export /tmp/mizan-host
+swift run SettingsPreview
+swift run SettingsPreview --export /tmp/mizan-settings
 ```
 
 `ModeSwitchPreview` shows `ModeSwitchUI` in the DesignSystem iPad or iPhone
@@ -29,6 +31,11 @@ the event log; the picker alone changes the screen. Export writes 28 PNGs
 (14 states in both appearances), named `<preview-name>-iPad-<light|dark>.png`,
 at 1194 × 834 pixels.
 
+`SettingsPreview` shows every entry of `SettingsUI`'s preview list at iPad
+size. Countdown taps and Done add to the event log; the picker alone changes
+the screen. Export writes 10 PNGs, one per state in each appearance, named
+`s1-settings-<seconds>s-iPad-<light|dark>.png`, at 1194 × 834 pixels.
+
 Each has a state picker, light/dark appearance and the event log.
 
 `PreviewKit` provides `PreviewWindow` (content over a backdrop on the left,
@@ -41,7 +48,7 @@ There are no tests in this package; compare the exports with the design.
 
 ## What a preview app holds
 
-A preview app runs the real view. `HostPreview` hold only the selected
+A preview app runs the real view. `HostPreview` and `SettingsPreview` hold only the selected
 preview and the event log: a tap is logged, and the picker alone changes the
 screen. The picker and the exporter read the module's named preview list.
 `ModeSwitchPreview` also lets the tap change the chosen side.
