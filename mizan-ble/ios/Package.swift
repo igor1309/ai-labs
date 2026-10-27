@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "Settings", targets: ["Settings"]),
         .library(name: "MessageCodec", targets: ["MessageCodec"]),
         .library(name: "SessionCrypto", targets: ["SessionCrypto"]),
+        .library(name: "HostPicker", targets: ["HostPicker"]),
     ],
     targets: [
         .target(name: "HostUI", dependencies: ["DesignSystem"]),
@@ -29,6 +30,8 @@ let package = Package(
         .testTarget(name: "MessageCodecTests", dependencies: ["MessageCodec"]),
         .target(name: "SessionCrypto"),
         .testTarget(name: "SessionCryptoTests", dependencies: ["SessionCrypto"]),
+        .target(name: "HostPicker"),
+        .testTarget(name: "HostPickerTests", dependencies: ["HostPicker"]),
         .target(
             name: "DesignSystem",
             resources: [.copy("Resources/Fonts")]
