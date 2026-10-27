@@ -39,7 +39,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Audelin",
-            dependencies: ["Compose", "MenuBar", "Preferences"]
+            dependencies: ["Compose", "MenuBar", "Preferences", "PanelUI"]
         ),
         .target(
             name: "AudioConversion"

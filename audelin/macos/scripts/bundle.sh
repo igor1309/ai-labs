@@ -6,7 +6,9 @@ swift build -c release --product Audelin
 app=.build/Audelin.app
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-cp "$(swift build -c release --show-bin-path)/Audelin" "$app/Contents/MacOS/Audelin"
+bin=$(swift build -c release --show-bin-path)
+cp "$bin/Audelin" "$app/Contents/MacOS/Audelin"
+cp -R "$bin/Audelin_GlassLedger.bundle" "$app/Contents/Resources/"
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

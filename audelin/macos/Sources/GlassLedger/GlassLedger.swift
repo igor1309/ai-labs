@@ -19,7 +19,11 @@ public extension GlassLedger {
 
 private let fontsRegistered: Void = {
 
-    let urls = Bundle.module.urls(forResourcesWithExtension: "ttf", subdirectory: "Fonts") ?? []
+    // App bundles keep resources in Contents/Resources; SwiftPM executables
+    // use the generated module lookup beside the executable or in the build.
+    let bundle = Bundle.main.url(forResource: "Audelin_GlassLedger", withExtension: "bundle")
+        .flatMap(Bundle.init(url:)) ?? Bundle.module
+    let urls = bundle.urls(forResourcesWithExtension: "ttf", subdirectory: "Fonts") ?? []
     CTFontManagerRegisterFontURLs(urls as CFArray, .process, true, nil)
 }()
 

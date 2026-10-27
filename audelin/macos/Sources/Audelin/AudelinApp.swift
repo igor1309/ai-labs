@@ -9,17 +9,23 @@ import SwiftUI
 struct AudelinApp: App {
 
     @State private var model: AudelinMenu?
+    @State private var panel: FloatingPanel?
 
     @MainActor
     private func start() async {
 
         guard model == nil else { return }
-        model = await AudelinMenu(
+        let panel = FloatingPanel()
+        self.panel = panel
+        let model = await AudelinMenu(
             preferences: PreferencesStore(fileURL: FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".audelin/preferences.json")),
             openCallsFolder: { NSWorkspace.shared.open($0) },
+            presentPanel: { [weak panel] in panel?.setVisible($0) },
             terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } }
         )
+        self.model = model
+        panel.install(model)
     }
 
     init() {

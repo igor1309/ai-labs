@@ -26,7 +26,7 @@ LANES = {
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
-    "Audelin": ("compose", "launches recording and the menu bar", 0),
+    "Audelin": ("compose", "launches recording, menu and panel", 0),
     "RecordedCapture": ("compose", "records one capture to its track", 3),
     "LiveAudio": ("compose", "hears and reads one capture,\nkeeps its time", 4),
     "Compose": ("compose", "wires one recording's pieces\nbehind Session's ports", 1),
@@ -34,7 +34,7 @@ TARGETS = {
     "PanelUI": ("ui", "the live panel and its transcript", 0),
     "SettingsUI": ("ui", "the Settings window", 1),
     "GlassLedger": ("ui", "design tokens for both views", 2),
-    "MenuBar": ("ui", "menu item, entries and actions", 3),
+    "MenuBar": ("ui", "menu entries and panel presence", 3),
     "Lifecycle": ("machines", "drains recording before termination", 3),
     "Machine": ("machines", "reducer + effect handler loop", 1),
     "Recording": ("machines", "decides whether a recording runs", 2),
