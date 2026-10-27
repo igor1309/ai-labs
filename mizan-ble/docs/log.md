@@ -2,6 +2,7 @@
 
 ## 2026-10-27
 
+- ClientPaymentPreview lets you select every payer review and result state, inspect its events and export iPhone PNGs in light and dark for comparison with the design (LAB-679).
 - SettingsUI gives the operator countdown choices with a full-ring preview and shows the advertised name, currency and processor read-only (LAB-672).
 - ClientUI gives the payer find and connect screens for nearby tills, connection progress and failures, with start, cancel and retry actions (LAB-673).
 - HostUI gives the operator an amount pad, broadcast countdown, connection and payment screens, with controls for cancelling, retrying and picking the mock result (LAB-671).
