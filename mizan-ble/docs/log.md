@@ -4,8 +4,11 @@
 
 - SettingsPreview lets the operator inspect every iPad settings state, log taps and export light/dark PNGs for comparison with the design (LAB-677).
 - SettingsUI gives the operator countdown choices with a full-ring preview and shows the advertised name, currency and processor read-only (LAB-672).
+- ClientUI gives the payer find and connect screens for nearby tills, connection progress and failures, with start, cancel and retry actions (LAB-673).
+- HostUI gives the operator an amount pad, broadcast countdown, connection and payment screens, with controls for cancelling, retrying and picking the mock result (LAB-671).
 - ModeSwitchUI shows the chosen host or client screen with its header switch dimmed during a payment (LAB-670).
 - ModeSwitchPreview lets you try both device shells and compare every switch state in light and dark as device-sized PNGs (LAB-670).
+- HostPicker chooses a clear nearest host from smoothed signal readings, asks to hold closer when uncertain, and forgets faded hosts (LAB-650).
 - SessionCrypto derives a fresh transaction key, seals and opens authenticated messages, and refuses replays and messages after closure (LAB-649).
 - MessageCodec encodes and decodes session characteristics, sealed frames and message bodies, refusing unreadable bytes (LAB-648).
 - Settings supplies validated countdown and picker values with defaults, and keeps the till's advertised name across reads (LAB-647).
