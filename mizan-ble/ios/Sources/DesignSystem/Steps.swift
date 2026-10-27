@@ -1,6 +1,6 @@
 import SwiftUI
 
-public enum StepState: CaseIterable, Sendable {
+public enum StepState: CaseIterable, Equatable, Sendable {
     case done, active, failed, todo
 
     func fill(for side: Side) -> Color {
@@ -35,7 +35,7 @@ public enum StepState: CaseIterable, Sendable {
 }
 
 /// A session's ordered step; its position supplies the displayed number.
-public struct SessionStep: Sendable {
+public struct SessionStep: Equatable, Sendable {
     public let state: StepState
     public let title: String
     public let detail: String

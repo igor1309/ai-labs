@@ -9,6 +9,8 @@ let package = Package(
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
         .library(name: "HostUI", targets: ["HostUI"]),
         .library(name: "ModeSwitchUI", targets: ["ModeSwitchUI"]),
+        .library(name: "SettingsUI", targets: ["SettingsUI"]),
+        .library(name: "ClientUI", targets: ["ClientUI"]),
         .library(name: "Machine", targets: ["Machine"]),
         .library(name: "Settings", targets: ["Settings"]),
         .library(name: "MessageCodec", targets: ["MessageCodec"]),
@@ -17,6 +19,8 @@ let package = Package(
     targets: [
         .target(name: "HostUI", dependencies: ["DesignSystem"]),
         .target(name: "ModeSwitchUI", dependencies: ["DesignSystem"]),
+        .target(name: "SettingsUI", dependencies: ["DesignSystem"]),
+        .target(name: "ClientUI", dependencies: ["DesignSystem"]),
         .target(name: "Machine"),
         .testTarget(name: "MachineTests", dependencies: ["Machine"]),
         .target(name: "Settings"),
