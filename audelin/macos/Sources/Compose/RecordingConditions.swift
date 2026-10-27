@@ -20,7 +20,7 @@ public final class RecordingConditions: Sendable {
         self.init(
             send: { [weak recording] in recording?.send($0) },
             microphoneAccess: microphoneAccess, callAudioAccess: callAudioAccess,
-            callsFolder: callsFolder, room: room
+            callsFolder: callsFolder, room: room, sink: SystemLogSink()
         )
     }
 
@@ -30,10 +30,14 @@ public final class RecordingConditions: Sendable {
         microphoneAccess: @escaping @Sendable () -> Bool,
         callAudioAccess: @escaping @Sendable () -> Bool,
         callsFolder: @escaping @Sendable () -> Bool,
-        room: @escaping @Sendable () -> Bool
+        room: @escaping @Sendable () -> Bool,
+        sink: any LogSink
     ) {
 
-        self.send = send
+        self.send = { event in
+            logCondition(event, sink: sink)
+            send(event)
+        }
         checks = [
             (.microphoneAccess, microphoneAccess), (.callAudioAccess, callAudioAccess),
             (.callsFolder, callsFolder), (.room, room),
@@ -83,4 +87,11 @@ private func isCallsDirectory(_ url: URL) -> Bool {
 
     var directory: ObjCBool = false
     return FileManager.default.fileExists(atPath: url.path, isDirectory: &directory) && directory.boolValue
+}
+
+func logCondition(_ event: RecordingEvent, sink: any LogSink) {
+
+    if case let .conditionChanged(condition, available) = event {
+        sink.write(.init(category: .conditions, message: "condition=\(condition) available=\(available)"))
+    }
 }

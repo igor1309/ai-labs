@@ -21,7 +21,7 @@ struct MenuBarActionTests {
         let states = AsyncStream<RecordingState>.makeStream()
         let failures = AsyncStream<any Error>.makeStream()
         defer { states.continuation.finish(); failures.continuation.finish() }
-        let menu = AudelinMenu(
+        let menu = await AudelinMenu(
             storage: MenuPreferenceStorage(readValue: { stored },
                 writeValue: { stored = $0; writes.append($0) }),
             makeApplication: {
@@ -38,7 +38,7 @@ struct MenuBarActionTests {
                 )
             },
             openFolder: { folders.append($0) }, terminate: { terminations += 1 },
-            didDeliver: { Issue.record("No updates were sent") }
+            didDeliver: { Issue.record("No updates were sent") }, sink: SystemLogSink()
         )
         #expect(factoryCalls == 1)
         #expect(menu.menu.entries.first == .stateLine(menu.menu.item.stateLine))
@@ -69,11 +69,11 @@ struct MenuBarActionTests {
         failures.continuation.finish()
         await menu.waitForObservers()
 
-        let unavailable = AudelinMenu(
+        let unavailable = await AudelinMenu(
             storage: MenuPreferenceStorage(readValue: { stored }, writeValue: { stored = $0 }),
             makeApplication: { factoryCalls += 1; throw ScriptFailure.failed },
             openFolder: { folders.append($0) }, terminate: { terminations += 1 },
-            didDeliver: { Issue.record("A failed application has no streams") }
+            didDeliver: { Issue.record("A failed application has no streams") }, sink: SystemLogSink()
         )
         #expect(factoryCalls == 2)
         #expect(unavailable.menu.entries.first == .stateLine("Не удалось начать наблюдение за звонками: failed"))
@@ -124,7 +124,7 @@ struct MenuBarActionTests {
                     failures.continuation.finish()
                     delivered.end()
                 }
-                let menu = AudelinMenu(
+                let menu = await AudelinMenu(
                     storage: MenuPreferenceStorage(readValue: { stored },
                         writeValue: { _ in Issue.record("Presentation does not write preferences") }),
                     makeApplication: {
@@ -133,7 +133,7 @@ struct MenuBarActionTests {
                             quit: { Issue.record("Presentation does not quit") })
                     },
                     openFolder: { _ in Issue.record("Presentation does not open folders") },
-                    terminate: { Issue.record("Presentation does not terminate") }, didDeliver: { delivered.send() }
+                    terminate: { Issue.record("Presentation does not terminate") }, didDeliver: { delivered.send() }, sink: SystemLogSink()
                 )
                 for statusLine: String? in [nil, "Наблюдение за звонками остановлено: failed"] {
                     if let statusLine {

@@ -5,9 +5,9 @@ import Recording
 public func composeRecordingWithPreferences(
     preferences: PreferencesStore,
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces
-) -> (recording: Recording, conditions: RecordingConditions) {
+) async -> (recording: Recording, conditions: RecordingConditions) {
 
-    composeRecordingWithPreferences(
+    await composeRecordingWithPreferences(
         preferences: preferences, makePieces: makePieces, makeConditions: composeRecordingConditions
     )
 }
@@ -16,10 +16,10 @@ func composeRecordingWithPreferences(
     preferences: PreferencesStore,
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
     makeConditions: (Recording, URL) -> RecordingConditions
-) -> (recording: Recording, conditions: RecordingConditions) {
+) async -> (recording: Recording, conditions: RecordingConditions) {
 
     let stored = preferences.read()
-    let recording = composeRecording(
+    let recording = await composeRecording(
         initial: RecordingState(automatic: stored.automaticRecording),
         makePieces: makePieces,
         liveText: { preferences.read().liveText }

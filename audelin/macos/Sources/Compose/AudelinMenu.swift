@@ -19,6 +19,7 @@ public final class AudelinMenu {
     public var preferences: Preferences { settings.snapshot }
     public private(set) var quitting = false
     private var failure: String?
+    private let sink: any LogSink
     private let settings: PreferenceSettings
     private let send: (RecordingEvent) -> Void
     private let openFolder: (URL) -> Void
@@ -34,12 +35,12 @@ public final class AudelinMenu {
         preferences: PreferencesStore,
         openCallsFolder: @escaping (URL) -> Void,
         terminate: @escaping @Sendable () async -> Void
-    ) {
+    ) async {
 
-        self.init(
+        await self.init(
             storage: preferences,
             makeApplication: {
-                let application = try AudelinRecording(preferences: preferences)
+                let application = try await AudelinRecording(preferences: preferences)
                 return MenuApplication(
                     states: { await application.recording.states() },
                     failures: application.detectionFailures,
@@ -47,23 +48,26 @@ public final class AudelinMenu {
                     quit: { await application.quit(terminate: terminate) }
                 )
             },
-            openFolder: openCallsFolder, terminate: { await terminate() }, didDeliver: {}
+            openFolder: openCallsFolder, terminate: { await terminate() }, didDeliver: {}, sink: SystemLogSink()
         )
     }
 
     // Delivery is acknowledged after the observable state or failure has been updated.
     init(
         storage: any PreferenceSettingsStorage,
-        makeApplication: () throws -> MenuApplication,
+        makeApplication: () async throws -> MenuApplication,
         openFolder: @escaping (URL) -> Void,
         terminate: @escaping () async -> Void,
-        didDeliver: @escaping () -> Void
-    ) {
+        didDeliver: @escaping () -> Void,
+        sink: any LogSink
+    ) async {
 
+        self.sink = sink
         let application: MenuApplication?
         do {
-            application = try makeApplication()
+            application = try await makeApplication()
         } catch {
+            sink.write(.init(category: .menu, message: "startup failed", error: String(describing: error)))
             application = nil
             failure = "Не удалось начать наблюдение за звонками: \(error)"
         }
@@ -77,12 +81,14 @@ public final class AudelinMenu {
                 for await state in await states() {
                     guard let self else { return }
                     self.state = state
+                    sink.write(.init(category: .menu, message: "item symbol=\(self.menu.item.symbol) red=\(self.menu.item.isRed)"))
                     didDeliver()
                 }
             }
             detectionObservation = Task { [weak self, failures = application.failures] in
                 for await error in failures {
                     guard let self else { return }
+                    sink.write(.init(category: .menu, message: "detection failed", error: String(describing: error)))
                     self.failure = "Наблюдение за звонками остановлено: \(error)"
                     didDeliver()
                 }
@@ -100,6 +106,7 @@ public final class AudelinMenu {
     public func perform(_ action: MenuBarAction) async {
 
         guard !quitting else { return }
+        sink.write(.init(category: .menu, message: "action=\(action)"))
         switch action {
         case .start: send(.userStart)
         case .stop: send(.userStop)

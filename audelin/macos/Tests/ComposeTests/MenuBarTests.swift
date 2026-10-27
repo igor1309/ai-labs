@@ -31,7 +31,7 @@ struct MenuBarTests {
                     processes.stop(); model.cancel(); stopping.end(); release.end()
                     microphone.continuation.finish(); call.continuation.finish()
                 }
-                let app = try AudelinRecording(
+                let app = try await AudelinRecording(
                     preferences: preferences, processes: processes,
                     now: { Date(timeIntervalSince1970: 0) }, timeZone: { TimeZone(secondsFromGMT: 0)! },
                     startMicrophone: {

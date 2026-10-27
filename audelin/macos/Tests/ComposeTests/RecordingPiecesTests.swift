@@ -150,7 +150,7 @@ struct RecordingPiecesTests {
     @Test func observerSeesEachStartOnceBeforeForwardingAndRetainsLastApp() async throws {
 
         let app = RecordingCallApp(), observed = Values<String>(), beforeStarts = Values<String?>()
-        let recording = composeRecording(makePieces: { _ in
+        let recording = await composeRecording(makePieces: { _ in
             preconditionFailure("Automatic recording is off")
         }, liveText: { false })
         let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
@@ -171,7 +171,7 @@ struct RecordingPiecesTests {
         #expect(app.current == "other")
 
         let detectedApp = RecordingCallApp(), detected = Values<String>()
-        let detectorRecording = composeRecording(makePieces: { _ in
+        let detectorRecording = await composeRecording(makePieces: { _ in
             preconditionFailure("Automatic recording is off")
         }, liveText: { false })
         let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
