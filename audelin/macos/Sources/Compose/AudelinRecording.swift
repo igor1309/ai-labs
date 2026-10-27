@@ -29,7 +29,7 @@ public final class AudelinRecording: Sendable {
             startMicrophone: startProductionMicrophone, startCall: startProductionCallAudio,
             recognizerSource: { try await ParakeetRecognizer() },
             makeConditions: composeRecordingConditions,
-            startModel: { startLiveModelLoading() }
+            startModel: { startLiveModelLoading() }, panel: AudelinPanel()
         )
         // Reading the status never asks; without this request macOS never prompts.
         AVCaptureDevice.requestAccess(for: .audio) { [conditions] _ in conditions.refresh() }
@@ -42,11 +42,11 @@ public final class AudelinRecording: Sendable {
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
         recognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         makeConditions: (Recording, URL) -> RecordingConditions,
-        startModel: () -> Task<Void, any Error>
+        startModel: () -> Task<Void, any Error>,
+        panel: AudelinPanel
     ) async throws {
 
         let app = RecordingCallApp()
-        let panel = AudelinPanel()
         self.panel = panel
         let (recording, conditions) = await composeRecordingWithPreferences(
             preferences: preferences,

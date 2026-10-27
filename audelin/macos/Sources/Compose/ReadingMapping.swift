@@ -1,6 +1,12 @@
 import struct CallText.State
 import PanelUI
 import Reading
+import Session
+
+func readingRecording(_ state: SessionState) -> ReadingRecording {
+
+    state.phase == .recording ? .on(elapsed: 0) : .off
+}
 
 func readingText(_ state: State) -> ReadingTextUpdate {
 

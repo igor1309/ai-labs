@@ -18,7 +18,7 @@ struct PreferencesCompositionTests {
                 try store.write(Preferences(automaticRecording: automatic, callsFolder: folder))
                 let (recording, conditions) = await composeRecordingWithPreferences(preferences: store, makePieces: { _ in
                     preconditionFailure("An idle recording must not build a session")
-                })
+                }, panel: ReadingClockSpy().panel())
                 #expect(await recording.snapshot() == RecordingState(automatic: automatic))
                 conditions.refresh()
                 // A snapshot reads after every event already sent is reduced.
@@ -37,7 +37,8 @@ struct PreferencesCompositionTests {
                     var preferences = Preferences(liveText: false, callsFolder: root)
                     try store.write(preferences)
                     let (recording, _) = await composeRecordingWithPreferences(
-                        preferences: store, makePieces: { $0 == 1 ? first.pieces : second.pieces }
+                        preferences: store, makePieces: { $0 == 1 ? first.pieces : second.pieces },
+                        panel: ReadingClockSpy().panel()
                     )
                     for condition in RecordingCondition.allCases {
                         recording.send(.conditionChanged(condition, available: true))

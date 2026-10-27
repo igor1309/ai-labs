@@ -237,11 +237,7 @@ private extension PanelView {
                 .font(.system(size: 14))
                 .foregroundStyle(tokens.me)
 
-            Text("«\(held.text)»")
-                .font(tokens.data(tokens.typeSmall))
-                .foregroundStyle(tokens.text)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            HeldTextLabel(text: "«\(held.text)»", tokens: tokens)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Button { event(.letGo(held)) } label: {

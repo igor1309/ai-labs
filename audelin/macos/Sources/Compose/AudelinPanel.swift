@@ -3,6 +3,7 @@ import Foundation
 import Machine
 import PanelUI
 import Reading
+import Synchronization
 
 /// The current recording's panel state and its reading actions.
 public actor AudelinPanel {
@@ -96,6 +97,7 @@ final class ReadingSubscription: Sendable {
     private let text: Task<Void, Never>
     private let timer: Task<Void, Never>
     private let observation: Task<Void, Never>
+    private let time: ReadingTime
 
     init(
         reading: ReadingMachine, text: AsyncStream<State>,
@@ -104,8 +106,8 @@ final class ReadingSubscription: Sendable {
     ) async {
 
         self.reading = reading
-        let start = now()
-        reading.send(.recordingChanged(.on(elapsed: 0)))
+        let time = ReadingTime(reading: reading, now: now)
+        self.time = time
         await receive(reading.snapshot())
         let states = await reading.states()
         observation = Task {
@@ -123,9 +125,14 @@ final class ReadingSubscription: Sendable {
         timer = Task {
             for await _ in ticks {
                 guard !Task.isCancelled else { return }
-                reading.send(.recordingChanged(.on(elapsed: now() - start)))
+                time.tick()
             }
         }
+    }
+
+    func recordingChanged(_ recording: ReadingRecording) {
+
+        time.recordingChanged(recording)
     }
 
     func end() async {
@@ -145,6 +152,42 @@ final class ReadingSubscription: Sendable {
         text.cancel()
         timer.cancel()
         observation.cancel()
+    }
+}
+
+private final class ReadingTime: Sendable {
+
+    private let reading: ReadingMachine
+    private let now: @Sendable () -> Double
+    private let origin = Mutex<Double?>(nil)
+
+    init(reading: ReadingMachine, now: @escaping @Sendable () -> Double) {
+
+        self.reading = reading
+        self.now = now
+    }
+
+    func recordingChanged(_ recording: ReadingRecording) {
+
+        origin.withLock { start in
+            switch recording {
+            case .off:
+                start = nil
+                reading.send(.recordingChanged(.off))
+            case let .on(elapsed):
+                let instant = now()
+                let beginning = start ?? instant - elapsed
+                start = beginning
+                reading.send(.recordingChanged(.on(elapsed: instant - beginning)))
+            }
+        }
+    }
+
+    func tick() {
+
+        origin.withLock { start in
+            if let start { reading.send(.recordingChanged(.on(elapsed: now() - start))) }
+        }
     }
 }
 

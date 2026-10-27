@@ -163,16 +163,30 @@ struct ReadingCompositionTests {
         let panel = AudelinPanel(now: clock.now, ticks: clock.ticks, sink: sink)
         var construction = SessionConstruction()
         construction.makeCallText = { _ in text }
-        try await withSessionRig(construction: construction, connect: { _, _ in Task {} }) { rig, _ in
+        let starting = Signal(), release = Signal()
+        defer { starting.end(); release.end() }
+        try await withSessionRig(construction: construction, connect: { _, _ in Task {} }, beforeMicrophoneStartReturns: {
+            starting.send()
+            await release.next()
+        }) { rig, _ in
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
                                              report: { _, _ in }, connect: subscribe, sink: sink, panel: panel)
-            #expect(await sessions.begin(id: 11) == .ready)
+            let begin = Task { await sessions.begin(id: 11) }
+            await starting.next()
+            var preparing = await panel.states().makeAsyncIterator()
+            #expect(await preparing.next()?.recording == .off)
+            clock.advance(65)
+            release.send()
+            #expect(await begin.value == .ready)
             do {
                 var states = await panel.states().makeAsyncIterator()
+                _ = try await nextPanel(&states) { $0.recording == .on(elapsed: "00:00:00") }
+                clock.advance(2)
+                _ = try await nextPanel(&states) { $0.recording == .on(elapsed: "00:00:02") }
                 text.input.continuation.yield(.init(status: .listening, entries: [callEntry(.theirs, 9, settled: "session text")]))
                 let shown = try await nextPanel(&states) { $0.lines?.entries.first?.settled == "session text" }
                 #expect(shown.lines?.entries.first?.speaker == .them)
-                #expect(shown.recording == .on(elapsed: "00:00:00"))
+                #expect(shown.recording == .on(elapsed: "00:00:02"))
                 await sessions.end(id: 11)
                 var ended = await panel.states().makeAsyncIterator()
                 #expect(await ended.next() == .init(recording: .off, log: .empty))
@@ -197,6 +211,10 @@ private func withReading(
 ) async rethrows {
 
     let subscription = await panel.begin(id: id, text: text)
+    subscription.recordingChanged(.on(elapsed: 0))
+    for await state in await panel.states() {
+        if state.recording == .on(elapsed: "00:00:00") { break }
+    }
     do {
         try await body()
         await panel.end(id: id)
@@ -223,10 +241,15 @@ private extension PanelState {
     var lines: Lines? { if case let .lines(lines) = log { lines } else { nil } }
 }
 
-private final class ReadingClockSpy: Sendable {
+final class ReadingClockSpy: Sendable {
 
     private let time = Mutex(100.0)
     private let outputs = Mutex<[AsyncStream<Void>.Continuation]>([])
+
+    func panel() -> AudelinPanel {
+
+        AudelinPanel(now: now, ticks: ticks, sink: ReadingLogSpy())
+    }
 
     func now() -> Double { time.withLock { $0 } }
 

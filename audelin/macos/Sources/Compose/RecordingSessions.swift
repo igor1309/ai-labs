@@ -32,7 +32,7 @@ public actor RecordingSessions: RecordingSession {
         makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
         liveText: @escaping @Sendable () -> Bool,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void,
-        panel: AudelinPanel = AudelinPanel()
+        panel: AudelinPanel
     ) {
 
         self.init(makePieces: makePieces, liveText: liveText, report: report, connect: subscribe, sink: SystemLogSink(), panel: panel)
@@ -44,10 +44,10 @@ public actor RecordingSessions: RecordingSession {
         report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void,
         connect: @escaping @Sendable (SessionPieces, Session) -> Task<Void, Never>,
         sink: any LogSink,
-        panel: AudelinPanel? = nil
+        panel: AudelinPanel
     ) {
 
-        self.panel = panel ?? AudelinPanel(sink: sink)
+        self.panel = panel
         self.makePieces = makePieces
         self.liveText = liveText
         self.report = report
@@ -71,6 +71,7 @@ public actor RecordingSessions: RecordingSession {
                 self.running[id]?.reading = reading
                 self.start(id: id, liveText: enabled)
                 for await state in states {
+                    reading.recordingChanged(readingRecording(state))
                     StateLog(sink: self.sink).session(state, id: id)
                     if self.receive(state, id: id) { return }
                 }

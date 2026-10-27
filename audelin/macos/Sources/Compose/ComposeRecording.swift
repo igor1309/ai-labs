@@ -5,7 +5,7 @@ public func composeRecording(
     initial: RecordingState = .init(),
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
     liveText: @escaping @Sendable () -> Bool,
-    panel: AudelinPanel = AudelinPanel()
+    panel: AudelinPanel
 ) async -> Recording {
 
     await composeRecording(initial: initial, makePieces: makePieces, liveText: liveText, sink: SystemLogSink(), panel: panel)
@@ -16,7 +16,7 @@ func composeRecording(
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
     liveText: @escaping @Sendable () -> Bool,
     sink: any LogSink,
-    panel: AudelinPanel? = nil
+    panel: AudelinPanel
 ) async -> Recording {
 
     let destination = Mutex(RecordingDestination())

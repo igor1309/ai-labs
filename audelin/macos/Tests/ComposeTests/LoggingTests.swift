@@ -181,7 +181,7 @@ struct LoggingTests {
             let rig = LogPieces(root: root, sink: sink)
             defer { rig.finish() }
             let recording = await composeRecording(initial: .init(automatic: true),
-                makePieces: { _ in rig.pieces }, liveText: { false }, sink: sink)
+                makePieces: { _ in rig.pieces }, liveText: { false }, sink: sink, panel: ReadingClockSpy().panel())
             let conditions = RecordingConditions(recording: recording, microphoneAccess: { true },
                 callAudioAccess: { true }, callsFolder: { true }, room: { true })
             conditions.refresh()
@@ -247,7 +247,7 @@ struct LoggingTests {
             defer { rig.finish() }
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
                 report: { _, _ in Issue.record("normal shutdown must not report an unexpected end") },
-                connect: subscribe, sink: delivered)
+                connect: subscribe, sink: delivered, panel: ReadingClockSpy().panel())
             #expect(await sessions.begin(id: 8) == .ready)
             await sessions.end(id: 8)
             let states = delivered.entries.all.filter { $0.category == .session && $0.message.hasPrefix("state ") }
