@@ -1287,7 +1287,7 @@
                           "id": "FI1uw",
                           "name": "Spec",
                           "fill": "$mz-text-2",
-                          "content": "display · 120 / 600",
+                          "content": "display · 100 / 600",
                           "fontFamily": "$mz-font-mono",
                           "fontSize": "$mz-size-eyebrow",
                           "fontWeight": "normal"
@@ -1363,6 +1363,65 @@
                       "fontSize": "$mz-size-amount-l",
                       "fontWeight": "600",
                       "letterSpacing": -3
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wSzUZ",
+                  "name": "Display",
+                  "width": "fill_container",
+                  "stroke": "$mz-line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "gap": "$mz-space-8",
+                  "padding": [
+                    "$mz-space-4",
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "IYSQd",
+                      "name": "Meta",
+                      "width": 260,
+                      "layout": "vertical",
+                      "gap": "$mz-space-1",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "rHizf",
+                          "name": "Name",
+                          "fill": "$mz-text",
+                          "content": "Display",
+                          "fontFamily": "$mz-font-text",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "t4DIhx",
+                          "name": "Spec",
+                          "fill": "$mz-text-2",
+                          "content": "display · 56 / 700",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-eyebrow",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "RPVlB",
+                      "name": "Sample",
+                      "fill": "$mz-text",
+                      "content": "Host and client, side by side",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-display",
+                      "fontWeight": "700",
+                      "letterSpacing": -1.5
                     }
                   ]
                 },
@@ -1485,6 +1544,65 @@
                 },
                 {
                   "type": "frame",
+                  "id": "XDge9",
+                  "name": "Heading",
+                  "width": "fill_container",
+                  "stroke": "$mz-line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "gap": "$mz-space-8",
+                  "padding": [
+                    "$mz-space-4",
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Y5ENzl",
+                      "name": "Meta",
+                      "width": 260,
+                      "layout": "vertical",
+                      "gap": "$mz-space-1",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "h6ecE",
+                          "name": "Name",
+                          "fill": "$mz-text",
+                          "content": "Heading",
+                          "fontFamily": "$mz-font-text",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "aGlUY",
+                          "name": "Spec",
+                          "fill": "$mz-text-2",
+                          "content": "display · 34 / 600",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-eyebrow",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "Q4kHd",
+                      "name": "Sample",
+                      "fill": "$mz-text",
+                      "content": "Client reviews",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-heading",
+                      "fontWeight": "600",
+                      "letterSpacing": -0.5
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "O3hDO",
                   "name": "Title",
                   "width": "fill_container",
@@ -1544,6 +1662,64 @@
                 },
                 {
                   "type": "frame",
+                  "id": "evjGu",
+                  "name": "Lead",
+                  "width": "fill_container",
+                  "stroke": "$mz-line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "gap": "$mz-space-8",
+                  "padding": [
+                    "$mz-space-4",
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CzabR",
+                      "name": "Meta",
+                      "width": 260,
+                      "layout": "vertical",
+                      "gap": "$mz-space-1",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "sQfsF",
+                          "name": "Name",
+                          "fill": "$mz-text",
+                          "content": "Lead",
+                          "fontFamily": "$mz-font-text",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "Yy2gk",
+                          "name": "Spec",
+                          "fill": "$mz-text-2",
+                          "content": "text · 20 / 500 · text-2",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-eyebrow",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "vk0OP",
+                      "name": "Sample",
+                      "fill": "$mz-text-2",
+                      "content": "Waiting for a client",
+                      "fontFamily": "$mz-font-text",
+                      "fontSize": "$mz-size-lead",
+                      "fontWeight": "500"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
                   "id": "zc8SW",
                   "name": "Label",
                   "width": "fill_container",
@@ -1596,6 +1772,64 @@
                       "content": "Client approval",
                       "fontFamily": "$mz-font-text",
                       "fontSize": "$mz-size-body",
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "Y9LVHm",
+                  "name": "Label S",
+                  "width": "fill_container",
+                  "stroke": "$mz-line-soft",
+                  "strokeWidth": {
+                    "bottom": 1
+                  },
+                  "gap": "$mz-space-8",
+                  "padding": [
+                    "$mz-space-4",
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ogRKu",
+                      "name": "Meta",
+                      "width": 260,
+                      "layout": "vertical",
+                      "gap": "$mz-space-1",
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "JSrWG",
+                          "name": "Name",
+                          "fill": "$mz-text",
+                          "content": "Label S",
+                          "fontFamily": "$mz-font-text",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "600"
+                        },
+                        {
+                          "type": "text",
+                          "id": "frpdD",
+                          "name": "Spec",
+                          "fill": "$mz-text-2",
+                          "content": "text · 15 / 600",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-eyebrow",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "kvtrI",
+                      "name": "Sample",
+                      "fill": "$mz-text",
+                      "content": "Advertising countdown",
+                      "fontFamily": "$mz-font-text",
+                      "fontSize": "$mz-size-label",
                       "fontWeight": "600"
                     }
                   ]
@@ -2087,6 +2321,36 @@
                         },
                         {
                           "type": "frame",
+                          "id": "Hk2qb",
+                          "name": "mz-space-7",
+                          "layout": "vertical",
+                          "gap": "$mz-space-2",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "id": "OzGzq",
+                              "name": "Bar",
+                              "fill": "$mz-host-tint",
+                              "width": 28,
+                              "height": 28,
+                              "stroke": "$mz-host",
+                              "strokeWidth": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "B7X5I",
+                              "name": "Value",
+                              "fill": "$mz-text-2",
+                              "content": "28",
+                              "fontFamily": "$mz-font-mono",
+                              "fontSize": "$mz-size-eyebrow",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
                           "id": "X82t26",
                           "name": "mz-space-8",
                           "layout": "vertical",
@@ -2109,6 +2373,36 @@
                               "name": "Value",
                               "fill": "$mz-text-2",
                               "content": "32",
+                              "fontFamily": "$mz-font-mono",
+                              "fontSize": "$mz-size-eyebrow",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "ikJWc",
+                          "name": "mz-space-10",
+                          "layout": "vertical",
+                          "gap": "$mz-space-2",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "id": "Z1dMO",
+                              "name": "Bar",
+                              "fill": "$mz-host-tint",
+                              "width": 40,
+                              "height": 40,
+                              "stroke": "$mz-host",
+                              "strokeWidth": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "RElDH",
+                              "name": "Value",
+                              "fill": "$mz-text-2",
+                              "content": "40",
                               "fontFamily": "$mz-font-mono",
                               "fontSize": "$mz-size-eyebrow",
                               "fontWeight": "normal"
@@ -2169,6 +2463,36 @@
                               "name": "Value",
                               "fill": "$mz-text-2",
                               "content": "56",
+                              "fontFamily": "$mz-font-mono",
+                              "fontSize": "$mz-size-eyebrow",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "j4PKl",
+                          "name": "mz-space-20",
+                          "layout": "vertical",
+                          "gap": "$mz-space-2",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "id": "b8ttJ",
+                              "name": "Bar",
+                              "fill": "$mz-host-tint",
+                              "width": 80,
+                              "height": 80,
+                              "stroke": "$mz-host",
+                              "strokeWidth": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "txOfv",
+                              "name": "Value",
+                              "fill": "$mz-text-2",
+                              "content": "80",
                               "fontFamily": "$mz-font-mono",
                               "fontSize": "$mz-size-eyebrow",
                               "fontWeight": "normal"
@@ -2322,6 +2646,37 @@
                               "name": "Value",
                               "fill": "$mz-text-2",
                               "content": "xl · 24",
+                              "fontFamily": "$mz-font-mono",
+                              "fontSize": "$mz-size-eyebrow",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "j4nuUw",
+                          "name": "mz-radius-2xl",
+                          "layout": "vertical",
+                          "gap": "$mz-space-2",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": "$mz-radius-2xl",
+                              "id": "X2CjTW",
+                              "name": "Shape",
+                              "fill": "$mz-raised",
+                              "width": 96,
+                              "height": 96,
+                              "stroke": "$mz-line-strong",
+                              "strokeWidth": 1
+                            },
+                            {
+                              "type": "text",
+                              "id": "qtAkA",
+                              "name": "Value",
+                              "fill": "$mz-text-2",
+                              "content": "2xl · 40",
                               "fontFamily": "$mz-font-mono",
                               "fontSize": "$mz-size-eyebrow",
                               "fontWeight": "normal"
@@ -4215,8 +4570,8 @@
                   "id": "svyms",
                   "name": "DS / Mizan Sign",
                   "reusable": true,
-                  "width": 87.15,
-                  "height": 165.9,
+                  "width": 72.63,
+                  "height": 138.25,
                   "children": [
                     {
                       "type": "path",
@@ -4248,8 +4603,8 @@
                       "type": "ref",
                       "ref": "svyms",
                       "name": "Sign",
-                      "width": 87.15,
-                      "height": 165.9
+                      "width": 72.63,
+                      "height": 138.25
                     },
                     {
                       "type": "text",
@@ -7130,15 +7485,17 @@
       "x": 2800,
       "y": 0,
       "name": "Mizan · Paired Flow",
+      "fill": "$mz-ground",
       "layout": "vertical",
-      "gap": 80,
+      "gap": "$mz-space-20",
+      "padding": "$mz-space-14",
       "children": [
         {
           "type": "frame",
           "id": "R3Fof",
           "name": "Title Block",
           "layout": "vertical",
-          "gap": 10,
+          "gap": "$mz-space-3",
           "children": [
             {
               "type": "text",
@@ -7155,10 +7512,10 @@
               "type": "text",
               "id": "HpObS",
               "name": "Title",
-              "fill": "#16181D",
+              "fill": "$mz-text",
               "content": "Host and client, side by side",
               "fontFamily": "$mz-font-display",
-              "fontSize": 56,
+              "fontSize": "$mz-size-display",
               "fontWeight": "700",
               "letterSpacing": -1.5
             },
@@ -7166,10 +7523,10 @@
               "type": "text",
               "id": "PxCph",
               "name": "Lede",
-              "fill": "#6B6E76",
+              "fill": "$mz-text-2",
               "content": "Each frame is one moment: what the iPad shows, what the iPhone shows, and the BLE message between them.",
               "fontFamily": "$mz-font-text",
-              "fontSize": 20,
+              "fontSize": "$mz-size-lead",
               "fontWeight": "normal"
             }
           ]
@@ -7180,19 +7537,19 @@
           "name": "M1 · Enter amount",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "NbP6z",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -7203,8 +7560,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -7214,7 +7571,7 @@
                       "fill": "$mz-text",
                       "content": "M1",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -7226,7 +7583,7 @@
                   "fill": "$mz-text",
                   "content": "Enter amount",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -7237,7 +7594,7 @@
                   "fill": "$mz-text-2",
                   "content": "The host types the amount. The client is open but has nothing to find yet.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -7371,7 +7728,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 20,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "children": [
                             {
@@ -7381,7 +7738,7 @@
                               "fill": "$mz-text-2",
                               "content": "Charge",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "500"
                             },
                             {
@@ -7397,8 +7754,8 @@
                                 },
                                 "F5vhi": {
                                   "content": "124.5",
-                                  "fontSize": 100,
-                                  "letterSpacing": -3
+                                  "fontSize": "$mz-size-amount-xl",
+                                  "letterSpacing": -2
                                 }
                               }
                             },
@@ -7420,7 +7777,7 @@
                               "content": "Confirming locks the amount and broadcasts it for 60 seconds. Nothing is charged until the client accepts.",
                               "lineHeight": 1.5,
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 17,
+                              "fontSize": "$mz-size-body",
                               "fontWeight": "normal"
                             },
                             {
@@ -7469,8 +7826,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 4,
-                          "padding": 16,
+                          "gap": "$mz-space-1",
+                          "padding": "$mz-space-4",
                           "children": [
                             {
                               "type": "frame",
@@ -7478,7 +7835,7 @@
                               "name": "Row",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "gap": 4,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "id": "FBxPO",
@@ -7527,7 +7884,7 @@
                               "name": "Row",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "gap": 4,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "id": "Q7S4L",
@@ -7577,7 +7934,7 @@
                               "name": "Row",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "gap": 4,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "id": "Ap8tk",
@@ -7626,7 +7983,7 @@
                               "name": "Row",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "gap": 4,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "id": "ZdzQv",
@@ -7690,10 +8047,10 @@
                   "name": "Link",
                   "width": 300,
                   "layout": "vertical",
-                  "gap": 12,
+                  "gap": "$mz-space-3",
                   "padding": [
                     0,
-                    28
+                    "$mz-space-7"
                   ],
                   "alignItems": "center",
                   "children": [
@@ -7731,7 +8088,7 @@
                       "id": "tcWIk",
                       "name": "Stepper",
                       "width": "fill_container",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "id": "kToGb",
@@ -7873,7 +8230,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 18,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -7926,7 +8283,7 @@
                                   "width": 84,
                                   "height": 84,
                                   "fill": "$mz-raised-2",
-                                  "cornerRadius": 42,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -7950,7 +8307,7 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 8,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -8013,19 +8370,19 @@
           "name": "M2 · Advertising",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "g4dJcD",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -8036,8 +8393,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -8047,7 +8404,7 @@
                       "fill": "$mz-text",
                       "content": "M2",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -8059,7 +8416,7 @@
                   "fill": "$mz-text",
                   "content": "Advertising",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -8070,7 +8427,7 @@
                   "fill": "$mz-text-2",
                   "content": "The host locks the amount and broadcasts for 60 s. The client sees it in range.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -8201,7 +8558,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 20,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "children": [
                             {
@@ -8211,7 +8568,7 @@
                               "fill": "$mz-text-2",
                               "content": "Charge · locked",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "500"
                             },
                             {
@@ -8227,8 +8584,8 @@
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
-                                  "fontSize": 100,
-                                  "letterSpacing": -3
+                                  "fontSize": "$mz-size-amount-xl",
+                                  "letterSpacing": -2
                                 }
                               }
                             },
@@ -8250,7 +8607,7 @@
                               "content": "Broadcasting as MIZAN-7F3A. The amount resets if no client connects in time.",
                               "lineHeight": 1.5,
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 17,
+                              "fontSize": "$mz-size-body",
                               "fontWeight": "normal"
                             },
                             {
@@ -8299,8 +8656,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 20,
-                          "padding": 28,
+                          "gap": "$mz-space-5",
+                          "padding": "$mz-space-7",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -8317,7 +8674,7 @@
                               "fill": "$mz-text",
                               "content": "Waiting for a client",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "600"
                             },
                             {
@@ -8358,10 +8715,10 @@
                   "name": "Link",
                   "width": 300,
                   "layout": "vertical",
-                  "gap": 12,
+                  "gap": "$mz-space-3",
                   "padding": [
                     0,
-                    28
+                    "$mz-space-7"
                   ],
                   "alignItems": "center",
                   "children": [
@@ -8425,7 +8782,7 @@
                       "id": "n4N5j",
                       "name": "Stepper",
                       "width": "fill_container",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "id": "GRxfk",
@@ -8558,7 +8915,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 18,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -8611,7 +8968,7 @@
                                   "width": 84,
                                   "height": 84,
                                   "fill": "$mz-client",
-                                  "cornerRadius": 42,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -8635,7 +8992,7 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 8,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -8697,19 +9054,19 @@
           "name": "M3 · Handshake",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "U9Lco",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -8720,8 +9077,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -8731,7 +9088,7 @@
                       "fill": "$mz-text",
                       "content": "M3",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -8743,7 +9100,7 @@
                   "fill": "$mz-text",
                   "content": "Handshake",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -8754,7 +9111,7 @@
                   "fill": "$mz-text-2",
                   "content": "The client starts the handshake. Both sides exchange keys and the amount.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -8882,7 +9239,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 20,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "children": [
                             {
@@ -8892,7 +9249,7 @@
                               "fill": "$mz-text-2",
                               "content": "Charge · locked",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "500"
                             },
                             {
@@ -8908,8 +9265,8 @@
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
-                                  "fontSize": 100,
-                                  "letterSpacing": -3
+                                  "fontSize": "$mz-size-amount-xl",
+                                  "letterSpacing": -2
                                 }
                               }
                             },
@@ -8931,7 +9288,7 @@
                               "content": "A client is connecting. The countdown stops once the link is up.",
                               "lineHeight": 1.5,
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 17,
+                              "fontSize": "$mz-size-body",
                               "fontWeight": "normal"
                             },
                             {
@@ -8989,8 +9346,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 20,
-                          "padding": 28,
+                          "gap": "$mz-space-5",
+                          "padding": "$mz-space-7",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -9014,7 +9371,7 @@
                               "fill": "$mz-text",
                               "content": "Securing the link",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "600"
                             },
                             {
@@ -9040,10 +9397,10 @@
                   "name": "Link",
                   "width": 300,
                   "layout": "vertical",
-                  "gap": 12,
+                  "gap": "$mz-space-3",
                   "padding": [
                     0,
-                    28
+                    "$mz-space-7"
                   ],
                   "alignItems": "center",
                   "children": [
@@ -9107,7 +9464,7 @@
                       "id": "AAGEO",
                       "name": "Stepper",
                       "width": "fill_container",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "id": "jZ5nW",
@@ -9246,7 +9603,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 18,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -9299,7 +9656,7 @@
                                   "width": 84,
                                   "height": 84,
                                   "fill": "$mz-client",
-                                  "cornerRadius": 42,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -9323,7 +9680,7 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 8,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -9385,19 +9742,19 @@
           "name": "M4 · Handshake failed",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "RbNg9",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -9408,8 +9765,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -9419,7 +9776,7 @@
                       "fill": "$mz-text",
                       "content": "M4",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -9431,7 +9788,7 @@
                   "fill": "$mz-text",
                   "content": "Handshake failed",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -9442,7 +9799,7 @@
                   "fill": "$mz-text-2",
                   "content": "The link drops or keys do not match. Both sides stop; nothing was sent for approval.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -9570,7 +9927,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 20,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "children": [
                             {
@@ -9580,7 +9937,7 @@
                               "fill": "$mz-text-2",
                               "content": "Charge · not sent",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "500"
                             },
                             {
@@ -9596,8 +9953,8 @@
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
-                                  "fontSize": 100,
-                                  "letterSpacing": -3,
+                                  "fontSize": "$mz-size-amount-xl",
+                                  "letterSpacing": -2,
                                   "fill": "$mz-text-2"
                                 }
                               }
@@ -9620,7 +9977,7 @@
                               "content": "The client could not finish the handshake. Broadcast again or start over.",
                               "lineHeight": 1.5,
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 17,
+                              "fontSize": "$mz-size-body",
                               "fontWeight": "normal"
                             },
                             {
@@ -9678,8 +10035,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 20,
-                          "padding": 28,
+                          "gap": "$mz-space-5",
+                          "padding": "$mz-space-7",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -9696,7 +10053,7 @@
                               "fill": "$mz-text",
                               "content": "Handshake failed",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "600"
                             },
                             {
@@ -9741,10 +10098,10 @@
                   "name": "Link",
                   "width": 300,
                   "layout": "vertical",
-                  "gap": 12,
+                  "gap": "$mz-space-3",
                   "padding": [
                     0,
-                    28
+                    "$mz-space-7"
                   ],
                   "alignItems": "center",
                   "children": [
@@ -9795,7 +10152,7 @@
                       "id": "b5Hpyw",
                       "name": "Stepper",
                       "width": "fill_container",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "id": "SqEnN",
@@ -9934,7 +10291,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 18,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -9950,7 +10307,7 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 8,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -10012,19 +10369,19 @@
           "name": "M5 · Client reviews",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "M5lYzx",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -10035,8 +10392,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -10046,7 +10403,7 @@
                       "fill": "$mz-text",
                       "content": "M5",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -10058,7 +10415,7 @@
                   "fill": "$mz-text",
                   "content": "Client reviews",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -10069,7 +10426,7 @@
                   "fill": "$mz-text-2",
                   "content": "The amount reaches the client. The host waits while the client confirms or declines.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -10194,7 +10551,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 20,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "children": [
                             {
@@ -10204,7 +10561,7 @@
                               "fill": "$mz-text-2",
                               "content": "Charge · sent",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "500"
                             },
                             {
@@ -10220,8 +10577,8 @@
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
-                                  "fontSize": 100,
-                                  "letterSpacing": -3
+                                  "fontSize": "$mz-size-amount-xl",
+                                  "letterSpacing": -2
                                 }
                               }
                             },
@@ -10243,7 +10600,7 @@
                               "content": "The client sees this amount now and can confirm or decline it.",
                               "lineHeight": 1.5,
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 17,
+                              "fontSize": "$mz-size-body",
                               "fontWeight": "normal"
                             },
                             {
@@ -10292,8 +10649,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 20,
-                          "padding": 28,
+                          "gap": "$mz-space-5",
+                          "padding": "$mz-space-7",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -10317,7 +10674,7 @@
                               "fill": "$mz-text",
                               "content": "Waiting for the client",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "600"
                             },
                             {
@@ -10358,10 +10715,10 @@
                   "name": "Link",
                   "width": 300,
                   "layout": "vertical",
-                  "gap": 12,
+                  "gap": "$mz-space-3",
                   "padding": [
                     0,
-                    28
+                    "$mz-space-7"
                   ],
                   "alignItems": "center",
                   "children": [
@@ -10425,7 +10782,7 @@
                       "id": "p23H5",
                       "name": "Stepper",
                       "width": "fill_container",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "id": "bPP9p",
@@ -10552,7 +10909,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 18,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -10562,7 +10919,7 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 8,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -10606,7 +10963,7 @@
                           "id": "l56tq",
                           "name": "Buttons",
                           "width": "fill_container",
-                          "gap": 12,
+                          "gap": "$mz-space-3",
                           "children": [
                             {
                               "id": "lXll6",
@@ -10654,19 +11011,19 @@
           "name": "M6 · Client declined",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "w6Gaw",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -10677,8 +11034,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -10688,7 +11045,7 @@
                       "fill": "$mz-text",
                       "content": "M6",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -10700,7 +11057,7 @@
                   "fill": "$mz-text",
                   "content": "Client declined",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -10711,7 +11068,7 @@
                   "fill": "$mz-text-2",
                   "content": "The client declines. The host is notified and the transaction ends.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -10836,7 +11193,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 20,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "children": [
                             {
@@ -10846,7 +11203,7 @@
                               "fill": "$mz-text-2",
                               "content": "Charge · declined",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "500"
                             },
                             {
@@ -10862,8 +11219,8 @@
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
-                                  "fontSize": 100,
-                                  "letterSpacing": -3,
+                                  "fontSize": "$mz-size-amount-xl",
+                                  "letterSpacing": -2,
                                   "fill": "$mz-text-2"
                                 }
                               }
@@ -10886,7 +11243,7 @@
                               "content": "The client declined this payment. Nothing was charged.",
                               "lineHeight": 1.5,
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 17,
+                              "fontSize": "$mz-size-body",
                               "fontWeight": "normal"
                             },
                             {
@@ -10944,8 +11301,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 20,
-                          "padding": 28,
+                          "gap": "$mz-space-5",
+                          "padding": "$mz-space-7",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -10962,7 +11319,7 @@
                               "fill": "$mz-text",
                               "content": "Client declined",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "600"
                             },
                             {
@@ -10992,10 +11349,10 @@
                   "name": "Link",
                   "width": 300,
                   "layout": "vertical",
-                  "gap": 12,
+                  "gap": "$mz-space-3",
                   "padding": [
                     0,
-                    28
+                    "$mz-space-7"
                   ],
                   "alignItems": "center",
                   "children": [
@@ -11059,7 +11416,7 @@
                       "id": "wXzZA",
                       "name": "Stepper",
                       "width": "fill_container",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "id": "DqRH7",
@@ -11195,7 +11552,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 18,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -11211,7 +11568,7 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 8,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -11273,19 +11630,19 @@
           "name": "M7 · Mock processing",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "FRvni",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -11296,8 +11653,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -11307,7 +11664,7 @@
                       "fill": "$mz-text",
                       "content": "M7",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -11319,7 +11676,7 @@
                   "fill": "$mz-text",
                   "content": "Mock processing",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -11330,7 +11687,7 @@
                   "fill": "$mz-text-2",
                   "content": "The client confirms and gets an ack. The host runs the mock processor and picks the outcome.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -11452,7 +11809,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 20,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "children": [
                             {
@@ -11462,7 +11819,7 @@
                               "fill": "$mz-text-2",
                               "content": "Charge · confirmed",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "500"
                             },
                             {
@@ -11478,8 +11835,8 @@
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
-                                  "fontSize": 100,
-                                  "letterSpacing": -3
+                                  "fontSize": "$mz-size-amount-xl",
+                                  "letterSpacing": -2
                                 }
                               }
                             },
@@ -11501,7 +11858,7 @@
                               "content": "Mock processor. Pick the result the client should receive.",
                               "lineHeight": 1.5,
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 17,
+                              "fontSize": "$mz-size-body",
                               "fontWeight": "normal"
                             },
                             {
@@ -11559,8 +11916,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 20,
-                          "padding": 28,
+                          "gap": "$mz-space-5",
+                          "padding": "$mz-space-7",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -11582,7 +11939,7 @@
                               "fill": "$mz-text",
                               "content": "Choose the outcome",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "600"
                             },
                             {
@@ -11629,10 +11986,10 @@
                   "name": "Link",
                   "width": 300,
                   "layout": "vertical",
-                  "gap": 12,
+                  "gap": "$mz-space-3",
                   "padding": [
                     0,
-                    28
+                    "$mz-space-7"
                   ],
                   "alignItems": "center",
                   "children": [
@@ -11696,7 +12053,7 @@
                       "id": "go32N",
                       "name": "Stepper",
                       "width": "fill_container",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "id": "WLDtd",
@@ -11844,8 +12201,8 @@
                           "cornerRadius": "$mz-radius-lg",
                           "layout": "vertical",
                           "padding": [
-                            4,
-                            16
+                            "$mz-space-1",
+                            "$mz-space-4"
                           ],
                           "children": [
                             {
@@ -11857,9 +12214,9 @@
                               "strokeWidth": {
                                 "bottom": 1
                               },
-                              "gap": 12,
+                              "gap": "$mz-space-3",
                               "padding": [
-                                12,
+                                "$mz-space-3",
                                 0
                               ],
                               "alignItems": "center",
@@ -11871,7 +12228,7 @@
                                   "width": 26,
                                   "height": 26,
                                   "fill": "$mz-ok",
-                                  "cornerRadius": 13,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -11893,7 +12250,7 @@
                                   "name": "Text",
                                   "width": "fill_container",
                                   "layout": "vertical",
-                                  "gap": 2,
+                                  "gap": "$mz-space-1",
                                   "children": [
                                     {
                                       "type": "text",
@@ -11902,7 +12259,7 @@
                                       "fill": "$mz-text",
                                       "content": "Confirmed",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 15,
+                                      "fontSize": "$mz-size-label",
                                       "fontWeight": "600"
                                     },
                                     {
@@ -11928,9 +12285,9 @@
                               "strokeWidth": {
                                 "bottom": 1
                               },
-                              "gap": 12,
+                              "gap": "$mz-space-3",
                               "padding": [
-                                12,
+                                "$mz-space-3",
                                 0
                               ],
                               "alignItems": "center",
@@ -11942,7 +12299,7 @@
                                   "width": 26,
                                   "height": 26,
                                   "fill": "$mz-ok",
-                                  "cornerRadius": 13,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -11964,7 +12321,7 @@
                                   "name": "Text",
                                   "width": "fill_container",
                                   "layout": "vertical",
-                                  "gap": 2,
+                                  "gap": "$mz-space-1",
                                   "children": [
                                     {
                                       "type": "text",
@@ -11973,7 +12330,7 @@
                                       "fill": "$mz-text",
                                       "content": "Acknowledged",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 15,
+                                      "fontSize": "$mz-size-label",
                                       "fontWeight": "600"
                                     },
                                     {
@@ -11996,9 +12353,9 @@
                               "name": "Waiting for host",
                               "width": "fill_container",
                               "stroke": "$mz-line-soft",
-                              "gap": 12,
+                              "gap": "$mz-space-3",
                               "padding": [
-                                12,
+                                "$mz-space-3",
                                 0
                               ],
                               "alignItems": "center",
@@ -12010,7 +12367,7 @@
                                   "width": 26,
                                   "height": 26,
                                   "fill": "$mz-client-tint",
-                                  "cornerRadius": 13,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -12032,7 +12389,7 @@
                                   "name": "Text",
                                   "width": "fill_container",
                                   "layout": "vertical",
-                                  "gap": 2,
+                                  "gap": "$mz-space-1",
                                   "children": [
                                     {
                                       "type": "text",
@@ -12041,7 +12398,7 @@
                                       "fill": "$mz-client-hi",
                                       "content": "Waiting for host",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 15,
+                                      "fontSize": "$mz-size-label",
                                       "fontWeight": "600"
                                     },
                                     {
@@ -12081,19 +12438,19 @@
           "name": "M8 · Success",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "dusc5",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -12104,8 +12461,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -12115,7 +12472,7 @@
                       "fill": "$mz-text",
                       "content": "M8",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -12127,7 +12484,7 @@
                   "fill": "$mz-text",
                   "content": "Success",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -12138,7 +12495,7 @@
                   "fill": "$mz-text-2",
                   "content": "The host reports success. Both sides show the paid amount.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -12260,7 +12617,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 20,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "children": [
                             {
@@ -12270,7 +12627,7 @@
                               "fill": "$mz-text-2",
                               "content": "Paid",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "500"
                             },
                             {
@@ -12286,8 +12643,8 @@
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
-                                  "fontSize": 100,
-                                  "letterSpacing": -3
+                                  "fontSize": "$mz-size-amount-xl",
+                                  "letterSpacing": -2
                                 }
                               }
                             },
@@ -12309,7 +12666,7 @@
                               "content": "Payment approved. The result was sent to the client.",
                               "lineHeight": 1.5,
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 17,
+                              "fontSize": "$mz-size-body",
                               "fontWeight": "normal"
                             },
                             {
@@ -12358,8 +12715,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 20,
-                          "padding": 28,
+                          "gap": "$mz-space-5",
+                          "padding": "$mz-space-7",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -12376,7 +12733,7 @@
                               "fill": "$mz-text",
                               "content": "Payment approved",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "600"
                             },
                             {
@@ -12406,10 +12763,10 @@
                   "name": "Link",
                   "width": 300,
                   "layout": "vertical",
-                  "gap": 12,
+                  "gap": "$mz-space-3",
                   "padding": [
                     0,
-                    28
+                    "$mz-space-7"
                   ],
                   "alignItems": "center",
                   "children": [
@@ -12473,7 +12830,7 @@
                       "id": "C4szsW",
                       "name": "Stepper",
                       "width": "fill_container",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "id": "MIPQW",
@@ -12597,7 +12954,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 18,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -12613,7 +12970,7 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 8,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -12681,19 +13038,19 @@
           "name": "M9 · Failure",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "YdfiQ",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -12704,8 +13061,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -12715,7 +13072,7 @@
                       "fill": "$mz-text",
                       "content": "M9",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -12727,7 +13084,7 @@
                   "fill": "$mz-text",
                   "content": "Failure",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -12738,7 +13095,7 @@
                   "fill": "$mz-text-2",
                   "content": "The host reports a failed payment. The client sees it was not charged.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -12860,7 +13217,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 20,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "children": [
                             {
@@ -12870,7 +13227,7 @@
                               "fill": "$mz-text-2",
                               "content": "Charge · failed",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "500"
                             },
                             {
@@ -12886,8 +13243,8 @@
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
-                                  "fontSize": 100,
-                                  "letterSpacing": -3,
+                                  "fontSize": "$mz-size-amount-xl",
+                                  "letterSpacing": -2,
                                   "fill": "$mz-text-2"
                                 }
                               }
@@ -12910,7 +13267,7 @@
                               "content": "The processor rejected the payment. The client was told.",
                               "lineHeight": 1.5,
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 17,
+                              "fontSize": "$mz-size-body",
                               "fontWeight": "normal"
                             },
                             {
@@ -12959,8 +13316,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 20,
-                          "padding": 28,
+                          "gap": "$mz-space-5",
+                          "padding": "$mz-space-7",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -12977,7 +13334,7 @@
                               "fill": "$mz-text",
                               "content": "Payment failed",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "600"
                             },
                             {
@@ -13007,10 +13364,10 @@
                   "name": "Link",
                   "width": 300,
                   "layout": "vertical",
-                  "gap": 12,
+                  "gap": "$mz-space-3",
                   "padding": [
                     0,
-                    28
+                    "$mz-space-7"
                   ],
                   "alignItems": "center",
                   "children": [
@@ -13074,7 +13431,7 @@
                       "id": "kRb8z",
                       "name": "Stepper",
                       "width": "fill_container",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "id": "hCi1v",
@@ -13198,7 +13555,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 18,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -13214,7 +13571,7 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 8,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -13276,19 +13633,19 @@
           "name": "M10 · Countdown expired",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "eAjHp",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -13299,8 +13656,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -13310,7 +13667,7 @@
                       "fill": "$mz-text",
                       "content": "M10",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -13322,7 +13679,7 @@
                   "fill": "$mz-text",
                   "content": "Countdown expired",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -13333,7 +13690,7 @@
                   "fill": "$mz-text-2",
                   "content": "No client connected in 60 s. The host stops advertising and resets the amount.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -13467,7 +13824,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 20,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "children": [
                             {
@@ -13477,10 +13834,10 @@
                               "width": "fill_container",
                               "fill": "$mz-host-tint",
                               "cornerRadius": "$mz-radius-lg",
-                              "gap": 14,
+                              "gap": "$mz-space-3",
                               "padding": [
-                                14,
-                                18
+                                "$mz-space-3",
+                                "$mz-space-5"
                               ],
                               "alignItems": "center",
                               "children": [
@@ -13500,7 +13857,7 @@
                                   "name": "Text",
                                   "width": "fill_container",
                                   "layout": "vertical",
-                                  "gap": 2,
+                                  "gap": "$mz-space-1",
                                   "children": [
                                     {
                                       "type": "text",
@@ -13509,7 +13866,7 @@
                                       "fill": "$mz-text",
                                       "content": "No client in 60 s",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 16,
+                                      "fontSize": "$mz-size-body",
                                       "fontWeight": "600"
                                     },
                                     {
@@ -13519,7 +13876,7 @@
                                       "fill": "$mz-text-2",
                                       "content": "Advertising stopped. 124.50 was cleared.",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 14,
+                                      "fontSize": "$mz-size-small",
                                       "fontWeight": "normal"
                                     }
                                   ]
@@ -13533,7 +13890,7 @@
                               "fill": "$mz-text-2",
                               "content": "Charge",
                               "fontFamily": "$mz-font-text",
-                              "fontSize": 20,
+                              "fontSize": "$mz-size-lead",
                               "fontWeight": "500"
                             },
                             {
@@ -13549,8 +13906,8 @@
                                 },
                                 "F5vhi": {
                                   "content": "0",
-                                  "fontSize": 100,
-                                  "letterSpacing": -3,
+                                  "fontSize": "$mz-size-amount-xl",
+                                  "letterSpacing": -2,
                                   "fill": "$mz-text-3"
                                 }
                               }
@@ -13609,8 +13966,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 4,
-                          "padding": 16,
+                          "gap": "$mz-space-1",
+                          "padding": "$mz-space-4",
                           "children": [
                             {
                               "type": "frame",
@@ -13618,7 +13975,7 @@
                               "name": "Row",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "gap": 4,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "id": "Wb3RW",
@@ -13667,7 +14024,7 @@
                               "name": "Row",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "gap": 4,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "id": "A8ZqQ",
@@ -13716,7 +14073,7 @@
                               "name": "Row",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "gap": 4,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "id": "HT6Ux",
@@ -13765,7 +14122,7 @@
                               "name": "Row",
                               "width": "fill_container",
                               "height": "fill_container",
-                              "gap": 4,
+                              "gap": "$mz-space-1",
                               "children": [
                                 {
                                   "id": "GpNoZ",
@@ -13829,10 +14186,10 @@
                   "name": "Link",
                   "width": 300,
                   "layout": "vertical",
-                  "gap": 12,
+                  "gap": "$mz-space-3",
                   "padding": [
                     0,
-                    28
+                    "$mz-space-7"
                   ],
                   "alignItems": "center",
                   "children": [
@@ -13883,7 +14240,7 @@
                       "id": "Dydk8",
                       "name": "Stepper",
                       "width": "fill_container",
-                      "gap": 6,
+                      "gap": "$mz-space-2",
                       "children": [
                         {
                           "id": "eGsnq",
@@ -14025,7 +14382,7 @@
                           "width": "fill_container",
                           "height": "fill_container",
                           "layout": "vertical",
-                          "gap": 18,
+                          "gap": "$mz-space-5",
                           "justifyContent": "center",
                           "alignItems": "center",
                           "children": [
@@ -14078,7 +14435,7 @@
                                   "width": 84,
                                   "height": 84,
                                   "fill": "$mz-raised-2",
-                                  "cornerRadius": 42,
+                                  "cornerRadius": "$mz-radius-pill",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -14102,7 +14459,7 @@
                               "name": "Text",
                               "width": "fill_container",
                               "layout": "vertical",
-                              "gap": 8,
+                              "gap": "$mz-space-2",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -14165,19 +14522,19 @@
           "name": "S1 · Host settings",
           "width": 1967,
           "fill": "$mz-rail",
-          "cornerRadius": 40,
+          "cornerRadius": "$mz-radius-2xl",
           "stroke": "$mz-line-soft",
           "strokeWidth": 1,
           "layout": "vertical",
-          "gap": 28,
-          "padding": 40,
+          "gap": "$mz-space-7",
+          "padding": "$mz-space-10",
           "children": [
             {
               "type": "frame",
               "id": "U3Nba",
               "name": "Header",
               "width": "fill_container",
-              "gap": 16,
+              "gap": "$mz-space-4",
               "alignItems": "center",
               "children": [
                 {
@@ -14188,8 +14545,8 @@
                   "stroke": "$mz-line-strong",
                   "strokeWidth": 1,
                   "padding": [
-                    6,
-                    12
+                    "$mz-space-2",
+                    "$mz-space-3"
                   ],
                   "children": [
                     {
@@ -14199,7 +14556,7 @@
                       "fill": "$mz-text",
                       "content": "S1",
                       "fontFamily": "$mz-font-mono",
-                      "fontSize": 16,
+                      "fontSize": "$mz-size-body",
                       "fontWeight": "700"
                     }
                   ]
@@ -14211,7 +14568,7 @@
                   "fill": "$mz-text",
                   "content": "Host settings",
                   "fontFamily": "$mz-font-display",
-                  "fontSize": 34,
+                  "fontSize": "$mz-size-heading",
                   "fontWeight": "600",
                   "letterSpacing": -0.5
                 },
@@ -14222,7 +14579,7 @@
                   "fill": "$mz-text-2",
                   "content": "Host only. Sets how long the iPad advertises an amount before it resets.",
                   "fontFamily": "$mz-font-text",
-                  "fontSize": 17,
+                  "fontSize": "$mz-size-body",
                   "fontWeight": "normal"
                 }
               ]
@@ -14350,7 +14707,7 @@
                       "width": "fill_container",
                       "height": "fill_container",
                       "layout": "vertical",
-                      "gap": 24,
+                      "gap": "$mz-space-6",
                       "children": [
                         {
                           "type": "text",
@@ -14370,8 +14727,8 @@
                           "fill": "$mz-raised",
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
-                          "gap": 20,
-                          "padding": 28,
+                          "gap": "$mz-space-5",
+                          "padding": "$mz-space-7",
                           "children": [
                             {
                               "type": "frame",
@@ -14386,7 +14743,7 @@
                                   "id": "QRyWr",
                                   "name": "Text",
                                   "layout": "vertical",
-                                  "gap": 4,
+                                  "gap": "$mz-space-1",
                                   "children": [
                                     {
                                       "type": "text",
@@ -14395,7 +14752,7 @@
                                       "fill": "$mz-text",
                                       "content": "Advertising countdown",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 18,
+                                      "fontSize": "$mz-size-lead",
                                       "fontWeight": "600"
                                     },
                                     {
@@ -14405,7 +14762,7 @@
                                       "fill": "$mz-text-2",
                                       "content": "After this, advertising stops and the amount resets.",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 15,
+                                      "fontSize": "$mz-size-label",
                                       "fontWeight": "normal"
                                     }
                                   ]
@@ -14417,7 +14774,7 @@
                                   "fill": "$mz-host-hi",
                                   "content": "60 s",
                                   "fontFamily": "$mz-font-display",
-                                  "fontSize": 40,
+                                  "fontSize": "$mz-size-title",
                                   "fontWeight": "600"
                                 }
                               ]
@@ -14429,8 +14786,8 @@
                               "width": "fill_container",
                               "fill": "$mz-rail",
                               "cornerRadius": "$mz-radius-md",
-                              "gap": 8,
-                              "padding": 4,
+                              "gap": "$mz-space-2",
+                              "padding": "$mz-space-1",
                               "children": [
                                 {
                                   "type": "frame",
@@ -14438,8 +14795,8 @@
                                   "name": "15 s",
                                   "width": "fill_container",
                                   "height": 48,
-                                  "fill": "#00000000",
-                                  "cornerRadius": 8,
+                                  "fill": "$mz-rail",
+                                  "cornerRadius": "$mz-radius-sm",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -14450,7 +14807,7 @@
                                       "fill": "$mz-text-2",
                                       "content": "15 s",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 15,
+                                      "fontSize": "$mz-size-label",
                                       "fontWeight": "500"
                                     }
                                   ]
@@ -14461,8 +14818,8 @@
                                   "name": "30 s",
                                   "width": "fill_container",
                                   "height": 48,
-                                  "fill": "#00000000",
-                                  "cornerRadius": 8,
+                                  "fill": "$mz-rail",
+                                  "cornerRadius": "$mz-radius-sm",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -14473,7 +14830,7 @@
                                       "fill": "$mz-text-2",
                                       "content": "30 s",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 15,
+                                      "fontSize": "$mz-size-label",
                                       "fontWeight": "500"
                                     }
                                   ]
@@ -14485,7 +14842,7 @@
                                   "width": "fill_container",
                                   "height": 48,
                                   "fill": "$mz-host",
-                                  "cornerRadius": 8,
+                                  "cornerRadius": "$mz-radius-sm",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -14496,7 +14853,7 @@
                                       "fill": "$mz-on-accent",
                                       "content": "60 s",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 15,
+                                      "fontSize": "$mz-size-label",
                                       "fontWeight": "700"
                                     }
                                   ]
@@ -14507,8 +14864,8 @@
                                   "name": "90 s",
                                   "width": "fill_container",
                                   "height": 48,
-                                  "fill": "#00000000",
-                                  "cornerRadius": 8,
+                                  "fill": "$mz-rail",
+                                  "cornerRadius": "$mz-radius-sm",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -14519,7 +14876,7 @@
                                       "fill": "$mz-text-2",
                                       "content": "90 s",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 15,
+                                      "fontSize": "$mz-size-label",
                                       "fontWeight": "500"
                                     }
                                   ]
@@ -14530,8 +14887,8 @@
                                   "name": "120 s",
                                   "width": "fill_container",
                                   "height": 48,
-                                  "fill": "#00000000",
-                                  "cornerRadius": 8,
+                                  "fill": "$mz-rail",
+                                  "cornerRadius": "$mz-radius-sm",
                                   "justifyContent": "center",
                                   "alignItems": "center",
                                   "children": [
@@ -14542,7 +14899,7 @@
                                       "fill": "$mz-text-2",
                                       "content": "120 s",
                                       "fontFamily": "$mz-font-text",
-                                      "fontSize": 15,
+                                      "fontSize": "$mz-size-label",
                                       "fontWeight": "500"
                                     }
                                   ]
@@ -14560,8 +14917,8 @@
                           "cornerRadius": "$mz-radius-xl",
                           "layout": "vertical",
                           "padding": [
-                            4,
-                            28
+                            "$mz-space-1",
+                            "$mz-space-7"
                           ],
                           "children": [
                             {
@@ -14574,7 +14931,7 @@
                                 "bottom": 1
                               },
                               "padding": [
-                                18,
+                                "$mz-space-5",
                                 0
                               ],
                               "justifyContent": "space_between",
@@ -14586,7 +14943,7 @@
                                   "fill": "$mz-text-2",
                                   "content": "Advertised name",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 16,
+                                  "fontSize": "$mz-size-body",
                                   "fontWeight": "normal"
                                 },
                                 {
@@ -14596,7 +14953,7 @@
                                   "fill": "$mz-text",
                                   "content": "MIZAN-7F3A",
                                   "fontFamily": "$mz-font-mono",
-                                  "fontSize": 15,
+                                  "fontSize": "$mz-size-label",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -14611,7 +14968,7 @@
                                 "bottom": 1
                               },
                               "padding": [
-                                18,
+                                "$mz-space-5",
                                 0
                               ],
                               "justifyContent": "space_between",
@@ -14623,7 +14980,7 @@
                                   "fill": "$mz-text-2",
                                   "content": "Currency",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 16,
+                                  "fontSize": "$mz-size-body",
                                   "fontWeight": "normal"
                                 },
                                 {
@@ -14633,7 +14990,7 @@
                                   "fill": "$mz-text",
                                   "content": "Mizan · MZN",
                                   "fontFamily": "$mz-font-mono",
-                                  "fontSize": 15,
+                                  "fontSize": "$mz-size-label",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -14645,7 +15002,7 @@
                               "width": "fill_container",
                               "stroke": "$mz-line-soft",
                               "padding": [
-                                18,
+                                "$mz-space-5",
                                 0
                               ],
                               "justifyContent": "space_between",
@@ -14657,7 +15014,7 @@
                                   "fill": "$mz-text-2",
                                   "content": "Processor",
                                   "fontFamily": "$mz-font-text",
-                                  "fontSize": 16,
+                                  "fontSize": "$mz-size-body",
                                   "fontWeight": "normal"
                                 },
                                 {
@@ -14667,7 +15024,7 @@
                                   "fill": "$mz-text",
                                   "content": "Mock · manual outcome",
                                   "fontFamily": "$mz-font-mono",
-                                  "fontSize": 15,
+                                  "fontSize": "$mz-size-label",
                                   "fontWeight": "normal"
                                 }
                               ]
@@ -14685,8 +15042,8 @@
                       "fill": "$mz-raised",
                       "cornerRadius": "$mz-radius-xl",
                       "layout": "vertical",
-                      "gap": 20,
-                      "padding": 28,
+                      "gap": "$mz-space-5",
+                      "padding": "$mz-space-7",
                       "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
@@ -50071,7 +50428,7 @@
     },
     "mz-size-amount-xl": {
       "type": "number",
-      "value": 120
+      "value": 100
     },
     "mz-size-amount-l": {
       "type": "number",
@@ -50100,6 +50457,38 @@
     "mz-size-eyebrow": {
       "type": "number",
       "value": 12
+    },
+    "mz-space-7": {
+      "type": "number",
+      "value": 28
+    },
+    "mz-space-10": {
+      "type": "number",
+      "value": 40
+    },
+    "mz-space-20": {
+      "type": "number",
+      "value": 80
+    },
+    "mz-radius-2xl": {
+      "type": "number",
+      "value": 40
+    },
+    "mz-size-lead": {
+      "type": "number",
+      "value": 20
+    },
+    "mz-size-label": {
+      "type": "number",
+      "value": 15
+    },
+    "mz-size-heading": {
+      "type": "number",
+      "value": 34
+    },
+    "mz-size-display": {
+      "type": "number",
+      "value": 56
     }
   },
   "fileToken": "f87482d1-ef37-4128-8435-036a9d5f7dd8"
