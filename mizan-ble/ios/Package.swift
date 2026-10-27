@@ -7,8 +7,20 @@ let package = Package(
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
+        .library(name: "Machine", targets: ["Machine"]),
+        .library(name: "Settings", targets: ["Settings"]),
+        .library(name: "MessageCodec", targets: ["MessageCodec"]),
+        .library(name: "SessionCrypto", targets: ["SessionCrypto"]),
     ],
     targets: [
+        .target(name: "Machine"),
+        .testTarget(name: "MachineTests", dependencies: ["Machine"]),
+        .target(name: "Settings"),
+        .testTarget(name: "SettingsTests", dependencies: ["Settings"]),
+        .target(name: "MessageCodec"),
+        .testTarget(name: "MessageCodecTests", dependencies: ["MessageCodec"]),
+        .target(name: "SessionCrypto"),
+        .testTarget(name: "SessionCryptoTests", dependencies: ["SessionCrypto"]),
         .target(
             name: "DesignSystem",
             resources: [.copy("Resources/Fonts")]
