@@ -85,7 +85,7 @@ public extension ClientPaymentState {
             exchange: .init(
                 hostCode: "H6", hostDetail: "Done", message: "success",
                 clientCode: "C5", clientDetail: "Done", tone: .ok,
-                direction: .toClient, symbol: "checkmark.seal"
+                direction: .toClient, symbol: "checkmark.circle"
             ),
             content: .paid(title: "Paid", amount: "124.50", detail: "to MIZAN-7F3A"),
             actions: [.init("Done", event: .done, symbol: "checkmark", kind: .secondary, isEnabled: true)]
@@ -101,7 +101,7 @@ public extension ClientPaymentState {
             exchange: .init(
                 hostCode: "H6", hostDetail: "Done", message: "failure",
                 clientCode: "C5", clientDetail: "Done", tone: .bad,
-                direction: .toClient, symbol: "xmark.seal"
+                direction: .toClient, symbol: "xmark.circle"
             ),
             content: .result(mark: .failure, title: "Payment failed", detail: "MIZAN-7F3A could not process 124.50. You were not charged."),
             actions: [.init("Done", event: .done, symbol: "checkmark", kind: .secondary, isEnabled: true)]
@@ -197,7 +197,7 @@ public extension ClientPaymentState {
             exchange: .init(
                 hostCode: "H6", hostDetail: "Done", message: "success",
                 clientCode: "C5", clientDetail: "Done", tone: .ok,
-                direction: .toClient, symbol: "checkmark.seal"
+                direction: .toClient, symbol: "checkmark.circle"
             ),
             content: .paid(title: "Paid", amount: "124.50", detail: "to Mizan till"),
             actions: [.init("Done", event: .done, symbol: "checkmark", kind: .secondary, isEnabled: true)]

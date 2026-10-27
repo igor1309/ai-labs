@@ -36,6 +36,7 @@ public struct ClientView: View {
                         Text(state.title).typeRole(.title)
                             .fixedSize(horizontal: false, vertical: true)
                         Text(state.detail).typeRole(.body)
+                            .lineSpacing(Tokens.space1)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .multilineTextAlignment(.center)
@@ -55,14 +56,14 @@ public struct ClientView: View {
         switch state.content {
         case let .discovery(icon, isInRange):
             iconView(icon, foreground: isInRange ? Tokens.onAccent : Tokens.text2)
-                .frame(width: Tokens.space20, height: Tokens.space20)
+                .frame(width: Tokens.sizeRing, height: Tokens.sizeRing)
                 .background(isInRange ? Tokens.client : Tokens.raised2, in: Circle())
-                .padding(Tokens.space5)
+                .frame(width: Tokens.space20 + Tokens.space10, height: Tokens.space20 + Tokens.space10)
                 .background(isInRange ? Tokens.clientTint : Tokens.overlay, in: Circle())
-                .padding(Tokens.space7)
-                .overlay { Circle().strokeBorder(isInRange ? Tokens.clientTint : Tokens.line) }
-                .padding(Tokens.space8)
-                .overlay { Circle().strokeBorder(isInRange ? Tokens.clientTint : Tokens.line) }
+                .frame(width: Tokens.space20 * 2 + Tokens.space5, height: Tokens.space20 * 2 + Tokens.space5)
+                .overlay { Circle().strokeBorder(isInRange ? Tokens.clientTint : Tokens.line, lineWidth: 1.5) }
+                .frame(width: Tokens.space20 * 3, height: Tokens.space20 * 3)
+                .overlay { Circle().strokeBorder(isInRange ? Tokens.clientTint : Tokens.line, lineWidth: 1.5) }
                 .accessibilityHidden(true)
         case .connectionFailure:
             BluetoothSymbol(isSlashed: true)
@@ -70,7 +71,6 @@ public struct ClientView: View {
                 .frame(width: Tokens.sizeKey, height: Tokens.sizeKey)
                 .frame(width: Tokens.space14 * 2, height: Tokens.space14 * 2)
                 .background(Tokens.badTint, in: Circle())
-                .padding(.vertical, Tokens.space8)
                 .accessibilityHidden(true)
         }
     }
@@ -106,6 +106,8 @@ public struct ClientView: View {
                         .rotationEffect(.degrees(rotation))
                 }
             }
+            // The screen supplies disabled opacity; macOS must not dim the label again.
+            .environment(\.isEnabled, true)
         }
         .buttonStyle(.action(action.kind))
         .disabled(!enabled)
