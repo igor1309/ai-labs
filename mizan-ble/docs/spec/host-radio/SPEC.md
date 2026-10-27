@@ -1,27 +1,22 @@
 # Host radio
 
 Observer: the root, which answers the host flows' advertiser, sender and
-link with this adapter, a thin binding over `CBPeripheralManager` that
-translates the GATT layout and the client's acts into events.
+link with this thin binding over `CBPeripheralManager` and the GATT layout.
 
 ## Decided
 
 - **Bluetooth state is an event;** leaving "on" also tells the client lost.
-- **A failure to serve or to advertise is one event,** "could not go on
-  air", with its error, as the flow answers both the same way.
+- **A failure to serve or to advertise is one event,** "could not go on air".
 - **One client per session:** the first central to subscribe and write
   Client key owns it; another's writes get an ATT error, not passed on.
-- **Retire aborts:** it drops what is queued, removes the service and
-  clears the owner. **Finish** sends what is queued, then retires; the
-  owner unsubscribing or Bluetooth leaving "on" ends it early, so it lasts
-  no longer than the link. A serve during a finish waits for its end.
-- **A send is taken at once and answers only a failure:** a message over
-  the owner's `maximumUpdateValueLength` fails; a full queue does not, as
-  the message waits for `peripheralManagerIsReady`, in order.
-- **The client is lost when the owner unsubscribes from To client:** iOS
-  has no disconnect callback, and any disconnect ends it; no heartbeat.
-- **A peripheral cannot disconnect a central:** the host ends a link by
-  retiring the service, which the client sees as the service gone.
+- **Retire and finish act on the session they name.** Retire stops its
+  advertising, drops its queue, service, owner and late callbacks, or an
+  unserved session. Finish sends the queue first; an unsubscribe or
+  Bluetooth off ends it; a serve waits for it.
+- **A send is taken at once and answers only a failure:** over the owner's
+  `maximumUpdateValueLength`; a full queue waits for `peripheralManagerIsReady`.
+- **The client is lost when the owner unsubscribes** (no disconnect
+  callback, no heartbeat); the host ends a link by retiring the service.
 
 ```gherkin
 Feature: The host's side of the air
@@ -90,11 +85,16 @@ Feature: The host's side of the air
     Given a central owns a served session with a message queued
     When I finish it
     Then I can read that the queued message left before the service was removed
+
   Scenario: S-14 Serving while a session finishes
     Given a session is finishing with a message queued
     When I serve a new session
     Then I can read that the queued message left before the new session went on the air
+
+  Scenario: S-15 Retiring a session that waits
+    Given a session is finishing with a message queued, and a new one waits to be served
+    When I retire the new one
+    Then I can read that the queued message left, and the new session never went on the air
 ```
 
-Not host radio's: when to advertise or what to send (host flows), bytes
-(codec, session crypto).
+Not host radio's: when to advertise or what to send, and the bytes.

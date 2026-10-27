@@ -7,7 +7,7 @@ retired and closed; rows read that record and the state.
 
 ## S-1 Locking starts the broadcast
 
-124.50 locked with the setting at 30: the advertiser fake serves a session and advertises; the state reads advertised with 30 left. Evidence: Missing.
+124.50 locked with the setting at 30: the advertiser fake serves a session and advertises; the state reads going on the air, no countdown started, cancel offered. Evidence: Missing.
 
 ## S-2 The host cannot go on air
 
@@ -19,7 +19,7 @@ Locked, the countdown fake reaches zero: advertising stopped, the service retire
 
 ## S-4 Cancel while advertising
 
-Locked, cancel: advertising stopped, the service retired; the state reads 124.50 not locked. Evidence: Missing.
+Advertised, cancel: advertising stopped, the service retired; the state reads 124.50 not locked. Evidence: Missing.
 
 ## S-5 A client starts the handshake
 
@@ -56,3 +56,11 @@ Handed over, payment ended: the state reads an empty amount. Evidence: Missing.
 ## S-13 Bluetooth is lost while on air
 
 Advertised, the advertiser fake reports Bluetooth off: the state reads the reason and 124.50 not locked; the session closed. Evidence: Missing.
+
+## S-14 On the air
+
+Going on the air, the fake says advertising started: the countdown fake started at 30; the state reads advertised with 30 left. Evidence: Missing.
+
+## S-15 Cancel while going on the air
+
+Locked, cancel before the fake says on the air, then the fake says advertising started: the fake retired that session; the state reads 124.50 not locked and stays so. Evidence: Missing.

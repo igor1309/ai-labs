@@ -3,13 +3,17 @@
 ## Grounding
 
 These rules hold for every line of Mizan BLE's code. Re-read them before
-designing, specifying or building anything.
+designing, specifying or building anything. They are SOLID applied by
+composition: components meet only through interfaces, and the root
+composes concrete pieces behind them.
 
-1. **A component owns the interfaces it depends on.** It declares each
-   collaborator as an interface of its own, shaped by the role that
-   collaborator plays for it. It never imports another component, a concrete
-   implementation or another component's interface, so it changes only for
-   its own reasons.
+1. **A component names what it provides and owns what it requires.** It
+   provides one contract of its own (a flow's events in and state out, or
+   a pure function's input and answer), and it declares each collaborator
+   as an interface of its own, shaped by the role that collaborator plays
+   for it. It never imports another component, a concrete implementation
+   or another component's interface, so it changes only for its own
+   reasons. The table under Contracts lists both sides of each.
 2. **The outside world lives only in adapters.** That covers Core Bluetooth,
    the clock, stored preferences and SwiftUI. A component knows none of
    them. CryptoKit is a library of pure functions here: nothing is kept in
@@ -21,9 +25,18 @@ designing, specifying or building anything.
    component and adapter and decides what answers each interface. It
    decides nothing else: coordination that decides anything is a state
    machine with its own tests, and the root only builds and subscribes.
-5. **Cross-cutting concerns are decorators at the root.** Logging wraps the
-   radios' events, the messages sent and received and each machine's state.
-   No component logs.
+5. **Adapters translate contracts; decorators add behaviour and keep the
+   contract.** An adapter's own API is mapped onto a component's interface
+   by a thin translation in the root. A decorator wraps an interface with
+   the same interface: logging wraps the radios' events, the messages sent
+   and received and each machine's state, and no component logs. Any later
+   policy that no screen draws and no flow decides (a retry, a measure, a
+   fault injected in a test) is added the same way, without changing a
+   component. A policy the person sees is a flow's state instead.
+6. **The root composes freely.** One object may answer several interfaces
+   (each radio answers several flows), and any interface may be answered
+   by an adapter, a fake or a stack of decorators; the components cannot
+   tell which.
 
 ## Shape
 
@@ -88,7 +101,7 @@ nothing; what a screen offers follows from the state.
 | App | `MizanBLE` (app target) | Root | Builds everything, wires each interface, decorates with logging |
 
 All modules but the app target live in one Swift package under
-`mizan-ble/ios/`. The app targets iOS 17. The UI modules depend on `DesignSystem` only; that is the
+`mizan-ble/ios/`. The app targets iOS 26, as the package does. The UI modules depend on `DesignSystem` only; that is the
 one dependency between modules, since a design system is a library the
 screens are drawn in, not a collaborator.
 
@@ -133,6 +146,52 @@ The root is the only node with outgoing arrows to components: no core,
 adapter or UI module imports another, except the UI modules' use of
 `DesignSystem`.
 
+## Contracts
+
+What each component provides, and the interfaces it owns for what it
+requires. An adapter provides its own API only; the root answers each
+component's interface with a thin translation over it: the host flows'
+advertiser, sender and link over the host radio, client find's scanner and
+the client flows' links and senders over the client radio, the countdown,
+deadline and ticks with the clock's own countdown and ticks, the client
+radio's `now` with the clock's now, and the
+settings' store over preferences.
+
+| Component | Provides | Requires, as its own interfaces |
+|---|---|---|
+| Machine | A flow: send an event, read the state | A reducer and an effect handler |
+| Amount entry | A key and Bluetooth's availability in, the amount and whether it can be locked out | — |
+| Host broadcast | Lock, cancel, retry, new amount, the advertiser's events and the transaction's end in; its state; a secure link handed over | A session, an advertiser, a sender, a countdown, the countdown setting |
+| Host payment | The client's decision, a lost link, the outcome, cancel and new amount in; its state; the end | A session, a sender, a link |
+| Client find | The picker's answer, Bluetooth's state, start and the transaction's end in; its state; a host, with its name or none, handed over | A scanner |
+| Client connect | The link's steps, cancel, retry in; its state; a link, its session and the amount handed over | A link, a session, a deadline |
+| Client review | The payer's decision and done, the host's messages and a lost link in; its state; a confirm handed over | A session, a sender, a link |
+| Client payment | The host's result, a lost link and the payer's done in; its state; the end | A session, a link |
+| Session crypto | A session: a key pair, derive, seal, open, close | — (CryptoKit, used as a library) |
+| Host picker | Readings and the time in, a host, "hold closer" or "none" out | Its settings, given as values |
+| Message codec | Each message and the Session characteristic to bytes and back | — |
+| Settings | Each setting's value, and choosing one | A store |
+| Host UI, Settings UI, Client UI, Client payment UI, Mode switch | Screens: a state drawn, the person's events sent | The state and events, as their own types; `DesignSystem` |
+| Design system | Tokens and views that take plain values | — |
+| Host radio | Serve, advertise, stop advertising, retire, finish and send; events for Bluetooth's state, on the air or not, a key, a decision and the client lost | `CBPeripheralManager` |
+| Client radio | Scan, stop, connect, write and drop; readings, and events for each GATT step, a message and a lost link | `CBCentralManager`, `CBPeripheral`, and a `now` of its own |
+| Clock | Now; ticks every interval asked for; a countdown that reports the seconds left and ends at zero; each until stopped | `ContinuousClock` |
+| Preferences | A number or a text under a key | `UserDefaults` |
+| App | The running app | Every component and adapter |
+
+## SOLID, checked
+
+| Principle | How it holds |
+|---|---|
+| Single responsibility | Each machine takes one stretch of a transaction; a reducer decides and its effect handler only acts; each adapter binds one outside API |
+| Open/closed | A new policy is a decorator or a new adapter behind an existing interface; a component changes only when what it does for the person changes |
+| Liskov substitution | Every adapter, fake and decorator keeps the contract its component's spec states, so a spec's scenarios hold whichever answers the interface |
+| Interface segregation | Each interface is shaped by one consumer's role: host broadcast's advertiser serves and advertises, host payment's sender only sends |
+| Dependency inversion | Components depend only on interfaces they own; adapters on their outside API and on interfaces they own (the client radio's `now`); the root alone depends on concrete pieces, and its translations make each answer another's interface |
+
+Coupling, checked: no core module imports Core Bluetooth, SwiftUI or
+another component, and no flow's interface carries a Core Bluetooth type.
+
 ## Data flow
 
 - **Host:** the host UI sends key presses to amount entry, lock, cancel
@@ -140,7 +199,7 @@ adapter or UI module imports another, except the UI modules' use of
   new amount to host payment. Their effects open and close a session
   (session crypto); serve, advertise, stop advertising and retire the
   service, or finish it after what is queued (host radio; a serve waits
-  for a finish, and a mode switch finishes, never retires); start and stop
+  for a finish); start and stop
   the countdown (clock); and send a message (codec, then session crypto,
   then the host radio). The host radio's client key and decision writes,
   its subscription and unsubscription come back as events, the decision
@@ -156,8 +215,9 @@ adapter or UI module imports another, except the UI modules' use of
   and client find hear Bluetooth's state, and offer no new attempt until
   it is back.
 - **Mode:** the mode switch says which mode is on. The root keeps only that
-  mode's flows and radio alive, and tells the switch whether they are at
-  rest, which is when the switch may move.
+  mode's flows alive, and tells the switch whether they are at rest, which
+  is when the switch may move. Both radios live as long as the app, idle
+  unless a flow uses them, so a finishing session outlives a switch.
 
 ## GATT layout
 
@@ -251,3 +311,79 @@ Each line can be overturned by the owner.
 - **The mode is chosen in the UI and kept by the root,** since choosing
   which flows run is building, and a switch held until they are at rest
   needs no machine of its own.
+
+## The outside candidate, weighed
+
+A model-written candidate (`docs/research/mizan-ble-arch-by-chatgpt.md`)
+stands on SOLID and composition: each component provides and requires
+polymorphic interfaces, adapters translate contracts, decorators add
+behaviour while keeping the contract, one object may answer several
+interfaces, and a composition root combines them freely. On that it
+proposes two coarse components, `Client` and `Host`, that see only payment
+contracts, with discovery, connection, the session and policies hidden in
+adapters and decorators.
+
+This architecture takes the principles whole: they are the grounding
+rules, the Contracts table and the SOLID check above. What it weighs
+below is where the candidate draws boundaries for v0.0.1.
+
+Taken:
+
+- **The same roles and exchange:** the iPad a peripheral that notifies,
+  the iPhone a central that writes with response, an advertisement that
+  identifies the service by its UUID (Mizan adds the till's name), and the
+  amount sent only after the link.
+- **No framework in a flow:** no flow imports Core Bluetooth or CryptoKit;
+  each depends on interfaces it owns, and a host reaches it as an opaque
+  reference.
+- **Discovery's events apart from its lifetime:** the root maps the
+  scanner's readings into the flows, while client find only starts and
+  stops it; a start while scanning and a stop while stopped do nothing.
+- **Message protection behind its own interface:** the cryptography is
+  session crypto's alone. Another scheme (the candidate names HPKE or JWE)
+  also changes what the codec fixes, the key's and the sealed box's sizes,
+  and so needs a new protocol version with its own handshake.
+- **One object behind several interfaces:** each radio answers the
+  advertiser, sender and link of several flows.
+- **A replayed message never acts twice,** done by session crypto's
+  counters rather than an idempotency decorator, since one session carries
+  one decision.
+- **"Result unknown"** when the link drops after a confirm.
+
+Left, with the reason:
+
+- **Discovery, connection and the handshake inside adapters:** each of
+  them is a screen the design draws (hold closer, connecting, could not
+  connect, host went quiet), so each is a flow's state with a spec, and an
+  adapter stays a thin binding.
+- **Sessions and keys hidden from the flows:** Mizan's flows name a
+  session, a key and a link in their own interfaces, since each step of
+  the handshake can fail on screen and each is specified with fakes.
+- **Protection as a decorator on the sender:** the handshake's own steps
+  (derive, the first seal) belong to the flows' states, so the session is
+  an interface the flows call, not a wrapper around the radio.
+- **Offers found over an authenticated link before the payer chooses:**
+  the client picks a host by signal strength before any connection, and
+  connects and reads the amount only after the payer's tap.
+- **Face ID before a confirm:** no step of v0.0.1 asks for it.
+- **A timeout on the result:** none once the amount is on the phone (M5).
+- **Expiry as a decorator:** the countdown is drawn as a ring and ends the
+  handshake on screen, so it is host broadcast's state; a decorator holds
+  only what no screen draws.
+- **A till key pre-shared by QR code, the till proving it, HPKE:** v0.0.1
+  encrypts each transaction with a fresh key agreement and does not
+  authenticate the till, as `NOTES.md` decides. A later release shows a
+  four-digit code on both screens; trusted till keys need a backend and
+  are beyond the proof of concept (`docs/poc.md`).
+- **Framing across several writes:** every message fits one write or
+  notification, and one that does not fails.
+- **Offer, decision and payment ids:** one session carries one
+  transaction, and its id and counters bind every message to it.
+- **An offer that expires at submission:** the handshake's countdown is
+  the only deadline; once the amount is on the phone nothing expires (M5),
+  so a confirm is never refused for its age.
+- **A result kept after it fails to arrive:** the host shows the result
+  sent and keeps nothing once the session finishes, as nothing could ask
+  for it again; the payer who never got it sees "result unknown".
+- **A payment authorizer:** the processor is the operator's mock pick; a
+  real one later becomes host payment's own interface.

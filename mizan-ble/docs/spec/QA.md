@@ -67,22 +67,24 @@ to success with the iPhone as host and the iPad as client. Evidence: Missing.
 
 ## S-12 Bluetooth off
 
-Bluetooth off in Control Centre on one device: each mode there says
-Bluetooth is off and offers no lock or handshake. Evidence: Missing.
+Bluetooth off under Settings › Bluetooth on one device: each mode there
+says Bluetooth is off and offers no lock or handshake. Evidence: Missing.
 
-## S-13 The countdown is the operator's to set
-
-Set 30 s, quit and relaunch, lock: the ring starts at 30. Evidence:
-Missing.
-
-## S-14 Bluetooth not allowed
+## S-13 Bluetooth not allowed
 
 Mizan BLE switched off under Settings › Privacy & Security › Bluetooth on
 one device: each mode there says Bluetooth is not allowed and offers no
 lock or handshake. Evidence: Missing.
 
-## S-15 A link lost with the amount on its way
+## S-14 The countdown is the operator's to set
 
-Too short a window to hit by hand on two devices; read each side's fixture
-for it instead: the iPad shows the link lost with nothing charged and New
-amount, the iPhone that it could not connect. Evidence: Missing.
+Set 30 s, quit and relaunch, lock: the ring starts at 30 once on the air.
+Evidence: Missing.
+
+## S-15 A handshake that fails on the phone only
+
+Each window is too short to hit by hand on two devices; each side's fixture
+is read instead. Before the key: the iPhone says it could not connect while
+the iPad still advertises with its countdown running. With the amount on
+its way: the iPad shows the link lost with nothing charged and New amount,
+the iPhone that it could not connect. Evidence: Missing.

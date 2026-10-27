@@ -11,8 +11,8 @@ user spec.
 
 - **At rest** means the side holds no session and no link: the host
   types an amount, timed out, failed a handshake or ended a payment; the
-  client scans, failed to connect or ended a payment. The root finishes
-  the host radio on a switch, never retires it, so a result sent leaves.
+  client scans, failed to connect or ended a payment. A result handed to
+  the host radio still leaves: the radio outlives the switch.
 - **The switch is disabled while not at rest,** so a switch can never
   break a payment off. The way out is the screen's own: Cancel, Decline,
   or the host's end; the payer's wait after confirming has none.

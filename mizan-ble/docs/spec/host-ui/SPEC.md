@@ -2,8 +2,7 @@
 
 Observer: the operator at the iPad. The host UI draws host broadcast's and
 host payment's state and sends the operator's taps; it decides nothing.
-Oracle: the paired flow's host side, M1 to M10
-(`../../design/README.md`), and the user spec.
+Oracle: the paired flow's host side, M1 to M10, and the user spec.
 
 Every host screen has the mode switch in its header (`../mode-switch/`),
 the session rail of five steps (amount, advertise, handshake, client
@@ -14,16 +13,14 @@ with the host's step, the last message and the client's last known step.
 
 - **Steps are named as in the design:** H1 enter amount, H2 advertising,
   H3 handshake, H4 awaiting client, H5 processing, H6 ended.
-- **The rail shows each step done, active, failed or to do** from the
-  state; the operator cannot tap it.
+- **The rail shows each step done, active, failed or to do;** no tapping.
 - **Proposed, not decided by the design** (no frame draws them): Bluetooth
   off or a failure to go on air shows the reason in a failure-tinted note
-  on the amount screen, Lock disabled only while Bluetooth is
-  unavailable; a lost link uses the link-lost mark and "New amount", laid
-  out as M6; on an
-  iPhone the rail folds into the step pill.
-- **"The result was sent"** on both outcomes (M8's words): the host cannot
-  know the client read it.
+  on the amount screen, Lock disabled only while Bluetooth is unavailable;
+  a lost link uses the link-lost mark and "New amount", laid out as M6;
+  going on the air is H2 with the ring full and still; on an iPhone the
+  rail folds into the step pill.
+- **"The result was sent"** on both outcomes (M8): no read receipt exists.
 
 ```gherkin
 Feature: The operator's screens
@@ -34,7 +31,7 @@ Feature: The operator's screens
     Then I see the amount as I type it, and can lock it once it is above zero
 
   Scenario: S-2 Broadcasting
-    Given I locked an amount
+    Given my locked amount is on the air
     When I look at the iPad
     Then I see the amount locked, the advertised name, the seconds left in a ring, and Cancel
 
@@ -92,8 +89,12 @@ Feature: The operator's screens
     Given the host could not go on air
     When I look at the amount screen
     Then I see why, with the amount still typed to lock again
+
+  Scenario: S-14 Going on the air
+    Given I locked an amount and it is not on the air yet
+    When I look at the iPad
+    Then I see the amount locked, the ring full and not running, and Cancel
 ```
 
-Not the host UI's: what any step means (host broadcast, host payment), the
-switch (mode switch), the settings sheet (settings UI) and the tokens and
-components (design system).
+Not the host UI's: what a step means (host broadcast, host payment), the
+switch, the settings sheet (settings UI) and the design system.

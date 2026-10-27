@@ -8,7 +8,8 @@ and the user spec.
 ## Decided
 
 - **Proposed, not decided by the design:** "Hold your phone closer to the
-  till" and Bluetooth off in M1's no-host layout, Start disabled; on an
+  till" and Bluetooth off in M1's no-host layout, Start disabled; "Mizan
+  till" for a host whose name has not arrived; on an
   iPad the iPhone layout, centred, on every client screen.
 
 ```gherkin
@@ -48,6 +49,11 @@ Feature: The payer's screens before the amount
     Given Bluetooth is not available to the client
     When I look at the iPhone
     Then I see why, and cannot start a handshake
+
+  Scenario: S-8 A host with no name yet
+    Given a host was chosen and its name has not arrived
+    When I look at the iPhone
+    Then I see "Mizan till" in place of its name, and can start the handshake
 ```
 
 Not the client UI's: what a step means (client find, client connect), the

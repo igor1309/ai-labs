@@ -1,30 +1,21 @@
 # Host broadcast
 
 Observer: the host UI, which draws this machine's state and sends the
-operator's lock, cancel and retry (screens H1 to H3). It takes a locked
-amount to a secure link with one client, which the root hands to host
-payment while this machine waits in its handed-over state.
-
-Its dependencies, each its own interface: a session (open, derive, seal,
-close), an advertiser (serve a session, advertise, stop advertising,
-retire the service), a sender, a countdown and the countdown setting.
+operator's lock, cancel and retry (H1 to H3). It takes a locked amount to
+a secure link with one client, handed to host payment while it waits. Its
+own interfaces: a session, an advertiser, a sender, a countdown, a setting.
 
 ## Decided
 
-- **The countdown is read at each lock,** so a change in settings applies
-  to the next amount, never the one on air.
-- **The countdown is the handshake's deadline:** it runs until the link is
-  secure, as the design stops it "once the link is up" (M3); at zero the
-  session closes, so nothing from it opens later.
-- **The first client key stops advertising** but keeps the service for
-  that client; any other client's writes are refused by the radio.
-- **Secure means the amount was sent;** host payment awaits a decision.
-- **Broadcast again opens a new session** with the same amount and a full
-  countdown, so nothing from the failed handshake opens in the new one.
-- **Every end but the hand-over closes the session and retires the
-  service;** Bluetooth lost reaches the handshake as a dropped link.
-- **No cancel during the handshake:** it takes a second or two, the
-  countdown bounds it, and Cancel returns once the amount is sent.
+- **The countdown, read at each lock, starts once the amount is on the
+  air:** a serve waits for the last session's finish, bounded by its link.
+  It is the handshake's deadline until the amount is sent (M3).
+- **A client that drops before its key is never seen;** the host stays on.
+- **The first client key stops advertising,** keeping the service for it.
+- **Secure means the amount was sent;** before it, no cancel.
+- **Broadcast again opens a new session,** same amount, full countdown.
+- **Every end but the hand-over closes its own session and retires its
+  own service;** Bluetooth lost reaches the handshake as a dropped link.
 
 ```gherkin
 Feature: Broadcasting a locked amount until a client holds a secure link
@@ -32,7 +23,7 @@ Feature: Broadcasting a locked amount until a client holds a secure link
   Scenario: S-1 Locking starts the broadcast
     Given an amount above zero from amount entry
     When the operator locks it
-    Then I can read that it is advertised, with the seconds left from the countdown setting
+    Then I can read that it is going on the air, with no countdown yet, and can be cancelled
 
   Scenario: S-2 The host cannot go on air
     Given the operator locked an amount
@@ -93,8 +84,17 @@ Feature: Broadcasting a locked amount until a client holds a secure link
     Given the amount is advertised
     When the advertiser says Bluetooth is not available, with its reason
     Then I can read that reason, and the amount typed but not locked
+
+  Scenario: S-14 On the air
+    Given the amount is going on the air
+    When the advertiser says it is on the air
+    Then I can read that it is advertised, with the seconds left from the countdown setting
+
+  Scenario: S-15 Cancel while going on the air
+    Given the amount is going on the air
+    When the operator cancels
+    Then I can read the amount typed but not locked, the session retired, and a late word that it is on the air changes nothing
 ```
 
-Not this machine's: typing the amount (amount entry), what happens after
-the hand-over (host payment), bytes (codec), cryptography (session crypto)
-and Core Bluetooth (host radio).
+Not this machine's: typing the amount, host payment, bytes, cryptography
+and Core Bluetooth.

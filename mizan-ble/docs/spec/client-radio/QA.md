@@ -44,3 +44,7 @@ The fake reports the Mizan service invalidated: the event reads dropped. Evidenc
 ## S-10 Dropping the link
 
 Drop, then the fake notifies: the event reads dropped, and nothing after. Evidence: Missing.
+
+## S-11 Starting a running scan
+
+Scanning, start again, one discovery: the fake was asked to scan once, and one reading came out. Evidence: Missing.

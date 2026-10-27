@@ -31,3 +31,7 @@ Failed fixture: matches M4's client side; Try again sends its event. Evidence: M
 ## S-7 Bluetooth off
 
 Bluetooth-off fixture: the reason, Start disabled. Evidence: Missing.
+
+## S-8 A host with no name yet
+
+Chosen-host fixture with no name: "Mizan till" in place of the name, Start enabled. Evidence: Missing.

@@ -9,7 +9,8 @@ M5 to M9, and the user spec.
 
 - **Proposed, not decided by the design:** a decision on its way as M6
   with "Sending"; "result unknown" and "the host cancelled" with the
-  link-lost and declined marks.
+  link-lost and declined marks; "Mizan till" on every screen for a host
+  whose name never arrived.
 
 ```gherkin
 Feature: The payer's screens from the amount to the result
@@ -68,6 +69,16 @@ Feature: The payer's screens from the amount to the result
     Given my confirm did not fit one write
     When I look at the iPhone
     Then I see that the payment failed and nothing was sent or charged, and can finish
+
+  Scenario: S-12 The host cancelled as I confirmed
+    Given my confirm was on its way and not yet acknowledged
+    When the host cancelled
+    Then I see that the host cancelled and I was not charged, and can finish
+
+  Scenario: S-13 Paid to a host with no name
+    Given the host's name never arrived
+    When the host reported success
+    Then I see the amount paid to "Mizan till", and can finish
 ```
 
 Not the client payment UI's: what a step means (client review, client

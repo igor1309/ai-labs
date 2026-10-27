@@ -3,7 +3,7 @@
 Observer: the root, which answers client find's scanner and the link and
 sender of client connect, review and payment with this adapter, feeds its readings to
 the host picker and maps its events into the flows'. The flows keep their
-scenarios only if every advertisement brings a reading, a link to the
+scenarios only if every discovery callback brings a reading, a link to the
 chosen host carries the GATT exchange, and a dropped link is told.
 
 Client radio is a thin binding over `CBCentralManager` and `CBPeripheral`
@@ -16,7 +16,11 @@ the GATT exchange. It knows no message's meaning.
   `NOTES.md` decides: each discovery callback is one reading. It works in
   the foreground only, where v0.0.1 runs, and iOS may slow it over time,
   so the gaps between readings vary.
-- **A reading is a host, its name, its RSSI and the time from the clock;**
+- **Start and stop are idempotent:** a start while scanning and a stop
+  while stopped change nothing.
+- **A reading is a host, its name if the advertisement brought one, its
+  RSSI and the time from a `now` of its own,** which the root answers with
+  the clock, so a test sets the time; a later reading may bring the name;
   a host is the peripheral's identifier, stable while the app runs.
 - **Connect does the whole setup:** connect, discover the service and its
   four characteristics, subscribe to To client, read Session. Any step's
@@ -81,6 +85,11 @@ Feature: The client's side of the air
     Given a connected host
     When I drop the link
     Then I can read that the link dropped, and no more bytes from that host
+
+  Scenario: S-11 Starting a running scan
+    Given the scan is running
+    When I start it again
+    Then I can read each discovery once, from the one scan still running
 ```
 
 Not client radio's: choosing a host (host picker), when to connect or what

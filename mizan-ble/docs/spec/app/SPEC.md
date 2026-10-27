@@ -9,8 +9,9 @@ the user spec (`../SPEC.md`).
 ## Decided
 
 - **One mode is live at a time:** the root builds the chosen mode's flows
-  and radio, and tears them down on a switch, so an iPad never advertises
-  while it is a client.
+  and tears them down on a switch. Both radios live as long as the app,
+  idle unless a flow uses them, so a switch never cuts a finishing session;
+  a host radio advertises only while host broadcast asks.
 - **Hand-over is wiring:** when a flow reaches its handed-over state, the
   root builds the next one with what it handed over (client find a host;
   the others a link and its session). The flow that started the
@@ -26,15 +27,15 @@ the user spec (`../SPEC.md`).
 ```gherkin
 Feature: Building the app
 
-  Scenario: S-1 Each mode wires its own radio
+  Scenario: S-1 Both radios built, one mode at work
     Given the app launched on an iPad
     When I read the log
-    Then I can see the host radio built and no client radio
+    Then I can see both radios built and the host flows built, and the client radio not scanning
 
   Scenario: S-2 A switch tears the old mode down
     Given the host is at rest
     When the person switches to Client
-    Then I can see in the log the host radio stopped before the client radio started
+    Then I can see in the log the host flows torn down before the client flows were built, and both radios kept
 
   Scenario: S-3 Every message is logged without its contents
     Given a payment from lock to result

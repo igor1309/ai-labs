@@ -7,7 +7,9 @@
   a secure link and then to the result; the client picks the nearest
   host and never guesses. The host's countdown stops once the amount is
   sent, a host cancel reaches the payer as a sealed end message, and
-  a link lost after a confirm shows the payer "result unknown" (LAB-626).
+  a link lost after a confirm shows the payer "result unknown". The
+  architecture is SOLID by composition, with each component's contracts,
+  and weighs an outside candidate (LAB-626).
 - A light appearance: every design system colour has a light value, and
   the app's components follow the device's light or dark setting (LAB-633).
 - The design system module: the design's tokens, generated from a snapshot

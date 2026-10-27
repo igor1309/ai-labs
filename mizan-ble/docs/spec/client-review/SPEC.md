@@ -28,7 +28,7 @@ Feature: Reviewing the amount and deciding
   Scenario: S-1 Reviewing the amount
     Given a secure link has just been handed over
     When the payer looks at the phone
-    Then I can read the host's name and the amount, and that the payer can confirm or decline
+    Then I can read the host as handed over, the amount, and that the payer can confirm or decline
 
   Scenario: S-2 The payer declines
     Given the payer is reviewing the amount

@@ -28,7 +28,7 @@ kind it binds into each seal. It is CryptoKit, used as `NOTES.md` decides.
   closes at the countdown's end before a secure link, and both sides at
   every end, so a message from then on is refused.
 - **Public keys travel compressed** (33 bytes), which needs iOS 16; the
-  app targets iOS 17. Whether a frame fits a write is the sender's check.
+  app targets iOS 26. Whether a frame fits a write is the sender's check.
 
 ```gherkin
 Feature: One transaction's encryption

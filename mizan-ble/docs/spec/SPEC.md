@@ -1,27 +1,21 @@
 # Mizan BLE
 
-Observer: the person using Mizan BLE, as the operator of the host on an
-iPad or the payer on an iPhone, both running the app in the foreground.
+Observer: the person using Mizan BLE, as the operator on an iPad or the
+payer on an iPhone, in the foreground, Bluetooth on unless a scenario says.
 
 ## Decided
 
 - **A payment needs the payer's tap to start the handshake** (`docs/poc.md`).
 - **The countdown stops once the amount is handed to the radio** (M3).
 - **No timeout once the amount is on the phone** (M5).
-- **The host's cancel is a sealed end message** with no receipt: if lost,
-  the payer sees the link lost, or the result unknown after a confirm.
+- **The host's cancel is a sealed end message;** a lost one reads as a lost link.
 - **A link lost after a confirm leaves the payer's result unknown;** the
   host ends unprocessed. The payment is mocked, so nothing is owed.
-- **The sides finish the handshake apart,** the host once it sends the
-  amount, the client once it opens it: a drop between reads differently.
 - **Not in v0.0.1:** telling a real till from a fake, or comparing the two
   screens; the link is encrypted, not authenticated (`NOTES.md`).
 
 ```gherkin
 Feature: Paying in Mizan between an iPad and an iPhone over Bluetooth
-
-  Background:
-    Given the host is on an iPad and the client on an iPhone, both with Bluetooth on
 
   Scenario: S-1 A confirmed payment that succeeds
     Given the operator has locked an amount and the payer's phone is nearest
@@ -55,7 +49,7 @@ Feature: Paying in Mizan between an iPad and an iPhone over Bluetooth
 
   Scenario: S-7 A handshake that breaks off
     Given the payer has started the handshake
-    When the link drops before the host sends the amount
+    When the link drops after the host has the payer's key and before it sends the amount
     Then both of them can see that the handshake failed, and the operator can broadcast again
 
   Scenario: S-8 The operator cancels
@@ -83,18 +77,23 @@ Feature: Paying in Mizan between an iPad and an iPhone over Bluetooth
     When the person opens either mode on that device
     Then they can see that Bluetooth is off, and no payment starts there
 
-  Scenario: S-13 The countdown is the operator's to set
-    Given the operator has chosen a countdown in the host's settings
-    When the operator locks the next amount
-    Then the operator can see the chosen countdown start, also on the first lock after a relaunch
-
-  Scenario: S-14 Bluetooth not allowed
+  Scenario: S-13 Bluetooth not allowed
     Given Mizan BLE may not use Bluetooth on a device
     When the person opens either mode on that device
     Then they can see that Bluetooth is not allowed for Mizan BLE, and no payment starts there
 
-  Scenario: S-15 A link lost with the amount on its way
-    Given the host has sent the amount and the phone has not opened it
-    When the link drops
-    Then the payer can see the handshake failed, and the operator the link lost with nothing charged
+  Scenario: S-14 The countdown is the operator's to set
+    Given the operator has chosen a countdown in the host's settings
+    When the operator locks the next amount
+    Then the operator can see the chosen countdown start, also on the first lock after a relaunch
+
+  Scenario Outline: S-15 A handshake that fails on the phone only
+    Given the payer has started the handshake
+    When the link drops <when>
+    Then the payer can see the handshake failed, and the operator <host>, with nothing charged
+
+    Examples:
+      | when                                                       | host                                           |
+      | before the host has the payer's key                        | the amount still on air, its countdown running |
+      | after the host sent the amount, before the phone opened it | the link lost                                  |
 ```

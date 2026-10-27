@@ -35,3 +35,7 @@ Scanning, unauthorized: the state reads not allowed, start refused. Evidence: Mi
 ## S-8 Bluetooth comes back
 
 Unauthorized, then on: the state reads scanning, no host. Evidence: Missing.
+
+## S-9 A host with no name yet
+
+A host chosen with no name, then a reading with its name: the state names no host, then that name. Evidence: Missing.

@@ -3,13 +3,13 @@
 Driven on a real iPad and iPhone with the log streamed from Console; a
 row reads the log lines.
 
-## S-1 Each mode wires its own radio
+## S-1 Both radios built, one mode at work
 
-Launch on the iPad: the log names the host radio built, and no client radio. Evidence: Missing.
+Launch on the iPad: the log names both radios built and the host flows built; the client radio logs no scan. Evidence: Missing.
 
 ## S-2 A switch tears the old mode down
 
-Switch at rest: the host radio's stop is logged before the client radio's start. Evidence: Missing.
+Switch at rest: the host flows' teardown is logged before the client flows are built; neither radio is torn down. Evidence: Missing.
 
 ## S-3 Every message is logged without its contents
 

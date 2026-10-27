@@ -59,3 +59,7 @@ A message queued, finish: the fake sent the message, then removed the service. E
 ## S-14 Serving while a session finishes
 
 A message queued, finish, serve a new session: the fake sent the message before it added the new service and advertised. Evidence: Missing.
+
+## S-15 Retiring a session that waits
+
+A message queued, finish, serve a new session, retire the new one before it is served: the fake sent the message and never added the new service. Evidence: Missing.

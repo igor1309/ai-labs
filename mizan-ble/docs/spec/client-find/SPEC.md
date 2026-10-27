@@ -16,6 +16,9 @@ scanner (start, stop).
 - **The handshake is the payer's tap** in v0.0.1 (`docs/poc.md`).
 - **A host that goes quiet after it was offered** is shown as gone (M10)
   until the picker offers a host again.
+- **A host with no name yet is chosen all the same,** as the name is
+  best effort in an advertisement; it is named once a reading brings it,
+  and is handed over with its name or none.
 - **Scanning stops on the start** and starts again when the root says the
   transaction is over, so the radio serves one link at a time.
 
@@ -61,6 +64,11 @@ Feature: Finding the nearest host
     Given Bluetooth was not available
     When the scanner says it is on
     Then I can read that the client is scanning, with no host chosen
+
+  Scenario: S-9 A host with no name yet
+    Given the picker chose a host whose readings brought no name
+    When a reading brings its name
+    Then I can read that host chosen, first with no name and then with its name
 ```
 
 Not this machine's: choosing a host (host picker), the handshake (client

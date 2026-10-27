@@ -55,3 +55,7 @@ Bluetooth-off fixture: shows the reason, Lock disabled. Evidence: Missing.
 ## S-13 The host could not go on air
 
 Could-not-go-on-air fixture: shows the reason, 124.5 still typed, Lock enabled. Evidence: Missing.
+
+## S-14 Going on the air
+
+Going-on-air fixture: the amount locked, the ring full and still, Cancel sends its event. Evidence: Missing.

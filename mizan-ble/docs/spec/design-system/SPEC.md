@@ -52,6 +52,7 @@ Feature: Drawing from the locked design
     Given a component drawn with the design's sample values
     When it is compared with the design's preview of that component
     Then I can see the same colours, type, spacing and radii
+
   Scenario: S-6 The device's appearance
     Given a component and a device set to light
     When I draw it
