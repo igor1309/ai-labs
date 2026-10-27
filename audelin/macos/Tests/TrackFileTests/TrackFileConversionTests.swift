@@ -105,7 +105,7 @@ private final class FailingConversion: TrackFileConversion {
 
     private var written = false
 
-    func convert(_ samples: [Float]) throws -> [Float] {
+    func convert(_ samples: [Float], frames: Int) throws -> [Float] {
 
         if written { throw ConversionFailure() }
         written = true
