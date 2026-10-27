@@ -16,11 +16,13 @@ public struct AmountView: View {
 
     let digits: String
     let size: Size
+    let digitsColor: Color
 
-    public init(_ digits: String, size: Size) {
+    public init(_ digits: String, size: Size, digitsColor: Color = Tokens.text) {
 
         self.digits = digits
         self.size = size
+        self.digitsColor = digitsColor
     }
 
     public var body: some View {
@@ -33,7 +35,7 @@ public struct AmountView: View {
             Text(digits)
                 .font(Tokens.display(fontSize, .semibold))
                 .tracking(-2)
-                .foregroundStyle(Tokens.text)
+                .foregroundStyle(digitsColor)
                 .monospacedDigit()
         }
         .accessibilityElement(children: .combine)
