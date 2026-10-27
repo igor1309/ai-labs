@@ -5,6 +5,8 @@ description: "Apple platform constraints for a third-party proximity payment bet
 
 # Apple platforms and a third-party proximity payment
 
+For the detailed evidence on BLE without opening the app, see [Apple BLE without opening the app](apple-background-ble.md). Foreground-only is a deliberate v0.0.1 scope choice. The later-version suggestions below are product proposals, not platform requirements or verified limits.
+
 This note answers what an ordinary third-party iOS app can do for a Mizan-style phone-to-till flow. “Payment” below means the product flow unless explicitly described as a card-network payment: moving a confirmation and result over BLE does not itself authorize, clear, or settle money. Apple’s APIs and entitlements describe platform capability, not a guarantee that Apple will approve a particular product or entitlement request.
 
 ## 1. Core Bluetooth in the background
@@ -15,7 +17,7 @@ Background peripheral advertising is constrained: the local name is omitted, and
 
 Background scanning is also throttled. Duplicate discovery events are coalesced and `CBCentralManagerScanOptionAllowDuplicatesKey` is ignored; when all scanning apps are backgrounded, the scan interval increases. This removes the repeated RSSI samples the current nearest-host selector expects. Foreground scanning is the appropriate mode for selecting among nearby tills and making the user confirm the amount.
 
-Core Bluetooth state preservation/restoration is opt-in through a manager restoration identifier and restoration delegate. It preserves configured scans, connections, subscriptions, published GATT data, advertising, and subscribed centrals, and can relaunch an app to handle a pending Bluetooth event. It does not promise a fresh app launch just because a nearby device exists. Apple’s current TN3115 adds a major iOS/iPadOS 26 qualification: after user force-quit, only apps that use AccessorySetupKit to set up Bluetooth accessories are eligible for restoration relaunch. A generic Mizan peer-to-peer payment should not be designed around restoration launching a force-quit app.
+Core Bluetooth state preservation/restoration is opt-in through a manager restoration identifier and restoration delegate. It preserves configured scans, connections, subscriptions, published GATT data, advertising, and subscribed centrals, and can relaunch an app to handle a pending Bluetooth event. It does not promise a fresh app launch just because a nearby device exists. Apple’s current TN3115 adds a major iOS/iPadOS 26 qualification: after user force-quit, its force-quit entry carries an AccessorySetupKit qualification for apps that set up Bluetooth accessories. TN3115 attaches that qualification to particular table entries; it does not mark system memory removal or crash with that footnote. A generic Mizan peer-to-peer payment has not been shown eligible for the accessory exception.
 
 **For the host and client:** the `bluetooth-central`/`bluetooth-peripheral` modes can help sustain an already configured interaction while backgrounded, but they do not turn the exchange into a dependable unattended payment. Keep both apps visible through discovery, amount review, payer confirmation, and result for v0.1.0 unless a tested iOS-version/device matrix proves a narrower background requirement. A state-restored connection must still revalidate session, amount, timeout, and user intent.
 
@@ -60,7 +62,7 @@ Sources: [Apple Platform Security: Apple Pay](https://help.apple.com/pdf/securit
 
 ## 5. What differs on iPadOS for the host?
 
-Core Bluetooth central/peripheral roles and the `bluetooth-central`/`bluetooth-peripheral` modes are available to iPad apps; Apple notes these background modes are not supported for iPad apps running on macOS. The same background advertising, scan coalescing, restoration opt-in, and iOS/iPadOS 26 AccessorySetupKit relaunch restrictions apply. iPadOS does not provide the host with extra always-on execution simply because it is the till screen. Multitasking, locking, and suspension still matter, so the PoC should keep the Host screen active during an exchange and should restore a transaction only as an expired/validating state, never assume a completed payment.
+Core Bluetooth central/peripheral roles and the `bluetooth-central`/`bluetooth-peripheral` modes are available to iPad apps; Apple notes these background modes are not supported for iPad apps running on macOS. The same background advertising, scan coalescing and restoration opt-in apply; TN3115 qualifies particular relaunch cases with AccessorySetupKit in iOS/iPadOS 26. iPadOS does not provide the host with extra always-on execution simply because it is the till screen. Multitasking, locking, and suspension still matter, so the PoC should keep the Host screen active during an exchange and should restore a transaction only as an expired/validating state, never assume a completed payment.
 
 For hardware paths, iPad is not eligible for Tap to Pay on iPhone and does not provide the iPhone contactless card-presentation route discussed above. Treat the host iPad as the BLE peripheral/display, not as a bank-card terminal. Live Activities are supported on iPad and may help display an already-started activity, but they are user/system-controlled and don’t supply a new transaction trigger.
 

@@ -7,14 +7,21 @@ let package = Package(
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
+        .library(name: "HostUI", targets: ["HostUI"]),
         .library(name: "ModeSwitchUI", targets: ["ModeSwitchUI"]),
+        .library(name: "SettingsUI", targets: ["SettingsUI"]),
+        .library(name: "ClientUI", targets: ["ClientUI"]),
         .library(name: "Machine", targets: ["Machine"]),
         .library(name: "Settings", targets: ["Settings"]),
         .library(name: "MessageCodec", targets: ["MessageCodec"]),
         .library(name: "SessionCrypto", targets: ["SessionCrypto"]),
+        .library(name: "HostPicker", targets: ["HostPicker"]),
     ],
     targets: [
+        .target(name: "HostUI", dependencies: ["DesignSystem"]),
         .target(name: "ModeSwitchUI", dependencies: ["DesignSystem"]),
+        .target(name: "SettingsUI", dependencies: ["DesignSystem"]),
+        .target(name: "ClientUI", dependencies: ["DesignSystem"]),
         .target(name: "Machine"),
         .testTarget(name: "MachineTests", dependencies: ["Machine"]),
         .target(name: "Settings"),
@@ -23,6 +30,8 @@ let package = Package(
         .testTarget(name: "MessageCodecTests", dependencies: ["MessageCodec"]),
         .target(name: "SessionCrypto"),
         .testTarget(name: "SessionCryptoTests", dependencies: ["SessionCrypto"]),
+        .target(name: "HostPicker"),
+        .testTarget(name: "HostPickerTests", dependencies: ["HostPicker"]),
         .target(
             name: "DesignSystem",
             resources: [.copy("Resources/Fonts")]
