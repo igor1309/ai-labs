@@ -153,6 +153,30 @@ struct ReadingTests {
         #expect(state.recording == .off)
         state = update(state, [], status: .off)
         #expect(state.log == .lines(shown))
+
+        let statuses: [ReadingTextUpdate.Status] = [.off, .gettingReady, .failed("interrupted"), .finished]
+        for status in statuses {
+            let pending = text(.mine, 0, start: 1, pending: "draft")
+            let prior = text(.theirs, 0, start: 2, settled: "keep this")
+            var state = update(.init(), [pending, prior])
+            let before = try lines(state).entries
+            let revised = text(.mine, 0, start: 1, settled: "final words")
+            let added = text(.mine, 1, start: 3, settled: "new words")
+            state = update(state, [revised, added], status: status)
+            if status == .gettingReady {
+                #expect(state.log == .preparing)
+                state = update(state, [], status: .finished)
+            }
+            let after = try lines(state).entries
+            try #require(after.count == 3)
+            #expect(after[0].id == before[0].id)
+            #expect(after.map(\.settled) == ["final words", "keep this", "new words"])
+            #expect(after.map(\.pending) == ["", "", ""])
+            #expect(after[1] == before[1])
+            #expect(after[2].speaker == .mine)
+            #expect(after[2].time == "00:03")
+            #expect(after[2].id > before.map(\.id).max()!)
+        }
     }
 
     @Test func anOmittedEntryGetsAFreshIdentityWhenItReturns() throws {
