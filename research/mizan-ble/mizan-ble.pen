@@ -2470,7 +2470,7 @@
                   "id": "zqp5f",
                   "name": "Sub",
                   "fill": "$mz-text-2",
-                  "content": "Three candidates. The chosen one becomes DS / Mizan Sign; amounts use it.",
+                  "content": "Three rounds of candidates. L · Turned M, tail + bars is chosen and lives in DS / Mizan Sign; every amount uses it.",
                   "fontFamily": "$mz-font-text",
                   "fontSize": 15,
                   "fontWeight": "normal"
@@ -3286,6 +3286,8 @@
                   "name": "Candidate L · Turned M, tail + bars",
                   "fill": "$mz-raised",
                   "cornerRadius": "$mz-radius-xl",
+                  "stroke": "$mz-host",
+                  "strokeWidth": 2,
                   "layout": "vertical",
                   "gap": "$mz-space-4",
                   "padding": "$mz-space-6",
@@ -3357,8 +3359,8 @@
                       "type": "text",
                       "id": "xR7kX",
                       "name": "Label",
-                      "fill": "$mz-text-2",
-                      "content": "L · Turned M, tail + bars",
+                      "fill": "$mz-host-hi",
+                      "content": "L · Turned M, tail + bars · CHOSEN",
                       "fontFamily": "$mz-font-mono",
                       "fontSize": "$mz-size-small",
                       "fontWeight": "normal"
@@ -4213,19 +4215,19 @@
                   "id": "svyms",
                   "name": "DS / Mizan Sign",
                   "reusable": true,
-                  "width": 103,
-                  "height": 80,
+                  "width": 87.15,
+                  "height": 165.9,
                   "children": [
                     {
                       "type": "path",
                       "id": "tERn9",
                       "name": "Glyph",
-                      "geometry": "M0 0l0 8.4416 8.6112 0 0 57.4688 12.848 0 0-35.2352 20.91519 29.1776 20.9888-29.1776 0 35.2352 12.79681 0 0-57.4688 8.71041 0 0-8.4416-84.87041 0z m42.37439 38.8l-21.88479-30.3584 43.88799 0-22.0032 30.3584z m-11.71839-25.7248l23.5456 0 0 6.2688-23.5456 0z",
+                      "geometry": "M0 0l72 0 0 13-72 0z m0 67l72 0 0 13-72 0z m72-49l-26.4 22 26.4 22 0 18-48-40 48-40z m-72 49l13 0 0 52-13 0z m-11 25l35 0 0 7-35 0z m0 12l35 0 0 7-35 0z",
                       "viewBox": [
-                        0,
-                        0,
-                        84.87041,
-                        65.9104
+                        -11,
+                        -39,
+                        83,
+                        158
                       ],
                       "fill": "$mz-text",
                       "width": "fill_container",
@@ -4238,7 +4240,7 @@
                   "id": "MnEvl",
                   "name": "DS / Amount / XL",
                   "reusable": true,
-                  "gap": 14,
+                  "gap": "$mz-space-5",
                   "alignItems": "center",
                   "children": [
                     {
@@ -4246,8 +4248,8 @@
                       "type": "ref",
                       "ref": "svyms",
                       "name": "Sign",
-                      "width": 90,
-                      "height": 70
+                      "width": 87.15,
+                      "height": 165.9
                     },
                     {
                       "type": "text",
@@ -4267,7 +4269,7 @@
                   "id": "qZQez",
                   "name": "DS / Amount / L",
                   "reusable": true,
-                  "gap": 10,
+                  "gap": "$mz-space-4",
                   "alignItems": "center",
                   "children": [
                     {
@@ -4275,8 +4277,8 @@
                       "type": "ref",
                       "ref": "svyms",
                       "name": "Sign",
-                      "width": 57,
-                      "height": 44
+                      "width": 54.99,
+                      "height": 104.67
                     },
                     {
                       "type": "text",
@@ -4296,7 +4298,7 @@
                   "id": "gQyLj",
                   "name": "DS / Amount / M",
                   "reusable": true,
-                  "gap": 8,
+                  "gap": "$mz-space-3",
                   "alignItems": "center",
                   "children": [
                     {
@@ -4304,8 +4306,8 @@
                       "type": "ref",
                       "ref": "svyms",
                       "name": "Sign",
-                      "width": 39,
-                      "height": 30
+                      "width": 37.35,
+                      "height": 71.1
                     },
                     {
                       "type": "text",
@@ -4327,7 +4329,7 @@
               "id": "tVEFJ",
               "name": "Note",
               "fill": "$mz-text-2",
-              "content": "DS / Mizan Sign currently holds candidate C. Picking another swaps the glyph here and every amount follows.",
+              "content": "DS / Mizan Sign holds candidate L: an M turned 90° clockwise, with a descending tail and two bars. Its head is cap height; the tail drops below the baseline like a descender.",
               "fontFamily": "$mz-font-mono",
               "fontSize": "$mz-size-small",
               "fontWeight": "normal"
@@ -7387,11 +7389,11 @@
                               "type": "ref",
                               "ref": "MnEvl",
                               "name": "Amount",
-                              "gap": 12,
+                              "gap": "$mz-space-5",
                               "descendants": {
                                 "Ep2IX": {
-                                  "width": 72,
-                                  "height": 56
+                                  "width": 72.63,
+                                  "height": 138.25
                                 },
                                 "F5vhi": {
                                   "content": "124.5",
@@ -8217,11 +8219,11 @@
                               "type": "ref",
                               "ref": "MnEvl",
                               "name": "Amount",
-                              "gap": 12,
+                              "gap": "$mz-space-5",
                               "descendants": {
                                 "Ep2IX": {
-                                  "width": 72,
-                                  "height": 56
+                                  "width": 72.63,
+                                  "height": 138.25
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
@@ -8898,11 +8900,11 @@
                               "type": "ref",
                               "ref": "MnEvl",
                               "name": "Amount",
-                              "gap": 12,
+                              "gap": "$mz-space-5",
                               "descendants": {
                                 "Ep2IX": {
-                                  "width": 72,
-                                  "height": 56
+                                  "width": 72.63,
+                                  "height": 138.25
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
@@ -9586,11 +9588,11 @@
                               "type": "ref",
                               "ref": "MnEvl",
                               "name": "Amount",
-                              "gap": 12,
+                              "gap": "$mz-space-5",
                               "descendants": {
                                 "Ep2IX": {
-                                  "width": 72,
-                                  "height": 56
+                                  "width": 72.63,
+                                  "height": 138.25
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
@@ -10210,11 +10212,11 @@
                               "type": "ref",
                               "ref": "MnEvl",
                               "name": "Amount",
-                              "gap": 12,
+                              "gap": "$mz-space-5",
                               "descendants": {
                                 "Ep2IX": {
-                                  "width": 72,
-                                  "height": 56
+                                  "width": 72.63,
+                                  "height": 138.25
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
@@ -10526,7 +10528,7 @@
                               "fill": "$mz-host"
                             },
                             "XAVy0/eGKkj": {
-                              "content": "amount received",
+                              "content": "amount",
                               "fill": "$mz-text-body"
                             },
                             "XAVy0/m0pRL": {
@@ -10852,11 +10854,11 @@
                               "type": "ref",
                               "ref": "MnEvl",
                               "name": "Amount",
-                              "gap": 12,
+                              "gap": "$mz-space-5",
                               "descendants": {
                                 "Ep2IX": {
-                                  "width": 72,
-                                  "height": 56
+                                  "width": 72.63,
+                                  "height": 138.25
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
@@ -11468,11 +11470,11 @@
                               "type": "ref",
                               "ref": "MnEvl",
                               "name": "Amount",
-                              "gap": 12,
+                              "gap": "$mz-space-5",
                               "descendants": {
                                 "Ep2IX": {
-                                  "width": 72,
-                                  "height": 56
+                                  "width": 72.63,
+                                  "height": 138.25
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
@@ -12276,11 +12278,11 @@
                               "type": "ref",
                               "ref": "MnEvl",
                               "name": "Amount",
-                              "gap": 12,
+                              "gap": "$mz-space-5",
                               "descendants": {
                                 "Ep2IX": {
-                                  "width": 72,
-                                  "height": 56
+                                  "width": 72.63,
+                                  "height": 138.25
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
@@ -12876,11 +12878,11 @@
                               "type": "ref",
                               "ref": "MnEvl",
                               "name": "Amount",
-                              "gap": 12,
+                              "gap": "$mz-space-5",
                               "descendants": {
                                 "Ep2IX": {
-                                  "width": 72,
-                                  "height": 56
+                                  "width": 72.63,
+                                  "height": 138.25
                                 },
                                 "F5vhi": {
                                   "content": "124.50",
@@ -13539,11 +13541,11 @@
                               "type": "ref",
                               "ref": "MnEvl",
                               "name": "Amount",
-                              "gap": 12,
+                              "gap": "$mz-space-5",
                               "descendants": {
                                 "Ep2IX": {
-                                  "width": 72,
-                                  "height": 56
+                                  "width": 72.63,
+                                  "height": 138.25
                                 },
                                 "F5vhi": {
                                   "content": "0",
