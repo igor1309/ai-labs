@@ -5,6 +5,7 @@ public struct MenuBarItem: Equatable, Sendable {
     public let title: String
     public let symbol: String
     public let stateLine: String
+    public let isRed: Bool
 
     public static func from(_ state: RecordingState, liveText: Bool) -> MenuBarItem {
 
@@ -14,7 +15,10 @@ public struct MenuBarItem: Equatable, Sendable {
                     state.session?.origin == .call ? "Запись · звонок" : "Запись"
                 )
             )
-            return MenuBarItem(title: "Запись", symbol: "record.circle.fill", stateLine: line)
+            return MenuBarItem(
+                title: "Запись", symbol: "record.circle.fill", stateLine: line,
+                isRed: state.phase == .beginning || state.phase == .recording
+            )
         }
         let reasons: [(RecordingCondition, String)] = [
             (.microphoneAccess, "Нет доступа к микрофону"),
@@ -26,6 +30,6 @@ public struct MenuBarItem: Equatable, Sendable {
         let line = !missing.isEmpty ? missing.joined(separator: "; ") : (
             state.cannotRecord ?? (state.automatic ? "Ждёт звонка" : "Не записывает")
         )
-        return MenuBarItem(title: "Audelin", symbol: "text.alignleft", stateLine: line)
+        return MenuBarItem(title: "Audelin", symbol: "text.alignleft", stateLine: line, isRed: false)
     }
 }

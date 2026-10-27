@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "LiveAudio", targets: ["LiveAudio"]),
         .library(name: "LiveText", targets: ["LiveText"]),
         .library(name: "Machine", targets: ["Machine"]),
+        .library(name: "MenuBar", targets: ["MenuBar"]),
         .library(name: "MicrophoneCapture", targets: ["MicrophoneCapture"]),
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
         .library(name: "PanelUI", targets: ["PanelUI"]),
@@ -37,7 +38,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Audelin",
-            dependencies: ["Compose", "Recording", "Preferences"]
+            dependencies: ["Compose", "MenuBar", "Preferences"]
         ),
         .target(
             name: "AudioConversion"
@@ -53,7 +54,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture"]
+            dependencies: ["MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -77,6 +78,10 @@ let package = Package(
         ),
         .target(
             name: "Machine"
+        ),
+        .target(
+            name: "MenuBar",
+            dependencies: ["Recording", "Preferences"]
         ),
         .target(
             name: "MicrophoneCapture"
@@ -191,6 +196,10 @@ let package = Package(
         .testTarget(
             name: "MachineTests",
             dependencies: ["Machine"]
+        ),
+        .testTarget(
+            name: "MenuBarTests",
+            dependencies: ["MenuBar"]
         ),
         .testTarget(
             name: "MicrophoneCaptureTests",
