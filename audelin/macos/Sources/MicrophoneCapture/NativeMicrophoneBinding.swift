@@ -77,16 +77,35 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         let input = engine.inputNode
         try input.setVoiceProcessingEnabled(false)
         guard let unit = input.audioUnit else { throw CaptureError.noInput }
+        // Setting the device, even to the one in use, raises a configuration
+        // change; set it only when it differs (LAB-638).
         var device = device
-        try Self.check(AudioUnitSetProperty(
-            unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
-            &device, UInt32(MemoryLayout<UInt32>.size)
-        ))
+        var current = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        let read = AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &current, &size)
+        if read != noErr || current != device {
+            try Self.check(AudioUnitSetProperty(
+                unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
+                &device, UInt32(MemoryLayout<UInt32>.size)
+            ))
+        }
+        // A change that leaves the engine running needs no rebuild; rebuilding
+        // on it restarted the engine in a loop and the track stayed empty.
         configurationObserver = NotificationCenter.default.addObserver(
             forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
-        ) { _ in configurationChanged() }
-        let format = input.outputFormat(forBus: 0)
-        guard format.sampleRate.isFinite, format.sampleRate > 0, format.channelCount > 0,
+        ) { [weak engine] _ in
+            guard engine?.isRunning != true else { return }
+            configurationChanged()
+        }
+        // After switching the device the output format can still describe the
+        // old one; a tap whose rate differs from the hardware's raises an
+        // Objective-C exception that aborts the app (LAB-638), so tap in the
+        // device's own format and refuse anything else as an error.
+        let hardware = input.inputFormat(forBus: 0)
+        guard hardware.sampleRate.isFinite, hardware.sampleRate > 0, hardware.channelCount > 0,
+              let format = AVAudioFormat(
+                  standardFormatWithSampleRate: hardware.sampleRate, channels: hardware.channelCount
+              ),
               format.commonFormat == .pcmFormatFloat32 else { throw CaptureError.unsupportedFormat }
         let tap = NativeTap(receive: receive, readClock: Self.readClock)
         self.tap = tap
