@@ -53,12 +53,19 @@ public struct ResultMark: View {
 
     public var body: some View {
 
-        Image(systemName: outcome.symbol)
-            .font(.system(size: 44, weight: .semibold))
-            .foregroundStyle(outcome.color)
-            .frame(width: Self.diameter, height: Self.diameter)
-            .background(outcome.tint, in: Circle())
-            .accessibilityHidden(true)
+        Group {
+            if outcome == .linkLost {
+                BluetoothSymbol(isSlashed: true)
+                    .frame(width: Tokens.space12, height: Tokens.space12)
+            } else {
+                Image(systemName: outcome.symbol)
+                    .font(.system(size: 44, weight: .semibold))
+            }
+        }
+        .foregroundStyle(outcome.color)
+        .frame(width: Self.diameter, height: Self.diameter)
+        .background(outcome.tint, in: Circle())
+        .accessibilityHidden(true)
     }
 
     static let diameter: CGFloat = 112
