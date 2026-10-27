@@ -1,10 +1,10 @@
 @testable import Compose
-import struct CallText.State
 import Foundation
 import MenuBar
 import PanelUI
 import Preferences
 import Recording
+import Session
 import Testing
 
 @MainActor
@@ -87,19 +87,60 @@ struct PanelWindowWiringTests {
         }
     }
 
-    @Test func panelLiveTextControlReachesOnlyItsCurrentSession() async {
+    @Test nonisolated func panelLiveTextControlReachesOnlyItsCurrentSession() async throws {
 
         let panel = ReadingClockSpy().panel()
-        let text = AsyncStream<State>.makeStream()
-        let enabled = Values<Int>()
-        let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: { enabled.append(1) })
-        await panel.send(.switchLiveTextOn)
-        #expect(enabled.all == [1])
-        await panel.end(id: 1)
-        await panel.send(.switchLiveTextOn)
-        #expect(enabled.all == [1])
-        text.continuation.finish()
-        await reading.end()
+        try await withSessionRig(connect: { _, _ in Task {} }) { first, _ in
+            try await withSessionRig(connect: { _, _ in Task {} }) { second, _ in
+                let connected = Values<Session>()
+                let sessions = RecordingSessions(
+                    makePieces: { $0 == 1 ? first.pieces : second.pieces }, liveText: { false },
+                    report: { _, _ in }, connect: { pieces, session in
+                        connected.append(session)
+                        return subscribe(pieces, to: session)
+                    }, sink: PanelLogSpy(), panel: panel
+                )
+                do {
+                    #expect(await sessions.begin(id: 1) == .ready)
+                    let firstSession = try #require(connected.all.first)
+                    #expect(await firstSession.snapshot().phase == .recording)
+                    #expect(await firstSession.snapshot().wantedLiveText == false)
+                    await panel.send(.switchLiveTextOn)
+                    #expect(await firstSession.snapshot().wantedLiveText)
+
+                    firstSession.send(.liveTextChanged(false))
+                    #expect(await firstSession.snapshot().wantedLiveText == false)
+                    #expect(await sessions.begin(id: 2) == .ready)
+                    #expect(connected.all.count == 2)
+                    let secondSession = try #require(connected.all.last)
+                    #expect(await secondSession.snapshot().phase == .recording)
+                    #expect(await secondSession.snapshot().wantedLiveText == false)
+                    await panel.send(.switchLiveTextOn)
+                    #expect(await secondSession.snapshot().wantedLiveText)
+                    #expect(await firstSession.snapshot().phase == .recording)
+                    #expect(await firstSession.snapshot().wantedLiveText == false)
+
+                    await sessions.end(id: 1)
+                    secondSession.send(.liveTextChanged(false))
+                    #expect(await secondSession.snapshot().wantedLiveText == false)
+                    await panel.send(.switchLiveTextOn)
+                    #expect(await secondSession.snapshot().wantedLiveText)
+                    let firstEnded = await firstSession.snapshot()
+                    #expect(firstEnded.phase == .ended)
+                    #expect(firstEnded.wantedLiveText == false)
+                    await sessions.end(id: 2)
+                    let secondEnded = await secondSession.snapshot()
+                    #expect(secondEnded.phase == .ended)
+                    await panel.send(.switchLiveTextOn)
+                    #expect(await firstSession.snapshot() == firstEnded)
+                    #expect(await secondSession.snapshot() == secondEnded)
+                } catch {
+                    await sessions.end(id: 1)
+                    await sessions.end(id: 2)
+                    throw error
+                }
+            }
+        }
     }
 }
 
