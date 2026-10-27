@@ -1,5 +1,10 @@
 # Log
 
+## 2026-10-27
+
+- The menu bar starts and stops recording, saves automatic recording and live
+  text choices, and turns red while a recording begins or runs (LAB-509, LAB-464).
+
 ## 2026-10-26
 
 - Recording, transcript writes and call-folder creation keep blocking disk
