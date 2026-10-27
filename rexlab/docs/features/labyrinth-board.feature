@@ -1,5 +1,7 @@
 Feature: Guide a baby dinosaur home
-  The first release has one Hatchling mode, used at every global age level.
+  The global age level chooses Hatchling, Explorer or Paleontologist.
+  Explorer is the default. A level switch is available on the result.
+  A per-game choice follows the shared override and reset rules.
   Each round has one fixed maze, with no timer, lives or moving threats.
 
   Scenario: A clear board
@@ -42,3 +44,25 @@ Feature: Guide a baby dinosaur home
     And light and dark themes keep paths, walls and controls distinct
     And reduced motion uses short fades rather than travel or bounce animation
     And windows below the shared landscape minimum of 1024 by 670 can scroll rather than shrinking path cells below 48 pixels
+
+  Scenario Outline: Difficulty requires route decisions
+    Given the round is played at <level>
+    Then its board has <columns> columns and <rows> rows
+    And its shortest solution has at least <steps> single-space moves
+    And at least <decisions> junctions on the solution have a wrong branch
+    And at least <detours> of those wrong branches run for 4 or more moves before ending
+    And the board is selected from at least 6 qualifying layouts at this level
+    And no route or correct direction is marked unless HINT is explicitly tapped
+    And footprints indicate all legal adjacent spaces equally, including wrong turns
+
+    Examples:
+      | level          | columns | rows | steps | decisions | detours |
+      | Hatchling      | 9       | 7    | 14    | 2         | 1       |
+      | Explorer       | 15      | 9    | 32    | 4         | 3       |
+      | Paleontologist | 17      | 11   | 50    | 6         | 4       |
+
+  Scenario: Complexity is checked before a layout can ship
+    Then automated graph checks prove the length, junction and detour requirements for every layout
+    And every layout is connected and solvable
+    And retrying or asking for help never moves the child to an easier level
+    And the current simple maze is retained only among Hatchling layouts if it qualifies
