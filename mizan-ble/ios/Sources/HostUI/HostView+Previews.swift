@@ -63,7 +63,7 @@ public extension HostState {
             exchange: .init(
                 hostCode: "H3", hostDetail: "Handshake",
                 message: "handshake", clientCode: "C2", clientDetail: "Connecting",
-                tone: .client, direction: .toHost, symbol: "key", clientIsEmpty: false
+                tone: .client, direction: .toHost, symbol: "key.horizontal", clientIsEmpty: false
             ),
             panel: .connection(title: "Securing the link", detail: "IPHONE · RSSI −52", secondsRemaining: "47 s left"),
             buttons: [],
@@ -168,7 +168,7 @@ public extension HostState {
             exchange: .init(
                 hostCode: "H6", hostDetail: "Done",
                 message: "success", clientCode: "C5", clientDetail: "Done",
-                tone: .ok, direction: .toClient, symbol: "checkmark.seal", clientIsEmpty: false
+                tone: .ok, direction: .toClient, symbol: "checkmark.circle", clientIsEmpty: false
             ),
             panel: .result(.success, title: "Payment approved"),
             buttons: [.init("New amount", .newAmount, symbol: "plus", kind: .host)],
@@ -189,7 +189,7 @@ public extension HostState {
             exchange: .init(
                 hostCode: "H6", hostDetail: "Done",
                 message: "failure", clientCode: "C5", clientDetail: "Done",
-                tone: .bad, direction: .toClient, symbol: "xmark.seal", clientIsEmpty: false
+                tone: .bad, direction: .toClient, symbol: "xmark.circle", clientIsEmpty: false
             ),
             panel: .result(.failure, title: "Payment failed"),
             buttons: [.init("New amount", .newAmount, symbol: "plus", kind: .host)],
