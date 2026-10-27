@@ -4,7 +4,7 @@ Feature: Guide a baby dinosaur home
 
   Scenario: A clear board
     Given a labyrinth round starts
-    Then the whole maze is visible in iPad landscape at 1024 by 768 and 1133 by 744
+    Then the whole maze is visible in iPad landscape at 1024 by 670, 1024 by 690, 1024 by 768, 1133 by 670 and 1133 by 744, including all controls
     And the baby and its larger parent use the same existing dinosaur picture
     And the parent is visibly marked as the goal
     And each path cell has a touch target at least 48 CSS pixels wide and high
@@ -41,4 +41,4 @@ Feature: Guide a baby dinosaur home
     And controls are keyboard accessible with visible focus
     And light and dark themes keep paths, walls and controls distinct
     And reduced motion uses short fades rather than travel or bounce animation
-    And smaller windows can scroll rather than shrinking path cells below 48 pixels
+    And windows below the shared landscape minimum of 1024 by 670 can scroll rather than shrinking path cells below 48 pixels
