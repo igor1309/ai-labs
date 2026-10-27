@@ -8,6 +8,14 @@ let package = Package(
     targets: [
         .target(name: "PreviewKit"),
         .executableTarget(
+            name: "ClientPreview",
+            dependencies: [
+                "PreviewKit",
+                .product(name: "DesignSystem", package: "ios"),
+                .product(name: "ClientUI", package: "ios"),
+            ]
+        ),
+        .executableTarget(
             name: "ModeSwitchPreview",
             dependencies: [
                 "PreviewKit",

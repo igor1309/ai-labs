@@ -9,6 +9,8 @@ From this directory:
 ```sh
 swift run ModeSwitchPreview
 swift run ModeSwitchPreview --export /tmp/mizan-mode-switch
+swift run ClientPreview
+swift run ClientPreview --export /tmp/mizan-client
 ```
 
 `ModeSwitchPreview` shows `ModeSwitchUI` in the DesignSystem iPad or iPhone
@@ -22,19 +24,26 @@ in light and dark. Files are named `<side>-<enabled|disabled>-<device>-<light|da
 The iPad images are 1194 × 834 pixels and the iPhone images 393 × 852 pixels,
 without preview controls or window chrome.
 
+`ClientPreview` shows every named `ClientUI` preview at iPhone size, with a
+state picker, light/dark appearance and an event log. Start, Cancel and Try again
+only append to the log; choose another preview to change the screen. Export
+writes 16 PNGs, one per state and appearance, at 393 × 852 pixels, named
+`<preview-name>-iPhone-<light|dark>.png`.
+
 `PreviewKit` provides `PreviewWindow` (content over a backdrop on the left,
 controls, appearance and events on the right), `PreviewDeviceSize` dimensions, and
 `PreviewExporter`. To add an app, give it an executable target depending on
 `PreviewKit` and the feature's products. Supply one named `PreviewSnapshot` per
-state to the exporter; it renders each on both devices in both appearances.
+state to the exporter; it renders each on both devices in both appearances
+unless a `devices` list limits the export.
 There are no tests in this package; compare the exports with the design.
 
 ## What a preview app holds
 
 A preview app runs the real view, not a picture of it. Its state lives in
-the app (`@State`) and each event changes it, so a tap shows the next
-screen. For a screen a machine drives, the app runs the package's real
-machine and stubs only what reaches outside: timers, Bluetooth, the
+the app (`@State`). `ClientPreview` displays selected states and logs events
+until its machines exist. For a screen a machine drives, the app runs the
+package's real machine and stubs only what reaches outside: timers, Bluetooth, the
 processor. Fixtures are named states for the exporter and the controls.
 
 A preview app is as large as that stand-in needs to be: a toggle for the
