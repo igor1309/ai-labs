@@ -18,8 +18,8 @@ public struct Settings {
     public static let pickerAlphaRange = 0.05...1.0
     public static let pickerWindowSecondsRange = 0.5...5.0
     public static let pickerWindowReadingsRange = 1...20
-    public static let pickerFloorRange = -100 ... -30
-    public static let pickerMarginRange = 0...20
+    public static let pickerFloorRange = -100.0 ... -30.0
+    public static let pickerMarginRange = 0.0...20.0
     public static let pickerFadeRange = 0.5...10.0
 
     private let store: any SettingsStore
@@ -27,15 +27,26 @@ public struct Settings {
 
     public init(store: any SettingsStore, random: () -> UInt16 = { UInt16.random(in: .min ... .max) }) {
         self.store = store
-        if case .text(let name) = store.value(for: .advertisedName),
-           name.hasPrefix("MIZAN-"), name.count == 10,
-           name.dropFirst(6).allSatisfy({ "0123456789ABCDEF".contains($0) }) {
+        if case .text(let name) = store.value(for: .advertisedName), Self.isAdvertisedName(name) {
             advertisedName = name
         } else {
-            let hex = String(random(), radix: 16, uppercase: true)
-            advertisedName = "MIZAN-" + String(repeating: "0", count: 4 - hex.count) + hex
+            advertisedName = Self.makeAdvertisedName(random())
             store.set(.text(advertisedName), for: .advertisedName)
         }
+    }
+
+    private static let namePrefix = "MIZAN-"
+    private static let nameDigits = 4
+
+    private static func isAdvertisedName(_ name: String) -> Bool {
+        guard name.hasPrefix(namePrefix) else { return false }
+        let digits = name.dropFirst(namePrefix.count)
+        return digits.count == nameDigits && digits.allSatisfy { "0123456789ABCDEF".contains($0) }
+    }
+
+    private static func makeAdvertisedName(_ number: UInt16) -> String {
+        let hex = String(number, radix: 16, uppercase: true)
+        return namePrefix + String(repeating: "0", count: nameDigits - hex.count) + hex
     }
 
     public var countdown: Int {
@@ -57,12 +68,12 @@ public struct Settings {
         integer(.pickerWindowReadings, in: Self.pickerWindowReadingsRange, default: 5)
     }
 
-    public var pickerFloor: Int {
-        integer(.pickerFloor, in: Self.pickerFloorRange, default: -65)
+    public var pickerFloor: Double {
+        number(.pickerFloor, in: Self.pickerFloorRange, default: -65)
     }
 
-    public var pickerMargin: Int {
-        integer(.pickerMargin, in: Self.pickerMarginRange, default: 6)
+    public var pickerMargin: Double {
+        number(.pickerMargin, in: Self.pickerMarginRange, default: 6)
     }
 
     public var pickerFade: Double {
