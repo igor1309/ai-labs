@@ -12,41 +12,85 @@ function graphOf(maze: Maze) {
   )]));
 }
 
-describe("fixed Hatchling mazes", () => {
-  it("ships at least three distinct layouts", () => {
-    expect(new Set(MAZES.map((maze) => maze.rows.join("\n"))).size).toBeGreaterThanOrEqual(3);
+const LEVELS = [
+  { level: "hatchling", columns: 9, rows: 7, steps: 14, decisions: 2, detours: 1 },
+  { level: "explorer", columns: 15, rows: 9, steps: 32, decisions: 4, detours: 3 },
+  { level: "paleontologist", columns: 17, rows: 11, steps: 50, decisions: 6, detours: 4 }
+] as const;
+
+describe("fixed maze graphs", () => {
+  it("ships at least six distinct layouts at each level, with globally unique ids", () => {
+    for (const { level } of LEVELS) {
+      const layouts = MAZES.filter((maze) => maze.level === level);
+      expect(new Set(layouts.map((maze) => maze.rows.join("\n"))).size).toBeGreaterThanOrEqual(6);
+    }
     expect(new Set(MAZES.map((maze) => maze.id)).size).toBe(MAZES.length);
   });
 
-  it.each(MAZES)("connects every path and the goal, with branching dead ends in $id", (maze) => {
-    expect(maze.rows).toHaveLength(7);
-    expect(maze.rows.every((row) => row.length === 9 && /^[.#]+$/.test(row))).toBe(true);
+  it.each(MAZES)("connects every path and meets every difficulty threshold in $id ($level)", (maze) => {
+    const required = LEVELS.find(({ level }) => level === maze.level)!;
+    expect(maze.rows).toHaveLength(required.rows);
+    expect(maze.rows.every((row) => row.length === required.columns && /^[.#]+$/.test(row))).toBe(true);
     const graph = graphOf(maze);
-    const visited = new Set([maze.start]);
+    expect(graph.has(maze.start)).toBe(true);
+    expect(graph.has(maze.goal)).toBe(true);
+    const previous = new Map<number, number | undefined>([[maze.start, undefined]]);
     const queue = [maze.start];
     for (let at = 0; at < queue.length; at++) {
       for (const next of graph.get(queue[at]!)!) {
-        if (visited.has(next)) continue;
-        visited.add(next);
+        if (previous.has(next)) continue;
+        previous.set(next, queue[at]!);
         queue.push(next);
       }
     }
-    expect([...visited].sort((a, b) => a - b)).toEqual(paths(maze));
-    expect(visited.has(maze.goal)).toBe(true);
+    expect([...previous.keys()].sort((a, b) => a - b)).toEqual(paths(maze));
+    expect(previous.has(maze.goal)).toBe(true);
     expect(maze.goal).not.toBe(maze.start);
-    expect([...graph.values()].some((neighbors) => neighbors.length >= 3)).toBe(true);
-    expect([...graph].some(([place, neighbors]) => place !== maze.start && place !== maze.goal && neighbors.length === 1)).toBe(true);
+    // Connected trees have a unique solution, so no other shorter route
+    // can bypass the decisions measured below.
+    expect([...graph.values()].reduce((sum, neighbors) => sum + neighbors.length, 0)).toBe(2 * (graph.size - 1));
+    const solution: number[] = [];
+    for (let place: number | undefined = maze.goal; place !== undefined; place = previous.get(place)) solution.push(place);
+    expect(solution.length - 1).toBeGreaterThanOrEqual(required.steps);
+    const route = new Set(solution);
+    let decisions = 0;
+    let detours = 0;
+    for (const junction of solution.slice(1, -1)) {
+      const wrong = graph.get(junction)!.filter((place) => !route.has(place));
+      if (wrong.length === 0) continue;
+      decisions++;
+      const reachesLongDeadEnd = wrong.some((branch) => {
+        const distance = new Map([[junction, 0], [branch, 1]]);
+        const pending = [branch];
+        for (let at = 0; at < pending.length; at++) {
+          const place = pending[at]!;
+          if (graph.get(place)!.length === 1 && distance.get(place)! >= 4) return true;
+          for (const next of graph.get(place)!) {
+            if (distance.has(next) || route.has(next)) continue;
+            distance.set(next, distance.get(place)! + 1);
+            pending.push(next);
+          }
+        }
+        return false;
+      });
+      // Count distinct junctions, even if one has several long dead ends.
+      if (reachesLongDeadEnd) detours++;
+    }
+    expect(decisions).toBeGreaterThanOrEqual(required.decisions);
+    expect(detours).toBeGreaterThanOrEqual(required.detours);
   });
 
-  it.each([undefined, "unknown", ...MAZES.map((maze) => maze.id)])("selects every available layout without repeating %s", (previous) => {
-    const choices = MAZES.filter((maze) => maze.id !== previous);
-    expect(choices.map((_, at) => nextMaze(previous, (at + 0.5) / choices.length))).toEqual(choices);
-    expect(nextMaze(previous, 0)).toBe(choices[0]);
-    expect(nextMaze(previous, 0.999999)).toBe(choices.at(-1));
+  it.each(LEVELS)("selects every layout at $level without repeating or changing level", ({ level }) => {
+    for (const previous of [undefined, "unknown", ...MAZES.map((maze) => maze.id)]) {
+      const choices = MAZES.filter((maze) => maze.level === level && maze.id !== previous);
+      expect(choices.map((_, at) => nextMaze(level, previous, (at + 0.5) / choices.length))).toEqual(choices);
+      expect(nextMaze(level, previous, 0)).toBe(choices[0]);
+      expect(nextMaze(level, previous, 0.999999)).toBe(choices.at(-1));
+    }
   });
 
   it.each([-1, 1, NaN, Infinity])("rejects a random sample outside zero to one: %s", (sample) => {
-    expect(() => nextMaze(undefined, sample)).toThrow(RangeError);
+    for (const { level } of LEVELS) expect(() => nextMaze(level, undefined, sample)).toThrow(RangeError);
   });
 });
 
@@ -58,7 +102,7 @@ describe("one-space movement", () => {
     for (const position of paths(maze)) {
       const round = { ...initial, position, hint: maze.goal };
       expect(adjacentPaths(maze, position).sort((a, b) => a - b)).toEqual(graph.get(position));
-      for (const destination of [-10, -1, 0.5, NaN, Infinity, ...Array.from({ length: 64 }, (_, at) => at)]) {
+      for (const destination of [-10, -1, 0.5, NaN, Infinity, ...Array.from({ length: maze.rows.length * maze.rows[0]!.length + 1 }, (_, at) => at)]) {
         const moved = moveInMaze(round, destination);
         if (position !== maze.goal && graph.get(position)!.includes(destination)) {
           expect(moved).toEqual({ maze, from: position, position: destination, hint: undefined });
@@ -72,7 +116,7 @@ describe("one-space movement", () => {
   });
 
   it.each(MAZES)("never treats walls or out-of-bounds positions as paths in $id", (maze) => {
-    for (const place of [-1, 63, 1.5, NaN, Infinity, ...maze.rows.join("").split("").flatMap((cell, at) => cell === "#" ? [at] : [])]) {
+    for (const place of [-1, maze.rows.length * maze.rows[0]!.length, 1.5, NaN, Infinity, ...maze.rows.join("").split("").flatMap((cell, at) => cell === "#" ? [at] : [])]) {
       expect(isPath(maze, place)).toBe(false);
       expect(adjacentPaths(maze, place)).toEqual([]);
     }

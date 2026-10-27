@@ -183,6 +183,18 @@ const animationsOf = (rules: Rule[]) =>
     )
   );
 
+describe("the labyrinth board's motion", () => {
+  it("moves the baby for one step with the shared timing and replaces travel with a short fade", () => {
+    expect(declared(PLAIN, ".labyrinth-step").animation).toBe("labyrinth-step var(--motion-standard) var(--ease-out) both");
+    const frames = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes labyrinth-step")!.body);
+    expect(declared(frames, "from").translate).toBe("calc(var(--step-x) * var(--cell) * var(--motion-amount)) calc(var(--step-y) * var(--cell) * var(--motion-amount))");
+    for (const selector of [".labyrinth-board-screen", ".labyrinth-step"]) {
+      const reduced = REDUCED.find(({ prelude }) => prelude.split(",").map((part) => part.trim()).includes(selector));
+      expect(declarationsOf(reduced?.body ?? "")).toContainEqual({ property: "animation", value: "fade-in var(--motion-small) var(--ease-out) both" });
+    }
+  });
+});
+
 describe("the dig board's collection star", () => {
   it("flies from the dinosaur at --star-x and --star-y to the chip, and only fades in with reduced motion", () => {
     const flight = rulesOf(KEYFRAMES.find(({ prelude }) => prelude === "@keyframes dig-board-star")?.body ?? "")

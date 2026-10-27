@@ -2,6 +2,8 @@ import { Footprints, House, Lightbulb, Route, Sparkles } from "lucide-react";
 import { useId, type CSSProperties, type KeyboardEvent } from "react";
 import { Button } from "./Button.tsx";
 import { Picture } from "./Picture.tsx";
+import type { AgeLevel } from "./ageLevel.ts";
+import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
@@ -9,6 +11,7 @@ export type LabyrinthCellView = { open: boolean; legal: boolean };
 
 export type LabyrinthBoardScreenProps = {
   language: Language;
+  level: AgeLevel;
   columns: number;
   rows: number;
   cells: readonly LabyrinthCellView[];
@@ -24,10 +27,11 @@ export type LabyrinthBoardScreenProps = {
   onHome: () => void;
 };
 
-export function LabyrinthBoardScreen({ language, columns, rows, cells, baby, from, goal, hint, finished, picture, onMove, onHint, onHome }: LabyrinthBoardScreenProps) {
+export function LabyrinthBoardScreen({ language, level, columns, rows, cells, baby, from, goal, hint, finished, picture, onMove, onHint, onHome }: LabyrinthBoardScreenProps) {
   const text = TEXTS[language];
   const words = text.labyrinthBoard;
   const guidance = useId();
+  const compact = columns > 9;
   const move = (place: number) => {
     if (!finished && cells[place]?.legal) onMove(place);
   };
@@ -42,10 +46,10 @@ export function LabyrinthBoardScreen({ language, columns, rows, cells, baby, fro
   };
 
   return (
-    <main className="labyrinth-board-screen">
+    <main className="labyrinth-board-screen" data-compact={compact || undefined}>
       <header className="labyrinth-bar">
         <Button className="home-button" onClick={onHome}><House size={26} aria-hidden="true" />{text.home}</Button>
-        <h1><Route size={30} aria-hidden="true" />{words.title}</h1>
+        <h1>{compact ? <><span aria-hidden="true">{AGE_LEVEL_PICTURES[level]}</span>{text.ageLevels[level].name}</> : <><Route size={30} aria-hidden="true" />{words.title}</>}</h1>
         <Button className="home-button" onClick={onHint} disabled={finished}><Lightbulb size={26} aria-hidden="true" />{words.hint}</Button>
       </header>
       <div className="labyrinth-room">
@@ -55,7 +59,11 @@ export function LabyrinthBoardScreen({ language, columns, rows, cells, baby, fro
             <Button key={place} className="labyrinth-cell" tabIndex={-1} aria-label={`${words.cell(place % columns + 1, Math.floor(place / columns) + 1)}${place === goal ? ` · ${words.goal}` : ""}${place === baby ? ` · ${words.baby}` : ""}`}
               aria-current={place === baby ? "location" : undefined} aria-disabled={finished || !cell.legal}
               data-legal={!finished && cell.legal || undefined} data-hint={hint === place || undefined} data-goal={place === goal || undefined} onClick={() => move(place)}>
-              {place === goal ? <House size={34} aria-hidden="true" /> : !finished && cell.legal ? <Footprints size={28} aria-hidden="true" /> : null}
+              {place === goal && <>
+                {compact && <Picture src={picture} alt={words.parent} className="labyrinth-goal-picture" width={800} height={600} />}
+                <House className="labyrinth-goal-symbol" size={compact ? 16 : 34} aria-hidden="true" />
+              </>}
+              {!finished && cell.legal && <Footprints className="labyrinth-footprint" size={28} aria-hidden="true" />}
               {hint === place && <Sparkles className="labyrinth-hint" size={22} aria-hidden="true" />}
             </Button>
           ) : <span key={place} className="labyrinth-wall" aria-hidden="true" />)}
@@ -66,10 +74,10 @@ export function LabyrinthBoardScreen({ language, columns, rows, cells, baby, fro
             <span key={`${from}-${baby}`} className="labyrinth-step"><Picture src={picture} alt="" className="labyrinth-baby-picture" width={800} height={600} /></span>
           </span>
         </div>
-        <aside className="labyrinth-parent" aria-label={words.goal}>
+        {!compact && <aside className="labyrinth-parent" aria-label={words.goal}>
           <Picture src={picture} alt={words.parent} className="labyrinth-parent-picture" width={800} height={600} />
           <p><House size={30} aria-hidden="true" />{words.bringHome}</p>
-        </aside>
+        </aside>}
       </div>
       <p id={guidance} className="labyrinth-guidance"><Footprints size={26} aria-hidden="true" />{words.tapStep}</p>
     </main>
