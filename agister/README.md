@@ -28,3 +28,6 @@ progress and `events.jsonl`, which also keeps each branch taken, each
 pass's state and why a repeat stopped.
 Use `agister check` to validate settings and `agister inspect` to see them.
 See the [caller's guide](skills/agister/SKILL.md).
+`~/.claude/skills/agister` links to that folder in the main checkout, so
+editing the installed skill edits the repo: change it on a branch, or the
+trunk checkout is left dirty and `finish-merged-pr.sh` refuses to run.
