@@ -92,6 +92,19 @@ Decides what the panel shows.
 
 User scenarios: S-3, S-4, S-5, S-11 to S-14. Closes LAB-507.
 
+### Panel presence
+
+MenuBar's pure presence reducer decides whether the floating panel is visible.
+A recording beginning opens it; ending requests a hide after three seconds.
+A new recording cancels that hide. Closing hides it for the current recording;
+the menu offers «Показать панель» only while recording with the panel hidden.
+Compose feeds Recording's session identity into the reducer, runs its delay,
+logs visibility and reasons through the `panel` sink, and connects the panel's
+state and events. The app target owns the non-activating AppKit panel above
+normal and full-screen windows on every Space. It starts as a 360×560-point
+column at the main screen's visible right edge and autosaves its moved or
+resized frame across launches.
+
 ### Settings
 
 Decides the user's preferences: the recognition engine and its chunk,
@@ -147,7 +160,7 @@ through a machine.
 | Fill in | Inside side text: gets live text ready and reads it what it missed |
 | Transcript writing | Around call text, a decorator at the root: keeps its text in the transcript file |
 | Live text, the recognizers, model loading | Inside call text, behind its ports; model loading also feeds the conditions | The UI targets (`PanelUI`,
-`SettingsUI`, a menu bar target) stay renderers.
+`SettingsUI`) stay renderers; MenuBar also owns panel presence policy.
 
 ## Adapters still needed
 

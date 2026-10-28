@@ -1,12 +1,46 @@
 import AppKit
 import SwiftUI
 import Testing
+@testable import GlassLedger
 @testable import PanelUI
 
 @MainActor
 struct PanelViewRenderTests {
 
-    @Test func bundlesTheDesignFonts() {
+    @Test func bundlesTheDesignFonts() throws {
+
+        let temporary = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: temporary, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+
+        for (mainPath, resourcesPath) in [
+            ("Audelin.app", "Audelin.app/Contents/Resources"),
+            ("swiftpm", "swiftpm"),
+        ] {
+            let mainURL = temporary.appendingPathComponent(mainPath)
+            let bundleURL = temporary.appendingPathComponent(resourcesPath)
+                .appendingPathComponent("Audelin_GlassLedger.bundle")
+            let fontsURL = bundleURL.appendingPathComponent("Fonts")
+            try FileManager.default.createDirectory(at: fontsURL, withIntermediateDirectories: true)
+            if mainURL.pathExtension == "app" {
+                let plist = try PropertyListSerialization.data(
+                    fromPropertyList: ["CFBundleIdentifier": "test.audelin", "CFBundlePackageType": "APPL"],
+                    format: .xml, options: 0
+                )
+                try plist.write(to: mainURL.appendingPathComponent("Contents/Info.plist"))
+            }
+            let fontURL = fontsURL.appendingPathComponent("fixture.ttf")
+            try Data("font fixture".utf8).write(to: fontURL)
+
+            var usedFallback = false
+            let bundle = glassLedgerBundle(mainBundleURL: mainURL) {
+                usedFallback = true
+                return .main
+            }
+            #expect(!usedFallback, "\(mainPath) must resolve its own resource bundle")
+            #expect(bundle.bundleURL.standardizedFileURL == bundleURL.standardizedFileURL)
+            #expect(bundle.url(forResource: "fixture", withExtension: "ttf", subdirectory: "Fonts") == fontURL)
+        }
 
         _ = PanelConfig.glassLedger
 
