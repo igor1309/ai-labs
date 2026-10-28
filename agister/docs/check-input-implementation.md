@@ -46,6 +46,11 @@ ends the check, as now (`part "## Goal": "g.md": <paths' error>`), and
 no form is named closest. A run's refusal reason carries the new words,
 after `input "<name>": `, as before.
 
+The existing single-form rows of `core/inputs/brief.feature` assert
+their fault text within the reason, not the whole reason; their tests,
+which today hard-code the prefix `it takes none of its forms: "f": `,
+assert the new prefix `it takes none of its forms; closest "f": `.
+
 ## The command line
 
 cli declares one port more, beside settings, runner and runs:
@@ -103,9 +108,10 @@ they are asked anything.
 
 1. Resolves the launch directory through links and reads the settings
    with `readSettings`, as `runs.Run` does: home, the repository and the
-   project composed by field (ADR-002). A launch directory in no git
-   worktree reads home's settings and the project's; check-input does
-   not refuse it, as nothing runs there.
+   project composed by field. A launch directory in no git worktree
+   reads home's settings alone, as every settings read there does, and a
+   `.agister` in that directory is ignored; check-input does not refuse
+   it, as nothing runs there.
 2. Resolves the request for the process document alone
    (`resolve.Document(KindProcess, name)`): no agent, no runtime, no
    step. Its faults are the error, in `faultLines`' words, after
@@ -114,7 +120,8 @@ they are asked anything.
    already follows each input's forms.
 3. Finds the input by name in the resolved process. None is the error
    naming the inputs it has, in order:
-   `the process "implement" has no input "goal"; it has "brief"`.
+   `the process "implement" has no input "goal"; it has
+   "candidate_revision", "brief"`.
    An input that names no form is the error
    `the input "what" names no brief form`.
 4. Builds the forms with `formsOf` over the snapshot's documents, as a
@@ -134,8 +141,7 @@ resolved; git is asked nothing past the layout's root.
 ## The skill's forms
 
 `skills/agister/SKILL.md` gains a section "Brief forms" between the
-lines `<!-- brief-forms:begin -->` and `<!-- brief-forms:end -->`, and
-a hand-written paragraph before it naming `agister check-input`. The
+lines `<!-- brief-forms:begin -->` and `<!-- brief-forms:end -->`. The
 section is generated: `go run ./cmd/skillforms home/brief-forms
 skills/agister/SKILL.md`, run from `agister/`. It lists every `*.yaml`
 in the folder, sorted by name, types each with `settings/documents`'
@@ -150,30 +156,34 @@ file with `agister check-input <process> <input>=<file>`.
 
 ### `goal`
 
-| Part | Required | Rule |
-| --- | --- | --- |
-| `## Intent` | yes | |
-| `## Done when` | yes | |
-| `## Expected behaviour` | no | |
-| `## Out of scope` | yes | |
-| `## Sources` | no | |
-| `## Decisions` | no | |
-| `## Open` | yes | reads `None.` |
+| Part                    | Required | Rule          |
+| ---                     | ---      | ---           |
+| `## Intent`             | yes      |               |
+| `## Done when`          | yes      |               |
+| `## Expected behaviour` | no       |               |
+| `## Out of scope`       | yes      |               |
+| `## Sources`            | no       |               |
+| `## Decisions`          | no       |               |
+| `## Open`               | yes      | reads `None.` |
 
 ### `step`
 
-| Part | Required | Rule |
-| --- | --- | --- |
-| `## Goal` | yes | names an existing file in back quotes |
-| `## Covers` | yes | |
-| `## Acts on` | no | |
-| `## Constraints` | no | |
-| `## Open` | yes | reads `None.` |
+| Part             | Required | Rule                                  |
+| ---              | ---      | ---                                   |
+| `## Goal`        | yes      | names an existing file in back quotes |
+| `## Covers`      | yes      |                                       |
+| `## Acts on`     | no       |                                       |
+| `## Constraints` | no       |                                       |
+| `## Open`        | yes      | reads `None.`                         |
 <!-- brief-forms:end -->
 ```
 
-A part that both reads a text and refers to a file gives both rules,
-joined by "; ". The generator writes the file whole only when the
+Each table's cells are padded to the widest in their column, and the
+separator row's `---` too, as the feature tables are aligned. A part
+that both reads a text and refers to a file gives both rules,
+joined by "; ". A `|` in a heading or a read text is written `\|`, and
+a read text holding a back quote is set in double back quotes, so no
+cell breaks its table or code span. The generator writes the file whole only when the
 render and both markers are sound; else it exits 1, writing nothing.
 `cmd/skillforms`' test renders the committed folder and compares the
 committed skill's section byte for byte, so a form added, removed or

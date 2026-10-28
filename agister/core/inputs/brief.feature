@@ -10,7 +10,8 @@ Feature: A text input is checked against its brief forms
     Given the input "brief" names the form "f", and the path "g.md"
       exists
     When it resolves to the text <text>
-    Then it <ends>
+    Then it <ends>, a refusal's reason starting "it takes none of its
+      forms; closest \"f\": " and holding the fault text given
 
     Examples:
       | text                                                    | ends                                                    |

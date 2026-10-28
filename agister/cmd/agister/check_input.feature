@@ -42,13 +42,13 @@ Feature: The composition checks one input of a process
     Then it exits 1, its error <names>
 
     Examples:
-      | state                                                         | process   | input | names                                           |
-      | the file "/r/b.md" holds a brief                              | nope      | brief | that no layer holds the process "nope"          |
-      | the file "/r/b.md" holds a brief                              | implement | goal  | "implement" has no input "goal"; it has "brief" |
-      | no file "/r/b.md"                                             | implement | brief | that the file "/r/b.md" does not exist          |
-      | the file "/r/b.md" cannot be read                             | implement | brief | the file "/r/b.md" and the read's error         |
-      | the repository's brief form "step" has a part with no heading | implement | brief | the form's file, line and problem               |
-      | the repository's process "say" of no forms                    | say       | what  | that the input "what" names no brief form       |
+      | state                                                         | process   | input | names                                                                 |
+      | the file "/r/b.md" holds a brief                              | nope      | brief | that no layer holds the process "nope"                                |
+      | the file "/r/b.md" holds a brief                              | implement | goal  | "implement" has no input "goal"; it has "candidate_revision", "brief" |
+      | no file "/r/b.md"                                             | implement | brief | that the file "/r/b.md" does not exist                                |
+      | the file "/r/b.md" cannot be read                             | implement | brief | the file "/r/b.md" and the read's error                               |
+      | the repository's brief form "step" has a part with no heading | implement | brief | the form's file, line and problem                                     |
+      | the repository's process "say" of no forms                    | say       | what  | that the input "what" names no brief form                             |
 
   Scenario: Checking leaves no run behind
     Given the file "/r/b.md" holds a brief of home's form "step", or
@@ -60,7 +60,9 @@ Feature: The composition checks one input of a process
 
   Scenario: A launch directory in no git worktree is checked with home's
     settings
-    Given the file "/o/b.md" holds a brief of home's form "goal", and no
-      git worktree holds "/o"
+    Given the file "/o/b.md" holds a brief of home's form "goal", no git
+      worktree holds "/o", and "/o/.agister" holds a brief form "goal"
+      requiring "## Ask"
     When "agister check-input implement brief=b.md" runs in "/o"
-    Then it prints "b.md takes the form \"goal\"" and exits 0
+    Then it prints "b.md takes the form \"goal\"" and exits 0, the
+      local ".agister" never read
