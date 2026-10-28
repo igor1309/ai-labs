@@ -56,7 +56,17 @@ struct RealRecordingTranscriptTests {
         )
         let states = await panel.states()
         #expect(await sessions.begin(id: 1) == .ready)
-        for await state in states where Self.heardWords(in: state) { break }
+        // Stop waiting once afplay has finished and the recognizer had time to
+        // catch up, so a miss fails on the transcript instead of the time limit.
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { for await state in states where Self.heardWords(in: state) { break } }
+            group.addTask {
+                while kill(player, 0) == 0, !Task.isCancelled { try? await Task.sleep(for: .milliseconds(200)) }
+                try? await Task.sleep(for: .seconds(5))
+            }
+            await group.next()
+            group.cancelAll()
+        }
         await sessions.end(id: 1)
 
         let folders = try FileManager.default.contentsOfDirectory(at: calls, includingPropertiesForKeys: nil)
