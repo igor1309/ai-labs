@@ -11682,7 +11682,7 @@ html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 8px; 
 .jaw-dinosaur { border: 0; padding: 0; background: transparent; color: inherit; border-radius: 24px; min-width: 0; position: relative; transition: background var(--motion-small) var(--ease-out), scale var(--motion-small) var(--ease-out); }
 .jaw-dinosaur[data-over], .whose-jaw-board[data-holding] .jaw-dinosaur { background: #e39b2d18; }
 .jaw-dinosaur[data-over] { scale: calc(1 + .04 * var(--motion-amount)); }
-.jaw-dinosaur-art { display: block; position: relative; }
+.jaw-dinosaur-art { display: block; position: relative; max-width: min(100%, 50vh); max-width: min(100%, 50dvh); margin: auto; }
 .jaw-breath { display: block; position: relative; animation: jaw-breathe calc(var(--motion-standard) * 12.5) var(--ease-out) infinite alternate; }
 .jaw-gummy, .jaw-fitted-picture, .jaw-food-picture { display: block; width: 100%; height: auto; }
 .jaw-mouth-glow { position: absolute; left: var(--mouth-x); top: var(--mouth-y); width: var(--mouth-width); height: 10%; translate: -50% -50%; border-radius: 50%; pointer-events: none; transition: box-shadow var(--motion-standard) var(--ease-out); }
