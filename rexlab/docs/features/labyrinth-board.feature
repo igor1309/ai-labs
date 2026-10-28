@@ -3,7 +3,7 @@ Feature: Guide a baby dinosaur home
   Explorer is the default. A level switch is available on the result.
   A per-game choice is remembered until the global age level changes, which resets it.
   Both walls and paths occupy grid cells. Mazes are connected trees without loops.
-  Each round has one fixed maze, with no timer, lives or moving threats.
+  Each round generates a random maze that stays unchanged during play, with no timer, lives or moving threats.
 
   Scenario: A clear board
     Given a labyrinth round starts
@@ -33,8 +33,8 @@ Feature: Guide a baby dinosaur home
     Then the old hint clears
 
   Scenario: A maze worth exploring
-    Then every shipped maze has a reachable goal and satisfies its level difficulty requirements
-    And the next round chooses a layout different from the previous round
+    Then every generated maze has a reachable goal and satisfies its level difficulty requirements
+    And the next round generates a layout different from the previous round, even if the random source repeats
     And all path cells are reachable from the start
 
   Scenario: Input and appearance
@@ -51,7 +51,7 @@ Feature: Guide a baby dinosaur home
     And its shortest solution has at least <steps> single-space moves
     And at least <decisions> junctions on the solution have a wrong branch
     And at least <detours> wrong branches have a path from the solution junction to a dead end of 4 or more moves, measured along their longest simple path
-    And the board is selected from at least 6 qualifying layouts at this level
+    And the board is generated procedurally rather than selected from stored layouts
     And no route or correct direction is marked unless HINT is explicitly tapped
     And footprints indicate all legal adjacent spaces equally, including wrong turns
 
@@ -61,8 +61,11 @@ Feature: Guide a baby dinosaur home
       | Explorer       | 15      | 9    | 32    | 4         | 3       |
       | Paleontologist | 17      | 11   | 50    | 6         | 4       |
 
-  Scenario: Complexity is checked before a layout can ship
-    Then automated graph checks prove the length, junction and detour requirements for every layout
+  Scenario: Generated complexity is guaranteed
+    Then generation checks the length, junction and detour requirements before returning a board
+    And automated independent graph checks verify varied random seeds at every level
+    And identical seed, level and previous-board inputs reproduce the same maze
+    And generation has bounded work and terminates even for a constant random source
+    And no prebuilt maze bank or hardcoded board fallback is used
     And every layout is connected and solvable
     And retrying or asking for help never moves the child to an easier level
-    And the existing fern, grove and brook layouts are kept at Hatchling when they satisfy its thresholds, with additional qualifying layouts to reach six
