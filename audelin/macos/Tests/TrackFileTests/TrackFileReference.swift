@@ -5,14 +5,20 @@ import Foundation
 /// and ending the converter before selecting the write's output frames.
 func referenceWrite(_ samples: [Float], preceding: [Float], rate: Double) throws -> [Float] {
 
+    let first = Int((Double(preceding.count) * 48_000 / rate).rounded())
+    let end = Int((Double(preceding.count + samples.count) * 48_000 / rate).rounded())
+    return try referenceWrite(samples, preceding: preceding, rate: rate, frames: first..<end)
+}
+
+/// The frame interval follows the caller's clock independently of conversion.
+func referenceWrite(_ samples: [Float], preceding: [Float], rate: Double, frames: Range<Int>) throws -> [Float] {
+
     let context = Array(preceding.suffix(max(1, Int(ceil(rate)))))
     let converter = try Converter(from: rate, to: 48_000)
     var converted = try converter.convertAvailable(context)
     converted += try converter.convertAvailable(samples)
     converted += try converter.flush()
-    let first = Int((Double(preceding.count) * 48_000 / rate).rounded())
-    let end = Int((Double(preceding.count + samples.count) * 48_000 / rate).rounded())
-    return (first..<end).map { frame in
+    return frames.map { frame in
         let contextTime = Double(preceding.count - context.count) / rate
         let position = Double(frame) - contextTime * 48_000
         let index = max(0, min(Int(floor(position)), converted.count - 1))

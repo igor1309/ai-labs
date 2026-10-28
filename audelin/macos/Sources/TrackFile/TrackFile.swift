@@ -4,7 +4,7 @@ import Foundation
 /// Each result contains only this write's audio, drained through its end.
 protocol TrackFileConversion {
 
-    func convert(_ samples: [Float]) throws -> [Float]
+    func convert(_ samples: [Float], frames: Int) throws -> [Float]
 }
 
 /// One mono recording. Its times are seconds from its first sample.
@@ -29,6 +29,7 @@ public actor TrackFile {
     private let readWaiting: (@Sendable () -> Void)?
     private var conversion: (any TrackFileConversion)?
     private var inputRate: Double?
+    private var duration: Double = 0
     private var frames: Int64 = 0
     private var ended = false
     private var closed = false
@@ -62,12 +63,22 @@ public actor TrackFile {
                 throw Failure.invalidAudio
             }
             guard !samples.isEmpty else { return }
-            if inputRate != sampleRate {
-                conversion = sampleRate == Self.sampleRate ? nil : try makeConversion(sampleRate)
+            let converter: any TrackFileConversion
+            if inputRate == sampleRate, let conversion {
+                converter = conversion
+            } else {
+                converter = try makeConversion(sampleRate)
+                conversion = converter
                 inputRate = sampleRate
             }
-            let output = try conversion?.convert(samples) ?? samples
+            // Accumulate seconds like the call clock so both round to the same frame.
+            let end = duration + Double(samples.count) / sampleRate
+            let endpoint = end * Self.sampleRate
+            guard endpoint.isFinite, endpoint < Double(Int64.max / 2) else { throw Failure.invalidAudio }
+            let count = Int64(endpoint.rounded()) - frames
+            let output = try converter.convert(samples, frames: Int(count))
             try append(output)
+            duration = end
         } catch {
             conversion = nil
             endWriting()
