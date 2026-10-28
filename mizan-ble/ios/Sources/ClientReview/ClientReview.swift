@@ -163,6 +163,9 @@ public enum ClientReview {
                 next.acknowledgedDecision = decision
                 switch decision {
                 case .confirm:
+                    // A link already lost cannot be handed over: its loss was
+                    // reported here and would reach no later machine.
+                    if state.deferredLinkLoss != nil { return end(next, with: .linkLost(.unknown)) }
                     next.phase = .handedOver
                     return (next, nil)
                 case .decline:

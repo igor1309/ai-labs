@@ -182,10 +182,13 @@ struct ClientReviewTests {
         await flow.drive(.linkLost)
         flow.ports.opened = .decisionAcknowledged
         await flow.run(opening)
-        #expect(flow.state.phase == (decision == .confirm ? .handedOver : .ended(.declined)))
+        // A confirm acknowledged on a link already lost is not handed over:
+        // the loss would reach no one, and the payer would wait for ever.
+        #expect(flow.state.phase == (decision == .confirm ? .ended(.linkLost(.unknown)) : .ended(.declined)))
+        #expect(flow.state.charge == (decision == .confirm ? .unknown : .notCharged))
+        #expect(flow.state.isDone == false)
         #expect(flow.state.acknowledgedDecision == decision)
-        let cleanup: [Ports.Call] = decision == .confirm ? [] : [.close, .drop]
-        #expect(flow.ports.calls == [.seal(decision), .write([9, 8, 7]), .open([1])] + cleanup)
+        #expect(flow.ports.calls == [.seal(decision), .write([9, 8, 7]), .open([1]), .close, .drop])
     }
 
     @Test(arguments: [Review.Decision.confirm, .decline])
