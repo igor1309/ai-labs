@@ -14,7 +14,6 @@ let package = Package(
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveAudio", targets: ["LiveAudio"]),
         .library(name: "LiveText", targets: ["LiveText"]),
-        .library(name: "Machine", targets: ["Machine"]),
         .library(name: "MenuBar", targets: ["MenuBar"]),
         .library(name: "MicrophoneCapture", targets: ["MicrophoneCapture"]),
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
@@ -79,9 +78,6 @@ let package = Package(
         ),
         .target(
             name: "LiveText"
-        ),
-        .target(
-            name: "Machine"
         ),
         .target(
             name: "MenuBar"
@@ -203,10 +199,6 @@ let package = Package(
         .testTarget(
             name: "LiveTextTests",
             dependencies: ["LiveText"]
-        ),
-        .testTarget(
-            name: "MachineTests",
-            dependencies: ["Machine"]
         ),
         .testTarget(
             name: "MenuBarTests",

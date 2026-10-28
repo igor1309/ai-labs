@@ -36,7 +36,6 @@ TARGETS = {
     "GlassLedger": ("ui", "design tokens for both views", 2),
     "MenuBar": ("ui", "menu entries and panel presence", 3),
     "Lifecycle": ("machines", "drains recording before termination", 3),
-    "Machine": ("machines", "reducer + effect handler loop", 1),
     "Recording": ("machines", "decides whether a recording runs", 2),
     "Session": ("machines", "brings one recording's\npieces up and down", 0),
     "CallFolder": ("storage", "one folder per call", 0),

@@ -92,7 +92,7 @@ final class DrainExecutor: TaskExecutor {
     }
 }
 
-// Direct calls keep Machine's detached effects outside the controlled task graph.
+// Direct calls keep the model's effects outside the controlled task graph.
 func withDrainRig(
     construction: SessionConstruction,
     recognizers: (any Recognizer, any Recognizer)? = nil,
