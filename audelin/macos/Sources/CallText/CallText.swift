@@ -54,7 +54,9 @@ public actor CallText {
         // Side calls suspend, so each switch must wait for earlier propagation.
         let operation = Task { [sides, previous = switching] in
             await previous?.value
-            for side in sides { await side.setEnabled(enabled) }
+            for (index, side) in sides.enumerated() where self.snapshots[index].status != .finished {
+                await side.setEnabled(enabled)
+            }
         }
         switching = operation
         await operation.value
