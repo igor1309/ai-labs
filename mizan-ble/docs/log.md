@@ -2,6 +2,7 @@
 
 ## 2026-10-28
 
+- ClientReview shows the handed-over amount, carries the payer's decision to the host's acknowledgement and hands over an acknowledged confirm, with clear cancelled and lost-link outcomes (LAB-656).
 - ClientPayment lets the payer read the host's payment result or a lost link with an unknown result, then finish the transaction (LAB-657).
 - ClientFind offers the chosen nearby host, stops scanning before handing it over for payment, and resumes scanning when the transaction ends (LAB-654).
 - HostPayment takes the client's decision through the operator's mock result, acknowledges decisions, and ends cancelled or lost-link payments before a new amount (LAB-653).
