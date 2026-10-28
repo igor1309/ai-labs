@@ -1,9 +1,9 @@
 public enum ClientConnect {
     public struct Host: Equatable, Sendable {
         public let id: String
-        public let name: String
+        public let name: String?
 
-        public init(id: String, name: String) {
+        public init(id: String, name: String?) {
             self.id = id
             self.name = name
         }
@@ -113,6 +113,7 @@ public enum ClientConnect {
         fileprivate var pendingAmount: SealedAmount?
         fileprivate var handover: Handover?
         fileprivate var cleanup: Cleanup = .none
+        fileprivate var outstanding: Set<Work> = []
 
         /// The chosen host is handed in by the root; `start` begins this transaction.
         public init(host: Host) {
@@ -138,7 +139,11 @@ public enum ClientConnect {
     }
 
     fileprivate enum Cleanup: Equatable, Sendable {
-        case none, stoppingDeadline, droppingLink, closingSession, done
+        case none, stoppingDeadline, waitingForWork, droppingLink, closingSession, done
+    }
+
+    fileprivate enum Work: Hashable, Sendable {
+        case startDeadline, connect, derive, writeKey, open
     }
 
     public enum Event: Sendable {
@@ -148,7 +153,19 @@ public enum ClientConnect {
         case keyWriteResult(Result<Void, Failure>)
         case amountReceived(SealedAmount)
         case amountOpened(Result<Amount, Failure>, link: any Link, session: any Session)
+        case connectionInitiated, keyWriteInitiated
         case deadlineStopped, linkDroppedForCleanup, sessionClosed
+
+        fileprivate var completedWork: Work? {
+            switch self {
+            case .deadlineStarted: .startDeadline
+            case .connectionInitiated: .connect
+            case .derivationResult: .derive
+            case .keyWriteInitiated: .writeKey
+            case .amountOpened: .open
+            default: nil
+            }
+        }
     }
 
     public enum Effect: Equatable, Sendable {
@@ -158,32 +175,49 @@ public enum ClientConnect {
         case writeKey([UInt8])
         case open(SealedAmount)
         case stopDeadline, dropLink, closeSession
+
+        fileprivate var work: Work? {
+            switch self {
+            case .startDeadline: .startDeadline
+            case .connect: .connect
+            case .derive: .derive
+            case .writeKey: .writeKey
+            case .open: .open
+            default: nil
+            }
+        }
     }
 
     public static func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
         var next = state
+        if let work = event.completedWork { next.outstanding.remove(work) }
+        if state.cleanup == .waitingForWork && next.outstanding.isEmpty {
+            // A delayed deadline start may have run after the first stop.
+            next.cleanup = .stoppingDeadline
+            return (next, .stopDeadline)
+        }
         switch event {
         case .start where state.phase == .idle:
             next.phase = .connecting(.startingDeadline)
-            return (next, .startDeadline(seconds: 10))
+            return issuing(next, .startDeadline(seconds: 10))
         case .deadlineStarted where state.phase == .connecting(.startingDeadline):
             next.phase = .connecting(.connecting)
-            return (next, .connect(state.host))
+            return issuing(next, .connect(state.host))
         case .connectionResult(.success(let connection)) where state.phase == .connecting(.connecting):
             next.largestWrite = connection.largestWrite
             next.phase = .connecting(.deriving)
-            return (next, .derive(connection.session))
+            return issuing(next, .derive(connection.session))
         case .derivationResult(.success(let key)) where state.phase == .connecting(.deriving):
-            guard key.count <= state.largestWrite else { return failed(state, .keyTooLarge) }
+            guard key.count <= state.largestWrite else { return failed(next, .keyTooLarge) }
             // A sealed one-byte decision needs a 34-byte write.
-            guard state.largestWrite >= 34 else { return failed(state, .decisionTooLarge) }
+            guard state.largestWrite >= 34 else { return failed(next, .decisionTooLarge) }
             next.phase = .connecting(.writingKey)
-            return (next, .writeKey(key))
+            return issuing(next, .writeKey(key))
         case .keyWriteResult(.success) where state.phase == .connecting(.writingKey):
             if let amount = state.pendingAmount {
                 next.pendingAmount = nil
                 next.phase = .connecting(.openingAmount)
-                return (next, .open(amount))
+                return issuing(next, .open(amount))
             }
             next.phase = .connecting(.waitingForAmount)
             return (next, nil)
@@ -193,7 +227,7 @@ public enum ClientConnect {
             return (next, nil)
         case .amountReceived(let amount) where state.phase == .connecting(.waitingForAmount):
             next.phase = .connecting(.openingAmount)
-            return (next, .open(amount))
+            return issuing(next, .open(amount))
         case .amountOpened(.success(let amount), let link, let session)
             where state.phase == .connecting(.openingAmount):
             next.handover = Handover(link: link, session: session, amount: amount)
@@ -206,17 +240,17 @@ public enum ClientConnect {
             }
             return (next, nil)
         case .connectionResult(.failure(let failure)) where state.phase == .connecting(.connecting):
-            return failed(state, failure)
+            return failed(next, failure)
         case .derivationResult(.failure(let failure)) where state.phase == .connecting(.deriving):
-            return failed(state, failure)
+            return failed(next, failure)
         case .keyWriteResult(.failure(let failure)) where state.phase == .connecting(.writingKey):
-            return failed(state, failure)
+            return failed(next, failure)
         case .amountOpened(.failure(let failure), _, _) where state.phase == .connecting(.openingAmount):
-            return failed(state, failure)
+            return failed(next, failure)
         case .linkDropped where state.canCancel:
-            return failed(state, .linkDropped)
+            return failed(next, .linkDropped)
         case .deadlineExpired where state.canCancel && state.handover == nil:
-            return failed(state, .deadlineExceeded)
+            return failed(next, .deadlineExceeded)
         case .cancel where state.canCancel:
             next.phase = .ending
             next.pendingAmount = nil
@@ -227,6 +261,11 @@ public enum ClientConnect {
             next.phase = state.cleanup == .done ? .over : .ending
             return (next, nil)
         case .deadlineStopped where state.cleanup == .stoppingDeadline:
+            // Resource work must finish before the final drop and close.
+            guard next.outstanding.isEmpty else {
+                next.cleanup = .waitingForWork
+                return (next, nil)
+            }
             next.cleanup = .droppingLink
             return (next, .dropLink)
         case .linkDroppedForCleanup where state.cleanup == .droppingLink:
@@ -237,8 +276,14 @@ public enum ClientConnect {
             if state.phase == .ending { next.phase = .over }
             return (next, nil)
         default:
-            return (state, nil)
+            return (next, nil)
         }
+    }
+
+    private static func issuing(_ state: State, _ effect: Effect) -> (State, Effect?) {
+        var next = state
+        if let work = effect.work { next.outstanding.insert(work) }
+        return (next, effect)
     }
 
     private static func failed(_ state: State, _ failure: Failure) -> (State, Effect?) {
@@ -268,12 +313,12 @@ public enum ClientConnect {
                 return .deadlineStarted
             case .connect(let host):
                 link.connect(to: host)
-                return nil
+                return .connectionInitiated
             case .derive(let host):
                 return .derivationResult(session.derive(with: host))
             case .writeKey(let key):
                 link.writeKey(key)
-                return nil
+                return .keyWriteInitiated
             case .open(let amount):
                 return .amountOpened(session.open(amount), link: link, session: session)
             case .stopDeadline:
