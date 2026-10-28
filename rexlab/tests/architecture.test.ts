@@ -52,6 +52,10 @@ const SCREENS = [
   "PairsBoardScreen.tsx",
   "PairsResultScreen.tsx",
   "PairsWelcomeScreen.tsx",
+  "WhoseJawWelcomeScreen.tsx",
+  "WhoseJawBoardScreen.tsx",
+  "WhoseJawResultScreen.tsx",
+  "WhoseJawShelfScreen.tsx",
   "PicturePuzzleBoardScreen.tsx",
   "PicturePuzzleChoiceScreen.tsx",
   "PicturePuzzleResultScreen.tsx",
@@ -92,6 +96,8 @@ const ADAPTERS = [
   "dinosaurs.ts",
   "documentVisibility.ts",
   "itemPictures.ts",
+  "jawContent.ts",
+  "jawSounds.ts",
   "localAgeLevel.ts",
   "localLanguage.ts",
   "localProgress.ts",
@@ -108,6 +114,7 @@ const COMPOSITION = [
   "main.tsx",
   "pairsGame.tsx",
   "picturePuzzleGame.tsx",
+  "whoseJawGame.tsx",
   "presentation.ts",
   "quizGame.tsx",
   "root.ts",
@@ -136,6 +143,15 @@ const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps jaw rules pure, reached through their entrypoint and independent of presentation", () => {
+    const inJaw = (file: string) => file.startsWith("whoseJaw/");
+    expect(GRAPH.get("whoseJawGame.tsx")).toContain("whoseJaw/index.ts");
+    expect(edges(inJaw, (file) => !inJaw(file) && file !== AGE_LEVEL && !file.startsWith("language/"))).toEqual([]);
+    expect(edges((file) => !inJaw(file), (target) => inJaw(target) && target !== "whoseJaw/index.ts")).toEqual([]);
+    expect(edges((file) => PRESENTATION.includes(file), inJaw)).toEqual([]);
+    expect(edges((file) => file === "whoseJawGame.tsx" || file === "WhoseJawBoardScreen.tsx", (file) => ADAPTERS.includes(file))).toEqual([]);
+  });
+
   it("keeps the picture puzzle domain behind its entrypoint and free of UI and storage", () => {
     expect(GRAPH.get("picturePuzzleGame.tsx")).toContain("picturePuzzle/index.ts");
     expect(edges((file) => !inPicturePuzzle(file), (target) => inPicturePuzzle(target) && target !== "picturePuzzle/index.ts")).toEqual([]);
@@ -159,6 +175,13 @@ describe("the import graph", () => {
       "LabyrinthBoardScreen.tsx", "LabyrinthResultScreen.tsx", "screens.ts", "startLevel.ts", "levelOffer.ts", BEST_SCORE
     ]));
     expect(edges((file) => file === "labyrinthGame.tsx", (target) => ADAPTERS.includes(target))).toEqual([]);
+  });
+
+  it("wires Whose Jaw through its game module, with presentation independent of persistence", () => {
+    expect(GRAPH.get("App.tsx")).toContain("whoseJawGame.tsx");
+    expect(GRAPH.get("whoseJawGame.tsx")).toEqual(expect.arrayContaining(["WhoseJawWelcomeScreen.tsx", "screens.ts", "startLevel.ts"]));
+    expect(edges((file) => file !== "App.tsx", (target) => target === "whoseJawGame.tsx")).toEqual([]);
+    expect(edges((file) => file === "whoseJawGame.tsx" || file === "WhoseJawWelcomeScreen.tsx", (target) => ADAPTERS.includes(target))).toEqual([]);
   });
 
   it("is read from the source", () => {
@@ -333,7 +356,7 @@ describe("the import graph", () => {
 const TAP_SAFETY = "docs/tap-safety.md";
 
 // The modules that keep screens, each with useScreens.
-const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "digGame.tsx", "pairsGame.tsx", "picturePuzzleGame.tsx", "skeletonGame.tsx", "sortingGame.tsx", "labyrinthGame.tsx"];
+const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "digGame.tsx", "pairsGame.tsx", "picturePuzzleGame.tsx", "skeletonGame.tsx", "sortingGame.tsx", "labyrinthGame.tsx", "whoseJawGame.tsx"];
 
 // The module that alone reads the browser's clock and timers, and the
 // service worker's own root, which runs apart from the app and its taps.

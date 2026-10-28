@@ -160,6 +160,30 @@ describe("the motion", () => {
     ]);
   });
 
+  it("chomps the decoded welcome jaw twice and uses a short fade with reduced motion", () => {
+    expect(declared(PLAIN, ".whose-jaw-chomp[data-ready]").animation).toBe("whose-jaw-chomp var(--motion-alive) var(--ease-out) 2");
+    expect(declared(REDUCED, ".whose-jaw-chomp[data-ready]").animation).toBe("fade-in var(--motion-small) var(--ease-out) both");
+  });
+
+  it("animates the jaw pile and new shelf finds, with short fades for reduced motion", () => {
+    expect(declared(PLAIN, ".jaw-result-find").animation).toBe("jaw-to-shelf var(--motion-count) var(--ease-out) calc(var(--motion-screen) + var(--jaw) * var(--motion-stagger)) both");
+    for (const selector of [".whose-jaw-result h1", ".jaw-result-jaws li", ".jaw-result-find", ".jaw-result-actions"]) {
+      const reduced = REDUCED.find(({ prelude }) => prelude.split(",").map((part) => part.trim()).includes(selector));
+      expect(declarationsOf(reduced?.body ?? "")).toContainEqual({ property: "animation", value: "fade-in var(--motion-small) var(--ease-out) both" });
+    }
+  });
+
+  it("raises shelf rows and cards, chomps twice after decode and only fades with reduced motion", () => {
+    expect(declared(PLAIN, ".jaw-shelf-row").animation).toBe("rise-in var(--motion-screen) var(--ease-out) both");
+    expect(declared(PLAIN, ".jaw-shelf-card").animation).toBe("rise-in var(--motion-screen) var(--ease-out) both");
+    expect(declared(PLAIN, ".jaw-card-chomp[data-ready]").animation).toBe("jaw-chomp var(--motion-alive) var(--ease-out) 2");
+    for (const selector of [".jaw-shelf-row", ".jaw-shelf-card", ".jaw-card-chomp[data-ready]"]) {
+      const reduced = REDUCED.find(({ prelude }) => prelude.split(",").map((part) => part.trim()).includes(selector));
+      expect(declarationsOf(reduced?.body ?? "")).toContainEqual({ property: "animation", value: "fade-in var(--motion-small) var(--ease-out) both" });
+    }
+    expect(declared(REDUCED, ".jaw-card-scrim[data-leaving]").animation).toBe("fade-out var(--motion-small) var(--ease-out) both");
+  });
+
   it("has reduced motion win over the rules it overrides: none of them comes after it to undo it", () => {
     const reducedAt = RULES.findIndex(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)");
     const overridden = new Set(REDUCED.map(({ prelude }) => prelude));

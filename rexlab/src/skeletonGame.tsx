@@ -374,7 +374,7 @@ export function useSkeletonGame(
     set({ kind: "museum" });
   };
 
-  const content = (language: Language) => {
+  const content = (language: Language, onJawShelf?: () => void) => {
     switch (screen.kind) {
       case "choice":
         return (
@@ -429,6 +429,7 @@ export function useSkeletonGame(
       case "museum":
         return (
           <SkeletonMuseumScreen
+            onJawShelf={onJawShelf}
             language={language}
             {...presentSkeletonMuseum(museumOf(kept, skeletons), language, skeletonPicture)}
             onBuild={choose}

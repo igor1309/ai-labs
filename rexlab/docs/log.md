@@ -2,6 +2,9 @@
 
 ## 2026-10-28
 
+- WHOSE JAW? offers five jaw puzzles at three levels, tap/drag/keyboard controls, hints, stars, personal bests and next-level invitations (LAB-705).
+- Collected jaws fill a sixteen-slot museum shelf with dinosaur pictures, spoken facts and playful chomps in English and Russian (LAB-705).
+
 - A first picture puzzle on readable storage celebrates FIRST BEST, while corrupt or lost known history keeps the finishing reward without a best claim (LAB-669).
 - Picture puzzles celebrate later collection bests after recovered progress saves successfully; the recovery round still earns its star without claiming a historical best (LAB-669).
 - Picture puzzles offer Tyrannosaurus, Triceratops and Stegosaurus with 12, 24 or 36 pieces and a remembered difficulty choice (LAB-669).
