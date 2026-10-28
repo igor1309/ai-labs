@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-28
+
+- ClientConnect opens a secure link to the chosen host and hands over its amount, with cancel, retry after a failure and a 10-second handshake deadline (LAB-655).
+
 ## 2026-10-27
 
 - HostPreview lets the operator inspect every host screen and its events, and export iPad PNGs in light and dark for comparison with the design (LAB-676).
