@@ -47,7 +47,8 @@ public struct CallFolder: Sendable {
         self.createDirectory = createDirectory
     }
 
-    public func make() throws -> Made {
+    /// Names the folder `<timestamp> <title>`, or the bare timestamp without a title.
+    public func make(title: String? = nil) throws -> Made {
 
         guard callsURL.isFileURL else { throw POSIXError(.EINVAL) }
         let formatter = DateFormatter()
@@ -56,9 +57,11 @@ public struct CallFolder: Sendable {
         formatter.timeZone = timeZone
         formatter.dateFormat = "yyyy.MM.dd-HHmm"
         let base = formatter.string(from: now())
+        // Neither can be in a folder name; the number goes before the title so folders sort by time.
+        let suffix = title.map { " " + $0.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-") } ?? ""
         var number = 1
         while true {
-            let name = number == 1 ? base : "\(base)-\(number)"
+            let name = (number == 1 ? base : "\(base)-\(number)") + suffix
             let url = callsURL.appendingPathComponent(name, isDirectory: true)
             do {
                 try createDirectory(url)

@@ -27,12 +27,17 @@ final class CompleteConversion: TrackFileConversion {
         self.inputRate = inputRate
     }
 
-    func convert(_ samples: [Float]) throws -> [Float] {
+    func convert(_ samples: [Float], frames: Int) throws -> [Float] {
+
+        if inputRate == TrackFile.sampleRate {
+            if frames == samples.count { return samples }
+            return (0..<frames).map { samples[min($0, samples.count - 1)] }
+        }
 
         let converter = try Converter(from: inputRate, to: TrackFile.sampleRate)
         let ratio = TrackFile.sampleRate / inputRate
         let origin = Double(inputFrames - Int64(history.count)) * ratio
-        let end = Int64((Double(inputFrames + Int64(samples.count)) * ratio).rounded())
+        let end = outputFrames + Int64(frames)
         var drained = try converter.convertAvailable(history + samples)
         drained += try converter.flush()
         let output = (outputFrames..<end).map { frame in

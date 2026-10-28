@@ -1,6 +1,7 @@
 import AppKit
 import Compose
 import MenuBar
+import PanelUI
 import Preferences
 import os
 import SwiftUI
@@ -9,17 +10,27 @@ import SwiftUI
 struct AudelinApp: App {
 
     @State private var model: AudelinMenu?
+    @State private var panel: FloatingPanel?
 
     @MainActor
     private func start() async {
 
         guard model == nil else { return }
-        model = await AudelinMenu(
+        let panel = FloatingPanel(makeWindow: {
+            TranscriptPanel(contentRect: $0, styleMask: $1, backing: .buffered, defer: false)
+        }, screenFrame: { NSScreen.main?.visibleFrame })
+        self.panel = panel
+        let model = await AudelinMenu(
             preferences: PreferencesStore(fileURL: FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".audelin/preferences.json")),
             openCallsFolder: { NSWorkspace.shared.open($0) },
+            presentPanel: { [weak panel] in panel?.setVisible($0) },
             terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } }
         )
+        self.model = model
+        panel.install(content: NSHostingView(rootView: PanelContent(model: model)), onClose: { [weak model] in
+            model?.panelClosed()
+        })
     }
 
     init() {
@@ -66,5 +77,34 @@ struct AudelinApp: App {
         // Template status images discard their palette in the menu bar.
         image.isTemplate = !item.isRed
         return image
+    }
+}
+
+@MainActor
+func panelContentBinding(_ model: AudelinMenu) -> (state: PanelState, event: (PanelEvent) -> Task<Void, Never>) {
+
+    (model.panelState, { event in Task { await model.sendPanel(event) } })
+}
+
+private struct PanelContent: View {
+
+    let model: AudelinMenu
+
+    var body: some View {
+
+        GeometryReader { geometry in
+            let binding = panelContentBinding(model)
+            PanelView(state: binding.state, event: { event in
+                _ = binding.event(event)
+            }, config: config(width: geometry.size.width))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    private func config(width: CGFloat) -> PanelConfig {
+
+        var config = PanelConfig.glassLedger
+        config.panelWidth = width
+        return config
     }
 }

@@ -4,10 +4,10 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingLifecycleTests {
 
-    @Test(arguments: [false, true])
-    func callJoiningManualRecordingKeepsItsOrigin(_ ready: Bool) async throws {
+    @Test(arguments: [false, true], [false, true])
+    func callJoiningManualRecordingDoesNotEndIt(_ ready: Bool, _ automatic: Bool) async throws {
 
-        try await withRecording { rig in
+        try await withRecording(automatic: automatic) { rig in
             try await rig.start(.hand, ready: ready)
             let before = await rig.recording.snapshot()
             rig.recording.send(.callStarted)
@@ -16,6 +16,17 @@ struct RecordingLifecycleTests {
             #expect(after.session == before.session)
             #expect(after.phase == before.phase)
             #expect(await rig.session.values() == [.begin(1)])
+            rig.recording.send(.callEnded)
+            #expect(await rig.recording.snapshot() == before)
+            #expect(await rig.session.values() == [.begin(1)])
+            if !ready {
+                await rig.session.comeUp(1)
+                _ = try await rig.waitFor { $0.phase == .recording }
+            }
+            try await rig.stop()
+            let ended = try await rig.finish()
+            #expect(ended.session == nil)
+            #expect(await rig.session.values() == [.begin(1), .end(1)])
         }
     }
 

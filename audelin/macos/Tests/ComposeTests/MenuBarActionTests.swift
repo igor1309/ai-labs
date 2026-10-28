@@ -34,11 +34,13 @@ struct MenuBarActionTests {
                         }
                         events.append(event)
                     },
-                    quit: { quits += 1 }
+                    quit: { quits += 1 },
+                    panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in }
                 )
             },
             openFolder: { folders.append($0) }, terminate: { terminations += 1 },
-            didDeliver: { Issue.record("No updates were sent") }, sink: SystemLogSink()
+            didDeliver: { Issue.record("No updates were sent") }, sink: SystemLogSink(),
+            presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
         )
         #expect(factoryCalls == 1)
         #expect(menu.menu.entries.first == .stateLine(menu.menu.item.stateLine))
@@ -73,7 +75,8 @@ struct MenuBarActionTests {
             storage: MenuPreferenceStorage(readValue: { stored }, writeValue: { stored = $0 }),
             makeApplication: { factoryCalls += 1; throw ScriptFailure.failed },
             openFolder: { folders.append($0) }, terminate: { terminations += 1 },
-            didDeliver: { Issue.record("A failed application has no streams") }, sink: SystemLogSink()
+            didDeliver: { Issue.record("A failed application has no streams") }, sink: SystemLogSink(),
+            presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
         )
         #expect(factoryCalls == 2)
         #expect(unavailable.menu.entries.first == .stateLine("Не удалось начать наблюдение за звонками: failed"))
@@ -130,10 +133,12 @@ struct MenuBarActionTests {
                     makeApplication: {
                         MenuApplication(states: { states.stream }, failures: failures.stream,
                             send: { _ in Issue.record("Presentation does not send events") },
-                            quit: { Issue.record("Presentation does not quit") })
+                            quit: { Issue.record("Presentation does not quit") },
+                            panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in })
                     },
                     openFolder: { _ in Issue.record("Presentation does not open folders") },
-                    terminate: { Issue.record("Presentation does not terminate") }, didDeliver: { delivered.send() }, sink: SystemLogSink()
+                    terminate: { Issue.record("Presentation does not terminate") }, didDeliver: { delivered.send() }, sink: SystemLogSink(),
+                    presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
                 )
                 for statusLine: String? in [nil, "Наблюдение за звонками остановлено: failed"] {
                     if let statusLine {

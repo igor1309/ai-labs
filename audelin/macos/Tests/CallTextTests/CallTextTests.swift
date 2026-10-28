@@ -135,46 +135,31 @@ struct CallTextTests {
     @Test(arguments: [false, true], [false, true])
     func overlappingSwitchesKeepTheLatestRequest(enabled: Bool, duringStart: Bool) async {
 
-        let executor = CueExecutor()
-        let held = CueGate(changed: executor.notify), requestLatest = CueGate(changed: executor.notify)
-        let observed = CallObservation(changed: executor.notify)
+        let held = CueGate(), observed = CallObservation()
         let microphone = CueSide(loading: false, start: duringStart ? held : nil,
-                                 switching: duringStart ? nil : held, changed: executor.notify)
-        let other = CueSide(loading: false, changed: executor.notify)
+                                 switching: duringStart ? nil : held)
+        let other = CueSide(loading: false)
         let call = CallText(microphone: microphone, call: other)
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            if !duringStart { await call.start(enabled: enabled) }
-            let listener = Task { await observed.listen(to: call) }
-            let earlier = Task {
-                if duringStart { await call.start(enabled: !enabled) }
-                else { await call.setEnabled(!enabled) }
-            }
-            await requestLatest.wait()
-            let latest = Task { await call.setEnabled(enabled) }
-            await earlier.value
-            await latest.value
-            await call.setEnabled(enabled)
-            #expect(await microphone.enabled == enabled)
-            #expect(await other.enabled == enabled)
-            #expect(await call.state.status == (enabled ? .listening : .off))
-            await call.stop()
-            await listener.value
+        defer { held.open() }
+        if !duringStart { await call.start(enabled: enabled) }
+        let listener = Task { await observed.listen(to: call) }
+        let earlier = Task {
+            if duringStart { await call.start(enabled: !enabled) }
+            else { await call.setEnabled(!enabled) }
         }
-        defer { held.open(); requestLatest.open(); executor.run() }
-        await executor.run(until: {
-            held.entered && observed.latest?.status == (enabled ? .off : .gettingReady)
-        })
-        #expect(held.entered)
-        requestLatest.open()
-        await executor.run(until: {
-            enabled
-                ? observed.latest?.status == .gettingReady || observed.latest?.status == .listening
-                : observed.latest?.status == .off
-        })
+        await held.waitUntilEntered()
+        await observed.wait(for: State(status: enabled ? .off : .gettingReady, entries: []))
+        let latest = Task { await call.setEnabled(enabled) }
+        await observed.wait(for: State(status: enabled ? .gettingReady : .off, entries: []))
         held.open()
-        await executor.finish()
-        await task.value
+        await earlier.value
+        await latest.value
+        await call.setEnabled(enabled)
+        #expect(await microphone.enabled == enabled)
+        #expect(await other.enabled == enabled)
+        #expect(await call.state.status == (enabled ? .listening : .off))
+        await call.stop()
+        await listener.value
     }
 
     @Test func liveRevisionsReplaceEarlierText() async {
@@ -211,26 +196,20 @@ struct CallTextTests {
     @Test(arguments: [false, true])
     func failureWaitsForBothSidesToReleaseLiveTextWithOtherAudioOpen(onCallTrack: Bool) async {
 
-        let executor = CueExecutor()
-        let release = CueGate(changed: executor.notify), observed = CallObservation(changed: executor.notify)
-        let failing = CueSide(loading: false, changed: executor.notify)
-        let other = CueSide(loading: false, release: release, changed: executor.notify)
+        let release = CueGate(), observed = CallObservation()
+        let failing = CueSide(loading: false)
+        let other = CueSide(loading: false, release: release)
         let call = CallText(microphone: onCallTrack ? other : failing, call: onCallTrack ? failing : other)
         let retained = ordered(entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs))
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            await call.start()
-            await (onCallTrack ? other : failing).say(0)
-            await (onCallTrack ? failing : other).say(100, at: 0)
-            let listener = Task { await observed.listen(to: call) }
-            await failing.fail()
-            await call.stop()
-            await listener.value
-            await call.stop()
-        }
-        defer { release.open(); executor.run() }
-        await executor.run(until: { release.entered && observed.latest?.status == .failed("Live text failed") })
-        #expect(release.entered)
+        defer { release.open() }
+        await call.start()
+        await (onCallTrack ? other : failing).say(0)
+        await (onCallTrack ? failing : other).say(100, at: 0)
+        let listener = Task { await observed.listen(to: call) }
+        await failing.fail()
+        let stopping = Task { await call.stop() }
+        await release.waitUntilEntered()
+        await observed.wait(for: State(status: .failed("Live text failed"), entries: retained))
         #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
         #expect(!observed.ended)
         #expect(other.abandoned)
@@ -238,8 +217,9 @@ struct CallTextTests {
         #expect(other.stopRequests == 0)
         #expect(!other.liveTextReleased)
         release.open()
-        await executor.finish()
-        await task.value
+        await stopping.value
+        await listener.value
+        await call.stop()
         #expect(observed.ended)
         #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
         #expect(failing.liveTextReleased)
@@ -250,37 +230,30 @@ struct CallTextTests {
 
     @Test func failureDuringStopAbandonsTheOtherSidesOpenAudio() async {
 
-        let executor = CueExecutor()
-        let fail = CueGate(changed: executor.notify), stop = CueGate(changed: executor.notify)
-        let release = CueGate(changed: executor.notify), observed = CallObservation(changed: executor.notify)
-        let failing = CueSide(loading: false, stop: stop, changed: executor.notify)
-        let other = CueSide(loading: false, release: release, stop: stop, changed: executor.notify)
+        let stop = CueGate(), release = CueGate(), observed = CallObservation()
+        let failing = CueSide(loading: false, stop: stop)
+        let other = CueSide(loading: false, release: release, stop: stop)
         let call = CallText(microphone: failing, call: other)
         let retained = ordered(entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs))
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            await call.start()
-            await failing.say(0)
-            await other.say(100, at: 0)
-            let listener = Task { await observed.listen(to: call) }
-            let stopping = Task { await call.stop() }
-            await fail.wait()
-            await failing.fail()
-            await stopping.value
-            await listener.value
-        }
-        defer { fail.open(); stop.open(); release.open(); executor.run() }
-        await executor.run(until: { failing.stopRequested.isOpen && other.stopRequested.isOpen })
-        fail.open()
-        await executor.run(until: { release.entered && observed.latest?.status == .failed("Live text failed") })
+        defer { stop.open(); release.open() }
+        await call.start()
+        await failing.say(0)
+        await other.say(100, at: 0)
+        let listener = Task { await observed.listen(to: call) }
+        let stopping = Task { await call.stop() }
+        await failing.stopRequested.wait()
+        await other.stopRequested.wait()
+        await failing.fail()
+        await release.waitUntilEntered()
+        await observed.wait(for: State(status: .failed("Live text failed"), entries: retained))
         #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
         #expect(!observed.ended)
         #expect(other.abandoned)
         #expect(!other.audioEnded)
         stop.open()
         release.open()
-        await executor.finish()
-        await task.value
+        await stopping.value
+        await listener.value
         #expect(observed.ended)
         #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
         #expect(failing.stopped)
@@ -289,38 +262,27 @@ struct CallTextTests {
 
     @Test func oneSidesAudioEndingSettlesItsTextAndLeavesTheOtherReading() async {
 
-        let executor = CueExecutor()
-        let continueAudio = CueGate(changed: executor.notify), observed = CallObservation(changed: executor.notify)
-        let rig = Rig(microphoneFinishWord: 1, callFinishWord: 102, changed: executor.notify)
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            await rig.call.start()
-            let listener = Task { await observed.listen(to: rig.call) }
-            await rig.microphone.say(0)
-            await rig.microphone.say(1)
-            await rig.other.say(100, at: 0)
-            await rig.microphone.endAudio()
-            await rig.microphone.waitForEnd()
-            await rig.other.say(101, at: 1)
-            await continueAudio.wait()
-            await rig.other.say(102, at: 2)
-            await rig.other.endAudio()
-            await listener.value
-        }
-        defer { continueAudio.open(); executor.run() }
-        await executor.run(until: {
-            continueAudio.entered && observed.latest?.entries.contains { $0.text.pending == "word101" } == true
-        })
-        #expect(continueAudio.entered)
-        #expect(observed.latest == State(status: .listening, entries: ordered(
+        let observed = CallObservation()
+        let rig = Rig(microphoneFinishWord: 1, callFinishWord: 102)
+        await rig.call.start()
+        let listener = Task { await observed.listen(to: rig.call) }
+        await rig.microphone.say(0)
+        await rig.microphone.say(1)
+        await rig.other.say(100, at: 0)
+        await rig.microphone.endAudio()
+        await rig.microphone.waitForEnd()
+        await rig.other.say(101, at: 1)
+        let intermediate = State(status: .listening, entries: ordered(
             settled(entries(0...1, speaker: .mine)) + entries(100...101, speaker: .theirs)
-        )))
+        ))
+        await observed.wait(for: intermediate)
+        #expect(observed.latest == intermediate)
         #expect(!observed.ended)
         #expect(rig.microphone.liveTextReleased)
         #expect(!rig.other.liveTextReleased)
-        continueAudio.open()
-        await executor.finish()
-        await task.value
+        await rig.other.say(102, at: 2)
+        await rig.other.endAudio()
+        await listener.value
         #expect(observed.ended)
         #expect(observed.latest == State(status: .finished, entries: ordered(
             settled(entries(0...1, speaker: .mine) + entries(100...102, speaker: .theirs))
@@ -330,49 +292,45 @@ struct CallTextTests {
 
     @Test func stoppingDrainsHeldDeliveriesAndFinishOnlyWordsFromBothSides() async {
 
-        let executor = CueExecutor()
-        let mine = CueGate(changed: executor.notify), theirs = CueGate(changed: executor.notify)
-        let observed = CallObservation(changed: executor.notify)
-        let rig = Rig(microphoneFinishWord: 2, callFinishWord: 102, changed: executor.notify)
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            await rig.call.start()
-            let listener = Task { await observed.listen(to: rig.call) }
-            await rig.microphone.say(0)
-            await rig.other.say(100, at: 0)
-            await rig.microphone.holdWords([1, 2], at: 1, until: mine)
-            await rig.other.holdWords([101, 102], at: 1, until: theirs)
-            await rig.microphone.endAudio()
-            await rig.other.endAudio()
-            await rig.call.stop()
-            #expect(rig.microphone.stopped)
-            #expect(rig.other.stopped)
-            await listener.value
-        }
-        defer { mine.open(); theirs.open(); executor.run() }
-        await executor.run(until: {
-            mine.entered && theirs.entered && rig.microphone.stopRequested.isOpen && rig.other.stopRequested.isOpen
-                && observed.latest?.status == .listening
-        })
-        #expect(mine.entered && theirs.entered)
+        let mine = CueGate(), theirs = CueGate(), observed = CallObservation()
+        let rig = Rig(microphoneFinishWord: 2, callFinishWord: 102)
+        defer { mine.open(); theirs.open() }
+        await rig.call.start()
+        let listener = Task { await observed.listen(to: rig.call) }
+        await rig.microphone.say(0)
+        await rig.other.say(100, at: 0)
+        await observed.wait(for: State(status: .listening, entries: ordered(
+            entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs)
+        )))
+        await rig.microphone.holdWords([1, 2], at: 1, until: mine)
+        await rig.other.holdWords([101, 102], at: 1, until: theirs)
+        await rig.microphone.endAudio()
+        await rig.other.endAudio()
+        let stopping = Task { await rig.call.stop() }
+        await mine.waitUntilEntered()
+        await theirs.waitUntilEntered()
+        await rig.microphone.stopRequested.wait()
+        await rig.other.stopRequested.wait()
         #expect(rig.microphone.stopRequests == 1)
         #expect(rig.other.stopRequests == 1)
         #expect(!observed.ended)
         #expect(observed.latest?.status == .listening)
         mine.open()
-        await executor.run(until: {
-            rig.microphone.stopReturned.isOpen
-                && observed.latest?.entries.contains { $0.text.settled == "word2" } == true
-        })
+        await rig.microphone.stopReturned.wait()
+        await rig.microphone.waitForEnd()
+        let intermediate = State(status: .listening, entries: ordered(
+            settled(entries(0...2, speaker: .mine)) + entries(100...100, speaker: .theirs)
+        ))
+        await observed.wait(for: intermediate)
         #expect(rig.microphone.stopped)
         #expect(!rig.other.stopped)
         #expect(!observed.ended)
-        #expect(observed.latest == State(status: .listening, entries: ordered(
-            settled(entries(0...2, speaker: .mine)) + entries(100...100, speaker: .theirs)
-        )))
+        #expect(observed.latest == intermediate)
         theirs.open()
-        await executor.finish()
-        await task.value
+        await stopping.value
+        await listener.value
+        #expect(rig.microphone.stopped)
+        #expect(rig.other.stopped)
         #expect(observed.ended)
         #expect(observed.latest == State(status: .finished, entries: ordered(
             settled(entries(0...2, speaker: .mine) + entries(100...102, speaker: .theirs))
@@ -406,12 +364,11 @@ private struct Rig {
 
     init(
         microphoneLoading: Bool = false, callLoading: Bool = false,
-        microphoneFinishWord: Int? = nil, callFinishWord: Int? = nil,
-        changed: @escaping @Sendable () -> Void = {}
+        microphoneFinishWord: Int? = nil, callFinishWord: Int? = nil
     ) {
 
-        microphone = CueSide(loading: microphoneLoading, finishWord: microphoneFinishWord, changed: changed)
-        other = CueSide(loading: callLoading, finishWord: callFinishWord, changed: changed)
+        microphone = CueSide(loading: microphoneLoading, finishWord: microphoneFinishWord)
+        other = CueSide(loading: callLoading, finishWord: callFinishWord)
         call = CallText(microphone: microphone, call: other)
     }
 }
@@ -454,13 +411,13 @@ private actor CueSide: Side {
     nonisolated var audioEnded: Bool { lifetime.withLock { $0.audioEnded } }
     nonisolated var liveTextReleased: Bool { lifetime.withLock { $0.liveTextReleased } }
     nonisolated var stopRequests: Int { lifetime.withLock { $0.stopRequests } }
-    nonisolated let stopRequested: CueGate
-    nonisolated let stopReturned: CueGate
+    nonisolated let stopRequested = CueGate()
+    nonisolated let stopReturned = CueGate()
+    private let endReceived = CueGate()
 
     init(
         loading: Bool, finishWord: Int? = nil, release: CueGate? = nil,
-        stop: CueGate? = nil, start: CueGate? = nil, switching: CueGate? = nil,
-        changed: @escaping @Sendable () -> Void = {}
+        stop: CueGate? = nil, start: CueGate? = nil, switching: CueGate? = nil
     ) {
 
         self.loading = loading
@@ -469,14 +426,13 @@ private actor CueSide: Side {
         stopHold = stop
         startHold = start
         switchHold = switching
-        stopRequested = CueGate(changed: changed)
-        stopReturned = CueGate(changed: changed)
     }
 
     func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async {
 
         for await item in delivery.stream {
             await receive(item.snapshot)
+            if item.snapshot.status == .finished { endReceived.open() }
             item.received?.resume()
         }
     }
@@ -538,7 +494,11 @@ private actor CueSide: Side {
         beginEnd(finalize: enabled)
     }
 
-    func waitForEnd() async { await ending?.value }
+    func waitForEnd() async {
+
+        await ending?.value
+        await endReceived.wait()
+    }
 
     func stop() async {
 

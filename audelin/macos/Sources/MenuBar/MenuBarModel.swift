@@ -2,7 +2,7 @@ public enum MenuBarAction: Equatable, Sendable {
 
     case start, stop
     case setAutomatic(Bool), setLiveText(Bool)
-    case openCallsFolder, quit
+    case showPanel, openCallsFolder, quit
 }
 
 public enum MenuBarEntry: Equatable, Sendable {
@@ -17,7 +17,8 @@ public struct MenuBarModel: Equatable, Sendable {
     public let item: MenuBarItem
     public let entries: [MenuBarEntry]
 
-    public init(recording: MenuBarRecording, preferences: MenuBarPreferences, statusLine: String? = nil) {
+    public init(recording: MenuBarRecording, preferences: MenuBarPreferences, statusLine: String? = nil,
+                offersPanelReopen: Bool = false) {
 
         item = .from(recording, liveText: preferences.liveText)
         var entries: [MenuBarEntry] = [.stateLine(statusLine ?? item.stateLine)]
@@ -26,6 +27,7 @@ public struct MenuBarModel: Equatable, Sendable {
             entries.append(.button("Начать запись", .start))
         case .recording:
             entries.append(.button("Остановить запись", .stop))
+            if offersPanelReopen { entries.append(.button("Показать панель", .showPanel)) }
         default: break
         }
         entries += [

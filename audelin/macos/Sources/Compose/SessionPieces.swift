@@ -54,6 +54,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     let news = AsyncStream<SessionEvent>.makeStream()
     nonisolated let transcriptFailures: TranscriptFailureReport
     let folder: CallFolder
+    let folderTitle: String?
     let processes: CallAppProcesses
     let startMicrophone: @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>
     let startCall: @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>
@@ -98,6 +99,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
     public init(
         folder: CallFolder,
+        folderTitle: String? = nil,
         processes: CallAppProcesses,
         startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
@@ -113,7 +115,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     ) {
 
         self.init(
-            folder: folder, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
+            folder: folder, folderTitle: folderTitle, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
             microphoneRecognizerSource: { microphoneRecognizer }, callRecognizerSource: { callRecognizer },
             executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
             makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText,
@@ -123,6 +125,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
     public init(
         folder: CallFolder,
+        folderTitle: String? = nil,
         processes: CallAppProcesses,
         startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
@@ -138,7 +141,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     ) {
 
         self.init(
-            folder: folder, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
+            folder: folder, folderTitle: folderTitle, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
             microphoneRecognizerSource: microphoneRecognizerSource, callRecognizerSource: callRecognizerSource,
             executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
             makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText,
@@ -148,6 +151,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
     init(
         folder: CallFolder,
+        folderTitle: String? = nil,
         processes: CallAppProcesses,
         startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
@@ -164,6 +168,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     ) {
 
         self.folder = folder
+        self.folderTitle = folderTitle
         self.processes = processes
         self.startMicrophone = startMicrophone
         self.startCall = startCall
@@ -186,7 +191,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
 
     public func create() throws -> SessionCallFolder {
 
-        let made = try folder.make()
+        let made = try folder.make(title: folderTitle)
         self.made = made
         return SessionCallFolder(id: made.url.path)
     }

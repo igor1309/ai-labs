@@ -38,6 +38,22 @@ struct CallFolderTests {
         }
     }
 
+    @Test func titleFollowsTheTimestampAndATakenNameNumbersTheTimestamp() async throws {
+
+        try await withCallsFolder { calls in
+            let adapter = CallFolder(callsURL: calls, now: { fixedStart.addingTimeInterval(249_540) }, timeZone: tokyo)
+            let made = try [
+                adapter.make(title: "Zoom"), adapter.make(), adapter.make(title: "Zoom"),
+                adapter.make(title: "a/b:c"), adapter.make(title: "//::"),
+            ]
+            #expect(made.map(\.url.lastPathComponent) == [
+                "2026.10.27-1124 Zoom", "2026.10.27-1124", "2026.10.27-1124-2 Zoom",
+                "2026.10.27-1124 a-b-c", "2026.10.27-1124 ----",
+            ])
+            for folder in made { try expectDirectory(folder.url) }
+        }
+    }
+
     @Test func eachMakeIsNamedByItsOwnTime() async throws {
 
         try await withCallsFolder { calls in

@@ -56,6 +56,7 @@ public struct RecordingState: Equatable, Sendable {
     public var missing: Set<RecordingCondition>
     public var phase: Phase = .idle
     public var session: ActiveSession?
+    public var sessionBeganDuringCall = false
     public var callOn = false
     public var heldForCall = false
     public var pendingCall = false
@@ -108,6 +109,7 @@ public enum RecordingReducer {
             state.callOn = false
             state.heldForCall = false
             state.pendingCall = false
+            guard state.sessionBeganDuringCall else { return (state, nil) }
             return end(&state)
 
         case .userStart:
@@ -149,6 +151,7 @@ public enum RecordingReducer {
             case .ended:
                 state.phase = .idle
                 state.session = nil
+                state.sessionBeganDuringCall = false
                 let resumeCall = state.pendingCall && state.callOn && state.automatic && !state.heldForCall
                 state.pendingCall = false
                 if resumeCall { return begin(&state, origin: .call) }
@@ -162,6 +165,8 @@ public enum RecordingReducer {
         guard state.phase == .idle, state.missing.isEmpty else { return (state, nil) }
         state.lastSessionID += 1
         state.session = .init(id: state.lastSessionID, origin: origin)
+        // A hand start during a call belongs to that call too: Audelin may have missed its start.
+        state.sessionBeganDuringCall = state.callOn
         state.phase = .beginning
         state.cannotRecord = nil
         return (state, .beginSession(id: state.lastSessionID))
