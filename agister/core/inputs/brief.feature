@@ -1,5 +1,4 @@
-# core/inputs, a brief form (docs/run-implementation.md, "Inputs and
-# progress"; ADR-010, rule 5): a text input checked against the forms it
+# core/inputs, a brief form: a text input checked against the forms it
 # names, structure never meaning. A spy answers whether a path exists.
 # The form "f": "## Goal" required, referring to a file; "## Notes"
 # optional; "## Open" required, reading "None.".
@@ -10,8 +9,8 @@ Feature: A text input is checked against its brief forms
     Given the input "brief" names the form "f", and the path "g.md"
       exists
     When it resolves to the text <text>
-    Then it <ends>, a refusal's reason starting "it takes none of its
-      forms; closest \"f\": " and holding the fault text given
+    Then it <ends>; where refused, its reason starts "it takes none of
+      its forms; closest \"f\": " and holds the fault text given
 
     Examples:
       | text                                                    | ends                                                    |

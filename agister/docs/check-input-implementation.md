@@ -46,10 +46,20 @@ ends the check, as now (`part "## Goal": "g.md": <paths' error>`), and
 no form is named closest. A run's refusal reason carries the new words,
 after `input "<name>": `, as before.
 
-The existing single-form rows of `core/inputs/brief.feature` assert
-their fault text within the reason, not the whole reason; their tests,
-which today hard-code the prefix `it takes none of its forms: "f": `,
-assert the new prefix `it takes none of its forms; closest "f": `.
+Every test that today expects the exact old refusal moves to the new
+words, single form and multiple forms alike:
+
+- the single-form rows of `core/inputs/brief.feature`, for the forms
+  "f" and "o", in `core/inputs/brief_test.go`: they assert their fault
+  text within the reason, after the new prefix
+  `it takes none of its forms; closest "f": ` (or `"o"`);
+- the multi-form test in `core/inputs/brief_test.go`, whose scenario
+  is replaced by the closest-form scenarios;
+- the composition run test for "A brief that takes no form refuses the
+  run", in `cmd/agister/inputs_test.go`: its one form "step" now reads
+  `closest "step": ` with the same faults. Its scenario in
+  `cmd/agister/inputs.feature` names the parts missing, not the exact
+  text, and stays as it is.
 
 ## The command line
 
@@ -123,7 +133,7 @@ they are asked anything.
    `the process "implement" has no input "goal"; it has
    "candidate_revision", "brief"`.
    An input that names no form is the error
-   `the input "what" names no brief form`.
+   `the input "what" of the process "say" names no brief form`.
 4. Builds the forms with `formsOf` over the snapshot's documents, as a
    run's plan does.
 5. Reads the file with `fileSource`, its path the given one, relative to
@@ -209,4 +219,6 @@ test drives a temp directory too.
 7. The generator is its own small command, not an agister verb: it is a
    build tool of this repository, not a caller's command. Its rules come
    from `settings/documents`, never from parsing YAML by hand; no form
-   name is written in its code.
+   name is written in its code. The architecture permits new parts,
+   and a build tool that reads `settings/documents` outside the run
+   path keeps the existing dependency rules.

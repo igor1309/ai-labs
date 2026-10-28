@@ -48,7 +48,7 @@ Feature: The composition checks one input of a process
       | no file "/r/b.md"                                             | implement | brief | that the file "/r/b.md" does not exist                                |
       | the file "/r/b.md" cannot be read                             | implement | brief | the file "/r/b.md" and the read's error                               |
       | the repository's brief form "step" has a part with no heading | implement | brief | the form's file, line and problem                                     |
-      | the repository's process "say" of no forms                    | say       | what  | that the input "what" names no brief form                             |
+      | the repository's process "say" of no forms                    | say       | what  | that the input "what" of the process "say" names no brief form        |
 
   Scenario: Checking leaves no run behind
     Given the file "/r/b.md" holds a brief of home's form "step", or

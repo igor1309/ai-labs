@@ -15,7 +15,8 @@ Feature: The skill states the rules of every brief form home ships
     When the skill is checked against the forms
     Then it fails, naming the form "spike"
     When "go run ./cmd/skillforms <forms> <skill>" runs on them
-    Then the check passes, and the skill names "spike" after "step"
+    Then the check passes, and the skill names the forms in the order
+      "goal", "spike", "step"
 
   Scenario: Regenerating is deterministic and touches only the section
     Given a skill with text before and after its markers

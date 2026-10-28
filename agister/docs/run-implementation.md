@@ -349,7 +349,8 @@ above. A text takes a form where no part appears twice, each required
 part is there and not empty, a part that `reads` a text reads exactly
 it, and a part that refers to a `file` names one in back quotes, the
 first such, that exists. A text that takes none of its forms is
-refused: failed, `refused`, naming, for each form, what is wrong; a
+refused: failed, `refused`, naming the closest form's faults and
+counting each other form's; a
 workflow's input refused so ends the run with that reason. Core
 knows no file: whether a path exists is a port, the composition
 answers it. A source may give its value's identity; where it gives
