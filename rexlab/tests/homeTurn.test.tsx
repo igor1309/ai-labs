@@ -4,7 +4,10 @@ import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type SizeClass } from "../src/App.tsx";
-import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
+import { HOME_GAMES as ALL_GAMES, type HomeGame } from "../src/HomePage.tsx";
+import { readPictureDinosaurs } from "../src/dinosaurs.ts";
+import records from "../src/data/dinosaurs.json";
+import { localPicturePuzzleChoice, localPicturePuzzleProgress } from "../src/localProgress.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { extendPart, filterDoubleTaps, turnFrame } from "../src/root.ts";
 import type { TapInput } from "../src/tapFilter.ts";
@@ -27,6 +30,7 @@ import {
   layOutTilesRow,
   lightDevice,
   manualPictures,
+  memoryStorage,
   manualViewport,
   pageAtRest,
   seededRandom,
@@ -44,18 +48,21 @@ import { openWindow, styleAt } from "./windowSizes.ts";
 // app is rendered as a browser shows it, the page's parts measured as the
 // test lays them out and their animations recorded.
 
+// Fixed swipe distances use the four-column fixture without the optional game.
+const HOME_GAMES = ALL_GAMES.filter((game) => game !== "picturePuzzle");
+
 const GLIDE = 240;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 // The parts of the home page both layouts share, `featured` on the large
 // card and every other game a tile, in the page's order.
-const partsFeaturing = (featured: HomeGame) => ["wordmark", "corner", "greeting", "featured-card", "tiles", ...HOME_GAMES.filter((game) => game !== featured).map((game) => `tile-${game}`), "more-coming"];
+const partsFeaturing = (featured: HomeGame, withPicturePuzzle = false) => ["wordmark", "corner", "greeting", "featured-card", "tiles", ...(withPicturePuzzle ? ALL_GAMES : HOME_GAMES).filter((game) => game !== featured).map((game) => `tile-${game}`), "more-coming"];
 
 // Those parts with COMPARE featured.
 const PARTS = partsFeaturing("compare");
 
 // Every part the home page may mark, whichever game it features.
-const ANY_PART = ["wordmark", "corner", "greeting", "featured-card", "tiles", ...HOME_GAMES.map((game) => `tile-${game}`), "more-coming"];
+const ANY_PART = ["wordmark", "corner", "greeting", "featured-card", "tiles", ...ALL_GAMES.map((game) => `tile-${game}`), "more-coming"];
 
 // Those that stand on the page itself, not in another part.
 const OUTER = ["wordmark", "corner", "greeting", "featured-card", "tiles"];
@@ -114,12 +121,13 @@ function openTurning(
   width: number,
   height: number,
   size: SizeClass,
-  { upright = size.startsWith("tall"), reduced = false, featured = "compare" as HomeGame, own = new Map<string, OwnDrawing>(), narrow = false } = {}
+  { upright = size.startsWith("tall"), reduced = false, featured = "compare" as HomeGame, own = new Map<string, OwnDrawing>(), narrow = false, withPicturePuzzle = false } = {}
 ) {
   openWindow(width, height);
   const viewport = manualViewport("landscape");
   viewport.resize(size, upright);
   const pictures = manualPictures();
+  const storage = memoryStorage();
   const animations: Recorded[] = [];
   const frames: Array<{ name: string; box: Box }> = [];
   const extended: Array<{ name: string; right: number; bottom: number }> = [];
@@ -145,6 +153,8 @@ function openTurning(
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(7)}
+      {...(withPicturePuzzle && { picturePuzzle: { dinosaurs: readPictureDinosaurs(records), bodyPicture: fakeBodyPicture, random: seededRandom(17),
+        choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage) } })}
       portraitLayouts={{ home: narrow ? ["tall", "tall-narrow"] : ["tall"] }}
       viewport={viewport}
       progress={emptyProgress()}
@@ -819,18 +829,18 @@ describe("a window the screen has no layout for", () => {
 });
 
 describe("whichever game the large card features", () => {
-  it.each(HOME_GAMES)("featuring %s, each tile the row shows is marked for its own game and glides, its frame sized from its old box to its new one", (featured) => {
-    const app = openTurning(1180, 820, "wide", { featured });
-    const tiles = partsFeaturing(featured).filter((name) => name.startsWith("tile-"));
+  it.each(ALL_GAMES)("featuring %s, each tile the row shows is marked for its own game and glides, its frame sized from its old box to its new one", (featured) => {
+    const app = openTurning(1180, 820, "wide", { featured, withPicturePuzzle: true });
+    const tiles = partsFeaturing(featured, true).filter((name) => name.startsWith("tile-"));
 
-    expect([...document.querySelectorAll("[data-turn-part]")].map(nameOf)).toEqual(partsFeaturing(featured));
-    expect(within(tilesRow()).getAllByRole("button").map((tile) => [/\b([\w-]+)-tile\b/.exec(tile.className)?.[1], nameOf(tile)])).toEqual(tiles.map((name) => [name === "tile-sandWriting" ? "sand-writing" : name.slice("tile-".length), name]));
+    expect([...document.querySelectorAll("[data-turn-part]")].map(nameOf)).toEqual(partsFeaturing(featured, true));
+    expect(within(tilesRow()).getAllByRole("button").map((tile) => [/\b([\w-]+)-tile\b/.exec(tile.className)?.[1], nameOf(tile)])).toEqual(tiles.map((name) => [name === "tile-sandWriting" ? "sand-writing" : name === "tile-picturePuzzle" ? "picture-puzzle" : name.slice("tile-".length), name]));
 
     const before = Object.fromEntries(tiles.map((name) => [name, laidOut(name, "wide")]));
 
     app.resize([820, 1180, "tall"]);
 
-    expect(app.glides().map(({ name }) => name)).toEqual(partsFeaturing(featured));
+    expect(app.glides().map(({ name }) => name)).toEqual(partsFeaturing(featured, true));
     expect(tiles.map((name) => app.animations.find((animation) => animation.name === `frame of ${name}`)?.keyframes.map(({ width, height }) => [width, height]))).toEqual(
       tiles.map((name) => {
         const after = laidOut(name, "tall");

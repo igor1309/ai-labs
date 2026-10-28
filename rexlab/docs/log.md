@@ -5,6 +5,7 @@
 - Picture puzzles offer Tyrannosaurus, Triceratops and Stegosaurus with 12, 24 or 36 pieces and a remembered difficulty choice (LAB-669).
 - Picture puzzle pieces can be dragged, tapped or placed with the keyboard, with a four-piece tray, hints and a full-picture preview (LAB-669).
 - Finished pictures reveal a dinosaur fact and a round star, save a shared collection, and celebrate new collection bests independently at each difficulty (LAB-669).
+- The picture puzzle is available from its own home tile and featured card, both showing the shared collection (LAB-669).
 
 ## 2026-10-26
 

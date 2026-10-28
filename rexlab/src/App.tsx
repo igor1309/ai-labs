@@ -26,6 +26,7 @@ import { usePairsGame, type PairsGameProps, type PairsPhase } from "./pairsGame.
 import { NARROW_PAIRS_RESULT, pairsResultWidth, PORTRAIT_PAIRS_RESULT } from "./pairsResultLayout.ts";
 import { NARROW_WELCOME, pairsWelcomeType, pairsWelcomeWidth, PORTRAIT_WELCOME } from "./pairsWelcomeLayout.ts";
 import { LoadAhead, PicturesProvider, type PictureStore } from "./Picture.tsx";
+import { usePicturePuzzleGame, type PicturePuzzleGameProps, type PicturePuzzlePhase } from "./picturePuzzleGame.tsx";
 import { presentCatalogueCard, presentDinosaurPage } from "./presentation.ts";
 import { useQuizGame, type QuizGameProps, type QuizPhase } from "./quizGame.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
@@ -88,7 +89,7 @@ export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
 // compare quiz's own, a question or its result, and each of find the
 // pair's, its welcome, a board or its result, which each game names as it
 // shows them.
-export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}` | `dig-${DigPhase}` | `care-${CarePhase}`;
+export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}` | `dig-${DigPhase}` | `care-${CarePhase}` | `picturePuzzle-${PicturePuzzlePhase}`;
 
 // Each screen with a portrait layout, named with the size classes its
 // layout is built for; a screen not named has none.
@@ -120,6 +121,7 @@ export type AppProps = CareGameProps &
   Pick<DigGameProps, "digDinosaurs" | "digProgress" | "sandContext"> & {
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
+    picturePuzzle?: PicturePuzzleGameProps;
     // The skeleton game's sounds, silent if none.
     skeletonSounds?: SkeletonSounds;
     viewport: Viewport;
@@ -196,7 +198,8 @@ type Screen =
   | { kind: "skeletons" }
   // And the dig game.
   | { kind: "dig" }
-  | { kind: "sandWriting" };
+  | { kind: "sandWriting" }
+  | { kind: "picturePuzzle" };
 
 // A food chosen changes the screen at once. A dinosaur's page opens from its
 // card and closes back to it, and a step slides the next page in the
@@ -244,6 +247,7 @@ export function App({
   digDinosaurs,
   digProgress,
   sandContext,
+  picturePuzzle,
   ...careProps
 }: AppProps) {
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
@@ -262,7 +266,7 @@ export function App({
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
-  const [featured] = useState<HomeGame>(() => chooseFeatured(HOME_GAMES, { store: featuredStore, random, today: calendarDay(now()) }));
+  const [featured] = useState<HomeGame>(() => chooseFeatured(HOME_GAMES.filter((game) => game !== "picturePuzzle" || picturePuzzle !== undefined), { store: featuredStore, random, today: calendarDay(now()) }));
   // The device language is only the first guess: a parent's choice is kept
   // and wins on every later visit.
   const [language, setLanguage] = useState<Language>(() => languageStore.load() ?? languageOfDevice(deviceLanguage));
@@ -315,6 +319,8 @@ export function App({
   // Each game counts a start where it begins, wherever the child began it
   // from, and not as it opens on a welcome or choice screen.
   const counting = (game: HomeGame) => () => startCounter.countStart(game);
+
+  const pictureGame = usePicturePuzzleGame(picturePuzzle, ageLevel, home, counting("picturePuzzle"));
 
   const quiz = useQuizGame({ dinosaurs, progress, bodyPicture, random }, ageLevel, home, counting("compare"));
 
@@ -404,7 +410,9 @@ export function App({
               ? `dig-${dig.phase}`
               : screen.kind === "care"
                 ? `care-${care.phase}`
-                : screen.kind;
+                : screen.kind === "picturePuzzle"
+                  ? `picturePuzzle-${pictureGame.phase}`
+                  : screen.kind;
   const portraitSizes = portraitLayouts[layoutScreen];
   const gate = useMemo(() => ({
     isShown: () => gateShownFor(layoutScreen),
@@ -643,6 +651,8 @@ export function App({
         return skeletonGame.content(language);
       case "dig":
         return dig.content(language);
+      case "picturePuzzle":
+        return pictureGame.content(language);
       case "sandWriting":
         return <SandWritingScreen language={language} sandContext={sandContext} onHome={home} />;
       case "home":
@@ -669,6 +679,7 @@ export function App({
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
             dig={{ picture: digTile, dugUp: dig.dugUp }}
+            picturePuzzle={picturePuzzle && { picture: bodyPicture("tyrannosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
             moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={openCompare}
             onCatalogue={openCatalogue}
