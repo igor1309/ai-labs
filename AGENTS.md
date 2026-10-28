@@ -81,6 +81,11 @@
 - Review every Codex implement run with agister's review processes before
   it merges. When sol is limited, run the reviewers one at a time, falling
   back to `claude-opus`.
+- An implement run's `verification` is the record of what it checked:
+  each command, its exit code and its last line. Read it before
+  committing; do not run its checks again. Run only what it lacks: a
+  check it names no command for, a failed or empty verification, or code
+  that changed after the run, such as a merge or a fix by hand.
 
 ## Verifying fixes
 
