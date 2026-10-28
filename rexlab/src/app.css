@@ -11841,7 +11841,7 @@ html[data-size="tall-narrow"] .jaw-shelf-picture { height: calc(100% - 42px); }
 .jaw-result-audio { display: flex; justify-content: flex-end; width: 100%; }
 .whose-jaw-board-bar[data-audio] { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; }
 .whose-jaw-board-bar[data-audio] .jaw-teeth { justify-content: center; }
-html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] { grid-template-columns: 48px minmax(0, 1fr) 48px 48px; gap: 8px; }
+html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] { grid-template-columns: 48px minmax(0, 1fr) 48px 48px; gap: 6px; }
 html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .home-button { box-sizing: border-box; width: 48px; min-width: 48px; height: 48px; padding: 12px; gap: 0; }
 html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .home-button span { display: none; }
 html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .jaw-socket { box-sizing: border-box; width: clamp(22px, 6vw, 32px); flex-shrink: 0; border-width: 2px; font-size: 18px; }
