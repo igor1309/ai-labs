@@ -137,8 +137,7 @@ public enum HostBroadcast {
             self.setting = setting
         }
 
-        /// currentState reads the executing machine's live state when the effect runs.
-        public func handle(_ effect: Effect, currentState: () -> State) async -> Event? {
+        public func handle(_ effect: Effect) async -> Event? {
             switch effect {
             case .readCountdown(let attempt):
                 return .countdownRead(attempt, setting.seconds())
@@ -188,9 +187,6 @@ public enum HostBroadcast {
                     return .handshakeFailed(attempt, reason: String(describing: error))
                 }
             case .sendAmount(let attempt, let link, let message):
-                let state = currentState()
-                guard state.attempt == attempt && state.phase == .handshake(.sendingAmount) else { return nil }
-                // The check and synchronous send share MainActor, so expiry cannot interleave.
                 do {
                     try sender.sendAmount(message, to: link, for: attempt)
                     return .amountSent(attempt)

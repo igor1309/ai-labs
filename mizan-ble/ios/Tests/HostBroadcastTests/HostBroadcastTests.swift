@@ -1,4 +1,5 @@
 import HostBroadcast
+import Machine
 import Testing
 
 private typealias Broadcast = HostBroadcast
@@ -178,53 +179,61 @@ struct HostBroadcastTests {
         #expect(!fake.calls.contains { if case .sent = $0 { true } else { false } })
     }
 
-    @Test func queuedSendAfterExpiryDoesNotReachClient() async throws {
+    @Test(arguments: [false, true])
+    func queuedSendAfterExpiryDoesNotReachClient(_ expireFirst: Bool) async throws {
         let fake = Ports(seconds: 30, sessions: [session(1)])
         let flow = Flow(fake)
-        let send = try await flow.beginHandshake(stoppingAt: .sendingAmount)
-        let cleanup = try #require(flow.accept(.secondsLeft(first, 0)))
-        let timedOut = flow.state
-        let calls = fake.calls
-        let resources = fake.resources
+        _ = try await flow.beginHandshake(stoppingAt: .sealingAmount)
+        let handler = Broadcast.Handler(session: fake, advertiser: fake, sender: fake,
+                                        countdown: fake, setting: fake)
+        let machine = Machine(initialState: flow.state, reducer: Broadcast.reduce,
+                              handler: { await handler.handle($0) })
+        defer { machine.end() }
 
-        let result = await flow.handle(send)
+        if expireFirst { machine.send(.secondsLeft(first, 0)) }
+        machine.send(.amountSealed(first, protectedAmount))
+        if !expireFirst { machine.send(.secondsLeft(first, 0)) }
 
-        #expect(result == nil)
-        #expect(fake.calls == calls)
-        #expect(fake.resources == resources)
-        #expect(flow.state == timedOut)
-        #expect(flow.state.phase == .timedOut)
-        await flow.run(cleanup)
+        let sent: [Ports.Call] = expireFirst ? [] : [.sent(first, client, protectedAmount)]
+        #expect(fake.calls.filter { if case .sent = $0 { true } else { false } } == sent)
+        #expect(machine.state.phase == .timedOut)
+        #expect(machine.state.amount.isEmpty)
+        let timedOut = machine.state
+        await machine.waitForEffects()
+        #expect(machine.state == timedOut)
+        #expect(fake.calls.filter { if case .sent = $0 { true } else { false } } == sent)
         expectRetired(fake, first)
     }
 
     @Test(arguments: [false, true])
-    func queuedSendAfterHandoverOrReplacementIsRejected(_ replace: Bool) async throws {
+    func queuedSealResultAfterHandoverOrReplacementIsRejected(_ replace: Bool) async throws {
         let fake = Ports(seconds: 30, sessions: [session(1), session(2)])
         let flow = Flow(fake)
-        let oldSend = try await flow.beginHandshake(stoppingAt: .sendingAmount)
-        var replacementSend: Broadcast.Effect?
+        let send = try await flow.beginHandshake(stoppingAt: .sendingAmount)
+        let sent = try #require(await flow.handle(send))
+        var replacementResult: Broadcast.Event?
         let second = Broadcast.Attempt(number: 2)
         if replace {
             await flow.send(.secondsLeft(first, 0))
             await flow.send(.lock(amount: "99"))
             await flow.send(.onAir(second))
-            replacementSend = try await flow.clientHandshake(second, stoppingAt: .sendingAmount)
+            let replacementSend = try await flow.clientHandshake(second, stoppingAt: .sendingAmount)
+            let result = try #require(await flow.handle(replacementSend))
+            replacementResult = result
         } else {
-            await flow.send(.amountSent(first))
+            await flow.send(sent)
         }
         let current = flow.state
         let calls = fake.calls
         let resources = fake.resources
 
-        let result = await flow.handle(oldSend)
+        await flow.send(.amountSealed(first, protectedAmount))
 
-        #expect(result == nil)
         #expect(flow.state == current)
         #expect(fake.calls == calls)
         #expect(fake.resources == resources)
-        if let replacementSend {
-            await flow.run(replacementSend)
+        if let replacementResult {
+            await flow.send(replacementResult)
             guard case .handedOver(let secure) = flow.state.phase else {
                 Issue.record("Expected the replacement to hand over")
                 return
@@ -626,7 +635,7 @@ private final class Flow {
     }
 
     func handle(_ effect: Broadcast.Effect) async -> Broadcast.Event? {
-        await handler.handle(effect, currentState: { state })
+        await handler.handle(effect)
     }
 
     func send(_ event: Broadcast.Event) async {

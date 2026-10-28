@@ -15,7 +15,7 @@ Locked, serving or advertising fails: the state reads the error and 124.50 not l
 
 ## S-3 The countdown ends with no secure link
 
-Advertised, a countdown event reaches zero: advertising stopped, the service retired, the session closed; the state reads timed out with an empty amount. Evidence: HostBroadcastTests.countdownExpiryClearsAmountAndRetiresSession. The same deadline applies throughout the handshake. Evidence: HostBroadcastTests.countdownRemainsHandshakeDeadline. A queued send executed after expiry sends nothing. Evidence: HostBroadcastTests.queuedSendAfterExpiryDoesNotReachClient.
+Advertised, a countdown event reaches zero: advertising stopped, the service retired, the session closed; the state reads timed out with an empty amount. Evidence: HostBroadcastTests.countdownExpiryClearsAmountAndRetiresSession. The same deadline applies throughout the handshake. Evidence: HostBroadcastTests.countdownRemainsHandshakeDeadline. Through a real machine, expiry before a queued seal result prevents a send; a seal result first sends before expiry, whose timed-out state survives the late send result. Evidence: HostBroadcastTests.queuedSendAfterExpiryDoesNotReachClient.
 
 ## S-4 Cancel while advertising
 
@@ -27,7 +27,7 @@ Advertised, a client key event with 22 s left: advertising stopped, the service 
 
 ## S-6 The link is secure
 
-A key, the session fake derives and protects the amount, the sender fake records only the protected message: the state reads handed over, the countdown fake stopped. Evidence: HostBroadcastTests.keyDerivationQueuesFirstSeal; HostBroadcastTests.amountSentHandsOverSecureLinkAndStopsCountdown. Held sends cannot repeat a handover or target an old attempt while its replacement is sending. Evidence: HostBroadcastTests.queuedSendAfterHandoverOrReplacementIsRejected.
+A key, the session fake derives and protects the amount, the sender fake records only the protected message: the state reads handed over, the countdown fake stopped. Evidence: HostBroadcastTests.keyDerivationQueuesFirstSeal; HostBroadcastTests.amountSentHandsOverSecureLinkAndStopsCountdown. Queued seal results cannot repeat a handover or target an old attempt while its replacement is sending. Evidence: HostBroadcastTests.queuedSealResultAfterHandoverOrReplacementIsRejected.
 
 ## S-7 The client's key does not agree
 

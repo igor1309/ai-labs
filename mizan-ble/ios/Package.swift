@@ -24,7 +24,7 @@ let package = Package(
         .target(name: "AmountEntry"),
         .testTarget(name: "AmountEntryTests", dependencies: ["AmountEntry"]),
         .target(name: "HostBroadcast"),
-        .testTarget(name: "HostBroadcastTests", dependencies: ["HostBroadcast"]),
+        .testTarget(name: "HostBroadcastTests", dependencies: ["HostBroadcast", "Machine"]),
         .target(name: "HostUI", dependencies: ["DesignSystem"]),
         .target(name: "ModeSwitchUI", dependencies: ["DesignSystem"]),
         .target(name: "SettingsUI", dependencies: ["DesignSystem"]),
