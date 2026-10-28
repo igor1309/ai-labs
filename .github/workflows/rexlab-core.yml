@@ -13,6 +13,10 @@ permissions:
 
 jobs:
   core:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -36,7 +40,7 @@ jobs:
 
       - name: Run tests
         working-directory: rexlab
-        run: npm test
+        run: npm test -- --shard=${{ matrix.shard }}/4
 
       - name: Build
         working-directory: rexlab

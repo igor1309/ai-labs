@@ -19,10 +19,10 @@ const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light:
 const BRAND = "RexLab";
 
 // The games the home page offers, each on a tile of its own.
-export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth" | "picturePuzzle";
+export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth" | "picturePuzzle" | "whoseJaw";
 
 // The games in their tiles' order, which never changes.
-export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth", "picturePuzzle"];
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth", "picturePuzzle", "whoseJaw"];
 
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
@@ -80,6 +80,7 @@ export type HomePageProps = {
   // been dug up, undefined until one has.
   dig: { picture: string; dugUp: number | undefined };
   // Its tile and featured card share the collection across all levels.
+  whoseJaw?: { picture: string; collected: number; total: number; onOpen: () => void } | undefined;
   picturePuzzle?: { picture: string; collected: number; onOpen: () => void } | undefined;
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
@@ -125,6 +126,7 @@ export function HomePage({
   labyrinth,
   moreComing,
   picturePuzzle,
+  whoseJaw,
   onCompareDinosaurs,
   onCatalogue,
   onCare,
@@ -149,7 +151,7 @@ export function HomePage({
   // Each game's own parts, which its tile and the large card both show,
   // so the two never tell the child different things.
   type GameEntry = { name: string; symbol: LucideIcon; picture: ReactNode; badge: Badge | undefined; onOpen: () => void };
-  const games: Record<Exclude<HomeGame, "picturePuzzle">, GameEntry> & { picturePuzzle: GameEntry | undefined } = {
+  const games: Record<Exclude<HomeGame, "picturePuzzle" | "whoseJaw">, GameEntry> & { picturePuzzle: GameEntry | undefined; whoseJaw: GameEntry | undefined } = {
     compare: {
       name: text.quizCard,
       symbol: Scale,
@@ -198,6 +200,11 @@ export function HomePage({
       picture: <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />,
       badge: dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp },
       onOpen: onDig
+    },
+    whoseJaw: whoseJaw && {
+      name: text.whoseJaw, symbol: Landmark,
+      picture: <Picture className="whose-jaw-tile-picture" src={whoseJaw.picture} alt="" width={600} height={450} />,
+      badge: { symbol: Landmark, value: `${whoseJaw.collected}/${whoseJaw.total}` }, onOpen: whoseJaw.onOpen
     },
     picturePuzzle: picturePuzzle && {
       name: text.picturePuzzle,
@@ -313,6 +320,13 @@ export function HomePage({
         <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
       </Button>
     ),
+    whoseJaw: games.whoseJaw && (
+      <Button key="whoseJaw" className="card whose-jaw-tile" data-turn-part="tile-whoseJaw" aria-label={games.whoseJaw.name} onClick={games.whoseJaw.onOpen}>
+        {games.whoseJaw.picture}
+        <span className="whose-jaw-tile-row"><span aria-hidden="true">🦷</span><span>{games.whoseJaw.name}</span></span>
+        <BadgeChip badge={games.whoseJaw.badge} className="whose-jaw-tile-count" size={18} />
+      </Button>
+    ),
     picturePuzzle: games.picturePuzzle && (
       <Button key="picturePuzzle" className="card picture-puzzle-tile" data-turn-part="tile-picturePuzzle" aria-label={games.picturePuzzle.name} onClick={games.picturePuzzle.onOpen}>
         {games.picturePuzzle.picture}
@@ -345,8 +359,8 @@ export function HomePage({
       </Button>
     )
   };
-  const featuredGame = featured === "picturePuzzle" && !picturePuzzle ? "compare" : featured;
-  const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined));
+  const featuredGame = (featured === "picturePuzzle" && !picturePuzzle) || (featured === "whoseJaw" && !whoseJaw) ? "compare" : featured;
+  const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined));
   // The tiles and the games still to come, in columns of two.
   const columns = Math.ceil((shown.length + 1) / 2);
   const rowStart = narrow ? NARROW_ROW_START : ROW_START;
