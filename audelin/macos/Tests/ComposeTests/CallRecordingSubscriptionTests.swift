@@ -89,6 +89,41 @@ struct CallRecordingSubscriptionTests {
         #expect(session.effects.all.isEmpty)
     }
 
+    @Test func cancelDuringTheRefreshSendsNoStart() async throws {
+
+        let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
+        let session = CallSession()
+        let recording = await composedRecording(session: session, initial: .init(missing: []))
+        let refreshing = Signal(), release = DrainGate()
+        defer { refreshing.end(); release.release() }
+        let forwarding = CallRecordingSubscription(calls: source.stream, recording: recording, beforeCallStarted: {
+            refreshing.send()
+            await release.wait()
+        })
+        source.continuation.yield(.started(app: "meeting"))
+        await refreshing.next()
+        forwarding.cancel()
+        release.release()
+        await forwarding.wait()
+        #expect(await recording.state().callOn == false)
+        source.continuation.finish()
+        await recording.end()
+        #expect(session.effects.all.isEmpty)
+    }
+
+    @Test func endedRecordingReleasesItsSession() async throws {
+
+        var session: CallSession? = CallSession()
+        weak let released = session
+        var recording: RecordingInputs? = await composedRecording(session: try #require(session))
+        session = nil
+        await recording?.end()
+        recording = nil
+        // The doer's task lets go of the Session once its states stream has finished.
+        for _ in 0..<1_000 where released != nil { await Task.yield() }
+        #expect(released == nil)
+    }
+
     @Test func compositionReportsStartupAndRuntimeFailure() async throws {
 
         let session = CallSession()

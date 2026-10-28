@@ -49,7 +49,11 @@ public final class CallRecordingSubscription: Sendable {
                         }
                     }
                     guard let forwarded else { return }
-                    if forwarded == .callStarted { await beforeCallStarted?() }
+                    if forwarded == .callStarted {
+                        await beforeCallStarted?()
+                        // A cancel during the refresh must still keep the start from being sent.
+                        guard !destination.withLock({ $0.stopped }) else { return }
+                    }
                     await recording.send(forwarded)
                 }
             } catch {
