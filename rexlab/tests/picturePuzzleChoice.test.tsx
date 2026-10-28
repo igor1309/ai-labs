@@ -148,3 +148,33 @@ describe("picture choice's level and puzzle boundary", () => {
     expect(random).toHaveBeenCalledTimes(35);
   });
 });
+
+it("renders the board from the choice, keeps placements through hints and preview, and leaves without rewards", () => {
+  const storage = memoryStorage();
+  let current: ReturnType<typeof usePicturePuzzleGame> | undefined;
+  const onHome = vi.fn<() => void>();
+  function Game() {
+    const game = usePicturePuzzleGame({ dinosaurs: DINOSAURS, bodyPicture: fakeBodyPicture,
+      choiceStore: localPicturePuzzleChoice(() => storage), random: seededRandom(17) }, INITIAL, onHome);
+    current = game;
+    return <>{game.choice("en")}{game.board("en")}</>;
+  }
+  render(<Game />, withPictures);
+  fireEvent.click(button("TYRANNOSAURUS"));
+  const id = current!.puzzle!.order[0]!;
+  fireEvent.click(screen.getByLabelText(TEXTS.en.picturePiece(id + 1)));
+  fireEvent.click(screen.getByLabelText(TEXTS.en.pictureSlot(id + 1)));
+  expect(current!.puzzle!.fitted).toEqual([id]);
+  fireEvent.click(button(TEXTS.en.pictureHint));
+  fireEvent.click(button(TEXTS.en.picturePreview));
+  expect(current!.puzzle!.fitted).toEqual([id]);
+  expect(localPicturePuzzleChoice(() => storage).load()?.earned).toEqual([]);
+  fireEvent.click(button(TEXTS.en.back));
+  expect(current!.puzzle).toBeUndefined();
+  expect(screen.getByLabelText(TEXTS.en.pictureCollection).textContent).toBe("0/3");
+  fireEvent.click(button("TYRANNOSAURUS"));
+  expect(current!.puzzle!.fitted).toEqual([]);
+  fireEvent.click(button(TEXTS.en.home));
+  expect(onHome).toHaveBeenCalledTimes(1);
+  expect(storage.items.size).toBe(0);
+});

@@ -140,6 +140,16 @@ export type Texts = {
   picturePuzzle: string;
   pictureCollection: string;
   pictureNotCollected: string;
+  pictureBoard: string;
+  picturePieces: string;
+  picturePiece: (place: number) => string;
+  pictureSlot: (place: number) => string;
+  pictureFitted: string;
+  picturePrevious: string;
+  pictureNext: string;
+  pictureHint: string;
+  picturePreview: string;
+  pictureRetry: string;
   museum: string;
   // The skeleton being built and its tray of bones.
   skeleton: string;

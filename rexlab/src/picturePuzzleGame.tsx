@@ -2,7 +2,8 @@ import { useRef, useState } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import type { Language } from "./language/language.ts";
 import { PicturePuzzleChoiceScreen } from "./PicturePuzzleChoiceScreen.tsx";
-import { startPicturePuzzle, type PictureDinosaur, type PicturePuzzle } from "./picturePuzzle/index.ts";
+import { PicturePuzzleBoardScreen } from "./PicturePuzzleBoardScreen.tsx";
+import { fitPicturePiece, startPicturePuzzle, type PictureDinosaur, type PicturePuzzle } from "./picturePuzzle/index.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
 
@@ -63,12 +64,24 @@ export function usePicturePuzzleGame({ dinosaurs, bodyPicture, choiceStore, rand
     go({ kind: "choice" }, { also: onHome });
   };
 
-  // Board and result rendering are supplied as those screens land; the
-  // choice already hands its caller a fresh puzzle at the chosen level.
+  const fit = (piece: number) => {
+    const current = live.current;
+    if (!current) return;
+    const puzzle = fitPicturePiece(current, piece, piece);
+    if (puzzle === current) return;
+    live.current = puzzle;
+    go((shown) => shown.kind === "puzzle" ? { kind: "puzzle", puzzle } : shown);
+  };
+
   const choice = (language: Language) => screen.kind === "choice" ? (
     <PicturePuzzleChoiceScreen language={language} level={level} onLevel={chooseLevel} onChoose={choose} onHome={home}
       choices={dinosaurs.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), earned: kept.earned.includes(id) }))} />
   ) : null;
 
-  return { choice, puzzle: screen.kind === "puzzle" ? screen.puzzle : undefined, level, back, home };
+  const board = (language: Language) => screen.kind === "puzzle" ? (
+    <PicturePuzzleBoardScreen language={language} puzzle={screen.puzzle} picture={bodyPicture(screen.puzzle.dinosaur.id)}
+      onFit={fit} onBack={back} onHome={home} />
+  ) : null;
+
+  return { choice, board, puzzle: screen.kind === "puzzle" ? screen.puzzle : undefined, level, back, home };
 }
