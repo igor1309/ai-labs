@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-28
+
+- ClientReview shows the handed-over amount, carries the payer's decision to the host's acknowledgement and hands over an acknowledged confirm, with clear cancelled and lost-link outcomes (LAB-656).
+
 ## 2026-10-27
 
 - HostPreview lets the operator inspect every host screen and its events, and export iPad PNGs in light and dark for comparison with the design (LAB-676).
