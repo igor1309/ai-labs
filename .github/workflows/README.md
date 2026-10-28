@@ -91,7 +91,7 @@ There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
 
 ## RexLab
 
-- `rexlab-core.yml` runs the typecheck, tests, and build from `rexlab/`.
+- `rexlab-core.yml` runs the typecheck, tests, and build from `rexlab/`; four parallel test shards keep the complete suite within each job’s ten-minute limit.
 - `rexlab-deploy.yml` is release-only and reusable; `release-unit.yml` calls it for `rexlab_v<version>` tags. It deploys `rexlab/dist` to the Cloudflare Pages project `rexlab` and succeeds only after `https://rexlab.enoa.ai/` serves a page whose `rexlab-version` meta tag matches the tag's version, then sends a success message to the CI Telegram chat.
 
 There is no trunk-push deploy path for RexLab.
