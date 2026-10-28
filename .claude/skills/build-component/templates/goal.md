@@ -16,8 +16,11 @@ section that binds it. Say what it does not know or do.>
    `<Name>Tests.<test>`, and that test exists and passes. Only the
    evidence lines change; no scenario text. UI modules: the state shape,
    events, view and previews instead.>
-4. <Test rules: one Swift Testing struct, no sleeps, fakes or real
-   binding as the QA rows say.>
+4. <Test rules: one Swift Testing struct, no sleeps proving that nothing
+   happened. A core: fakes of its interfaces and a fake clock. An
+   adapter: the QA rows on the real binding, and its own logic through a
+   fake of the binding passed to an internal init. A real-time test
+   asserts lower bounds and stream ends only.>
 5. `swift build` and `swift test` pass in `mizan-ble/ios`;
    `node --test scripts/tests/ci-workflow-paths.test.js` passes from the
    repo root. `mizan-ble/docs/log.md` gains this component's line only,
