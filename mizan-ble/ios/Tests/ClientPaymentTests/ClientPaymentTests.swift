@@ -3,6 +3,20 @@ import Testing
 
 @MainActor
 struct ClientPaymentTests {
+    @Test func effectsRunBeforeReturningTheirStreams() async {
+        let cases: [(ClientPayment.Effect, [Ports.Call], ClientPayment.Event)] = [
+            (.open([1, 2]), [.open([1, 2])], .opened(.success)),
+            (.finish, [.close, .drop], .finished),
+        ]
+        for (effect, calls, expected) in cases {
+            let ports = Ports(openedResult: .success)
+            let handler = ClientPayment.EffectHandler(session: ports, link: ports)
+            let stream = handler.handle(effect)
+            #expect(ports.calls == calls)
+            #expect(await collect(stream) == [expected])
+        }
+    }
+
     @Test func waitingForTheHost() {
         for (host, amount): (String?, UInt64) in [
             ("MIZAN-7F3A", 12_450), ("MIZAN-1234", 1), (nil, 99_999_999),
@@ -238,7 +252,7 @@ private final class Flow {
     }
 
     func handle(_ effect: ClientPayment.Effect) async {
-        if let event = await handler.handle(effect) { await send(event) }
+        for await event in handler.handle(effect) { await send(event) }
     }
 }
 
@@ -262,4 +276,11 @@ private final class Ports: ClientPayment.Session, ClientPayment.Link {
 
     func close() { calls.append(.close) }
     func drop() { calls.append(.drop) }
+}
+
+@MainActor
+private func collect(_ stream: AsyncStream<ClientPayment.Event>) async -> [ClientPayment.Event] {
+    var events: [ClientPayment.Event] = []
+    for await event in stream { events.append(event) }
+    return events
 }
