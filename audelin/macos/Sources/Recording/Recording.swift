@@ -1,4 +1,5 @@
 import Machine
+import Synchronization
 
 public enum RecordingCondition: CaseIterable, Hashable, Sendable {
 
@@ -211,6 +212,53 @@ public struct RecordingEffectHandler: Sendable {
         case let .endSession(id):
             await session.end(id: id)
             return .sessionReported(id: id, .ended)
+        }
+    }
+}
+
+/// Makes the Session follow Recording's state: begins each session it sees once and ends it once
+/// its phase is `.ending`, sending each Session report back.
+public final class RecordingDoer: Sendable {
+
+    private struct Memory {
+
+        var lastBegun: UInt64 = 0
+        var lastEnded: UInt64 = 0
+    }
+
+    private let session: any RecordingSession
+    private let send: @Sendable (RecordingEvent) async -> Void
+    // Session ids only grow, so the last begun and last ended ids are all it must remember.
+    private let memory = Mutex(Memory())
+
+    public init(session: any RecordingSession, send: @escaping @Sendable (RecordingEvent) async -> Void) {
+
+        self.session = session
+        self.send = send
+    }
+
+    /// Observations may merge changes, so a session first seen recording or ending is still begun.
+    public func act(on state: RecordingState) {
+
+        guard let id = state.session?.id else { return }
+        let ending = state.phase == .ending
+        let (begin, end) = memory.withLock { memory in
+            let begin = id > memory.lastBegun
+            if begin { memory.lastBegun = id }
+            let end = ending && id > memory.lastEnded
+            if end { memory.lastEnded = id }
+            return (begin, end)
+        }
+        let session = session
+        let send = send
+        if begin {
+            Task { await send(.sessionReported(id: id, await session.begin(id: id))) }
+        }
+        if end {
+            Task {
+                await session.end(id: id)
+                await send(.sessionReported(id: id, .ended))
+            }
         }
     }
 }
