@@ -20,7 +20,9 @@ public struct SettingsView: View {
         } content: {
             HStack(alignment: .top, spacing: Tokens.space12) {
                 VStack(alignment: .leading, spacing: Tokens.space6) {
-                    Text(state.title).typeRole(.title)
+                    Text(state.title)
+                        .font(Tokens.display(Tokens.sizeTitle, .medium))
+                        .foregroundStyle(Tokens.text)
                     countdownCard
                     readOnlyCard
                     Spacer(minLength: .zero)
@@ -35,14 +37,19 @@ public struct SettingsView: View {
         VStack(alignment: .leading, spacing: Tokens.space5) {
             ZStack(alignment: .trailing) {
                 VStack(alignment: .leading, spacing: Tokens.space1) {
-                    Text(state.countdown.title).typeRole(.lead).foregroundStyle(Tokens.text)
+                    Text(state.countdown.title)
+                        .font(Tokens.text(Tokens.sizeLead, .bold))
+                        .foregroundStyle(Tokens.text)
                     Text(state.countdown.detail)
                         .font(Tokens.text(Tokens.sizeLabel))
                         .foregroundStyle(Tokens.text2)
-                        .fixedSize(horizontal: true, vertical: false)
+                        .lineLimit(1)
+                        .allowsTightening(true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                Text(state.countdown.selectedText).typeRole(.title).foregroundStyle(Tokens.hostHi)
+                Text(state.countdown.selectedText)
+                    .font(Tokens.display(Tokens.sizeTitle, .medium))
+                    .foregroundStyle(Tokens.hostHi)
             }
             HStack(spacing: Tokens.space1) {
                 ForEach(state.countdown.choices.indices, id: \.self) { index in
@@ -80,7 +87,7 @@ public struct SettingsView: View {
         VStack(spacing: Tokens.space5) {
             ForEach(state.readOnlyRows.indices, id: \.self) { index in
                 if index != state.readOnlyRows.startIndex {
-                    Divider().hidden().overlay(Tokens.line)
+                    Tokens.line.frame(height: 1).frame(height: 0)
                 }
                 let row = state.readOnlyRows[index]
                 HStack(spacing: Tokens.space3) {

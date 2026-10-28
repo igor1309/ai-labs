@@ -46,8 +46,34 @@ How behaviour is specified before it is built, after audelin's process.
   scenario: it reads back what the `Then` promises, not that a call was
   made. Verdicts go in run reports, never in `QA.md`.
 
-## Building
+## Running the work
 
+How any component, core, adapter or UI module, goes from issue to trunk.
+The `build-component` skill is the procedure: its brief templates, the
+agister runs, fix rounds and stacked merges.
+
+- One component per issue and per brief for Codex (`codex-sol-61` through
+  agister's implement process). Name in "Out of scope" every neighbouring
+  component, the root and any follow-up issue; a brief that leaves one out
+  gets it built. The step writes its own component's log line only; a run
+  that sees siblings missing from the log adds theirs too.
+- Start every component whose dependencies are on trunk at once, each on
+  its own branch and worktree with its own Codex run. Do not wait for a
+  PR's CI to start the next; stack a branch on the unmerged one it needs.
+- Code two components would both carry belongs in neither. No component
+  imports another, so where it goes is an architecture change, made the
+  first time a second component needs it; UI modules share through
+  `DesignSystem`.
+- Review each Codex run before committing, and fix by hand what needs no
+  rerun.
+- A stack of PRs merges from the bottom, with auto-merge on the bottom PR
+  only. With every PR on auto-merge, a higher PR would merge the lower
+  ones' changes under its own issue.
+
+## Building cores and adapters
+
+- A core's or adapter's "Done when" is its spec's scenarios, each proved
+  as its `QA.md` row says.
 - Cores and adapters are built test-first: each test is run red before
   the code exists, failing on its assertion (the API stubbed first), and
   the red run is shown with the green one.
@@ -55,9 +81,15 @@ How behaviour is specified before it is built, after audelin's process.
   proves something did not happen by sleeping; it asserts the state that
   says so.
 - An adapter is a thin binding over the system API plus the translation it
-  owns; the translation is tested through a fake of the binding. Core
+  owns; the translation is tested through a fake of the binding. A binding
+  that is local and cheap, as `UserDefaults` is, is driven for real
+  instead, in a store made for each test and removed after it. Core
   Bluetooth is never the thing under test; the user spec on a real iPad and
   iPhone proves the binding.
+- Each Codex run on a core or adapter is reviewed with agister's review
+  processes before it merges. Name the machine's spec in the review goal:
+  its `## Decided` fixes the order of events, effects and results, and a
+  reviewer without it reports interleavings the loop cannot produce.
 - A change to behaviour, a fix included, goes spec change, then build, then
   review.
 
@@ -75,9 +107,6 @@ How behaviour is specified before it is built, after audelin's process.
 - No tests in a UI module. Each one has previews that render every state
   exactly as its design frame draws it; a UI module is verified by matching
   its preview snapshots with the design, and gets no Agister review.
-- One UI module per piece of work. Modules that do not depend on each
-  other are built at the same time, each on its own branch and worktree;
-  a branch may stack on another's unmerged branch rather than wait.
 - Each UI module has a macOS preview app in `ios/PreviewApps`, built as
   its own issue after the module, never in the module's step. It shows
   the module's preview states, the events they send, and exports them to
@@ -86,6 +115,21 @@ How behaviour is specified before it is built, after audelin's process.
   later work, once the machines exist. The no-logic rule binds the UI
   module, not its preview app; the app copies no feature code and has no
   tests.
+
+### Building the next UI module
+
+- A type two UI modules need (a step, a glyph, an amount) goes into
+  `DesignSystem`, `Equatable` and `Sendable`.
+- A UI module uses the nearest token, never a raw size, font, colour or
+  stroke width; it gives a `DesignSystem` component an option rather than
+  rebuild it; and it uses the frames' copy exactly, never bent to force a
+  line break.
+- The preview app is the next issue. It shows the module's `previews`
+  list with a state picker, light and dark and an event log, and
+  `swift run <App>Preview --export <folder>` writes the PNGs; pass
+  `devices:` for a one-device screen. Compare the PNGs with the frames
+  yourself, fix the module in the same PR, and send the owner each
+  difference that the design causes, with the fix you suggest.
 
 ## Design
 

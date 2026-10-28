@@ -85,6 +85,11 @@ Feature: Running a state machine
     Given a reducer that answers an effect's result with another effect
     When the first effect returns that result and the second is carried out
     Then I can read the state the second result leads to
+
+  Scenario: S-12 An effect starts before the next event is reduced
+    Given an event that asks for an effect
+    When I send that event and then another without waiting
+    Then I can observe its work up to the first suspension before the later reduction
 ```
 
 Not the machine's: what any state, event or effect means (each flow's

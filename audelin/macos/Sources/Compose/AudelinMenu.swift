@@ -1,6 +1,7 @@
 import Foundation
 import MenuBar
 import Observation
+import PanelUI
 import Preferences
 import Recording
 
@@ -10,6 +11,8 @@ struct MenuApplication {
     let failures: AsyncStream<any Error>
     let send: (RecordingEvent) -> Void
     let quit: () async -> Void
+    let panelStates: () async -> AsyncStream<PanelState>
+    let sendPanel: (PanelEvent) async -> Void
 }
 
 @MainActor @Observable
@@ -18,6 +21,13 @@ public final class AudelinMenu {
     public private(set) var state = RecordingState()
     public var preferences: Preferences { settings.snapshot }
     public private(set) var quitting = false
+    public private(set) var panelState = PanelState(recording: .off, log: .empty)
+    private(set) var panelPresence = PanelPresence()
+    private let presentPanel: (Bool) -> Void
+    private let sleep: @Sendable (Duration) async throws -> Void
+    private let sendPanelEvent: (PanelEvent) async -> Void
+    private var panelObservation: Task<Void, Never>?
+    private var hideDelay: Task<Void, Never>?
     private var failure: String?
     private let sink: any LogSink
     private let settings: PreferenceSettings
@@ -28,12 +38,14 @@ public final class AudelinMenu {
     private var detectionObservation: Task<Void, Never>?
 
     public var menu: MenuBarModel {
-        MenuBarModel(recording: menuBarRecording(state), preferences: menuBarPreferences(preferences), statusLine: failure)
+        MenuBarModel(recording: menuBarRecording(state), preferences: menuBarPreferences(preferences), statusLine: failure,
+                     offersPanelReopen: panelPresence.offersReopen)
     }
 
     public convenience init(
         preferences: PreferencesStore,
         openCallsFolder: @escaping (URL) -> Void,
+        presentPanel: @escaping (Bool) -> Void,
         terminate: @escaping @Sendable () async -> Void
     ) async {
 
@@ -45,10 +57,13 @@ public final class AudelinMenu {
                     states: { await application.recording.states() },
                     failures: application.detectionFailures,
                     send: { application.recording.send($0) },
-                    quit: { await application.quit(terminate: terminate) }
+                    quit: { await application.quit(terminate: terminate) },
+                    panelStates: { await application.panel.states() },
+                    sendPanel: { await application.panel.send($0) }
                 )
             },
-            openFolder: openCallsFolder, terminate: { await terminate() }, didDeliver: {}, sink: SystemLogSink()
+            openFolder: openCallsFolder, terminate: { await terminate() }, didDeliver: {}, sink: SystemLogSink(),
+            presentPanel: presentPanel, sleep: { try await ContinuousClock().sleep(for: $0) }
         )
     }
 
@@ -59,10 +74,14 @@ public final class AudelinMenu {
         openFolder: @escaping (URL) -> Void,
         terminate: @escaping () async -> Void,
         didDeliver: @escaping () -> Void,
-        sink: any LogSink
+        sink: any LogSink,
+        presentPanel: @escaping (Bool) -> Void,
+        sleep: @escaping @Sendable (Duration) async throws -> Void
     ) async {
 
         self.sink = sink
+        self.presentPanel = presentPanel
+        self.sleep = sleep
         let application: MenuApplication?
         do {
             application = try await makeApplication()
@@ -76,11 +95,19 @@ public final class AudelinMenu {
         self.send = send
         self.openFolder = openFolder
         self.quit = application?.quit ?? terminate
+        self.sendPanelEvent = application?.sendPanel ?? { _ in }
         if let application {
+            panelObservation = Task { [weak self, states = application.panelStates] in
+                for await state in await states() {
+                    guard let self else { return }
+                    self.panelState = state
+                }
+            }
             observation = Task { [weak self, states = application.states] in
                 for await state in await states() {
                     guard let self else { return }
                     self.state = state
+                    self.receivePanelPresence(.recordingChanged(panelRecordingID(state)))
                     sink.write(.init(category: .menu, message: "item symbol=\(self.menu.item.symbol) red=\(self.menu.item.isRed)"))
                     didDeliver()
                 }
@@ -96,11 +123,12 @@ public final class AudelinMenu {
         }
     }
 
-    /// Waits for both observers after their input streams finish.
+    /// Waits for state and failure delivery after their input streams finish.
     func waitForObservers() async {
 
         await observation?.value
         await detectionObservation?.value
+        await panelObservation?.value
     }
 
     public func perform(_ action: MenuBarAction) async {
@@ -114,6 +142,7 @@ public final class AudelinMenu {
             settings.setAutomatic(enabled)
         case let .setLiveText(enabled):
             settings.setLiveText(enabled)
+        case .showPanel: receivePanelPresence(.reopen)
         case .openCallsFolder: openFolder(settings.callsFolder)
         case .quit:
             quitting = true
@@ -121,9 +150,57 @@ public final class AudelinMenu {
         }
     }
 
+    public func panelClosed() { receivePanelPresence(.userClosed) }
+
+    public func sendPanel(_ event: PanelEvent) async {
+
+        switch event {
+        case .start: await perform(.start)
+        case .stop: await perform(.stop)
+        default: await sendPanelEvent(event)
+        }
+    }
+
+    private func receivePanelPresence(_ event: PanelPresence.Event) {
+
+        let (next, effects) = PanelPresence.reduce(panelPresence, event)
+        panelPresence = next
+        for effect in effects {
+            switch effect {
+            case let .show(reason):
+                presentPanel(true)
+                sink.write(.init(category: .panel, message: "shown reason=\(reason.rawValue)"))
+            case let .hide(reason):
+                presentPanel(false)
+                sink.write(.init(category: .panel, message: "hidden reason=\(reason.rawValue)"))
+            case .cancelDelay:
+                hideDelay?.cancel()
+                hideDelay = nil
+            case let .hideAfter(seconds, generation):
+                hideDelay = Task { [weak self, sleep] in
+                    do {
+                        try await sleep(.seconds(seconds))
+                        guard !Task.isCancelled else { return }
+                        self?.receivePanelPresence(.delayElapsed(generation))
+                    } catch {}
+                }
+            }
+        }
+    }
+
     isolated deinit {
 
+        hideDelay?.cancel()
+        panelObservation?.cancel()
         observation?.cancel()
         detectionObservation?.cancel()
+    }
+}
+
+private func panelRecordingID(_ state: RecordingState) -> UInt64? {
+
+    switch state.phase {
+    case .beginning, .recording, .ending: state.session?.id
+    case .idle: nil
     }
 }

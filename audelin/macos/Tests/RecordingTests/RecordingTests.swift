@@ -49,12 +49,15 @@ struct RecordingTests {
         }
     }
 
-    @Test(arguments: [RecordingState.Origin.call, .hand])
-    func callEndEndsRecordingHoweverItBegan(_ origin: RecordingState.Origin) async throws {
+    @Test(arguments: [RecordingState.Origin.call, .hand], [false, true])
+    func callEndEndsRecordingBegunDuringCall(_ origin: RecordingState.Origin, _ ready: Bool) async throws {
 
         try await withRecording(automatic: origin == .call) { rig in
             if origin == .hand { rig.recording.send(.callStarted) }
-            try await rig.start(origin)
+            try await rig.start(origin, ready: ready)
+            let begun = await rig.recording.snapshot()
+            #expect(begun.callOn)
+            #expect(begun.session == .init(id: 1, origin: origin))
             try await rig.stop(.callEnded)
             let state = try await rig.finish()
             #expect(!state.callOn)

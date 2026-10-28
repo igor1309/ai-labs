@@ -270,7 +270,7 @@ private func withReading(
     _ panel: AudelinPanel, id: UInt64, text: AsyncStream<State>, body: () async throws -> Void
 ) async rethrows {
 
-    let subscription = await panel.begin(id: id, text: text)
+    let subscription = await panel.begin(id: id, text: text, enableLiveText: { Issue.record("No live-text control was sent") })
     subscription.recordingChanged(.on(elapsed: 0))
     for await state in await panel.states() {
         if state.recording == .on(elapsed: "00:00:00") { break }

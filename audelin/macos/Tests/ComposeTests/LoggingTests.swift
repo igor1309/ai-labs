@@ -201,8 +201,10 @@ struct LoggingTests {
             let failures = AsyncStream<any Error>.makeStream()
             let menu = await AudelinMenu(storage: LogPreferencesStorage(), makeApplication: {
                 MenuApplication(states: { await recording.states() }, failures: failures.stream,
-                    send: recording.send, quit: {})
-            }, openFolder: { _ in }, terminate: {}, didDeliver: {}, sink: sink)
+                    send: recording.send, quit: {},
+                    panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in })
+            }, openFolder: { _ in }, terminate: {}, didDeliver: {}, sink: sink,
+                presentPanel: { _ in }, sleep: { _ in throw CancellationError() })
             failures.continuation.finish()
             await menu.waitForObservers()
             let entries = sink.entries.all.filter { $0.category == .recording && $0.message.hasPrefix("state ") }

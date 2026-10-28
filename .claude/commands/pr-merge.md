@@ -16,7 +16,10 @@ Complete the current branch's PR lifecycle:
    discarding either side.
 2. Push the current branch if it has unpushed commits.
 3. Create a PR with `gh pr create` and record its number and URL.
-4. Enable merge-commit auto-merge:
+4. If the branch is stacked on another unmerged PR's branch, stop after
+   step 3 and report: auto-merge waits until the PR below has merged and
+   trunk is merged into this branch. Otherwise enable merge-commit
+   auto-merge:
 
    ```sh
    gh pr merge <number> --merge --auto --delete-branch

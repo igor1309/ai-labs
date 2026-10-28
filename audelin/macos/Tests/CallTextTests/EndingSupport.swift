@@ -8,26 +8,35 @@ final class CueGate: Sendable {
         var open = false
         var entered = false
         var waiting: [CheckedContinuation<Void, Never>] = []
+        var entryWaiting: [CheckedContinuation<Void, Never>] = []
     }
 
     private let state = Mutex(State())
-    private let changed: @Sendable () -> Void
-
-    init(changed: @escaping @Sendable () -> Void = {}) { self.changed = changed }
-
-    var entered: Bool { state.withLock { $0.entered } }
-    var isOpen: Bool { state.withLock { $0.open } }
 
     func wait() async {
 
         await withCheckedContinuation { continuation in
-            let resume = state.withLock { state in
+            let (resume, entryWaiting) = state.withLock { state in
                 state.entered = true
-                if state.open { return true }
+                let entryWaiting = state.entryWaiting
+                state.entryWaiting.removeAll()
+                if state.open { return (true, entryWaiting) }
                 state.waiting.append(continuation)
+                return (false, entryWaiting)
+            }
+            for waiter in entryWaiting { waiter.resume() }
+            if resume { continuation.resume() }
+        }
+    }
+
+    func waitUntilEntered() async {
+
+        await withCheckedContinuation { continuation in
+            let resume = state.withLock { state in
+                if state.entered { return true }
+                state.entryWaiting.append(continuation)
                 return false
             }
-            changed()
             if resume { continuation.resume() }
         }
     }
@@ -41,54 +50,6 @@ final class CueGate: Sendable {
             return waiting
         }
         for continuation in waiting { continuation.resume() }
-        changed()
-    }
-}
-
-/// Runs queued jobs while side progress wakes the test driver.
-final class CueExecutor: TaskExecutor {
-
-    private let jobs = Mutex<[UnownedJob]>([])
-    private let enqueued = AsyncStream<Void>.makeStream()
-    private let completed = Mutex(false)
-
-    // A child can report progress without queuing a job on this executor.
-    func notify() { enqueued.continuation.yield(()) }
-
-    func enqueue(_ job: consuming ExecutorJob) {
-
-        let job = UnownedJob(job)
-        jobs.withLock { $0.append(job) }
-        notify()
-    }
-
-    func complete() {
-
-        completed.withLock { $0 = true }
-        enqueued.continuation.finish()
-    }
-
-    func run(until condition: () -> Bool) async {
-
-        var events = enqueued.stream.makeAsyncIterator()
-        while !condition() && !completed.withLock({ $0 }) {
-            run()
-            if !condition(), await events.next() == nil { break }
-        }
-        run()
-    }
-
-    func finish() async {
-
-        for await _ in enqueued.stream { run() }
-        run()
-    }
-
-    func run() {
-
-        while let job = jobs.withLock({ $0.isEmpty ? nil : $0.removeFirst() }) {
-            job.runSynchronously(on: asUnownedTaskExecutor())
-        }
     }
 }
 
@@ -97,23 +58,37 @@ final class CallObservation: Sendable {
     private struct Observation {
         var latest: State?
         var ended = false
+        var waiting: [(snapshot: State, received: CheckedContinuation<Void, Never>)] = []
     }
 
     private let observation = Mutex(Observation())
-    private let changed: @Sendable () -> Void
-
-    init(changed: @escaping @Sendable () -> Void = {}) { self.changed = changed }
 
     var latest: State? { observation.withLock { $0.latest } }
     var ended: Bool { observation.withLock { $0.ended } }
 
+    func wait(for snapshot: State) async {
+
+        await withCheckedContinuation { received in
+            let resume = observation.withLock { observation in
+                if observation.latest == snapshot { return true }
+                observation.waiting.append((snapshot, received))
+                return false
+            }
+            if resume { received.resume() }
+        }
+    }
+
     func listen(to call: CallText) async {
 
         for await snapshot in call.updates {
-            observation.withLock { $0.latest = snapshot }
-            changed()
+            let received = observation.withLock { observation in
+                observation.latest = snapshot
+                let received = observation.waiting.filter { $0.snapshot == snapshot }.map(\.received)
+                observation.waiting.removeAll { $0.snapshot == snapshot }
+                return received
+            }
+            for continuation in received { continuation.resume() }
         }
         observation.withLock { $0.ended = true }
-        changed()
     }
 }

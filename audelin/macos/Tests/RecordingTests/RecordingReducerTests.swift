@@ -15,7 +15,11 @@ struct RecordingReducerTests {
         let running = changed(beginning) { $0.phase = .recording }
         let ending = changed(running) { $0.phase = .ending }
         let pending = changed(ending) { $0.callOn = true; $0.pendingCall = true }
-        let call = changed(beginning) { $0.callOn = true; $0.session = .init(id: 1, origin: .call) }
+        let call = changed(beginning) {
+            $0.callOn = true
+            $0.sessionBeganDuringCall = true
+            $0.session = .init(id: 1, origin: .call)
+        }
         let failed = changed(ending) { $0.cannotRecord = "cannot keep audio" }
         let ended = changed(idle) { $0.lastSessionID = 1; $0.cannotRecord = "cannot keep audio" }
         let cases: [(RecordingState, RecordingEvent, RecordingState, RecordingEffect?)] = [
@@ -29,7 +33,10 @@ struct RecordingReducerTests {
             (running, .userStart, running, nil),
             (running, .userStop, ending, .endSession(id: 1)),
             (beginning, .userStop, changed(beginning) { $0.phase = .ending }, .endSession(id: 1)),
-            (call, .callEnded, changed(ending) { $0.session = .init(id: 1, origin: .call) }, .endSession(id: 1)),
+            (call, .callEnded, changed(ending) {
+                $0.sessionBeganDuringCall = true
+                $0.session = .init(id: 1, origin: .call)
+            }, .endSession(id: 1)),
             (ending, .userStop, ending, nil),
             (ending, .sessionReported(id: 1, .ready), ending, nil),
             (ending, .callStarted, pending, nil),

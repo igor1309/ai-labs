@@ -1,6 +1,14 @@
 # Log
 
+## 2026-10-28
+
+- A call's folder is named after the call app, taken from the list that
+  detects it (LAB-636).
+
 ## 2026-10-27
+
+- Recording opens a floating transcript panel without taking call focus; closing
+  and menu reopening keep its saved position and size (LAB-507).
 
 - The panel stays empty until recording begins and gives reused speech IDs
   fresh times and positions even when reading falls behind (LAB-645).

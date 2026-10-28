@@ -67,7 +67,7 @@ public actor RecordingSessions: RecordingSession {
                 // Register before begin so even a short-lived state is retained.
                 let states = await session.states()
                 let text = await pieces.readingText()
-                let reading = await self.panel.begin(id: id, text: text)
+                let reading = await self.panel.begin(id: id, text: text, enableLiveText: { session.send(.liveTextChanged(true)) })
                 self.running[id]?.reading = reading
                 self.start(id: id, liveText: enabled)
                 for await state in states {
