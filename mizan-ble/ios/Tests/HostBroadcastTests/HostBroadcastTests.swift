@@ -1,11 +1,57 @@
 import HostBroadcast
-import Machine
 import Testing
 
 private typealias Broadcast = HostBroadcast
 
 @MainActor
 struct HostBroadcastTests {
+    @Test func synchronousEffectsRunBeforeReturningTheirStreams() async {
+        let cases: [(Broadcast.Effect, Ports.Call, [Broadcast.Event])] = [
+            (.readCountdown(first), .setting, [.countdownRead(first, 30)]),
+            (.openSession(first), .opened(first), [.sessionOpened(first, session(1))]),
+            (.advertise(first), .advertised(first), [.advertisingRequested(first)]),
+            (.startCountdown(first, 30), .startedCountdown(first, 30), [.countdownStarted(first)]),
+            (.stopCountdown(first, retire: true), .stoppedCountdown(first), [.countdownStopped(first, retire: true)]),
+            (.retire(first), .retired(first), [.retired(first)]),
+            (.closeSession(first), .closed(first), []),
+            (.stopAdvertising(first), .stoppedAdvertising(first), [.advertisingStopped(first)]),
+            (.deriveKey(first, [7, 8]), .derived(first, [7, 8]), [.keyDerived(first)]),
+            (.sealAmount(first, "124.50"), .sealed(first, "124.50"), [.amountSealed(first, protectedAmount)]),
+            (.sendAmount(first, client, protectedAmount), .sent(first, client, protectedAmount), [.amountSent(first)]),
+        ]
+        for (effect, call, expected) in cases {
+            let fake = Ports(seconds: 30, sessions: [session(1)], protectedAmounts: ["124.50": protectedAmount])
+            let handler = Broadcast.Handler(session: fake, advertiser: fake, sender: fake,
+                                            countdown: fake, setting: fake)
+            let stream = handler.handle(effect)
+            #expect(fake.calls == [call])
+            #expect(await collect(stream) == expected)
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func servingStartsInlineAndEndsWithItsStream(_ cancel: Bool) async {
+        let fake = Ports(seconds: 30, sessions: [], protectedAmounts: [:])
+        let gate = AsyncStream<Void>.makeStream()
+        let completed = AsyncStream<Bool>.makeStream()
+        defer { gate.continuation.finish() }
+        fake.onServe = {
+            for await _ in gate.stream { }
+            completed.continuation.yield(Task.isCancelled)
+            completed.continuation.finish()
+        }
+        let handler = Broadcast.Handler(session: fake, advertiser: fake, sender: fake,
+                                        countdown: fake, setting: fake)
+        let stream = handler.handle(.serve(first, session(1)))
+        #expect(fake.calls == [.served(first, session(1))])
+        let consuming = Task { await collect(stream) }
+        if cancel { consuming.cancel() } else { gate.continuation.finish() }
+        #expect(await consuming.value == (cancel ? [] : [.served(first)]))
+        var cancellations: [Bool] = []
+        for await cancelled in completed.stream { cancellations.append(cancelled) }
+        #expect(cancellations == [cancel])
+    }
+
     @Test func lockingStartsBroadcastWithoutCountdown() async {
         let fake = Ports(seconds: 30, sessions: [session(1)],
                          protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
@@ -217,46 +263,41 @@ struct HostBroadcastTests {
                          protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         _ = try await flow.beginHandshake(stoppingAt: .sealingAmount)
-        let handler = Broadcast.Handler(session: fake, advertiser: fake, sender: fake,
-                                        countdown: fake, setting: fake)
-        let machine = Machine(initialState: flow.state, reducer: Broadcast.reduce,
-                              handler: { await handler.handle($0) })
-        defer { machine.end() }
-
         if sendFails { fake.failure = .sending }
-        if expireFirst { machine.send(.secondsLeft(first, 0)) }
-        machine.send(.amountSealed(first, protectedAmount))
-        if !expireFirst { machine.send(.secondsLeft(first, 0)) }
+        let events: [Broadcast.Event] = expireFirst
+            ? [.secondsLeft(first, 0), .amountSealed(first, protectedAmount)]
+            : [.amountSealed(first, protectedAmount), .secondsLeft(first, 0)]
+        let results = events.compactMap { flow.start($0) }
 
         let sent: [Ports.Call] = expireFirst ? [] : [.sent(first, client, protectedAmount)]
         #expect(fake.calls.filter { if case .sent = $0 { true } else { false } } == sent)
         if expireFirst {
-            #expect(machine.state.phase == .timedOut)
-            #expect(machine.state.amount.isEmpty)
+            #expect(flow.state.phase == .timedOut)
+            #expect(flow.state.amount.isEmpty)
         } else {
-            #expect(machine.state.phase == .handshake(.sendingAmount))
-            #expect(machine.state.secondsLeft == 0)
+            #expect(flow.state.phase == .handshake(.sendingAmount))
+            #expect(flow.state.secondsLeft == 0)
             #expect(fake.services == [first: session(1)])
             #expect(fake.openSessions == [first])
         }
-        await machine.waitForEffects()
+        await flow.drain(results)
         #expect(fake.calls.filter { if case .sent = $0 { true } else { false } } == sent)
         if expireFirst || sendFails {
-            #expect(machine.state.phase == .timedOut)
-            #expect(machine.state.amount.isEmpty)
-            #expect(machine.state.reason == nil)
-            #expect(!machine.state.canRetry)
+            #expect(flow.state.phase == .timedOut)
+            #expect(flow.state.amount.isEmpty)
+            #expect(flow.state.reason == nil)
+            #expect(!flow.state.canRetry)
             expectRetired(fake, first)
         } else {
-            guard case .handedOver(let secure) = machine.state.phase else {
-                Issue.record("Expected a successful send to hand over, got \(machine.state.phase)")
+            guard case .handedOver(let secure) = flow.state.phase else {
+                Issue.record("Expected a successful send to hand over, got \(flow.state.phase)")
                 return
             }
             #expect(secure.attempt == first)
             #expect(secure.session == session(1))
             #expect(secure.link == client)
             #expect(secure.amount == "124.50")
-            #expect(machine.state.secondsLeft == nil)
+            #expect(flow.state.secondsLeft == nil)
             #expect(fake.countdowns.isEmpty)
             #expect(fake.advertising.isEmpty)
             #expect(fake.services == [first: session(1)])
@@ -739,7 +780,9 @@ private final class Flow {
     }
 
     func handle(_ effect: Broadcast.Effect) async -> Broadcast.Event? {
-        await handler.handle(effect)
+        let events = await collect(handler.handle(effect))
+        #expect(events.count <= 1)
+        return events.first
     }
 
     func send(_ event: Broadcast.Event) async {
@@ -752,6 +795,19 @@ private final class Flow {
 
     func run(_ effect: Broadcast.Effect) async {
         if let event = await handle(effect) { await send(event) }
+    }
+
+    func start(_ event: Broadcast.Event) -> AsyncStream<Broadcast.Event>? {
+        accept(event).map { handler.handle($0) }
+    }
+
+    func drain(_ streams: [AsyncStream<Broadcast.Event>]) async {
+        var pending = streams
+        while !pending.isEmpty {
+            for await event in pending.removeFirst() {
+                if let stream = start(event) { pending.append(stream) }
+            }
+        }
     }
 
     func accept(_ event: Broadcast.Event) -> Broadcast.Effect? {
@@ -843,6 +899,7 @@ private final class Ports: Broadcast.SessionProvider, Broadcast.Advertiser,
     var advertising: Set<Broadcast.Attempt> = []
     var openSessions: Set<Broadcast.Attempt> = []
     var failure: Failure?
+    var onServe: (() async -> Void)?
 
     init(seconds: Int, sessions: [Broadcast.Session],
          protectedAmounts: [String: Broadcast.ProtectedAmount]) {
@@ -872,6 +929,7 @@ private final class Ports: Broadcast.SessionProvider, Broadcast.Advertiser,
     }
     func serve(_ session: Broadcast.Session, for attempt: Broadcast.Attempt) async throws {
         calls.append(.served(attempt, session))
+        if let onServe { await onServe() }
         if failure == .serving { throw Failure.serving }
         services[attempt] = session
     }
@@ -902,4 +960,11 @@ private final class Ports: Broadcast.SessionProvider, Broadcast.Advertiser,
         calls.append(.stoppedCountdown(attempt))
         countdowns.removeValue(forKey: attempt)
     }
+}
+
+@MainActor
+private func collect(_ stream: AsyncStream<Broadcast.Event>) async -> [Broadcast.Event] {
+    var events: [Broadcast.Event] = []
+    for await event in stream { events.append(event) }
+    return events
 }

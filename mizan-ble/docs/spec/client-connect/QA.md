@@ -1,6 +1,6 @@
 # Client connect — QA
 
-Driven through its reducer as tables, and through the machine with fakes
+Driven through its reducer as tables, and its effect handler with fakes
 of the link (with a chosen largest write), the session and the deadline.
 Rows read the state and what the fakes recorded.
 

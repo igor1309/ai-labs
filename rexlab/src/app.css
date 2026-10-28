@@ -855,6 +855,7 @@ body:has(.result) #version {
 .featured-card .catalogue-tile-picture,
 .featured-card .care-tile-picture,
 .featured-card .sort-tile-picture,
+.featured-card .labyrinth-tile-picture,
 .featured-card .skeletons-tile-picture {
   padding: 36px 32px 8px;
 }
@@ -923,7 +924,8 @@ body:has(.result) #version {
   color: #1d2742;
 }
 
-.featured-card[data-game="sort"] {
+.featured-card[data-game="sort"],
+.featured-card[data-game="labyrinth"] {
   outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
   background: #fffdf8;
@@ -960,7 +962,8 @@ body:has(.result) #version {
   background: #ffffff59;
 }
 
-.featured-card[data-game="sort"] .featured-card-symbol {
+.featured-card[data-game="sort"] .featured-card-symbol,
+.featured-card[data-game="labyrinth"] .featured-card-symbol {
   background: #c9583d;
   color: #ffffff;
 }
@@ -980,12 +983,14 @@ body:has(.result) #version {
   background: #ffffff59;
 }
 
-.featured-card[data-game="sort"] .featured-card-badge {
+.featured-card[data-game="sort"] .featured-card-badge,
+.featured-card[data-game="labyrinth"] .featured-card-badge {
   background: #e6e2d9;
 }
 
 .featured-card[data-game="compare"] .featured-card-badge svg,
 .featured-card[data-game="sort"] .featured-card-badge svg,
+.featured-card[data-game="labyrinth"] .featured-card-badge svg,
 .featured-card[data-game="skeletons"] .featured-card-badge svg {
   color: #e39b2d;
 }
@@ -1567,9 +1572,9 @@ body:has(.result) #version {
   font-weight: 700;
 }
 
-/* The sorting game's tile, on paper over SORT's own terracotta symbol,
-   in the other tiles' shape. */
-.sort-tile {
+/* Sorting and labyrinth use paper cards with terracotta symbols. */
+.sort-tile,
+.labyrinth-tile {
   position: relative;
   flex: 1 1 0;
   min-height: 0;
@@ -1587,7 +1592,8 @@ body:has(.result) #version {
   text-align: left;
 }
 
-.sort-tile-picture {
+.sort-tile-picture,
+.labyrinth-tile-picture {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
@@ -1596,14 +1602,16 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-.sort-tile-row {
+.sort-tile-row,
+.labyrinth-tile-row {
   padding: 12px 12px 14px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.sort-tile-symbol {
+.sort-tile-symbol,
+.labyrinth-tile-symbol {
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -1614,7 +1622,8 @@ body:has(.result) #version {
   color: #ffffff;
 }
 
-.sort-tile-title {
+.sort-tile-title,
+.labyrinth-tile-title {
   flex: 1 1 0;
   min-width: 0;
   font-size: 28px;
@@ -1623,7 +1632,8 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
-.sort-tile-best {
+.sort-tile-best,
+.labyrinth-tile-best {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -1639,7 +1649,8 @@ body:has(.result) #version {
   font-weight: 700;
 }
 
-.sort-tile-best svg {
+.sort-tile-best svg,
+.labyrinth-tile-best svg {
   color: #e39b2d;
 }
 
@@ -11063,6 +11074,334 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   outline-offset: -1px;
 }
 
+.labyrinth-board-screen {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 1024px;
+  height: 100dvh;
+  min-height: 670px;
+  padding: calc(24px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.labyrinth-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex: 0 0 56px;
+}
+
+.labyrinth-bar h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 28px;
+}
+
+.labyrinth-room {
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.labyrinth-maze {
+  --cell: 64px;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), var(--cell));
+  grid-template-rows: repeat(var(--rows), var(--cell));
+  flex: 0 0 auto;
+  padding: 8px;
+  border-radius: 16px;
+  background: #244b3b;
+  isolation: isolate;
+}
+
+.labyrinth-cell,
+.labyrinth-wall {
+  box-sizing: border-box;
+  width: var(--cell);
+  height: var(--cell);
+}
+
+.labyrinth-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #1d27421f;
+  border-radius: 0;
+  background: #e6e2d9;
+  color: #1d2742;
+}
+
+.labyrinth-cell[data-legal] {
+  outline: 2px solid #2e7d4f;
+  outline-offset: -4px;
+  background: #fffdf8;
+}
+
+.labyrinth-cell[data-legal] > svg {
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.labyrinth-cell[data-goal] { border: 3px solid #e39b2d; }
+
+.labyrinth-cell[data-goal] .labyrinth-footprint {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+}
+
+.labyrinth-cell[data-hint] {
+  outline: 4px dashed #1d2742;
+  outline-offset: -6px;
+  background: #e39b2d;
+}
+
+.labyrinth-hint {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+}
+
+.labyrinth-baby {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: var(--cell);
+  height: var(--cell);
+  translate: calc(var(--baby-x) * var(--cell)) calc(var(--baby-y) * var(--cell));
+  pointer-events: none;
+}
+
+.labyrinth-step {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: labyrinth-step var(--motion-standard) var(--ease-out) both;
+}
+
+@keyframes labyrinth-step {
+  from {
+    translate: calc(var(--step-x) * var(--cell) * var(--motion-amount)) calc(var(--step-y) * var(--cell) * var(--motion-amount));
+  }
+}
+
+.labyrinth-baby-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.labyrinth-parent {
+  flex: 0 0 270px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+}
+
+.labyrinth-parent-picture {
+  width: 250px;
+  height: 180px;
+  object-fit: contain;
+}
+
+.labyrinth-parent p {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.labyrinth-guidance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 22px;
+  line-height: 32px;
+  font-weight: 700;
+}
+
+.labyrinth-maze:focus-visible,
+.labyrinth-cell:focus-visible,
+.labyrinth-bar button:focus-visible {
+  outline: 3px solid #c9583d;
+  outline-offset: 3px;
+  z-index: 1;
+}
+
+[data-theme="dark"] .labyrinth-maze { background: #315f49; }
+[data-theme="dark"] .labyrinth-cell { background: #222a3d; color: #ece8de; border-color: #ece8de1f; }
+[data-theme="dark"] .labyrinth-cell[data-legal] { background: #181e2e; outline-color: #63c98c; }
+[data-theme="dark"] .labyrinth-cell[data-goal] { border-color: #f2b24b; }
+[data-theme="dark"] .labyrinth-cell[data-hint] { background: #f2b24b; color: #1d2742; }
+[data-theme="dark"] .labyrinth-maze:focus-visible,
+[data-theme="dark"] .labyrinth-cell:focus-visible,
+[data-theme="dark"] .labyrinth-bar button:focus-visible { outline-color: #e57a5d; }
+
+.labyrinth-board-screen[data-compact] {
+  gap: 12px;
+  padding: calc(16px + env(safe-area-inset-top)) calc(16px + var(--screen-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + var(--screen-left));
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-bar h1 {
+  font-size: 22px;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-maze {
+  --cell: 48px;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-baby {
+  left: 4px;
+  top: 4px;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-baby-picture {
+  width: 36px;
+  height: 30px;
+  margin: 9px 6px;
+}
+
+.labyrinth-goal-picture {
+  width: 46px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-goal-symbol {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-guidance {
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-guidance > svg {
+  width: 22px;
+  height: 22px;
+}
+
+.labyrinth-result-screen {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-width: 1024px;
+  min-height: 670px;
+  height: 100dvh;
+  padding: calc(24px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
+  background: #f2efe8;
+  color: #1d2742;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.labyrinth-result-screen > * { flex-shrink: 0; }
+
+.labyrinth-reunion-title {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+/* The family leaves room for the reward and all five controls in Safari. */
+.labyrinth-family {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  height: min(220px, 28dvh);
+}
+
+.labyrinth-reunion-baby,
+.labyrinth-reunion-parent {
+  display: block;
+  object-fit: contain;
+}
+
+.labyrinth-reunion-baby { width: 120px; height: 100px; }
+.labyrinth-reunion-parent { width: 300px; height: 100%; }
+
+.labyrinth-reunion-stars { gap: 16px; }
+.labyrinth-reunion-stars .star { display: flex; }
+
+.labyrinth-reward {
+  margin: 0;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 800;
+}
+
+.labyrinth-record {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.labyrinth-record .celebration { height: 52px; font-size: 22px; }
+.labyrinth-record .best-score { background: #1d27420d; }
+.labyrinth-record .best-score-value { color: #1d2742; }
+.labyrinth-record .best-score-beaten { color: #5c647a; }
+
+.labyrinth-reunion-levels { width: 648px; }
+
+.labyrinth-reunion-actions {
+  display: flex;
+  gap: 20px;
+}
+
+.labyrinth-reunion-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 72px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 16px;
+  background: #fffdf8;
+  color: #1d2742;
+  font-size: 24px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.labyrinth-result-screen button:focus-visible { outline: 3px solid #c9583d; outline-offset: 3px; }
+.labyrinth-result-screen .glow { left: 50%; }
+
+[data-theme="dark"] .labyrinth-result-screen { background: #0f1320; color: #ece8de; }
+[data-theme="dark"] .labyrinth-reunion-actions button { background: #181e2e; color: #ece8de; }
+[data-theme="dark"] .labyrinth-record .best-score { background: #222a3d; }
+[data-theme="dark"] .labyrinth-record .best-score-value { color: #ece8de; }
+[data-theme="dark"] .labyrinth-record .best-score-beaten { color: #9ca3b6; }
+
 /* Reduced motion comes after every rule it overrides, so that it wins
    over them: a later rule of the same weight would undo it. */
 @media (prefers-reduced-motion: reduce) {
@@ -11072,6 +11411,11 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
     --motion-count: 0ms;
     --motion-stagger: 0ms;
     --motion-amount: 0;
+  }
+
+  .labyrinth-board-screen,
+  .labyrinth-step {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 
   .sand-writing-options {
@@ -11223,7 +11567,9 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"],
 [data-theme="dark"] .parent-menu-choice-code,
 [data-theme="dark"] .sort-tile-best,
+[data-theme="dark"] .labyrinth-tile-best,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge,
 [data-theme="dark"] .catalogue-art,
 [data-theme="dark"] .step,
 [data-theme="dark"] .dinosaur-art,
@@ -11246,9 +11592,11 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .parent-menu-tick,
 [data-theme="dark"] .compare-tile-best svg,
 [data-theme="dark"] .sort-tile-best svg,
+[data-theme="dark"] .labyrinth-tile-best svg,
 [data-theme="dark"] .skeletons-tile-best svg,
 [data-theme="dark"] .featured-card[data-game="compare"] .featured-card-badge svg,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge svg,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge svg,
 [data-theme="dark"] .featured-card[data-game="skeletons"] .featured-card-badge svg,
 [data-theme="dark"] .result-score-total,
 [data-theme="dark"] .star-won,
@@ -11272,17 +11620,21 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   box-shadow: 0 8px 24px #00000066;
 }
 
-[data-theme="dark"] .sort-tile {
+[data-theme="dark"] .sort-tile,
+[data-theme="dark"] .labyrinth-tile {
   background: #181e2e;
   box-shadow: 0 8px 24px #00000066;
 }
 
-[data-theme="dark"] .featured-card[data-game="sort"] {
+[data-theme="dark"] .featured-card[data-game="sort"],
+[data-theme="dark"] .featured-card[data-game="labyrinth"] {
   background: #181e2e;
 }
 
 [data-theme="dark"] .sort-tile,
-[data-theme="dark"] .featured-card[data-game="sort"] {
+[data-theme="dark"] .labyrinth-tile,
+[data-theme="dark"] .featured-card[data-game="sort"],
+[data-theme="dark"] .featured-card[data-game="labyrinth"] {
   outline-color: #ece8de1f;
 }
 
@@ -11377,16 +11729,20 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .diet-tag,
 [data-theme="dark"] .sort-tile-symbol,
+[data-theme="dark"] .labyrinth-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
-[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol {
+[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
   color: #0f1320;
 }
 
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .diet-tag[data-diet="meat"],
 [data-theme="dark"] .sort-tile-symbol,
+[data-theme="dark"] .labyrinth-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
-[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol {
+[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
   background: #e57a5d;
 }
 
@@ -12044,4 +12400,10 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 
 [data-theme="dark"] .pairs-offer-yes {
   background: #f2b24b;
+}
+
+/* The maze name keeps its route symbol beside it at tablet tile widths. */
+.labyrinth-tile-title {
+  font-size: 24px;
+  letter-spacing: 1px;
 }

@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -43,7 +44,7 @@ async function openPage(size: WindowSize, { language = "en", id = "pachycephalos
   openWindow(...size);
   viewport.resize(size[0] < 600 ? "tall-narrow" : "tall", true);
   const user = userEvent.setup({ delay: null });
-  render(<App
+  render(<App {...emptyLabyrinth()}
     {...featuring()}
     dinosaurs={SHIPPED_DINOSAURS}
     catalogue={SHIPPED_CATALOGUE}

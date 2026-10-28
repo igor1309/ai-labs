@@ -58,8 +58,8 @@ knows the chain; no machine knows the next.
 | Part | What it is | How it is tested |
 |---|---|---|
 | Reducer | A pure function: `(State, Event) -> (State, Effect?)` | Tables of event in, state and effect out |
-| Effect handler | Reads the effect, hands it to the one dependency given for it, and turns the result into an event. It decides nothing | Fakes behind its dependencies |
-| Machine | The generic loop: takes events one at a time, reduces, publishes the state, runs the effect and feeds its result back in | Once, generically |
+| Effect handler | Reads the effect, hands it to the one dependency given for it, and returns its results as a stream of events. It decides nothing | Fakes behind its dependencies |
+| Model | swift-imrx's `ObservableModel`, built by the root: takes events one at a time, reduces, publishes the state, runs the effect and feeds its results back in | In swift-imrx |
 
 A reducer never does I/O. When a choice depends on state, the reducer makes
 it and names it in the effect. A sequence is the reducer's too: each step is
@@ -76,7 +76,6 @@ nothing; what a screen offers follows from the state.
 
 | Component | Module | Kind | Responsibility |
 |---|---|---|---|
-| Machine | `Machine` | Core | The generic reducer and effect loop |
 | Amount entry | `AmountEntry` | Core | The keypad's amount and whether it can be locked |
 | Host broadcast | `HostBroadcast` | Core | The host from a locked amount, through the countdown and handshake, to a secure link |
 | Host payment | `HostPayment` | Core | The host from a secure link, through the client's decision and the mock outcome, to a result |
@@ -98,17 +97,20 @@ nothing; what a screen offers follows from the state.
 | Client radio | `ClientRadio` | Adapter | Core Bluetooth central: scanning, connecting, reading, writing, notifications |
 | Clock | `SystemClock` | Adapter | Now, and ticks every interval asked for, until stopped |
 | Preferences | `Preferences` | Adapter | The settings' stored values in `UserDefaults` |
-| App | `MizanBLE` (app target) | Root | Builds everything, wires each interface, decorates with logging |
+| App | `MizanBLE` (app target) | Root | Builds everything, runs each flow on a swift-imrx `ObservableModel`, wires each interface, decorates with logging |
 
 All modules but the app target live in one Swift package under
 `mizan-ble/ios/`. The app targets iOS 26, as the package does. The UI modules depend on `DesignSystem` only; that is the
 one dependency between modules, since a design system is a library the
-screens are drawn in, not a collaborator.
+screens are drawn in, not a collaborator. The app target alone depends on
+swift-imrx (`IMRxObservation`, `from: "1.0.0"`) for the loop; no module in
+the package imports it.
 
 ```mermaid
 flowchart TB
   subgraph Root["MizanBLE app (root)"]
     Log[logging decorators]
+    Model["ObservableModel (swift-imrx)"]
   end
   subgraph UI
     ModeSwitchUI --> DesignSystem
@@ -118,7 +120,6 @@ flowchart TB
     ClientPaymentUI --> DesignSystem
   end
   subgraph Core
-    Machine
     AmountEntry
     HostBroadcast
     HostPayment
@@ -159,7 +160,6 @@ settings' store over preferences.
 
 | Component | Provides | Requires, as its own interfaces |
 |---|---|---|
-| Machine | A flow: send an event, read the state | A reducer and an effect handler |
 | Amount entry | A key and Bluetooth's availability in, the amount and whether it can be locked out | — |
 | Host broadcast | Lock, cancel, retry, new amount, the advertiser's events and the transaction's end in; its state; a secure link handed over | A session, an advertiser, a sender, a countdown, the countdown setting |
 | Host payment | The client's decision, a lost link, the outcome, cancel and new amount in; its state; the end | A session, a sender, a link |
@@ -177,7 +177,7 @@ settings' store over preferences.
 | Client radio | Scan, stop, connect, write and drop; readings, and events for each GATT step, a message and a lost link | `CBCentralManager`, `CBPeripheral`, and a `now` of its own |
 | Clock | Now; ticks every interval asked for; a countdown that reports the seconds left and ends at zero; each until stopped | `ContinuousClock` |
 | Preferences | A number or a text under a key | `UserDefaults` |
-| App | The running app | Every component and adapter |
+| App | The running app | Every component and adapter; swift-imrx's `ObservableModel` |
 
 ## SOLID, checked
 
@@ -292,6 +292,10 @@ Each line can be overturned by the owner.
 - **Audelin's reducer and effect pattern for the flows,** because they
   are sequences of steps with waits and failures in between, which tables
   of events test without a radio.
+- **swift-imrx's `ObservableModel` is the loop,** not one of our own:
+  it reduces on the actor that makes it, starts each effect while
+  reducing and queues its results behind the events already sent, so a
+  flow is only a reducer and a handler that returns a stream of events.
 - **A chain of machines per side,** split where a spec would pass 100
   lines and where the work changes: typing, broadcasting and paying on the
   host; finding, connecting, deciding and paying on the client. The secure link is
