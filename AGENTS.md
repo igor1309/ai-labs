@@ -69,6 +69,21 @@
 - A check that fails or is slow (`-race`, a timeout, a required test) is
   kept: cut the work it checks, do not loosen the check.
 
+## State machines
+
+- A module defines its domain only: `State`, `Event`, `Effect`, a pure
+  reducer `(State, Event) -> (State, Effect?)` and an effect handler with
+  injected collaborators. No module imports swift-imrx or any state
+  machine, and none wraps or re-implements one.
+- Only an app (a main app or a preview app) imports swift-imrx. It composes
+  each instance from the generic `ObservableModel`, the tested reducer and
+  the tested effect handler.
+- Reducer tests come in pairs per case, one asserting the state and one the
+  effect, as one-line `assert(state, event, reducedTo:)` and
+  `assert(state, event, effect:)` helpers. Effect handler tests drive
+  collaborators through spies:
+  `expect(sut, with: effect, toDeliver: event, on: { spy.complete(…) })`.
+
 ## Writing docs and comments
 
 - Do not add cross-references as traceability theater. A code comment, doc
