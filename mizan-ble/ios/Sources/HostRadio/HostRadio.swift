@@ -38,9 +38,10 @@ import Foundation
 
     private struct Service {
         let id: UUID
+        let handle: UUID
         var serving: CheckedContinuation<Void, Never>?
         var added = false
-        var advertising = false
+        var advertising: UUID?
         var subscribers: [UUID: Int] = [:]
         var owner: UUID?
         var queue: [[UInt8]] = []
@@ -54,6 +55,12 @@ import Foundation
         let continuation: CheckedContinuation<Void, Never>
     }
 
+    private struct Advertisement {
+        let id: UUID
+        let service: UUID
+    }
+
+    private var advertisements: [Advertisement] = []
     private var pendingServices: [PendingService] = []
     private var service: Service?
     private var retired: Set<UUID> = []
@@ -75,20 +82,23 @@ import Foundation
     }
 
     private func addService(_ request: PendingService) {
-        service = Service(id: request.id, serving: request.continuation)
-        additions.insert(request.id)
-        binding.addService(request.id, bytes: request.bytes)
+        let handle = UUID()
+        service = Service(id: request.id, handle: handle, serving: request.continuation)
+        additions.insert(handle)
+        binding.addService(handle, bytes: request.bytes)
     }
 
     public func advertise(_ name: String, for session: UUID) {
-        guard service?.id == session, service?.added == true else { return }
-        service?.advertising = true
-        binding.advertise(name, session: session)
+        guard service?.id == session, service?.added == true, let handle = service?.handle else { return }
+        let request = Advertisement(id: UUID(), service: handle)
+        service?.advertising = request.id
+        advertisements.append(request)
+        binding.advertise(name)
     }
 
     public func stopAdvertising(for session: UUID) {
-        guard service?.id == session, service?.advertising == true else { return }
-        service?.advertising = false
+        guard service?.id == session, service?.advertising != nil else { return }
+        service?.advertising = nil
         binding.stopAdvertising()
     }
 
@@ -105,8 +115,12 @@ import Foundation
         guard let old = service else { return }
         service = nil
         retired.insert(old.id)
-        if old.advertising { binding.stopAdvertising() }
-        binding.removeService(old.id)
+        if old.advertising != nil { binding.stopAdvertising() }
+        for peer in old.subscribers.keys { binding.releaseCentral(peer) }
+        binding.removeService(old.handle)
+        // A submitted add can still complete after removal; its mapping is needed
+        // to remove that late service before releasing the handle.
+        if !additions.contains(old.handle) { binding.releaseService(old.handle) }
         old.serving?.resume()
         if !pendingServices.isEmpty { addService(pendingServices.removeFirst()) }
     }
@@ -133,10 +147,10 @@ import Foundation
             if service?.finishing == true { removeService() }
             return
         }
-        guard let session = service?.id, let peer = service?.owner,
+        guard let handle = service?.handle, let peer = service?.owner,
               service?.blocked == false else { return }
         while let bytes = service?.queue.first {
-            guard binding.update(bytes, session: session, peer: peer) else {
+            guard binding.update(bytes, service: handle, peer: peer) else {
                 service?.blocked = true
                 return
             }
@@ -149,40 +163,51 @@ import Foundation
         switch event {
         case .state(let state):
             continuation.yield(.bluetoothState(state))
-            if state != .poweredOn, let session = service?.id, let peer = service?.owner,
-               service?.subscribers[peer] != nil {
+            if state != .poweredOn {
+                let lostOwner = service?.owner.flatMap { service?.subscribers[$0] } != nil
+                let peers = service.map { Array($0.subscribers.keys) } ?? []
                 service?.subscribers = [:]
                 service?.queue = []
-                continuation.yield(.clientLost(session: session))
+                for peer in peers { binding.releaseCentral(peer) }
+                if lostOwner, let session = service?.id {
+                    continuation.yield(.clientLost(session: session))
+                }
             }
             if state != .poweredOn, service?.finishing == true { removeService() }
-        case .added(let session, let error):
-            guard additions.remove(session) != nil else { return }
-            guard service?.id == session else {
-                if error == nil { binding.removeService(session) }
+        case .added(let handle, let error):
+            guard let handle, additions.remove(handle) != nil else { return }
+            guard service?.handle == handle, let session = service?.id else {
+                if error == nil { binding.removeService(handle) }
+                binding.releaseService(handle)
                 return
             }
             if let error {
+                binding.releaseService(handle)
                 continuation.yield(.couldNotGoOnAir(session: session, error))
             }
             service?.added = error == nil
             let waiting = service?.serving
             service?.serving = nil
             waiting?.resume()
-        case .advertised(let session, let error):
-            guard service?.id == session, service?.advertising == true else { return }
+        case .advertised(let error):
+            guard !advertisements.isEmpty else { return }
+            let request = advertisements.removeFirst()
+            guard service?.handle == request.service, service?.advertising == request.id,
+                  let session = service?.id else { return }
             if let error {
                 continuation.yield(.couldNotGoOnAir(session: session, error))
             } else {
                 continuation.yield(.onAir(session: session))
             }
-        case .subscribed(let session, let peer, let maximum):
-            guard service?.id == session else { return }
+        case .subscribed(let handle, let peer, let maximum, let characteristic):
+            defer { releaseUnusedCentral(peer) }
+            guard let handle, service?.handle == handle, characteristic == .toClient else { return }
             service?.subscribers[peer] = maximum
         case .writes(let request, let writes):
             receiveWrites(writes, request: request)
-        case .unsubscribed(let session, let peer):
-            guard service?.id == session else { return }
+        case .unsubscribed(let handle, let peer, let characteristic):
+            defer { releaseUnusedCentral(peer) }
+            guard let handle, service?.handle == handle, characteristic == .toClient, let session = service?.id else { return }
             let wasSubscribed = service?.subscribers.removeValue(forKey: peer) != nil
             if service?.owner == peer, wasSubscribed {
                 service?.queue = []
@@ -195,16 +220,23 @@ import Foundation
         }
     }
 
+    private func releaseUnusedCentral(_ peer: UUID) {
+        if service?.subscribers[peer] == nil { binding.releaseCentral(peer) }
+    }
+
     private func receiveWrites(_ writes: [PeripheralWrite], request: UUID) {
+        defer {
+            for peer in Set(writes.map(\.peer)) { releaseUnusedCentral(peer) }
+        }
         guard let session = service?.id else {
             binding.respond(request, with: .notPermitted)
             return
         }
         var owner = service?.owner
         for write in writes {
-            guard write.session == session,
+            guard write.service == service?.handle,
                   service?.subscribers[write.peer] != nil,
-                  write.characteristic != .unsupported,
+                  (write.characteristic == .clientKey || write.characteristic == .toHost),
                   write.characteristic != .toHost || owner == write.peer,
                   owner == nil || owner == write.peer else {
                 binding.respond(request, with: .notPermitted)
@@ -223,7 +255,7 @@ import Foundation
                 continuation.yield(.clientKey(session: session, peer: write.peer, bytes: write.bytes))
             case .toHost:
                 continuation.yield(.decision(session: session, bytes: write.bytes))
-            case .unsupported: break
+            case .toClient, .unsupported: break
             }
         }
         binding.respond(request, with: .success)

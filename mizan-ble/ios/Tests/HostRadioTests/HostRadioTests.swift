@@ -21,11 +21,11 @@ import Testing
             await radio.serve([1, 2, 3], for: session)
             radio.advertise("MIZAN-7F3A", for: session)
         }
-        #expect(binding.calls == [.add(session, [1, 2, 3])])
-        binding.emit(.added(session, nil))
+        #expect(binding.calls == [.add(binding.handles[0], [1, 2, 3])])
+        binding.emit(.added(binding.handles[0], nil))
         await serving.value
-        binding.emit(.advertised(session, nil))
-        #expect(binding.calls == [.add(session, [1, 2, 3]), .advertise(session, "MIZAN-7F3A")])
+        binding.emit(.advertised(nil))
+        #expect(binding.calls == [.add(binding.handles[0], [1, 2, 3]), .advertise("MIZAN-7F3A")])
         #expect(await readEvents(radio, binding) == [.onAir(session: session)])
     }
 
@@ -35,30 +35,30 @@ import Testing
         let session = UUID()
         let error = HostRadio.Failure.system(domain: "radio.test", code: 42, message: "Unavailable")
         let serving = Task.immediate { await radio.serve([9], for: session) }
-        binding.emit(.added(session, whileAdvertising ? nil : error))
+        binding.emit(.added(binding.handles[0], whileAdvertising ? nil : error))
         await serving.value
         radio.advertise("MIZAN-7F3A", for: session)
-        if whileAdvertising { binding.emit(.advertised(session, error)) }
+        if whileAdvertising { binding.emit(.advertised(error)) }
         #expect(await readEvents(radio, binding) == [.couldNotGoOnAir(session: session, error)])
-        if !whileAdvertising { #expect(binding.calls == [.add(session, [9])]) }
+        if !whileAdvertising { #expect(binding.calls == [.add(binding.handles[0], [9])]) }
     }
 
     @Test func subscribedClientKeyIsDeliveredAndAnswered() async {
         let (radio, binding, session) = await servedRadio()
         let peer = UUID(), request = UUID()
         let bytes = Array(repeating: UInt8(7), count: 33)
-        binding.emit(.subscribed(session, peer: peer, maximum: 64))
-        binding.emit(.write(session, request: request, peer: peer, characteristic: .clientKey, bytes: bytes, offset: 0))
+        binding.emit(.subscribed(binding.handles[0], peer: peer, maximum: 64))
+        binding.emit(.write(binding.handles[0], request: request, peer: peer, characteristic: .clientKey, bytes: bytes, offset: 0))
         #expect(await readEvents(radio, binding) == [.clientKey(session: session, peer: peer, bytes: bytes)])
         #expect(binding.calls.last == .respond(request, .success))
     }
 
-    @Test(arguments: [WriteCharacteristic.clientKey, .toHost])
-    func secondCentralCannotWriteOrTakeOwnership(characteristic: WriteCharacteristic) async {
-        let (radio, binding, session, _) = await ownedRadio()
+    @Test(arguments: [PeripheralCharacteristic.clientKey, .toHost])
+    func secondCentralCannotWriteOrTakeOwnership(characteristic: PeripheralCharacteristic) async {
+        let (radio, binding, _, _) = await ownedRadio()
         let other = UUID(), request = UUID()
-        binding.emit(.subscribed(session, peer: other, maximum: 64))
-        binding.emit(.write(session, request: request, peer: other, characteristic: characteristic, bytes: [8], offset: 0))
+        binding.emit(.subscribed(binding.handles[0], peer: other, maximum: 64))
+        binding.emit(.write(binding.handles[0], request: request, peer: other, characteristic: characteristic, bytes: [8], offset: 0))
         #expect(await readEvents(radio, binding) == [])
         #expect(binding.calls == [.respond(request, .notPermitted)])
     }
@@ -67,34 +67,34 @@ import Testing
         let (radio, binding, session, peer) = await ownedRadio()
         let bytes = Array(repeating: UInt8(3), count: 41)
         let request = UUID()
-        binding.emit(.write(session, request: request, peer: peer, characteristic: .toHost, bytes: bytes, offset: 0))
+        binding.emit(.write(binding.handles[0], request: request, peer: peer, characteristic: .toHost, bytes: bytes, offset: 0))
         #expect(await readEvents(radio, binding) == [.decision(session: session, bytes: bytes)])
         #expect(binding.calls == [.respond(request, .success)])
     }
 
-    @Test(arguments: [WriteCharacteristic.clientKey, .toHost, .unsupported])
-    func writesWithoutASubscribedOwnerAreRefused(characteristic: WriteCharacteristic) async {
-        let (radio, binding, session) = await servedRadio()
+    @Test(arguments: [PeripheralCharacteristic.clientKey, .toHost, .unsupported])
+    func writesWithoutASubscribedOwnerAreRefused(characteristic: PeripheralCharacteristic) async {
+        let (radio, binding, _) = await servedRadio()
         let peer = UUID(), request = UUID()
-        binding.emit(.write(session, request: request, peer: peer, characteristic: characteristic, bytes: [9], offset: 0))
+        binding.emit(.write(binding.handles[0], request: request, peer: peer, characteristic: characteristic, bytes: [9], offset: 0))
         #expect(await readEvents(radio, binding) == [])
         #expect(binding.calls == [.respond(request, .notPermitted)])
     }
 
-    @Test(arguments: [WriteCharacteristic.clientKey, .toHost], [-1, 1])
-    func partialWritesAreRefused(characteristic: WriteCharacteristic, offset: Int) async {
-        let (radio, binding, session, peer) = await ownedRadio()
+    @Test(arguments: [PeripheralCharacteristic.clientKey, .toHost], [-1, 1])
+    func partialWritesAreRefused(characteristic: PeripheralCharacteristic, offset: Int) async {
+        let (radio, binding, _, peer) = await ownedRadio()
         let request = UUID()
-        binding.emit(.write(session, request: request, peer: peer, characteristic: characteristic, bytes: [9], offset: offset))
+        binding.emit(.write(binding.handles[0], request: request, peer: peer, characteristic: characteristic, bytes: [9], offset: offset))
         #expect(await readEvents(radio, binding) == [])
         #expect(binding.calls == [.respond(request, .invalidOffset)])
     }
 
     @Test func sendsOnlyToTheOwner() async throws {
         let (radio, binding, session, peer) = await ownedRadio()
-        binding.emit(.subscribed(session, peer: UUID(), maximum: 1))
+        binding.emit(.subscribed(binding.handles[0], peer: UUID(), maximum: 1))
         try radio.send([1, 2, 3], for: session)
-        #expect(binding.calls == [.update(session, peer, [1, 2, 3])])
+        #expect(binding.calls == [.update(binding.handles[0], peer, [1, 2, 3])])
         #expect(await readEvents(radio, binding) == [])
     }
 
@@ -105,7 +105,7 @@ import Testing
         try radio.send([2, 3], for: session)
         #expect(binding.calls == [])
         binding.drain()
-        #expect(binding.calls == [.update(session, peer, [1]), .update(session, peer, [2, 3])])
+        #expect(binding.calls == [.update(binding.handles[0], peer, [1]), .update(binding.handles[0], peer, [2, 3])])
         #expect(await readEvents(radio, binding) == [])
     }
 
@@ -116,20 +116,20 @@ import Testing
         var failure: HostRadio.Failure?
         do { try radio.send(bytes, for: session) } catch { failure = error }
         #expect(failure == (count > 20 ? .messageTooLarge(maximum: 20, actual: count) : nil))
-        #expect(binding.calls == (count > 20 ? [] : [.update(session, peer, bytes)]))
+        #expect(binding.calls == (count > 20 ? [] : [.update(binding.handles[0], peer, bytes)]))
         #expect(await readEvents(radio, binding) == [])
     }
 
     @Test func onlyTheOwnerUnsubscribeReportsClientLost() async throws {
         let (radio, binding, session, peer) = await ownedRadio()
         let other = UUID()
-        binding.emit(.subscribed(session, peer: other, maximum: 64))
-        binding.emit(.unsubscribed(session, peer: other))
+        binding.emit(.subscribed(binding.handles[0], peer: other, maximum: 64))
+        binding.emit(.unsubscribed(binding.handles[0], peer: other))
         #expect(await readEvents(radio, binding) == [])
         binding.full = true
         try radio.send([1], for: session)
-        binding.emit(.unsubscribed(session, peer: peer))
-        binding.emit(.unsubscribed(session, peer: peer))
+        binding.emit(.unsubscribed(binding.handles[0], peer: peer))
+        binding.emit(.unsubscribed(binding.handles[0], peer: peer))
         binding.drain()
         #expect(await readEvents(radio, binding) == [.clientLost(session: session)])
         #expect(binding.calls == [])
@@ -144,12 +144,12 @@ import Testing
         radio.retire(session)
         let next = UUID(), peer = UUID(), request = UUID()
         let serving = Task.immediate { await radio.serve([2], for: next) }
-        binding.emit(.added(next, nil))
+        binding.emit(.added(binding.handles.last!, nil))
         await serving.value
-        binding.emit(.subscribed(next, peer: peer, maximum: 64))
-        binding.emit(.write(next, request: request, peer: peer, characteristic: .clientKey, bytes: [8], offset: 0))
+        binding.emit(.subscribed(binding.handles.last!, peer: peer, maximum: 64))
+        binding.emit(.write(binding.handles.last!, request: request, peer: peer, characteristic: .clientKey, bytes: [8], offset: 0))
         binding.drain()
-        #expect(binding.calls == [.stop, .remove(session), .add(next, [2]), .respond(request, .success)])
+        #expect(binding.calls == [.stop, .remove(binding.handles[0]), .add(binding.handles.last!, [2]), .respond(request, .success)])
         #expect(await readEvents(radio, binding) == [.clientKey(session: next, peer: peer, bytes: [8])])
     }
 
@@ -161,7 +161,7 @@ import Testing
         radio.finish(session)
         if queued { #expect(binding.calls == []) }
         binding.drain()
-        #expect(binding.calls == [.update(session, peer, [5]), .remove(session)])
+        #expect(binding.calls == [.update(binding.handles[0], peer, [5]), .remove(binding.handles[0])])
         #expect(await readEvents(radio, binding) == [])
     }
 
@@ -177,11 +177,11 @@ import Testing
         }
         #expect(binding.calls == [])
         binding.drain()
-        #expect(binding.calls == [.update(session, peer, [5]), .remove(session), .add(next, [9])])
-        binding.emit(.added(next, nil))
+        #expect(binding.calls == [.update(binding.handles[0], peer, [5]), .remove(binding.handles[0]), .add(binding.handles.last!, [9])])
+        binding.emit(.added(binding.handles.last!, nil))
         await serving.value
-        binding.emit(.advertised(next, nil))
-        #expect(binding.calls.last == .advertise(next, "NEXT"))
+        binding.emit(.advertised(nil))
+        #expect(binding.calls.last == .advertise("NEXT"))
         #expect(await readEvents(radio, binding) == [.onAir(session: next)])
     }
 
@@ -200,7 +200,7 @@ import Testing
         binding.drain()
         binding.emit(.added(next, nil))
         await serving.value
-        #expect(binding.calls == [.update(session, peer, [5]), .remove(session)])
+        #expect(binding.calls == [.update(binding.handles[0], peer, [5]), .remove(binding.handles[0])])
         #expect(await readEvents(radio, binding) == [])
     }
 
@@ -223,8 +223,8 @@ import Testing
         let (radio, binding, session) = await servedRadio()
         let peer = UUID()
         if ending != .noOwner {
-            binding.emit(.subscribed(session, peer: peer, maximum: 64))
-            binding.emit(.write(session, request: UUID(), peer: peer, characteristic: .clientKey, bytes: [7], offset: 0))
+            binding.emit(.subscribed(binding.handles[0], peer: peer, maximum: 64))
+            binding.emit(.write(binding.handles[0], request: UUID(), peer: peer, characteristic: .clientKey, bytes: [7], offset: 0))
             _ = await readEvents(radio, binding)
             binding.calls = []
             binding.full = true
@@ -233,12 +233,12 @@ import Testing
         radio.finish(session)
         let next = UUID()
         let serving = Task.immediate { await radio.serve([9], for: next) }
-        if ending == .unsubscribe { binding.emit(.unsubscribed(session, peer: peer)) }
+        if ending == .unsubscribe { binding.emit(.unsubscribed(binding.handles[0], peer: peer)) }
         if ending == .poweredOff { binding.emit(.state(.poweredOff)) }
-        #expect(binding.calls == [.remove(session), .add(next, [9])])
+        #expect(binding.calls == [.remove(binding.handles[0]), .add(binding.handles.last!, [9])])
         // End any still-live old service so an assertion failure leaves no suspended serve.
         radio.retire(session)
-        binding.emit(.added(next, nil))
+        binding.emit(.added(binding.handles.last!, nil))
         await serving.value
         binding.drain()
         let expected: [HostRadio.Event] = switch ending {
@@ -258,9 +258,9 @@ import Testing
         #expect(binding.calls == [])
         radio.stopAdvertising(for: session)
         radio.stopAdvertising(for: session)
-        binding.emit(.advertised(session, nil))
+        binding.emit(.advertised(nil))
         try radio.send([6], for: session)
-        #expect(binding.calls == [.stop, .update(session, peer, [6])])
+        #expect(binding.calls == [.stop, .update(binding.handles[0], peer, [6])])
         #expect(await readEvents(radio, binding) == [])
     }
 
@@ -273,12 +273,12 @@ import Testing
         radio.stopAdvertising(for: old)
         radio.finish(old)
         binding.emit(.added(old, .system(domain: "old", code: 1, message: "late")))
-        binding.emit(.advertised(old, nil))
+        binding.emit(.advertised(nil))
         binding.emit(.subscribed(old, peer: UUID(), maximum: 64))
         binding.emit(.unsubscribed(old, peer: peer))
         binding.emit(.write(old, request: request, peer: peer, characteristic: .clientKey, bytes: [8], offset: 0))
         try radio.send([6], for: session)
-        #expect(binding.calls == [.respond(request, .notPermitted), .update(session, peer, [6])])
+        #expect(binding.calls == [.respond(request, .notPermitted), .update(binding.handles[0], peer, [6])])
         #expect(await readEvents(radio, binding) == [])
     }
 
@@ -290,13 +290,13 @@ import Testing
         try radio.send([2], for: session)
         #expect(binding.updateAttempts == 1)
         binding.drain()
-        #expect(binding.calls == [.update(session, peer, [1])])
+        #expect(binding.calls == [.update(binding.handles[0], peer, [1])])
         let attempts = binding.updateAttempts
         try radio.send([3], for: session)
         #expect(binding.updateAttempts == attempts)
         binding.capacity = 2
         binding.drain()
-        #expect(binding.calls == [.update(session, peer, [1]), .update(session, peer, [2]), .update(session, peer, [3])])
+        #expect(binding.calls == [.update(binding.handles[0], peer, [1]), .update(binding.handles[0], peer, [2]), .update(binding.handles[0], peer, [3])])
     }
 
     @Test func retiringDuringServiceAdditionRemovesALateService() async {
@@ -305,9 +305,25 @@ import Testing
         let serving = Task.immediate { await radio.serve([1], for: session) }
         radio.retire(session)
         await serving.value
-        binding.emit(.added(session, nil))
+        binding.emit(.added(binding.handles[0], nil))
         radio.advertise("LATE", for: session)
-        #expect(binding.calls == [.add(session, [1]), .remove(session), .remove(session)])
+        #expect(binding.calls == [.add(binding.handles[0], [1]), .remove(binding.handles[0]), .remove(binding.handles[0])])
+        #expect(await readEvents(radio, binding) == [])
+    }
+
+    @Test(arguments: [false, true], [false, true])
+    func endedServiceReleasesItsMappingAfterTheLateAdd(finish: Bool, fails: Bool) async {
+        let (radio, binding) = makeRadio()
+        let session = UUID()
+        let serving = Task.immediate { await radio.serve([1], for: session) }
+        if finish { radio.finish(session) } else { radio.retire(session) }
+        await serving.value
+        #expect(binding.retainedServices == [binding.handles[0]])
+        binding.calls = []
+        let error = HostRadio.Failure.system(domain: "late", code: 1, message: "Add failed")
+        binding.emit(.added(binding.handles[0], fails ? error : nil))
+        #expect(binding.retainedServices.isEmpty)
+        #expect(binding.calls == (fails ? [] : [.remove(binding.handles[0])]))
         #expect(await readEvents(radio, binding) == [])
     }
 
@@ -315,11 +331,11 @@ import Testing
     func writeBatchesAreAnsweredOnceAndAppliedTogether(valid: Bool) async {
         let (radio, binding, session) = await servedRadio()
         let first = UUID(), other = UUID(), request = UUID()
-        binding.emit(.subscribed(session, peer: first, maximum: 64))
-        binding.emit(.subscribed(session, peer: other, maximum: 64))
+        binding.emit(.subscribed(binding.handles[0], peer: first, maximum: 64))
+        binding.emit(.subscribed(binding.handles[0], peer: other, maximum: 64))
         binding.emit(.writes(request, [
-            .init(session: session, peer: first, characteristic: .clientKey, bytes: [7], offset: 0),
-            .init(session: session, peer: valid ? first : other, characteristic: .toHost, bytes: [8], offset: 0),
+            .init(service: binding.handles[0], peer: first, characteristic: .clientKey, bytes: [7], offset: 0),
+            .init(service: binding.handles[0], peer: valid ? first : other, characteristic: .toHost, bytes: [8], offset: 0),
         ]))
         #expect(binding.calls == [.respond(request, valid ? .success : .notPermitted)])
         #expect(await readEvents(radio, binding) == (valid ? [
@@ -327,16 +343,147 @@ import Testing
         ] : []))
         if !valid {
             let retry = UUID()
-            binding.emit(.write(session, request: retry, peer: other, characteristic: .clientKey, bytes: [9], offset: 0))
+            binding.emit(.write(binding.handles[0], request: retry, peer: other, characteristic: .clientKey, bytes: [9], offset: 0))
             #expect(await readEvents(radio, binding) == [.clientKey(session: session, peer: other, bytes: [9])])
         }
+    }
+
+    @Test(arguments: [false, true])
+    func advertisingCallbacksArePairedWithRequests(fails: Bool) async {
+        let (radio, binding, session) = await servedRadio()
+        radio.advertise("OLD", for: session)
+        radio.retire(session)
+        let next = UUID()
+        let serving = Task.immediate { await radio.serve([2], for: next) }
+        binding.emit(.added(binding.handles[1], nil))
+        await serving.value
+        radio.advertise("NEXT", for: next)
+        let error = HostRadio.Failure.system(domain: "late", code: 1, message: "Advertising failed")
+        binding.emit(.advertised(fails ? error : nil))
+        #expect(await readEvents(radio, binding) == [])
+        binding.emit(.advertised(nil))
+        #expect(await readEvents(radio, binding) == [.onAir(session: next)])
+        binding.emit(.advertised(error))
+        #expect(await readEvents(radio, binding) == [])
+    }
+
+    @Test func advertisingRestartDiscardsTheStoppedRequestsCallback() async {
+        let (radio, binding, session) = await servedRadio()
+        radio.advertise("FIRST", for: session)
+        radio.stopAdvertising(for: session)
+        radio.advertise("SECOND", for: session)
+        binding.emit(.advertised(nil))
+        #expect(await readEvents(radio, binding) == [])
+        let error = HostRadio.Failure.system(domain: "current", code: 2, message: "Advertising failed")
+        binding.emit(.advertised(error))
+        #expect(await readEvents(radio, binding) == [.couldNotGoOnAir(session: session, error)])
+    }
+
+    @Test(arguments: [false, true])
+    func lateServiceAddCannotCompleteTheCurrentServe(fails: Bool) async {
+        let (radio, binding) = makeRadio()
+        let old = UUID(), next = UUID()
+        let oldServe = Task.immediate { await radio.serve([1], for: old) }
+        let nextServe = Task.immediate { await radio.serve([2], for: next) }
+        await oldServe.value
+        let error = HostRadio.Failure.system(domain: "old", code: 3, message: "Add failed")
+        binding.emit(.added(binding.handles[0], fails ? error : nil))
+        radio.advertise("NEXT", for: next)
+        #expect(binding.retainedServices == [binding.handles[1]])
+        #expect(!binding.calls.contains(.advertise("NEXT")))
+        binding.emit(.added(binding.handles[1], nil))
+        await nextServe.value
+        radio.advertise("NEXT", for: next)
+        binding.emit(.advertised(nil))
+        #expect(await readEvents(radio, binding) == [.onAir(session: next)])
+        radio.retire(next)
+        #expect(binding.retainedServices.isEmpty)
+    }
+
+    @Test func failedServiceAddReleasesItsMapping() async {
+        let (radio, binding) = makeRadio()
+        let session = UUID()
+        let serving = Task.immediate { await radio.serve([1], for: session) }
+        let error = HostRadio.Failure.system(domain: "add", code: 4, message: "Add failed")
+        binding.emit(.added(binding.handles[0], error))
+        await serving.value
+        #expect(binding.retainedServices.isEmpty)
+        #expect(await readEvents(radio, binding) == [.couldNotGoOnAir(session: session, error)])
+    }
+
+    enum CentralEnd: CaseIterable { case unsubscribe, retire, finish, poweredOff }
+
+    @Test(arguments: CentralEnd.allCases, [false, true])
+    func centralMappingsEndWithTheirSubscriptions(ending: CentralEnd, owns: Bool) async {
+        let (radio, binding, session) = await servedRadio()
+        let peer = UUID(), other = UUID()
+        binding.emit(.subscribed(binding.handles[0], peer: peer, maximum: 64))
+        binding.emit(.subscribed(binding.handles[0], peer: other, maximum: 64))
+        if owns {
+            binding.emit(.write(binding.handles[0], request: UUID(), peer: peer, characteristic: .clientKey, bytes: [7], offset: 0))
+            _ = await readEvents(radio, binding)
+        }
+        #expect(binding.retainedCentrals == [peer, other])
+        switch ending {
+        case .unsubscribe:
+            binding.emit(.unsubscribed(binding.handles[0], peer: peer))
+            #expect(binding.retainedCentrals == [other])
+            binding.emit(.unsubscribed(binding.handles[0], peer: other))
+        case .retire: radio.retire(session)
+        case .finish: radio.finish(session)
+        case .poweredOff: binding.emit(.state(.poweredOff))
+        }
+        #expect(binding.retainedCentrals.isEmpty)
+    }
+
+    @Test(arguments: [PeripheralCharacteristic.clientKey, .toHost, .unsupported])
+    func otherCharacteristicsCannotSubscribeAClient(characteristic: PeripheralCharacteristic) async {
+        let (radio, binding, _) = await servedRadio()
+        let peer = UUID(), request = UUID()
+        binding.emit(.subscribed(binding.handles[0], peer: peer, maximum: 64, characteristic: characteristic))
+        binding.emit(.write(binding.handles[0], request: request, peer: peer, characteristic: .clientKey, bytes: [7], offset: 0))
+        #expect(binding.calls == [.respond(request, .notPermitted)])
+        #expect(binding.retainedCentrals.isEmpty)
+        #expect(await readEvents(radio, binding) == [])
+    }
+
+    @Test(arguments: [PeripheralCharacteristic.clientKey, .toHost, .unsupported])
+    func otherCharacteristicsCannotUnsubscribeTheOwner(characteristic: PeripheralCharacteristic) async throws {
+        let (radio, binding, session, peer) = await ownedRadio()
+        binding.emit(.unsubscribed(binding.handles[0], peer: peer, characteristic: characteristic))
+        try radio.send([5], for: session)
+        #expect(binding.retainedCentrals == [peer])
+        #expect(binding.calls == [.update(binding.handles[0], peer, [5])])
+        #expect(await readEvents(radio, binding) == [])
+    }
+
+    @Test func staleCallbacksKeepOnlyCentralsSubscribedToTheCurrentService() async throws {
+        let (radio, binding, old, peer) = await ownedRadio()
+        radio.retire(old)
+        let next = UUID()
+        let serving = Task.immediate { await radio.serve([2], for: next) }
+        binding.emit(.added(binding.handles[1], nil))
+        await serving.value
+        binding.emit(.subscribed(binding.handles[1], peer: peer, maximum: 64))
+        binding.emit(.write(binding.handles[1], request: UUID(), peer: peer, characteristic: .clientKey, bytes: [8], offset: 0))
+        _ = await readEvents(radio, binding)
+        binding.calls = []
+        let stranger = UUID(), request = UUID()
+        binding.emit(.subscribed(binding.handles[0], peer: stranger, maximum: 64))
+        binding.emit(.unsubscribed(nil, peer: peer))
+        binding.emit(.unsubscribed(binding.handles[0], peer: stranger))
+        binding.emit(.write(binding.handles[0], request: request, peer: stranger, characteristic: .clientKey, bytes: [9], offset: 0))
+        #expect(binding.retainedCentrals == [peer])
+        try radio.send([5], for: next)
+        #expect(binding.calls == [.respond(request, .notPermitted), .update(binding.handles[1], peer, [5])])
+        #expect(await readEvents(radio, binding) == [])
     }
 
     private func ownedRadio(maximum: Int = 64) async -> (HostRadio, FakePeripheral, UUID, UUID) {
         let (radio, binding, session) = await servedRadio()
         let peer = UUID()
-        binding.emit(.subscribed(session, peer: peer, maximum: maximum))
-        binding.emit(.write(session, request: UUID(), peer: peer, characteristic: .clientKey, bytes: [7], offset: 0))
+        binding.emit(.subscribed(binding.handles[0], peer: peer, maximum: maximum))
+        binding.emit(.write(binding.handles[0], request: UUID(), peer: peer, characteristic: .clientKey, bytes: [7], offset: 0))
         _ = await readEvents(radio, binding)
         binding.calls = []
         return (radio, binding, session, peer)
@@ -346,7 +493,7 @@ import Testing
         let (radio, binding) = makeRadio()
         let session = UUID()
         let serving = Task.immediate { await radio.serve([1], for: session) }
-        binding.emit(.added(session, nil))
+        binding.emit(.added(binding.handles[0], nil))
         await serving.value
         binding.calls = []
         return (radio, binding, session)
@@ -370,28 +517,49 @@ import Testing
 
 @MainActor private final class FakePeripheral: PeripheralBinding {
     enum Call: Equatable {
-        case add(UUID, [UInt8]), remove(UUID), advertise(UUID, String), stop
+        case add(UUID, [UInt8]), remove(UUID), advertise(String), stop
         case update(UUID, UUID, [UInt8])
         case respond(UUID, WriteResponse)
     }
     var receive: (@MainActor (PeripheralEvent) -> Void)?
     var calls: [Call] = []
+    var retainedServices: Set<UUID> = []
+    var handles: [UUID] = []
+    var retainedCentrals: Set<UUID> = []
     var full = false
     var capacity: Int?
     var updateAttempts = 0
-    func emit(_ event: PeripheralEvent) { receive?(event) }
-    func addService(_ session: UUID, bytes: [UInt8]) { calls.append(.add(session, bytes)) }
-    func removeService(_ session: UUID) { calls.append(.remove(session)) }
-    func advertise(_ name: String, session: UUID) { calls.append(.advertise(session, name)) }
+    func emit(_ event: PeripheralEvent) {
+        switch event {
+        case .subscribed(_, let peer, _, _), .unsubscribed(_, let peer, _):
+            retainedCentrals.insert(peer)
+        case .writes(_, let writes):
+            retainedCentrals.formUnion(writes.map(\.peer))
+        default: break
+        }
+        receive?(event)
+    }
+    func addService(_ service: UUID, bytes: [UInt8]) {
+        handles.append(service)
+        retainedServices.insert(service)
+        calls.append(.add(service, bytes))
+    }
+    func removeService(_ service: UUID) {
+        guard retainedServices.contains(service) else { return }
+        calls.append(.remove(service))
+    }
+    func advertise(_ name: String) { calls.append(.advertise(name)) }
+    func releaseService(_ service: UUID) { retainedServices.remove(service) }
+    func releaseCentral(_ peer: UUID) { retainedCentrals.remove(peer) }
     func stopAdvertising() { calls.append(.stop) }
-    func update(_ bytes: [UInt8], session: UUID, peer: UUID) -> Bool {
+    func update(_ bytes: [UInt8], service: UUID, peer: UUID) -> Bool {
         updateAttempts += 1
-        guard !full else { return false }
+        guard !full, retainedServices.contains(service), retainedCentrals.contains(peer) else { return false }
         if let remaining = capacity {
             capacity = remaining - 1
             full = capacity == 0
         }
-        calls.append(.update(session, peer, bytes))
+        calls.append(.update(service, peer, bytes))
         return true
     }
     func respond(_ request: UUID, with response: WriteResponse) { calls.append(.respond(request, response)) }

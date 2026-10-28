@@ -12,15 +12,13 @@ import Foundation
     private struct Service {
         let value: CBMutableService
         let toClient: CBMutableCharacteristic
-        var adding = true
-        var centrals: [UUID: CBCentral] = [:]
     }
 
     var receive: (@MainActor (PeripheralEvent) -> Void)?
     private var manager: CBPeripheralManager!
     private var services: [UUID: Service] = [:]
-    private var sessionIDs: [ObjectIdentifier: UUID] = [:]
-    private var advertisements: [UUID] = []
+    private var serviceHandles: [ObjectIdentifier: UUID] = [:]
+    private var centrals: [UUID: CBCentral] = [:]
     private var requests: [UUID: CBATTRequest] = [:]
 
     override init() {
@@ -28,7 +26,7 @@ import Foundation
         manager = CBPeripheralManager(delegate: self, queue: .main)
     }
 
-    func addService(_ session: UUID, bytes: [UInt8]) {
+    func addService(_ handle: UUID, bytes: [UInt8]) {
         let value = CBMutableService(type: Self.serviceUUID, primary: true)
         let toClient = CBMutableCharacteristic(type: Self.toClientUUID, properties: .notify, value: nil, permissions: .readable)
         value.characteristics = [
@@ -37,31 +35,31 @@ import Foundation
             toClient,
             CBMutableCharacteristic(type: Self.toHostUUID, properties: .write, value: nil, permissions: .writeable),
         ]
-        services[session] = Service(value: value, toClient: toClient)
-        sessionIDs[ObjectIdentifier(value)] = session
+        services[handle] = Service(value: value, toClient: toClient)
+        serviceHandles[ObjectIdentifier(value)] = handle
         manager.add(value)
     }
 
-    func removeService(_ session: UUID) {
-        guard let service = services[session] else { return }
+    func removeService(_ handle: UUID) {
+        guard let service = services[handle] else { return }
         manager.remove(service.value)
-        // An add already submitted can still complete after removal; retain its identity
-        // until the callback so the adapter can remove that late service too.
-        if !service.adding {
-            services.removeValue(forKey: session)
-            sessionIDs.removeValue(forKey: ObjectIdentifier(service.value))
-        }
     }
 
-    func advertise(_ name: String, session: UUID) {
-        advertisements.append(session)
+    func releaseService(_ handle: UUID) {
+        guard let service = services.removeValue(forKey: handle) else { return }
+        serviceHandles.removeValue(forKey: ObjectIdentifier(service.value))
+    }
+
+    func releaseCentral(_ peer: UUID) { centrals.removeValue(forKey: peer) }
+
+    func advertise(_ name: String) {
         manager.startAdvertising([CBAdvertisementDataServiceUUIDsKey: [Self.serviceUUID], CBAdvertisementDataLocalNameKey: name])
     }
 
     func stopAdvertising() { manager.stopAdvertising() }
 
-    func update(_ bytes: [UInt8], session: UUID, peer: UUID) -> Bool {
-        guard let service = services[session], let central = service.centrals[peer] else { return false }
+    func update(_ bytes: [UInt8], service handle: UUID, peer: UUID) -> Bool {
+        guard let service = services[handle], let central = centrals[peer] else { return false }
         return manager.updateValue(Data(bytes), for: service.toClient, onSubscribedCentrals: [central])
     }
 
@@ -89,26 +87,21 @@ import Foundation
     }
 
     func peripheralManager(_ peripheral: CBPeripheralManager, didAdd service: CBService, error: (any Error)?) {
-        guard let session = sessionIDs[ObjectIdentifier(service)] else { return }
-        services[session]?.adding = false
-        receive?(.added(session, error.map(failure)))
+        receive?(.added(serviceHandles[ObjectIdentifier(service)], error.map(failure)))
     }
 
     func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: (any Error)?) {
-        guard !advertisements.isEmpty else { return }
-        receive?(.advertised(advertisements.removeFirst(), error.map(failure)))
+        receive?(.advertised(error.map(failure)))
     }
 
     func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didSubscribeTo characteristic: CBCharacteristic) {
-        guard characteristic.uuid == Self.toClientUUID, let session = session(of: characteristic) else { return }
-        services[session]?.centrals[central.identifier] = central
-        receive?(.subscribed(session, peer: central.identifier, maximum: central.maximumUpdateValueLength))
+        centrals[central.identifier] = central
+        receive?(.subscribed(handle(of: characteristic), peer: central.identifier, maximum: central.maximumUpdateValueLength, characteristic: kind(of: characteristic)))
     }
 
     func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic) {
-        guard characteristic.uuid == Self.toClientUUID, let session = session(of: characteristic) else { return }
-        services[session]?.centrals.removeValue(forKey: central.identifier)
-        receive?(.unsubscribed(session, peer: central.identifier))
+        centrals[central.identifier] = central
+        receive?(.unsubscribed(handle(of: characteristic), peer: central.identifier, characteristic: kind(of: characteristic)))
     }
 
     func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
@@ -116,22 +109,27 @@ import Foundation
         let id = UUID()
         self.requests[id] = first
         receive?(.writes(id, requests.map { request in
-            let characteristic: WriteCharacteristic = switch request.characteristic.uuid {
-            case Self.keyUUID: .clientKey
-            case Self.toHostUUID: .toHost
-            default: .unsupported
-            }
+            centrals[request.central.identifier] = request.central
             return PeripheralWrite(
-                session: session(of: request.characteristic), peer: request.central.identifier,
-                characteristic: characteristic, bytes: request.value.map { Array($0) } ?? [], offset: request.offset
+                service: handle(of: request.characteristic), peer: request.central.identifier,
+                characteristic: kind(of: request.characteristic), bytes: request.value.map { Array($0) } ?? [], offset: request.offset
             )
         }))
     }
 
     func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) { receive?(.ready) }
 
-    private func session(of characteristic: CBCharacteristic) -> UUID? {
-        characteristic.service.flatMap { sessionIDs[ObjectIdentifier($0)] }
+    private func handle(of characteristic: CBCharacteristic) -> UUID? {
+        characteristic.service.flatMap { serviceHandles[ObjectIdentifier($0)] }
+    }
+
+    private func kind(of characteristic: CBCharacteristic) -> PeripheralCharacteristic {
+        switch characteristic.uuid {
+        case Self.keyUUID: .clientKey
+        case Self.toHostUUID: .toHost
+        case Self.toClientUUID: .toClient
+        default: .unsupported
+        }
     }
 
     private func failure(_ error: any Error) -> HostRadio.Failure {
