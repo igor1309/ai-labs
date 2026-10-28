@@ -182,7 +182,7 @@ public enum RecordingReducer {
 }
 
 /// Dispatches each effect to its supplied Session dependency and maps the result.
-public final class RecordingEffectHandler: Sendable {
+public struct RecordingEffectHandler: Sendable {
 
     private let session: any RecordingSession
 
@@ -191,7 +191,19 @@ public final class RecordingEffectHandler: Sendable {
         self.session = session
     }
 
-    public func handle(_ effect: RecordingEffect) async -> RecordingEvent {
+    /// Delivers the one event that completes the effect, then finishes.
+    public func handle(_ effect: RecordingEffect) -> AsyncStream<RecordingEvent> {
+
+        AsyncStream { output in
+            let task = Task {
+                output.yield(await perform(effect))
+                output.finish()
+            }
+            output.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private func perform(_ effect: RecordingEffect) async -> RecordingEvent {
 
         switch effect {
         case let .beginSession(id):
@@ -201,13 +213,6 @@ public final class RecordingEffectHandler: Sendable {
             return .sessionReported(id: id, .ended)
         }
     }
-
-    public func machine(initial: RecordingState = .init()) -> Machine<RecordingState, RecordingEvent, RecordingEffect> {
-
-        Machine(initial: initial, reduce: RecordingReducer.reduce, handle: { effect in
-            await self.handle(effect)
-        })
-    }
 }
 
 public final class Recording: Sendable {
@@ -216,7 +221,11 @@ public final class Recording: Sendable {
 
     public init(handler: RecordingEffectHandler, initial: RecordingState = .init()) {
 
-        machine = handler.machine(initial: initial)
+        // Bridge until the app composes Recording's model.
+        machine = Machine(initial: initial, reduce: RecordingReducer.reduce, handle: { effect in
+            for await event in handler.handle(effect) { return event }
+            preconditionFailure("A Recording effect delivers one event")
+        })
     }
 
     public nonisolated func send(_ event: RecordingEvent) {
