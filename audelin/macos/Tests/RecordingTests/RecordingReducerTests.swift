@@ -71,87 +71,71 @@ struct RecordingReducerTests {
     @Test func readyReportWhileIdleHasNoEffect() { assert(idle, .sessionReported(id: 1, .ready), effect: nil) }
 
     @Test(arguments: RecordingCondition.allCases)
-    func reducerConditions(_ condition: RecordingCondition) {
-
-        let idle = RecordingState(automatic: true, missing: [])
-        let blocked = changed(idle) { $0.missing = [condition] }
-        let running = changed(idle) {
-            $0.phase = .recording
-            $0.session = .init(id: 7, origin: .hand)
-            $0.lastSessionID = 7
-        }
-        let losesStorage = condition == .callsFolder || condition == .room
-        let cases: [(RecordingState, RecordingEvent, RecordingState, RecordingEffect?)] = [
-            (blocked, .userStart, blocked, nil),
-            (blocked, .callStarted, changed(blocked) { $0.callOn = true }, nil),
-            (blocked, .conditionChanged(condition, available: true), idle, nil),
-            (idle, .conditionChanged(condition, available: false), blocked, nil),
-            (running, .conditionChanged(condition, available: false), changed(running) {
-                $0.missing = [condition]
-                if losesStorage { $0.phase = .ending }
-            }, losesStorage ? .endSession(id: 7) : nil),
-        ]
-        for (state, event, expectedState, expectedEffect) in cases {
-            let (actualState, actualEffect) = RecordingReducer.reduce(state, event)
-            #expect(actualState == expectedState)
-            #expect(actualEffect == expectedEffect)
-        }
-    }
-
-    @Test func initialConditionsMustBeReportedBeforeStarting() {
-
-        let state = RecordingState()
-        #expect(state.missing == Set(RecordingCondition.allCases))
-        let (next, effect) = RecordingReducer.reduce(state, .userStart)
-        #expect(next == state)
-        #expect(effect == nil)
-    }
-
-    @Test(arguments: [UInt64(1), 7])
-    func idleRetainsOnlyTheLatestSessionsFailure(_ id: UInt64) {
-
-        let idle = changed(RecordingState(missing: [])) { $0.lastSessionID = id }
-        let failed = changed(idle) { $0.cannotRecord = "cannot keep audio" }
-        let cases: [(RecordingState, RecordingEvent, RecordingState)] = [
-            (idle, .sessionReported(id: id, .cannotRecord("cannot keep audio")), failed),
-            (idle, .sessionReported(id: id, .ready), idle),
-            (failed, .sessionReported(id: id, .ended), failed),
-            (idle, .sessionReported(id: id - 1, .cannotRecord("old failure")), idle),
-            (idle, .sessionReported(id: id + 1, .cannotRecord("unknown failure")), idle),
-            (RecordingState(), .sessionReported(id: 0, .cannotRecord("no Session")), RecordingState()),
-        ]
-        for (state, event, expected) in cases {
-            let (next, effect) = RecordingReducer.reduce(state, event)
-            #expect(next == expected, "Event: \(event)")
-            #expect(effect == nil, "Event: \(event)")
-        }
-    }
+    func userStartWhileBlockedChangesNothing(_ c: RecordingCondition) { assert(blocked(c), .userStart, reducedTo: blocked(c)) }
+    @Test(arguments: RecordingCondition.allCases)
+    func userStartWhileBlockedHasNoEffect(_ c: RecordingCondition) { assert(blocked(c), .userStart, effect: nil) }
 
     @Test(arguments: RecordingCondition.allCases)
-    func partialRecoveryKeepsOtherConditionsBlockingStarts(_ recovered: RecordingCondition) {
+    func callStartedWhileBlockedOnlyNotesTheCall(_ c: RecordingCondition) { assert(blocked(c), .callStarted, reducedTo: changed(blocked(c)) { $0.callOn = true }) }
+    @Test(arguments: RecordingCondition.allCases)
+    func callStartedWhileBlockedHasNoEffect(_ c: RecordingCondition) { assert(blocked(c), .callStarted, effect: nil) }
 
-        for remaining in RecordingCondition.allCases where remaining != recovered {
-            let blocked = RecordingState(automatic: true, missing: [recovered, remaining])
-            let (partial, recoveryEffect) = RecordingReducer.reduce(blocked, .conditionChanged(recovered, available: true))
-            #expect(partial == changed(blocked) { $0.missing = [remaining] })
-            #expect(recoveryEffect == nil)
-            for start in [RecordingEvent.userStart, .callStarted] {
-                let (held, startEffect) = RecordingReducer.reduce(partial, start)
-                #expect(held == changed(partial) { $0.callOn = start == .callStarted })
-                #expect(startEffect == nil)
-            }
+    @Test(arguments: RecordingCondition.allCases)
+    func regainedConditionUnblocks(_ c: RecordingCondition) { assert(blocked(c), .conditionChanged(c, available: true), reducedTo: idle) }
+    @Test(arguments: RecordingCondition.allCases)
+    func regainedConditionHasNoEffect(_ c: RecordingCondition) { assert(blocked(c), .conditionChanged(c, available: true), effect: nil) }
 
-            let (ready, finalRecoveryEffect) = RecordingReducer.reduce(partial, .conditionChanged(remaining, available: true))
-            #expect(ready == RecordingState(automatic: true, missing: []))
-            #expect(finalRecoveryEffect == nil)
-            for start in [RecordingEvent.userStart, .callStarted] {
-                let (begun, startEffect) = RecordingReducer.reduce(ready, start)
-                #expect(begun.phase == .beginning)
-                #expect(begun.session == .init(id: 1, origin: start == .callStarted ? .call : .hand))
-                #expect(startEffect == .beginSession(id: 1))
-            }
-        }
+    @Test(arguments: RecordingCondition.allCases)
+    func lostConditionWhileIdleBlocks(_ c: RecordingCondition) { assert(idle, .conditionChanged(c, available: false), reducedTo: blocked(c)) }
+    @Test(arguments: RecordingCondition.allCases)
+    func lostConditionWhileIdleHasNoEffect(_ c: RecordingCondition) { assert(idle, .conditionChanged(c, available: false), effect: nil) }
+
+    @Test(arguments: RecordingCondition.allCases)
+    func lostConditionWhileRecordingIsKeptAndEndsOnlyWithoutStorage(_ c: RecordingCondition) {
+        assert(runningSeven, .conditionChanged(c, available: false), reducedTo: changed(runningSeven) { $0.missing = [c]; if losesStorage(c) { $0.phase = .ending } })
     }
+    @Test(arguments: RecordingCondition.allCases)
+    func lostConditionWhileRecordingAsksToEndOnlyWithoutStorage(_ c: RecordingCondition) {
+        assert(runningSeven, .conditionChanged(c, available: false), effect: losesStorage(c) ? .endSession(id: 7) : nil)
+    }
+
+    @Test func freshStateMissesEveryCondition() { #expect(RecordingState().missing == Set(RecordingCondition.allCases)) }
+
+    @Test func userStartBeforeConditionsAreReportedChangesNothing() { assert(RecordingState(), .userStart, reducedTo: RecordingState()) }
+    @Test func userStartBeforeConditionsAreReportedHasNoEffect() { assert(RecordingState(), .userStart, effect: nil) }
+
+    @Test(arguments: sessionIDs)
+    func failureOfLatestSessionWhileIdleIsKept(_ id: UInt64) { assert(idleAfter(id), .sessionReported(id: id, .cannotRecord("cannot keep audio")), reducedTo: failedAfter(id)) }
+    @Test(arguments: sessionIDs)
+    func failureOfLatestSessionWhileIdleHasNoEffect(_ id: UInt64) { assert(idleAfter(id), .sessionReported(id: id, .cannotRecord("cannot keep audio")), effect: nil) }
+
+    @Test(arguments: sessionIDs)
+    func readyOfLatestSessionWhileIdleChangesNothing(_ id: UInt64) { assert(idleAfter(id), .sessionReported(id: id, .ready), reducedTo: idleAfter(id)) }
+    @Test(arguments: sessionIDs)
+    func readyOfLatestSessionWhileIdleHasNoEffect(_ id: UInt64) { assert(idleAfter(id), .sessionReported(id: id, .ready), effect: nil) }
+
+    @Test(arguments: sessionIDs)
+    func endedOfLatestSessionWhileIdleKeepsTheFailure(_ id: UInt64) { assert(failedAfter(id), .sessionReported(id: id, .ended), reducedTo: failedAfter(id)) }
+    @Test(arguments: sessionIDs)
+    func endedOfLatestSessionWhileIdleHasNoEffect(_ id: UInt64) { assert(failedAfter(id), .sessionReported(id: id, .ended), effect: nil) }
+
+    @Test(arguments: sessionIDs)
+    func failureOfEarlierSessionWhileIdleChangesNothing(_ id: UInt64) { assert(idleAfter(id), .sessionReported(id: id - 1, .cannotRecord("old failure")), reducedTo: idleAfter(id)) }
+    @Test(arguments: sessionIDs)
+    func failureOfEarlierSessionWhileIdleHasNoEffect(_ id: UInt64) { assert(idleAfter(id), .sessionReported(id: id - 1, .cannotRecord("old failure")), effect: nil) }
+
+    @Test(arguments: sessionIDs)
+    func failureOfUnknownSessionWhileIdleChangesNothing(_ id: UInt64) { assert(idleAfter(id), .sessionReported(id: id + 1, .cannotRecord("unknown failure")), reducedTo: idleAfter(id)) }
+    @Test(arguments: sessionIDs)
+    func failureOfUnknownSessionWhileIdleHasNoEffect(_ id: UInt64) { assert(idleAfter(id), .sessionReported(id: id + 1, .cannotRecord("unknown failure")), effect: nil) }
+
+    @Test func failureBeforeAnySessionChangesNothing() { assert(RecordingState(), .sessionReported(id: 0, .cannotRecord("no Session")), reducedTo: RecordingState()) }
+    @Test func failureBeforeAnySessionHasNoEffect() { assert(RecordingState(), .sessionReported(id: 0, .cannotRecord("no Session")), effect: nil) }
+
+    @Test(arguments: conditionPairs)
+    func partialRecoveryKeepsTheOtherConditionMissing(_ p: ConditionPair) { assert(blockedByTwo(p), .conditionChanged(p.recovered, available: true), reducedTo: blocked(p.remaining)) }
+    @Test(arguments: conditionPairs)
+    func partialRecoveryHasNoEffect(_ p: ConditionPair) { assert(blockedByTwo(p), .conditionChanged(p.recovered, available: true), effect: nil) }
 }
 
 private func changed(_ state: RecordingState, _ edit: (inout RecordingState) -> Void) -> RecordingState {
@@ -177,3 +161,25 @@ private let call = changed(beginning) {
 }
 private let failed = changed(ending) { $0.cannotRecord = "cannot keep audio" }
 private let ended = changed(idle) { $0.lastSessionID = 1; $0.cannotRecord = "cannot keep audio" }
+
+private func blocked(_ condition: RecordingCondition) -> RecordingState { changed(idle) { $0.missing = [condition] } }
+private func losesStorage(_ condition: RecordingCondition) -> Bool { condition == .callsFolder || condition == .room }
+private let runningSeven = changed(idle) {
+    $0.phase = .recording
+    $0.session = .init(id: 7, origin: .hand)
+    $0.lastSessionID = 7
+}
+
+private let sessionIDs: [UInt64] = [1, 7]
+private func idleAfter(_ id: UInt64) -> RecordingState { changed(RecordingState(missing: [])) { $0.lastSessionID = id } }
+private func failedAfter(_ id: UInt64) -> RecordingState { changed(idleAfter(id)) { $0.cannotRecord = "cannot keep audio" } }
+
+struct ConditionPair: Sendable, CustomTestStringConvertible {
+    let recovered: RecordingCondition
+    let remaining: RecordingCondition
+    var testDescription: String { "\(recovered) recovered, \(remaining) remaining" }
+}
+private let conditionPairs = RecordingCondition.allCases.flatMap { recovered in
+    RecordingCondition.allCases.filter { $0 != recovered }.map { ConditionPair(recovered: recovered, remaining: $0) }
+}
+private func blockedByTwo(_ p: ConditionPair) -> RecordingState { changed(idle) { $0.missing = [p.recovered, p.remaining] } }
