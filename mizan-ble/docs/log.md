@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-28
+
+- HostBroadcast takes a locked amount through advertising and the handshake to a secure link, with a countdown, cancellation, retry and a fresh amount after payment (LAB-652).
+
 ## 2026-10-27
 
 - SettingsUI gives the operator countdown choices with a full-ring preview and shows the advertised name, currency and processor read-only (LAB-672).
