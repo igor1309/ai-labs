@@ -52,7 +52,7 @@ struct MenuBarTests {
                         selections.append(selection)
                         return StartedCapture(stream: call.stream, stop: { call.continuation.finish() })
                     },
-                    recognizerSource: { preconditionFailure("Live text is disabled") },
+                    recognizerSource: { preconditionFailure("Live text is disabled") }, missingModels: { [] },
                     makeConditions: { recording, folder in
                         #expect(folder == root)
                         return RecordingConditions(

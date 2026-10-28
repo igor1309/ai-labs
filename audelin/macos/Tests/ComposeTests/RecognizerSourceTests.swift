@@ -112,7 +112,8 @@ struct RecognizerSourceTests {
                 processes: CallAppProcesses(app: "meeting", list: SessionProcessList(answer: .success([]))),
                 startMicrophone: { try microphone.start() }, startCall: { _ in try call.start() },
                 microphoneRecognizerSource: { beganMine.send(); await release.wait(); return mine },
-                callRecognizerSource: { beganTheirs.send(); await release.wait(); return theirs }
+                callRecognizerSource: { beganTheirs.send(); await release.wait(); return theirs },
+                missingModels: { [] }
             )
             let session = Session(handler: pieces.handler())
             let subscription = subscribe(pieces, to: session)

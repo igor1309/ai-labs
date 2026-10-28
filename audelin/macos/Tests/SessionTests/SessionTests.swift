@@ -11,7 +11,8 @@ struct SessionTests {
         var state = SessionState()
         var effect: SessionEffect? = nil
         let steps: [(SessionEvent, SessionEffect?, SessionState)] = [
-            (.begin(liveText: true), .createFolder, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .starting)),
+            (.begin(liveText: true), .checkModels, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off)),
+            (.modelsChecked(missing: []), .createFolder, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .starting)),
             (.folderFinished(error: nil), .selectProcesses, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .starting)),
             (.processesFinished(selection: .init(id: "chosen-app"), error: nil), .openTrack(.microphone), SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .starting, processSelection: .init(id: "chosen-app"))),
             (.trackFinished(.microphone, error: nil), .openTrack(.call), SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .starting, processSelection: .init(id: "chosen-app"))),
@@ -243,6 +244,30 @@ struct SessionTests {
         #expect(ended.lifecycles.allSatisfy { $0 == .closed || $0 == .down })
         #expect(ended.failures.contains(failure.expected))
         await rig.session.end()
+    }
+
+    @Test(arguments: [["Parakeet v3"], ["Parakeet v3", "Nemotron"]])
+    func missingModelSaysCannotRecordAndStartsNothing(missing: [String]) async throws {
+
+        let rig = Rig(missingModels: missing)
+        await rig.begin(liveText: true)
+        let state = await rig.waitFor { $0.cannotRecord != nil }
+        #expect(state.cannotRecord == "model: \(missing.joined(separator: ", ")) not on disk")
+        #expect(state.phase == .bringingUp)
+        #expect(state.folder == .down)
+        #expect(await rig.output.values() == [])
+        await end(rig)
+    }
+
+    @Test func endDuringModelCheckStaysEnded() {
+
+        let (checking, check) = SessionReducer.reduce(SessionState(), .begin(liveText: false))
+        #expect(check == .checkModels)
+        let (ended, _) = SessionReducer.reduce(checking, .end)
+        #expect(ended.phase == .ended)
+        let (after, effect) = SessionReducer.reduce(ended, .modelsChecked(missing: []))
+        #expect(after == ended)
+        #expect(effect == nil)
     }
 
     @Test func folderFailureSaysCannotRecordAndWaitsForEnd() async throws {

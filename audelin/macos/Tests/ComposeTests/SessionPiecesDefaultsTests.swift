@@ -28,7 +28,7 @@ struct SessionPiecesDefaultsTests {
                 processes: CallAppProcesses(app: "meeting", list: SessionProcessList(answer: .success([]))),
                 startMicrophone: { try microphone.start() },
                 startCall: { _ in try call.start() },
-                microphoneRecognizer: mine, callRecognizer: theirs
+                microphoneRecognizer: mine, callRecognizer: theirs, missingModels: { [] }
             )
             do {
                 let folder = try await pieces.create()

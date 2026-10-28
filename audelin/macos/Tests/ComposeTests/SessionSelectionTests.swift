@@ -45,7 +45,8 @@ struct SessionSelectionTests {
                     folder: CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: 0) }, timeZone: TimeZone(secondsFromGMT: 0)!),
                     processes: processes, startMicrophone: { try microphone.start() },
                     startCall: { selections.append($0); return try call.start() },
-                    microphoneRecognizer: SessionRecognizer(name: "mine"), callRecognizer: SessionRecognizer(name: "theirs")
+                    microphoneRecognizer: SessionRecognizer(name: "mine"), callRecognizer: SessionRecognizer(name: "theirs"),
+                    missingModels: { [] }
                 )
             }
             let recording = pieces()

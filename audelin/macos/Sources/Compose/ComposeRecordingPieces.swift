@@ -34,7 +34,8 @@ public func composeRecordingPieces(
         preferences: preferences, callApp: callApp, processes: processes,
         now: { Date() }, timeZone: { .current },
         startMicrophone: startProductionMicrophone, startCall: startProductionCallAudio,
-        recognizerSource: { try await ParakeetRecognizer() }
+        recognizerSource: { try await ParakeetRecognizer() },
+        missingModels: productionMissingModels
     )
 }
 
@@ -43,7 +44,8 @@ func composeRecordingPieces(
     now: @escaping @Sendable () -> Date, timeZone: @escaping @Sendable () -> TimeZone,
     startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
     startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
-    recognizerSource: @escaping @Sendable () async throws -> any Recognizer
+    recognizerSource: @escaping @Sendable () async throws -> any Recognizer,
+    missingModels: @escaping @Sendable () -> [String]
 ) -> @Sendable (UInt64) -> SessionPieces {
 
     let callsURL = preferences.read().callsFolder
@@ -56,9 +58,15 @@ func composeRecordingPieces(
                 source: processes, appKnown: app != nil
             )),
             startMicrophone: startMicrophone, startCall: startCall,
-            microphoneRecognizerSource: recognizerSource, callRecognizerSource: recognizerSource
+            microphoneRecognizerSource: recognizerSource, callRecognizerSource: recognizerSource,
+            missingModels: missingModels
         )
     }
+}
+
+/// The models the recording composition reads with, checked where FluidAudio keeps them.
+let productionMissingModels: @Sendable () -> [String] = {
+    ParakeetRecognizer.missingModels(in: ParakeetRecognizer.modelsDirectory)
 }
 
 private struct RecordingProcessList: ProcessList {

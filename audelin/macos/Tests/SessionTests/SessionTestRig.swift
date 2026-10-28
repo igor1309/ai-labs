@@ -24,7 +24,8 @@ struct Rig {
         failing: Set<String> = [],
         selection: SessionProcessSelection = .init(id: "chosen-app"),
         callAudioSelection: SessionCallCaptureSelection? = nil,
-        callFolder: SessionCallFolder = .init(id: "made-folder")
+        callFolder: SessionCallFolder = .init(id: "made-folder"),
+        missingModels: [String] = []
     ) {
 
         output = TestOutput(held: held, failing: failing)
@@ -41,7 +42,7 @@ struct Rig {
         self.callCapture = callCapture
         callText = TestCallText(output: output, transcript: transcript)
         let handler = SessionEffectHandler(
-            folder: folder, processes: processes,
+            models: TestModels(missing: missingModels), folder: folder, processes: processes,
             microphoneCapture: microphoneCapture, callCapture: callCapture,
             microphoneTrack: microphoneTrack, callTrack: callTrack,
             callText: callText, transcript: transcript
@@ -160,6 +161,12 @@ struct TestError: Error, CustomStringConvertible {
 
     let label: String
     var description: String { label.contains("close") ? "close failed" : "\(label) failed" }
+}
+
+struct TestModels: SessionModels {
+
+    let missing: [String]
+    func missing() async -> [String] { missing }
 }
 
 actor TestFolder: SessionFolder {

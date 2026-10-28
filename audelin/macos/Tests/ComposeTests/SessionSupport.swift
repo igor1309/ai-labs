@@ -138,6 +138,7 @@ struct SessionRig: Sendable {
             },
             startCall: { selection in selections.append(selection); return try call.start() },
             microphoneRecognizer: recognizers?.0 ?? mine, callRecognizer: recognizers?.1 ?? theirs,
+            missingModels: { [] },
             executor: construction.executor, recordingTrack: construction.recordingTrack,
             closeTrack: construction.closeTrack, makeCaptureAudio: construction.makeCaptureAudio,
             openTranscript: construction.openTranscript, makeCallText: construction.makeCallText
