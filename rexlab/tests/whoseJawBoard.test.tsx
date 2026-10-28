@@ -146,7 +146,7 @@ describe("Whose Jaw board", () => {
     expect(document.querySelectorAll(".jaw-socket[data-shining]")).toHaveLength(5);
     act(() => app.timers.fire(JAW_TIMING.done));
     expect(document.querySelector(".whose-jaw-board")).toBeNull();
-    expect(document.querySelector(".whose-jaw-destination")).not.toBeNull();
+    expect(document.querySelector(".whose-jaw-result")).not.toBeNull();
   });
 
   it("supports keyboard pickup, arrows, wrap, placement and Escape", async () => {

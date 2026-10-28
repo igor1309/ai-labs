@@ -165,6 +165,14 @@ describe("the motion", () => {
     expect(declared(REDUCED, ".whose-jaw-chomp[data-ready]").animation).toBe("fade-in var(--motion-small) var(--ease-out) both");
   });
 
+  it("animates the jaw pile and new shelf finds, with short fades for reduced motion", () => {
+    expect(declared(PLAIN, ".jaw-result-find").animation).toBe("jaw-to-shelf var(--motion-count) var(--ease-out) calc(var(--motion-screen) + var(--jaw) * var(--motion-stagger)) both");
+    for (const selector of [".whose-jaw-result h1", ".jaw-result-jaws li", ".jaw-result-find", ".jaw-result-actions"]) {
+      const reduced = REDUCED.find(({ prelude }) => prelude.split(",").map((part) => part.trim()).includes(selector));
+      expect(declarationsOf(reduced?.body ?? "")).toContainEqual({ property: "animation", value: "fade-in var(--motion-small) var(--ease-out) both" });
+    }
+  });
+
   it("has reduced motion win over the rules it overrides: none of them comes after it to undo it", () => {
     const reducedAt = RULES.findIndex(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)");
     const overridden = new Set(REDUCED.map(({ prelude }) => prelude));

@@ -18,15 +18,16 @@ export function openWhoseJawApp({ storage = memoryStorage(), setting = { level: 
   const featured = localFeatured(local, HOME_GAMES);
   const timers = manualTimers();
   const parts = jawGameParts();
+  const viewport = manualViewport("landscape");
   const view = render(<App
     now={() => new Date(2026, 9, 28, 12)} featuredStore={featured} startCounter={featured}
     dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture}
-    random={() => 0} portraitLayouts={{ home: ["tall"], "whoseJaw-welcome": ["tall", "tall-narrow"] }} viewport={manualViewport("landscape")}
+    random={() => 0} portraitLayouts={{ home: ["tall"], "whoseJaw-welcome": ["tall", "tall-narrow"] }} viewport={viewport}
     progress={localProgress(local)} labyrinthProgress={localLabyrinthProgress(local)}
     whoseJaw={{ ...parts, progress: localWhoseJawProgress(local, jaws.map(({ id }) => id)), total: jaws.length, jawPicture: "jaw.webp", gummyPicture: "gummy.webp" }}
     deviceLanguage={language} languageStore={localLanguage(local)} appearance={manualAppearance("light")}
     themeStore={localTheme(local)} ageLevelStore={localAgeLevel(() => settings)} nameVersion={unreadVersion}
     {...emptyCare()} {...emptyPairs()} {...emptySkeletons()} {...emptySorting()} {...emptyDig()} {...pageAtRest()} {...timers} reducedMotion={() => reduced}
   />);
-  return { ...view, storage, settings, featured, timers, parts };
+  return { ...view, storage, settings, featured, timers, parts, viewport };
 }

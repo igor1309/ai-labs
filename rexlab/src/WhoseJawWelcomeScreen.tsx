@@ -51,15 +51,14 @@ function WelcomeHero({ jawPicture, gummyPicture }: { jawPicture: string; gummyPi
   </div>;
 }
 
-// Result and museum destinations keep navigation available while their
-// rewards and collection views are built in their own screen steps.
-export function WhoseJawDestination({ language, shelf, jawPicture, onBack, onHome }: {
-  language: Language; shelf: boolean; jawPicture: string; onBack: () => void; onHome: () => void;
+// The museum destination keeps navigation available until its collection view is built.
+export function WhoseJawDestination({ language, jawPicture, onBack, onHome }: {
+  language: Language; jawPicture: string; onBack: () => void; onHome: () => void;
 }) {
   const text = TEXTS[language];
   return <main className="whose-jaw-destination">
     <header><Button className="home-button" onClick={onHome}><House aria-hidden="true" />{text.home}</Button></header>
-    <h1><span aria-hidden="true">{shelf ? "🏛" : "🦷"}</span> {shelf ? text.jawShelf : text.whoseJaw}</h1>
+    <h1><span aria-hidden="true">🏛</span> {text.jawShelf}</h1>
     <Picture className="whose-jaw-jaw" src={jawPicture} alt="" width={600} height={450} />
     <Button className="card" onClick={onBack}><ArrowLeft aria-hidden="true" />{text.back}</Button>
   </main>;

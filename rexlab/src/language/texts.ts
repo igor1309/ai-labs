@@ -10,6 +10,7 @@ export type Texts = {
   whoseJaw: string;
   jawShelf: string;
   jawCollection: string;
+  jawNewCollection: string;
   jawProgress: string;
   jawPick: string;
   jawOw: string;

@@ -11544,6 +11544,49 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .labyrinth-record .best-score-beaten { color: #9ca3b6; }
 
 
+.whose-jaw-result {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  padding: calc(24px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #1f2b4d;
+  color: #fffdf8;
+  text-align: center;
+  overflow: hidden;
+}
+.whose-jaw-result h1 { margin: 0; font-size: clamp(28px, 4vw, 48px); animation: rise-in var(--motion-screen) var(--ease-out) both; }
+.whose-jaw-result .result-stars { margin: 0; }
+.jaw-result-record { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; }
+.jaw-result-record .celebration, .jaw-result-record .best-score { margin: 0; }
+.jaw-result-jaws { display: flex; justify-content: center; list-style: none; padding: 0; margin: 0; width: min(100%, 850px); }
+.jaw-result-jaws li { width: 20%; min-width: 0; animation: pop-in var(--motion-screen) var(--ease-overshoot) calc(var(--jaw) * var(--motion-stagger)) both; }
+.jaw-result-jaws .picture { display: block; width: 100%; height: auto; }
+.jaw-result-collection { width: min(100%, 560px); }
+.jaw-result-collection p { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 0 0 8px; font-size: clamp(16px, 2vw, 24px); font-weight: 700; }
+.jaw-result-shelf { display: flex; justify-content: center; border-bottom: 14px solid #a9774a; border-radius: 6px; background: #fffdf810; }
+.jaw-result-find { width: 20%; animation: jaw-to-shelf var(--motion-count) var(--ease-out) calc(var(--motion-screen) + var(--jaw) * var(--motion-stagger)) both; }
+.jaw-result-find .picture { display: block; width: 100%; height: auto; }
+.jaw-result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; animation: rise-in var(--motion-screen) var(--ease-out) both; }
+.jaw-result-actions button { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 14px 20px; border: 0; border-radius: 24px; background: #fffdf8; color: #1d2742; font-size: clamp(18px, 2vw, 26px); font-weight: 700; }
+.jaw-result-actions button:first-child { background: #e39b2d; }
+@keyframes jaw-to-shelf { from { opacity: 0; transform: translateY(calc(-60px * var(--motion-amount))) scale(calc(1 + .3 * var(--motion-amount))); } to { opacity: 1; transform: translateY(calc(0px * var(--motion-amount))) scale(calc(1 + 0 * var(--motion-amount))); } }
+@media (max-width: 540px) {
+  .whose-jaw-result { gap: 12px; }
+  .jaw-result-actions { width: 100%; }
+  .jaw-result-actions button { width: 100%; }
+}
+@media (max-height: 540px) and (min-width: 541px) {
+  .whose-jaw-result { gap: 8px; padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .jaw-result-jaws { width: min(65%, 520px); }
+  .jaw-result-collection { width: min(45%, 320px); }
+}
+
 .whose-jaw-welcome,
 .whose-jaw-destination {
   box-sizing: border-box;
@@ -11693,6 +11736,8 @@ html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 8px; 
     --motion-stagger: 0ms;
     --motion-amount: 0;
   }
+
+  .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
 
   .whose-jaw-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
 

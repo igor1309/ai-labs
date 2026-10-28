@@ -9,15 +9,20 @@ import type { StartTimer } from "./ownedTimers.ts";
 import { useGateShown } from "./OrientationGate.tsx";
 import { TEXTS } from "./language/texts.ts";
 import { WhoseJawDestination, WhoseJawWelcomeScreen } from "./WhoseJawWelcomeScreen.tsx";
+import { WhoseJawResultScreen, type JawResult } from "./WhoseJawResultScreen.tsx";
+import { beatBest } from "./bestScore.ts";
+import { acceptOffer, countBoard, NO_LEVEL_OFFER, offeredLevel, showOffer, type LevelOffer } from "./levelOffer.ts";
 
 export type WhoseJawSaved = {
   best: Readonly<Record<AgeLevel, number | null>>;
   earned: readonly string[];
   levelChoice: LevelChoice | undefined;
+  offer: LevelOffer;
 };
 export type WhoseJawProgressStore = {
   load(): WhoseJawSaved | undefined;
   saveLevel(choice: LevelChoice): void;
+  save(saved: WhoseJawSaved): void;
 };
 export type WhoseJawGameProps = {
   progress: WhoseJawProgressStore;
@@ -31,7 +36,8 @@ export type WhoseJawGameProps = {
   sounds: { play(sound: "snap" | "chomp" | "ow" | "hmm" | "steps" | "slide"): void; stop(): void };
   voice: { speak(words: string, language: Language): void; stop(): void };
 };
-type WhoseJawScreen = { kind: "welcome" } | { kind: "board"; round: JawRound } | { kind: "result"; round: JawRound } | { kind: "shelf" };
+type WhoseJawScreen = { kind: "welcome" } | { kind: "board"; round: JawRound; newly: readonly string[] }
+  | { kind: "result"; result: JawResult; offer: AgeLevel | undefined } | { kind: "shelf" };
 export type WhoseJawPhase = WhoseJawScreen["kind"];
 const LEVELS = ["hatchling", "explorer", "paleontologist"] as const;
 
@@ -42,10 +48,15 @@ export function transitionFor(from: WhoseJawScreen, to: WhoseJawScreen): string 
 export function useWhoseJawGame(props: WhoseJawGameProps | undefined, setting: AgeLevelSetting, onHome: () => void, onStart: () => void, random: () => number, startTimer: StartTimer, reducedMotion: () => boolean) {
   const { screen, go, set } = useScreens<WhoseJawScreen>({ kind: "welcome" }, transitionFor);
   const [kept, setKept] = useState<WhoseJawSaved>(() => props?.progress.load() ?? {
-    best: { hatchling: null, explorer: null, paleontologist: null }, earned: [], levelChoice: undefined
+    best: { hatchling: null, explorer: null, paleontologist: null }, earned: [], levelChoice: undefined, offer: NO_LEVEL_OFFER
   });
   const latest = useRef(kept);
   const level = startLevel(setting, LEVELS, kept.levelChoice);
+  const keep = (next: WhoseJawSaved) => {
+    latest.current = next;
+    setKept(next);
+    props?.progress.save(next);
+  };
   const chooseLevel = (chosen: AgeLevel) => {
     if (!props || screen.kind !== "welcome" || chosen === startLevel(setting, LEVELS, latest.current.levelChoice)) return;
     const levelChoice = { level: chosen, revision: setting.revision };
@@ -55,22 +66,49 @@ export function useWhoseJawGame(props: WhoseJawGameProps | undefined, setting: A
   };
   const welcome = () => go({ kind: "welcome" });
   const home = () => go({ kind: "welcome" }, { also: onHome });
-  const play = () => go((current) => props && current.kind === "welcome"
-    ? { kind: "board", round: startJawRound(props.jaws, startLevel(setting, LEVELS, latest.current.levelChoice), random) } : current, { also: onStart });
-  const place = (round: JawRound, id: string) => go((current) => {
-    if (current.kind !== "board" || current.round !== round) return current;
+  const play = () => go((current) => props && (current.kind === "welcome" || current.kind === "result")
+    ? { kind: "board", newly: [], round: startJawRound(props.jaws, startLevel(setting, LEVELS, latest.current.levelChoice), random) } : current, { also: onStart });
+  const place = (round: JawRound, id: string) => {
+    if (screen.kind !== "board" || screen.round !== round) return;
     const next = placeJaw(round, id);
-    return next === round ? current : { kind: "board", round: next };
-  });
-  const advance = (round: JawRound) => go((current) => current.kind !== "board" || current.round !== round ? current
-    : round.phase === "done" ? { kind: "result", round } : { kind: "board", round: advanceJaw(round) });
-  const shelf = () => go((current) => current.kind === "welcome" ? { kind: "shelf" } : current);
+    if (next === round) return;
+    const owner = round.questions[round.placed.length]!.owner.id;
+    const collected = next.phase === "right" && !latest.current.earned.includes(owner);
+    const from = screen;
+    go((current) => current === from ? { ...from, round: next, newly: collected ? [...from.newly, owner] : from.newly } : current, {
+      also: () => { if (collected) keep({ ...latest.current, earned: [...latest.current.earned, owner] }); }
+    });
+  };
+  const advance = (round: JawRound) => {
+    if (!props || screen.kind !== "board" || screen.round !== round) return;
+    const from = screen;
+    if (round.phase !== "done") {
+      go((current) => current === from ? { ...from, round: advanceJaw(round) } : current);
+      return;
+    }
+    const stars = round.errors === 0 ? 3 : round.errors === 1 ? 2 : 1;
+    const previous = latest.current.best[round.level];
+    const { best, celebration } = beatBest(previous, stars);
+    const offer = countBoard(latest.current.offer, round.level, round.errors <= 1);
+    const result: JawResult = { stars, best, celebration, beaten: celebration === "new-best" ? previous ?? undefined : undefined,
+      jaws: round.placed.map(({ id }) => ({ id, name: props.jaws.find((jaw) => jaw.id === id)!.name, picture: props.jawFor(id), newly: from.newly.includes(id) })) };
+    go((current) => current === from ? { kind: "result", result, offer: offeredLevel(offer) } : current, {
+      also: () => keep({ ...latest.current, best: { ...latest.current.best, [round.level]: best }, offer })
+    });
+  };
+  const shelf = () => go((current) => current.kind === "welcome" || current.kind === "result" ? { kind: "shelf" } : current);
   const content = (language: Language) => !props ? null : screen.kind === "welcome"
     ? <WhoseJawWelcomeScreen language={language} level={level} best={kept.best[level]} collected={kept.earned.length} total={props.total}
         jawPicture={props.jawPicture} gummyPicture={props.gummyPicture} onLevel={chooseLevel} onPlay={play} onShelf={shelf} onHome={home} />
     : screen.kind === "board" ? <BoardVisit props={props} round={screen.round} language={language} startTimer={startTimer} reducedMotion={reducedMotion}
         onPlace={(id) => place(screen.round, id)} onAdvance={() => advance(screen.round)} onBack={welcome} onHome={home} />
-    : <WhoseJawDestination key={screen.kind} language={language} shelf={screen.kind === "shelf"} jawPicture={props.jawPicture} onBack={welcome} onHome={home} />;
+    : screen.kind === "result" ? <WhoseJawResultScreen language={language} result={screen.result} onPlayAgain={play} onShelf={shelf} onHome={home}
+        offer={screen.offer ? { level: screen.offer, startTimer,
+          onShown: () => keep({ ...latest.current, offer: showOffer(latest.current.offer) }),
+          onYes: () => keep({ ...latest.current, offer: acceptOffer(latest.current.offer), levelChoice: { level: screen.offer!, revision: setting.revision } }),
+          onNotNow: () => {}
+        } : undefined} />
+    : <WhoseJawDestination language={language} jawPicture={props.jawPicture} onBack={welcome} onHome={home} />;
   return { content, phase: screen.kind, best: kept.best[level], collected: kept.earned.length, open: () => set({ kind: "welcome" }) };
 }
 

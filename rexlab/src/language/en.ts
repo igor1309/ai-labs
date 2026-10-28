@@ -9,6 +9,7 @@ export const en: Texts = {
   jawHmm: "HMM? FLAT TEETH!",
   jawFoods: { meat: "MEAT", plants: "PLANTS" },
   jawCollection: "JAWS COLLECTED",
+  jawNewCollection: "NEW ON YOUR SHELF!",
   labyrinth: "LABYRINTH",
   labyrinthResult: { title: "HOME TOGETHER!", earned: "+3 STARS", total: (stars) => `TOTAL ${stars}`, again: "AGAIN" },
   labyrinthBoard: {
