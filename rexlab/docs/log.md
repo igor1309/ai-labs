@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-28
+
+- Picture puzzles offer Tyrannosaurus, Triceratops and Stegosaurus with 12, 24 or 36 pieces and a remembered difficulty choice (LAB-669).
+
 ## 2026-10-26
 
 - DIG's FIELD GUIDE fits an iPhone on its side: its five treasure cards under a short bar, in one row, or three over two in Russian, every name whole (LAB-589).
