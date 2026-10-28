@@ -2,7 +2,7 @@
 @MainActor
 public final class Machine<State: Equatable & Sendable, Event: Sendable, Effect: Sendable> {
     public typealias Reducer = (State, Event) -> (State, Effect?)
-    public typealias Handler = @Sendable (Effect) async -> Event?
+    public typealias Handler = @MainActor @Sendable (Effect) async -> Event?
 
     public private(set) var state: State
     private let reducer: Reducer
@@ -35,12 +35,11 @@ public final class Machine<State: Equatable & Sendable, Event: Sendable, Effect:
         let id = nextEffect
         nextEffect += 1
         let handler = handler
+        let work = Task.immediate { await handler(effect) }
+        // Queue delivery even when the handler returns without suspending, so
+        // results follow events already sent and completion follows registration.
         effects[id] = Task { [weak self] in
-            guard self?.ended == false else {
-                self?.effects.removeValue(forKey: id)
-                return
-            }
-            let result = await handler(effect)
+            let result = await work.value
             guard let self else { return }
             if let result { self.send(result) }
             self.effects.removeValue(forKey: id)

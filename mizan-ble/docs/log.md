@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-28
+
+- An effect starts before the next event is reduced, so a flow never has to check whether its effect is still wanted (LAB-683).
+
 ## 2026-10-27
 
 - HostPreview lets the operator inspect every host screen and its events, and export iPad PNGs in light and dark for comparison with the design (LAB-676).
