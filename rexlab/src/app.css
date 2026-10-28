@@ -11596,7 +11596,10 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
 
 .whose-jaw-welcome {
   box-sizing: border-box;
-  min-height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
   padding: calc(28px + env(safe-area-inset-top)) calc(28px + var(--screen-right)) calc(28px + env(safe-area-inset-bottom)) calc(28px + var(--screen-left));
   background: #f2efe8;
   color: #1d2742;
@@ -11604,21 +11607,24 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
 }
 .whose-jaw-welcome header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .whose-jaw-welcome-body {
+  flex: 1 0 auto;
+  width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   align-items: center;
   gap: 28px;
   max-width: 1200px;
   margin: auto;
-  min-height: 65vh;
-  min-height: 65dvh;
+  min-height: 0;
 }
-.whose-jaw-hero { position: relative; min-width: 0; }
+.whose-jaw-hero { position: relative; min-width: 0; width: 100%; aspect-ratio: 4 / 3; }
 .whose-jaw-gummy { width: 100%; height: auto; }
 .whose-jaw-chomp {
-  width: 60%;
-  margin: -22% 0 0 30%;
-  position: relative;
+  width: 44%;
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  margin: 0;
   transform-origin: center;
 }
 .whose-jaw-chomp[data-ready] { animation: whose-jaw-chomp var(--motion-alive) var(--ease-out) 2; }
@@ -11626,17 +11632,18 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
 @keyframes whose-jaw-chomp {
   50% { transform: scaleY(calc(1 - .3 * var(--motion-amount))) rotate(calc(-8deg * var(--motion-amount))); }
 }
-.whose-jaw-start { --level-name-size: 16px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.whose-jaw-start { --level-name-size: 16px; display: flex; flex-direction: column; gap: 20px; min-width: 0; text-align: center; }
 .whose-jaw-start .level-switch-level { flex-direction: column; height: 64px; gap: 4px; font-size: var(--level-name-size); }
 .whose-jaw-start h1 { margin: 0; font-size: clamp(28px, 4vw, 54px); line-height: 1.15; }
-.whose-jaw-badges { display: flex; flex-wrap: wrap; gap: 12px; }
+.whose-jaw-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 .whose-jaw-badges p { margin: 0; padding: 8px 16px; border-radius: 24px; background: #e6e2d9; display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 700; }
+.whose-jaw-welcome-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
 .whose-jaw-play,
-.whose-jaw-shelf { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 64px; padding: 16px; border: 0; border-radius: 24px; font-weight: 700; font-size: clamp(20px, 2.6vw, 32px); }
+.whose-jaw-shelf { flex: 0 0 auto; width: max-content; max-width: 100%; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; padding: 12px 18px; border: 0; border-radius: 20px; font-weight: 700; font-size: 20px; line-height: 1.25; }
 .whose-jaw-play { background: #e39b2d; color: #1d2742; }
 .whose-jaw-shelf { background: #fffdf8; color: #1d2742; }
 .whose-jaw-play svg,
-.whose-jaw-shelf svg { width: 32px; height: 32px; flex-shrink: 0; }
+.whose-jaw-shelf svg { width: 28px; height: 28px; flex-shrink: 0; }
 .whose-jaw-tile,
 .featured-card[data-game="whoseJaw"] { background: #e39b2d; color: #1d2742; }
 .whose-jaw-tile { position: relative; flex: 1 1 0; min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; border: 0; border-radius: 28px; text-align: left; }
@@ -11644,45 +11651,33 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
 .whose-jaw-tile-row { display: flex; align-items: center; gap: 8px; padding: 12px; font-size: 22px; font-weight: 700; }
 .whose-jaw-tile-count { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 24px; background: #fffdf8; color: #1d2742; font-size: 20px; }
 .featured-card[data-game="whoseJaw"] .whose-jaw-tile-picture { height: 100%; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-welcome {
-  min-height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
 html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-welcome-body {
-  flex: 1 0 auto;
-  width: 100%;
-  min-height: 0;
   max-width: 560px;
   grid-template-columns: minmax(0, 1fr);
   align-content: center;
-  gap: 16px;
+  gap: 20px;
 }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-hero {
-  width: min(100%, 400px);
-  aspect-ratio: 4 / 3;
   margin: 0 auto;
   border-radius: 32px;
   background: radial-gradient(ellipse at center, #e39b2d26, transparent 70%);
 }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-gummy { width: 88%; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-chomp { position: absolute; right: 0; bottom: 0; width: 56%; margin: 0; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-start { gap: 12px; text-align: center; }
+html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-start { gap: 16px; }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-start h1 { font-size: clamp(32px, 4vw, 44px); }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-badges { justify-content: center; gap: 8px; }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-badges p { padding: 6px 12px; font-size: 20px; }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-start .level-switch-level { height: 56px; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-play { min-height: 72px; font-size: 28px; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-shelf { min-height: 52px; padding: 10px; font-size: 20px; }
-html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-shelf svg { width: 24px; height: 24px; }
 html[data-size="tall-narrow"] .whose-jaw-welcome { padding: calc(16px + env(safe-area-inset-top)) calc(16px + var(--screen-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + var(--screen-left)); }
 html[data-size="wide-short"] .whose-jaw-welcome { padding: calc(12px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) calc(12px + env(safe-area-inset-bottom)) calc(20px + var(--screen-left)); }
-html[data-size="wide-short"] .whose-jaw-hero { width: min(100%, 55dvh); justify-self: center; }
-html[data-size="wide-short"] .whose-jaw-start { gap: 8px; }
+html[data-size="wide-short"] .whose-jaw-welcome-body { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
+html[data-size="wide-short"] .whose-jaw-hero { width: min(100%, 76dvh); justify-self: center; }
+html[data-size="wide-short"] .whose-jaw-start { gap: 12px; }
 html[data-size="wide-short"] .whose-jaw-start h1 { font-size: 28px; }
+html[data-size="wide-short"] .whose-jaw-start .level-switch-level { height: 48px; }
+html[data-size="wide-short"] .whose-jaw-badges p { padding: 6px 12px; font-size: 20px; }
 html[data-size="wide-short"] .whose-jaw-play,
-html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 8px; font-size: 20px; }
+html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 12px 16px; font-size: 18px; }
+html[data-size="wide-short"] .whose-jaw-welcome-actions svg { width: 24px; height: 24px; }
 
 [data-theme="dark"] .whose-jaw-welcome,
 [data-theme="dark"] .whose-jaw-shelf-screen { background: #0f1320; color: #ece8de; }

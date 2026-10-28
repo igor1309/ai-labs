@@ -50,8 +50,10 @@ export function WhoseJawWelcomeScreen({ audioControl, language, level, best, col
           <p aria-label={text.jawCollection}><Landmark aria-hidden="true" /> {collected} / {total}</p>
         </div>
         <LevelSwitch language={language} level={level} onLevel={onLevel} />
-        <Button className="card whose-jaw-play" onClick={onPlay}><Play aria-hidden="true" />{text.play}</Button>
-        <Button className="card whose-jaw-shelf" onClick={onShelf}><Landmark aria-hidden="true" />{text.jawShelf}</Button>
+        <div className="whose-jaw-welcome-actions">
+          <Button className="card whose-jaw-play" onClick={onPlay}><Play aria-hidden="true" />{text.play}</Button>
+          <Button className="card whose-jaw-shelf" onClick={onShelf}><Landmark aria-hidden="true" />{text.jawShelf}</Button>
+        </div>
       </section>
     </div>
   </main>;
