@@ -61,12 +61,13 @@ struct MenuBarTests {
                             callAudioAccess: { true }, callsFolder: { true }, room: { true }
                         )
                     },
-                    startModel: { events.append("model started"); return model }, panel: panel
+                    startModel: { events.append("model started"); return model }, panel: panel,
+                    makeRecording: makeRecording
                 )
                 #expect(app.panel === panel)
                 var panelStates = await app.panel.states().makeAsyncIterator()
                 #expect(await panelStates.next() == .init(recording: .off, log: .empty))
-                let initial = await app.recording.snapshot()
+                let initial = await app.inputs.state()
                 #expect(initial.phase == .idle && initial.missing.isEmpty && initial.automatic)
                 #expect(selections.all.isEmpty)
                 #expect(binding.activeListeners == 2)
@@ -80,7 +81,7 @@ struct MenuBarTests {
                     }
                     #expect(failures == [.failed])
                     #expect(binding.activeListeners == 0)
-                    #expect(await app.recording.snapshot().phase == .idle)
+                    #expect(await app.inputs.state().phase == .idle)
                     await runQuit(app.lifecycle { events.append("terminated") })
                     #expect(events.all == ["model started", "terminated"])
                     #expect(model.isCancelled)
@@ -88,7 +89,7 @@ struct MenuBarTests {
                 }
 
                 binding.setInput(true)
-                for await state in await app.recording.states() {
+                for await state in await app.inputs.states() {
                     if state.phase == .recording {
                         #expect(state.session == .init(id: 1, origin: .call))
                         break
@@ -117,12 +118,12 @@ struct MenuBarTests {
                 clock.fireQueued()
                 binding.setInput(true)
                 lateNotifications.forEach { $0() }
-                #expect(await app.recording.snapshot().phase == .ending)
+                #expect(await app.inputs.state().phase == .ending)
                 release.send()
                 await quit.value
                 #expect(events.all == ["model started", "microphone started", "stopping", "terminated"])
-                #expect(await app.recording.snapshot().lastSessionID == 1)
-                #expect(await app.recording.snapshot().phase == .idle)
+                #expect(await app.inputs.state().lastSessionID == 1)
+                #expect(await app.inputs.state().phase == .idle)
                 var terminal = await app.panel.states().makeAsyncIterator()
                 #expect(await terminal.next() == .init(recording: .off, log: .empty))
                 #expect(model.isCancelled)

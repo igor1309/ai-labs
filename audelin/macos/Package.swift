@@ -41,7 +41,7 @@ let package = Package(
         .executableTarget(
             name: "Audelin",
             dependencies: [
-                "Compose", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading",
+                "Compose", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading", "Recording",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
@@ -181,7 +181,10 @@ let package = Package(
         ),
         .testTarget(
             name: "ComposeTests",
-            dependencies: ["Compose", "Lifecycle", "Recording"]
+            dependencies: [
+                "Compose", "Lifecycle", "Recording",
+                .product(name: "IMRxObservation", package: "swift-imrx"),
+            ]
         ),
         .testTarget(
             name: "CoreAudioProcessesTests",

@@ -14,14 +14,17 @@ import enum SystemAudioCapture.ProcessSelection
 /// Retains the application's connected recording, detector and model load.
 public final class AudelinRecording: Sendable {
 
-    public let recording: Recording
     public let inputs: RecordingInputs
     public let panel: AudelinPanel
     public let detectionFailures: AsyncStream<any Error>
     private let conditions: RecordingConditions
     private let delivery: ApplicationDelivery
 
-    public convenience init(preferences: PreferencesStore, makeReading: @escaping @MainActor @Sendable () -> ReadingInputs) async throws {
+    public convenience init(
+        preferences: PreferencesStore,
+        makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
+        makeRecording: @escaping MakeRecordingModel
+    ) async throws {
 
         createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
         try await self.init(
@@ -31,7 +34,8 @@ public final class AudelinRecording: Sendable {
             startMicrophone: startProductionMicrophone, startCall: startProductionCallAudio,
             recognizerSource: { try await ParakeetRecognizer() }, missingModels: productionMissingModels,
             makeConditions: composeRecordingConditions,
-            startModel: { startLiveModelLoading() }, panel: AudelinPanel(makeReading: makeReading)
+            startModel: { startLiveModelLoading() }, panel: AudelinPanel(makeReading: makeReading),
+            makeRecording: makeRecording
         )
         // Reading the status never asks; without this request macOS never prompts.
         AVCaptureDevice.requestAccess(for: .audio) { [conditions] _ in Task { await conditions.refresh() } }
@@ -46,7 +50,8 @@ public final class AudelinRecording: Sendable {
         missingModels: @escaping @Sendable () -> [String],
         makeConditions: (RecordingInputs, URL) -> RecordingConditions,
         startModel: () -> Task<Void, any Error>,
-        panel: AudelinPanel
+        panel: AudelinPanel,
+        makeRecording: MakeRecordingModel
     ) async throws {
 
         let app = RecordingCallApp()
@@ -58,10 +63,9 @@ public final class AudelinRecording: Sendable {
                 now: now, timeZone: timeZone, startMicrophone: startMicrophone,
                 startCall: startCall, recognizerSource: recognizerSource, missingModels: missingModels
             ),
-            makeConditions: makeConditions, panel: panel
+            makeConditions: makeConditions, panel: panel, makeModel: makeRecording
         )
-        let inputs = RecordingInputs(recording: recording)
-        self.recording = recording
+        let inputs = recording
         self.inputs = inputs
         self.conditions = conditions
         await conditions.refresh()
@@ -70,7 +74,7 @@ public final class AudelinRecording: Sendable {
             calls = try composeCalls(processes, to: inputs, conditions: conditions, startedApp: { app.started($0) })
         } catch {
             processes.stop()
-            Task { await recording.end() }
+            Task { await inputs.end() }
             throw error
         }
         detectionFailures = calls.failures

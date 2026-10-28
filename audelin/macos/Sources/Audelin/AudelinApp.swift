@@ -6,6 +6,7 @@ import MenuBar
 import PanelUI
 import Preferences
 import Reading
+import Recording
 import os
 import SwiftUI
 
@@ -30,7 +31,8 @@ struct AudelinApp: App {
             presentPanel: { [weak panel] in panel?.setVisible($0) },
             terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } },
             quit: quit,
-            makeReading: makeReading
+            makeReading: makeReading,
+            makeRecording: { await makeRecording(initial: $0, session: $1, log: $2) }
         )
         self.model = model
         panel.install(content: NSHostingView(rootView: PanelContent(model: model)), onClose: { [weak model] in
@@ -91,6 +93,56 @@ func makeReading() -> ReadingInputs {
         initialState: .init(), reduce: ReadingReducer.reduce, handleEffect: { switch $0 {} }
     )
     return ReadingInputs(state: { model.state }, send: { model.event($0) })
+}
+
+/// Recording's model, reducing on the main actor, and the doer that makes the Session follow it.
+@MainActor
+func makeRecording(
+    initial: RecordingState, session: any RecordingSession, log: @escaping @Sendable (RecordingState) -> Void
+) -> RecordingInputs {
+
+    let model = RecordingModel(initial: initial, log: log)
+    let doer = RecordingDoer(session: session, send: { await model.send($0) })
+    let acting = Task { for await state in model.states() { doer.act(on: state) } }
+    return RecordingInputs(
+        send: { await model.send($0) },
+        state: { await model.state },
+        states: { await model.states() },
+        end: { acting.cancel() }
+    )
+}
+
+/// Holds the sync model on the main actor; callers elsewhere await the hop.
+@MainActor
+final class RecordingModel {
+
+    private let model: SyncModel<RecordingState, RecordingEvent>
+
+    init(initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void) {
+
+        model = SyncModel(initialState: initial, reduce: { state, event in
+            let (next, _) = RecordingReducer.reduce(state, event)
+            if next != state { log(next) }
+            return next
+        })
+    }
+
+    var state: RecordingState { model.state }
+
+    func send(_ event: RecordingEvent) { model.event(event) }
+
+    /// Starts with the current state; observation may merge changes.
+    func states() -> AsyncStream<RecordingState> {
+
+        let observed = Observations { [model] in model.state }
+        return AsyncStream { continuation in
+            let task = Task {
+                for await state in observed { continuation.yield(state) }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
 }
 
 /// Returns once the lifecycle has terminated: every begun session has ended first.

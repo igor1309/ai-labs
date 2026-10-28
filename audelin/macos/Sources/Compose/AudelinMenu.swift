@@ -49,13 +49,14 @@ public final class AudelinMenu {
         presentPanel: @escaping (Bool) -> Void,
         terminate: @escaping @Sendable () async -> Void,
         quit: @escaping (LifecycleEffectHandler) async -> Void,
-        makeReading: @escaping @MainActor @Sendable () -> ReadingInputs
+        makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
+        makeRecording: @escaping MakeRecordingModel
     ) async {
 
         await self.init(
             storage: preferences,
             makeApplication: {
-                let application = try await AudelinRecording(preferences: preferences, makeReading: makeReading)
+                let application = try await AudelinRecording(preferences: preferences, makeReading: makeReading, makeRecording: makeRecording)
                 return MenuApplication(
                     states: { await application.inputs.states() },
                     failures: application.detectionFailures,
