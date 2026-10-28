@@ -27,6 +27,8 @@ actor SessionModel {
 
     private let counts = Counts()
     private var model: ObservableModel<SessionState, SessionEvent, SessionEffect>?
+    // The state kept when the model is released at the end.
+    private var ended: SessionState?
     private let feed = StateFeed<SessionState>()
 
     func start(handler: SessionEffectHandler, initial: SessionState = .init()) {
@@ -61,10 +63,15 @@ actor SessionModel {
     func states() async -> AsyncStream<SessionState> {
 
         while counts.reduced.withLock({ $0 }) < counts.sent.withLock({ $0 }) { await Task.yield() }
-        return feed.subscribe(from: model?.state ?? .init())
+        return feed.subscribe(from: model?.state ?? ended ?? .init())
     }
 
-    func end() { feed.finish() }
+    func end() {
+        feed.finish()
+        // The model's loop holds this actor, so the model is released to end both.
+        ended = model?.state
+        model = nil
+    }
 }
 
 extension SessionInputs {

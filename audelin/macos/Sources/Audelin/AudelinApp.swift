@@ -162,6 +162,8 @@ func makeSession(handler: SessionEffectHandler) async -> SessionInputs {
 actor SessionModel {
 
     private var model: ObservableModel<SessionState, SessionEvent, SessionEffect>?
+    // The state kept when the model is released at the end.
+    private var ended: SessionState?
     private let feed = StateFeed<SessionState>()
 
     func start(handler: SessionEffectHandler, initial: SessionState = .init()) {
@@ -186,10 +188,15 @@ actor SessionModel {
     func send(_ event: SessionEvent) { model?.event(event) }
 
     /// Starts with the current state and retains every change.
-    func states() -> AsyncStream<SessionState> { feed.subscribe(from: model?.state ?? .init()) }
+    func states() -> AsyncStream<SessionState> { feed.subscribe(from: model?.state ?? ended ?? .init()) }
 
     /// Finishes every states stream; later ones finish at once and later events change nothing.
-    func end() { feed.finish() }
+    func end() {
+        feed.finish()
+        // The model's loop holds this actor, so the model is released to end both.
+        ended = model?.state
+        model = nil
+    }
 }
 
 /// Returns once the lifecycle has terminated: every begun session has ended first.
