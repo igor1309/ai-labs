@@ -11,11 +11,13 @@ public func composeRecording(
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
     liveText: @escaping @Sendable () -> Bool,
     panel: AudelinPanel,
-    makeModel: MakeRecordingModel
+    makeModel: MakeRecordingModel,
+    makeSession: @escaping MakeSessionModel
 ) async -> RecordingInputs {
 
     await composeRecording(
-        initial: initial, makePieces: makePieces, liveText: liveText, sink: SystemLogSink(), panel: panel, makeModel: makeModel
+        initial: initial, makePieces: makePieces, liveText: liveText, sink: SystemLogSink(), panel: panel, makeModel: makeModel,
+        makeSession: makeSession
     )
 }
 
@@ -25,7 +27,8 @@ func composeRecording(
     liveText: @escaping @Sendable () -> Bool,
     sink: any LogSink,
     panel: AudelinPanel,
-    makeModel: MakeRecordingModel
+    makeModel: MakeRecordingModel,
+    makeSession: @escaping MakeSessionModel
 ) async -> RecordingInputs {
 
     // Ending Recording clears the report path, which otherwise keeps the model alive through its Session.
@@ -33,7 +36,7 @@ func composeRecording(
     let sessions = RecordingSessions(makePieces: makePieces, liveText: liveText, report: { id, report in
         guard let recording = destination.withLock({ $0 }) else { return }
         Task { await recording.send(.sessionReported(id: id, report)) }
-    }, connect: subscribe, sink: sink, panel: panel)
+    }, connect: subscribe, sink: sink, panel: panel, makeSession: makeSession)
     let log = { @Sendable state in StateLog(sink: sink).recording(state) }
     log(initial)
     let model = await makeModel(initial, LoggingRecordingSession(base: sessions, sink: sink), log)

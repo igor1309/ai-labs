@@ -92,7 +92,7 @@ struct SessionTextShutdownTests {
 
         let mine = HeldSessionRecognizer(), theirs = HeldSessionRecognizer()
         try await withSessionRig(recognizers: (mine, theirs)) { rig, folder in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             let text = try #require(await rig.pieces.text)
             let writing = try #require(await rig.pieces.writing)
@@ -103,11 +103,11 @@ struct SessionTextShutdownTests {
             rig.call.source.continuation.yield(.init(samples: [-0.5], sampleRate: 48_000))
             await mine.hearing.next()
             await theirs.hearing.next()
-            rig.session.send(.liveTextChanged(false))
+            await rig.session.send(.liveTextChanged(false))
             _ = try await rig.state { $0.pendingLiveText == nil && !$0.wantedLiveText }
             let frozen = await text.state.entries
             #expect(frozen.map(\.text.pending) == ["kept", "kept"])
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(ended.failures.isEmpty)
             #expect(await mine.cancelled)

@@ -69,11 +69,11 @@ struct SessionDrainTests {
     func throwingStopEndsAnOpenStreamAndNamesTheFailure(side: SessionSide) async throws {
 
         try await withSessionRig(stopFailure: side, stopEndsStream: false) { rig, folder in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.mine.heard.next()
             await rig.theirs.heard.next()
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(ended.failures == [SessionFailure(piece: "\(side) capture", message: "failed")])
             #expect(ended.microphoneTrack == .closed)

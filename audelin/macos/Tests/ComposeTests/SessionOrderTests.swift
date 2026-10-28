@@ -15,7 +15,7 @@ struct SessionOrderTests {
             await #expect(throws: SessionPieces.Failure.unknownSelection("unknown")) {
                 try await pieces.callCapture.start(selection: .chosen(.init(id: "unknown")))
             }
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             let selection = try #require((await rig.session.snapshot()).processSelection)
             await #expect(throws: SessionPieces.Failure.unknownSelection(selection.id + "-other")) {

@@ -115,10 +115,10 @@ struct RecognizerSourceTests {
                 callRecognizerSource: { beganTheirs.send(); await release.wait(); return theirs },
                 missingModels: { [] }
             )
-            let session = Session(handler: pieces.handler())
+            let session = await makeSession(pieces.handler())
             let subscription = subscribe(pieces, to: session)
             do {
-                session.send(.begin(liveText: true))
+                await session.send(.begin(liveText: true))
                 for await state in await session.states() {
                     if state.phase == .recording { break }
                 }
@@ -151,14 +151,14 @@ struct RecognizerSourceTests {
                 #expect(await theirs.chunks.flatMap(\.samples) == [-0.25, 0.5, -0.125])
             } catch {
                 release.release()
-                session.send(.end)
+                await session.send(.end)
                 for await state in await session.states() { if state.phase == .ended { break } }
                 await session.end()
                 subscription.cancel()
                 await subscription.value
                 throw error
             }
-            session.send(.end)
+            await session.send(.end)
             for await state in await session.states() { if state.phase == .ended { break } }
             await session.end()
             subscription.cancel()

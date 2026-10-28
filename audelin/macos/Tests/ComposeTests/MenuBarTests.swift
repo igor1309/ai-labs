@@ -62,7 +62,7 @@ struct MenuBarTests {
                         )
                     },
                     startModel: { events.append("model started"); return model }, panel: panel,
-                    makeRecording: makeRecording
+                    makeRecording: makeRecording, makeSession: makeSession
                 )
                 #expect(app.panel === panel)
                 var panelStates = await app.panel.states().makeAsyncIterator()

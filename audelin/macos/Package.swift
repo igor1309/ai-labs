@@ -41,7 +41,7 @@ let package = Package(
         .executableTarget(
             name: "Audelin",
             dependencies: [
-                "Compose", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading", "Recording",
+                "Compose", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading", "Recording", "Session",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),

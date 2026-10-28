@@ -52,7 +52,8 @@ struct RealRecordingTranscriptTests {
         let panel = AudelinPanel(makeReading: ReadingStub.inputs)
         let sessions = RecordingSessions(
             makePieces: composeRecordingPieces(preferences: preferences, callApp: callApp, processes: processes),
-            liveText: { preferences.read().liveText }, report: { _, _ in }, panel: panel
+            liveText: { preferences.read().liveText }, report: { _, _ in }, panel: panel,
+            makeSession: makeSession
         )
         let states = await panel.states()
         #expect(await sessions.begin(id: 1) == .ready)

@@ -20,7 +20,7 @@ struct ReadingCompositionTests {
         try await withSessionRig(construction: construction) { rig, _ in
             let incoming = await rig.pieces.readingText()
             var consumer = incoming.makeAsyncIterator()
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             let original = callEntry(.mine, 3, start: 2, settled: "old")
             let other = callEntry(.theirs, 9, start: 8, settled: "other")
@@ -43,7 +43,7 @@ struct ReadingCompositionTests {
                 text.input.continuation.yield(.init(status: .listening, entries: [
                     other, callEntry(.mine, 3, start: 12, settled: "reused"),
                 ]))
-                rig.session.send(.end)
+                await rig.session.send(.end)
                 _ = try await rig.state { $0.phase == .ended }
                 while let state = await consumer.next() { feed.continuation.yield(state) }
 
@@ -223,7 +223,7 @@ struct ReadingCompositionTests {
             await release.next()
         }) { rig, _ in
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { true },
-                                             report: { _, _ in }, connect: subscribe, sink: sink, panel: panel)
+                                             report: { _, _ in }, connect: subscribe, sink: sink, panel: panel, makeSession: makeSession)
             let begin = Task { await sessions.begin(id: 11) }
             await starting.next()
             await observed.next()

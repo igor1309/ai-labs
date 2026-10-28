@@ -23,7 +23,8 @@ public final class AudelinRecording: Sendable {
     public convenience init(
         preferences: PreferencesStore,
         makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
-        makeRecording: @escaping MakeRecordingModel
+        makeRecording: @escaping MakeRecordingModel,
+        makeSession: @escaping MakeSessionModel
     ) async throws {
 
         createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
@@ -35,7 +36,7 @@ public final class AudelinRecording: Sendable {
             recognizerSource: { try await ParakeetRecognizer() }, missingModels: productionMissingModels,
             makeConditions: composeRecordingConditions,
             startModel: { startLiveModelLoading() }, panel: AudelinPanel(makeReading: makeReading),
-            makeRecording: makeRecording
+            makeRecording: makeRecording, makeSession: makeSession
         )
         // Reading the status never asks; without this request macOS never prompts.
         AVCaptureDevice.requestAccess(for: .audio) { [conditions] _ in Task { await conditions.refresh() } }
@@ -51,7 +52,8 @@ public final class AudelinRecording: Sendable {
         makeConditions: (RecordingInputs, URL) -> RecordingConditions,
         startModel: () -> Task<Void, any Error>,
         panel: AudelinPanel,
-        makeRecording: MakeRecordingModel
+        makeRecording: MakeRecordingModel,
+        makeSession: @escaping MakeSessionModel
     ) async throws {
 
         let app = RecordingCallApp()
@@ -63,7 +65,8 @@ public final class AudelinRecording: Sendable {
                 now: now, timeZone: timeZone, startMicrophone: startMicrophone,
                 startCall: startCall, recognizerSource: recognizerSource, missingModels: missingModels
             ),
-            makeConditions: makeConditions, panel: panel, makeModel: makeRecording
+            makeConditions: makeConditions, panel: panel, makeModel: makeRecording,
+            makeSession: makeSession
         )
         let inputs = recording
         self.inputs = inputs

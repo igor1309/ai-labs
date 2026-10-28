@@ -6,8 +6,10 @@ public actor RecordingSessions: RecordingSession {
 
     private struct Running {
 
-        let session: Session
+        let session: Task<SessionInputs, Never>
         let subscription: Task<Void, Never>
+        // Each send waits for the one before it, so Session sees them in the order they were made.
+        var sends: Task<Void, Never>?
         var observation: Task<Void, Never>?
         var reading: ReadingSubscription?
         var first: RecordingSessionReport?
@@ -22,7 +24,8 @@ public actor RecordingSessions: RecordingSession {
     private let makePieces: @Sendable (UInt64) -> SessionPieces
     private let liveText: @Sendable () -> Bool
     private let report: @Sendable (UInt64, RecordingSessionReport) -> Void
-    private let connect: @Sendable (SessionPieces, Session) -> Task<Void, Never>
+    private let connect: @Sendable (SessionPieces, SessionInputs) -> Task<Void, Never>
+    private let makeSession: MakeSessionModel
     private let sink: any LogSink
     private var running: [UInt64: Running] = [:]
     // Recording's effects run independently, so an end can arrive before its begin.
@@ -32,19 +35,24 @@ public actor RecordingSessions: RecordingSession {
         makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
         liveText: @escaping @Sendable () -> Bool,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void,
-        panel: AudelinPanel
+        panel: AudelinPanel,
+        makeSession: @escaping MakeSessionModel
     ) {
 
-        self.init(makePieces: makePieces, liveText: liveText, report: report, connect: subscribe, sink: SystemLogSink(), panel: panel)
+        self.init(
+            makePieces: makePieces, liveText: liveText, report: report, connect: subscribe, sink: SystemLogSink(), panel: panel,
+            makeSession: makeSession
+        )
     }
 
     init(
         makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
         liveText: @escaping @Sendable () -> Bool,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void,
-        connect: @escaping @Sendable (SessionPieces, Session) -> Task<Void, Never>,
+        connect: @escaping @Sendable (SessionPieces, SessionInputs) -> Task<Void, Never>,
         sink: any LogSink,
-        panel: AudelinPanel
+        panel: AudelinPanel,
+        makeSession: @escaping MakeSessionModel
     ) {
 
         self.panel = panel
@@ -53,6 +61,7 @@ public actor RecordingSessions: RecordingSession {
         self.report = report
         self.connect = connect
         self.sink = sink
+        self.makeSession = makeSession
     }
 
     public func begin(id: UInt64) async -> RecordingSessionReport {
@@ -60,14 +69,22 @@ public actor RecordingSessions: RecordingSession {
         if endedBeforeBegin.remove(id) != nil { return .ended }
         if running[id] == nil {
             let pieces = makePieces(id)
-            let session = Session(handler: pieces.handler(sink: sink))
+            let handler = pieces.handler(sink: sink)
+            let session = Task { [makeSession] in await makeSession(handler) }
             let enabled = liveText()
-            running[id] = Running(session: session, subscription: connect(pieces, session))
+            let connect = connect
+            let subscription = Task {
+                let forwarding = connect(pieces, await session.value)
+                await withTaskCancellationHandler { await forwarding.value } onCancel: { forwarding.cancel() }
+            }
+            running[id] = Running(session: session, subscription: subscription)
             running[id]?.observation = Task {
                 // Register before begin so even a short-lived state is retained.
-                let states = await session.states()
+                let states = await session.value.states()
                 let text = await pieces.readingText()
-                let reading = await self.panel.begin(id: id, text: text, enableLiveText: { session.send(.liveTextChanged(true)) })
+                let reading = await self.panel.begin(id: id, text: text, enableLiveText: {
+                    await self.send(.liveTextChanged(true), id: id)?.value
+                })
                 self.running[id]?.reading = reading
                 self.start(id: id, liveText: enabled)
                 for await state in states {
@@ -91,7 +108,7 @@ public actor RecordingSessions: RecordingSession {
         }
         if !entry.endRequested {
             entry.endRequested = true
-            if entry.started { entry.session.send(.end) }
+            if entry.started { send(.end, to: &entry) }
         }
         running[id] = entry
         await withCheckedContinuation { running[id]?.enders.append($0) }
@@ -100,10 +117,27 @@ public actor RecordingSessions: RecordingSession {
     private func start(id: UInt64, liveText: Bool) {
 
         guard var entry = running[id] else { return }
-        entry.session.send(.begin(liveText: liveText))
+        send(.begin(liveText: liveText), to: &entry)
         entry.started = true
-        if entry.endRequested { entry.session.send(.end) }
+        if entry.endRequested { send(.end, to: &entry) }
         running[id] = entry
+    }
+
+    private func send(_ event: SessionEvent, id: UInt64) -> Task<Void, Never>? {
+
+        guard var entry = running[id] else { return nil }
+        send(event, to: &entry)
+        running[id] = entry
+        return entry.sends
+    }
+
+    private func send(_ event: SessionEvent, to entry: inout Running) {
+
+        let previous = entry.sends, session = entry.session
+        entry.sends = Task {
+            await previous?.value
+            await session.value.send(event)
+        }
     }
 
     private func receive(_ state: SessionState, id: UInt64) -> Bool {
@@ -121,13 +155,14 @@ public actor RecordingSessions: RecordingSession {
                 deliver(.ended, id: id, entry: &entry)
             }
             let subscription = entry.subscription, observation = entry.observation, session = entry.session
-            let reading = entry.reading
+            let sends = entry.sends, reading = entry.reading
             Task {
                 await self.panel.end(id: id)
                 await reading?.end()
                 subscription.cancel()
                 await subscription.value
-                await session.end()
+                await sends?.value
+                await session.value.end()
                 await observation?.value
                 self.forget(id: id)
             }

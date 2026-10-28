@@ -13,7 +13,7 @@ struct RecordingSessionsTests {
             let connection = RecordingConnection()
             let ids = Values<UInt64>()
             let adapter = RecordingSessions(makePieces: { id in ids.append(id); return rig.pieces },
-                                            liveText: { true }, report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel())
+                                            liveText: { true }, report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
             #expect(await adapter.begin(id: 12) == .ready)
             #expect(await adapter.begin(id: 12) == .ready)
             #expect(ids.all == [12])
@@ -43,7 +43,7 @@ struct RecordingSessionsTests {
         }) { rig, _ in
             let connection = RecordingConnection()
             let adapter = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel())
+                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
             let begin = Task { await adapter.begin(id: 3) }
             await started.next()
             await rig.pieces.news.continuation.yield(.pieceFailed(.folder, error: "unavailable"))
@@ -62,7 +62,7 @@ struct RecordingSessionsTests {
         try await withSessionRig(connect: disconnected) { rig, _ in
             let connection = RecordingConnection()
             let adapter = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel())
+                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
             #expect(await adapter.begin(id: 7) == .ready)
             rig.microphone.source.continuation.finish(throwing: ScriptFailure.failed)
             rig.call.source.continuation.finish(throwing: ScriptFailure.failed)
@@ -84,7 +84,7 @@ struct RecordingSessionsTests {
         }) { rig, _ in
             let connection = RecordingConnection()
             let adapter = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel())
+                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
             let begin = Task { await adapter.begin(id: 4) }
             await started.next()
             let end = Task { await adapter.end(id: 4) }
@@ -104,7 +104,7 @@ struct RecordingSessionsTests {
     @Test func recordingWiringForwardsLaterFailureAndEndsTheSession() async throws {
 
         try await withSessionRig(connect: disconnected) { rig, folder in
-            let recording = await composeRecording(initial: .init(missing: []), makePieces: { _ in rig.pieces }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording)
+            let recording = await composeRecording(initial: .init(missing: []), makePieces: { _ in rig.pieces }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
             await recording.send(.userStart)
             _ = try await recordingState(recording) { $0.phase == .recording }
             let text = try #require(await rig.pieces.text)
@@ -125,7 +125,7 @@ struct RecordingSessionsTests {
         try await withSessionRig(connect: disconnected) { rig, _ in
             let connection = RecordingConnection(), ids = Values<UInt64>()
             let adapter = RecordingSessions(makePieces: { id in ids.append(id); return rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel())
+                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
             await adapter.end(id: 99)
             #expect(ids.all.isEmpty)
             #expect(await adapter.begin(id: 8) == .ready)
@@ -143,7 +143,7 @@ struct RecordingSessionsTests {
         try await withSessionRig(connect: disconnected) { rig, _ in
             let connection = RecordingConnection(), ids = Values<UInt64>()
             let adapter = RecordingSessions(makePieces: { id in ids.append(id); return rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel())
+                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
             await adapter.end(id: 5)
             #expect(await adapter.begin(id: 5) == .ended)
             #expect(ids.all.isEmpty)
@@ -163,10 +163,10 @@ struct RecordingSessionsTests {
                                                 report: reports.report, connect: { pieces, session in
                     if pieces === first.pieces { return firstConnection.connect(pieces, session) }
                     return secondConnection.connect(pieces, session)
-                }, sink: SystemLogSink(), panel: ReadingClockSpy().panel())
+                }, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
                 #expect(await adapter.begin(id: 21) == .ready)
                 #expect(await adapter.begin(id: 34) == .ready)
-                firstConnection.session.send(.end)
+                await firstConnection.session.send(.end)
                 await reports.reported.next()
                 await adapter.end(id: 21)
                 #expect(reports.reports.all == [.init(id: 21, report: .ended)])
@@ -184,7 +184,7 @@ struct RecordingSessionsTests {
     }
 }
 
-private func disconnected(_: SessionPieces, _: Session) -> Task<Void, Never> { Task {} }
+private func disconnected(_: SessionPieces, _: SessionInputs) -> Task<Void, Never> { Task {} }
 
 private struct SessionReport: Equatable, Sendable {
 
@@ -194,13 +194,13 @@ private struct SessionReport: Equatable, Sendable {
 
 private final class RecordingConnection: Sendable {
 
-    let sessions = Values<Session>()
+    let sessions = Values<SessionInputs>()
     let reports = Values<SessionReport>()
     let reported = Signal()
     let joined = Values<Bool>()
     let cancelled = Values<Bool>()
 
-    var session: Session { sessions.all[0] }
+    var session: SessionInputs { sessions.all[0] }
 
     func report(_ id: UInt64, _ report: RecordingSessionReport) {
 
@@ -208,7 +208,7 @@ private final class RecordingConnection: Sendable {
         reported.send()
     }
 
-    func connect(_ pieces: SessionPieces, _ session: Session) -> Task<Void, Never> {
+    func connect(_ pieces: SessionPieces, _ session: SessionInputs) -> Task<Void, Never> {
 
         sessions.append(session)
         let subscription = subscribe(pieces, to: session)
@@ -227,7 +227,7 @@ private final class RecordingConnection: Sendable {
     }
 }
 
-private func sessionState(_ session: Session, where matches: (SessionState) -> Bool) async throws -> SessionState {
+private func sessionState(_ session: SessionInputs, where matches: (SessionState) -> Bool) async throws -> SessionState {
 
     for await state in await session.states() {
         if matches(state) { return state }

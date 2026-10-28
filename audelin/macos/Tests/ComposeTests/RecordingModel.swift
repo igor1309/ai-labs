@@ -1,6 +1,5 @@
 import Compose
 import IMRxObservation
-import Observation
 import Recording
 
 /// Recording composed as the app composes it: the sync model on the main actor and the doer.
@@ -23,15 +22,18 @@ let makeRecording: MakeRecordingModel = { initial, session, log in
 private final class RecordingModel {
 
     private let model: SyncModel<RecordingState, RecordingEvent>
-    private var observers: [Int: AsyncStream<RecordingState>.Continuation] = [:]
-    private var nextObserver = 0
-    private var ended = false
+    private let feed = StateFeed<RecordingState>()
 
     init(initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void) {
 
+        let feed = feed
         model = SyncModel(initialState: initial, reduce: { state, event in
+            guard !feed.finished else { return state }
             let next = RecordingReducer.reduce(state, event)
-            if next != state { log(next) }
+            if next != state {
+                log(next)
+                feed.publish(next)
+            }
             return next
         })
     }
@@ -40,32 +42,9 @@ private final class RecordingModel {
 
     func send(_ event: RecordingEvent) { model.event(event) }
 
-    func states() -> AsyncStream<RecordingState> {
+    func states() -> AsyncStream<RecordingState> { feed.subscribe(from: model.state) }
 
-        let (stream, continuation) = AsyncStream<RecordingState>.makeStream()
-        guard !ended else {
-            continuation.finish()
-            return stream
-        }
-        let observed = Observations { [model] in model.state }
-        let id = nextObserver
-        nextObserver += 1
-        let task = Task {
-            for await state in observed { continuation.yield(state) }
-            continuation.finish()
-        }
-        observers[id] = continuation
-        continuation.onTermination = { _ in task.cancel() }
-        return stream
-    }
-
-    /// Finishes every states stream; later ones finish at once.
-    func end() {
-
-        ended = true
-        for observer in observers.values { observer.finish() }
-        observers.removeAll()
-    }
+    func end() { feed.finish() }
 }
 
 /// Recording composed as the app composes it, with no state log.

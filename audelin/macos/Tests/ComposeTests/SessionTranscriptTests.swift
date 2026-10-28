@@ -28,7 +28,7 @@ struct SessionTranscriptTests {
         try await withSessionRig(construction: construction, beforeForward: { event in
             if case let .pieceFailed(.transcript, error) = event { news.append(error) }
         }) { rig, folder in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             let state = try await rig.state { $0.health(of: .transcript) == .failed(message) }
             #expect(binding.failures.all == [operation])
@@ -41,7 +41,7 @@ struct SessionTranscriptTests {
             #expect(rig.call.stops.all.isEmpty)
             rig.microphone.source.continuation.yield(.init(samples: [0.625], sampleRate: 48_000))
             rig.call.source.continuation.yield(.init(samples: [-0.625], sampleRate: 48_000))
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(ended.failures == state.failures)
             #expect(ended.callText == .closed)
@@ -74,11 +74,11 @@ struct SessionTranscriptTests {
             forwarded.append(event)
         }) { rig, _ in
             defer { release.release() }
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.pieces.news.continuation.yield(.liveTextChanged(true))
             await forwarding.next()
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(forwarded.all.isEmpty)
             #expect(binding.failures.all == [operation])
@@ -115,14 +115,14 @@ struct SessionTranscriptTests {
                     reported.send()
                     await release.wait()
                     guard !Task.isCancelled else { return }
-                    session.send(event)
+                    await session.send(event)
                 }
             }
         }) { rig, _ in
             defer { release.release() }
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
-            rig.session.send(.end)
+            await rig.session.send(.end)
             await reported.next()
             let ended = try await rig.state { $0.phase == .ended }
             let text = try #require(await rig.pieces.text)
@@ -146,17 +146,17 @@ struct SessionTranscriptTests {
             return try WritingTranscript(file: TranscriptFile(url: url))
         }
         try await withSessionRig(construction: construction) { rig, folder in
-            rig.session.send(.begin(liveText: enabled))
+            await rig.session.send(.begin(liveText: enabled))
             let recording = try await rig.state { $0.phase == .recording }
             #expect(recording.failures.map(\.piece) == ["transcript"])
             #expect(recording.callText == .up)
             #expect(await rig.pieces.transcriptFile == nil)
             let text = try #require(await rig.pieces.text)
             if !enabled { #expect(await text.state.status == .off) }
-            rig.session.send(.liveTextChanged(!enabled))
+            await rig.session.send(.liveTextChanged(!enabled))
             _ = try await rig.state { $0.pendingLiveText == nil && $0.wantedLiveText == !enabled }
             if enabled { #expect(await text.state.status == .off) }
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(ended.failures == recording.failures)
             #expect(ended.callText == .closed)

@@ -7,6 +7,7 @@ import PanelUI
 import Preferences
 import Reading
 import Recording
+import Session
 import os
 import SwiftUI
 
@@ -32,7 +33,8 @@ struct AudelinApp: App {
             terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } },
             quit: quit,
             makeReading: makeReading,
-            makeRecording: { await makeRecording(initial: $0, session: $1, log: $2) }
+            makeRecording: { await makeRecording(initial: $0, session: $1, log: $2) },
+            makeSession: { await makeSession(handler: $0) }
         )
         self.model = model
         panel.install(content: NSHostingView(rootView: PanelContent(model: model)), onClose: { [weak model] in
@@ -117,15 +119,18 @@ func makeRecording(
 final class RecordingModel {
 
     private let model: SyncModel<RecordingState, RecordingEvent>
-    private var observers: [Int: AsyncStream<RecordingState>.Continuation] = [:]
-    private var nextObserver = 0
-    private var ended = false
+    private let feed = StateFeed<RecordingState>()
 
     init(initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void) {
 
+        let feed = feed
         model = SyncModel(initialState: initial, reduce: { state, event in
+            guard !feed.finished else { return state }
             let next = RecordingReducer.reduce(state, event)
-            if next != state { log(next) }
+            if next != state {
+                log(next)
+                feed.publish(next)
+            }
             return next
         })
     }
@@ -134,33 +139,58 @@ final class RecordingModel {
 
     func send(_ event: RecordingEvent) { model.event(event) }
 
-    /// Starts with the current state; observation may merge changes.
-    func states() -> AsyncStream<RecordingState> {
+    /// Starts with the current state and retains every change.
+    func states() -> AsyncStream<RecordingState> { feed.subscribe(from: model.state) }
 
-        let (stream, continuation) = AsyncStream<RecordingState>.makeStream()
-        guard !ended else {
-            continuation.finish()
-            return stream
-        }
-        let observed = Observations { [model] in model.state }
-        let id = nextObserver
-        nextObserver += 1
-        let task = Task {
-            for await state in observed { continuation.yield(state) }
-            continuation.finish()
-        }
-        observers[id] = continuation
-        continuation.onTermination = { _ in task.cancel() }
-        return stream
+    /// Finishes every states stream; later ones finish at once and later events change nothing.
+    func end() { feed.finish() }
+}
+
+/// One Session's model, reducing on the main actor and running its effects through the handler.
+@MainActor
+func makeSession(handler: SessionEffectHandler) -> SessionInputs {
+
+    let model = SessionModel(handler: handler)
+    return SessionInputs(
+        send: { await model.send($0) },
+        states: { await model.states() },
+        end: { await model.end() }
+    )
+}
+
+/// Holds the observable model on the main actor; callers elsewhere await the hop.
+@MainActor
+final class SessionModel {
+
+    private let model: ObservableModel<SessionState, SessionEvent, SessionEffect>
+    private let feed = StateFeed<SessionState>()
+
+    init(handler: SessionEffectHandler, initial: SessionState = .init()) {
+
+        let feed = feed
+        model = ObservableModel(initialState: initial, reduce: { state, event in
+            guard !feed.finished else { return (state, nil) }
+            let (next, effect) = SessionReducer.reduce(state, event)
+            if next != state { feed.publish(next) }
+            return (next, effect)
+        }, handleEffect: { effect in
+            AsyncStream { events in
+                let task = Task {
+                    events.yield(await handler.handle(effect))
+                    events.finish()
+                }
+                events.onTermination = { _ in task.cancel() }
+            }
+        })
     }
 
-    /// Finishes every states stream; later ones finish at once.
-    func end() {
+    func send(_ event: SessionEvent) { model.event(event) }
 
-        ended = true
-        for observer in observers.values { observer.finish() }
-        observers.removeAll()
-    }
+    /// Starts with the current state and retains every change.
+    func states() -> AsyncStream<SessionState> { feed.subscribe(from: model.state) }
+
+    /// Finishes every states stream; later ones finish at once and later events change nothing.
+    func end() { feed.finish() }
 }
 
 /// Returns once the lifecycle has terminated: every begun session has ended first.

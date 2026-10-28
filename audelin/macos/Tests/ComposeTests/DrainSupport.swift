@@ -103,7 +103,7 @@ func withDrainRig(
     try await withComposeFolder { root in
         var prepared = construction
         prepared.makeCallText = { ReadyCallText(text: $0) }
-        let rig = SessionRig(
+        let rig = await SessionRig(
             root: root, microphoneFails: false, processesFail: false, construction: prepared,
             stopFailure: nil, stopEndsStream: true, streamFailure: nil, rates: nil, recognizers: recognizers,
             beforeForward: beforeForward
