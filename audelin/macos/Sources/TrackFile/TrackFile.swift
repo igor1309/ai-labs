@@ -29,7 +29,7 @@ public actor TrackFile {
     private let readWaiting: (@Sendable () -> Void)?
     private var conversion: (any TrackFileConversion)?
     private var inputRate: Double?
-    private var unroundedFrames: Double = 0
+    private var duration: Double = 0
     private var frames: Int64 = 0
     private var ended = false
     private var closed = false
@@ -71,13 +71,14 @@ public actor TrackFile {
                 conversion = converter
                 inputRate = sampleRate
             }
-            let end = unroundedFrames + Double(samples.count) * Self.sampleRate / sampleRate
-            guard end.isFinite, end < Double(Int64.max / 2) else { throw Failure.invalidAudio }
-            // Round the whole track's time so rate changes keep fractional frames.
-            let count = Int64(end.rounded()) - frames
+            // Accumulate seconds like the call clock so both round to the same frame.
+            let end = duration + Double(samples.count) / sampleRate
+            let endpoint = end * Self.sampleRate
+            guard endpoint.isFinite, endpoint < Double(Int64.max / 2) else { throw Failure.invalidAudio }
+            let count = Int64(endpoint.rounded()) - frames
             let output = try converter.convert(samples, frames: Int(count))
             try append(output)
-            unroundedFrames = end
+            duration = end
         } catch {
             conversion = nil
             endWriting()

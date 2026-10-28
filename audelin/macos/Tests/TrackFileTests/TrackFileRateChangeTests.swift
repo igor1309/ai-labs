@@ -8,7 +8,8 @@ struct TrackFileRateChangeTests {
     @Test(arguments: [
         [(512, 44_100.0), (512, 48_000), (512, 44_100)],
         [(1, 96_000.0), (1, 48_000), (1, 96_000), (512, 44_100), (512, 48_000)],
-        Array(repeating: [(31, 44_100.5), (31, 44_100.5), (512, 48_000), (1, 96_000), (1, 96_000), (7, 24_000)], count: 4)
+        [(441, 22_050.0), (7, 96_000), (480, 44_100), (7, 22_050), (480, 88_200), (1, 44_100)]
+            + Array(repeating: [(31, 44_100.5), (31, 44_100.5), (512, 48_000), (1, 96_000), (1, 96_000), (7, 24_000)], count: 4)
             .flatMap { $0 },
     ] as [[(Int, Double)]])
     func rateChangesKeepCallTimeAndReleaseCatchUp(pieces: [(Int, Double)]) async throws {
