@@ -34,16 +34,61 @@ struct ClientFindTests {
         }
     }
 
+    @Test func chosenHostIsReplacedDirectly() async {
+        for (firstName, replacementName): (String?, String?) in [
+            (nil, nil), (nil, "Market"),
+            ("MIZAN-7F3A", nil), ("MIZAN-7F3A", "Market"),
+        ] {
+            let flow = Flow()
+            let first = ClientFind.Host(id: "first-till", name: firstName)
+            let replacement = ClientFind.Host(id: "second-till", name: replacementName)
+            await flow.send(.bluetoothChanged(.available))
+            await flow.send(.pickerAnswered(.host(first)))
+            #expect(flow.state.selection == .host(first))
+            #expect(flow.state.phase == .scanning)
+            #expect(flow.state.canStart)
+
+            await flow.send(.pickerAnswered(.host(replacement)))
+            #expect(flow.state.selection == .host(replacement))
+            #expect(flow.state.phase == .scanning)
+            #expect(flow.state.isScanning)
+            #expect(flow.state.canStart)
+            #expect(flow.ports.isScanning)
+            #expect(flow.ports.calls == [.start])
+
+            await flow.send(.start)
+            #expect(flow.state.selection == .host(replacement))
+            #expect(flow.state.phase == .handedOver(replacement))
+            #expect(!flow.state.isScanning)
+            #expect(!flow.state.canStart)
+            #expect(!flow.ports.isScanning)
+            #expect(flow.ports.calls == [.start, .stop])
+        }
+    }
+
     @Test func noClearNearestHost() async {
-        let flow = Flow()
-        await flow.send(.bluetoothChanged(.available))
-        await flow.send(.pickerAnswered(.holdCloser))
-        await flow.send(.start)
-        #expect(flow.state.selection == .holdCloser)
-        #expect(flow.state.phase == .scanning)
-        #expect(flow.state.isScanning)
-        #expect(!flow.state.canStart)
-        #expect(flow.ports.calls == [.start])
+        for priorAnswers: [ClientFind.Answer] in [
+            [], [.none], [.holdCloser],
+            [.host(.init(id: "till", name: "MIZAN-7F3A"))],
+            [.host(.init(id: "till", name: nil))],
+        ] {
+            let flow = Flow()
+            await flow.send(.bluetoothChanged(.available))
+            for answer in priorAnswers {
+                await flow.send(.pickerAnswered(answer))
+            }
+            await flow.send(.pickerAnswered(.holdCloser))
+            #expect(flow.state.selection == .holdCloser)
+            #expect(!flow.state.canStart)
+
+            await flow.send(.start)
+            #expect(flow.state.selection == .holdCloser)
+            #expect(flow.state.phase == .scanning)
+            #expect(flow.state.isScanning)
+            #expect(!flow.state.canStart)
+            #expect(flow.ports.isScanning)
+            #expect(flow.ports.calls == [.start])
+        }
     }
 
     @Test func chosenHostGoesQuiet() async {
