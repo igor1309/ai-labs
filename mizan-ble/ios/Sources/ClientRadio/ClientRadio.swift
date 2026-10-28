@@ -51,17 +51,17 @@ import Foundation
 
     deinit { continuation.finish() }
 
-    private var scanning = false
+    private var scanRequested = false
 
     public func startScanning() {
-        guard !scanning else { return }
-        scanning = true
+        guard !scanRequested else { return }
+        scanRequested = true
         binding.scan(service: GATT.service, allowDuplicates: true)
     }
 
     public func stopScanning() {
-        guard scanning else { return }
-        scanning = false
+        guard scanRequested else { return }
+        scanRequested = false
         binding.stopScan()
     }
 
@@ -69,8 +69,14 @@ import Foundation
     private var host: UUID?
     private var setup: Setup?
 
+    private func selectedHost(at stage: Setup? = nil) -> UUID? {
+        guard stage == nil || setup == stage else { return nil }
+        return host
+    }
+
     /// Opens the chosen host and completes service discovery, subscription and Session reading.
     public func connect(to host: UUID) {
+        tearDown()
         self.host = host
         setup = .connecting
         binding.connect(host)
@@ -93,7 +99,7 @@ import Foundation
     }
 
     private func requestWrite(_ bytes: [UInt8], target: WriteTarget, complete: ((WriteResult) -> Void)?) {
-        guard let host, setup == .ready else {
+        guard let host = selectedHost(at: .ready) else {
             continuation.yield(.writeAnswered(target, .notConnected))
             complete?(.failure(.notConnected))
             return
@@ -110,10 +116,14 @@ import Foundation
     }
 
     public func drop() {
-        guard let peer = host else { return }
+        tearDown()
+    }
+
+    private func tearDown(_ reason: Failure? = nil) {
+        guard let peer = selectedHost() else { return }
         host = nil
         setup = nil
-        continuation.yield(.dropped(host: peer))
+        continuation.yield(reason.map { .couldNotConnect(host: peer, reason: $0) } ?? .dropped(host: peer))
         let pending = writes
         writes.removeAll()
         for write in pending {
@@ -127,66 +137,60 @@ import Foundation
         switch callback {
         case .bluetooth(let state):
             continuation.yield(.bluetooth(state))
-            if state != .on {
-                if setup == .ready { drop() } else { failSetup(.bluetooth(state)) }
+            if state == .on {
+                if scanRequested { binding.scan(service: GATT.service, allowDuplicates: true) }
+            } else {
+                if setup == .ready { drop() } else { tearDown(.bluetooth(state)) }
             }
-        case .discovery(let host, let name, let rssi) where scanning:
+        case .discovery(let host, let name, let rssi) where scanRequested:
             continuation.yield(.reading(host: host, name: name, rssi: rssi, time: now()))
-        case .connected(let peer) where peer == host && setup == .connecting:
+        case .connected(let peer) where peer == selectedHost(at: .connecting):
             setup = .service
             binding.discoverService(peer)
-        case .services(let peer, .success(true)) where peer == host && setup == .service:
+        case .services(let peer, .success(true)) where peer == selectedHost(at: .service):
             setup = .characteristics
             binding.discoverCharacteristics(peer)
         case .characteristics(let peer, .success(let found))
-            where peer == host && setup == .characteristics && found == Set(Characteristic.allCases):
+            where peer == selectedHost(at: .characteristics) && found == Set(Characteristic.allCases):
             setup = .subscription
             binding.subscribe(peer)
-        case .subscribed(let peer, .success(true)) where peer == host && setup == .subscription:
+        case .subscribed(let peer, .success(true)) where peer == selectedHost(at: .subscription):
             setup = .session
             binding.readSession(peer)
-        case .value(let peer, .session, .success(let bytes)) where peer == host && setup == .session:
+        case .value(let peer, .session, .success(let bytes)) where peer == selectedHost(at: .session):
             let largestWrite = binding.maximumWrite(peer)
             setup = .ready
             continuation.yield(.connected(host: peer, session: bytes, largestWrite: largestWrite))
-        case .connectionFailed(let peer, let reason) where peer == host && setup == .connecting:
-            failSetup(reason)
-        case .services(let peer, .failure(let reason)) where peer == host && setup == .service:
-            failSetup(reason)
-        case .services(let peer, .success(false)) where peer == host && setup == .service:
-            failSetup(.noService)
-        case .characteristics(let peer, .failure(let reason)) where peer == host && setup == .characteristics:
-            failSetup(reason)
-        case .characteristics(let peer, .success) where peer == host && setup == .characteristics:
-            failSetup(.missingCharacteristic)
-        case .subscribed(let peer, .failure(let reason)) where peer == host && setup == .subscription:
-            failSetup(reason)
-        case .subscribed(let peer, .success(false)) where peer == host && setup == .subscription:
-            failSetup(.notificationsDisabled)
-        case .value(let peer, .session, .failure(let reason)) where peer == host && setup == .session:
-            failSetup(reason)
-        case .written(let peer, let characteristic, let error) where peer == host && setup == .ready:
+        case .connectionFailed(let peer, let reason) where peer == selectedHost(at: .connecting):
+            tearDown(reason)
+        case .services(let peer, .failure(let reason)) where peer == selectedHost(at: .service):
+            tearDown(reason)
+        case .services(let peer, .success(false)) where peer == selectedHost(at: .service):
+            tearDown(.noService)
+        case .characteristics(let peer, .failure(let reason)) where peer == selectedHost(at: .characteristics):
+            tearDown(reason)
+        case .characteristics(let peer, .success) where peer == selectedHost(at: .characteristics):
+            tearDown(.missingCharacteristic)
+        case .subscribed(let peer, .failure(let reason)) where peer == selectedHost(at: .subscription):
+            tearDown(reason)
+        case .subscribed(let peer, .success(false)) where peer == selectedHost(at: .subscription):
+            tearDown(.notificationsDisabled)
+        case .value(let peer, .session, .failure(let reason)) where peer == selectedHost(at: .session):
+            tearDown(reason)
+        case .written(let peer, let characteristic, let error) where peer == selectedHost(at: .ready):
             guard let index = writes.firstIndex(where: {
                 ($0.target == .key ? Characteristic.key : .toHost) == characteristic
             }) else { return }
             let write = writes.remove(at: index)
             continuation.yield(.writeAnswered(write.target, error))
             write.complete?(error.map { .failure($0) } ?? .success(()))
-        case .value(let peer, .toClient, .success(let bytes)) where peer == host && setup == .ready:
+        case .value(let peer, .toClient, .success(let bytes)) where peer == selectedHost(at: .ready):
             continuation.yield(.message(host: peer, bytes: bytes))
-        case .disconnected(let peer) where peer == host,
-             .serviceRemoved(let peer) where peer == host:
-            if setup == .ready { drop() } else { failSetup(.disconnected) }
+        case .disconnected(let peer) where peer == selectedHost(),
+             .serviceRemoved(let peer) where peer == selectedHost():
+            if setup == .ready { drop() } else { tearDown(.disconnected) }
         default: break
         }
-    }
-
-    private func failSetup(_ reason: Failure) {
-        guard let peer = host else { return }
-        host = nil
-        setup = nil
-        continuation.yield(.couldNotConnect(host: peer, reason: reason))
-        binding.disconnect(peer)
     }
 }
 

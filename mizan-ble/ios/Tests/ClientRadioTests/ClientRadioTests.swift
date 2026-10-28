@@ -56,6 +56,119 @@ import Testing
         #expect(events == expected)
     }
 
+    @Test func requestedScanRestartsWhenBluetoothTurnsOn() async {
+        let events = await record { radio, fake in
+            fake.send(.bluetooth(.unknown))
+            radio.startScanning()
+            radio.startScanning()
+            #expect(fake.calls == [.scan(GATT.service, true)])
+            fake.send(.bluetooth(.on))
+            #expect(fake.calls == [.scan(GATT.service, true), .scan(GATT.service, true)])
+            fake.send(.bluetooth(.off))
+            fake.send(.bluetooth(.on))
+            fake.send(.bluetooth(.on))
+            #expect(fake.calls == Array(repeating: .scan(GATT.service, true), count: 4))
+            radio.stopScanning()
+            let calls = fake.calls
+            fake.send(.bluetooth(.on))
+            #expect(fake.calls == calls)
+        }
+        #expect(events == [.bluetooth(.unknown), .bluetooth(.on), .bluetooth(.off),
+                           .bluetooth(.on), .bluetooth(.on), .bluetooth(.on)])
+    }
+
+    @Test(arguments: 0...5) func replacingHostTearsDownPreviousLink(stage: Int) async {
+        var expected: [ClientRadio.Event] = []
+        let events = await record { radio, fake in
+            let first = fake.host
+            let second = UUID()
+            let steps: [RadioCallback] = [
+                .connected(first), .services(first, .success(true)),
+                .characteristics(first, .success(Set(Characteristic.allCases))),
+                .subscribed(first, .success(true)), .value(first, .session, .success([1, 2, 3])),
+            ]
+            radio.connect(to: first)
+            for step in steps.prefix(stage) { fake.send(step) }
+            if stage == 5 {
+                expected.append(.connected(host: first, session: [1, 2, 3], largestWrite: 182))
+                radio.writeKey([1])
+            }
+            let oldWrite = stage == 5 ? Task.immediate { await radio.write([2]) } : nil
+            fake.calls = []
+            radio.connect(to: second)
+            #expect(fake.calls == [.disconnect(first), .connect(second)])
+            for step in steps { fake.send(step) }
+            fake.send(.written(first, .key, nil))
+            fake.send(.written(first, .toHost, nil))
+            fake.send(.disconnected(first))
+            #expect(fake.calls == [.disconnect(first), .connect(second)])
+            fake.send(.connected(second))
+            fake.send(.services(second, .success(true)))
+            fake.send(.characteristics(second, .success(Set(Characteristic.allCases))))
+            fake.send(.subscribed(second, .success(true)))
+            fake.send(.value(second, .session, .success([4, 5, 6])))
+            let newWrite = Task.immediate { await radio.write([3]) }
+            fake.send(.written(second, .toHost, .att(code: 7)))
+            fake.send(.written(second, .toHost, nil))
+            fake.send(.written(second, .key, nil))
+            if let oldWrite {
+                #expect(await oldWrite.value.map { true } == .failure(.disconnected))
+            }
+            #expect(await newWrite.value.map { true } == .failure(.att(code: 7)))
+            expected.append(.dropped(host: first))
+            if stage == 5 {
+                expected += [.writeAnswered(.key, .disconnected), .writeAnswered(.message, .disconnected)]
+            }
+            expected += [.connected(host: second, session: [4, 5, 6], largestWrite: 182),
+                         .writeAnswered(.message, .att(code: 7))]
+        }
+        #expect(events == expected)
+    }
+
+    @Test(arguments: 0...4) func setupRejectsWritesAndOutOfStageCallbacks(stage: Int) async {
+        let events = await record { radio, fake in
+            let host = fake.host
+            let error: ClientRadio.Failure = .att(code: 5)
+            let steps: [RadioCallback] = [
+                .connected(host), .services(host, .success(true)),
+                .characteristics(host, .success(Set(Characteristic.allCases))),
+                .subscribed(host, .success(true)), .value(host, .session, .success([1])),
+            ]
+            let callbacksByStage: [[RadioCallback]] = [
+                [.connected(host), .connectionFailed(host, error)],
+                [.services(host, .success(true)), .services(host, .success(false)), .services(host, .failure(error))],
+                [.characteristics(host, .success(Set(Characteristic.allCases))),
+                 .characteristics(host, .success([])), .characteristics(host, .failure(error))],
+                [.subscribed(host, .success(true)), .subscribed(host, .success(false)),
+                 .subscribed(host, .failure(error))],
+                [.value(host, .session, .success([1])), .value(host, .session, .failure(error))],
+            ]
+            radio.connect(to: host)
+            for step in steps.prefix(stage) { fake.send(step) }
+            fake.calls = []
+            radio.writeKey([1])
+            #expect(await radio.write([2]).map { true } == .failure(.notConnected))
+            #expect(fake.calls.isEmpty)
+            for (index, callbacks) in callbacksByStage.enumerated() where index != stage {
+                for callback in callbacks {
+                    fake.send(callback)
+                    fake.send(callback)
+                    #expect(fake.calls.isEmpty)
+                }
+            }
+            for characteristic in Characteristic.allCases {
+                fake.send(.written(host, characteristic, nil))
+                fake.send(.written(host, characteristic, error))
+                if characteristic != .session {
+                    fake.send(.value(host, characteristic, .success([99])))
+                    fake.send(.value(host, characteristic, .failure(error)))
+                }
+            }
+            #expect(fake.calls.isEmpty)
+        }
+        #expect(events == [.writeAnswered(.key, .notConnected), .writeAnswered(.message, .notConnected)])
+    }
+
     @Test func setupFailuresKeepTheirReasons() async {
         for stage in 0...4 {
             for missing in [false, true] {
