@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { App } from "../src/App.tsx";
@@ -49,7 +50,7 @@ const NARROWER = [
   [600, 400],
 ] as const;
 
-const GAMES: HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons", "dig", "sandWriting"];
+const GAMES: HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons", "dig", "sandWriting", "labyrinth"];
 
 const DEVICES: Record<Language, string> = { en: "en-GB", ru: "ru-RU" };
 
@@ -81,7 +82,7 @@ function openShort(width: number, height: number, { language = "en", featured = 
   viewport.resize("wide-short", false);
   const progress = () => storage;
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring(featured)}
       portraitLayouts={{}}
       dinosaurs={SHIPPED_DINOSAURS}

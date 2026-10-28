@@ -12,7 +12,7 @@ import { readDig, type DigFile } from "../src/dig/index.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { localLabyrinthProgress, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import { SIDE_INSETS } from "../src/mediaViewport.ts";
 import type { StartTimer } from "../src/ownedTimers.ts";
@@ -479,6 +479,11 @@ export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture"
 // The dig game for tests that are not about it: every shipped dinosaur
 // may be dug up, none dug up yet, saving works, and the sand is never
 // drawn, jsdom having no canvas.
+export function emptyLabyrinth(): Pick<AppProps, "labyrinthProgress"> {
+  const storage = memoryStorage();
+  return { labyrinthProgress: localLabyrinthProgress(() => storage) };
+}
+
 export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "sandContext"> {
   const storage = memoryStorage();
   return { digDinosaurs: SHIPPED_DIG, digProgress: localDigProgress(() => storage), sandContext: () => null };

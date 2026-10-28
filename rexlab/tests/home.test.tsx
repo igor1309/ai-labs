@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -6,7 +7,7 @@ import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
 import { SAND } from "../src/sandWritingCanvas.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localDigProgress, localLabyrinthProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { careRecord } from "./careApp.tsx";
 import { HOME_GAMES, badgeOf, renderHomePageFeaturing } from "./homePage.tsx";
 import { TILE_COUNTS, TITLE_EMS, TITLE_TEXTS, columnGapOf, gamesWidths, linesOf, roomFor, sidesOf, tileTitles, widthOf } from "./homeTitles.ts";
@@ -57,9 +58,10 @@ function openHomePage(
   pairs = emptyPairs(),
   skeletons = emptySkeletons(),
   dig = emptyDig(),
-  featured: HomeGame = "compare"
+  featured: HomeGame = "compare",
+  labyrinth = emptyLabyrinth()
 ) {
-  render(<App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pageAtRest()} {...pictures} />);
+  render(<App {...labyrinth} {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pageAtRest()} {...pictures} />);
   return { user: userEvent.setup({ delay: null }), card: featuredCard() };
 }
 
@@ -109,6 +111,7 @@ function renderHomePage(taps: number[]) {
       pairs={{ picture: fakeBodyPicture("stegosaurus"), stars: undefined }}
       skeletons={{ picture: fakeSkeletonPicture("triceratops", "skeleton"), best: undefined }}
       dig={{ picture: fakeBodyPicture("stegosaurus"), dugUp: undefined }}
+      labyrinth={{ picture: fakeBodyPicture("triceratops"), stars: undefined }}
       moreComing={fakeBodyPicture("triceratops")}
       onCompareDinosaurs={nothing}
       onCatalogue={nothing}
@@ -119,6 +122,7 @@ function renderHomePage(taps: number[]) {
       onMuseum={nothing}
       onDig={nothing}
       onSandWriting={nothing}
+      onLabyrinth={nothing}
     />,
     withPictures
   );
@@ -179,7 +183,7 @@ describe("the home page", () => {
     expect([...(games?.children ?? [])]).toEqual([card, row]);
     // The large card takes three sevenths of the width, the tiles the rest.
     expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
-    const tiles = [...["ANCIENT REPTILES", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE", "SAND WRITING"].map(homeTile), document.querySelector(".more-coming")];
+    const tiles = [...["ANCIENT REPTILES", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE", "SAND WRITING", "LABYRINTH"].map(homeTile), document.querySelector(".more-coming")];
     expect([...row.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
     // column as wide as the others and its two tiles sharing its height,
@@ -279,7 +283,8 @@ describe("the home page", () => {
     ["skeletons", "SKELETONS", "3"],
     ["dig", "DIG", "7"],
     ["sort", "SORT", "6"],
-    ["care", "CARE", "8"]
+    ["care", "CARE", "8"],
+    ["labyrinth", "LABYRINTH", "9"]
   ];
 
   it.each(HOME_WINDOWS.flatMap(([width, height]) => (["compare", "care"] as const).map((featured) => [width, height, featured] as const)))(
@@ -295,7 +300,8 @@ describe("the home page", () => {
         { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 120, level: 1, boardsOnLevel: 0, best: {}, found: [] }) })) },
         withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] })),
         { ...emptyDig(), digProgress: localDigProgress(() => memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { dig: { dug: SHIPPED_DIG.slice(0, 7).map(({ id }) => id), badges: [] } } }) })) },
-        featured
+        featured,
+        { labyrinthProgress: localLabyrinthProgress(() => memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { labyrinth: { progress: { stars: 9, roundsPlayed: 3, best: { hatchling: null, explorer: 3, paleontologist: null } } } } }) })) }
       );
       const shown = TILE_TITLES.filter(([game]) => game !== featured);
 
@@ -724,7 +730,7 @@ describe("the large card", () => {
   async function openedBy(featured: HomeGame, tap: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
     const pictures = manualPictures();
     const { container, unmount } = render(
-      <App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
+      <App {...emptyLabyrinth()} {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
     );
     await tap(userEvent.setup({ delay: null }));
     const asked: string[] = [];
@@ -735,9 +741,13 @@ describe("the large card", () => {
     // React generates a fresh panel id per mount; compare the references
     // as well as the panel without depending on the generated value.
     for (const [index, panel] of [...container.querySelectorAll("[id]")].entries()) {
-      const trigger = container.querySelector(`[aria-controls="${panel.id}"]`);
+      const previous = panel.id;
       panel.id = `panel-${index}`;
-      trigger?.setAttribute("aria-controls", panel.id);
+      for (const attribute of ["aria-controls", "aria-describedby", "aria-labelledby"]) {
+        for (const element of container.querySelectorAll(`[${attribute}]`)) {
+          element.setAttribute(attribute, element.getAttribute(attribute)!.split(" ").map((id) => id === previous ? panel.id : id).join(" "));
+        }
+      }
     }
     const shown = container.innerHTML;
     unmount();
@@ -803,7 +813,7 @@ describe("the first question of a round", () => {
   // apart, both before the first one's screen change is shown.
   it("starts one round, counted once, for two taps on the large card in one moment", () => {
     const { counted, startCounter } = countedStarts();
-    render(<App {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />);
+    render(<App {...emptyLabyrinth()} {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />);
     const card = featuredCard();
 
     act(() => {

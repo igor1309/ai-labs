@@ -44,12 +44,13 @@ describe("the CARE tile", () => {
     expect(symbolOf(tile)).toBe("heart");
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
     // The row fills two tiles to a column, COMPARE's tile left out for
-    // the large card: the sixth tile is still under SORT. The new sand
-    // writing activity occupies the next column above MORE COMING.
+    // the large card: the sixth tile is still under SORT. Sand writing
+    // and labyrinth occupy the next column before MORE COMING.
     expect([...tilesRow().children].indexOf(tile)).toBe(5);
     expect(tile.previousElementSibling).toBe(gameDoor("SORT"));
     expect(tile.nextElementSibling).toBe(gameDoor("SAND WRITING"));
-    expect(tile.nextElementSibling?.nextElementSibling?.className).toBe("more-coming");
+    expect(tile.nextElementSibling?.nextElementSibling).toBe(gameDoor("LABYRINTH"));
+    expect(tile.nextElementSibling?.nextElementSibling?.nextElementSibling?.className).toBe("more-coming");
     expect(tile.querySelector(".care-tile-best")).toBeNull();
   });
 

@@ -7,7 +7,7 @@ import { withPictures } from "./pictures.tsx";
 
 // Every game the home page offers, in its tiles' order, with the text
 // that names it.
-export const HOME_GAMES: Array<[HomeGame, "quizCard" | "catalogueTile" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting"]> = [
+export const HOME_GAMES: Array<[HomeGame, "quizCard" | "catalogueTile" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth"]> = [
   ["compare", "quizCard"],
   ["catalogue", "catalogueTile"],
   ["pairs", "pairs"],
@@ -15,7 +15,8 @@ export const HOME_GAMES: Array<[HomeGame, "quizCard" | "catalogueTile" | "care" 
   ["dig", "dig"],
   ["sort", "sort"],
   ["care", "care"],
-  ["sandWriting", "sandWriting"]
+  ["sandWriting", "sandWriting"],
+  ["labyrinth", "labyrinth"]
 ];
 
 const nothing = () => {};
@@ -47,6 +48,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       pairs={{ picture: fakeBodyPicture("stegosaurus"), stars: score(120) }}
       skeletons={{ picture: fakeSkeletonPicture("triceratops", "skeleton"), best: score(3) }}
       dig={{ picture: fakeBodyPicture("stegosaurus"), dugUp: score(4) }}
+      labyrinth={{ picture: fakeBodyPicture("triceratops"), stars: score(9) }}
       moreComing={fakeBodyPicture("triceratops")}
       onCompareDinosaurs={() => opened.push("compare")}
       onCatalogue={() => opened.push("catalogue")}
@@ -57,6 +59,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       onMuseum={nothing}
       onDig={() => opened.push("dig")}
       onSandWriting={() => opened.push("sandWriting")}
+      onLabyrinth={() => opened.push("labyrinth")}
     />,
     withPictures
   );
@@ -68,4 +71,4 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
 export const symbolSquareOf = (card: Element) => card.querySelector('[class$="-tile-symbol"], .featured-card-symbol');
 export const nameRowOf = (card: Element) => card.querySelector('[class$="-tile-row"], .featured-card-footer');
 export const badgeOf = (card: Element) =>
-  card.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best, .dig-tile-count, .featured-card-badge");
+  card.querySelector(".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best, .dig-tile-count, .labyrinth-tile-best, .featured-card-badge");

@@ -55,3 +55,11 @@ this table in step as they land.
 | Quiz (LAB-274) | today's game: heavier or taller, at a gap of 1.5 times or more | adds longer (LAB-394) | adds lighter (LAB-391), shorter (LAB-392) and longer (LAB-394); earlier/later stays as later work |
 | Reading (LAB-273) | the first letter, with a picture cue | the missing letter, from 3 tiles | the name built from shuffled letters |
 | Dig (LAB-335, `dig-levels.md`) | brush the sand off a dinosaur; the last grains blow away at 95% | a mystery dinosaur, named from 3 pictures once three quarters show | the same from 4 pictures |
+| Labyrinth (LAB-668) | procedural 9×7 maze, at least 14 steps, 2 decisions and 1 long wrong turn | procedural 15×9 maze, at least 32 steps, 4 decisions and 3 long wrong turns | procedural 17×11 maze, at least 50 steps, 6 decisions and 4 long wrong turns |
+
+Labyrinth awards 3 stars for every reunion, with a best at each level and
+a shared total. A solved round without hints is strong for the next-level
+offer; hints clear the streak without changing the reward.
+Each long wrong turn starts at a distinct interior solution junction and
+reaches a dead end at least 4 moves away. Replay keeps the chosen level
+and generates different walls, even with a repeating random source.
