@@ -2,6 +2,7 @@
 
 ## 2026-10-28
 
+- ClientFind offers the chosen nearby host, stops scanning before handing it over for payment, and resumes scanning when the transaction ends (LAB-654).
 - HostPayment takes the client's decision through the operator's mock result, acknowledges decisions, and ends cancelled or lost-link payments before a new amount (LAB-653).
 - Preferences stores numbers and text in a named suite and reads them back across instances, with unwritten keys reading as nothing (LAB-659).
 - An effect starts before the next event is reduced, so a flow never has to check whether its effect is still wanted (LAB-683).
