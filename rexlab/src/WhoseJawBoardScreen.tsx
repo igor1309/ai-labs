@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, House } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "./Button.tsx";
 import { useGateShown } from "./OrientationGate.tsx";
 import { Picture, PictureImage, usePicture } from "./Picture.tsx";
@@ -11,6 +11,7 @@ export type JawChoiceView = {
   mouth: { x: number; y: number; width: number; mirror: boolean; angle: number };
 };
 export type WhoseJawBoardScreenProps = {
+  audioControl?: ReactNode;
   language: Language;
   phase: "entering" | "waiting" | "right" | "reading" | "wrong" | "done";
   choices: readonly JawChoiceView[];
@@ -32,7 +33,7 @@ export type WhoseJawBoardScreenProps = {
 type Hold = { pointerId: number; x: number; y: number; dx: number; dy: number; dragging: boolean };
 type Returned = { x: number; y: number; count: number };
 
-export function WhoseJawBoardScreen({ language, phase, choices, jawPicture, placed, target, hint, jawDiet, foodShown, namesShown, feedback, onPlace, onNext, onName, onSlide, onBack, onHome }: WhoseJawBoardScreenProps) {
+export function WhoseJawBoardScreen({ audioControl, language, phase, choices, jawPicture, placed, target, hint, jawDiet, foodShown, namesShown, feedback, onPlace, onNext, onName, onSlide, onBack, onHome }: WhoseJawBoardScreenProps) {
   const text = TEXTS[language];
   const gate = useGateShown();
   const [picked, setPicked] = useState(false);
@@ -151,12 +152,13 @@ export function WhoseJawBoardScreen({ language, phase, choices, jawPicture, plac
         if (!hold.current) suppressClick.current = false;
       }
     }} onClick={() => pick(false)}>
-    <header className="whose-jaw-board-bar">
-      <Button className="home-button" onClick={onHome}><House aria-hidden="true" /><span className="narrow-hidden">{text.home}</span></Button>
+    <header className="whose-jaw-board-bar" data-audio={audioControl ? true : undefined}>
+      <Button className="home-button" aria-label={text.home} onClick={onHome}><House aria-hidden="true" /><span className="narrow-hidden">{text.home}</span></Button>
       <div className="jaw-teeth" role="img" aria-label={`${text.jawProgress}: ${placed.length} / 5`}>
         {Array.from({ length: 5 }, (_, at) => <span key={at} className="jaw-socket" data-filled={!!placed[at] || undefined}
           data-shining={(placed[at]?.firstTry || phase === "done") || undefined} aria-hidden="true">{placed[at] ? "🦷" : ""}</span>)}
       </div>
+      {audioControl}
       <Button className="home-button" aria-label={text.back} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
     </header>
     <h1 className="jaw-board-title"><span aria-hidden="true">🦷</span> {text.whoseJaw}</h1>

@@ -1,5 +1,7 @@
+import { GameAudioButton } from "../src/GameAudioButton.tsx";
 import { fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { TEXTS } from "../src/language/texts.ts";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { jawMouth } from "../src/jawPresentation.ts";
 import { WhoseJawBoardScreen } from "../src/WhoseJawBoardScreen.tsx";
@@ -24,7 +26,7 @@ function show(size: WindowSize, layout: string, level: AgeLevel, language: "en" 
     }
   });
   const count = level === "hatchling" ? 2 : level === "explorer" ? 3 : 4;
-  render(<WhoseJawBoardScreen language={language} phase="waiting"
+  render(<WhoseJawBoardScreen audioControl={<GameAudioButton language={language} muted={false} onToggle={() => {}} />} language={language} phase="waiting"
     choices={JAWS.slice(0, count).map((jaw) => ({ id: jaw.id, name: jaw.name[language].toLocaleUpperCase(language), picture: `${jaw.id}.webp`, food: "food.webp", diet: jaw.diet, mouth: jawMouth(jaw.id) }))}
     jawPicture="jaw.webp" placed={[]} target={undefined} hint={undefined} jawDiet="meat"
     foodShown={level === "hatchling"} namesShown={level === "paleontologist"}
@@ -39,6 +41,22 @@ describe("Whose Jaw portrait composition", () => {
     (["en", "ru"] as const).map((language) => ({ size: [width, height] as WindowSize, layout, level, language }))
   )))("keeps the $language $level cards together at $size", ({ size, layout, level, language }) => {
     const count = show(size, layout, level, language);
+    const bar = style(".whose-jaw-board-bar", size);
+    expect(bar.value("grid-template-columns")).toBe(size[0] < 600 ? "48px minmax(0, 1fr) 48px 48px" : "auto minmax(0, 1fr) auto auto");
+    expect(part(".whose-jaw-board-bar").children).toHaveLength(4);
+    const audio = style(".game-audio-button", size);
+    expect(audio.px("min-width")).toBeGreaterThanOrEqual(48);
+    expect(audio.px("min-height")).toBeGreaterThanOrEqual(48);
+    expect(part(".game-audio-button").getAttribute("aria-label")).toBe(TEXTS[language].gameAudio.mute);
+    if (size[0] < 600) {
+      expect(style(".game-audio-button span", size).value("display")).toBe("none");
+      expect(style(".whose-jaw-board-bar .home-button span", size).value("display")).toBe("none");
+      const socket = style(".jaw-socket", size);
+      expect(socket.value("box-sizing")).toBe("border-box");
+      const needed = 3 * audio.px("width") + 3 * bar.columnGap() + 5 * socket.px("width") + 4 * style(".jaw-teeth", size).columnGap();
+      const page = style(".whose-jaw-board", size);
+      expect(needed).toBeLessThanOrEqual(size[0] - page.px("padding-left") - page.px("padding-right"));
+    }
     const grid = style(".jaw-choices", size);
     expect(grid.value("grid-template-columns")).toBe("repeat(2, minmax(0, 1fr))");
     expect([grid.value("flex-grow"), grid.value("flex-shrink"), grid.value("align-items"), grid.value("align-content")]).toEqual(["0", "0", "stretch", "start"]);
@@ -94,6 +112,8 @@ describe("Whose Jaw portrait composition", () => {
   it.each(PORTRAITS)("keeps a visible frame and pickup highlight in dark theme at %i by %i", (width, height, layout) => {
     const size = [width, height] as const;
     show(size, layout, "paleontologist", "en", "dark");
+    expect(style(".game-audio-button", size).value("background-color")).toBe("rgb(24, 30, 46)");
+    expect(style(".game-audio-button", size).value("color")).toBe("rgb(236, 232, 222)");
     expect(style(".jaw-dinosaur", size).value("background-color")).toBe("rgb(24, 30, 46)");
     expect(style(".jaw-dinosaur", size).value("border-top-color")).toBe("rgb(71, 81, 106)");
     expect(style(".jaw-tray", size).value("background-color")).toBe("rgb(24, 30, 46)");
@@ -106,6 +126,8 @@ describe("Whose Jaw portrait composition", () => {
   it.each(AGE_LEVELS)("keeps the %s landscape board at 1180 by 820", (level) => {
     const size = [1180, 820] as const;
     show(size, "wide", level);
+    expect(style(".whose-jaw-board-bar", size).value("grid-template-columns")).toBe("auto minmax(0, 1fr) auto auto");
+    expect(style(".game-audio-button span", size).value("display")).not.toBe("none");
     expect(style(".jaw-choices", size).value("grid-template-columns")).toBe("repeat(var(--choices), minmax(0, 1fr))");
     expect(style(".jaw-choices", size).value("flex-grow")).toBe("1");
     expect(style(".jaw-dinosaur", size).px("border-top-width")).toBe(0);

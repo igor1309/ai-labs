@@ -1,5 +1,5 @@
 import { House, Landmark, Play } from "lucide-react";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { levelNameSize } from "./levelSwitchLayout.ts";
 import type { AgeLevel } from "./ageLevel.ts";
 import { Button } from "./Button.tsx";
@@ -9,6 +9,7 @@ import { LevelSwitch } from "./LevelSwitch.tsx";
 import { Picture, PictureImage, usePicture } from "./Picture.tsx";
 
 export type WhoseJawWelcomeScreenProps = {
+  audioControl?: ReactNode;
   language: Language;
   level: AgeLevel;
   best: number | null;
@@ -22,7 +23,7 @@ export type WhoseJawWelcomeScreenProps = {
   onHome: () => void;
 };
 
-export function WhoseJawWelcomeScreen({ language, level, best, collected, total, jawPicture, gummyPicture, onLevel, onPlay, onShelf, onHome }: WhoseJawWelcomeScreenProps) {
+export function WhoseJawWelcomeScreen({ audioControl, language, level, best, collected, total, jawPicture, gummyPicture, onLevel, onPlay, onShelf, onHome }: WhoseJawWelcomeScreenProps) {
   const text = TEXTS[language];
   const start = useRef<HTMLElement>(null);
   useLayoutEffect(() => {
@@ -39,7 +40,7 @@ export function WhoseJawWelcomeScreen({ language, level, best, collected, total,
     return () => { observer?.disconnect(); window.removeEventListener("resize", fit); };
   }, []);
   return <main className="whose-jaw-welcome">
-    <header><Button className="home-button" onClick={onHome}><House aria-hidden="true" />{text.home}</Button></header>
+    <header><Button className="home-button" aria-label={text.home} onClick={onHome}><House aria-hidden="true" /><span>{text.home}</span></Button>{audioControl}</header>
     <div className="whose-jaw-welcome-body">
       <WelcomeHero jawPicture={jawPicture} gummyPicture={gummyPicture} />
       <section ref={start} className="whose-jaw-start">

@@ -1,3 +1,4 @@
+import { GameAudioButton } from "../src/GameAudioButton.tsx";
 import { render } from "@testing-library/react";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { WhoseJawWelcomeScreen } from "../src/WhoseJawWelcomeScreen.tsx";
@@ -21,7 +22,7 @@ function show(size: WindowSize, layout: string, language: "en" | "ru", best: num
       else root.dataset[key] = before[key];
     }
   });
-  render(<WhoseJawWelcomeScreen language={language} level="explorer" best={best} collected={16} total={16}
+  render(<WhoseJawWelcomeScreen audioControl={<GameAudioButton language={language} muted={false} onToggle={() => {}} />} language={language} level="explorer" best={best} collected={16} total={16}
     jawPicture="jaw.webp" gummyPicture="gummy.webp" onLevel={() => {}} onPlay={() => {}} onShelf={() => {}} onHome={() => {}} />,
   withManualPictures(manualPictures()));
 }
@@ -32,6 +33,12 @@ describe("Whose Jaw welcome portrait balance", () => {
   )))("fits a bounded hero and compact actions in $language at $size with best $best", ({ size, layout, language, best }) => {
     show(size, layout, language, best);
     const page = style(".whose-jaw-welcome", size);
+    expect(style(".whose-jaw-welcome header", size).value("justify-content")).toBe("space-between");
+    if (size[0] < 600) {
+      expect(style(".whose-jaw-welcome header > .home-button:first-child", size).px("width")).toBe(48);
+      expect(style(".whose-jaw-welcome header > .home-button:first-child span", size).value("display")).toBe("none");
+    }
+    expect(part(".game-audio-button").getAttribute("aria-label")).toBe(TEXTS[language].gameAudio.mute);
     const body = style(".whose-jaw-welcome-body", size);
     expect([page.value("display"), page.value("flex-direction")]).toEqual(["flex", "column"]);
     expect([body.px("min-height"), body.value("grid-template-columns"), body.value("align-content")]).toEqual([0, "minmax(0, 1fr)", "center"]);

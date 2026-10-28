@@ -66,7 +66,7 @@ describe("Whose Jaw full visit", () => {
       expect(card.textContent).toContain(collected.fact[language].toLocaleUpperCase(language));
       expect(app.parts.spoken.at(-1)).toEqual({ words: `${collected.name[language]}. ${collected.fact[language]}`, language });
       const stopped = { ...app.parts.stopped };
-      fireEvent.click(within(card).getByRole("button"));
+      fireEvent.click(within(card).getByRole("button", { name: text.back }));
       act(() => app.timers.settle());
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(app.parts.stopped).toEqual({ voice: stopped.voice + 1, sound: stopped.sound + 1 });

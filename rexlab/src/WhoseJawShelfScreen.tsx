@@ -1,5 +1,5 @@
 import { ArrowLeft, House, Landmark, X } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
@@ -13,6 +13,7 @@ type ShelfSounds = { play(sound: "chomp", pitch: number): void; stop(): void };
 type ShelfVoice = { speak(words: string, language: Language): void; stop(): void };
 type ShelfCard = { id: string; leaving: boolean };
 export type WhoseJawShelfScreenProps = {
+  audioControl?: ReactNode;
   language: Language;
   jaws: readonly ShelfJaw[];
   earned: readonly string[];
@@ -25,7 +26,7 @@ export type WhoseJawShelfScreenProps = {
   onHome(): void;
 };
 
-export function WhoseJawShelfScreen({ language, jaws, earned, jawFor, gummyFor, sounds, voice, startTimer, onBack, onHome }: WhoseJawShelfScreenProps) {
+export function WhoseJawShelfScreen({ audioControl, language, jaws, earned, jawFor, gummyFor, sounds, voice, startTimer, onBack, onHome }: WhoseJawShelfScreenProps) {
   const text = TEXTS[language];
   const [card, setCard] = useState<ShelfCard | undefined>();
   const opener = useRef<HTMLButtonElement | null>(null);
@@ -41,7 +42,7 @@ export function WhoseJawShelfScreen({ language, jaws, earned, jawFor, gummyFor, 
         <h1><Landmark aria-hidden="true" />{text.jawShelf}</h1>
         <Button className="home-button" onClick={onHome}><House aria-hidden="true" />{text.home}</Button>
       </header>
-      <p className="jaw-shelf-count" aria-label={text.jawCollection}>🦷 {jaws.filter(({ id }) => earned.includes(id)).length} / {jaws.length}</p>
+      <div className="jaw-shelf-status">{audioControl}<p className="jaw-shelf-count" aria-label={text.jawCollection}>🦷 {jaws.filter(({ id }) => earned.includes(id)).length} / {jaws.length}</p></div>
       <div className="jaw-shelves" role="group" aria-label={text.jawShelf}>
         {rows.map((row, index) => <section className="jaw-shelf-row" key={index}>
           <div className="jaw-shelf-labels">{[...new Set(row.map(({ diet }) => diet))].map((diet) => <span key={diet}><span aria-hidden="true">{diet === "meat" ? "🥩" : "🌿"}</span> {text.jawFoods[diet]}</span>)}</div>
@@ -61,14 +62,14 @@ export function WhoseJawShelfScreen({ language, jaws, earned, jawFor, gummyFor, 
         </section>)}
       </div>
     </div>
-    {selected && card && <JawCard key={selected.id} jaw={selected} language={language} jawPicture={jawFor(selected.id)} gummyPicture={gummyFor(selected.id)}
+    {selected && card && <JawCard audioControl={audioControl} key={selected.id} jaw={selected} language={language} jawPicture={jawFor(selected.id)} gummyPicture={gummyFor(selected.id)}
       pitch={0.8 + jaws.indexOf(selected) * 0.04} sounds={sounds} voice={voice} startTimer={startTimer} leaving={card.leaving}
       onClose={() => setCard({ ...card, leaving: true })} onGone={() => setCard(undefined)} />}
   </main>;
 }
 
-function JawCard({ jaw, language, jawPicture, gummyPicture, pitch, sounds, voice, startTimer, leaving, onClose, onGone }: {
-  jaw: ShelfJaw; language: Language; jawPicture: string; gummyPicture: string; pitch: number;
+function JawCard({ audioControl, jaw, language, jawPicture, gummyPicture, pitch, sounds, voice, startTimer, leaving, onClose, onGone }: {
+  audioControl?: ReactNode; jaw: ShelfJaw; language: Language; jawPicture: string; gummyPicture: string; pitch: number;
   sounds: ShelfSounds; voice: ShelfVoice; startTimer: StartTimer; leaving: boolean; onClose(): void; onGone(): void;
 }) {
   const text = TEXTS[language];
@@ -100,10 +101,16 @@ function JawCard({ jaw, language, jawPicture, gummyPicture, pitch, sounds, voice
     onClick={(event) => { if (event.target === event.currentTarget && !leaving) onClose(); }}
     onKeyDown={(event) => {
       if (event.key === "Escape" && !leaving) { event.stopPropagation(); onClose(); }
-      if (event.key === "Tab") { event.preventDefault(); close.current?.focus(); }
+      if (event.key === "Tab") {
+        const buttons = overlay.current?.querySelectorAll<HTMLButtonElement>("button");
+        const first = buttons?.[0];
+        const last = buttons?.[buttons.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
     }}>
     <section className="jaw-shelf-card" role="dialog" aria-modal="true" aria-labelledby={title}>
-      <Button ref={close} className="home-button" aria-disabled={leaving} onClick={() => { if (!leaving) onClose(); }}><X aria-hidden="true" />{text.back}</Button>
+      <header className="jaw-card-controls"><Button ref={close} className="home-button" aria-label={text.back} aria-disabled={leaving} onClick={() => { if (!leaving) onClose(); }}><X aria-hidden="true" /><span>{text.back}</span></Button>{audioControl}</header>
       <h2 id={title}>{jaw.name[language].toLocaleUpperCase(language)}</h2>
       <div className="jaw-card-pictures">
         <PictureImage look={gummyLook} className="jaw-card-dinosaur" src={gummyPicture} alt={jaw.name[language].toLocaleUpperCase(language)} width={800} height={600} />

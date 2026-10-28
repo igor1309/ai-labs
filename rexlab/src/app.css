@@ -11602,7 +11602,7 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
   color: #1d2742;
   animation: fade-in var(--motion-screen) var(--ease-out) both;
 }
-.whose-jaw-welcome header { display: flex; }
+.whose-jaw-welcome header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .whose-jaw-welcome-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -11832,7 +11832,24 @@ html[data-size="tall-narrow"] .jaw-shelf-name { height: 42px; font-size: 12px; l
 html[data-size="tall-narrow"] .jaw-shelf-picture { height: calc(100% - 42px); }
 .jaw-card-scrim { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: #0f1320aa; animation: fade-in var(--motion-small) var(--ease-out) both; }
 .jaw-shelf-card { box-sizing: border-box; width: min(640px, 100%); max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: none; padding: 20px; border-radius: 28px; background: #fffdf8; color: #1d2742; text-align: center; animation: rise-in var(--motion-screen) var(--ease-out) both; }
-.jaw-shelf-card > button { margin-left: auto; }
+.jaw-card-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.jaw-shelf-status { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
+.jaw-shelf-status .jaw-shelf-count { margin: 0; }
+.game-audio-button { flex-shrink: 0; min-width: 48px; min-height: 48px; gap: 8px; font-size: 16px; }
+.game-audio-button svg { animation: fade-in var(--motion-small) var(--ease-out) both; }
+.game-audio-button:focus-visible { outline: 3px solid #c9583d; outline-offset: 3px; }
+.jaw-result-audio { display: flex; justify-content: flex-end; width: 100%; }
+.whose-jaw-board-bar[data-audio] { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; }
+.whose-jaw-board-bar[data-audio] .jaw-teeth { justify-content: center; }
+html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] { grid-template-columns: 48px minmax(0, 1fr) 48px 48px; gap: 8px; }
+html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .home-button { box-sizing: border-box; width: 48px; min-width: 48px; height: 48px; padding: 12px; gap: 0; }
+html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .home-button span { display: none; }
+html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .jaw-socket { box-sizing: border-box; width: clamp(22px, 6vw, 32px); flex-shrink: 0; border-width: 2px; font-size: 18px; }
+html[data-size="tall-narrow"] .game-audio-button { padding: 8px 12px; }
+html[data-size="tall-narrow"] .whose-jaw-welcome header > .home-button:first-child,
+html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child { box-sizing: border-box; width: 48px; min-width: 48px; padding: 12px; gap: 0; }
+html[data-size="tall-narrow"] .whose-jaw-welcome header > .home-button:first-child span,
+html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span { display: none; }
 .jaw-shelf-card h2 { margin: 12px 0; font-size: clamp(24px, 3vw, 36px); overflow-wrap: anywhere; }
 .jaw-card-pictures { display: flex; align-items: center; justify-content: center; height: min(30vh, 240px); height: min(30dvh, 240px); }
 .jaw-card-dinosaur { width: 65%; height: 100%; object-fit: contain; }
