@@ -135,6 +135,20 @@ struct SystemClockTests {
         #expect(await binding.pendingSleeps == 0)
     }
 
+    @Test func countdownStepsOneSecondByDefault() async {
+        let binding = ManualClock()
+        let clock = SystemClock(now: { binding.now }, sleep: { try await binding.sleep(until: $0) })
+        let start = binding.now
+        let reader = Task { for await _ in clock.countdown(from: 3) {} }
+        var requests = binding.requests.makeAsyncIterator()
+
+        let first = await requests.next()
+        reader.cancel()
+        await reader.value
+
+        #expect(first.map { start.duration(to: $0) } == .seconds(1))
+    }
+
     @Test(arguments: StreamKind.allCases)
     func endingReadingCancelsThePendingBindingSleep(kind: StreamKind) async {
         let binding = ManualClock()
