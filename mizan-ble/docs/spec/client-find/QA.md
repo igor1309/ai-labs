@@ -1,6 +1,6 @@
 # Client find — QA
 
-Driven through its reducer as tables, and through the machine with a fake
+Driven through its reducer as tables, and its effect handler with a fake
 scanner. Picker answers and Bluetooth states are events the test sends.
 Rows read the state and what the scanner fake recorded.
 

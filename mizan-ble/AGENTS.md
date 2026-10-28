@@ -98,9 +98,9 @@ How any component, core, adapter or UI module, goes from issue to trunk.
   Bluetooth is never the thing under test; the user spec on a real iPad and
   iPhone proves the binding.
 - Each Codex run on a core or adapter is reviewed with agister's review
-  processes before it merges. Name the machine's spec in the review goal:
-  its `## Decided` fixes the order of events, effects and results, and a
-  reviewer without it reports interleavings the loop cannot produce.
+  processes before it merges. Name the app spec in the review goal: its
+  `## Decided` fixes how the model orders events, effects and results, and
+  a reviewer without it reports interleavings the loop cannot produce.
 - A change to behaviour, a fix included, goes spec change, then build, then
   review.
 

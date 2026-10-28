@@ -3,6 +3,22 @@ import Testing
 
 @MainActor
 struct HostPaymentTests {
+    @Test func effectsRunBeforeReturningTheirStreams() async {
+        let cases: [(HostPayment.Effect, Ports.Call, HostPayment.Event)] = [
+            (.open([7]), .open([7]), .opened(.decline)),
+            (.seal(.acknowledgement), .seal(.acknowledgement), .sealed(.acknowledgement, [83, 17])),
+            (.send(.acknowledgement, [83, 17]), .send([83, 17]), .sent(.acknowledgement)),
+            (.closeSession, .close, .sessionClosed),
+            (.endLink, .end, .linkEnded),
+        ]
+        for (effect, call, expected) in cases {
+            let flow = Flow()
+            let stream = flow.handler.handle(effect)
+            #expect(flow.ports.calls == [call])
+            #expect(await collect(stream) == [expected])
+        }
+    }
+
     @Test func waitingForClient() {
         let flow = Flow(amount: "124.50")
         #expect(flow.state.amount == "124.50")
@@ -29,7 +45,7 @@ struct HostPaymentTests {
         let flow = Flow()
         flow.ports.decision = .confirm
         let open = flow.reduce(.message([7]))
-        let opened = await flow.handler.handle(try #require(open))
+        let opened = await flow.handle(try #require(open))
         let acknowledgement = flow.reduce(try #require(opened))
         #expect(flow.state.phase == .choosingOutcome)
         #expect(!flow.state.canEnterNewAmount)
@@ -166,7 +182,7 @@ struct HostPaymentTests {
                     acknowledgement = nil
                 } else if steps == 1 {
                     let current = try #require(acknowledgement)
-                    let event = try #require(await flow.handler.handle(current))
+                    let event = try #require(await flow.handle(current))
                     acknowledgement = flow.reduce(event)
                 }
                 let result = flow.reduce(.outcome(outcome))
@@ -205,7 +221,7 @@ struct HostPaymentTests {
                 #expect(effect == expected)
                 expectNewAmountBlocked()
                 let current = try #require(effect)
-                let event = try #require(await flow.handler.handle(current))
+                let event = try #require(await flow.handle(current))
                 expectNewAmountBlocked()
                 effect = flow.reduce(event)
             }
@@ -249,7 +265,7 @@ struct HostPaymentTests {
         let flow = Flow()
         flow.ports.decision = .confirm
         let open = try #require(flow.reduce(.message([7])))
-        let opened = try #require(await flow.handler.handle(open))
+        let opened = try #require(await flow.handle(open))
         let acknowledgement = try #require(flow.reduce(opened))
         #expect(flow.state.phase == .choosingOutcome)
         #expect(flow.reduce(.outcome(outcome)) == nil)
@@ -289,7 +305,7 @@ struct HostPaymentTests {
         switch message {
         case .acknowledgement:
             let open = try #require(flow.reduce(.message([7])))
-            let opened = try #require(await flow.handler.handle(open))
+            let opened = try #require(await flow.handle(open))
             effect = flow.reduce(opened)
         case .result(let outcome):
             flow.ports.decision = .confirm
@@ -300,7 +316,7 @@ struct HostPaymentTests {
         }
         if sealed {
             let sealing = try #require(effect)
-            let event = try #require(await flow.handler.handle(sealing))
+            let event = try #require(await flow.handle(sealing))
             effect = flow.reduce(event)
         }
         #expect(effect != nil)
@@ -357,11 +373,16 @@ private final class Flow {
         await drain(reduce(event))
     }
 
+    func handle(_ effect: HostPayment.Effect) async -> HostPayment.Event? {
+        let events = await collect(handler.handle(effect))
+        #expect(events.count == 1)
+        return events.first
+    }
+
     func drain(_ first: HostPayment.Effect?) async {
-        var effect = first
-        while let current = effect {
-            guard let event = await handler.handle(current) else { return }
-            effect = reduce(event)
+        guard let first else { return }
+        for await event in handler.handle(first) {
+            await drain(reduce(event))
         }
     }
 }
@@ -399,4 +420,11 @@ private final class Ports: HostPayment.Session, HostPayment.Sender, HostPayment.
 
     func close() { calls.append(.close) }
     func end() { calls.append(.end) }
+}
+
+@MainActor
+private func collect(_ stream: AsyncStream<HostPayment.Event>) async -> [HostPayment.Event] {
+    var events: [HostPayment.Event] = []
+    for await event in stream { events.append(event) }
+    return events
 }
