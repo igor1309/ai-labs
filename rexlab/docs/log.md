@@ -8,6 +8,8 @@
 - Picture puzzle pieces can be dragged, tapped or placed with the keyboard, with a four-piece tray, hints and a full-picture preview (LAB-669).
 - Finished pictures reveal a dinosaur fact and a round star, save a shared collection, and celebrate new collection bests independently at each difficulty (LAB-669).
 - The picture puzzle is available from its own home tile and featured card, both showing the shared collection (LAB-669).
+- LABYRINTH generates fresh random mazes at all three levels, with long wrong turns and no repeated board on replay (LAB-668).
+- LABYRINTH opens from its tile or featured card, rewards every reunion with three saved stars and keeps the child's level choice; hints leave rewards whole and restart the next-level offer streak (LAB-668).
 
 ## 2026-10-26
 

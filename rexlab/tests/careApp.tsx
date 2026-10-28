@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { render, screen } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { App, type AppProps, type PortraitLayouts } from "../src/App.tsx";
@@ -57,7 +58,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
   deviceLanguage = "en-GB"
 }: CareAppOptions<C> = {}) {
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

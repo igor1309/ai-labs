@@ -1,3 +1,4 @@
+import { NO_LABYRINTH, type LabyrinthProgress } from "./labyrinth/index.ts";
 import { isAgeLevel } from "./ageLevel.ts";
 import { NO_CARE, type CareProgress } from "./care/index.ts";
 import { NO_DIG, TREASURE_KINDS, type DigProgress, type Treasures } from "./dig/index.ts";
@@ -106,6 +107,25 @@ export function localCareProgress(storage: () => KeyValueStorage) {
 // The sorting game's progress, beside the others' in the same record.
 export function localSortingProgress(storage: () => KeyValueStorage) {
   return levelledProgress(storage, "sort-dinosaurs", NO_SORTING);
+}
+
+// Labyrinth rewards share the record, while a board itself is never saved.
+export function localLabyrinthProgress(storage: () => KeyValueStorage) {
+  type Saved = { progress: LabyrinthProgress; levelChoice: LevelChoice | undefined; offer: LevelOffer };
+  const entry = gameProgress<Saved>(storage, "labyrinth", { progress: NO_LABYRINTH, levelChoice: undefined, offer: NO_LEVEL_OFFER }, (raw) => {
+    const { progress, levelChoice, offer } = raw;
+    if (!isObject(progress) || !isObject(progress.best)) return undefined;
+    const { stars, roundsPlayed, best } = progress;
+    if (!Number.isSafeInteger(stars) || (stars as number) < 0 || !Number.isSafeInteger(roundsPlayed) || (roundsPlayed as number) < 0) return undefined;
+    const score = (value: unknown): value is number | null => value === null || (Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 3);
+    if (!score(best.hatchling) || !score(best.explorer) || !score(best.paleontologist)) return undefined;
+    const choice = choiceOf(levelChoice);
+    return {
+      progress: { stars: stars as number, roundsPlayed: roundsPlayed as number, best: { hatchling: best.hatchling, explorer: best.explorer, paleontologist: best.paleontologist } },
+      levelChoice: choice, offer: readOffer(offer)
+    };
+  });
+  return { load: entry.load, save: entry.save };
 }
 
 // A game's best on each level, its finished rounds and the child's last

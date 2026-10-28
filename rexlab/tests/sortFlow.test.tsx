@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -57,7 +58,7 @@ function openApp({
   sortingProgress?: SortingProgressStore;
 } = {}) {
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

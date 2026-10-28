@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -28,9 +29,8 @@ import {
 } from "./support.ts";
 
 // The start counts of the feature's draw: COMPARE 9, ANCIENT REPTILES 4,
-// FIND THE PAIR 3, SKELETONS 2, DIG 2, SAND WRITING 2, SORT 5, CARE 2
-// and PICTURE PUZZLE 2.
-const STARTS: Record<HomeGame, number> = { compare: 9, catalogue: 4, pairs: 3, skeletons: 2, dig: 2, sandWriting: 2, picturePuzzle: 2, sort: 5, care: 2 };
+// FIND THE PAIR 3, SKELETONS 2, DIG 2, SAND WRITING 2, SORT 5, CARE 2 and LABYRINTH 2.
+const STARTS: Record<HomeGame, number> = { compare: 9, catalogue: 4, pairs: 3, skeletons: 2, dig: 2, sandWriting: 2, sort: 5, care: 2, labyrinth: 2, picturePuzzle: 2 };
 
 const TODAY = "2026-10-18";
 const YESTERDAY = "2026-10-17";
@@ -61,19 +61,18 @@ function shares<Game extends string>(games: readonly Game[], starts: Record<stri
 }
 
 describe("choosing the featured game", () => {
-  it("gives each least-started game two chances in fourteen and each other game one", () => {
+  it("gives the games started least a weight of 2 and every other game 1: CARE, SKELETONS, DIG, SAND WRITING and LABYRINTH 2 chances in 16 each", () => {
     const weights = weightsOf(HOME_GAMES.map((game) => STARTS[game]));
 
-    expect(weights).toEqual([1, 1, 1, 2, 2, 1, 2, 2, 2]);
-    expect(shares(HOME_GAMES, STARTS)).toEqual({ compare: 72, catalogue: 71, pairs: 72, skeletons: 143, dig: 142, sort: 72, care: 143, sandWriting: 143, picturePuzzle: 142 });
+    expect(weights).toEqual([1, 1, 1, 2, 2, 1, 2, 2, 2, 2]);
+    expect(shares(HOME_GAMES, STARTS)).toEqual({ compare: 63, catalogue: 62, pairs: 63, skeletons: 125, dig: 125, sort: 62, care: 125, sandWriting: 125, labyrinth: 125, picturePuzzle: 125 });
   });
 
   it.each([
-    [0, "compare"], [1 / 14 - 0.001, "compare"], [1 / 14, "catalogue"], [2 / 14 - 0.001, "catalogue"],
-    [2 / 14, "pairs"], [3 / 14 - 0.001, "pairs"], [3 / 14, "skeletons"], [5 / 14 - 0.001, "skeletons"],
-    [5 / 14, "dig"], [7 / 14 - 0.001, "dig"], [7 / 14, "sort"], [8 / 14 - 0.001, "sort"],
-    [8 / 14, "care"], [10 / 14 - 0.001, "care"], [10 / 14, "sandWriting"], [12 / 14 - 0.001, "sandWriting"],
-    [12 / 14, "picturePuzzle"], [0.999, "picturePuzzle"]
+    [0, "compare"], [1 / 16 - 0.001, "compare"], [1 / 16, "catalogue"], [2 / 16 - 0.001, "catalogue"],
+    [2 / 16, "pairs"], [3 / 16 - 0.001, "pairs"], [3 / 16, "skeletons"], [5 / 16 - 0.001, "skeletons"],
+    [5 / 16, "dig"], [7 / 16 - 0.001, "dig"], [7 / 16, "sort"], [8 / 16 - 0.001, "sort"],
+    [8 / 16, "care"], [10 / 16 - 0.001, "care"], [10 / 16, "sandWriting"], [12 / 16 - 0.001, "sandWriting"], [12 / 16, "labyrinth"], [14 / 16 - 0.001, "labyrinth"], [14 / 16, "picturePuzzle"], [0.999, "picturePuzzle"]
   ] as const)("maps the draw %s to %s, in tile order", (draw, game) => {
     expect(chooseFeatured(HOME_GAMES, { store: featuredSpy(record(STARTS)), random: () => draw, today: TODAY })).toBe(game);
   });
@@ -110,7 +109,7 @@ describe("choosing the featured game", () => {
   it("saves the game drawn with today's date", () => {
     const store = featuredSpy(record(STARTS));
 
-    expect(chooseFeatured(HOME_GAMES, { store, random: () => 0.65, today: TODAY })).toBe("care");
+    expect(chooseFeatured(HOME_GAMES, { store, random: () => 0.55, today: TODAY })).toBe("care");
     expect(store.history()).toEqual(record(STARTS, { game: "care", on: TODAY }));
   });
 
@@ -128,8 +127,8 @@ describe("choosing the featured game", () => {
     const starts: Record<string, number> = { compare: 1, catalogue: 1, care: 1, sort: 1, pairs: 1, skeletons: 1 };
     const games = HOME_GAMES;
 
-    expect(weightsOf(games.map((game) => starts[game] ?? 0))).toEqual([1, 1, 1, 1, 2, 1, 1, 2, 2]);
-    expect(shares(games, starts, { game: "care", on: YESTERDAY })).toEqual({ compare: 84, catalogue: 83, pairs: 83, skeletons: 84, dig: 166, sort: 84, care: 83, sandWriting: 167, picturePuzzle: 166 });
+    expect(weightsOf(games.map((game) => starts[game] ?? 0))).toEqual([1, 1, 1, 1, 2, 1, 1, 2, 2, 2]);
+    expect(shares(games, starts, { game: "care", on: YESTERDAY })).toEqual({ compare: 72, catalogue: 71, pairs: 72, skeletons: 71, dig: 143, sort: 71, care: 72, sandWriting: 143, labyrinth: 143, picturePuzzle: 142 });
   });
 
   it.each([
@@ -146,7 +145,7 @@ describe("choosing the featured game", () => {
   it("chooses afresh when today's saved game is no longer offered", () => {
     const store = featuredSpy(record(STARTS, { game: "fossils", on: TODAY }));
 
-    expect(chooseFeatured(HOME_GAMES, { store, random: () => 0.35, today: TODAY })).toBe("skeletons");
+    expect(chooseFeatured(HOME_GAMES, { store, random: () => 0.25, today: TODAY })).toBe("skeletons");
     expect(store.history().lastFeatured).toEqual({ game: "skeletons", on: TODAY });
   });
 
@@ -172,7 +171,7 @@ describe("a calendar day", () => {
 // `draw`.
 function openApp(store: FeaturedStore, clock: { time: Date }, draw = 0) {
   return render(
-    <App
+    <App {...emptyLabyrinth()}
       now={() => clock.time}
       featuredStore={store}
       startCounter={countedStarts().startCounter}
@@ -202,7 +201,7 @@ describe("the featured game in the app", () => {
   it("is drawn at start from the start counts with the random source", () => {
     const store = featuredSpy(record(STARTS));
 
-    openApp(store, { time: new Date(2026, 9, 18, 9, 0) }, 0.75);
+    openApp(store, { time: new Date(2026, 9, 18, 9, 0) }, 0.65);
 
     expect(featuredGame()).toBe("care");
     expect(store.history().lastFeatured).toEqual({ game: "care", on: TODAY });

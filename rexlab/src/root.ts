@@ -12,7 +12,7 @@ import { HOME_GAMES } from "./HomePage.tsx";
 import { itemPictures } from "./itemPictures.ts";
 import { localAgeLevel } from "./localAgeLevel.ts";
 import { localLanguage } from "./localLanguage.ts";
-import { localCareProgress, localDigProgress, localFeatured, localPairsProgress, localPicturePuzzleChoice, localPicturePuzzleProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
+import { localLabyrinthProgress, localCareProgress, localDigProgress, localFeatured, localPairsProgress, localPicturePuzzleChoice, localPicturePuzzleProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
 import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
@@ -297,6 +297,7 @@ export function appProps(browser: Browser): AppProps {
     careProgress: localCareProgress(storage),
     sortables: readSortables(records),
     sortingProgress: localSortingProgress(storage),
+    labyrinthProgress: localLabyrinthProgress(storage),
     pals: readPals(records, drawn),
     pairsProgress: localPairsProgress(storage),
     itemPicture: itemPictures(CARE_PICTURES, CARE_PICTURE_NAMES),

@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act, render, screen, within } from "@testing-library/react";
@@ -147,7 +148,7 @@ function openTurning(
     return box;
   };
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -493,15 +494,15 @@ describe("under reduced motion", () => {
 });
 
 describe("a turn keeps the tiles the child was looking at, there and back", () => {
-  // The row with COMPARE featured holds four columns 310 wide and 24
+  // The row with COMPARE featured holds five columns 310 wide and 24
   // apart, upright as in landscape at these windows: SKELETONS stands at
-  // its left edge at 334, and its end is at 718 in landscape and 548
+  // its left edge at 334, and its end is at 1052 in landscape and 882
   // upright.
   it.each([
     ['so "SKELETONS" stands exactly at its left edge', 334, 334, 334],
     ['so 60 pixels of "SKELETONS" are hidden', 334 + 60, 334, 334],
     ['so 200 of "ANCIENT REPTILES" are hidden', 200, 334, 334],
-    ["to their end", 718, 548, 718]
+    ["to their end", 1052, 882, 1052]
   ] as const)("swiped %s", (_, swiped, upright, back) => {
     const app = openTurning(1180, 820, "wide");
     const row = layOutTilesRow();
@@ -509,11 +510,11 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
 
     app.resize([820, 1180, "tall"]);
 
-    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([upright, 548]);
+    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([upright, 882]);
     act(() => app.pictures.fire(GLIDE));
     app.resize([1180, 820, "wide"]);
 
-    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([back, 718]);
+    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([back, 1052]);
   });
 
   // At 375 wide, on 20-pixel sides, the columns are 307 wide and 24
@@ -544,19 +545,19 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
     expect(row.scrollLeft).toBe(334);
   });
 
-  // Upright in a window 1400 wide, the four columns stand 310 wide and
+  // Upright in a window 1800 wide, the five columns stand 310 wide and
   // fit, the row not scrolling.
   it.each([
     ['"SKELETONS" at its left edge', 334],
-    ["at their end", 718]
+    ["at their end", 1052]
   ] as const)("swiped with %s, stands at its start once a window it fits has settled, and there in the next", (_, swiped) => {
     const app = openTurning(1180, 820, "wide");
     const row = layOutTilesRow();
     swipeTiles(row, swiped);
 
-    app.resize([1400, 1500, "tall"]);
+    app.resize([1800, 1900, "tall"]);
 
-    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([0, -32]);
+    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([0, -98]);
     act(() => app.pictures.fire(GLIDE));
     app.resize([1180, 820, "wide"]);
 
@@ -565,16 +566,16 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
 });
 
 describe("a turn through the picture asking to turn keeps the tiles the child was looking at", () => {
-  // Upright in a window 1400 wide, the four columns fit, the row not
+  // Upright in a window 1800 wide, the five columns fit, the row not
   // scrolling, so it stands at its start, though the child left it at its
   // end before the picture showed.
   it("stands at its start once a window it fits has settled after the picture, and there in the next", () => {
     const app = openTurning(1180, 820, "wide");
     const row = layOutTilesRow();
-    swipeTiles(row, 718);
+    swipeTiles(row, 1052);
 
     app.resize([393, 852, "tall-narrow"]);
-    app.resize([1400, 1500, "tall"]);
+    app.resize([1800, 1900, "tall"]);
 
     expect([gate().hasAttribute("data-shown"), turning(), row.scrollLeft]).toEqual([false, false, 0]);
 
@@ -865,7 +866,8 @@ describe("the page's marked parts", () => {
       ["DIG", "tile-dig"],
       ["SORT", "tile-sort"],
       ["CARE", "tile-care"],
-      ["SAND WRITING", "tile-sandWriting"]
+      ["SAND WRITING", "tile-sandWriting"],
+      ["LABYRINTH", "tile-labyrinth"]
     ]);
   });
 });

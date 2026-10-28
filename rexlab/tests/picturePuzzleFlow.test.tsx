@@ -12,7 +12,7 @@ import { localLanguage } from "../src/localLanguage.ts";
 import { localPicturePuzzleChoice, localPicturePuzzleProgress, PROGRESS_KEY } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import type { Theme } from "../src/theme.ts";
-import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, emptyCare, emptyDig, emptyPairs, emptyProgress, emptySkeletons, emptySorting,
+import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, emptyCare, emptyLabyrinth, emptyDig, emptyPairs, emptyProgress, emptySkeletons, emptySorting,
   fakeBodyPicture, featuring, manualPictures, manualVisibility, manualViewport, memoryStorage, pageAtRest, seededRandom, type MemoryStorage } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
 import { openWindow } from "./windowSizes.ts";
@@ -34,7 +34,7 @@ function openApp(storage: MemoryStorage, language: Language, theme: Theme, featu
     viewport, portraitLayouts: { home: ["tall", "tall-narrow"] },
     progress: emptyProgress(), deviceLanguage: "en-GB", languageStore: localLanguage(() => storage), nameVersion: () => {},
     appearance: { isDark: () => false, subscribe: () => () => {} }, themeStore: localTheme(() => storage), ageLevelStore: localAgeLevel(() => storage),
-    ...emptyCare(), ...emptyDig(), ...emptyPairs(), ...emptySkeletons(), ...emptySorting(), ...pageAtRest(), ...featuring(featured),
+    ...emptyLabyrinth(), ...emptyCare(), ...emptyDig(), ...emptyPairs(), ...emptySkeletons(), ...emptySorting(), ...pageAtRest(), ...featuring(featured),
     ...pictures, pageVisibility, startCounter: { countStart }, reducedMotion: () => reduced
   };
   return { ...render(<App {...props} />), viewport, pictures, pageVisibility, countStart };

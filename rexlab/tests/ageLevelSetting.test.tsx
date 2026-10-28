@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -56,7 +57,7 @@ function openApp({ storage = memoryStorage(), language = "en" }: { storage?: Mem
   const featured = localFeatured(local, HOME_GAMES);
   const timers = manualTimers();
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -243,7 +244,7 @@ describe("a chosen level", () => {
     // The pre-level quiz and sorting bests belong to Hatchling: changing
     // the setting changes their badges to that level's best
     // (docs/age-levels.md).
-    expect(badges).toEqual([null, String(SHIPPED_CATALOGUE.length), "40", "2", null, null, null, null, "6"]);
+    expect(badges).toEqual([null, String(SHIPPED_CATALOGUE.length), "40", "2", null, null, null, null, null, "6"]);
     const hatchlingBadges = [...badges];
     hatchlingBadges[0] = "7";
     hatchlingBadges[5] = "5";
