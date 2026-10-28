@@ -292,8 +292,7 @@ public enum SessionReducer {
             recordFailure(&state, piece, error)
             if piece == .folder { state.cannotRecord = "folder: \(error)" }
             else { updateRecordability(&state) }
-            if case let .capture(side) = piece { return stopFailedCapture(&state, side) }
-            return (state, nil)
+            return stopFailedCaptures(&state)
 
         case let .folderFinished(error):
             guard state.folder == .starting else { return (state, nil) }
@@ -359,6 +358,7 @@ public enum SessionReducer {
             guard state.capture(for: side) == .stopping else { return (state, nil) }
             setCapture(&state, side, .closed)
             if let error { recordFailure(&state, .capture(side), error) }
+            if state.phase != .ending { return stopFailedCaptures(&state) }
             return nextDown(&state)
 
         case let .trackClosed(side, error):
@@ -388,7 +388,7 @@ public enum SessionReducer {
                 return switchLiveText(&state)
             }
             if state.phase == .ending { return nextDown(&state) }
-            return (state, nil)
+            return stopFailedCaptures(&state)
 
         case let .callTextStatusChanged(status):
             guard state.phase == .bringingUp || state.phase == .recording,
@@ -425,15 +425,20 @@ public enum SessionReducer {
     }
 
     /// Ending stops every capture still up, so only bring-up and recording stop one here,
-    /// and only between operations, so that one runs at a time.
-    private static func stopFailedCapture(_ state: inout SessionState, _ side: SessionSide) -> (SessionState, SessionEffect?) {
+    /// and only between operations, so that one runs at a time. A capture that fails while
+    /// another operation is in flight waits for it: each completion outside ending looks again.
+    private static func stopFailedCaptures(_ state: inout SessionState) -> (SessionState, SessionEffect?) {
 
-        guard state.phase != .ending, state.capture(for: side) == .up, state.pendingLiveText == nil else { return (state, nil) }
+        guard state.phase != .ending, state.pendingLiveText == nil else { return (state, nil) }
         let pieces = [state.folder, state.processes, state.microphoneCapture, state.callCapture,
                       state.microphoneTrack, state.callTrack, state.callText, state.transcript]
         guard !pieces.contains(.starting), !pieces.contains(.stopping) else { return (state, nil) }
-        setCapture(&state, side, .stopping)
-        return (state, .stopCapture(side))
+        for side in [SessionSide.microphone, .call]
+        where state.capture(for: side) == .up && state.health(of: .capture(side)).isFailed {
+            setCapture(&state, side, .stopping)
+            return (state, .stopCapture(side))
+        }
+        return (state, nil)
     }
 
     private static func addFailure(_ state: inout SessionState, _ failure: SessionFailure) {
@@ -481,7 +486,7 @@ public enum SessionReducer {
             state.cannotRecord = "no track can record"
             state.phase = .bringingUp
         }
-        return (state, nil)
+        return stopFailedCaptures(&state)
     }
 
     private static func setTrack(_ state: inout SessionState, _ side: SessionSide, _ status: SessionState.PieceStatus) {
@@ -492,6 +497,13 @@ public enum SessionReducer {
     private static func setCapture(_ state: inout SessionState, _ side: SessionSide, _ status: SessionState.PieceStatus) {
 
         if side == .microphone { state.microphoneCapture = status } else { state.callCapture = status }
+    }
+}
+
+private extension SessionState.Health {
+
+    var isFailed: Bool {
+        if case .failed = self { true } else { false }
     }
 }
 
