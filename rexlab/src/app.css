@@ -12404,6 +12404,6 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 
 /* The maze name keeps its route symbol beside it at tablet tile widths. */
 .labyrinth-tile-title {
-  font-size: 22px;
+  font-size: 24px;
   letter-spacing: 1px;
 }

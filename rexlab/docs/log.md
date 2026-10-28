@@ -3,7 +3,7 @@
 ## 2026-10-28
 
 - LABYRINTH generates fresh random mazes at all three levels, with long wrong turns and no repeated board on replay (LAB-668).
-- LABYRINTH brings a baby dinosaur home through three maze levels, with hints, a three-star reunion, level offers and saved stars on its home card (LAB-668).
+- LABYRINTH opens from its tile or featured card, rewards every reunion with three saved stars and keeps the child's level choice; hints leave rewards whole and restart the next-level offer streak (LAB-668).
 
 ## 2026-10-26
 

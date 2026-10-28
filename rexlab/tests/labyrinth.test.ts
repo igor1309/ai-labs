@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { adjacentPaths, hintInMaze, isPath, mazeSolved, moveInMaze, nextMaze, startMaze, type Maze, type MazeLevel } from "../src/labyrinth/index.ts";
+import { describe, expect, it, vi } from "vitest";
+import { adjacentPaths, hintInMaze, isPath, mazeSolved, moveInMaze, nextMaze, rewardMaze, startMaze, type Maze, type MazeLevel } from "../src/labyrinth/index.ts";
 
 const paths = (maze: Maze) => maze.rows.flatMap((row, y) => [...row].flatMap((cell, x) => cell === "." ? [y * row.length + x] : []));
 
@@ -230,6 +230,27 @@ describe("optional one-step help", () => {
         expect(moved.hint).toBeUndefined();
         expect(mazeSolved(moved)).toBe(helped.hint === maze.goal);
       }
+    }
+  });
+});
+
+describe("labyrinth rewards", () => {
+  it.each(["hatchling", "explorer", "paleontologist"] as const)("scores only a solved %s round through the given best rule, preserving other bests and inputs", (level) => {
+    const maze: Maze = { id: "reward", level, rows: ["..."], start: 0, goal: 2 };
+    for (const hinted of [false, true]) {
+      const round = { ...startMaze(maze), hinted };
+      const progress = { stars: 12, roundsPlayed: 4, best: { hatchling: 1, explorer: 2, paleontologist: 3 } };
+      const beat = vi.fn(() => ({ best: 3, celebration: "new-best" as const }));
+      expect(rewardMaze(round, progress, beat)).toBeUndefined();
+      expect(beat).not.toHaveBeenCalled();
+      const reward = rewardMaze({ ...round, position: maze.goal }, progress, beat);
+      expect(beat).toHaveBeenCalledExactlyOnceWith(progress.best[level], 3);
+      expect(reward).toEqual({
+        progress: { stars: 15, roundsPlayed: 5, best: { ...progress.best, [level]: 3 } },
+        best: 3, celebration: "new-best", beaten: progress.best[level]
+      });
+      expect(progress).toEqual({ stars: 12, roundsPlayed: 4, best: { hatchling: 1, explorer: 2, paleontologist: 3 } });
+      expect(round.position).toBe(maze.start);
     }
   });
 });

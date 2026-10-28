@@ -244,7 +244,7 @@ describe("a chosen level", () => {
     // The pre-level quiz and sorting bests belong to Hatchling: changing
     // the setting changes their badges to that level's best
     // (docs/age-levels.md).
-    expect(badges).toEqual([null, String(SHIPPED_CATALOGUE.length), "40", "2", null, null, null, null, "6"]);
+    expect(badges).toEqual([null, String(SHIPPED_CATALOGUE.length), "40", "2", null, null, null, null, null, "6"]);
     const hatchlingBadges = [...badges];
     hatchlingBadges[0] = "7";
     hatchlingBadges[5] = "5";

@@ -1,4 +1,3 @@
-import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -6,7 +5,7 @@ import { App } from "../src/App.tsx";
 import type { HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localDigProgress, localLabyrinthProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { MARKS_HEIGHT, MARKS_WIDTH } from "../src/SandWritingPicture.tsx";
 import { topLine } from "./homeCorner.ts";
 import { TILE_COUNTS, TITLE_EMS, gamesWidths, linesOf, roomFor, tileTitles, widthOf } from "./homeTitles.ts";
@@ -57,7 +56,7 @@ const UPRIGHT = [
   [712, 1000, 348, 360, 292, 24, false],
   [600, 1400, 604, 504, 310, 210, false],
   [1068, 1500, 688, 520, 305, 25, false],
-  [1400, 1500, 688, 520, 310, 0, false]
+  [1400, 1500, 688, 520, 306, 24, false]
 ] as const;
 
 // An iPad mini upright, home-portrait.feature's "Safe areas stay clear
@@ -90,7 +89,8 @@ function openUpright(
   onTestFinished(() => footer.remove());
   const progress = () => storage;
   render(
-    <App {...emptyLabyrinth()}
+    <App
+      labyrinthProgress={localLabyrinthProgress(progress)}
       {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -341,7 +341,7 @@ describe("the home page upright", () => {
 
 // home-portrait.feature's "Every word fits the tightest tall windows": a
 // best of 7 in COMPARE, 8 in CARE, 6 in SORT and 3 in SKELETONS, 120
-// stars in FIND THE PAIR and 7 dinosaurs dug up in DIG.
+// stars in FIND THE PAIR, 9 in LABYRINTH and 7 dinosaurs dug up in DIG.
 const scored = () =>
   memoryStorage({
     [PROGRESS_KEY]: JSON.stringify({
@@ -352,7 +352,8 @@ const scored = () =>
         "sort-dinosaurs": { bestScore: 6, explorerBest: 6, paleontologistBest: null, roundsPlayed: 2 },
         "find-the-pair": { stars: 120, level: 1, boardsOnLevel: 0, best: {}, found: [] },
         "skeleton-assembly": { earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] },
-        dig: { dug: SHIPPED_DIG.slice(0, 7).map(({ id }) => id), badges: [] }
+        dig: { dug: SHIPPED_DIG.slice(0, 7).map(({ id }) => id), badges: [] },
+        labyrinth: { progress: { stars: 9, roundsPlayed: 3, best: { hatchling: null, explorer: 3, paleontologist: null } } }
       }
     })
   });
@@ -367,7 +368,7 @@ const COUNTS: Record<HomeGame, string | undefined> = {
   sandWriting: undefined,
   sort: "6",
   care: "8",
-  labyrinth: undefined
+  labyrinth: "9"
 };
 
 const TILE_ORDER: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth"];
@@ -382,7 +383,9 @@ const TIGHTEST: ReadonlyArray<readonly [Language, number, HomeGame]> = [
   ["ru", 700, "compare"],
   ["ru", 677, "skeletons"],
   ["en", 600, "sandWriting"],
-  ["ru", 600, "sandWriting"]
+  ["ru", 600, "sandWriting"],
+  ["en", 600, "labyrinth"],
+  ["ru", 600, "labyrinth"]
 ];
 
 // The large card's name: its size and the lines it takes in a card

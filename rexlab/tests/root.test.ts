@@ -141,6 +141,20 @@ describe("the app in a browser", () => {
     expect(appProps(given).careProgress.load()).toEqual({ bestScore: 7, visitsFinished: 3, friends: ["triceratops"] });
   });
 
+  it("keeps labyrinth rewards, levels and offers in shared local storage and reloads them", () => {
+    const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
+    const saved = {
+      progress: { stars: 6, roundsPlayed: 2, best: { hatchling: 3, explorer: 3, paleontologist: null } },
+      levelChoice: { level: "hatchling" as const, revision: "parent" },
+      offer: { level: "hatchling" as const, strong: 1, declined: ["explorer" as const] }
+    };
+    appProps(given).labyrinthProgress.save(saved);
+    expect(appProps(given).labyrinthProgress.load()).toEqual(saved);
+    expect(appProps(given).progress.load()).toEqual(quizSaved(6, 3));
+    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY)!).games.labyrinth).toEqual(saved);
+    expect([...given.sessionStorage.items]).toEqual([]);
+  });
+
   it("keeps the sorting game's progress beside the quiz's in local storage", () => {
     const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
     const props = appProps(given);
