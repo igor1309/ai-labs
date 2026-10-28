@@ -1,3 +1,4 @@
+import AVFoundation
 import CoreAudioProcesses
 import Darwin
 import Foundation
@@ -7,7 +8,22 @@ import Synchronization
 import Testing
 @testable import Compose
 
-@Suite(.timeLimit(.minutes(1)))
+private let recordingSkipReason: String? = {
+    // A hosted CI runner's microphone capture never ends (PR 1262), and it may
+    // not tap system audio; this runs in the local test step.
+    guard ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] == nil else {
+        return "A hosted CI runner cannot record a real call."
+    }
+    guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
+        return "Microphone access is unavailable; tests do not request permission."
+    }
+    return nil
+}()
+
+@Suite(.serialized, .timeLimit(.minutes(1)), .disabled(
+    if: recordingSkipReason != nil,
+    Comment(rawValue: recordingSkipReason ?? "A real call can be recorded.")
+))
 struct RealRecordingTranscriptTests {
 
     private static let spoken = "The weather is sunny today. Please send the report by Friday. The meeting starts at noon."
