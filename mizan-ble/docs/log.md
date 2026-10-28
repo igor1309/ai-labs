@@ -2,7 +2,7 @@
 
 ## 2026-10-28
 
-- HostBroadcast takes a locked amount through advertising and the handshake to a secure link, with a countdown, cancellation, retry and a fresh amount after payment (LAB-652).
+- HostBroadcast takes a locked amount through advertising and the handshake to a secure link, with a countdown, cancellation, retry and a fresh amount after payment; the session protects the amount before it is sent (LAB-652).
 
 ## 2026-10-27
 

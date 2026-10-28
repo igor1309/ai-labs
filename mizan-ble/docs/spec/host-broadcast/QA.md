@@ -15,7 +15,7 @@ Locked, serving or advertising fails: the state reads the error and 124.50 not l
 
 ## S-3 The countdown ends with no secure link
 
-Advertised, a countdown event reaches zero: advertising stopped, the service retired, the session closed; the state reads timed out with an empty amount. Evidence: HostBroadcastTests.countdownExpiryClearsAmountAndRetiresSession. The same deadline applies throughout the handshake. Evidence: HostBroadcastTests.countdownRemainsHandshakeDeadline.
+Advertised, a countdown event reaches zero: advertising stopped, the service retired, the session closed; the state reads timed out with an empty amount. Evidence: HostBroadcastTests.countdownExpiryClearsAmountAndRetiresSession. The same deadline applies throughout the handshake. Evidence: HostBroadcastTests.countdownRemainsHandshakeDeadline. A queued send executed after expiry sends nothing. Evidence: HostBroadcastTests.queuedSendAfterExpiryDoesNotReachClient.
 
 ## S-4 Cancel while advertising
 
@@ -23,11 +23,11 @@ Advertised, cancel: advertising stopped, the service retired; the state reads 12
 
 ## S-5 A client starts the handshake
 
-Advertised, a client key event with 22 s left: advertising stopped, the service kept; the state reads handshake with 22 left. Evidence: HostBroadcastTests.firstClientKeyKeepsServiceAndRemainingSeconds.
+Advertised, a client key event with 22 s left: advertising stopped, the service kept; the state reads handshake with 22 left. Evidence: HostBroadcastTests.firstClientKeyKeepsServiceAndRemainingSeconds. No handshake step offers or accepts operator actions. Evidence: HostBroadcastTests.handshakeDoesNotOfferCancelOrAnotherAttempt.
 
 ## S-6 The link is secure
 
-A key, the session fake derives, the sender fake records the amount: the state reads handed over, the countdown fake stopped. Evidence: HostBroadcastTests.amountSentHandsOverSecureLinkAndStopsCountdown.
+A key, the session fake derives and protects the amount, the sender fake records only the protected message: the state reads handed over, the countdown fake stopped. Evidence: HostBroadcastTests.keyDerivationQueuesFirstSeal; HostBroadcastTests.amountSentHandsOverSecureLinkAndStopsCountdown. Held sends cannot repeat a handover or target an old attempt while its replacement is sending. Evidence: HostBroadcastTests.queuedSendAfterHandoverOrReplacementIsRejected.
 
 ## S-7 The client's key does not agree
 
@@ -35,11 +35,13 @@ A key the session fake refuses: the state reads failed with both choices; the se
 
 ## S-8 The link drops during the handshake
 
-A key, then link lost at each handshake step: the state reads failed with both choices; the session closed. Evidence: HostBroadcastTests.lostLinkDuringHandshakeOffersBothChoices. Bluetooth loss has the same failure path. Evidence: HostBroadcastTests.bluetoothLossDuringHandshakeFails.
+A key, then link lost at each handshake step: the state reads failed with both choices; the session closed. Evidence: HostBroadcastTests.lostLinkDuringHandshakeOffersBothChoices. Losing another link leaves the selected handshake and resources intact. Evidence: HostBroadcastTests.unrelatedLinkLossLeavesHandshakeIntact. Bluetooth loss has the same failure path. Evidence: HostBroadcastTests.bluetoothLossDuringHandshakeFails.
 
-## S-9 The amount cannot be sent
+## S-9 The amount cannot be protected or sent
 
 A key, derived, the sender fake fails: the state reads failed with both choices; the session closed. Evidence: HostBroadcastTests.amountSendFailureOffersRetryAndNewAmount.
+
+Derived, the session fake cannot protect the amount: the state reads failed with both choices, the sender receives nothing, and the session and service are retired. Evidence: HostBroadcastTests.amountSealFailureOffersRetryAndNewAmount.
 
 ## S-10 Broadcast again
 
@@ -63,4 +65,4 @@ Going on the air, an advertising started event arrives: the countdown fake start
 
 ## S-15 Cancel while going on the air
 
-Locked, cancel before on air, then advertising started arrives: the fake retired that session; the state reads 124.50 not locked and stays so. Evidence: HostBroadcastTests.cancelUnlocksAmountAndIgnoresLateOnAir. Late session creation and countdown startup release their own resources. Evidence: HostBroadcastTests.sessionOpenedAfterCancelIsClosedWithoutTouchingNewAttempt; HostBroadcastTests.lateCountdownStartIsStoppedAfterCancelOrHandover. An old startup failure cannot end a new attempt. Evidence: HostBroadcastTests.staleStartupFailureCannotEndAnotherAttempt.
+Locked, cancel before on air, then advertising started arrives: the fake retired that session; the state reads 124.50 not locked and stays so. Evidence: HostBroadcastTests.cancelUnlocksAmountAndIgnoresLateOnAir. Late session creation and countdown startup release their own resources. Evidence: HostBroadcastTests.sessionOpenedAfterCancelIsClosedWithoutTouchingNewAttempt; HostBroadcastTests.lateCountdownStartIsStoppedAfterCancelOrHandover. An old startup failure cannot end a new attempt. Evidence: HostBroadcastTests.staleStartupFailureCannotEndAnotherAttempt. Every accepting phase rejects old-attempt events, releasing only late old acquisitions. Evidence: HostBroadcastTests.staleEventsCannotChangeReplacementAttempt; HostBroadcastTests.lateAcquisitionsReleaseOnlyOldResources.

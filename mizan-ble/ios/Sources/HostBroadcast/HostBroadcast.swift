@@ -26,8 +26,13 @@ public enum HostBroadcast {
         public let amount: String
     }
 
+    public struct ProtectedAmount: Equatable, Sendable {
+        public let bytes: [UInt8]
+        public init(bytes: [UInt8]) { self.bytes = bytes }
+    }
+
     public enum HandshakeStep: Equatable, Sendable {
-        case stoppingAdvertising, derivingKey, sendingAmount
+        case stoppingAdvertising, derivingKey, sealingAmount, sendingAmount
     }
 
     public enum Phase: Equatable, Sendable {
@@ -71,6 +76,7 @@ public enum HostBroadcast {
         case countdownRead(Attempt, Int), sessionOpened(Attempt, Session), served(Attempt)
         case advertisingRequested(Attempt), countdownStarted(Attempt)
         case advertisingStopped(Attempt), keyDerived(Attempt), amountSent(Attempt)
+        case amountSealed(Attempt, ProtectedAmount)
         case handshakeFailed(Attempt, reason: String)
         case countdownStopped(Attempt, retire: Bool), retired(Attempt)
     }
@@ -78,13 +84,15 @@ public enum HostBroadcast {
     public enum Effect: Equatable, Sendable {
         case readCountdown(Attempt), openSession(Attempt), serve(Attempt, Session)
         case advertise(Attempt), startCountdown(Attempt, Int), stopAdvertising(Attempt)
-        case deriveKey(Attempt, [UInt8]), sendAmount(SecureLink)
+        case deriveKey(Attempt, [UInt8]), sealAmount(Attempt, String)
+        case sendAmount(Attempt, Link, ProtectedAmount)
         case stopCountdown(Attempt, retire: Bool), retire(Attempt), closeSession(Attempt)
     }
 
     @MainActor public protocol SessionProvider {
         func open(for attempt: Attempt) -> Session
         func derive(clientKey: [UInt8], for attempt: Attempt) throws
+        func seal(amount: String, for attempt: Attempt) throws -> ProtectedAmount
         /// Idempotent, including an attempt whose session has not opened yet.
         func close(_ attempt: Attempt)
     }
@@ -100,7 +108,7 @@ public enum HostBroadcast {
 
     @MainActor public protocol Sender {
         /// Takes the protected amount for this session's client, or throws on failure.
-        func sendAmount(_ secureLink: SecureLink) throws
+        func sendAmount(_ message: ProtectedAmount, to link: Link, for attempt: Attempt) throws
     }
 
     @MainActor public protocol Countdown {
@@ -129,7 +137,8 @@ public enum HostBroadcast {
             self.setting = setting
         }
 
-        public func handle(_ effect: Effect) async -> Event? {
+        /// currentState reads the executing machine's live state when the effect runs.
+        public func handle(_ effect: Effect, currentState: () -> State) async -> Event? {
             switch effect {
             case .readCountdown(let attempt):
                 return .countdownRead(attempt, setting.seconds())
@@ -171,12 +180,22 @@ public enum HostBroadcast {
                 } catch {
                     return .handshakeFailed(attempt, reason: String(describing: error))
                 }
-            case .sendAmount(let secure):
+            case .sealAmount(let attempt, let amount):
                 do {
-                    try sender.sendAmount(secure)
-                    return .amountSent(secure.attempt)
+                    let message = try session.seal(amount: amount, for: attempt)
+                    return .amountSealed(attempt, message)
                 } catch {
-                    return .handshakeFailed(secure.attempt, reason: String(describing: error))
+                    return .handshakeFailed(attempt, reason: String(describing: error))
+                }
+            case .sendAmount(let attempt, let link, let message):
+                let state = currentState()
+                guard state.attempt == attempt && state.phase == .handshake(.sendingAmount) else { return nil }
+                // The check and synchronous send share MainActor, so expiry cannot interleave.
+                do {
+                    try sender.sendAmount(message, to: link, for: attempt)
+                    return .amountSent(attempt)
+                } catch {
+                    return .handshakeFailed(attempt, reason: String(describing: error))
                 }
             }
         }
@@ -249,9 +268,13 @@ public enum HostBroadcast {
             return (next, .deriveKey(attempt, key))
         case .keyDerived(let attempt)
             where state.attempt == attempt && state.phase == .handshake(.derivingKey):
-            guard let secure = secureLink(state) else { return (state, nil) }
+            next.phase = .handshake(.sealingAmount)
+            return (next, .sealAmount(attempt, state.amount))
+        case .amountSealed(let attempt, let message)
+            where state.attempt == attempt && state.phase == .handshake(.sealingAmount):
+            guard let link = state.link else { return (state, nil) }
             next.phase = .handshake(.sendingAmount)
-            return (next, .sendAmount(secure))
+            return (next, .sendAmount(attempt, link, message))
         case .amountSent(let attempt)
             where state.attempt == attempt && state.phase == .handshake(.sendingAmount):
             guard let secure = secureLink(state) else { return (state, nil) }
