@@ -23,21 +23,3 @@ public struct RecordingInputs: Sendable {
         self.end = end
     }
 }
-
-// Bridge until the app composes Recording's model.
-extension RecordingInputs {
-
-    /// Holds the recording weakly: its owner keeps it alive, and a released one takes no events.
-    public init(recording: Recording) {
-
-        self.init(
-            send: { [weak recording] in recording?.send($0) },
-            state: { [weak recording] in await recording?.snapshot() ?? RecordingState() },
-            states: { [weak recording] in
-                guard let recording else { return AsyncStream { $0.finish() } }
-                return await recording.states()
-            },
-            end: { [weak recording] in await recording?.end() }
-        )
-    }
-}

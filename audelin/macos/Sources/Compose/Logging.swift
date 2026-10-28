@@ -88,20 +88,3 @@ struct StateLog: Sendable {
 private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
 }
-
-/// Owns state delivery independently of the menu's observation lifetime.
-final class RecordingStateLogging: Sendable {
-
-    private let task: Task<Void, Never>
-
-    init(recording: RecordingInputs, sink: any LogSink) async {
-
-        // Registration retains every change before composition exposes Recording to startup sources.
-        let states = await recording.states()
-        task = Task {
-            for await state in states { StateLog(sink: sink).recording(state) }
-        }
-    }
-
-    deinit { task.cancel() }
-}

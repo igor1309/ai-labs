@@ -104,8 +104,8 @@ struct RecordingSessionsTests {
     @Test func recordingWiringForwardsLaterFailureAndEndsTheSession() async throws {
 
         try await withSessionRig(connect: disconnected) { rig, folder in
-            let recording = await composeRecording(initial: .init(missing: []), makePieces: { _ in rig.pieces }, liveText: { false }, panel: ReadingClockSpy().panel())
-            recording.send(.userStart)
+            let recording = await composeRecording(initial: .init(missing: []), makePieces: { _ in rig.pieces }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording)
+            await recording.send(.userStart)
             _ = try await recordingState(recording) { $0.phase == .recording }
             let text = try #require(await rig.pieces.text)
             #expect(await text.state.status == .off)
@@ -235,7 +235,7 @@ private func sessionState(_ session: Session, where matches: (SessionState) -> B
     throw ScriptFailure.failed
 }
 
-private func recordingState(_ recording: Recording, where matches: (RecordingState) -> Bool) async throws -> RecordingState {
+private func recordingState(_ recording: RecordingInputs, where matches: (RecordingState) -> Bool) async throws -> RecordingState {
 
     for await state in await recording.states() {
         if matches(state) { return state }

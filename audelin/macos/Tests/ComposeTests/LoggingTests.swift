@@ -210,17 +210,17 @@ struct LoggingTests {
             let rig = LogPieces(root: root, sink: sink)
             defer { rig.finish() }
             let recording = await composeRecording(initial: .init(automatic: true),
-                makePieces: { _ in rig.pieces }, liveText: { false }, sink: sink, panel: ReadingClockSpy().panel())
-            let conditions = RecordingConditions(recording: RecordingInputs(recording: recording), microphoneAccess: { true },
+                makePieces: { _ in rig.pieces }, liveText: { false }, sink: sink, panel: ReadingClockSpy().panel(), makeModel: makeRecording)
+            let conditions = RecordingConditions(recording: recording, microphoneAccess: { true },
                 callAudioAccess: { true }, callsFolder: { true }, room: { true })
             await conditions.refresh()
             let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
-            let calls = try composeCalls(processes, to: RecordingInputs(recording: recording), conditions: conditions)
+            let calls = try composeCalls(processes, to: recording, conditions: conditions)
             defer { calls.cancel(); processes.stop() }
             for await state in await recording.states() {
                 if state.phase == .recording { break }
             }
-            recording.send(.sessionReported(id: 1, .cannotRecord("disk unavailable")))
+            await recording.send(.sessionReported(id: 1, .cannotRecord("disk unavailable")))
             await sink.wait { $0.category == .recording && $0.message.contains("phase=idle") && $0.error == "disk unavailable" }
             calls.cancel()
             processes.stop()
@@ -344,9 +344,9 @@ struct LoggingTests {
             "condition=microphoneAccess available=false", "condition=callAudioAccess available=true",
             "condition=callsFolder available=true", "condition=room available=false",
         ])
-        let recording = Recording(handler: .init(session: RecordingSpy(report: .ready, calls: Values<String>())))
+        let recording = await composedRecording(session: RecordingSpy(report: .ready, calls: Values<String>()))
         let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
-        let calls = CallRecordingSubscription(calls: source.stream, recording: RecordingInputs(recording: recording), sink: sink)
+        let calls = CallRecordingSubscription(calls: source.stream, recording: recording, sink: sink)
         source.continuation.yield(.started(app: "meeting.app"))
         source.continuation.yield(.ended(app: "meeting.app"))
         source.continuation.yield(.started(app: "other.app"))
@@ -358,7 +358,7 @@ struct LoggingTests {
             .init(category: .calls, message: "detection failed", error: "sentinel failure"),
             .init(category: .calls, message: "ended (detection stream ended)"),
         ])
-        #expect(!(await recording.snapshot()).callOn)
+        #expect(!(await recording.state()).callOn)
         await recording.end()
         let recognizer = ScriptRecognizer(hearings: [], endings: [])
         try await loadModel(recognizerSource: { recognizer }, sink: sink).value

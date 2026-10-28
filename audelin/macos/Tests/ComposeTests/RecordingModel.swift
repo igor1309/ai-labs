@@ -14,7 +14,7 @@ let makeRecording: MakeRecordingModel = { initial, session, log in
             send: { await model.send($0) },
             state: { await model.state },
             states: { await model.states() },
-            end: { acting.cancel() }
+            end: { acting.cancel(); await model.end() }
         )
     }
 }
@@ -23,6 +23,9 @@ let makeRecording: MakeRecordingModel = { initial, session, log in
 private final class RecordingModel {
 
     private let model: SyncModel<RecordingState, RecordingEvent>
+    private var observers: [Int: AsyncStream<RecordingState>.Continuation] = [:]
+    private var nextObserver = 0
+    private var ended = false
 
     init(initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void) {
 
@@ -39,14 +42,29 @@ private final class RecordingModel {
 
     func states() -> AsyncStream<RecordingState> {
 
-        let observed = Observations { [model] in model.state }
-        return AsyncStream { continuation in
-            let task = Task {
-                for await state in observed { continuation.yield(state) }
-                continuation.finish()
-            }
-            continuation.onTermination = { _ in task.cancel() }
+        let (stream, continuation) = AsyncStream<RecordingState>.makeStream()
+        guard !ended else {
+            continuation.finish()
+            return stream
         }
+        let observed = Observations { [model] in model.state }
+        let id = nextObserver
+        nextObserver += 1
+        let task = Task {
+            for await state in observed { continuation.yield(state) }
+            continuation.finish()
+        }
+        observers[id] = continuation
+        continuation.onTermination = { _ in task.cancel() }
+        return stream
+    }
+
+    /// Finishes every states stream; later ones finish at once.
+    func end() {
+
+        ended = true
+        for observer in observers.values { observer.finish() }
+        observers.removeAll()
     }
 }
 
