@@ -2,6 +2,7 @@
 
 ## 2026-10-28
 
+- ClientConnect opens a secure link to the chosen host and hands over its amount, with cancel, retry after a failure and a 10-second handshake deadline (LAB-655).
 - ClientReview shows the handed-over amount, carries the payer's decision to the host's acknowledgement and hands over an acknowledged confirm, with clear cancelled and lost-link outcomes (LAB-656).
 - ClientPayment lets the payer read the host's payment result or a lost link with an unknown result, then finish the transaction (LAB-657).
 - ClientFind offers the chosen nearby host, stops scanning before handing it over for payment, and resumes scanning when the transaction ends (LAB-654).

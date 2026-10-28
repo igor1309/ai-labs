@@ -8,6 +8,7 @@ let package = Package(
     products: [
         .library(name: "ClientReview", targets: ["ClientReview"]),
         .library(name: "AmountEntry", targets: ["AmountEntry"]),
+        .library(name: "ClientConnect", targets: ["ClientConnect"]),
         .library(name: "ClientPayment", targets: ["ClientPayment"]),
         .library(name: "ClientFind", targets: ["ClientFind"]),
         .library(name: "HostPayment", targets: ["HostPayment"]),
@@ -31,6 +32,8 @@ let package = Package(
         .testTarget(name: "HostPaymentTests", dependencies: ["HostPayment"]),
         .target(name: "AmountEntry"),
         .testTarget(name: "AmountEntryTests", dependencies: ["AmountEntry"]),
+        .target(name: "ClientConnect"),
+        .testTarget(name: "ClientConnectTests", dependencies: ["ClientConnect"]),
         .target(name: "ClientPayment"),
         .testTarget(name: "ClientPaymentTests", dependencies: ["ClientPayment"]),
         .target(name: "ClientFind"),
