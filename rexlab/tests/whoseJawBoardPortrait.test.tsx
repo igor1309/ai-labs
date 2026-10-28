@@ -10,7 +10,7 @@ import { WhoseJawBoardScreen, type WhoseJawBoardScreenProps } from "../src/Whose
 import { manualPictures } from "./support.ts";
 import { withManualPictures } from "./pictures.tsx";
 import { JAWS } from "./whoseJaw.ts";
-import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
+import { openWindow, styleAt, windowsAnd, type WindowSize } from "./windowSizes.ts";
 
 const part = (selector: string) => document.querySelector<HTMLElement>(selector)!;
 const style = (selector: string, size: WindowSize) => styleAt(part(selector), size);
@@ -187,14 +187,96 @@ describe("Whose Jaw portrait composition", () => {
     expect(style(".jaw-dinosaur", size).value("background-color")).toBe("rgba(227, 155, 45, 0.19)");
   });
 
-  it.each(AGE_LEVELS.flatMap((level) => (["en", "ru"] as const).map((language) => ({ level, language }))))("keeps the $language $level landscape board at 1180 by 820", ({ level, language }) => {
-    const size = [1180, 820] as const;
-    show(size, "wide", level, language);
+});
+
+describe("Whose Jaw landscape composition", () => {
+  it.each(windowsAnd([1180, 820], [1366, 956]).flatMap((size) => AGE_LEVELS.flatMap((level) =>
+    (["en", "ru"] as const).flatMap((language) => ["light", "dark"].map((theme) => ({ size, level, language, theme })))
+  )))("bounds the $language $level board at $size in $theme", ({ size, level, language, theme }) => {
+    const { count, props, view } = show(size, "wide", level, language, theme);
     expect(style(".whose-jaw-board-bar", size).value("grid-template-columns")).toBe("auto minmax(0, 1fr) auto auto");
     expect(style(".game-audio-button span", size).value("display")).not.toBe("none");
+    const grid = style(".jaw-choices", size);
+    expect(grid.value("grid-template-columns")).toBe("repeat(var(--choices), minmax(0, 1fr))");
+    // Choices keep their natural height, so their top stays beside the title
+    // rather than moving toward the centre of an expanding row.
+    expect([grid.value("flex-grow"), grid.value("flex-shrink"), grid.value("align-items"), grid.value("align-content")]).toEqual(["0", "0", "stretch", "start"]);
+    expect(grid.value("width")).toBe("min(100%, calc(var(--choices) * min(300px, 34vh) + (var(--choices) - 1) * 12px))");
+    const page = style(".whose-jaw-board", size);
+    const pageWidth = size[0] - page.px("padding-left") - page.px("padding-right");
+    const card = style(".jaw-dinosaur", size);
+    expect([card.px("border-top-width"), card.value("border-top-style")]).toEqual([2, "solid"]);
+    expect(card.value("background-color")).toBe(theme === "dark" ? "rgb(24, 30, 46)" : "rgb(255, 253, 248)");
+    expect(style(".jaw-dinosaur-art", size).value("max-width")).toBe("none");
+    const cardWidth = Math.min(Math.min(300, size[1] * .34), (pageWidth - (count - 1) * grid.columnGap()) / count);
+    const artWidth = cardWidth - 2 * (card.px("padding-left") + card.px("border-left-width"));
+    const nameHeight = level === "paleontologist" ? style(".jaw-name", size).px("min-height") + style(".jaw-name", size).px("margin-top") : 0;
+    const cardHeight = artWidth * .75 + 2 * (card.px("padding-top") + card.px("border-top-width")) + nameHeight;
+    const tray = style(".jaw-tray", size);
+    expect([tray.value("width"), tray.px("min-height"), tray.value("border-top-style")]).toEqual(["fit-content", 0, "dashed"]);
+    const looseWidth = style(".jaw-loose", size).px("width");
+    for (const art of bounds) {
+      const visibleWidth = art.width * looseWidth / art.canvasWidth;
+      expect(visibleWidth, art.id).toBeGreaterThanOrEqual(size[1] >= 820 ? 320 : 260);
+      expect(visibleWidth, art.id).toBeLessThanOrEqual(440);
+    }
+    expect(style(".jaw-feedback", size).value("display")).toBe("none");
+    const barHeight = Math.max(56, style(".jaw-socket", size).px("width") + 2 * style(".jaw-socket", size).px("border-top-width"));
+    const throughCards = page.px("padding-top") + barHeight + style(".jaw-board-title", size).px("font-size") * 1.2 + 2 * page.rowGap() + cardHeight;
+    const trayHeight = looseWidth * .75 + 2 * (tray.px("padding-top") + tray.px("border-top-width"));
+    expect(throughCards + page.rowGap() + tray.px("margin-top") + trayHeight + page.px("padding-bottom")).toBeLessThanOrEqual(size[1]);
+    const longest = JAWS.reduce((a, b) => a.fact[language].length > b.fact[language].length ? a : b);
+    for (const phase of ["right", "reading", "wrong"] as const) {
+      view.rerender(<WhoseJawBoardScreen {...props} phase={phase} target={props.choices[0]!.id} feedback={{ words: longest.fact[language], symbol: "🦷" }} />);
+      expect(style(".jaw-loose", size).value("display")).toBe("none");
+      const words = style(".jaw-feedback p", size);
+      expect(words.value("max-width")).toBe("min(100%, 800px)");
+      expect(words.value("line-height")).toBe("1.25");
+      const columns = Math.floor((Math.min(pageWidth, 800) - 2 * words.px("padding-left")) / words.px("font-size"));
+      // One em per glyph plus wrapping slack bounds the shipped facts.
+      const lines = Math.ceil((longest.fact[language].length + 2) / columns) + 1;
+      const feedbackHeight = Math.max(64, lines * words.px("font-size") * 1.25 + 2 * words.px("padding-top"));
+      const next = phase === "wrong" ? undefined : style(".jaw-next", size);
+      const nextHeight = next ? Math.max(next.px("min-height"), 1.5 * next.px("font-size") + 2 * next.px("padding-top")) : 0;
+      expect(throughCards + 2 * page.rowGap() + feedbackHeight + tray.px("margin-top") + nextHeight + 2 * (tray.px("padding-top") + tray.px("border-top-width")) + page.px("padding-bottom")).toBeLessThanOrEqual(size[1]);
+      if (next) expect(part(".jaw-next").hasAttribute("disabled")).toBe(phase !== "reading");
+    }
+  });
+
+  it.each(AGE_LEVELS.flatMap((level) => (["en", "ru"] as const).map((language) => ({ level, language }))))("keeps $language $level controls and a side tray on short landscape", ({ level, language }) => {
+    const size = [844, 390] as const;
+    const { count, props, view } = show(size, "wide-short", level, language);
+    expect(style(".whose-jaw-board", size).value("grid-template-areas")).toBe('"bar bar" "title title" "choices tray" "feedback feedback"');
     expect(style(".jaw-choices", size).value("grid-template-columns")).toBe("repeat(var(--choices), minmax(0, 1fr))");
-    expect(style(".jaw-choices", size).value("flex-grow")).toBe("1");
-    expect(style(".jaw-dinosaur", size).px("border-top-width")).toBe(0);
-    expect(style(".jaw-tray", size).px("min-height")).toBe(150);
+    expect(style(".whose-jaw-board-bar .home-button", size).px("height")).toBeGreaterThanOrEqual(48);
+    expect(style(".whose-jaw-board-bar .home-button", size).px("width")).toBeGreaterThanOrEqual(48);
+    expect(style(".game-audio-button span", size).value("display")).toBe("none");
+    expect(style(".game-audio-button", size).px("min-height")).toBeGreaterThanOrEqual(48);
+    expect(style(".jaw-loose", size).px("width")).toBeGreaterThanOrEqual(160);
+    const page = style(".whose-jaw-board", size);
+    const pageWidth = size[0] - page.px("padding-left") - page.px("padding-right");
+    const sideWidth = Math.max(180, pageWidth * .28);
+    const choicesWidth = Math.min(pageWidth - sideWidth - page.columnGap(), count * size[1] * .4 + (count - 1) * 12);
+    const card = style(".jaw-dinosaur", size);
+    const artWidth = (choicesWidth - (count - 1) * 12) / count - 2 * (card.px("padding-left") + card.px("border-left-width"));
+    const nameHeight = level === "paleontologist" ? style(".jaw-name", size).px("min-height") + style(".jaw-name", size).px("margin-top") : 0;
+    const cardHeight = artWidth * .75 + nameHeight + 2 * (card.px("padding-top") + card.px("border-top-width"));
+    const tray = style(".jaw-tray", size);
+    const trayHeight = style(".jaw-loose", size).px("width") * .75 + 2 * (tray.px("padding-top") + tray.px("border-top-width"));
+    const throughTitle = page.px("padding-top") + 48 + page.rowGap() + style(".jaw-board-title", size).px("font-size") * 1.2;
+    expect(throughTitle + page.rowGap() + Math.max(cardHeight, trayHeight) + page.px("padding-bottom")).toBeLessThanOrEqual(size[1]);
+    view.rerender(<WhoseJawBoardScreen {...props} phase="reading" target={props.choices[0]!.id} feedback={{ words: JAWS[0]!.fact[language], symbol: "🦷" }} />);
+    expect(style(".jaw-loose", size).value("display")).toBe("none");
+    expect(style(".jaw-next", size).px("min-height")).toBeGreaterThanOrEqual(48);
+    expect(style(".jaw-feedback", size).value("grid-area")).toBe("feedback");
+    const words = style(".jaw-feedback p", size);
+    const columns = Math.floor((pageWidth - 2 * words.px("padding-left")) / words.px("font-size"));
+    const next = style(".jaw-next", size);
+    const nextTrayHeight = Math.max(next.px("min-height"), next.px("font-size") * 1.5 + 2 * next.px("padding-top")) + 2 * (tray.px("padding-top") + tray.px("border-top-width"));
+    for (const jaw of JAWS) {
+      const lines = Math.ceil((jaw.fact[language].length + 2) / columns) + 1;
+      const feedbackHeight = Math.max(48, lines * words.px("font-size") * 1.25 + 2 * words.px("padding-top"));
+      expect(throughTitle + 2 * page.rowGap() + Math.max(cardHeight, nextTrayHeight) + feedbackHeight + page.px("padding-bottom"), jaw.id).toBeLessThanOrEqual(size[1]);
+    }
   });
 });

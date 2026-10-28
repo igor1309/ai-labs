@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- WHOSE JAW? groups landscape choices near the title and gives the jaw a larger, closely fitted tray; short landscape places it beside the choices (LAB-705).
+
 - WHOSE JAW? remembers mute across visits and gives the jaw and dinosaur more space with compact welcome actions (LAB-705).
 
 - WHOSE JAW? keeps correct-answer messages until NEXT, selects matching narration voices, and uses larger portrait cards and a balanced welcome (LAB-705).
