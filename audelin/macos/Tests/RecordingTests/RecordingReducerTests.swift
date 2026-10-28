@@ -34,47 +34,41 @@ struct RecordingReducerTests {
     @Test func userStopWhileBeginningEndsTheSession() { assert(beginning, .userStop, reducedTo: changed(beginning) { $0.phase = .ending }) }
     @Test func userStopWhileBeginningAsksToEndSessionOne() { assert(beginning, .userStop, effect: .endSession(id: 1)) }
 
-    @Test func reducerTransitions() {
+    @Test func callEndedEndsTheCallSession() { assert(call, .callEnded, reducedTo: changed(ending) { $0.sessionBeganDuringCall = true; $0.session = .init(id: 1, origin: .call) }) }
+    @Test func callEndedAsksToEndSessionOne() { assert(call, .callEnded, effect: .endSession(id: 1)) }
 
-        let idle = RecordingState(automatic: true, missing: [])
-        let beginning = changed(idle) {
-            $0.phase = .beginning
-            $0.session = .init(id: 1, origin: .hand)
-            $0.lastSessionID = 1
-        }
-        let running = changed(beginning) { $0.phase = .recording }
-        let ending = changed(running) { $0.phase = .ending }
-        let pending = changed(ending) { $0.callOn = true; $0.pendingCall = true }
-        let call = changed(beginning) {
-            $0.callOn = true
-            $0.sessionBeganDuringCall = true
-            $0.session = .init(id: 1, origin: .call)
-        }
-        let failed = changed(ending) { $0.cannotRecord = "cannot keep audio" }
-        let ended = changed(idle) { $0.lastSessionID = 1; $0.cannotRecord = "cannot keep audio" }
-        let cases: [(RecordingState, RecordingEvent, RecordingState, RecordingEffect?)] = [
-            (call, .callEnded, changed(ending) {
-                $0.sessionBeganDuringCall = true
-                $0.session = .init(id: 1, origin: .call)
-            }, .endSession(id: 1)),
-            (ending, .userStop, ending, nil),
-            (ending, .sessionReported(id: 1, .ready), ending, nil),
-            (ending, .callStarted, pending, nil),
-            (pending, .callEnded, ending, nil),
-            (running, .sessionReported(id: 1, .cannotRecord("cannot keep audio")), failed, .endSession(id: 1)),
-            (failed, .sessionReported(id: 1, .ended), ended, nil),
-            (ended, .userStart, changed(beginning) { $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .hand) }, .beginSession(id: 2)),
-            (pending, .sessionReported(id: 1, .ended), changed(call) { $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .call) }, .beginSession(id: 2)),
-            (running, .sessionReported(id: 99, .ended), running, nil),
-            (running, .sessionReported(id: 99, .cannotRecord("old failure")), running, nil),
-            (idle, .sessionReported(id: 1, .ready), idle, nil),
-        ]
-        for (state, event, expectedState, expectedEffect) in cases {
-            let (actualState, actualEffect) = RecordingReducer.reduce(state, event)
-            #expect(actualState == expectedState, "Event: \(event)")
-            #expect(actualEffect == expectedEffect, "Event: \(event)")
-        }
-    }
+    @Test func userStopWhileEndingChangesNothing() { assert(ending, .userStop, reducedTo: ending) }
+    @Test func userStopWhileEndingHasNoEffect() { assert(ending, .userStop, effect: nil) }
+
+    @Test func readySessionWhileEndingChangesNothing() { assert(ending, .sessionReported(id: 1, .ready), reducedTo: ending) }
+    @Test func readySessionWhileEndingHasNoEffect() { assert(ending, .sessionReported(id: 1, .ready), effect: nil) }
+
+    @Test func callStartedWhileEndingIsKeptPending() { assert(ending, .callStarted, reducedTo: pending) }
+    @Test func callStartedWhileEndingHasNoEffect() { assert(ending, .callStarted, effect: nil) }
+
+    @Test func callEndedWhilePendingDropsThePendingCall() { assert(pending, .callEnded, reducedTo: ending) }
+    @Test func callEndedWhilePendingHasNoEffect() { assert(pending, .callEnded, effect: nil) }
+
+    @Test func cannotRecordWhileRecordingKeepsTheFailureAndEnds() { assert(running, .sessionReported(id: 1, .cannotRecord("cannot keep audio")), reducedTo: failed) }
+    @Test func cannotRecordWhileRecordingAsksToEndSessionOne() { assert(running, .sessionReported(id: 1, .cannotRecord("cannot keep audio")), effect: .endSession(id: 1)) }
+
+    @Test func endedFailedSessionGoesIdleKeepingTheFailure() { assert(failed, .sessionReported(id: 1, .ended), reducedTo: ended) }
+    @Test func endedFailedSessionHasNoEffect() { assert(failed, .sessionReported(id: 1, .ended), effect: nil) }
+
+    @Test func userStartAfterFailureBeginsSessionTwo() { assert(ended, .userStart, reducedTo: changed(beginning) { $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .hand) }) }
+    @Test func userStartAfterFailureAsksToBeginSessionTwo() { assert(ended, .userStart, effect: .beginSession(id: 2)) }
+
+    @Test func endedSessionWithPendingCallBeginsACallSessionTwo() { assert(pending, .sessionReported(id: 1, .ended), reducedTo: changed(call) { $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .call) }) }
+    @Test func endedSessionWithPendingCallAsksToBeginSessionTwo() { assert(pending, .sessionReported(id: 1, .ended), effect: .beginSession(id: 2)) }
+
+    @Test func endedReportOfAnotherSessionChangesNothing() { assert(running, .sessionReported(id: 99, .ended), reducedTo: running) }
+    @Test func endedReportOfAnotherSessionHasNoEffect() { assert(running, .sessionReported(id: 99, .ended), effect: nil) }
+
+    @Test func failureOfAnotherSessionChangesNothing() { assert(running, .sessionReported(id: 99, .cannotRecord("old failure")), reducedTo: running) }
+    @Test func failureOfAnotherSessionHasNoEffect() { assert(running, .sessionReported(id: 99, .cannotRecord("old failure")), effect: nil) }
+
+    @Test func readyReportWhileIdleChangesNothing() { assert(idle, .sessionReported(id: 1, .ready), reducedTo: idle) }
+    @Test func readyReportWhileIdleHasNoEffect() { assert(idle, .sessionReported(id: 1, .ready), effect: nil) }
 
     @Test(arguments: RecordingCondition.allCases)
     func reducerConditions(_ condition: RecordingCondition) {
@@ -175,8 +169,11 @@ private let beginning = changed(idle) {
 }
 private let running = changed(beginning) { $0.phase = .recording }
 private let ending = changed(running) { $0.phase = .ending }
+private let pending = changed(ending) { $0.callOn = true; $0.pendingCall = true }
 private let call = changed(beginning) {
     $0.callOn = true
     $0.sessionBeganDuringCall = true
     $0.session = .init(id: 1, origin: .call)
 }
+private let failed = changed(ending) { $0.cannotRecord = "cannot keep audio" }
+private let ended = changed(idle) { $0.lastSessionID = 1; $0.cannotRecord = "cannot keep audio" }
