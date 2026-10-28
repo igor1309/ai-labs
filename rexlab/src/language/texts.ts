@@ -7,6 +7,7 @@ import { ru } from "./ru.ts";
 // typecheck. Children are just learning to read, so every text for them,
 // shown or read out, is written in capitals here rather than styled so.
 export type Texts = {
+  labyrinth: string;
   labyrinthResult: { title: string; earned: string; total: (stars: number) => string; again: string };
   labyrinthBoard: {
     title: string;

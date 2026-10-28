@@ -6,6 +6,8 @@ import { expect } from "vitest";
 // Lexend has no letters for. A title missing here fails the test that
 // reads it.
 export const TITLE_EMS: Record<string, number> = {
+  LABYRINTH: 6.4,
+  ЛАБИРИНТ: 6.0,
   COMPARE: 5.1,
   СРАВНИ: 4.1,
   "ANCIENT REPTILES": 10.3,
@@ -45,10 +47,11 @@ export const TITLE_EMS: Record<string, number> = {
 };
 
 // The words each tile's title on the home page shows.
-export const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "dig" | "moreComing"> = {
+export const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" | "sort" | "skeletons" | "dig" | "moreComing" | "labyrinth"> = {
   "compare-tile-title": "quizCard",
   "catalogue-tile-title": "catalogueTile",
   "care-tile-title": "care",
+  "labyrinth-tile-title": "labyrinth",
   "sort-tile-title": "sort",
   "skeletons-tile-title": "skeletons",
   "dig-tile-title": "dig",
@@ -59,7 +62,7 @@ export const TITLE_TEXTS: Record<string, "quizCard" | "catalogueTile" | "care" |
 export const tileTitles = () => [...document.querySelectorAll(Object.keys(TITLE_TEXTS).map((name) => `.${name}`).join(", "))];
 
 // Each count in a tile's picture's corner.
-export const TILE_COUNTS = ".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best, .dig-tile-count";
+export const TILE_COUNTS = ".compare-tile-best, .catalogue-tile-count, .care-tile-best, .sort-tile-best, .pairs-tile-stars, .skeletons-tile-best, .dig-tile-count, .labyrinth-tile-best";
 
 const px = (value: string) => Number.parseFloat(value) || 0;
 

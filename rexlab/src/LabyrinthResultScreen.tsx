@@ -1,5 +1,5 @@
 import { House, RotateCcw, Star } from "lucide-react";
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import { Button } from "./Button.tsx";
 import { Festivity } from "./Festivity.tsx";
 import { LevelSwitch, type LevelSwitchProps } from "./LevelSwitch.tsx";
@@ -8,6 +8,7 @@ import { BestScore, CelebrationChip, motion, type Celebration } from "./ResultPa
 import { TEXTS } from "./language/texts.ts";
 
 export type LabyrinthResultScreenProps = Pick<LevelSwitchProps, "language" | "level" | "onLevel"> & {
+  ref?: Ref<HTMLElement>;
   // The board's existing body picture, shared by baby and parent.
   picture: string;
   // The saved total after this round; undefined when progress cannot be read.
@@ -23,13 +24,13 @@ export type LabyrinthResultScreenProps = Pick<LevelSwitchProps, "language" | "le
   onHome: () => void;
 };
 
-export function LabyrinthResultScreen({ language, level, onLevel, picture, totalStars, best, beaten, celebration, levelOffer, onPlayAgain, onHome }: LabyrinthResultScreenProps) {
+export function LabyrinthResultScreen({ ref, language, level, onLevel, picture, totalStars, best, beaten, celebration, levelOffer, onPlayAgain, onHome }: LabyrinthResultScreenProps) {
   const text = TEXTS[language];
   const words = text.labyrinthResult;
   const blocked = Boolean(levelOffer);
   return (
     <>
-      <main className="labyrinth-result-screen" inert={blocked}>
+      <main ref={ref} className="labyrinth-result-screen" inert={blocked}>
         {celebration && <Festivity />}
         <h1 className="labyrinth-reunion-title" data-turn-part="result-title">{words.title}</h1>
         <div className="labyrinth-family" data-turn-part="result-hero">

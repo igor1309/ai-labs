@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -89,7 +90,7 @@ function openUpright(
   onTestFinished(() => footer.remove());
   const progress = () => storage;
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -365,10 +366,11 @@ const COUNTS: Record<HomeGame, string | undefined> = {
   dig: "7",
   sandWriting: undefined,
   sort: "6",
-  care: "8"
+  care: "8",
+  labyrinth: undefined
 };
 
-const TILE_ORDER: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting"];
+const TILE_ORDER: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth"];
 
 // The outline's examples: the language, the window's width, 800 tall,
 // and the game the large card features.

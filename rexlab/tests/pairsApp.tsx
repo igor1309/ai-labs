@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import type { AgeLevelSetting } from "../src/ageLevel.ts";
@@ -89,7 +90,7 @@ export function openPairsApp<C extends Clock = ReturnType<typeof manualTimers>>(
 }: PairsAppOptions<C> = {}) {
   const ageLevels = settingsStorage ?? ageLevelStorage(ageLevel);
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       {...(startCounter && { startCounter })}
       dinosaurs={SHIPPED_DINOSAURS}

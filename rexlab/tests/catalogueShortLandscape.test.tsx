@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -71,7 +72,7 @@ async function openShort(width: number, height: number, insets: SafeArea, langua
   viewport.resize("wide-short", false);
   const user = userEvent.setup({ delay: null });
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

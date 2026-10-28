@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-28
+
+- LABYRINTH brings a baby dinosaur home through three maze levels, with hints, a three-star reunion, level offers and saved stars on its home card (LAB-668).
+
 ## 2026-10-26
 
 - DIG's FIELD GUIDE fits an iPhone on its side: its five treasure cards under a short bar, in one row, or three over two in Russian, every name whole (LAB-589).

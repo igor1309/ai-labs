@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -59,7 +60,7 @@ function openHomePage(
   dig = emptyDig(),
   featured: HomeGame = "compare"
 ) {
-  render(<App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pageAtRest()} {...pictures} />);
+  render(<App {...emptyLabyrinth()} {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pageAtRest()} {...pictures} />);
   return { user: userEvent.setup({ delay: null }), card: featuredCard() };
 }
 
@@ -109,6 +110,7 @@ function renderHomePage(taps: number[]) {
       pairs={{ picture: fakeBodyPicture("stegosaurus"), stars: undefined }}
       skeletons={{ picture: fakeSkeletonPicture("triceratops", "skeleton"), best: undefined }}
       dig={{ picture: fakeBodyPicture("stegosaurus"), dugUp: undefined }}
+      labyrinth={{ picture: fakeBodyPicture("triceratops"), stars: undefined }}
       moreComing={fakeBodyPicture("triceratops")}
       onCompareDinosaurs={nothing}
       onCatalogue={nothing}
@@ -119,6 +121,7 @@ function renderHomePage(taps: number[]) {
       onMuseum={nothing}
       onDig={nothing}
       onSandWriting={nothing}
+      onLabyrinth={nothing}
     />,
     withPictures
   );
@@ -724,7 +727,7 @@ describe("the large card", () => {
   async function openedBy(featured: HomeGame, tap: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
     const pictures = manualPictures();
     const { container, unmount } = render(
-      <App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
+      <App {...emptyLabyrinth()} {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
     );
     await tap(userEvent.setup({ delay: null }));
     const asked: string[] = [];
@@ -803,7 +806,7 @@ describe("the first question of a round", () => {
   // apart, both before the first one's screen change is shown.
   it("starts one round, counted once, for two taps on the large card in one moment", () => {
     const { counted, startCounter } = countedStarts();
-    render(<App {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />);
+    render(<App {...emptyLabyrinth()} {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />);
     const card = featuredCard();
 
     act(() => {

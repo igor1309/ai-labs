@@ -855,6 +855,7 @@ body:has(.result) #version {
 .featured-card .catalogue-tile-picture,
 .featured-card .care-tile-picture,
 .featured-card .sort-tile-picture,
+.featured-card .labyrinth-tile-picture,
 .featured-card .skeletons-tile-picture {
   padding: 36px 32px 8px;
 }
@@ -923,7 +924,8 @@ body:has(.result) #version {
   color: #1d2742;
 }
 
-.featured-card[data-game="sort"] {
+.featured-card[data-game="sort"],
+.featured-card[data-game="labyrinth"] {
   outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
   background: #fffdf8;
@@ -960,7 +962,8 @@ body:has(.result) #version {
   background: #ffffff59;
 }
 
-.featured-card[data-game="sort"] .featured-card-symbol {
+.featured-card[data-game="sort"] .featured-card-symbol,
+.featured-card[data-game="labyrinth"] .featured-card-symbol {
   background: #c9583d;
   color: #ffffff;
 }
@@ -980,12 +983,14 @@ body:has(.result) #version {
   background: #ffffff59;
 }
 
-.featured-card[data-game="sort"] .featured-card-badge {
+.featured-card[data-game="sort"] .featured-card-badge,
+.featured-card[data-game="labyrinth"] .featured-card-badge {
   background: #e6e2d9;
 }
 
 .featured-card[data-game="compare"] .featured-card-badge svg,
 .featured-card[data-game="sort"] .featured-card-badge svg,
+.featured-card[data-game="labyrinth"] .featured-card-badge svg,
 .featured-card[data-game="skeletons"] .featured-card-badge svg {
   color: #e39b2d;
 }
@@ -1567,9 +1572,9 @@ body:has(.result) #version {
   font-weight: 700;
 }
 
-/* The sorting game's tile, on paper over SORT's own terracotta symbol,
-   in the other tiles' shape. */
-.sort-tile {
+/* Sorting and labyrinth use paper cards with terracotta symbols. */
+.sort-tile,
+.labyrinth-tile {
   position: relative;
   flex: 1 1 0;
   min-height: 0;
@@ -1587,7 +1592,8 @@ body:has(.result) #version {
   text-align: left;
 }
 
-.sort-tile-picture {
+.sort-tile-picture,
+.labyrinth-tile-picture {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
@@ -1596,14 +1602,16 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-.sort-tile-row {
+.sort-tile-row,
+.labyrinth-tile-row {
   padding: 12px 12px 14px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.sort-tile-symbol {
+.sort-tile-symbol,
+.labyrinth-tile-symbol {
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -1614,7 +1622,8 @@ body:has(.result) #version {
   color: #ffffff;
 }
 
-.sort-tile-title {
+.sort-tile-title,
+.labyrinth-tile-title {
   flex: 1 1 0;
   min-width: 0;
   font-size: 28px;
@@ -1623,7 +1632,8 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
-.sort-tile-best {
+.sort-tile-best,
+.labyrinth-tile-best {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -1639,7 +1649,8 @@ body:has(.result) #version {
   font-weight: 700;
 }
 
-.sort-tile-best svg {
+.sort-tile-best svg,
+.labyrinth-tile-best svg {
   color: #e39b2d;
 }
 
@@ -11556,7 +11567,9 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"],
 [data-theme="dark"] .parent-menu-choice-code,
 [data-theme="dark"] .sort-tile-best,
+[data-theme="dark"] .labyrinth-tile-best,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge,
 [data-theme="dark"] .catalogue-art,
 [data-theme="dark"] .step,
 [data-theme="dark"] .dinosaur-art,
@@ -11579,9 +11592,11 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .parent-menu-tick,
 [data-theme="dark"] .compare-tile-best svg,
 [data-theme="dark"] .sort-tile-best svg,
+[data-theme="dark"] .labyrinth-tile-best svg,
 [data-theme="dark"] .skeletons-tile-best svg,
 [data-theme="dark"] .featured-card[data-game="compare"] .featured-card-badge svg,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge svg,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge svg,
 [data-theme="dark"] .featured-card[data-game="skeletons"] .featured-card-badge svg,
 [data-theme="dark"] .result-score-total,
 [data-theme="dark"] .star-won,
@@ -11605,17 +11620,21 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   box-shadow: 0 8px 24px #00000066;
 }
 
-[data-theme="dark"] .sort-tile {
+[data-theme="dark"] .sort-tile,
+[data-theme="dark"] .labyrinth-tile {
   background: #181e2e;
   box-shadow: 0 8px 24px #00000066;
 }
 
-[data-theme="dark"] .featured-card[data-game="sort"] {
+[data-theme="dark"] .featured-card[data-game="sort"],
+[data-theme="dark"] .featured-card[data-game="labyrinth"] {
   background: #181e2e;
 }
 
 [data-theme="dark"] .sort-tile,
-[data-theme="dark"] .featured-card[data-game="sort"] {
+[data-theme="dark"] .labyrinth-tile,
+[data-theme="dark"] .featured-card[data-game="sort"],
+[data-theme="dark"] .featured-card[data-game="labyrinth"] {
   outline-color: #ece8de1f;
 }
 
@@ -11710,16 +11729,20 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .diet-tag,
 [data-theme="dark"] .sort-tile-symbol,
+[data-theme="dark"] .labyrinth-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
-[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol {
+[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
   color: #0f1320;
 }
 
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .diet-tag[data-diet="meat"],
 [data-theme="dark"] .sort-tile-symbol,
+[data-theme="dark"] .labyrinth-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
-[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol {
+[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
   background: #e57a5d;
 }
 
@@ -12377,4 +12400,10 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 
 [data-theme="dark"] .pairs-offer-yes {
   background: #f2b24b;
+}
+
+/* The maze name keeps its route symbol beside it at tablet tile widths. */
+.labyrinth-tile-title {
+  font-size: 22px;
+  letter-spacing: 1px;
 }

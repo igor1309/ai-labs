@@ -98,14 +98,14 @@ describe("one-space movement", () => {
   it.each(MAZES)("accepts only adjacent open cells and permits backtracking in $id", (maze) => {
     const graph = graphOf(maze);
     const initial = startMaze(maze);
-    expect(initial).toEqual({ maze, position: maze.start, from: maze.start, hint: undefined });
+    expect(initial).toEqual({ maze, position: maze.start, from: maze.start, hint: undefined, hinted: false });
     for (const position of paths(maze)) {
       const round = { ...initial, position, hint: maze.goal };
       expect(adjacentPaths(maze, position).sort((a, b) => a - b)).toEqual(graph.get(position));
       for (const destination of [-10, -1, 0.5, NaN, Infinity, ...Array.from({ length: maze.rows.length * maze.rows[0]!.length + 1 }, (_, at) => at)]) {
         const moved = moveInMaze(round, destination);
         if (position !== maze.goal && graph.get(position)!.includes(destination)) {
-          expect(moved).toEqual({ maze, from: position, position: destination, hint: undefined });
+          expect(moved).toEqual({ maze, from: position, position: destination, hint: undefined, hinted: false });
           if (destination !== maze.goal) expect(moveInMaze(moved, position).position).toBe(position);
         } else {
           expect(moved).toBe(round);

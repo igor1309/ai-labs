@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act, render, screen, within } from "@testing-library/react";
@@ -139,7 +140,7 @@ function openTurning(
     return box;
   };
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

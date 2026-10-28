@@ -277,10 +277,11 @@ export type LabyrinthRound = {
   readonly position: number;
   readonly from: number;
   readonly hint: number | undefined;
+  readonly hinted: boolean;
 };
 
 export function startMaze(maze: Maze): LabyrinthRound {
-  return { maze, position: maze.start, from: maze.start, hint: undefined };
+  return { maze, position: maze.start, from: maze.start, hint: undefined, hinted: false };
 }
 
 export function isPath(maze: Maze, place: number): boolean {
@@ -311,7 +312,7 @@ export function hintInMaze(round: LabyrinthRound): LabyrinthRound {
   const queue = [round.maze.goal];
   for (let at = 0; at < queue.length; at++) {
     const place = queue[at]!;
-    if (place === round.position) return { ...round, hint: towardGoal.get(place) };
+    if (place === round.position) return { ...round, hint: towardGoal.get(place), hinted: true };
     for (const next of adjacentPaths(round.maze, place)) {
       if (towardGoal.has(next)) continue;
       towardGoal.set(next, place);
@@ -319,4 +320,36 @@ export function hintInMaze(round: LabyrinthRound): LabyrinthRound {
     }
   }
   return round;
+}
+
+
+export type LabyrinthProgress = {
+  readonly stars: number;
+  readonly roundsPlayed: number;
+  readonly best: Readonly<Record<MazeLevel, number | null>>;
+};
+
+export const NO_LABYRINTH: LabyrinthProgress = {
+  stars: 0, roundsPlayed: 0,
+  best: { hatchling: null, explorer: null, paleontologist: null }
+};
+
+type BestRule = (previous: number | null, score: number) => { best: number; celebration: "first-best" | "new-best" | null };
+
+export type LabyrinthReward = {
+  progress: LabyrinthProgress;
+  best: number;
+  beaten: number | undefined;
+  celebration: "first-best" | "new-best" | null;
+};
+
+// Completion is worth the same at every level, even after hints or detours.
+export function rewardMaze(round: LabyrinthRound, progress: LabyrinthProgress, beatBest: BestRule): LabyrinthReward | undefined {
+  if (!mazeSolved(round)) return undefined;
+  const previous = progress.best[round.maze.level];
+  const { best, celebration } = beatBest(previous, 3);
+  return {
+    progress: { stars: progress.stars + 3, roundsPlayed: progress.roundsPlayed + 1, best: { ...progress.best, [round.maze.level]: best } },
+    best, celebration, beaten: celebration === "new-best" ? previous ?? undefined : undefined
+  };
 }

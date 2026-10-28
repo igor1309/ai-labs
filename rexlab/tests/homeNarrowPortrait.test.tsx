@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen } from "@testing-library/react";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { App } from "../src/App.tsx";
@@ -33,7 +34,7 @@ import {
 import { openWindow, sizedStyle, styleAt } from "./windowSizes.ts";
 
 // The home page's tiles and the games still to come, in columns of two.
-const COLUMNS = 4;
+const COLUMNS = 5;
 
 // iPhones upright: one with its display zoomed, or a window in Slide
 // Over, the smallest iPhone, and the common ones.
@@ -45,7 +46,7 @@ const PHONES = [
   [430, 932]
 ] as const;
 
-const GAMES: HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons", "dig", "sandWriting"];
+const GAMES: HomeGame[] = ["compare", "catalogue", "care", "sort", "pairs", "skeletons", "dig", "sandWriting", "labyrinth"];
 
 const DEVICES: Record<Language, string> = { en: "en-GB", ru: "ru-RU" };
 
@@ -68,7 +69,7 @@ function openNarrow(width: number, height: number, { language = "en", featured =
   viewport.resize("tall-narrow", true);
   const progress = () => storage;
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

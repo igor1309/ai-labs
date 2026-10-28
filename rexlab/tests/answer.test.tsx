@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -69,7 +70,7 @@ const opacityOf = (card: HTMLElement) => Number(getComputedStyle(card).opacity |
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
 
 function startRound(seed: number, pictures: ManualPictures | ReturnType<typeof loadedPictures> = loadedPictures()) {
-  render(<App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(seed)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />);
+  render(<App {...emptyLabyrinth()} {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(seed)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />);
   const user = userEvent.setup({ delay: null });
   // Taps COMPARE and, with manual pictures, lets the first question's
   // pictures finish loading.

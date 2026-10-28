@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -178,7 +179,7 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
   let clock = 0;
   onTestFinished(() => void (document.documentElement.scrollTop = 0));
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
