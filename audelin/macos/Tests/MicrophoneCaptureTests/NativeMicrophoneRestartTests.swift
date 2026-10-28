@@ -19,6 +19,7 @@ struct NativeMicrophoneRestartTests {
         #expect(try await audio.next() == AudioPiece(samples: [1, 1], sampleRate: 48_000))
         engine.changeConfiguration()
         #expect(engine.taps == [48_000, 16_000])
+        #expect(engine.installsOverATap == 0)
         #expect(engine.starts == 2)
         try clock.deliver(through: engine, value: 2)
         #expect(try await audio.next() == AudioPiece(samples: [2, 2], sampleRate: 16_000))
@@ -34,6 +35,7 @@ struct NativeMicrophoneRestartTests {
         #expect(engine.starts == 1)
         engine.changeConfiguration()
         #expect(engine.taps == [48_000, 16_000])
+        #expect(engine.installsOverATap == 0)
         #expect(engine.starts == 2)
         try clock.deliver(through: engine, value: 3)
         #expect(try await audio.next() == AudioPiece(samples: [3, 3], sampleRate: 16_000))
@@ -118,6 +120,7 @@ private final class FakeMicrophoneEngine: MicrophoneEngine, @unchecked Sendable 
         var block: (@Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void)?
         var changed: (@Sendable () -> Void)?
         var starts = 0
+        var installsOverATap = 0
     }
 
     private let state: Mutex<State>
@@ -129,6 +132,8 @@ private final class FakeMicrophoneEngine: MicrophoneEngine, @unchecked Sendable 
 
     var taps: [Double] { state.withLock { $0.taps } }
     var starts: Int { state.withLock { $0.starts } }
+    /// A real engine aborts on a second tap on its bus, so the fake counts each.
+    var installsOverATap: Int { state.withLock { $0.installsOverATap } }
 
     var voiceProcessingEnabled: Bool { false }
     func disableVoiceProcessing() throws {}
@@ -149,6 +154,7 @@ private final class FakeMicrophoneEngine: MicrophoneEngine, @unchecked Sendable 
     func installTap(format: AVAudioFormat, block: @escaping @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void) {
 
         state.withLock {
+            if $0.block != nil { $0.installsOverATap += 1 }
             $0.taps.append(format.sampleRate)
             $0.block = block
         }
