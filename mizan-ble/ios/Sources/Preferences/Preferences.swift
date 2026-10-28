@@ -15,6 +15,8 @@ public final class Preferences {
     }
 
     public func value(for key: String) -> Value? {
+        // Only what this suite stores counts: a lookup on the instance also
+        // returns registered and launch-argument defaults.
         switch defaults.persistentDomain(forName: suiteName)?[key] {
         case let text as String: .text(text)
         case let number as NSNumber: .number(number.doubleValue)
