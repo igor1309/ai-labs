@@ -15,7 +15,9 @@ struct AudelinApp: App {
     private func start() async {
 
         guard model == nil else { return }
-        let panel = FloatingPanel()
+        let panel = FloatingPanel(makeWindow: {
+            TranscriptPanel(contentRect: $0, styleMask: $1, backing: .buffered, defer: false)
+        }, screenFrame: { NSScreen.main?.visibleFrame })
         self.panel = panel
         let model = await AudelinMenu(
             preferences: PreferencesStore(fileURL: FileManager.default.homeDirectoryForCurrentUser

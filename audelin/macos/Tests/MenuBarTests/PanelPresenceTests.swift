@@ -3,18 +3,6 @@ import Testing
 
 struct PanelPresenceTests {
 
-    @Test func beginningShowsAndRepeatedStateKeepsAUserClose() {
-
-        let (shown, effects) = PanelPresence.reduce(.init(), .recordingChanged(42))
-        #expect(shown.visible)
-        #expect(shown.recordingID == 42)
-        #expect(effects == [.cancelDelay, .show(.recordingBegan)])
-        #expect(PanelPresence.reduce(shown, .recordingChanged(42)).1.isEmpty)
-        let (closed, _) = PanelPresence.reduce(shown, .userClosed)
-        let (repeated, _) = PanelPresence.reduce(closed, .recordingChanged(42))
-        #expect(!repeated.visible)
-    }
-
     @Test func endingKeepsVisibleUntilThreeSecondDelayElapses() throws {
 
         let (shown, _) = PanelPresence.reduce(.init(), .recordingChanged(1))
@@ -51,8 +39,14 @@ struct PanelPresenceTests {
 
     @Test func userCloseLastsUntilMenuReopenOrNextRecording() {
 
-        let (shown, _) = PanelPresence.reduce(.init(), .recordingChanged(1))
+        let (shown, shownEffects) = PanelPresence.reduce(.init(), .recordingChanged(1))
+        #expect(shown.visible)
+        #expect(shown.recordingID == 1)
+        #expect(shownEffects == [.cancelDelay, .show(.recordingBegan)])
+        #expect(PanelPresence.reduce(shown, .recordingChanged(1)).1.isEmpty)
         let (closed, effects) = PanelPresence.reduce(shown, .userClosed)
+        let (repeated, _) = PanelPresence.reduce(closed, .recordingChanged(1))
+        #expect(!repeated.visible)
         #expect(!closed.visible)
         #expect(closed.offersReopen)
         #expect(effects == [.cancelDelay, .hide(.userClosed)])

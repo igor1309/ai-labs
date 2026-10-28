@@ -162,6 +162,10 @@ let package = Package(
             dependencies: ["LiveText"]
         ),
         .testTarget(
+            name: "AudelinTests",
+            dependencies: ["Audelin", "Compose"]
+        ),
+        .testTarget(
             name: "CallAppProcessesTests",
             dependencies: ["CallAppProcesses"]
         ),
