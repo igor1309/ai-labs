@@ -46,8 +46,46 @@ How behaviour is specified before it is built, after audelin's process.
   scenario: it reads back what the `Then` promises, not that a call was
   made. Verdicts go in run reports, never in `QA.md`.
 
-## Building
+## Running the work
 
+How any component, core, adapter or UI module, goes from issue to trunk.
+
+- One component per issue and per brief for Codex (`codex-sol-61` through
+  agister's implement process): intent, a numbered "Done when", "Out of
+  scope", sources and decisions. Name in "Out of scope" every neighbouring
+  component, the root and any follow-up issue; a brief that leaves one out
+  gets it built.
+- Start every component whose dependencies are on trunk at once, each on
+  its own branch and worktree with its own Codex run. Do not wait for a
+  PR's CI to start the next; stack a branch on the unmerged one it needs.
+- Code two components would both carry belongs in neither. No component
+  imports another, so where it goes is an architecture change, made the
+  first time a second component needs it; UI modules share through
+  `DesignSystem`.
+- Review each Codex run before committing, and fix by hand what needs no
+  rerun.
+
+### Merging stacked branches
+
+- Sibling branches all touch the same lists: `ios/Package.swift`,
+  `ios/PreviewApps/Package.swift`, the READMEs' rows and `docs/log.md`.
+  Union-merge the log only. Write a manifest or a README row fresh from
+  what the branch has; a union of two manifests does not compile.
+- After every merge, check that the branch has both trunk and the branch
+  beneath it (`git merge-base --is-ancestor <ref> HEAD`). A merge whose
+  resolution changes no file still needs its commit; without one, the next
+  merge reuses the stale `MERGE_HEAD`.
+- A PR that conflicts with trunk gets no CI run; the watch only reports
+  that no run exists. Merge trunk in and push again.
+- Turn on auto-merge for the bottom PR only. When it merges, merge trunk
+  into the next branch, push, and turn on auto-merge for that PR. With
+  every PR on auto-merge, a higher PR would merge the lower ones' changes
+  under its own issue.
+
+## Building cores and adapters
+
+- A core's or adapter's "Done when" is its spec's scenarios, each proved
+  as its `QA.md` row says.
 - Cores and adapters are built test-first: each test is run red before
   the code exists, failing on its assertion (the API stubbed first), and
   the red run is shown with the green one.
@@ -58,6 +96,8 @@ How behaviour is specified before it is built, after audelin's process.
   owns; the translation is tested through a fake of the binding. Core
   Bluetooth is never the thing under test; the user spec on a real iPad and
   iPhone proves the binding.
+- Each Codex run on a core or adapter is reviewed with agister's review
+  processes before it merges.
 - A change to behaviour, a fix included, goes spec change, then build, then
   review.
 
@@ -75,9 +115,6 @@ How behaviour is specified before it is built, after audelin's process.
 - No tests in a UI module. Each one has previews that render every state
   exactly as its design frame draws it; a UI module is verified by matching
   its preview snapshots with the design, and gets no Agister review.
-- One UI module per piece of work. Modules that do not depend on each
-  other are built at the same time, each on its own branch and worktree;
-  a branch may stack on another's unmerged branch rather than wait.
 - Each UI module has a macOS preview app in `ios/PreviewApps`, built as
   its own issue after the module, never in the module's step. It shows
   the module's preview states, the events they send, and exports them to
@@ -86,6 +123,26 @@ How behaviour is specified before it is built, after audelin's process.
   later work, once the machines exist. The no-logic rule binds the UI
   module, not its preview app; the app copies no feature code and has no
   tests.
+
+### Building the next UI module
+
+- A UI brief's "Done when" is the state shape, events, view, previews,
+  package target, README and log line. Name the frames by node id with
+  their exported dark and light PNGs, and the frames' copy as a text file
+  to use exactly. Its "Out of scope" names the preview app and the
+  machines.
+- A type two UI modules need (a step, a glyph, an amount) goes into
+  `DesignSystem`, `Equatable` and `Sendable`.
+- In a UI module's Codex run, look for raw sizes, fonts, colours and
+  stroke widths (use the nearest token); a `DesignSystem` view rebuilt
+  inside the module (give the component an option instead); and frame copy
+  bent to force a line break.
+- The preview app is the next issue. It shows the module's `previews`
+  list with a state picker, light and dark and an event log, and
+  `swift run <App>Preview --export <folder>` writes the PNGs; pass
+  `devices:` for a one-device screen. Compare the PNGs with the frames
+  yourself, fix the module in the same PR, and send the owner each
+  difference that the design causes, with the fix you suggest.
 
 ## Design
 

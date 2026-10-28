@@ -39,7 +39,7 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Audelin",
-            dependencies: ["Compose", "MenuBar", "Preferences"]
+            dependencies: ["Compose", "MenuBar", "Preferences", "PanelUI"]
         ),
         .target(
             name: "AudioConversion"
@@ -160,6 +160,10 @@ let package = Package(
         .target(
             name: "TwoPassRecognizer",
             dependencies: ["LiveText"]
+        ),
+        .testTarget(
+            name: "AudelinTests",
+            dependencies: ["Audelin", "Compose"]
         ),
         .testTarget(
             name: "CallAppProcessesTests",
