@@ -150,6 +150,21 @@ export type Texts = {
   // build, and its museum.
   skeletons: string;
   skeletonTitle: string;
+  picturePuzzle: string;
+  pictureCollection: string;
+  pictureAnother: string;
+  pictureFacts: Record<"tyrannosaurus" | "triceratops" | "stegosaurus", string>;
+  pictureNotCollected: string;
+  pictureBoard: string;
+  picturePieces: string;
+  picturePiece: (place: number) => string;
+  pictureSlot: (place: number) => string;
+  pictureFitted: string;
+  picturePrevious: string;
+  pictureNext: string;
+  pictureHint: string;
+  picturePreview: string;
+  pictureRetry: string;
   museum: string;
   // The skeleton being built and its tray of bones.
   skeleton: string;

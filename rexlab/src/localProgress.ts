@@ -6,6 +6,7 @@ import type { FeaturedHistory, Featuring } from "./featured.ts";
 import { NO_LEVEL_OFFER, type LevelOffer } from "./levelOffer.ts";
 import { CLIMB_LEVELS, LARGE_LEVELS, NO_PAIRS, type ClimbLevel, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS } from "./quiz/index.ts";
+import { collectedPictures, mergePictures, NO_PICTURES, type PictureProgress } from "./picturePuzzle/index.ts";
 import { BADGES, NO_SKELETONS, type Badge, type SkeletonProgress } from "./skeletons/index.ts";
 import { NO_SORTING } from "./sorting/index.ts";
 import type { LevelChoice } from "./startLevel.ts";
@@ -22,6 +23,76 @@ type Entry = Record<string, unknown>;
 // under its game in the shared record.
 export function localProgress(storage: () => KeyValueStorage) {
   return levelledProgress(storage, "compare-dinosaurs", NO_PROGRESS);
+}
+
+// Only the switch is written here; collection data and other fields in
+// the game entry survive a choice made before a puzzle is finished.
+export function localPicturePuzzleChoice(storage: () => KeyValueStorage) {
+  type ChoiceEntry = { earned?: readonly string[]; levelChoice?: LevelChoice };
+  const entry = gameProgress<ChoiceEntry>(storage, "picture-puzzle", {}, (raw) => {
+    const levelChoice = choiceOf(raw.levelChoice);
+    return {
+      ...(isIds(raw.earned) && { earned: [...raw.earned] }),
+      ...(levelChoice && { levelChoice })
+    };
+  });
+  return {
+    load(): { earned: readonly string[]; levelChoice: LevelChoice | undefined } | undefined {
+      const saved = entry.load();
+      return saved === undefined ? undefined : { earned: saved.earned ?? [], levelChoice: saved.levelChoice };
+    },
+    saveLevel(levelChoice: LevelChoice): void {
+      entry.save({ levelChoice });
+    }
+  };
+}
+
+// The per-level collections are also their best scores: completing the
+// same picture again earns a round star without adding stored currency.
+export function localPicturePuzzleProgress(storage: () => KeyValueStorage) {
+  const entry = gameProgress<PictureProgress>(storage, "picture-puzzle", NO_PICTURES, readPictures);
+  return {
+    load(): { progress: PictureProgress; historyReadable: boolean; entryPresent: boolean } | undefined {
+      let raw: string | null;
+      try {
+        raw = storage().getItem(PROGRESS_KEY);
+      } catch {
+        return undefined;
+      }
+      const games = parse(raw);
+      const entryPresent = games !== undefined && Object.hasOwn(games, "picture-puzzle");
+      const saved = games?.["picture-puzzle"];
+      return {
+        progress: isObject(saved) ? readPictures(saved) : NO_PICTURES,
+        historyReadable: raw === null || (games !== undefined && !entryPresent) || (isObject(saved) && pictureHistoryReadable(saved)),
+        entryPresent
+      };
+    },
+    save(progress: PictureProgress): boolean {
+      const stored = entry.load();
+      if (stored === undefined) return false;
+      return entry.save(mergePictures(stored, progress));
+    }
+  };
+}
+
+// Recovery may retain usable collections without verifying their history.
+// Choice-only entries are valid before any picture has been completed.
+function pictureHistoryReadable(raw: Entry): boolean {
+  if (raw.earned !== undefined && !isIds(raw.earned)) return false;
+  if (raw.completed === undefined) return true;
+  const completed = raw.completed;
+  return isObject(completed) && ["hatchling", "explorer", "paleontologist"].every((level) =>
+    completed[level] === undefined || isIds(completed[level]));
+}
+
+function readPictures(raw: Entry): PictureProgress {
+  const completed = isObject(raw.completed) ? raw.completed : {};
+  const ids = (value: unknown) => isIds(value) ? collectedPictures(value) : [];
+  return mergePictures(NO_PICTURES, {
+    earned: ids(raw.earned),
+    completed: { hatchling: ids(completed.hatchling), explorer: ids(completed.explorer), paleontologist: ids(completed.paleontologist) }
+  });
 }
 
 // Dinosaur care's progress, beside the quiz's in the same record.
@@ -359,7 +430,7 @@ function gameProgress<P extends object>(storage: () => KeyValueStorage, game: st
     // progress that cannot be saved is dropped. A readable record keeps its
     // other games, and a readable entry its other fields; an unusable
     // record, or this game's unusable entry, is replaced.
-    save(progress: P): void {
+    save(progress: P): boolean {
       try {
         const target = storage();
         const games = parse(target.getItem(PROGRESS_KEY)) ?? {};
@@ -367,8 +438,9 @@ function gameProgress<P extends object>(storage: () => KeyValueStorage, game: st
         const kept = entry && read(entry) !== undefined ? entry : {};
         const record = { schemaVersion: SCHEMA_VERSION, games: { ...games, [game]: { ...kept, ...progress } } };
         target.setItem(PROGRESS_KEY, JSON.stringify(record));
+        return true;
       } catch {
-        return;
+        return false;
       }
     }
   };

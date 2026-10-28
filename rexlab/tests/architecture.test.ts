@@ -34,6 +34,7 @@ const inPairs = (file: string) => file.startsWith("pairs/");
 const inSorting = (file: string) => file.startsWith("sorting/");
 const inSkeletons = (file: string) => file.startsWith("skeletons/");
 const inDig = (file: string) => file.startsWith("dig/");
+const inPicturePuzzle = (file: string) => file.startsWith("picturePuzzle/");
 const SCREENS = [
   "CareResultScreen.tsx",
   "CareWelcomeScreen.tsx",
@@ -51,6 +52,9 @@ const SCREENS = [
   "PairsBoardScreen.tsx",
   "PairsResultScreen.tsx",
   "PairsWelcomeScreen.tsx",
+  "PicturePuzzleBoardScreen.tsx",
+  "PicturePuzzleChoiceScreen.tsx",
+  "PicturePuzzleResultScreen.tsx",
   "QuestionScreen.tsx",
   "ResultScreen.tsx",
   "SandWritingScreen.tsx",
@@ -72,6 +76,7 @@ const PRESENTATION = [
   "FoodChips.tsx",
   "ParentMenu.tsx",
   "Picture.tsx",
+  "PicturePuzzlePicture.tsx",
   "ResultParts.tsx",
   "SharedPicture.tsx",
   "SkeletonBar.tsx",
@@ -102,6 +107,7 @@ const COMPOSITION = [
   "digGame.tsx",
   "main.tsx",
   "pairsGame.tsx",
+  "picturePuzzleGame.tsx",
   "presentation.ts",
   "quizGame.tsx",
   "root.ts",
@@ -130,6 +136,12 @@ const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps the picture puzzle domain behind its entrypoint and free of UI and storage", () => {
+    expect(GRAPH.get("picturePuzzleGame.tsx")).toContain("picturePuzzle/index.ts");
+    expect(edges((file) => !inPicturePuzzle(file), (target) => inPicturePuzzle(target) && target !== "picturePuzzle/index.ts")).toEqual([]);
+    expect(edges(inPicturePuzzle, (target) => !inPicturePuzzle(target) && target !== AGE_LEVEL && !target.startsWith("language/"))).toEqual([]);
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", inPicturePuzzle)).toEqual([]);
+  });
   it("keeps maze rules pure and labyrinth presentation independent of the game model", () => {
     expect(GRAPH.get("labyrinth/index.ts")).toEqual([]);
     expect(GRAPH.get("labyrinthGame.tsx")).toContain("labyrinth/index.ts");
@@ -321,7 +333,7 @@ describe("the import graph", () => {
 const TAP_SAFETY = "docs/tap-safety.md";
 
 // The modules that keep screens, each with useScreens.
-const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "digGame.tsx", "pairsGame.tsx", "skeletonGame.tsx", "sortingGame.tsx", "labyrinthGame.tsx"];
+const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "digGame.tsx", "pairsGame.tsx", "picturePuzzleGame.tsx", "skeletonGame.tsx", "sortingGame.tsx", "labyrinthGame.tsx"];
 
 // The module that alone reads the browser's clock and timers, and the
 // service worker's own root, which runs apart from the app and its taps.

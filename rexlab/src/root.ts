@@ -7,12 +7,12 @@ import { readDig, type DigFile } from "./dig/index.ts";
 import { documentVisibility } from "./documentVisibility.ts";
 import { SLIDE_DISTANCE } from "./dinosaurSlide.ts";
 import { bodyPictures, skeletonPictures, wholeSkeletons } from "./dinosaurPictures.ts";
-import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
+import { readCatalogue, readDinosaurs, readPals, readPictureDinosaurs, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
 import { HOME_GAMES } from "./HomePage.tsx";
 import { itemPictures } from "./itemPictures.ts";
 import { localAgeLevel } from "./localAgeLevel.ts";
 import { localLanguage } from "./localLanguage.ts";
-import { localLabyrinthProgress, localCareProgress, localDigProgress, localFeatured, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
+import { localLabyrinthProgress, localCareProgress, localDigProgress, localFeatured, localPairsProgress, localPicturePuzzleChoice, localPicturePuzzleProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
 import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
@@ -230,10 +230,15 @@ export function appProps(browser: Browser): AppProps {
   const skeletons = readSkeletons(records, skeletonPlaces);
   const drawn = wholeSkeletons(SKELETON_PICTURES);
   const featured = localFeatured(storage, HOME_GAMES);
+  const bodyPicture = bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id));
   return {
     dinosaurs,
     catalogue: readCatalogue(records),
-    bodyPicture: bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id)),
+    bodyPicture,
+    picturePuzzle: {
+      dinosaurs: readPictureDinosaurs(records), bodyPicture, random: Math.random,
+      choiceStore: localPicturePuzzleChoice(storage), progressStore: localPicturePuzzleProgress(storage)
+    },
     random: Math.random,
     viewport,
     portraitLayouts: { home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] },

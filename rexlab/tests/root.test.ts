@@ -61,6 +61,22 @@ const record = (bestScore: number, roundsPlayed: number) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed } } });
 
 describe("the app in a browser", () => {
+  it("wires the picture dinosaurs, artwork and persistent level and collection beside existing games", () => {
+    const local = memoryStorage({ [PROGRESS_KEY]: record(6, 3) });
+    const given = browser({ local });
+    const props = appProps(given);
+    const game = props.picturePuzzle!;
+    expect(game.dinosaurs.map(({ id }) => id)).toEqual(["tyrannosaurus", "triceratops", "stegosaurus"]);
+    for (const { id } of game.dinosaurs) expect(game.bodyPicture(id)).toBe(props.bodyPicture(id));
+    game.choiceStore.saveLevel({ level: "paleontologist", revision: "parent" });
+    expect(game.progressStore.save({ earned: ["stegosaurus"], completed: { hatchling: [], explorer: ["stegosaurus"], paleontologist: [] } })).toBe(true);
+    const reloaded = appProps(given);
+    expect(reloaded.picturePuzzle!.choiceStore.load()).toEqual({ earned: ["stegosaurus"], levelChoice: { level: "paleontologist", revision: "parent" } });
+    expect(reloaded.picturePuzzle!.progressStore.load()).toEqual({ historyReadable: true, entryPresent: true, progress: { earned: ["stegosaurus"], completed: { hatchling: [], explorer: ["stegosaurus"], paleontologist: [] } } });
+    expect(reloaded.progress.load()).toEqual(quizSaved(6, 3));
+    for (const phase of ["choice", "puzzle", "result"] as const) expect(reloaded.portraitLayouts[`picturePuzzle-${phase}`]).toBeUndefined();
+  });
+
   // The words of a dinosaur's page leave out a scrollbar that takes room:
   // the window's width less its root's, which an overlay scrollbar leaves
   // whole.

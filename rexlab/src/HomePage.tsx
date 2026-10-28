@@ -1,4 +1,4 @@
-import { Route, Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Pencil, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { Route, Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Pencil, Puzzle, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -7,6 +7,7 @@ import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
+import { PicturePuzzlePicture } from "./PicturePuzzlePicture.tsx";
 import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
 import { NARROW_ROW_START, ROW_START, SHORT_TILE_GAP, TILE_COLUMN, TILE_GAP, shortTileColumn, tileColumnWidth } from "./tileColumns.ts";
@@ -18,14 +19,14 @@ const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light:
 const BRAND = "RexLab";
 
 // The games the home page offers, each on a tile of its own.
-export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth";
+export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth" | "picturePuzzle";
 
 // The games in their tiles' order, which never changes.
-export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth"];
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth", "picturePuzzle"];
 
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
-type Badge = { symbol: LucideIcon; value: number };
+type Badge = { symbol: LucideIcon; value: number | string };
 
 // The window's width and its changes.
 export type WindowWidth = {
@@ -78,6 +79,8 @@ export type HomePageProps = {
   // The dig game's tile: the dinosaur on it and how many dinosaurs have
   // been dug up, undefined until one has.
   dig: { picture: string; dugUp: number | undefined };
+  // Its tile and featured card share the collection across all levels.
+  picturePuzzle?: { picture: string; collected: number; onOpen: () => void } | undefined;
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
   labyrinth: { picture: string; stars: number | undefined };
@@ -121,6 +124,7 @@ export function HomePage({
   dig,
   labyrinth,
   moreComing,
+  picturePuzzle,
   onCompareDinosaurs,
   onCatalogue,
   onCare,
@@ -144,7 +148,8 @@ export function HomePage({
   const ThemeSymbol = THEME_SYMBOLS[theme];
   // Each game's own parts, which its tile and the large card both show,
   // so the two never tell the child different things.
-  const games: Record<HomeGame, { name: string; symbol: LucideIcon; picture: ReactNode; badge: Badge | undefined; onOpen: () => void }> = {
+  type GameEntry = { name: string; symbol: LucideIcon; picture: ReactNode; badge: Badge | undefined; onOpen: () => void };
+  const games: Record<Exclude<HomeGame, "picturePuzzle">, GameEntry> & { picturePuzzle: GameEntry | undefined } = {
     compare: {
       name: text.quizCard,
       symbol: Scale,
@@ -193,6 +198,13 @@ export function HomePage({
       picture: <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />,
       badge: dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp },
       onOpen: onDig
+    },
+    picturePuzzle: picturePuzzle && {
+      name: text.picturePuzzle,
+      symbol: Puzzle,
+      picture: <span className="picture-puzzle-tile-art"><PicturePuzzlePicture src={picturePuzzle.picture} /></span>,
+      badge: { symbol: Star, value: `${picturePuzzle.collected}/3` },
+      onOpen: picturePuzzle.onOpen
     },
     labyrinth: {
       name: text.labyrinth,
@@ -301,6 +313,16 @@ export function HomePage({
         <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
       </Button>
     ),
+    picturePuzzle: games.picturePuzzle && (
+      <Button key="picturePuzzle" className="card picture-puzzle-tile" data-turn-part="tile-picturePuzzle" aria-label={games.picturePuzzle.name} onClick={games.picturePuzzle.onOpen}>
+        {games.picturePuzzle.picture}
+        <span className="picture-puzzle-tile-row">
+          <span className="picture-puzzle-tile-symbol" aria-hidden="true"><Puzzle size={20} /></span>
+          <span className="picture-puzzle-tile-title">{games.picturePuzzle.name}</span>
+        </span>
+        <BadgeChip badge={games.picturePuzzle.badge} className="picture-puzzle-tile-count" size={18} />
+      </Button>
+    ),
     labyrinth: (
       <Button key="labyrinth" className="card labyrinth-tile" data-turn-part="tile-labyrinth" aria-label={games.labyrinth.name} onClick={games.labyrinth.onOpen}>
         {games.labyrinth.picture}
@@ -323,13 +345,14 @@ export function HomePage({
       </Button>
     )
   };
-  const shown = HOME_GAMES.filter((game) => game !== featured);
+  const featuredGame = featured === "picturePuzzle" && !picturePuzzle ? "compare" : featured;
+  const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined));
   // The tiles and the games still to come, in columns of two.
   const columns = Math.ceil((shown.length + 1) / 2);
   const rowStart = narrow ? NARROW_ROW_START : ROW_START;
   const column = upright ? tileColumnWidth(windowWidth, columns, rowStart) : TILE_COLUMN;
   const tilesRow = useKeptRow(layoutKeeping, short ? { column: shortTileColumn, gap: SHORT_TILE_GAP } : { column, gap: TILE_GAP });
-  const today = games[featured];
+  const today = games[featuredGame] ?? games.compare;
   const FeaturedSymbol = today.symbol;
   // Each part both layouts share is marked, so it glides to its place in
   // the other as the window turns; a tile's name holds its game, so it
@@ -417,7 +440,7 @@ export function HomePage({
             the row. It stays as the tiles scroll. */}
         <Button
           className="card featured-card"
-          data-game={featured}
+          data-game={featuredGame}
           data-turn-part="featured-card"
           aria-label={today.name}
           onClick={today.onOpen}
