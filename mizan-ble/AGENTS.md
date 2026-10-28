@@ -87,6 +87,50 @@ How behaviour is specified before it is built, after audelin's process.
   module, not its preview app; the app copies no feature code and has no
   tests.
 
+### Building the next UI module
+
+- Write one brief per issue for Codex (`codex-sol-61` through agister's
+  implement process): intent, a numbered "Done when" (state shape,
+  events, view, previews, package target, README and log line), "Out of
+  scope", sources and decisions. Name the frames by node id with their
+  exported dark and light PNGs, and the frames' copy as a text file to use
+  exactly. Put the preview app, the machines and every sibling module in
+  "Out of scope" by name; a brief that leaves one out gets it built.
+- Start every independent module at once, one worktree and one Codex run
+  each. Do not wait for a PR's CI to start the next; stack the branch on
+  the unmerged one it needs.
+- A type two modules need (a step, a glyph, an amount) belongs in
+  `DesignSystem`, `Equatable` and `Sendable`, never copied into each
+  module. Move it the first time a second module needs it.
+- Review each Codex run before committing. Look for raw sizes, fonts,
+  colours and stroke widths in the module (use the nearest token); a
+  `DesignSystem` view rebuilt inside the module (give the component an
+  option instead); and frame copy bent to force a line break. Fix these
+  yourself; they need no rerun.
+- The preview app is the next issue. It shows the module's `previews`
+  list with a state picker, light and dark and an event log, and
+  `swift run <App>Preview --export <folder>` writes the PNGs; pass
+  `devices:` for a one-device screen. Compare the PNGs with the frames
+  yourself, fix the module in the same PR, and send the owner each
+  difference that the design causes, with the fix you suggest.
+
+### Merging stacked UI branches
+
+- Sibling branches all touch `ios/PreviewApps/Package.swift`, its README,
+  the README's `ios/` rows and `docs/log.md`. Union-merge the log only.
+  Write the manifest and the READMEs fresh from the apps the branch has;
+  a union of two manifests does not compile.
+- After every merge, check that the branch has both trunk and the branch
+  beneath it (`git merge-base --is-ancestor <ref> HEAD`). A merge whose
+  resolution changes no file still needs its commit; without one, the next
+  merge reuses the stale `MERGE_HEAD`.
+- A PR that conflicts with trunk gets no CI run; the watch only reports
+  that no run exists. Merge trunk in and push again.
+- Turn on auto-merge for the bottom PR only. When it merges, merge trunk
+  into the next branch, push, and turn on auto-merge for that PR. With
+  every PR on auto-merge, a higher PR would merge the lower ones' changes
+  under its own issue.
+
 ## Design
 
 - [docs/design/README.md](docs/design/README.md) indexes `mizan-ble.pen`
