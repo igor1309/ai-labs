@@ -7,7 +7,7 @@ import Session
 struct LogEntry: Sendable, Equatable {
 
     enum Category: String, CaseIterable, Sendable {
-        case calls, recording, session, capture, conditions, model, menu, reading
+        case calls, recording, session, capture, conditions, model, menu, reading, panel
     }
 
     let category: Category
