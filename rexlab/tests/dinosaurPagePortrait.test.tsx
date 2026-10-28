@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { addTransitionType } from "react";
@@ -40,7 +41,7 @@ async function openPage(size: WindowSize, {
   openWindow(...size);
   const pictures = recordedSharedPictures();
   const user = userEvent.setup({ delay: null });
-  render(<App
+  render(<App {...emptyLabyrinth()}
     {...featuring()}
     dinosaurs={SHIPPED_DINOSAURS}
     catalogue={SHIPPED_CATALOGUE}

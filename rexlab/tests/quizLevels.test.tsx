@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -45,7 +46,7 @@ const storedQuiz = (storage: MemoryStorage) => storedRecord(storage)?.games["com
 // progress kept in `storage`.
 function openApp(storage: MemoryStorage) {
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring("sort")}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { addTransitionType } from "react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
@@ -40,7 +41,7 @@ function openFlow(language: Language, portrait: boolean, featured: boolean, redu
   const viewport = manualViewport(portrait ? "portrait" : "landscape");
   const timers = manualTimers();
   const starts = countedStarts();
-  render(<App
+  render(<App {...emptyLabyrinth()}
     dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture}
     random={() => 0} viewport={viewport} portraitLayouts={PORTRAIT_LAYOUTS}
     progress={emptyProgress()} {...englishDevice()} deviceLanguage={language}

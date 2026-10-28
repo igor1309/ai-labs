@@ -1,4 +1,4 @@
-import { Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Pencil, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { Route, Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Pencil, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
 import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -18,10 +18,10 @@ const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light:
 const BRAND = "RexLab";
 
 // The games the home page offers, each on a tile of its own.
-export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting";
+export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth";
 
 // The games in their tiles' order, which never changes.
-export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting"];
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth"];
 
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
@@ -80,6 +80,7 @@ export type HomePageProps = {
   dig: { picture: string; dugUp: number | undefined };
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
+  labyrinth: { picture: string; stars: number | undefined };
   moreComing: string;
   onCompareDinosaurs: () => void;
   onCatalogue: () => void;
@@ -91,6 +92,7 @@ export type HomePageProps = {
   onMuseum: () => void;
   onDig: () => void;
   onSandWriting: () => void;
+  onLabyrinth: () => void;
 };
 
 type Menu = "language" | "theme" | "ageLevel";
@@ -117,6 +119,7 @@ export function HomePage({
   pairs,
   skeletons,
   dig,
+  labyrinth,
   moreComing,
   onCompareDinosaurs,
   onCatalogue,
@@ -126,7 +129,8 @@ export function HomePage({
   onSkeletons,
   onMuseum,
   onDig,
-  onSandWriting
+  onSandWriting,
+  onLabyrinth
 }: HomePageProps) {
   const text = TEXTS[language];
   const windowWidth = useSyncExternalStore(viewport.subscribe, viewport.width);
@@ -189,6 +193,13 @@ export function HomePage({
       picture: <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />,
       badge: dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp },
       onOpen: onDig
+    },
+    labyrinth: {
+      name: text.labyrinth,
+      symbol: Route,
+      picture: <Picture className="labyrinth-tile-picture" src={labyrinth.picture} alt="" width={800} height={600} />,
+      badge: labyrinth.stars === undefined ? undefined : { symbol: Star, value: labyrinth.stars },
+      onOpen: onLabyrinth
     },
     sandWriting: {
       name: text.sandWriting,
@@ -288,6 +299,16 @@ export function HomePage({
           <span className="dig-tile-title">{games.dig.name}</span>
         </span>
         <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
+      </Button>
+    ),
+    labyrinth: (
+      <Button key="labyrinth" className="card labyrinth-tile" data-turn-part="tile-labyrinth" aria-label={games.labyrinth.name} onClick={games.labyrinth.onOpen}>
+        {games.labyrinth.picture}
+        <span className="labyrinth-tile-row">
+          <span className="labyrinth-tile-symbol" aria-hidden="true"><Route size={20} /></span>
+          <span className="labyrinth-tile-title">{games.labyrinth.name}</span>
+        </span>
+        <BadgeChip badge={games.labyrinth.badge} className="labyrinth-tile-best" size={18} />
       </Button>
     ),
     sandWriting: (

@@ -44,6 +44,8 @@ const SCREENS = [
   "DinosaurPage.tsx",
   "FriendsScreen.tsx",
   "HomePage.tsx",
+  "LabyrinthBoardScreen.tsx",
+  "LabyrinthResultScreen.tsx",
   "LevelResultScreen.tsx",
   "OrientationGate.tsx",
   "PairsBoardScreen.tsx",
@@ -104,6 +106,7 @@ const COMPOSITION = [
   "quizGame.tsx",
   "root.ts",
   "skeletonGame.tsx",
+  "labyrinthGame.tsx",
   "sortingGame.tsx"
 ];
 // The choice of the day's featured game.
@@ -127,6 +130,25 @@ const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps maze rules pure and labyrinth presentation independent of the game model", () => {
+    expect(GRAPH.get("labyrinth/index.ts")).toEqual([]);
+    expect(GRAPH.get("labyrinthGame.tsx")).toContain("labyrinth/index.ts");
+    expect(edges((file) => file.startsWith("labyrinth/"), (target) => !target.startsWith("labyrinth/"))).toEqual([]);
+    expect(edges((file) => !file.startsWith("labyrinth/"), (target) => target.startsWith("labyrinth/") && target !== "labyrinth/index.ts")).toEqual([]);
+    expect(edges((file) => !["labyrinthGame.tsx", "localProgress.ts"].includes(file), (target) => target === "labyrinth/index.ts")).toEqual([]);
+    expect(edges((file) => PRESENTATION.includes(file) || file.startsWith("language/") || file === "theme.ts", (target) => target.startsWith("labyrinth/"))).toEqual([]);
+  });
+
+  it("wires labyrinth only through its game module and browser composition root", () => {
+    expect(GRAPH.get("App.tsx")).toContain("labyrinthGame.tsx");
+    expect(GRAPH.get("root.ts")).toContain("localProgress.ts");
+    expect(edges((file) => file !== "App.tsx", (target) => target === "labyrinthGame.tsx")).toEqual([]);
+    expect(GRAPH.get("labyrinthGame.tsx")).toEqual(expect.arrayContaining([
+      "LabyrinthBoardScreen.tsx", "LabyrinthResultScreen.tsx", "screens.ts", "startLevel.ts", "levelOffer.ts", BEST_SCORE
+    ]));
+    expect(edges((file) => file === "labyrinthGame.tsx", (target) => ADAPTERS.includes(target))).toEqual([]);
+  });
+
   it("is read from the source", () => {
     expect(GRAPH.get("quizGame.tsx")).toContain("quiz/index.ts");
     expect(GRAPH.get("main.tsx")).toContain("root.ts");
@@ -186,7 +208,7 @@ describe("the import graph", () => {
   // composition root names the one rule, which is free of the rest of the
   // app.
   it("leaves the one best-score rule to the composition root, which gives it to each game", () => {
-    expect(["careGame.tsx", "quizGame.tsx", "skeletonGame.tsx", "sortingGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(BEST_SCORE))).toEqual([]);
+    expect(["careGame.tsx", "quizGame.tsx", "skeletonGame.tsx", "sortingGame.tsx", "labyrinthGame.tsx"].filter((file) => !GRAPH.get(file)?.includes(BEST_SCORE))).toEqual([]);
     expect(edges((file) => !COMPOSITION.includes(file), (target) => target === BEST_SCORE)).toEqual([]);
     expect(edges((file) => file === BEST_SCORE, () => true)).toEqual([]);
   });
@@ -299,7 +321,7 @@ describe("the import graph", () => {
 const TAP_SAFETY = "docs/tap-safety.md";
 
 // The modules that keep screens, each with useScreens.
-const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "digGame.tsx", "pairsGame.tsx", "skeletonGame.tsx", "sortingGame.tsx"];
+const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "digGame.tsx", "pairsGame.tsx", "skeletonGame.tsx", "sortingGame.tsx", "labyrinthGame.tsx"];
 
 // The module that alone reads the browser's clock and timers, and the
 // service worker's own root, which runs apart from the app and its taps.
