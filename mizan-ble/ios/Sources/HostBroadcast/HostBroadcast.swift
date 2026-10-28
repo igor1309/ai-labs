@@ -52,6 +52,7 @@ public enum HostBroadcast {
         fileprivate var link: Link?
         fileprivate var clientKey: [UInt8]?
         fileprivate var preparation: Preparation?
+        fileprivate var expiryPending = false
 
         public init() {}
         public var canCancel: Bool { phase == .goingOnAir || phase == .advertising }
@@ -248,7 +249,16 @@ public enum HostBroadcast {
             return end(state, phase: .ready, amount: state.amount, reason: reason)
         case .secondsLeft(let attempt, let seconds)
             where state.attempt == attempt && (state.phase == .advertising || state.isHandshaking):
-            if seconds <= 0 { return end(state, phase: .timedOut, amount: "") }
+            guard !state.expiryPending else { return (state, nil) }
+            if seconds <= 0 {
+                if state.phase == .handshake(.sendingAmount) {
+                    // Radio acceptance settles the deadline; its result may still be queued.
+                    next.expiryPending = true
+                    next.secondsLeft = 0
+                    return (next, nil)
+                }
+                return end(state, phase: .timedOut, amount: "")
+            }
             next.secondsLeft = seconds
             return (next, nil)
         case .clientKey(let attempt, let link, let key)
@@ -276,8 +286,10 @@ public enum HostBroadcast {
             guard let secure = secureLink(state) else { return (state, nil) }
             next.phase = .handedOver(secure)
             next.secondsLeft = nil
+            next.expiryPending = false
             return (next, .stopCountdown(attempt, retire: false))
         case .handshakeFailed(let attempt, let reason) where state.attempt == attempt && state.isHandshaking:
+            if state.expiryPending { return end(state, phase: .timedOut, amount: "") }
             return end(state, phase: .failed, amount: state.amount, reason: reason)
         case .linkLost(let attempt, let link)
             where state.attempt == attempt && state.link == link && state.isHandshaking:

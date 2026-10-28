@@ -7,7 +7,8 @@ private typealias Broadcast = HostBroadcast
 @MainActor
 struct HostBroadcastTests {
     @Test func lockingStartsBroadcastWithoutCountdown() async {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
 
         await flow.send(.lock(amount: "124.50"))
@@ -22,7 +23,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: [15, 30, 60])
     func onAirStartsFullCountdown(_ seconds: Int) async {
-        let fake = Ports(seconds: seconds, sessions: [session(1)])
+        let fake = Ports(seconds: seconds, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
 
@@ -37,7 +39,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: [Ports.Failure.serving, .advertising])
     fileprivate func cannotGoOnAirUnlocksAmountAndClosesSession(_ failure: Ports.Failure) async {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         fake.failure = failure
         let flow = Flow(fake)
 
@@ -52,7 +55,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: [false, true])
     func cancelUnlocksAmountAndIgnoresLateOnAir(_ onAir: Bool) async {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
         if onAir { await flow.send(.onAir(first)) }
@@ -73,7 +77,8 @@ struct HostBroadcastTests {
     }
 
     @Test func countdownExpiryClearsAmountAndRetiresSession() async {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
         await flow.send(.onAir(first))
@@ -91,7 +96,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: ["powered off", "unauthorized", "unsupported"])
     func bluetoothLossOnAirUnlocksAmountWithReason(_ reason: String) async {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
         await flow.send(.onAir(first))
@@ -105,7 +111,8 @@ struct HostBroadcastTests {
     }
 
     @Test func firstClientKeyKeepsServiceAndRemainingSeconds() async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
         await flow.send(.onAir(first))
@@ -124,10 +131,12 @@ struct HostBroadcastTests {
         #expect(fake.countdowns == [first: 30])
     }
 
-    @Test func amountSentHandsOverSecureLinkAndStopsCountdown() async {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+    @Test(arguments: successfulAmounts)
+    fileprivate func amountSentHandsOverSecureLinkAndStopsCountdown(_ input: LockedAmount) async {
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: [input.amount: input.protected])
         let flow = Flow(fake)
-        await flow.send(.lock(amount: "124.50"))
+        await flow.send(.lock(amount: input.amount))
         await flow.send(.onAir(first))
 
         await flow.send(.clientKey(first, client, key: [7, 8]))
@@ -139,12 +148,12 @@ struct HostBroadcastTests {
         #expect(secure.attempt == first)
         #expect(secure.session == session(1))
         #expect(secure.link == client)
-        #expect(secure.amount == "124.50")
+        #expect(secure.amount == input.amount)
         #expect(flow.state.secondsLeft == nil)
         #expect(!flow.state.canCancel)
         #expect(fake.calls.suffix(5) == [
             .stoppedAdvertising(first), .derived(first, [7, 8]),
-            .sealed(first, "124.50"), .sent(first, client, protectedAmount), .stoppedCountdown(first),
+            .sealed(first, input.amount), .sent(first, client, input.protected), .stoppedCountdown(first),
         ])
         #expect(fake.countdowns.isEmpty)
         #expect(fake.advertising.isEmpty)
@@ -153,7 +162,8 @@ struct HostBroadcastTests {
     }
 
     @Test func keyDerivationQueuesFirstSeal() async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         let derive = try await flow.beginHandshake(stoppingAt: .derivingKey)
         let result = try #require(await flow.handle(derive))
@@ -166,7 +176,8 @@ struct HostBroadcastTests {
     }
 
     @Test func amountSealFailureOffersRetryAndNewAmount() async {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         fake.failure = .sealing
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
@@ -179,9 +190,10 @@ struct HostBroadcastTests {
         #expect(!fake.calls.contains { if case .sent = $0 { true } else { false } })
     }
 
-    @Test(arguments: [false, true])
-    func queuedSendAfterExpiryDoesNotReachClient(_ expireFirst: Bool) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+    @Test(arguments: [false, true], [false, true])
+    func queuedSendAfterExpiryDoesNotReachClient(_ expireFirst: Bool, _ sendFails: Bool) async throws {
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         _ = try await flow.beginHandshake(stoppingAt: .sealingAmount)
         let handler = Broadcast.Handler(session: fake, advertiser: fake, sender: fake,
@@ -190,31 +202,62 @@ struct HostBroadcastTests {
                               handler: { await handler.handle($0) })
         defer { machine.end() }
 
+        if sendFails { fake.failure = .sending }
         if expireFirst { machine.send(.secondsLeft(first, 0)) }
         machine.send(.amountSealed(first, protectedAmount))
         if !expireFirst { machine.send(.secondsLeft(first, 0)) }
 
         let sent: [Ports.Call] = expireFirst ? [] : [.sent(first, client, protectedAmount)]
         #expect(fake.calls.filter { if case .sent = $0 { true } else { false } } == sent)
-        #expect(machine.state.phase == .timedOut)
-        #expect(machine.state.amount.isEmpty)
-        let timedOut = machine.state
+        if expireFirst {
+            #expect(machine.state.phase == .timedOut)
+            #expect(machine.state.amount.isEmpty)
+        } else {
+            #expect(machine.state.phase == .handshake(.sendingAmount))
+            #expect(machine.state.secondsLeft == 0)
+            #expect(fake.services == [first: session(1)])
+            #expect(fake.openSessions == [first])
+        }
         await machine.waitForEffects()
-        #expect(machine.state == timedOut)
         #expect(fake.calls.filter { if case .sent = $0 { true } else { false } } == sent)
-        expectRetired(fake, first)
+        if expireFirst || sendFails {
+            #expect(machine.state.phase == .timedOut)
+            #expect(machine.state.amount.isEmpty)
+            #expect(machine.state.reason == nil)
+            #expect(!machine.state.canRetry)
+            expectRetired(fake, first)
+        } else {
+            guard case .handedOver(let secure) = machine.state.phase else {
+                Issue.record("Expected a successful send to hand over, got \(machine.state.phase)")
+                return
+            }
+            #expect(secure.attempt == first)
+            #expect(secure.session == session(1))
+            #expect(secure.link == client)
+            #expect(secure.amount == "124.50")
+            #expect(machine.state.secondsLeft == nil)
+            #expect(fake.countdowns.isEmpty)
+            #expect(fake.advertising.isEmpty)
+            #expect(fake.services == [first: session(1)])
+            #expect(fake.openSessions == [first])
+            #expect(fake.calls.last == .stoppedCountdown(first))
+        }
     }
 
     @Test(arguments: [false, true])
     func queuedSealResultAfterHandoverOrReplacementIsRejected(_ replace: Bool) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2)])
+        let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         let send = try await flow.beginHandshake(stoppingAt: .sendingAmount)
+        if replace { fake.failure = .sending }
         let sent = try #require(await flow.handle(send))
+        fake.failure = nil
         var replacementResult: Broadcast.Event?
         let second = Broadcast.Attempt(number: 2)
         if replace {
             await flow.send(.secondsLeft(first, 0))
+            await flow.send(sent)
             await flow.send(.lock(amount: "99"))
             await flow.send(.onAir(second))
             let replacementSend = try await flow.clientHandshake(second, stoppingAt: .sendingAmount)
@@ -240,13 +283,15 @@ struct HostBroadcastTests {
             }
             #expect(secure.attempt == second)
             #expect(secure.amount == "99")
-            #expect(fake.calls.suffix(2) == [.sent(second, client, protectedAmount), .stoppedCountdown(second)])
+            #expect(fake.calls.contains(.sealed(second, "99")))
+            #expect(fake.calls.suffix(2) == [.sent(second, client, replacementProtectedAmount), .stoppedCountdown(second)])
         }
     }
 
     @Test(arguments: handshakeSteps)
     fileprivate func handshakeDoesNotOfferCancelOrAnotherAttempt(_ step: Broadcast.HandshakeStep) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         _ = try await flow.beginHandshake(stoppingAt: step)
         let handshake = flow.state
@@ -265,7 +310,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: handshakeSteps)
     fileprivate func unrelatedLinkLossLeavesHandshakeIntact(_ step: Broadcast.HandshakeStep) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         _ = try await flow.beginHandshake(stoppingAt: step)
         let current = flow.state
@@ -281,7 +327,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: staleEvents)
     fileprivate func staleEventsCannotChangeReplacementAttempt(_ input: StaleEvent) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2)])
+        let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         try await flow.prepareReplacement(stoppingAt: input.phase)
         let current = flow.state
@@ -297,7 +344,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: lateAcquisitions)
     fileprivate func lateAcquisitionsReleaseOnlyOldResources(_ input: LateAcquisition) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2), session(3)])
+        let fake = Ports(seconds: 30, sessions: [session(1), session(2), session(3)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         try await flow.prepareReplacement(stoppingAt: input.phase)
         let current = flow.state
@@ -322,7 +370,8 @@ struct HostBroadcastTests {
     }
 
     @Test func staleStartupFailureCannotEndAnotherAttempt() async {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2)])
+        let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
         await flow.send(.cancel)
@@ -338,7 +387,8 @@ struct HostBroadcastTests {
     }
 
     @Test func invalidClientKeyOffersRetryAndNewAmount() async {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         fake.failure = .deriving
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
@@ -351,7 +401,8 @@ struct HostBroadcastTests {
     }
 
     @Test func amountSendFailureOffersRetryAndNewAmount() async {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         fake.failure = .sending
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
@@ -367,7 +418,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: handshakeSteps)
     fileprivate func lostLinkDuringHandshakeOffersBothChoices(_ step: Broadcast.HandshakeStep) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         _ = try await flow.beginHandshake(stoppingAt: step)
 
@@ -378,7 +430,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: handshakeSteps)
     fileprivate func bluetoothLossDuringHandshakeFails(_ step: Broadcast.HandshakeStep) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         _ = try await flow.beginHandshake(stoppingAt: step)
 
@@ -389,15 +442,28 @@ struct HostBroadcastTests {
 
     @Test(arguments: handshakeSteps)
     fileprivate func countdownRemainsHandshakeDeadline(_ step: Broadcast.HandshakeStep) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
-        _ = try await flow.beginHandshake(stoppingAt: step)
+        let pending = try await flow.beginHandshake(stoppingAt: step)
 
         await flow.send(.secondsLeft(first, 7))
         #expect(flow.state.phase == .handshake(step))
         #expect(flow.state.secondsLeft == 7)
         await flow.send(.secondsLeft(first, 0))
 
+        if step == .sendingAmount {
+            #expect(flow.state.phase == .handshake(.sendingAmount))
+            #expect(flow.state.secondsLeft == 0)
+            #expect(fake.countdowns == [first: 30])
+            #expect(fake.services == [first: session(1)])
+            #expect(fake.openSessions == [first])
+            // Expiry cannot discard a send whose acceptance is still pending.
+            await flow.send(.secondsLeft(first, 5))
+            fake.failure = .sending
+            await flow.run(pending)
+            #expect(fake.calls.contains(.sent(first, client, protectedAmount)))
+        }
         #expect(flow.state.phase == .timedOut)
         #expect(flow.state.amount.isEmpty)
         #expect(flow.state.secondsLeft == nil)
@@ -414,7 +480,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: [Ports.Failure.deriving, .sealing, .sending])
     fileprivate func retryUsesFreshSessionSameAmountAndCurrentFullCountdown(_ failure: Ports.Failure) async {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2)])
+        let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         fake.failure = failure
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
@@ -443,7 +510,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: [Ports.Failure.deriving, .sealing, .sending])
     fileprivate func newAmountAfterFailureClearsAmountAndReason(_ failure: Ports.Failure) async {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         fake.failure = failure
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
@@ -463,7 +531,8 @@ struct HostBroadcastTests {
     }
 
     @Test func handedOverWaitsForItsTransactionEndThenAcceptsNewAmount() async {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2)])
+        let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
         await flow.send(.onAir(first))
@@ -498,7 +567,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: [false, true])
     func sessionOpenedAfterCancelIsClosedWithoutTouchingNewAttempt(_ startAnother: Bool) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1), session(2)])
+        let fake = Ports(seconds: 30, sessions: [session(1), session(2)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         let read = try #require(flow.accept(.lock(amount: "124.50")))
         let setting = try #require(await flow.handle(read))
@@ -526,7 +596,8 @@ struct HostBroadcastTests {
 
     @Test(arguments: [false, true])
     func lateCountdownStartIsStoppedAfterCancelOrHandover(_ handOver: Bool) async throws {
-        let fake = Ports(seconds: 30, sessions: [session(1)])
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount, "99": replacementProtectedAmount])
         let flow = Flow(fake)
         await flow.send(.lock(amount: "124.50"))
         let startCountdown = try #require(flow.accept(.onAir(first)))
@@ -553,6 +624,18 @@ struct HostBroadcastTests {
     }
 }
 
+private struct LockedAmount: Sendable {
+    let amount: String
+    let protected: Broadcast.ProtectedAmount
+}
+
+private let successfulAmounts: [LockedAmount] = [
+    .init(amount: "124.50", protected: protectedAmount),
+    .init(amount: "99", protected: replacementProtectedAmount),
+    .init(amount: "0.01", protected: .init(bytes: [8, 19, 71, 254])),
+]
+
+private let replacementProtectedAmount = Broadcast.ProtectedAmount(bytes: [6, 43, 128])
 private let protectedAmount = Broadcast.ProtectedAmount(bytes: [91, 37, 206])
 private let first = Broadcast.Attempt(number: 1)
 private let client = Broadcast.Link(id: "payer")
@@ -732,6 +815,7 @@ private final class Ports: Broadcast.SessionProvider, Broadcast.Advertiser,
 
     var duration: Int
     var sessions: [Broadcast.Session]
+    let protectedAmounts: [String: Broadcast.ProtectedAmount]
     var calls: [Call] = []
     var countdowns: [Broadcast.Attempt: Int] = [:]
     var services: [Broadcast.Attempt: Broadcast.Session] = [:]
@@ -739,9 +823,11 @@ private final class Ports: Broadcast.SessionProvider, Broadcast.Advertiser,
     var openSessions: Set<Broadcast.Attempt> = []
     var failure: Failure?
 
-    init(seconds: Int, sessions: [Broadcast.Session]) {
+    init(seconds: Int, sessions: [Broadcast.Session],
+         protectedAmounts: [String: Broadcast.ProtectedAmount]) {
         duration = seconds
         self.sessions = sessions
+        self.protectedAmounts = protectedAmounts
     }
 
     func seconds() -> Int { calls.append(.setting); return duration }
@@ -757,7 +843,7 @@ private final class Ports: Broadcast.SessionProvider, Broadcast.Advertiser,
     func seal(amount: String, for attempt: Broadcast.Attempt) throws -> Broadcast.ProtectedAmount {
         calls.append(.sealed(attempt, amount))
         if failure == .sealing { throw Failure.sealing }
-        return protectedAmount
+        return try #require(protectedAmounts[amount])
     }
     func close(_ attempt: Broadcast.Attempt) {
         calls.append(.closed(attempt))
