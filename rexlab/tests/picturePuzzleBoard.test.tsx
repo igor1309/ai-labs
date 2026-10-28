@@ -18,8 +18,11 @@ const piece = (id: number, language: Language = "en") => screen.getByLabelText(T
 const slot = (id: number, language: Language = "en") => screen.getByLabelText(TEXTS[language].pictureSlot(id + 1));
 const BOARD = { x: 40, y: 90, left: 40, top: 90, width: 768, height: 576, right: 808, bottom: 666, toJSON: () => ({}) };
 
-function pointer(target: EventTarget, type: string, x: number, y: number, id = 7) {
-  act(() => { target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerId: id, button: 0, pointerType: "touch", isPrimary: id === 7, bubbles: true, cancelable: true })); });
+type TestPointer = { pointerId: number; pointerType: string; isPrimary: boolean };
+const PRIMARY_TOUCH: TestPointer = { pointerId: 7, pointerType: "touch", isPrimary: true };
+
+function pointer(target: EventTarget, type: string, x: number, y: number, device: TestPointer = PRIMARY_TOUCH) {
+  act(() => { target.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, ...device, button: 0, bubbles: true, cancelable: true })); });
 }
 
 function displayBoard(level: AgeLevel, language: Language): PictureBoard {
@@ -69,14 +72,57 @@ const center = (puzzle: PictureBoard, id: number) => {
 const fitted = (puzzle: PictureBoard) => puzzle.slots.filter((slot) => slot.filled).map((slot) => slot.id);
 const complete = (puzzle: PictureBoard) => puzzle.tray.length === 0;
 
-const drag = (id: number, x: number, y: number, pointerId = 7) => {
-  pointer(piece(id), "pointerdown", 950, 250, pointerId);
-  pointer(window, "pointermove", x, y, pointerId);
+const drag = (id: number, x: number, y: number, device: TestPointer = PRIMARY_TOUCH) => {
+  pointer(piece(id), "pointerdown", 950, 250, device);
+  pointer(window, "pointermove", x, y, device);
 };
 const place = (id: number, language: Language = "en") => {
   fireEvent.click(piece(id, language), { detail: 0 });
   fireEvent.click(slot(id, language), { detail: 0 });
 };
+
+// jsdom has no layout engine; the board still receives the bounds of the
+// flex stage derived from the screen's real computed padding, bar and gap.
+function stageBudget(stage: HTMLElement): DOMRect {
+  const main = stage.closest("main")!;
+  const screen = getComputedStyle(main);
+  const bar = getComputedStyle(main.querySelector("header")!);
+  const top = parseFloat(screen.paddingTop);
+  const left = parseFloat(screen.paddingLeft);
+  const barHeight = Math.max(parseFloat(bar.flexBasis), parseFloat(bar.minHeight));
+  const gap = parseFloat(screen.gap);
+  return DOMRect.fromRect({ x: left, y: top + barHeight + gap,
+    width: window.innerWidth - left - parseFloat(screen.paddingRight),
+    height: parseFloat(screen.height) - top - parseFloat(screen.paddingBottom) - barHeight - gap });
+}
+
+function assertBoardFit(view: ReturnType<typeof openBoard>) {
+  const stage = view.container.querySelector<HTMLElement>(".picture-puzzle-stage")!;
+  const tools = view.container.querySelector<HTMLElement>(".picture-puzzle-tools")!;
+  const tray = view.container.querySelector<HTMLElement>(".picture-puzzle-tray")!;
+  const room = stage.getBoundingClientRect();
+  const board = getComputedStyle(view.board);
+  const width = parseFloat(board.width);
+  const height = parseFloat(board.height);
+  const toolsWidth = parseFloat(getComputedStyle(tools).flexBasis);
+  const gap = parseFloat(getComputedStyle(stage).gap);
+  expect(width + toolsWidth + gap).toBeLessThanOrEqual(room.width);
+  expect(height).toBeLessThanOrEqual(room.height);
+  expect(width / height).toBeCloseTo(4 / 3);
+  expect(Math.min(width / view.puzzle().columns, height / view.puzzle().rows)).toBeGreaterThanOrEqual(48);
+  const controls = [...tools.children].filter((child) => child !== tray);
+  const controlsHeight = controls.reduce((sum, child) => {
+    const style = getComputedStyle(child);
+    const height = child.classList.contains("picture-puzzle-pages")
+      ? Math.max(...[...child.querySelectorAll("button")].map((button) => parseFloat(getComputedStyle(button).height)))
+      : parseFloat(style.height) || parseFloat(style.minHeight);
+    return sum + height;
+  }, 0);
+  const trayHeight = room.height - controlsHeight - controls.length * parseFloat(getComputedStyle(tools).gap);
+  expect((trayHeight - parseFloat(getComputedStyle(tray).gap)) / 2).toBeGreaterThanOrEqual(48);
+  expect((toolsWidth - parseFloat(getComputedStyle(tray).gap)) / 2).toBeGreaterThanOrEqual(48);
+  expect(view.container.querySelector('.orientation-gate[data-shown]')).toBeNull();
+}
 
 afterEach(() => { vi.restoreAllMocks(); });
 
@@ -196,21 +242,28 @@ it("moves the complete matching tile under the owning finger, rejects a neighbor
   expect(view.onFit).toHaveBeenCalledTimes(1);
 });
 
-it("ignores every second-pointer move, release and tap while one piece is owned", () => {
+it.each([
+  { pointerId: 8, pointerType: "touch", isPrimary: false },
+  { pointerId: 8, pointerType: "pen", isPrimary: true },
+  { pointerId: 8, pointerType: "mouse", isPrimary: true }
+])("ignores competing $pointerType moves, releases and taps while a primary touch owns a piece", (competitor) => {
   const view = openBoard();
   const target = center(view.puzzle(), 0);
   drag(0, target.x, target.y);
   const lifted = view.container.querySelector<HTMLElement>(".picture-puzzle-lifted")!;
   const left = lifted.style.left;
-  pointer(piece(1), "pointerdown", 900, 220, 8);
-  pointer(window, "pointermove", 1, 1, 8);
-  pointer(slot(0), "pointerup", target.x, target.y, 8);
+  pointer(piece(1), "pointerdown", 900, 220, competitor);
+  pointer(window, "pointermove", 1, 1, competitor);
+  pointer(slot(0), "pointerup", target.x, target.y, competitor);
   fireEvent.click(slot(0), { detail: 1 });
   fireEvent.click(button(TEXTS.en.pictureHint), { detail: 1 });
   expect([lifted.style.left, fitted(view.puzzle())]).toEqual([left, []]);
+  expect(view.onFit).not.toHaveBeenCalled();
+  expect(piece(0).getAttribute("aria-pressed")).toBe("true");
   pointer(window, "pointerup", target.x, target.y);
-  pointer(window, "pointerup", target.x, target.y, 8);
+  pointer(window, "pointerup", target.x, target.y, competitor);
   expect(fitted(view.puzzle())).toEqual([0]);
+  expect(view.onFit.mock.calls).toEqual([[0]]);
 });
 
 it("hints select the first visible piece or keep the chosen one, and preview changes neither placement nor score", () => {
@@ -304,40 +357,33 @@ it.each([
     return DOMRect.fromRect(stageBounds);
   });
   const view = openBoard("paleontologist", "en", undefined, undefined, size);
-  const stage = view.container.querySelector<HTMLElement>(".picture-puzzle-stage")!;
-  const tools = view.container.querySelector<HTMLElement>(".picture-puzzle-tools")!;
-  const tray = view.container.querySelector<HTMLElement>(".picture-puzzle-tray")!;
-  const assertFit = () => {
-    const room = stage.getBoundingClientRect();
-    const board = getComputedStyle(view.board);
-    const width = parseFloat(board.width);
-    const height = parseFloat(board.height);
-    const toolsWidth = parseFloat(getComputedStyle(tools).flexBasis);
-    const gap = parseFloat(getComputedStyle(stage).gap);
-    expect(width + toolsWidth + gap).toBeLessThanOrEqual(room.width);
-    expect(height).toBeLessThanOrEqual(room.height);
-    expect(width / height).toBeCloseTo(4 / 3);
-    expect(Math.min(width / 6, height / 6)).toBeGreaterThanOrEqual(48);
-    const controls = [...tools.children].filter((child) => child !== tray);
-    const controlsHeight = controls.reduce((sum, child) => {
-      const style = getComputedStyle(child);
-      const height = child.classList.contains("picture-puzzle-pages")
-        ? Math.max(...[...child.querySelectorAll("button")].map((button) => parseFloat(getComputedStyle(button).height)))
-        : parseFloat(style.height) || parseFloat(style.minHeight);
-      return sum + height;
-    }, 0);
-    const trayHeight = room.height - controlsHeight - controls.length * parseFloat(getComputedStyle(tools).gap);
-    expect((trayHeight - parseFloat(getComputedStyle(tray).gap)) / 2).toBeGreaterThanOrEqual(48);
-    expect((toolsWidth - parseFloat(getComputedStyle(tray).gap)) / 2).toBeGreaterThanOrEqual(48);
-    expect(view.container.querySelector('.orientation-gate[data-shown]')).toBeNull();
-  };
-  assertFit();
+  assertBoardFit(view);
   const originalWidth = view.board.style.width;
   stageBounds = next;
   Object.assign(window, { innerWidth: size[0] - 100, innerHeight: size[1] - 80 });
   fireEvent(window, new Event("resize"));
-  assertFit();
+  assertBoardFit(view);
   expect(view.board.style.width).not.toBe(originalWidth);
+});
+
+describe.each(LANGUAGES)("outer puzzle screen fit in %s", (language) => {
+  it.each([[1133, 744], [1920, 1080]] as const)("keeps the 36-piece board and controls playable at %ix%i", (width, height) => {
+    const original = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("picture-puzzle-stage") ? stageBudget(this) : original.call(this);
+    });
+    const view = openBoard("paleontologist", language, undefined, undefined, [width, height]);
+    const main = view.container.querySelector("main")!;
+    const stage = view.container.querySelector<HTMLElement>(".picture-puzzle-stage")!;
+    const room = stage.getBoundingClientRect();
+    expect(getComputedStyle(main).boxSizing).toBe("border-box");
+    expect(parseFloat(getComputedStyle(main).height)).toBeLessThanOrEqual(height);
+    expect(room.x).toBeGreaterThanOrEqual(0);
+    expect(room.y).toBeGreaterThanOrEqual(0);
+    expect(room.right + parseFloat(getComputedStyle(main).paddingRight)).toBeLessThanOrEqual(width);
+    expect(room.bottom + parseFloat(getComputedStyle(main).paddingBottom)).toBeLessThanOrEqual(height);
+    assertBoardFit(view);
+  });
 });
 
 it("blocks selection and keyboard placement while its supplied presence is hidden", () => {

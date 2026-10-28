@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
+import * as scoring from "../src/bestScore.ts";
 import records from "../src/data/dinosaurs.json";
 import { readPictureDinosaurs } from "../src/dinosaurs.ts";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
@@ -15,6 +16,7 @@ import { openWindow } from "./windowSizes.ts";
 
 const DINOSAURS = readPictureDinosaurs(records);
 const button = (name: string) => screen.getByRole("button", { name });
+afterEach(() => { vi.restoreAllMocks(); });
 
 function openGame(storage: ReturnType<typeof memoryStorage>, language: Language, level: AgeLevel) {
   openWindow(1133, 744);
@@ -157,7 +159,7 @@ it.each([
   JSON.stringify({ schemaVersion: 1, games: { "picture-puzzle": 7 } }),
   "{bad",
   JSON.stringify({ schemaVersion: 1, games: { "picture-puzzle": { completed: 7 } } })
-])("keeps recovered history unverified for the session from %s", (raw) => {
+])("keeps the recovery result unverified and celebrates later saved history from %s", (raw) => {
   const storage = memoryStorage(raw === undefined ? {} : { [PROGRESS_KEY]: raw });
   const view = openGame(storage, "en", "hatchling");
   const text = TEXTS.en;
@@ -167,30 +169,87 @@ it.each([
     expect(screen.getByRole("img", { name: text.star })).not.toBeNull();
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(dinosaur.name.en.toUpperCase());
     expect(screen.getByLabelText(text.score).textContent).toBe(`${text.ageLevels.hatchling.name} ${at + 1}/3`);
-    expect(screen.queryByRole("status")).toBeNull();
+    // Only the recovery round lacks a readable history to compare against.
+    if (at === 0) {
+      expect(screen.queryByRole("status")).toBeNull();
+      expect(screen.queryByText(text.celebrations["new-best"].text)).toBeNull();
+      expect(screen.queryByLabelText(text.bestScore)).toBeNull();
+    } else {
+      expect(screen.getByRole("status").textContent).toBe(text.celebrations["new-best"].text);
+      expect(screen.getByLabelText(text.bestScore).textContent).toBe(`${text.best}12/3`);
+    }
     expect(screen.queryByText(text.celebrations["first-best"].text)).toBeNull();
-    expect(screen.queryByText(text.celebrations["new-best"].text)).toBeNull();
-    expect(screen.queryByLabelText(text.bestScore)).toBeNull();
     fireEvent.click(button(text.pictureAnother));
     expect(screen.getByLabelText(text.pictureCollection).textContent).toBe(`${at + 1}/3`);
   }
   expect(view.save).toHaveBeenCalledTimes(2);
+  fireEvent.click(button(text.ageLevels.explorer.name));
+  fireEvent.click(button(DINOSAURS[0]!.name.en.toUpperCase()));
+  finish(view, "en");
+  expect(screen.getByRole("status").textContent).toBe(text.celebrations["first-best"].text);
+  expect(screen.getByLabelText(text.score).textContent).toBe(`${text.ageLevels.explorer.name} 1/3`);
+  expect(screen.getByLabelText(text.bestScore).textContent).toBe(`${text.best}1/3`);
   view.unmount();
+});
+
+it.each(["missing", "malformed record", "malformed collection", "unavailable"])("keeps rewards without best claims when history becomes %s during a round", (failure) => {
+  const storage = memoryStorage();
+  const store = localPicturePuzzleProgress(() => storage);
+  store.save(NO_PICTURES);
+  const view = openGame(storage, "en", "hatchling");
+  const text = TEXTS.en;
+  fireEvent.click(button(DINOSAURS[0]!.name.en.toUpperCase()));
+  const puzzle = view.game().puzzle!;
+  const onFit = view.game().board("en")!.props.onPlace;
+  act(() => { for (const id of puzzle.order.slice(0, -1)) onFit(id, id); });
+  if (failure === "missing") storage.items.delete(PROGRESS_KEY);
+  if (failure === "malformed record") storage.items.set(PROGRESS_KEY, "{bad");
+  if (failure === "malformed collection") storage.items.set(PROGRESS_KEY, JSON.stringify({ schemaVersion: 1, games: { "picture-puzzle": { completed: 7 } } }));
+  if (failure === "unavailable") vi.spyOn(storage, "getItem").mockImplementation(() => { throw new DOMException("Unavailable", "SecurityError"); });
+  finish(view, "en");
+  expect(view.save).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("img", { name: text.star })).not.toBeNull();
+  expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(DINOSAURS[0]!.name.en.toUpperCase());
+  expect(screen.getByLabelText(text.score).textContent).toBe(`${text.ageLevels.hatchling.name} 1/3`);
+  expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("1/3");
+  expect(screen.queryByRole("status")).toBeNull();
+  expect(screen.queryByText(text.celebrations["first-best"].text)).toBeNull();
+  expect(screen.queryByText(text.celebrations["new-best"].text)).toBeNull();
+  expect(screen.queryByLabelText(text.bestScore)).toBeNull();
+  fireEvent.click(button(text.pictureAnother));
+  expect(within(button(DINOSAURS[0]!.name.en.toUpperCase())).getByRole("img", { name: text.star })).not.toBeNull();
+});
+
+it("wires the shared best-score policy into the picture result", () => {
+  const storage = memoryStorage();
+  localPicturePuzzleProgress(() => storage).save({ earned: ["tyrannosaurus"],
+    completed: { ...NO_PICTURES.completed, explorer: ["tyrannosaurus"] } });
+  const policy = vi.spyOn(scoring, "beatBest").mockReturnValue({ best: 3, celebration: "first-best" });
+  const view = openGame(storage, "en", "explorer");
+  fireEvent.click(button(DINOSAURS[1]!.name.en.toUpperCase()));
+  finish(view, "en");
+  expect(policy.mock.calls).toEqual([[1, 2]]);
+  expect(screen.getByLabelText(TEXTS.en.score).textContent).toBe(`${TEXTS.en.ageLevels.explorer.name} 2/3`);
+  expect(screen.getByLabelText(TEXTS.en.bestScore).textContent).toBe(`${TEXTS.en.best}3/3`);
+  expect(screen.getByRole("status").textContent).toBe(TEXTS.en.celebrations["first-best"].text);
 });
 
 it.each(["read", "write"])("keeps a round star and session collection with no best claims when storage fails on %s", (failure) => {
   const raw = JSON.stringify({ schemaVersion: 1, games: { "picture-puzzle": NO_PICTURES } });
   const storage = memoryStorage({ [PROGRESS_KEY]: raw }, { read: failure !== "read", save: failure !== "write" });
   const view = openGame(storage, "en", "hatchling");
-  fireEvent.click(button(DINOSAURS[0]!.name.en.toUpperCase()));
-  finish(view, "en");
-  expect(screen.getByRole("img", { name: TEXTS.en.star })).not.toBeNull();
-  expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(DINOSAURS[0]!.name.en.toUpperCase());
-  expect(screen.queryByRole("status")).toBeNull();
-  expect(screen.queryByLabelText(TEXTS.en.bestScore)).toBeNull();
-  expect(screen.getByLabelText(TEXTS.en.score).textContent).toBe(`${TEXTS.en.ageLevels.hatchling.name} 1/3`);
-  fireEvent.click(button(TEXTS.en.pictureAnother));
-  expect(screen.getByLabelText(TEXTS.en.pictureCollection).textContent).toBe("1/3");
+  for (const [at, dinosaur] of DINOSAURS.slice(0, 2).entries()) {
+    fireEvent.click(button(dinosaur.name.en.toUpperCase()));
+    finish(view, "en");
+    expect(screen.getByRole("img", { name: TEXTS.en.star })).not.toBeNull();
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(dinosaur.name.en.toUpperCase());
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByLabelText(TEXTS.en.bestScore)).toBeNull();
+    expect(screen.getByLabelText(TEXTS.en.score).textContent).toBe(`${TEXTS.en.ageLevels.hatchling.name} ${at + 1}/3`);
+    fireEvent.click(button(TEXTS.en.pictureAnother));
+    expect(screen.getByLabelText(TEXTS.en.pictureCollection).textContent).toBe(`${at + 1}/3`);
+  }
+  expect(view.save).toHaveBeenCalledTimes(2);
   expect(storage.items.get(PROGRESS_KEY)).toBe(raw);
   view.unmount();
 });

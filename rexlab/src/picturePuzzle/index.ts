@@ -3,4 +3,4 @@ export type { PictureCut, PictureDinosaur, PictureDinosaurId, PicturePiece, Pict
 export { pictureDropFits } from "./placement.ts";
 export type { PicturePoint } from "./placement.ts";
 export { NO_PICTURES, collectedPictures, finishPicture, mergePictures } from "./progress.ts";
-export type { KeptPictures, PictureProgress, PictureResult } from "./progress.ts";
+export type { BeatBest, KeptPictures, PictureProgress, PictureResult } from "./progress.ts";

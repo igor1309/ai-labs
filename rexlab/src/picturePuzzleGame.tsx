@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
+import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { PicturePuzzleChoiceScreen } from "./PicturePuzzleChoiceScreen.tsx";
@@ -93,11 +94,11 @@ export function usePicturePuzzleGame(props: PicturePuzzleGameProps | undefined, 
     if (pictureComplete(puzzle)) {
       const stored = props.progressStore.load();
       const progress = mergePictures(keptNow.current.progress, stored?.progress ?? NO_PICTURES);
-      const finished = finishPicture({ progress, readable: keptNow.current.historyReadable && (stored?.historyReadable ?? false) }, puzzle);
+      const finished = finishPicture({ progress, readable: keptNow.current.historyReadable && (stored?.historyReadable ?? false) }, puzzle, beatBest);
       const saved = props.progressStore.save(finished.kept.progress);
       const readable = finished.kept.readable && saved;
       const result = readable ? finished.result : { ...finished.result, best: undefined, previousBest: undefined, celebration: null };
-      const next = { ...keptNow.current, progress: finished.kept.progress, earned: finished.kept.progress.earned, historyReadable: readable };
+      const next = { ...keptNow.current, progress: finished.kept.progress, earned: finished.kept.progress.earned, historyReadable: saved };
       keptNow.current = next;
       go({ kind: "result", result }, { also: () => setKept(next) });
       return true;

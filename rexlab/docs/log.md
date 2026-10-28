@@ -2,6 +2,7 @@
 
 ## 2026-10-28
 
+- Picture puzzles celebrate later collection bests after recovered progress saves successfully; the recovery round still earns its star without claiming a historical best (LAB-669).
 - Picture puzzles offer Tyrannosaurus, Triceratops and Stegosaurus with 12, 24 or 36 pieces and a remembered difficulty choice (LAB-669).
 - Picture puzzle pieces can be dragged, tapped or placed with the keyboard, with a four-piece tray, hints and a full-picture preview (LAB-669).
 - Finished pictures reveal a dinosaur fact and a round star, save a shared collection, and celebrate new collection bests independently at each difficulty (LAB-669).

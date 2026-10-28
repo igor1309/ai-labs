@@ -11,6 +11,10 @@ export const NO_PICTURES: PictureProgress = {
 };
 
 export type KeptPictures = { progress: PictureProgress; readable: boolean };
+export type BeatBest = (previous: number | null, score: number) => {
+  best: number;
+  celebration: "first-best" | "new-best" | null;
+};
 export type PictureResult = {
   dinosaur: PictureDinosaur;
   level: AgeLevel;
@@ -39,7 +43,7 @@ export function mergePictures(one: PictureProgress, other: PictureProgress): Pic
   };
 }
 
-export function finishPicture(kept: KeptPictures, puzzle: PicturePuzzle): { kept: KeptPictures; result: PictureResult } {
+export function finishPicture(kept: KeptPictures, puzzle: PicturePuzzle, beatBest: BeatBest): { kept: KeptPictures; result: PictureResult } {
   if (!pictureComplete(puzzle)) throw new Error("A picture is finished only once every piece fits");
   const previous = kept.progress.completed[puzzle.level].length;
   const progress = mergePictures(kept.progress, {
@@ -47,13 +51,14 @@ export function finishPicture(kept: KeptPictures, puzzle: PicturePuzzle): { kept
     completed: { ...NO_PICTURES.completed, [puzzle.level]: [puzzle.dinosaur.id] }
   });
   const score = progress.completed[puzzle.level].length;
+  const beaten = beatBest(previous === 0 ? null : previous, score);
   return {
     kept: { progress, readable: kept.readable },
     result: {
       dinosaur: puzzle.dinosaur, level: puzzle.level, score, shared: progress.earned.length,
-      best: kept.readable ? score : undefined,
+      best: kept.readable ? beaten.best : undefined,
       previousBest: kept.readable && previous > 0 ? previous : undefined,
-      celebration: !kept.readable || score === previous ? null : previous === 0 ? "first-best" : "new-best"
+      celebration: kept.readable ? beaten.celebration : null
     }
   };
 }
