@@ -200,7 +200,7 @@ public final class AudelinMenu {
 private func panelRecordingID(_ state: RecordingState) -> UInt64? {
 
     switch state.phase {
-    case .beginning, .recording: state.session?.id
-    case .idle, .ending: nil
+    case .beginning, .recording, .ending: state.session?.id
+    case .idle: nil
     }
 }

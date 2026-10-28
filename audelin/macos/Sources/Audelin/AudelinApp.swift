@@ -1,6 +1,7 @@
 import AppKit
 import Compose
 import MenuBar
+import PanelUI
 import Preferences
 import os
 import SwiftUI
@@ -27,7 +28,9 @@ struct AudelinApp: App {
             terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } }
         )
         self.model = model
-        panel.install(model)
+        panel.install(content: NSHostingView(rootView: PanelContent(model: model)), onClose: { [weak model] in
+            model?.panelClosed()
+        })
     }
 
     init() {
@@ -74,5 +77,34 @@ struct AudelinApp: App {
         // Template status images discard their palette in the menu bar.
         image.isTemplate = !item.isRed
         return image
+    }
+}
+
+@MainActor
+func panelContentBinding(_ model: AudelinMenu) -> (state: PanelState, event: (PanelEvent) -> Task<Void, Never>) {
+
+    (model.panelState, { event in Task { await model.sendPanel(event) } })
+}
+
+private struct PanelContent: View {
+
+    let model: AudelinMenu
+
+    var body: some View {
+
+        GeometryReader { geometry in
+            let binding = panelContentBinding(model)
+            PanelView(state: binding.state, event: { event in
+                _ = binding.event(event)
+            }, config: config(width: geometry.size.width))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+    }
+
+    private func config(width: CGFloat) -> PanelConfig {
+
+        var config = PanelConfig.glassLedger
+        config.panelWidth = width
+        return config
     }
 }
