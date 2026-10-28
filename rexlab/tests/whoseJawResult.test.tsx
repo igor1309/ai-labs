@@ -18,9 +18,9 @@ const saved = (app: { storage: MemoryStorage }) => localWhoseJawProgress(() => a
 const record = (entry: unknown) => memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "whose-jaw": entry } }) });
 const offerOf = (level: AgeLevel, strong: number, declined: AgeLevel[] = []): LevelOffer => ({ level, strong, declined });
 
-function begin({ level = "explorer", language = "en", storage = memoryStorage(), reduced = false }:
-  { level?: AgeLevel; language?: "en" | "ru"; storage?: MemoryStorage; reduced?: boolean } = {}) {
-  const app = openWhoseJawApp({ setting: { level, revision: "parent" }, language, storage, reduced });
+function begin({ level = "explorer", language = "en", storage = memoryStorage(), reduced = false, portraitLayouts }:
+  { level?: AgeLevel; language?: "en" | "ru"; storage?: MemoryStorage; reduced?: boolean; portraitLayouts?: NonNullable<Parameters<typeof openWhoseJawApp>[0]>["portraitLayouts"] } = {}) {
+  const app = openWhoseJawApp({ setting: { level, revision: "parent" }, language, storage, reduced, portraitLayouts });
   fireEvent.click(homeTile(TEXTS[language].whoseJaw));
   fireEvent.click(button(TEXTS[language].play));
   return app;
@@ -216,7 +216,7 @@ describe("Whose Jaw next-level offer", () => {
 
   it("pauses offer arrival and dismissal behind the orientation gate and blocks controls through exit", () => {
     animationTimes();
-    const app = begin({ storage: record({ offer: offerOf("explorer", 2) }) });
+    const app = begin({ storage: record({ offer: offerOf("explorer", 2) }), portraitLayouts: {} });
     finish(app);
     expect(app.timers.timers()).toEqual([900]);
     act(() => app.viewport.turn("portrait"));

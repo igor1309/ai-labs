@@ -1,4 +1,6 @@
 import { House, Landmark, Play } from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
+import { levelNameSize } from "./levelSwitchLayout.ts";
 import type { AgeLevel } from "./ageLevel.ts";
 import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
@@ -22,11 +24,25 @@ export type WhoseJawWelcomeScreenProps = {
 
 export function WhoseJawWelcomeScreen({ language, level, best, collected, total, jawPicture, gummyPicture, onLevel, onPlay, onShelf, onHome }: WhoseJawWelcomeScreenProps) {
   const text = TEXTS[language];
+  const start = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const column = start.current;
+    const switcher = column?.querySelector<HTMLElement>(".level-switch");
+    if (!column || !switcher) return;
+    const fit = () => {
+      if (switcher.clientWidth > 0) column.style.setProperty("--level-name-size", `${levelNameSize(switcher.clientWidth)}px`);
+    };
+    fit();
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(fit);
+    observer?.observe(switcher);
+    window.addEventListener("resize", fit);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", fit); };
+  }, []);
   return <main className="whose-jaw-welcome">
     <header><Button className="home-button" onClick={onHome}><House aria-hidden="true" />{text.home}</Button></header>
     <div className="whose-jaw-welcome-body">
       <WelcomeHero jawPicture={jawPicture} gummyPicture={gummyPicture} />
-      <section className="whose-jaw-start">
+      <section ref={start} className="whose-jaw-start">
         <h1><span aria-hidden="true">🦷</span> {text.whoseJaw}</h1>
         <div className="whose-jaw-badges">
           {best !== null && <p aria-label={text.bestScore}><span aria-hidden="true">🦷</span> {best}</p>}

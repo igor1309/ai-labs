@@ -11581,6 +11581,13 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   .jaw-result-actions { width: 100%; }
   .jaw-result-actions button { width: 100%; }
 }
+html[data-size="tall-narrow"] .whose-jaw-result { gap: 12px; }
+html[data-size="tall-narrow"] .whose-jaw-result h1 { font-size: 28px; line-height: 1.2; }
+html[data-size="tall-narrow"] .jaw-result-record { width: 100%; }
+html[data-size="tall-narrow"] .jaw-result-record .celebration { height: 48px; padding: 0 16px; gap: 8px; font-size: 20px; }
+html[data-size="tall-narrow"] .jaw-result-collection p { line-height: 1.3; }
+html[data-size="tall-narrow"] .jaw-result-actions { flex-direction: column; width: 100%; }
+html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-size: 18px; }
 @media (max-height: 540px) and (min-width: 541px) {
   .whose-jaw-result { gap: 8px; padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
   .jaw-result-jaws { width: min(65%, 520px); }
@@ -11619,7 +11626,8 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 @keyframes whose-jaw-chomp {
   50% { transform: scaleY(calc(1 - .3 * var(--motion-amount))) rotate(calc(-8deg * var(--motion-amount))); }
 }
-.whose-jaw-start { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.whose-jaw-start { --level-name-size: 16px; display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.whose-jaw-start .level-switch-level { flex-direction: column; height: 64px; gap: 4px; font-size: var(--level-name-size); }
 .whose-jaw-start h1 { margin: 0; font-size: clamp(28px, 4vw, 54px); line-height: 1.15; }
 .whose-jaw-badges { display: flex; flex-wrap: wrap; gap: 12px; }
 .whose-jaw-badges p { margin: 0; padding: 8px 16px; border-radius: 24px; background: #e6e2d9; display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 700; }
@@ -11675,15 +11683,16 @@ html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 8px; 
 .jaw-dinosaur[data-over], .whose-jaw-board[data-holding] .jaw-dinosaur { background: #e39b2d18; }
 .jaw-dinosaur[data-over] { scale: calc(1 + .04 * var(--motion-amount)); }
 .jaw-dinosaur-art { display: block; position: relative; }
-.jaw-breath { display: block; animation: jaw-breathe calc(var(--motion-standard) * 12.5) var(--ease-out) infinite alternate; }
+.jaw-breath { display: block; position: relative; animation: jaw-breathe calc(var(--motion-standard) * 12.5) var(--ease-out) infinite alternate; }
 .jaw-gummy, .jaw-fitted-picture, .jaw-food-picture { display: block; width: 100%; height: auto; }
-.jaw-mouth-glow { position: absolute; left: 36%; top: 25%; width: 32%; height: 24%; border-radius: 50%; pointer-events: none; transition: box-shadow var(--motion-standard) var(--ease-out); }
+.jaw-mouth-glow { position: absolute; left: var(--mouth-x); top: var(--mouth-y); width: var(--mouth-width); height: 10%; translate: -50% -50%; border-radius: 50%; pointer-events: none; transition: box-shadow var(--motion-standard) var(--ease-out); }
 .jaw-dinosaur[data-hint] .jaw-mouth-glow, .jaw-dinosaur[data-over] .jaw-mouth-glow { box-shadow: 0 0 24px 12px #e39b2d90; }
 .jaw-dinosaur[data-hint] .jaw-gummy { filter: drop-shadow(0 0 10px #e39b2d); }
 .jaw-name { display: block; font-weight: 800; font-size: clamp(16px, 1.8vw, 24px); overflow-wrap: anywhere; }
-.jaw-food { position: absolute; right: 0; bottom: 0; width: 28%; height: auto; }
+.jaw-food { position: absolute; left: var(--mouth-x); top: var(--mouth-y); width: calc(var(--mouth-width) * .6); height: auto; translate: -50% -15%; }
 .jaw-dinosaur[data-hint] .jaw-food { animation: hop var(--motion-alive) var(--ease-out) infinite; }
-.jaw-fitted { position: absolute; left: 30%; top: 20%; width: 42%; height: auto; animation: pop-in var(--motion-small) var(--ease-overshoot) both; }
+.jaw-fitted { position: absolute; left: var(--mouth-x); top: var(--mouth-y); width: var(--mouth-width); height: auto; translate: -50% -55%; animation: pop-in var(--motion-small) var(--ease-overshoot) both; }
+.jaw-fitted-picture { rotate: var(--mouth-angle); scale: var(--mouth-mirror) 1; }
 .jaw-feedback { min-height: 64px; display: grid; place-items: center; }
 .jaw-feedback p { margin: 0; padding: 12px 20px; border-radius: 22px; max-width: 800px; background: #1f2b4d; color: white; font-size: clamp(16px, 2.4vw, 28px); font-weight: 700; text-align: center; animation: rise-in var(--motion-standard) var(--ease-out) both; }
 .jaw-feedback p[data-reaction="🌿"] { background: #e39b2d; color: #1d2742; }
@@ -11702,7 +11711,7 @@ html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 8px; 
 .whose-jaw-board[data-phase="entering"] .jaw-loose { animation: rise-in var(--motion-standard) var(--ease-out) both; }
 .whose-jaw-board[data-phase="right"] .jaw-dinosaur[data-target] { animation: jaw-walk calc(var(--motion-alive) * 3.75) var(--ease-out) both; }
 .whose-jaw-board[data-phase="right"] .jaw-dinosaur[data-target] .jaw-fitted { animation: jaw-chomp var(--motion-alive) var(--ease-out) var(--motion-small) 2; }
-.whose-jaw-board[data-phase="right"] .jaw-food { animation: jaw-bites calc(var(--motion-alive) * 2) var(--ease-out) var(--motion-small) both; }
+.whose-jaw-board[data-phase="right"] .jaw-dinosaur[data-target] .jaw-food { animation: jaw-bites calc(var(--motion-alive) * 2) var(--ease-out) var(--motion-small) both; }
 .whose-jaw-board[data-phase="right"] .jaw-loose, .whose-jaw-board[data-phase="wrong"] .jaw-loose { visibility: hidden; }
 .whose-jaw-board[data-phase="wrong"] .jaw-fitted { animation: jaw-miss calc(var(--motion-standard) * 5) var(--ease-out) both; }
 .whose-jaw-board[data-phase="done"] .jaw-tray { opacity: 0; }
@@ -11743,6 +11752,12 @@ html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 8px; 
 .jaw-shelf-place:disabled { opacity: 1; }
 .jaw-shelf-place:disabled .jaw-shelf-name { color: #5c647a; font-size: 28px; }
 .jaw-shelf-place:focus-visible, .jaw-shelf-card button:focus-visible { outline: 3px solid #c9583d; outline-offset: 3px; }
+html[data-size="tall-narrow"] .jaw-shelf-bar { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; }
+html[data-size="tall-narrow"] .jaw-shelf-bar h1 { justify-content: center; font-size: 22px; }
+html[data-size="tall-narrow"] .jaw-shelf-bar .home-button { min-width: 56px; width: 56px; padding: 12px; gap: 0; font-size: 0; }
+html[data-size="tall-narrow"] .jaw-shelf-bar .home-button svg { width: 24px; height: 24px; }
+html[data-size="tall-narrow"] .jaw-shelf-name { height: 42px; font-size: 12px; line-height: 14px; }
+html[data-size="tall-narrow"] .jaw-shelf-picture { height: calc(100% - 42px); }
 .jaw-card-scrim { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: #0f1320aa; animation: fade-in var(--motion-small) var(--ease-out) both; }
 .jaw-shelf-card { box-sizing: border-box; width: min(640px, 100%); max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: none; padding: 20px; border-radius: 28px; background: #fffdf8; color: #1d2742; text-align: center; animation: rise-in var(--motion-screen) var(--ease-out) both; }
 .jaw-shelf-card > button { margin-left: auto; }

@@ -1,3 +1,4 @@
+import { jawMouth } from "../src/jawPresentation.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -263,13 +264,35 @@ describe("jaw pointer input", () => {
 
 function viewProps(): WhoseJawBoardScreenProps {
   return {
-    language: "en", phase: "waiting", choices: JAWS.slice(0, 2).map((jaw) => ({ id: jaw.id, name: jaw.name.en.toUpperCase(), picture: `gummy-${jaw.id}.webp`, food: "meat.webp", diet: jaw.diet })),
+    language: "en", phase: "waiting", choices: JAWS.slice(0, 2).map((jaw) => ({ id: jaw.id, name: jaw.name.en.toUpperCase(), picture: `gummy-${jaw.id}.webp`, food: "meat.webp", diet: jaw.diet, mouth: jawMouth(jaw.id) })),
     jawPicture: "loose.webp", placed: [], target: undefined, hint: undefined, jawDiet: "meat", foodShown: false, namesShown: false, feedback: undefined,
     onPlace: vi.fn(), onName: vi.fn(), onSlide: vi.fn(), onBack: vi.fn(), onHome: vi.fn()
   };
 }
 
 describe("pictures and gate", () => {
+  it.each(JAWS)("anchors fitted feedback, mouth glow and food to $id", (creature) => {
+    const props = viewProps();
+    const mouth = jawMouth(creature.id);
+    const choice = { id: creature.id, name: creature.name.en.toUpperCase(), picture: `gummy-${creature.id}.webp`, food: "food.webp", diet: creature.diet, mouth };
+    render(<WhoseJawBoardScreen {...props} choices={[choice]} phase="right" target={creature.id} hint={creature.id} />, withManualPictures(manualPictures()));
+    const art = document.querySelector<HTMLElement>(".jaw-dinosaur-art")!;
+    expect(art.style.getPropertyValue("--mouth-x")).toBe(`${mouth.x}%`);
+    expect(art.style.getPropertyValue("--mouth-y")).toBe(`${mouth.y}%`);
+    expect(art.style.getPropertyValue("--mouth-width")).toBe(`${mouth.width}%`);
+    expect(art.style.getPropertyValue("--mouth-mirror")).toBe(mouth.mirror ? "-1" : "1");
+    for (const selector of [".jaw-fitted", ".jaw-mouth-glow", ".jaw-food"]) {
+      const element = art.querySelector(selector)!;
+      const style = getComputedStyle(element);
+      expect([style.left, style.top]).toEqual(["var(--mouth-x)", "var(--mouth-y)"]);
+      expect(element.closest(".jaw-breath")).not.toBeNull();
+    }
+    const fitted = getComputedStyle(art.querySelector(".jaw-fitted")!);
+    expect(fitted.width).toBe("var(--mouth-width)");
+    expect(fitted.animation).toBe("jaw-chomp var(--motion-alive) var(--ease-out) var(--motion-small) 2");
+    expect(getComputedStyle(art.querySelector(".jaw-fitted-picture")!).scale).toBe("var(--mouth-mirror) 1");
+  });
+
   it.each(["loading", "failed"])("keeps %s pictures playable with shared placeholders", (state) => {
     const pictures = manualPictures();
     const props = viewProps();

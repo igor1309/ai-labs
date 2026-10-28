@@ -79,14 +79,19 @@ function JawCard({ jaw, language, jawPicture, gummyPicture, pitch, sounds, voice
   callbacks.current = { onGone };
   const gate = useGateShown();
   const look = usePicture(jawPicture);
-  const ready = look === "appearing" || look === "shown";
+  const gummyLook = usePicture(gummyPicture);
+  const settled = look !== "loading" && gummyLook !== "loading";
+  const ready = settled && look !== "failed" && gummyLook !== "failed" && !gate && !leaving;
   useEffect(() => {
     if (gate || leaving) return;
     close.current?.focus();
-    voice.speak(jaw.name[language].toLocaleUpperCase(language), language);
+  }, [gate, leaving]);
+  useEffect(() => {
+    if (gate || leaving || !settled) return;
+    voice.speak(`${jaw.name[language]}. ${jaw.fact[language]}`.toLocaleUpperCase(language), language);
     sounds.play("chomp", pitch);
     return () => { voice.stop(); sounds.stop(); };
-  }, [gate, leaving, jaw, language, voice, sounds, pitch]);
+  }, [gate, leaving, settled, jaw, language, voice, sounds, pitch]);
   useEffect(() => {
     if (gate || !leaving || !overlay.current) return;
     return afterResultAnimations([overlay.current], startTimer, () => callbacks.current.onGone());
@@ -101,7 +106,7 @@ function JawCard({ jaw, language, jawPicture, gummyPicture, pitch, sounds, voice
       <Button ref={close} className="home-button" aria-disabled={leaving} onClick={() => { if (!leaving) onClose(); }}><X aria-hidden="true" />{text.back}</Button>
       <h2 id={title}>{jaw.name[language].toLocaleUpperCase(language)}</h2>
       <div className="jaw-card-pictures">
-        <Picture className="jaw-card-dinosaur" src={gummyPicture} alt={jaw.name[language].toLocaleUpperCase(language)} width={800} height={600} />
+        <PictureImage look={gummyLook} className="jaw-card-dinosaur" src={gummyPicture} alt={jaw.name[language].toLocaleUpperCase(language)} width={800} height={600} />
         <div className="jaw-card-chomp" data-ready={ready || undefined}><PictureImage look={look} className="jaw-card-jaw" src={jawPicture} alt="" width={600} height={450} /></div>
       </div>
       <p className="jaw-card-diet"><span aria-hidden="true">{jaw.diet === "meat" ? "🥩" : "🌿"}</span> {text.jawFoods[jaw.diet]}</p>

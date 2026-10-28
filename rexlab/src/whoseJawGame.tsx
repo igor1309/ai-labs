@@ -3,7 +3,7 @@ import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import type { Language } from "./language/language.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice } from "./startLevel.ts";
-import { WhoseJawBoardScreen } from "./WhoseJawBoardScreen.tsx";
+import { WhoseJawBoardScreen, type JawChoiceView } from "./WhoseJawBoardScreen.tsx";
 import { advanceJaw, placeJaw, startJawRound, type Jaw, type JawRound } from "./whoseJaw/index.ts";
 import type { StartTimer } from "./ownedTimers.ts";
 import { useGateShown } from "./OrientationGate.tsx";
@@ -34,6 +34,7 @@ export type WhoseJawGameProps = {
   jawFor(id: string): string;
   gummyFor(id: string): string;
   foodFor(diet: "meat" | "plants"): string;
+  mouthFor(id: string): JawChoiceView["mouth"];
   sounds: { play(sound: "snap" | "chomp" | "ow" | "hmm" | "steps" | "slide", pitch?: number): void; stop(): void };
   voice: { speak(words: string, language: Language): void; stop(): void };
 };
@@ -156,7 +157,7 @@ function BoardVisit({ props, round, language, startTimer, reducedMotion, onPlace
   }, [round, gate, startTimer, reducedMotion, props.sounds, props.voice, language]);
 
   return <WhoseJawBoardScreen key={owner.id} language={language} phase={round.phase} choices={choices.map((jaw) => ({
-    id: jaw.id, name: jaw.name[language].toLocaleUpperCase(language), picture: props.gummyFor(jaw.id), food: props.foodFor(jaw.diet), diet: jaw.diet
+    id: jaw.id, name: jaw.name[language].toLocaleUpperCase(language), picture: props.gummyFor(jaw.id), food: props.foodFor(jaw.diet), diet: jaw.diet, mouth: props.mouthFor(jaw.id)
   }))} jawPicture={props.jawFor(owner.id)} placed={round.placed} target={round.target}
     hint={round.misses >= 2 ? owner.id : undefined} jawDiet={owner.diet} foodShown={round.level === "hatchling"}
     namesShown={round.level === "paleontologist"} feedback={feedback} onPlace={onPlace}

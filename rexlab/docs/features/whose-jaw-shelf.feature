@@ -28,7 +28,7 @@ Feature: A museum shelf for collected jaws
   Scenario: Inspect a collected jaw
     When I tap or keyboard-activate a collected jaw
     Then its card rises with the dinosaur picture, capitalized name, diet picture and one-line jaw fact
-    And its name is spoken in my language
+    And its name and short fact are spoken together in my language after both pictures settle
     And its jaw chomps twice with its own sound pitch
     And keyboard focus stays inside the card
     When I tap inside the card
@@ -41,7 +41,9 @@ Feature: A museum shelf for collected jaws
   Scenario: Loading, leaving and reduced motion
     Given jaw or dinosaur pictures are loading or have failed
     Then shelf places keep their size and navigation and collected cards remain usable
-    And chomp motion waits for its jaw picture to decode
+    And chomp motion waits for both pictures to decode
+    And speech and sound wait until each picture has loaded or shown its failure look
+    And closing a loading card prevents late pictures from starting media
     When I leave the shelf or the orientation gate covers a card
     Then its speech, sound and dismissal timer stop
     And a late dismissal callback cannot affect another visit

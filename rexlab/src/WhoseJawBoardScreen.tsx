@@ -6,7 +6,10 @@ import { Picture, PictureImage, usePicture } from "./Picture.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
-export type JawChoiceView = { id: string; name: string; picture: string; food: string; diet: "meat" | "plants" };
+export type JawChoiceView = {
+  id: string; name: string; picture: string; food: string; diet: "meat" | "plants";
+  mouth: { x: number; y: number; width: number; mirror: boolean; angle: number };
+};
 export type WhoseJawBoardScreenProps = {
   language: Language;
   phase: "entering" | "waiting" | "right" | "wrong" | "done";
@@ -161,11 +164,15 @@ export function WhoseJawBoardScreen({ language, phase, choices, jawPicture, plac
         data-target={target === choice.id || undefined} style={{ "--place": at } as CSSProperties}
         ref={(element) => { if (element) elements.current.set(choice.id, element); else elements.current.delete(choice.id); }}
         onClick={(event) => { event.stopPropagation(); if (!enabled || locked.current || hold.current) return; if (selected.current) { place(choice.id); } else onName(choice.id); }}>
-        <span className="jaw-dinosaur-art">
-          <span className="jaw-breath"><Picture className="jaw-gummy" src={choice.picture} alt="" width={800} height={600} /></span>
+        <span className="jaw-dinosaur-art" style={{
+          "--mouth-x": `${choice.mouth.x}%`, "--mouth-y": `${choice.mouth.y}%`, "--mouth-width": `${choice.mouth.width}%`,
+          "--mouth-mirror": choice.mouth.mirror ? -1 : 1, "--mouth-angle": `${choice.mouth.angle}deg`
+        } as CSSProperties}>
+          <span className="jaw-breath"><Picture className="jaw-gummy" src={choice.picture} alt="" width={800} height={600} />
           <span className="jaw-mouth-glow" aria-hidden="true" />
           {target === choice.id && <span className="jaw-fitted"><Picture className="jaw-fitted-picture" src={jawPicture} alt="" width={600} height={450} /></span>}
           {(foodShown || (target === choice.id && phase === "right")) && <span className="jaw-food"><Picture className="jaw-food-picture" src={choice.food} alt={text.jawFoods[choice.diet]} width={400} height={400} /></span>}
+          </span>
         </span>
         {namesShown && <span className="jaw-name">{choice.name}</span>}
       </Button>)}

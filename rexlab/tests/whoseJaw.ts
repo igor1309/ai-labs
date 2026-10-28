@@ -1,3 +1,4 @@
+import { jawMouth } from "../src/jawPresentation.ts";
 import jaws from "../src/data/jaws.json";
 import dinosaurs from "../src/data/dinosaurs.json";
 import { readJaws } from "../src/jawContent.ts";
@@ -11,7 +12,7 @@ export function jawGameParts() {
   const spoken: Array<{ words: string; language: Language }> = [];
   const stopped = { sound: 0, voice: 0 };
   return {
-    jaws: JAWS, jawFor: (id: string) => `jaw-${id}.webp`, gummyFor: (id: string) => `gummy-${id}.webp`, foodFor: (diet: string) => `${diet}.webp`,
+    mouthFor: jawMouth, jaws: JAWS, jawFor: (id: string) => `jaw-${id}.webp`, gummyFor: (id: string) => `gummy-${id}.webp`, foodFor: (diet: string) => `${diet}.webp`,
     sounds: { play: (sound: JawSound, pitch?: number) => { played.push(sound); }, stop: () => { stopped.sound++; } },
     voice: { speak: (words: string, language: Language) => { spoken.push({ words, language }); }, stop: () => { stopped.voice++; } },
     played, spoken, stopped

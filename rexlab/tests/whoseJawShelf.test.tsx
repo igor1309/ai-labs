@@ -37,6 +37,52 @@ function shelf(language: "en" | "ru" = "en", earned = JAWS.map(({ id }) => id)) 
 const dismiss = (app: { timers: ReturnType<typeof manualTimers> }) => act(() => app.timers.fire(160));
 
 describe("Whose Jaw museum shelf", () => {
+  it.each(["en", "ru"] as const)("keeps narrow %s navigation accessible and reserves three lines for long names", (language) => {
+    document.documentElement.dataset.size = "tall-narrow";
+    onTestFinished(() => { delete document.documentElement.dataset.size; });
+    shelf(language);
+    const bar = document.querySelector(".jaw-shelf-bar")!;
+    expect(getComputedStyle(bar).gridTemplateColumns).toBe("56px minmax(0, 1fr) 56px");
+    for (const name of [TEXTS[language].back, TEXTS[language].home]) {
+      const action = button(name);
+      expect(getComputedStyle(action).width).toBe("56px");
+      expect(getComputedStyle(action).fontSize).toBe("0px");
+      expect(action.querySelector("svg")).not.toBeNull();
+    }
+    for (const name of document.querySelectorAll(".jaw-shelf-name")) {
+      const style = getComputedStyle(name);
+      expect(Number.parseFloat(style.height) / Number.parseFloat(style.lineHeight)).toBeGreaterThanOrEqual(3);
+      expect(style.overflowWrap).toBe("anywhere");
+    }
+    expect(document.querySelectorAll(".jaw-shelf-place")).toHaveLength(16);
+  });
+
+  it.each(["jaw", "gummy"] as const)("waits for the other picture when %s settles first and cancels media on dismissal", (first) => {
+    dismissalAnimation();
+    const pictures = manualPictures();
+    const parts = jawGameParts();
+    const id = JAWS[0]!.id;
+    render(<WhoseJawShelfScreen {...parts} language="en" earned={[id]} startTimer={pictures.startTimer} onBack={() => {}} onHome={() => {}} />, withManualPictures(pictures));
+    fireEvent.click(place(id));
+    const close = within(screen.getByRole("dialog")).getByRole("button");
+    expect(document.activeElement).toBe(close);
+    act(() => pictures.finish(`${first}-${id}.webp`));
+    expect(parts.spoken).toEqual([]);
+    expect(parts.played).toEqual([]);
+    fireEvent.click(close);
+    act(() => pictures.finish(`${first === "jaw" ? "gummy" : "jaw"}-${id}.webp`));
+    expect(parts.spoken).toEqual([]);
+    expect(parts.played).toEqual([]);
+    expect(document.querySelector(".jaw-card-chomp[data-ready]")).toBeNull();
+    act(() => pictures.fire(160));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(place(id));
+    expect(parts.played).toEqual(["chomp"]);
+    expect(parts.spoken).toEqual([{ words: `${JAWS[0]!.name.en}. ${JAWS[0]!.fact.en}`.toUpperCase(), language: "en" }]);
+    const animation = getComputedStyle(document.querySelector(".jaw-card-chomp")!).animation;
+    expect(animation).toBe("jaw-chomp var(--motion-alive) var(--ease-out) 2");
+  });
+
   it.each(["en", "ru"] as const)("shows sixteen places in four diet-labelled wooden rows in %s, with only collected jaws available", (language) => {
     const earned = [JAWS[0]!.id, JAWS.find(({ diet }) => diet === "plants")!.id];
     const app = shelf(language, earned);
@@ -59,7 +105,7 @@ describe("Whose Jaw museum shelf", () => {
     expect([app.onBack.mock.calls.length, app.onHome.mock.calls.length, app.play.mock.calls.length]).toEqual([1, 1, 0]);
   });
 
-  it.each(["en", "ru"] as const)("opens every collected animal's localized card, speaks its name and plays two bites at a distinct pitch in %s", (language) => {
+  it.each(["en", "ru"] as const)("opens every collected animal's localized card, speaks its name and fact and plays two bites at a distinct pitch in %s", (language) => {
     const app = shelf(language);
     for (const jaw of JAWS) {
       const opener = place(jaw.id, language);
@@ -70,7 +116,7 @@ describe("Whose Jaw museum shelf", () => {
       expect(card.textContent).toContain(jaw.fact[language].toLocaleUpperCase(language));
       expect(card.textContent).toContain(TEXTS[language].jawFoods[jaw.diet]);
       expect(card.textContent).toContain(jaw.diet === "meat" ? "🥩" : "🌿");
-      expect(app.spoken.at(-1)).toEqual({ words: name, language });
+      expect(app.spoken.at(-1)).toEqual({ words: `${name}. ${jaw.fact[language].toLocaleUpperCase(language)}`, language });
       const close = within(card).getByRole("button");
       expect(document.activeElement).toBe(close);
       fireEvent.click(card);
@@ -114,7 +160,7 @@ describe("Whose Jaw museum shelf", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it.each(["loading", "failed"] as const)("keeps %s pictures usable and waits for the jaw decode before chomp motion", (state) => {
+  it.each(["loading", "failed"] as const)("keeps %s pictures usable and waits for both pictures before media", (state) => {
     const pictures = manualPictures();
     const parts = jawGameParts();
     const view = render(<WhoseJawShelfScreen {...parts} language="en" earned={[JAWS[0]!.id]} startTimer={pictures.startTimer} onBack={() => {}} onHome={() => {}} />, withManualPictures(pictures));
@@ -125,9 +171,15 @@ describe("Whose Jaw museum shelf", () => {
     expect(card.querySelector(".jaw-card-chomp")!.hasAttribute("data-ready")).toBe(false);
     if (state === "loading") {
       act(() => pictures.finish(`jaw-${JAWS[0]!.id}.webp`));
-      expect(card.querySelector(".jaw-card-chomp")!.hasAttribute("data-ready")).toBe(true);
+      expect(card.querySelector(".jaw-card-chomp")!.hasAttribute("data-ready")).toBe(false);
+      expect(parts.spoken).toEqual([]);
+      expect(parts.played).toEqual([]);
       expect(card.querySelector(".jaw-card-dinosaur")!.getAttribute("data-picture")).toBe("loading");
     }
+    if (state === "loading") act(() => pictures.finish(`gummy-${JAWS[0]!.id}.webp`));
+    expect(card.querySelector(".jaw-card-chomp")!.hasAttribute("data-ready")).toBe(state === "loading");
+    expect(parts.spoken).toEqual([{ words: `${JAWS[0]!.name.en}. ${JAWS[0]!.fact.en}`.toUpperCase(), language: "en" }]);
+    expect(parts.played).toEqual(["chomp"]);
     expect(within(card).getByRole("button")).toBeDefined();
     view.unmount();
     expect(parts.stopped).toEqual({ sound: 1, voice: 1 });
