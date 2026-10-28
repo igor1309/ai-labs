@@ -2,6 +2,7 @@
 
 ## 2026-10-28
 
+- The flows hand each effect's results back as a stream and run on swift-imrx's `ObservableModel` in the app; the package's own machine is gone (LAB-693).
 - HostBroadcast takes a locked amount through advertising and the handshake to a secure link, with a countdown, cancellation, retry and a fresh amount after payment; the session protects the amount before it is sent (LAB-652).
 - ClientConnect opens a secure link to the chosen host and hands over its amount, with cancel, retry after a failure and a 10-second handshake deadline (LAB-655).
 - ClientReview shows the handed-over amount, carries the payer's decision to the host's acknowledgement and hands over an acknowledged confirm, with clear cancelled and lost-link outcomes (LAB-656).

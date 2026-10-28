@@ -13,6 +13,30 @@ struct ClientConnectTests {
         case stoppingDeadline, waitingForWork, droppingLink, closingSession, done
     }
 
+    @Test func effectsRunBeforeReturningTheirStreams() async {
+        let host = Connect.Host(id: "host", name: nil)
+        let session = Connect.HostSession(publicKey: [1, 2], id: [3, 4])
+        let amount = Connect.SealedAmount(counter: 4, box: [8, 9])
+        let cases: [(Connect.Effect, Ports.Call)] = [
+            (.startDeadline(seconds: 10), .startDeadline(10)),
+            (.connect(host), .connect(host)),
+            (.derive(session), .derive(session)),
+            (.writeKey([5, 6]), .writeKey([5, 6])),
+            (.open(amount), .open(amount)),
+            (.stopDeadline, .stopDeadline),
+            (.dropLink, .drop),
+            (.closeSession, .close),
+        ]
+        for (effect, call) in cases {
+            let ports = Ports(largestWrite: 34, key: [5, 6], amount: 12_450)
+            let handler = Connect.Handler(link: ports, session: ports, deadline: ports)
+            let stream = handler.handle(effect)
+            #expect(ports.calls == [call])
+            let events = await collect(stream)
+            #expect(events.count == 1)
+        }
+    }
+
     @Test func connectingToChosenHost() async {
         let ports = Ports(largestWrite: 64, key: [7, 8, 9], amount: 12450)
         let flow = Flow(ports: ports)
@@ -408,7 +432,9 @@ private final class Flow {
             return nil
         }
         pending.remove(at: index)
-        return await handler.handle(effect)
+        let events = await collect(handler.handle(effect))
+        #expect(events.count == 1)
+        return events.first
     }
 
     @discardableResult
@@ -490,4 +516,11 @@ private final class Ports: Connect.Link, Connect.Session, Connect.Deadline {
         calls.append(.close)
         sessionIsClosed = true
     }
+}
+
+@MainActor
+private func collect(_ stream: AsyncStream<Connect.Event>) async -> [Connect.Event] {
+    var events: [Connect.Event] = []
+    for await event in stream { events.append(event) }
+    return events
 }

@@ -89,7 +89,7 @@ public enum ClientReview {
 
     public static func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
         var next = state
-        // Completion waits for cleanup so the root can safely end the machine.
+        // Completion waits for cleanup so the root can safely end the flow.
         switch event {
         case .opened(let message):
             guard next.pendingMessages > 0 else { return (state, nil) }
@@ -164,7 +164,7 @@ public enum ClientReview {
                 switch decision {
                 case .confirm:
                     // A link already lost cannot be handed over: its loss was
-                    // reported here and would reach no later machine.
+                    // reported here and would reach no later flow.
                     if state.deferredLinkLoss != nil { return end(next, with: .linkLost(.unknown)) }
                     next.phase = .handedOver
                     return (next, nil)
@@ -207,20 +207,28 @@ public enum ClientReview {
             self.link = link
         }
 
-        public func handle(_ effect: Effect) async -> Event? {
-            switch effect {
-            case .seal(let decision):
-                return .sealed(decision, session.seal(decision))
-            case .write(let decision, let bytes):
-                return .written(decision, await sender.write(bytes))
-            case .open(let bytes):
-                return .opened(session.open(bytes))
-            case .closeSession:
-                session.close()
-                return .sessionClosed
-            case .dropLink:
-                link.drop()
-                return .linkDropped
+        public func handle(_ effect: Effect) -> AsyncStream<Event> {
+            AsyncStream { continuation in
+                switch effect {
+                case .seal(let decision):
+                    continuation.yield(.sealed(decision, session.seal(decision)))
+                case .write(let decision, let bytes):
+                    let task = Task.immediate {
+                        continuation.yield(.written(decision, await sender.write(bytes)))
+                        continuation.finish()
+                    }
+                    continuation.onTermination = { _ in task.cancel() }
+                    return
+                case .open(let bytes):
+                    continuation.yield(.opened(session.open(bytes)))
+                case .closeSession:
+                    session.close()
+                    continuation.yield(.sessionClosed)
+                case .dropLink:
+                    link.drop()
+                    continuation.yield(.linkDropped)
+                }
+                continuation.finish()
             }
         }
     }
