@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-28
+
+- ClientPayment lets the payer read the host's payment result or a lost link with an unknown result, then finish the transaction (LAB-657).
+
 ## 2026-10-27
 
 - HostPreview lets the operator inspect every host screen and its events, and export iPad PNGs in light and dark for comparison with the design (LAB-676).
