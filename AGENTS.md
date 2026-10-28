@@ -43,6 +43,10 @@
 
 - For the `pr-merge` workflow, use `scripts/watch-pr.sh` to monitor CI and
   `scripts/finish-merged-pr.sh` to complete local cleanup.
+- `watch-pr.sh` exits 0 when checks pass, which is not the merge: auto-merge
+  lands moments later. Wait until `gh pr view` says `MERGED` before running
+  cleanup or closing the issue. Run `finish-merged-pr.sh` from the feature
+  branch's own worktree.
 - Use a merge commit only; do not squash or rebase-merge.
 - Do not add a `Co-Authored-By` trailer or any other AI attribution to
   commit messages.
@@ -78,6 +82,12 @@
 - The implementer is `codex-sol-61`. Use `codex-luna` only when sol is
   severely limited, and only for a very simple task: it is slow on
   production code and writes poor tests.
+- After Codex stops on a quota limit, start a fresh run once it is back;
+  do not resume the stopped one. When the `claude-opus` fallback is limited
+  too, send one ntfy push and wait; do not try other agents.
+- Review a branch against its merge-base with trunk, after merging trunk
+  in. A base on a trunk that has moved on shows trunk's new work as the
+  branch deleting it.
 - Review every Codex implement run with agister's review processes before
   it merges. When sol is limited, run the reviewers one at a time, falling
   back to `claude-opus`.
@@ -160,6 +170,11 @@ daily dashboard flags it.
   first: one or two lines per change worth knowing, with its issue. Leave
   out how it was done, steps, reviews and test changes; the commits and
   docs hold those.
+
+## Sandbox
+
+- `gh`, `multica`, `agister` and `git fetch`/`push` fail inside the
+  sandbox with TLS errors; run them with the sandbox off.
 
 ## Long waits
 
