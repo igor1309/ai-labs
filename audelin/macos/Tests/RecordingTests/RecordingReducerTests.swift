@@ -4,6 +4,36 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingReducerTests {
 
+    @Test func userStartBeginsAHandSession() { assert(idle, .userStart, reducedTo: beginning) }
+    @Test func userStartAsksToBeginSessionOne() { assert(idle, .userStart, effect: .beginSession(id: 1)) }
+
+    @Test func callStartedBeginsACallSession() { assert(idle, .callStarted, reducedTo: call) }
+    @Test func callStartedAsksToBeginSessionOne() { assert(idle, .callStarted, effect: .beginSession(id: 1)) }
+
+    @Test func userStopWhileIdleChangesNothing() { assert(idle, .userStop, reducedTo: idle) }
+    @Test func userStopWhileIdleHasNoEffect() { assert(idle, .userStop, effect: nil) }
+
+    @Test func callEndedWhileIdleChangesNothing() { assert(idle, .callEnded, reducedTo: idle) }
+    @Test func callEndedWhileIdleHasNoEffect() { assert(idle, .callEnded, effect: nil) }
+
+    @Test func automaticOffIsKept() { assert(idle, .automaticChanged(false), reducedTo: changed(idle) { $0.automatic = false }) }
+    @Test func automaticOffHasNoEffect() { assert(idle, .automaticChanged(false), effect: nil) }
+
+    @Test func readySessionStartsRecording() { assert(beginning, .sessionReported(id: 1, .ready), reducedTo: running) }
+    @Test func readySessionHasNoEffect() { assert(beginning, .sessionReported(id: 1, .ready), effect: nil) }
+
+    @Test func userStartWhileBeginningChangesNothing() { assert(beginning, .userStart, reducedTo: beginning) }
+    @Test func userStartWhileBeginningHasNoEffect() { assert(beginning, .userStart, effect: nil) }
+
+    @Test func userStartWhileRecordingChangesNothing() { assert(running, .userStart, reducedTo: running) }
+    @Test func userStartWhileRecordingHasNoEffect() { assert(running, .userStart, effect: nil) }
+
+    @Test func userStopWhileRecordingEndsTheSession() { assert(running, .userStop, reducedTo: ending) }
+    @Test func userStopWhileRecordingAsksToEndSessionOne() { assert(running, .userStop, effect: .endSession(id: 1)) }
+
+    @Test func userStopWhileBeginningEndsTheSession() { assert(beginning, .userStop, reducedTo: changed(beginning) { $0.phase = .ending }) }
+    @Test func userStopWhileBeginningAsksToEndSessionOne() { assert(beginning, .userStop, effect: .endSession(id: 1)) }
+
     @Test func reducerTransitions() {
 
         let idle = RecordingState(automatic: true, missing: [])
@@ -23,16 +53,6 @@ struct RecordingReducerTests {
         let failed = changed(ending) { $0.cannotRecord = "cannot keep audio" }
         let ended = changed(idle) { $0.lastSessionID = 1; $0.cannotRecord = "cannot keep audio" }
         let cases: [(RecordingState, RecordingEvent, RecordingState, RecordingEffect?)] = [
-            (idle, .userStart, beginning, .beginSession(id: 1)),
-            (idle, .callStarted, call, .beginSession(id: 1)),
-            (idle, .userStop, idle, nil),
-            (idle, .callEnded, idle, nil),
-            (idle, .automaticChanged(false), changed(idle) { $0.automatic = false }, nil),
-            (beginning, .sessionReported(id: 1, .ready), running, nil),
-            (beginning, .userStart, beginning, nil),
-            (running, .userStart, running, nil),
-            (running, .userStop, ending, .endSession(id: 1)),
-            (beginning, .userStop, changed(beginning) { $0.phase = .ending }, .endSession(id: 1)),
             (call, .callEnded, changed(ending) {
                 $0.sessionBeganDuringCall = true
                 $0.session = .init(id: 1, origin: .call)
@@ -145,4 +165,18 @@ private func changed(_ state: RecordingState, _ edit: (inout RecordingState) -> 
     var state = state
     edit(&state)
     return state
+}
+
+private let idle = RecordingState(automatic: true, missing: [])
+private let beginning = changed(idle) {
+    $0.phase = .beginning
+    $0.session = .init(id: 1, origin: .hand)
+    $0.lastSessionID = 1
+}
+private let running = changed(beginning) { $0.phase = .recording }
+private let ending = changed(running) { $0.phase = .ending }
+private let call = changed(beginning) {
+    $0.callOn = true
+    $0.sessionBeganDuringCall = true
+    $0.session = .init(id: 1, origin: .call)
 }
