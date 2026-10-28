@@ -19,13 +19,19 @@ public extension GlassLedger {
 
 private let fontsRegistered: Void = {
 
-    // App bundles keep resources in Contents/Resources; SwiftPM executables
-    // use the generated module lookup beside the executable or in the build.
-    let bundle = Bundle.main.url(forResource: "Audelin_GlassLedger", withExtension: "bundle")
-        .flatMap(Bundle.init(url:)) ?? Bundle.module
+    let bundle = glassLedgerBundle(mainBundleURL: Bundle.main.bundleURL)
     let urls = bundle.urls(forResourcesWithExtension: "ttf", subdirectory: "Fonts") ?? []
     CTFontManagerRegisterFontURLs(urls as CFArray, .process, true, nil)
 }()
+
+func glassLedgerBundle(mainBundleURL: URL, fallback: () -> Bundle = { Bundle.module }) -> Bundle {
+
+    // App bundles keep resources in Contents/Resources; SwiftPM executables
+    // can also use the generated module lookup beside the executable or in the build.
+    Bundle(url: mainBundleURL)?
+        .url(forResource: "Audelin_GlassLedger", withExtension: "bundle")
+        .flatMap(Bundle.init(url:)) ?? fallback()
+}
 
 extension Color {
 
