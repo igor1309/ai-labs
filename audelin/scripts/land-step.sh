@@ -23,8 +23,9 @@ for try in 1 2 3 4; do
     git fetch -q origin && git merge -q --no-edit origin/trunk || { echo "STOP: merge of origin/trunk failed" >&2; exit 1; }
     "$here/gate-step.sh" || exit 1
     git push -q -u origin "$branch" || exit 1
-    pr=$(gh pr view --json number --jq .number 2>/dev/null) \
-        || pr=$(gh pr create --base trunk --title "$title" --body "$issue" | sed 's|.*/||')
+    # Only an open PR: a reused branch name also has merged ones (PR 1343).
+    pr=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number')
+    [ -n "$pr" ] || pr=$(gh pr create --base trunk --title "$title" --body "$issue" | sed 's|.*/||')
     "$main/scripts/land-pr.sh" "$pr" && break
     # Merged with trunk's CI red: a trunk fault to look into, not a retry.
     [ "$(gh pr view "$pr" --json state --jq .state)" = MERGED ] \
