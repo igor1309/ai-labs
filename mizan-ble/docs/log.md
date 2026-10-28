@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-28
+
+- Preferences stores numbers and text in a named suite and reads them back across instances, with unwritten keys reading as nothing (LAB-659).
+
 ## 2026-10-27
 
 - HostPreview lets the operator inspect every host screen and its events, and export iPad PNGs in light and dark for comparison with the design (LAB-676).
