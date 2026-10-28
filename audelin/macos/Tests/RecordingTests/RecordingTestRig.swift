@@ -1,19 +1,17 @@
-@testable import Machine
+import IMRxObservation
+import Observation
 import Recording
 import Testing
 
 struct RecordingRig {
 
     let session: FakeRecordingSession
-    let recording: Recording
+    let recording: TestRecording
 
-    init(automatic: Bool, missing: Set<RecordingCondition> = []) {
+    init(automatic: Bool, missing: Set<RecordingCondition> = []) async {
 
         session = FakeRecordingSession()
-        recording = Recording(
-            handler: RecordingEffectHandler(session: session),
-            initial: RecordingState(automatic: automatic, missing: missing)
-        )
+        recording = await TestRecording(initial: RecordingState(automatic: automatic, missing: missing), session: session)
     }
 
     func waitFor(_ predicate: (RecordingState) -> Bool) async throws -> RecordingState {
@@ -26,7 +24,7 @@ struct RecordingRig {
 
     func start(_ origin: RecordingState.Origin, ready: Bool = true, id: UInt64 = 1) async throws {
 
-        recording.send(origin == .call ? .callStarted : .userStart)
+        await recording.send(origin == .call ? .callStarted : .userStart)
         try await session.waitFor(.begin(id))
         if ready {
             await session.comeUp(id)
@@ -38,7 +36,7 @@ struct RecordingRig {
 
     func stop(_ event: RecordingEvent = .userStop, id: UInt64 = 1) async throws {
 
-        recording.send(event)
+        await recording.send(event)
         try await session.waitFor(.end(id))
         #expect(await recording.snapshot().phase == .ending)
     }
@@ -48,15 +46,6 @@ struct RecordingRig {
         await session.finish(id)
         return try await waitFor { $0.phase == .idle }
     }
-
-    func settleEffects() async {
-
-        await withTaskCancellationHandler {
-            await recording.machine.waitForEffects()
-        } onCancel: {
-            Task { await session.close() }
-        }
-    }
 }
 
 func withRecording(
@@ -65,19 +54,75 @@ func withRecording(
     _ body: (RecordingRig) async throws -> Void
 ) async throws {
 
-    let rig = RecordingRig(automatic: automatic, missing: missing)
+    let rig = await RecordingRig(automatic: automatic, missing: missing)
     await rig.session.observe(rig.recording)
     do {
         try await body(rig)
     } catch {
         await rig.session.close()
         await rig.recording.end()
-        await rig.recording.machine.waitForEffects()
         throw error
     }
     await rig.session.close()
     await rig.recording.end()
-    await rig.recording.machine.waitForEffects()
+}
+
+/// Recording as the app composes it: the sync model on the main actor and the doer following it.
+@MainActor
+final class TestRecording {
+
+    private let model: SyncModel<RecordingState, RecordingEvent>
+    private var doer: RecordingDoer?
+    private var acting: Task<Void, Never>?
+    private var delivered: [RecordingEvent] = []
+    private var deliveries: [AsyncStream<[RecordingEvent]>.Continuation] = []
+
+    init(initial: RecordingState, session: any RecordingSession) {
+
+        model = SyncModel(initialState: initial, reduce: { RecordingReducer.reduce($0, $1).0 })
+        let doer = RecordingDoer(session: session, send: { [weak self] in await self?.deliver($0) })
+        self.doer = doer
+        let states = states()
+        acting = Task { for await state in states { doer.act(on: state) } }
+    }
+
+    func send(_ event: RecordingEvent) { model.event(event) }
+
+    func snapshot() -> RecordingState { model.state }
+
+    func states() -> AsyncStream<RecordingState> {
+
+        let observed = Observations { [model] in model.state }
+        return AsyncStream { continuation in
+            let task = Task {
+                for await state in observed { continuation.yield(state) }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    /// Returns once the doer has sent `event` back.
+    func waitForDelivery(of event: RecordingEvent) async {
+
+        let (stream, continuation) = AsyncStream<[RecordingEvent]>.makeStream()
+        continuation.yield(delivered)
+        deliveries.append(continuation)
+        for await events in stream where events.contains(event) { return }
+    }
+
+    func end() {
+
+        acting?.cancel()
+        for delivery in deliveries { delivery.finish() }
+    }
+
+    private func deliver(_ event: RecordingEvent) {
+
+        model.event(event)
+        delivered.append(event)
+        for delivery in deliveries { delivery.yield(delivered) }
+    }
 }
 
 actor FakeRecordingSession: RecordingSession {
@@ -95,10 +140,10 @@ actor FakeRecordingSession: RecordingSession {
     private var nextObserver: UInt64 = 0
     private var up: Set<UInt64> = []
     private var closed = false
-    private weak var recording: Recording?
+    private weak var recording: TestRecording?
     private var liveText = false
 
-    func observe(_ recording: Recording) { self.recording = recording }
+    func observe(_ recording: TestRecording) { self.recording = recording }
 
     func begin(id: UInt64) async -> RecordingSessionReport {
 
@@ -123,10 +168,10 @@ actor FakeRecordingSession: RecordingSession {
         beginnings[id]?.1.yield(.ready)
     }
 
-    func fail(_ id: UInt64, reason: String) {
+    func fail(_ id: UInt64, reason: String) async {
 
         if up.contains(id) {
-            recording?.send(.sessionReported(id: id, .cannotRecord(reason)))
+            await recording?.send(.sessionReported(id: id, .cannotRecord(reason)))
         } else {
             _ = beginning(id)
             beginnings[id]?.1.yield(.cannotRecord(reason))

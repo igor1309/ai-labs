@@ -248,7 +248,10 @@ let package = Package(
         ),
         .testTarget(
             name: "RecordingTests",
-            dependencies: ["Recording", "Machine"]
+            dependencies: [
+                "Recording",
+                .product(name: "IMRxObservation", package: "swift-imrx"),
+            ]
         ),
         .testTarget(
             name: "SettingsUITests",
