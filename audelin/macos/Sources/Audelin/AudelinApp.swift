@@ -57,12 +57,10 @@ struct AudelinApp: App {
                 .disabled(model.quitting)
             }
         } label: {
-            Label {
-                Text(model?.menu.item.title ?? "Audelin")
-            } icon: {
-                Image(nsImage: menuBarImage)
-            }
-            .task { await start() }
+            // Icon only: titles of different widths shifted the icon (LAB-640).
+            Image(nsImage: menuBarImage)
+                .accessibilityLabel(model?.menu.item.title ?? "Audelin")
+                .task { await start() }
         }
     }
 
