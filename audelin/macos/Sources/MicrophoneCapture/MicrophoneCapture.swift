@@ -11,7 +11,7 @@ public final class MicrophoneCapture: Sendable {
 
     public convenience init() throws {
 
-        try self.init(binding: NativeMicrophoneBinding())
+        try self.init(binding: NativeMicrophoneBinding.system())
     }
 
     init(binding: any MicrophoneBinding) throws {

@@ -27,7 +27,7 @@ struct NativeMicrophoneBindingTests {
     /// Contract test: AVAudioEngine reads the Mac's default input without voice processing.
     @Test func theDefaultInputDeliversLiveAudioWithoutVoiceProcessing() async throws {
 
-        let binding = NativeMicrophoneBinding()
+        let binding = NativeMicrophoneBinding.system()
         let capture = try MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         #expect(!binding.voiceProcessingEnabled)
