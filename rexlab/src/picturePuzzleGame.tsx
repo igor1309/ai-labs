@@ -16,9 +16,10 @@ export type PicturePuzzleChoiceStore = {
   saveLevel(choice: LevelChoice): void;
 };
 export type PicturePuzzleProgressStore = {
-  load(): { progress: PictureProgress; historyReadable: boolean } | undefined;
+  load(): PictureHistory | undefined;
   save(progress: PictureProgress): boolean;
 };
+type PictureHistory = { progress: PictureProgress; historyReadable: boolean; entryPresent: boolean };
 export type PicturePuzzleGameProps = {
   dinosaurs: readonly PictureDinosaur[];
   bodyPicture: (id: string) => string;
@@ -29,8 +30,23 @@ export type PicturePuzzleGameProps = {
 
 type PicturePuzzleScreen = { kind: "choice" } | { kind: "puzzle"; puzzle: PicturePuzzle } | { kind: "result"; result: PictureResult };
 export type PicturePuzzlePhase = PicturePuzzleScreen["kind"];
-type KeptChoice = PicturePuzzleChoiceSaved & { readable: boolean; progress: PictureProgress; historyReadable: boolean };
+type KeptChoice = PicturePuzzleChoiceSaved & { readable: boolean; history: PictureHistory };
 const OFFERED: OfferedLevels = ["hatchling", "explorer", "paleontologist"];
+
+function completePicture(history: PictureHistory, puzzle: PicturePuzzle, store: PicturePuzzleProgressStore) {
+  const stored = store.load();
+  const progress = mergePictures(history.progress, stored?.progress ?? NO_PICTURES);
+  const finished = finishPicture({ progress, readable: true }, puzzle, beatBest);
+  const saved = store.save(finished.kept.progress);
+  // An absent entry is a fresh start only until a saved entry is known.
+  // A successful save establishes the baseline for the next round, even after recovery.
+  const canClaimBest = history.historyReadable && stored?.historyReadable === true
+    && (!history.entryPresent || stored.entryPresent) && saved;
+  return {
+    history: { progress: finished.kept.progress, historyReadable: saved, entryPresent: saved || history.entryPresent },
+    result: canClaimBest ? finished.result : { ...finished.result, best: undefined, previousBest: undefined, celebration: null }
+  };
+}
 
 export function transitionFor(from: PicturePuzzleScreen, to: PicturePuzzleScreen): string | undefined {
   return from.kind === to.kind ? undefined : SCREEN_CHANGE;
@@ -44,7 +60,7 @@ export function usePicturePuzzleGame(props: PicturePuzzleGameProps | undefined, 
     const progress = stored?.progress;
     const earned = progress?.earned ?? collectedPictures(saved?.earned ?? []);
     return { earned, levelChoice: saved?.levelChoice, readable: saved !== undefined,
-      progress: progress ?? { ...NO_PICTURES, earned }, historyReadable: stored?.historyReadable ?? false };
+      history: stored ?? { progress: { ...NO_PICTURES, earned }, historyReadable: false, entryPresent: false } };
   });
   const keptNow = useRef<KeptChoice>(kept);
   const live = useRef<PicturePuzzle | undefined>(undefined);
@@ -92,13 +108,8 @@ export function usePicturePuzzleGame(props: PicturePuzzleGameProps | undefined, 
     if (puzzle === current) return false;
     live.current = puzzle;
     if (pictureComplete(puzzle)) {
-      const stored = props.progressStore.load();
-      const progress = mergePictures(keptNow.current.progress, stored?.progress ?? NO_PICTURES);
-      const finished = finishPicture({ progress, readable: keptNow.current.historyReadable && (stored?.historyReadable ?? false) }, puzzle, beatBest);
-      const saved = props.progressStore.save(finished.kept.progress);
-      const readable = finished.kept.readable && saved;
-      const result = readable ? finished.result : { ...finished.result, best: undefined, previousBest: undefined, celebration: null };
-      const next = { ...keptNow.current, progress: finished.kept.progress, earned: finished.kept.progress.earned, historyReadable: saved };
+      const { history, result } = completePicture(keptNow.current.history, puzzle, props.progressStore);
+      const next = { ...keptNow.current, history, earned: history.progress.earned };
       keptNow.current = next;
       go({ kind: "result", result }, { also: () => setKept(next) });
       return true;

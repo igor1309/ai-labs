@@ -103,6 +103,8 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     expect(screen.getByRole("img", { name: text.star })).not.toBeNull();
     expect(screen.getByLabelText(text.score).textContent).toBe(`${text.ageLevels.hatchling.name} 1/3`);
     expect(screen.getByText(text.pictureFacts.tyrannosaurus)).not.toBeNull();
+    expect(screen.getByRole("status").textContent).toBe(text.celebrations["first-best"].text);
+    expect(screen.getByLabelText(text.bestScore).textContent).toBe(`${text.best}1/3`);
     fireEvent.click(button(text.playAgain));
     expect(screen.getByLabelText(text.pictureFitted).textContent).toBe("0/12");
     expect(app.countStart.mock.calls).toEqual([["picturePuzzle"], ["picturePuzzle"]]);

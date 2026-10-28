@@ -154,8 +154,25 @@ describe.each(LANGUAGES)("collection growth through the game in %s", (language) 
   });
 });
 
+describe.each(LANGUAGES)("first completion in %s", (language) => {
+  it.each([
+    ["no record", undefined],
+    ["record without an entry", JSON.stringify({ schemaVersion: 1, games: { other: { keep: [1, 2] } } })]
+  ])("celebrates FIRST BEST with %s", (_, raw) => {
+    const storage = memoryStorage(raw === undefined ? {} : { [PROGRESS_KEY]: raw });
+    const view = openGame(storage, language, "hatchling");
+    const text = TEXTS[language];
+    fireEvent.click(button(DINOSAURS[0]!.name[language].toLocaleUpperCase(language)));
+    finish(view, language);
+    expect(screen.getByRole("status").textContent).toBe(text.celebrations["first-best"].text);
+    expect(screen.getByLabelText(text.bestScore).textContent).toBe(`${text.best}1/3`);
+    expect(screen.getByLabelText(text.score).textContent).toBe(`${text.ageLevels.hatchling.name} 1/3`);
+    expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("1/3");
+    expect(screen.getByRole("img", { name: text.star })).not.toBeNull();
+  });
+});
+
 it.each([
-  undefined,
   JSON.stringify({ schemaVersion: 1, games: { "picture-puzzle": 7 } }),
   "{bad",
   JSON.stringify({ schemaVersion: 1, games: { "picture-puzzle": { completed: 7 } } })
@@ -192,7 +209,7 @@ it.each([
   view.unmount();
 });
 
-it.each(["missing", "malformed record", "malformed collection", "unavailable"])("keeps rewards without best claims when history becomes %s during a round", (failure) => {
+it.each(["missing", "missing entry", "malformed record", "malformed collection", "unavailable"])("keeps rewards without best claims when history becomes %s during a round", (failure) => {
   const storage = memoryStorage();
   const store = localPicturePuzzleProgress(() => storage);
   store.save(NO_PICTURES);
@@ -203,6 +220,7 @@ it.each(["missing", "malformed record", "malformed collection", "unavailable"])(
   const onFit = view.game().board("en")!.props.onPlace;
   act(() => { for (const id of puzzle.order.slice(0, -1)) onFit(id, id); });
   if (failure === "missing") storage.items.delete(PROGRESS_KEY);
+  if (failure === "missing entry") storage.items.set(PROGRESS_KEY, JSON.stringify({ schemaVersion: 1, games: {} }));
   if (failure === "malformed record") storage.items.set(PROGRESS_KEY, "{bad");
   if (failure === "malformed collection") storage.items.set(PROGRESS_KEY, JSON.stringify({ schemaVersion: 1, games: { "picture-puzzle": { completed: 7 } } }));
   if (failure === "unavailable") vi.spyOn(storage, "getItem").mockImplementation(() => { throw new DOMException("Unavailable", "SecurityError"); });

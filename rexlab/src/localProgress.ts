@@ -51,17 +51,20 @@ export function localPicturePuzzleChoice(storage: () => KeyValueStorage) {
 export function localPicturePuzzleProgress(storage: () => KeyValueStorage) {
   const entry = gameProgress<PictureProgress>(storage, "picture-puzzle", NO_PICTURES, readPictures);
   return {
-    load(): { progress: PictureProgress; historyReadable: boolean } | undefined {
+    load(): { progress: PictureProgress; historyReadable: boolean; entryPresent: boolean } | undefined {
       let raw: string | null;
       try {
         raw = storage().getItem(PROGRESS_KEY);
       } catch {
         return undefined;
       }
-      const saved = parse(raw)?.["picture-puzzle"];
+      const games = parse(raw);
+      const entryPresent = games !== undefined && Object.hasOwn(games, "picture-puzzle");
+      const saved = games?.["picture-puzzle"];
       return {
         progress: isObject(saved) ? readPictures(saved) : NO_PICTURES,
-        historyReadable: isObject(saved) && pictureHistoryReadable(saved)
+        historyReadable: raw === null || (games !== undefined && !entryPresent) || (isObject(saved) && pictureHistoryReadable(saved)),
+        entryPresent
       };
     },
     save(progress: PictureProgress): boolean {

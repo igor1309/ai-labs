@@ -37,12 +37,37 @@ Feature: Completing a dinosaur picture
     Then its star appears on the picture choice screen and puzzle home tile
     And its completion contributes to the featured puzzle card
     And puzzle progress never appears on catalogue or dinosaur pages
-    Given saved progress is missing, malformed or storage is unavailable
+
+  Scenario: A new player has readable empty history
+    Given storage is readable and has no progress record or no picture-puzzle entry
+    And no saved picture-puzzle entry has been observed in this session
+    When I complete my first puzzle
+    Then its level celebrates FIRST BEST with a score of 1/3
+    And the shared collection holds 1 dinosaur
+
+  Scenario: Recovering corrupt or unavailable history
+    Given saved progress is malformed or storage is unavailable
     When I open and complete a puzzle
     Then I can play and see my earned star without a crash
     And unavailable storage is never presented as a verified historical best
     And the round star and completion reveal still celebrate finishing
     And no FIRST BEST or NEW BEST wording is shown
+
+  Scenario: Known saved history disappears during play
+    Given a saved picture-puzzle entry has been read in this session
+    And its record or picture-puzzle entry disappears before the last piece fits
+    When I complete the puzzle
+    Then my session collection keeps its dinosaurs and adds this completion
+    And the round star and completion reveal still celebrate finishing
+    And no FIRST BEST or NEW BEST wording is shown
+    And a successful save establishes history for best comparisons in later rounds
+
+  Scenario: A recovery round saves a new baseline
+    Given saved picture-puzzle history is malformed
+    When I complete a puzzle and its recovered collection saves successfully
+    Then this round has no FIRST BEST or NEW BEST wording
+    When I complete another dinosaur at that level with readable storage
+    Then the larger saved collection celebrates NEW BEST
 
   Scenario: The same dinosaur earns independent level bests
     Given no puzzle has been completed
