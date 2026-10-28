@@ -69,6 +69,14 @@ struct PanelWindowWiringTests {
             state.phase = .ending
             recording.continuation.yield(state)
             await delivered.next()
+            #expect(menu.panelPresence.recordingID == state.session?.id)
+            #expect(waits.all.isEmpty)
+            #expect(menu.panelPresence.visible)
+
+            state.phase = .idle
+            state.session = nil
+            recording.continuation.yield(state)
+            await delivered.next()
             await timerStarted.next()
             #expect(waits.all == [.seconds(3)])
             #expect(menu.panelPresence.visible)
