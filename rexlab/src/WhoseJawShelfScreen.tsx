@@ -88,7 +88,7 @@ function JawCard({ jaw, language, jawPicture, gummyPicture, pitch, sounds, voice
   }, [gate, leaving]);
   useEffect(() => {
     if (gate || leaving || !settled) return;
-    voice.speak(`${jaw.name[language]}. ${jaw.fact[language]}`.toLocaleUpperCase(language), language);
+    voice.speak(`${jaw.name[language]}. ${jaw.fact[language]}`, language);
     sounds.play("chomp", pitch);
     return () => { voice.stop(); sounds.stop(); };
   }, [gate, leaving, settled, jaw, language, voice, sounds, pitch]);
