@@ -1,33 +1,52 @@
 import struct CallText.State
 import Foundation
-import Machine
+import Observation
 import PanelUI
 import Reading
-import Synchronization
+
+/// One recording's reading model as the panel uses it; the app makes it on the main actor.
+public struct ReadingInputs: Sendable {
+
+    let state: @MainActor @Sendable () -> ReadingState
+    let send: @MainActor @Sendable (ReadingEvent) -> Void
+
+    /// `state` must be observable, so the panel sees each change it reads.
+    public init(state: @escaping @MainActor @Sendable () -> ReadingState, send: @escaping @MainActor @Sendable (ReadingEvent) -> Void) {
+
+        self.state = state
+        self.send = send
+    }
+}
 
 /// The current recording's panel state and its reading actions.
 public actor AudelinPanel {
 
+    private let makeReading: @MainActor @Sendable () -> ReadingInputs
     private let now: @Sendable () -> Double
     private let ticks: @Sendable () -> AsyncStream<Void>
     private let sink: any LogSink
-    private var current: (id: UInt64, reading: ReadingMachine, enableLiveText: @Sendable () -> Void)?
+    private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () -> Void)?
     private var state = PanelState(recording: .off, log: .empty)
     private var subscribers: [UInt64: AsyncStream<PanelState>.Continuation] = [:]
     private var nextSubscriber: UInt64 = 0
 
-    public init() {
+    /// Each recording reads through a fresh model from `makeReading`.
+    public init(makeReading: @escaping @MainActor @Sendable () -> ReadingInputs) {
 
-        self.init(sink: SystemLogSink())
+        self.init(makeReading: makeReading, sink: SystemLogSink())
     }
 
-    init(sink: any LogSink) {
+    init(makeReading: @escaping @MainActor @Sendable () -> ReadingInputs, sink: any LogSink) {
 
-        self.init(now: { ProcessInfo.processInfo.systemUptime }, ticks: readingSeconds, sink: sink)
+        self.init(makeReading: makeReading, now: { ProcessInfo.processInfo.systemUptime }, ticks: readingSeconds, sink: sink)
     }
 
-    init(now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink) {
+    init(
+        makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
+        now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink
+    ) {
 
+        self.makeReading = makeReading
         self.now = now
         self.ticks = ticks
         self.sink = sink
@@ -46,15 +65,15 @@ public actor AudelinPanel {
     }
 
     /// The menu wires recording controls; session controls and reading actions stay here.
-    public func send(_ event: PanelEvent) {
+    public func send(_ event: PanelEvent) async {
 
         if event == .switchLiveTextOn { current?.enableLiveText() }
-        if let event = readingEvent(event) { current?.reading.send(event) }
+        if let event = readingEvent(event), let reading = current?.reading { await reading.send(event) }
     }
 
     func begin(id: UInt64, text: AsyncStream<State>, enableLiveText: @escaping @Sendable () -> Void) async -> ReadingSubscription {
 
-        let reading = ReadingReducer.machine()
+        let reading = await makeReading()
         current = (id, reading, enableLiveText)
         return await ReadingSubscription(reading: reading, text: text, now: now, ticks: ticks(), sink: sink) { [weak self] state in
             await self?.receive(state, id: id)
@@ -89,19 +108,21 @@ public actor AudelinPanel {
     }
 }
 
-typealias ReadingMachine = Machine<ReadingState, ReadingEvent, Never>
-
 /// Owns only the subscriptions for one Session; no input is shared with a later one.
-final class ReadingSubscription: Sendable {
+/// It runs on the main actor, where the reading model reduces, so the events it
+/// sends keep their order.
+@MainActor
+final class ReadingSubscription {
 
-    private let reading: ReadingMachine
+    private let reading: ReadingInputs
+    private let time: ReadingTime
+    private let presenter: ReadingPresenter
     private let text: Task<Void, Never>
     private let timer: Task<Void, Never>
     private let observation: Task<Void, Never>
-    private let time: ReadingTime
 
     init(
-        reading: ReadingMachine, text: AsyncStream<State>,
+        reading: ReadingInputs, text: AsyncStream<State>,
         now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
         receive: @escaping @Sendable (ReadingState) async -> Void
     ) async {
@@ -109,15 +130,14 @@ final class ReadingSubscription: Sendable {
         self.reading = reading
         let time = ReadingTime(reading: reading, now: now)
         self.time = time
-        await receive(reading.snapshot())
-        let states = await reading.states()
+        let presenter = ReadingPresenter(sink: sink, receive: receive)
+        self.presenter = presenter
+        await receive(reading.state())
+        let states = Observations { reading.state() }
         observation = Task {
-            var began = false
             for await state in states {
-                if case .on = state.recording { began = true }
-                // Text starts before capture; retain it without presenting a running log yet.
-                await receive(began ? state : .init())
-                StateLog(sink: sink).reading(state)
+                guard !Task.isCancelled else { return }
+                await presenter.show(state)
             }
         }
         self.text = Task {
@@ -145,13 +165,15 @@ final class ReadingSubscription: Sendable {
         timer.cancel()
         await text.value
         await timer.value
-        reading.send(.recordingChanged(.off))
-        _ = await reading.snapshot()
-        await reading.end()
+        time.recordingChanged(.off)
+        // The model reduces the event later; wait until the state shows it.
+        for await state in Observations({ self.reading.state() }) where state.recording == .off { break }
+        observation.cancel()
         await observation.value
+        await presenter.show(reading.state())
     }
 
-    deinit {
+    isolated deinit {
 
         text.cancel()
         timer.cancel()
@@ -159,13 +181,40 @@ final class ReadingSubscription: Sendable {
     }
 }
 
-private final class ReadingTime: Sendable {
+/// Presents each distinct reading state once, in the order it was read.
+@MainActor
+private final class ReadingPresenter {
 
-    private let reading: ReadingMachine
+    private let sink: any LogSink
+    private let receive: @Sendable (ReadingState) async -> Void
+    private var shown: ReadingState?
+    private var began = false
+
+    init(sink: any LogSink, receive: @escaping @Sendable (ReadingState) async -> Void) {
+
+        self.sink = sink
+        self.receive = receive
+    }
+
+    func show(_ state: ReadingState) async {
+
+        guard state != shown else { return }
+        shown = state
+        if case .on = state.recording { began = true }
+        // Text starts before capture; retain it without presenting a running log yet.
+        await receive(began ? state : .init())
+        StateLog(sink: sink).reading(state)
+    }
+}
+
+@MainActor
+private final class ReadingTime {
+
+    private let reading: ReadingInputs
     private let now: @Sendable () -> Double
-    private let origin = Mutex<Double?>(nil)
+    private var origin: Double?
 
-    init(reading: ReadingMachine, now: @escaping @Sendable () -> Double) {
+    init(reading: ReadingInputs, now: @escaping @Sendable () -> Double) {
 
         self.reading = reading
         self.now = now
@@ -173,25 +222,21 @@ private final class ReadingTime: Sendable {
 
     func recordingChanged(_ recording: ReadingRecording) {
 
-        origin.withLock { start in
-            switch recording {
-            case .off:
-                start = nil
-                reading.send(.recordingChanged(.off))
-            case let .on(elapsed):
-                let instant = now()
-                let beginning = start ?? instant - elapsed
-                start = beginning
-                reading.send(.recordingChanged(.on(elapsed: instant - beginning)))
-            }
+        switch recording {
+        case .off:
+            origin = nil
+            reading.send(.recordingChanged(.off))
+        case let .on(elapsed):
+            let instant = now()
+            let beginning = origin ?? instant - elapsed
+            origin = beginning
+            reading.send(.recordingChanged(.on(elapsed: instant - beginning)))
         }
     }
 
     func tick() {
 
-        origin.withLock { start in
-            if let start { reading.send(.recordingChanged(.on(elapsed: now() - start))) }
-        }
+        if let origin { reading.send(.recordingChanged(.on(elapsed: now() - origin))) }
     }
 }
 

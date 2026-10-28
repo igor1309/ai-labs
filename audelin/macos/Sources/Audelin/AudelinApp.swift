@@ -1,8 +1,10 @@
 import AppKit
 import Compose
+import IMRxObservation
 import MenuBar
 import PanelUI
 import Preferences
+import Reading
 import os
 import SwiftUI
 
@@ -25,7 +27,8 @@ struct AudelinApp: App {
                 .appendingPathComponent(".audelin/preferences.json")),
             openCallsFolder: { NSWorkspace.shared.open($0) },
             presentPanel: { [weak panel] in panel?.setVisible($0) },
-            terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } }
+            terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } },
+            makeReading: makeReading
         )
         self.model = model
         panel.install(content: NSHostingView(rootView: PanelContent(model: model)), onClose: { [weak model] in
@@ -76,6 +79,16 @@ struct AudelinApp: App {
         image.isTemplate = !item.isRed
         return image
     }
+}
+
+/// Each recording's reading model, reducing on the main actor.
+@MainActor
+func makeReading() -> ReadingInputs {
+
+    let model = ObservableModel<ReadingState, ReadingEvent, Never>(
+        initialState: .init(), reduce: ReadingReducer.reduce, handleEffect: { switch $0 {} }
+    )
+    return ReadingInputs(state: { model.state }, send: { model.event($0) })
 }
 
 @MainActor

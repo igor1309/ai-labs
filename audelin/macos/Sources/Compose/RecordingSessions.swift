@@ -71,7 +71,7 @@ public actor RecordingSessions: RecordingSession {
                 self.running[id]?.reading = reading
                 self.start(id: id, liveText: enabled)
                 for await state in states {
-                    reading.recordingChanged(readingRecording(state))
+                    await reading.recordingChanged(readingRecording(state))
                     StateLog(sink: self.sink).session(state, id: id)
                     if self.receive(state, id: id) { return }
                 }

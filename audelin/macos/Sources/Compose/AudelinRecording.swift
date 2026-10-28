@@ -19,7 +19,7 @@ public final class AudelinRecording: Sendable {
     private let conditions: RecordingConditions
     private let delivery: ApplicationDelivery
 
-    public convenience init(preferences: PreferencesStore) async throws {
+    public convenience init(preferences: PreferencesStore, makeReading: @escaping @MainActor @Sendable () -> ReadingInputs) async throws {
 
         createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
         try await self.init(
@@ -29,7 +29,7 @@ public final class AudelinRecording: Sendable {
             startMicrophone: startProductionMicrophone, startCall: startProductionCallAudio,
             recognizerSource: { try await ParakeetRecognizer() }, missingModels: productionMissingModels,
             makeConditions: composeRecordingConditions,
-            startModel: { startLiveModelLoading() }, panel: AudelinPanel()
+            startModel: { startLiveModelLoading() }, panel: AudelinPanel(makeReading: makeReading)
         )
         // Reading the status never asks; without this request macOS never prompts.
         AVCaptureDevice.requestAccess(for: .audio) { [conditions] _ in conditions.refresh() }

@@ -35,11 +35,15 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
+        .package(url: "https://github.com/igor1309/swift-imrx", from: "1.0.0"),
     ],
     targets: [
         .executableTarget(
             name: "Audelin",
-            dependencies: ["Compose", "MenuBar", "Preferences", "PanelUI"]
+            dependencies: [
+                "Compose", "MenuBar", "Preferences", "PanelUI", "Reading",
+                .product(name: "IMRxObservation", package: "swift-imrx"),
+            ]
         ),
         .target(
             name: "AudioConversion"
@@ -55,7 +59,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI", "Machine"]
+            dependencies: ["MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -118,8 +122,7 @@ let package = Package(
             name: "RecordedCapture"
         ),
         .target(
-            name: "Reading",
-            dependencies: ["Machine"]
+            name: "Reading"
         ),
         .target(
             name: "Recording",

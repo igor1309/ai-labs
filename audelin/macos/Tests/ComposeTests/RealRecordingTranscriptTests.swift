@@ -49,7 +49,7 @@ struct RealRecordingTranscriptTests {
 
         let callApp = RecordingCallApp()
         callApp.started("afplay")
-        let panel = AudelinPanel()
+        let panel = AudelinPanel(makeReading: ReadingStub.inputs)
         let sessions = RecordingSessions(
             makePieces: composeRecordingPieces(preferences: preferences, callApp: callApp, processes: processes),
             liveText: { preferences.read().liveText }, report: { _, _ in }, panel: panel
