@@ -34,6 +34,7 @@ import { CLOSE_DINOSAUR, OPEN_DINOSAUR, type PictureTransition } from "./SharedP
 import { useSkeletonGame, type SkeletonGameProps, type SkeletonPhase } from "./skeletonGame.tsx";
 import { SILENT, type SkeletonSounds } from "./skeletonSounds.ts";
 import { NARROW_SORT, PORTRAIT_SORT, sortBoardWidth } from "./sortBoardLayout.ts";
+import { useLabyrinthGame, type LabyrinthGameProps, type LabyrinthPhase } from "./labyrinthGame.tsx";
 import { useSortingGame, type SortingGameProps, type SortingPhase } from "./sortingGame.tsx";
 import { themeOf, type ThemeChoice } from "./theme.ts";
 import { turnMotion, type TurnMotion, type TurnMotionSeams } from "./turnMotion.ts";
@@ -88,7 +89,7 @@ export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
 // compare quiz's own, a question or its result, and each of find the
 // pair's, its welcome, a board or its result, which each game names as it
 // shows them.
-export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}` | `dig-${DigPhase}` | `care-${CarePhase}`;
+export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}` | `dig-${DigPhase}` | `care-${CarePhase}` | `labyrinth-${LabyrinthPhase}`;
 
 // Each screen with a portrait layout, named with the size classes its
 // layout is built for; a screen not named has none.
@@ -115,6 +116,7 @@ export type { SkeletonPicture, SkeletonProgressStore } from "./skeletonGame.tsx"
 export type AppProps = CareGameProps &
   PairsGameProps &
   QuizGameProps &
+  Pick<LabyrinthGameProps, "labyrinthProgress"> &
   Pick<SortingGameProps, "sortables" | "sortingProgress"> &
   Pick<SkeletonGameProps, "skeletons" | "skeletonPicture" | "skeletonProgress"> &
   Pick<DigGameProps, "digDinosaurs" | "digProgress" | "sandContext"> & {
@@ -196,7 +198,8 @@ type Screen =
   | { kind: "skeletons" }
   // And the dig game.
   | { kind: "dig" }
-  | { kind: "sandWriting" };
+  | { kind: "sandWriting" }
+  | { kind: "labyrinth" };
 
 // A food chosen changes the screen at once. A dinosaur's page opens from its
 // card and closes back to it, and a step slides the next page in the
@@ -235,6 +238,7 @@ export function App({
   startCounter,
   sortables,
   sortingProgress,
+  labyrinthProgress,
   pals,
   pairsProgress,
   skeletons,
@@ -327,6 +331,8 @@ export function App({
 
   const sorting = useSortingGame({ sortables, sortingProgress, bodyPicture, random }, ageLevel, home, counting("sort"));
 
+  const labyrinth = useLabyrinthGame({ labyrinthProgress, bodyPicture, random, startTimer }, ageLevel, home, counting("labyrinth"));
+
   // Whether the gate covers a screen in the window as it is now.
   const gateShownFor = useCallback((key: LayoutScreen) => {
     const size = viewport.sizeClass();
@@ -404,7 +410,9 @@ export function App({
               ? `dig-${dig.phase}`
               : screen.kind === "care"
                 ? `care-${care.phase}`
-                : screen.kind;
+                : screen.kind === "labyrinth" && labyrinth.phase
+                  ? `labyrinth-${labyrinth.phase}`
+                  : screen.kind;
   const portraitSizes = portraitLayouts[layoutScreen];
   const gate = useMemo(() => ({
     isShown: () => gateShownFor(layoutScreen),
@@ -643,6 +651,8 @@ export function App({
         return skeletonGame.content(language);
       case "dig":
         return dig.content(language);
+      case "labyrinth":
+        return labyrinth.content(language);
       case "sandWriting":
         return <SandWritingScreen language={language} sandContext={sandContext} onHome={home} />;
       case "home":
@@ -669,6 +679,7 @@ export function App({
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
             dig={{ picture: digTile, dugUp: dig.dugUp }}
+            labyrinth={{ picture: bodyPicture("triceratops"), stars: labyrinth.stars }}
             moreComing={bodyPicture(MORE_COMING)}
             onCompareDinosaurs={openCompare}
             onCatalogue={openCatalogue}
@@ -679,6 +690,7 @@ export function App({
             onMuseum={openMuseum}
             onDig={openDig}
             onSandWriting={openSandWriting}
+            onLabyrinth={() => labyrinth.start(() => set({ kind: "labyrinth" }))}
           />
         );
     }

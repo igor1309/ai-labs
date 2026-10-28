@@ -104,6 +104,22 @@ Store progress under versioned browser-local keys, for example (`achievements` a
 
 Each game keeps its own entry under `games`, and saving one leaves the others as they are: the compare quiz `compare-dinosaurs`, the sorting game `sort-dinosaurs`, both with `bestScore` and `roundsPlayed`, dinosaur care `dinosaur-care`, with `bestScore`, `visitsFinished` and `friends`, and the skeleton game `skeleton-assembly`, with `bestScore`, `earned`, the ids of the dinosaurs whose skeleton has earned its star, and `rebuilding`, the ids of those knocked down to be built again, whose museum stands await them; a rebuild's fitted bones are not kept. Beside them, the home page keeps `home-featured`: `starts`, how many times each game has been started, by its home page id, and `featured`, the day's game as `{ "day": "2026-10-18", "game": "care" }`. A featured entry with a start count that is not a whole number of starts, or a featured game the home page no longer offers, is read as no starts and no game, and the count of a game no longer offered is dropped. Every game scores a finished round by the one rule below (`src/bestScore.ts`).
 
+The `labyrinth` entry keeps `progress` (total `stars`, completed
+`roundsPlayed` and `best` for each age level), `levelChoice` and `offer`.
+Starts belong to the home counter, including abandoned rounds. Boards and
+positions are never saved. Labyrinth holds earned progress in memory when
+storage is blocked, so rewards and level choices still work for the session.
+Unreadable scores start empty; an unusable optional choice or offer is
+dropped without losing otherwise readable rewards.
+
+Labyrinth's pure model owns procedural generation, movement, hint history
+and reward calculation; its caller supplies the best-score rule. The game
+module owns board-to-result transitions, counted starts and persistence,
+and applies the shared level-offer policy. Screens receive cell and reward views and
+report actions, without importing the model. App connects routing and home
+cards; the browser root supplies storage, randomness and timers. The import
+graph tests enforce these boundaries.
+
 `bestScore` is `null` until a round is finished. On round completion:
 
 ```ts

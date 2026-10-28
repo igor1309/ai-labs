@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { COUNT_SETTLE, GUST, LIFT, TREASURE_FLIGHT } from "../src/digGame.tsx";
@@ -64,7 +65,7 @@ export function openDigApp({
   const ageLevels = localAgeLevel(() => settings);
   const featured = localFeatured(local, HOME_GAMES);
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
       now={() => new Date(2026, 9, 18, 9, 30)}
       featuredStore={featured}
       startCounter={featured}

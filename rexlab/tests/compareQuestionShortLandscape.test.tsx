@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -41,7 +42,7 @@ async function openQuestion(size: WindowSize, insets: SafeArea, language: Langua
   const viewport = manualViewport("landscape", { left: insets.left, right: insets.right });
   viewport.resize("wide-short", false);
   const user = userEvent.setup({ delay: null });
-  render(<App
+  render(<App {...emptyLabyrinth()}
     {...featuring()}
     dinosaurs={SHIPPED_DINOSAURS}
     catalogue={SHIPPED_CATALOGUE}
