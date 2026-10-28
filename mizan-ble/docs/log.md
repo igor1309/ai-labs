@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-28
+
+- ClientFind offers the chosen nearby host, stops scanning before handing it over for payment, and resumes scanning when the transaction ends (LAB-654).
+
 ## 2026-10-27
 
 - HostPreview lets the operator inspect every host screen and its events, and export iPad PNGs in light and dark for comparison with the design (LAB-676).
