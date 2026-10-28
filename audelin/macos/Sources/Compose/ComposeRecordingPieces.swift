@@ -51,7 +51,7 @@ func composeRecordingPieces(
         let app = callApp.current
         return composeSessionPieces(
             folder: CallFolder(callsURL: callsURL, now: now, timeZone: timeZone()),
-            folderTitle: app.flatMap(callAppName),
+            folderTitle: app.flatMap(CoreAudioProcesses.callAppName),
             processes: CallAppProcesses(app: app ?? "", list: RecordingProcessList(
                 source: processes, appKnown: app != nil
             )),
@@ -59,21 +59,6 @@ func composeRecordingPieces(
             microphoneRecognizerSource: recognizerSource, callRecognizerSource: recognizerSource
         )
     }
-}
-
-/// The name a person knows the detected app by, from the bundle ID the detection reports.
-func callAppName(_ app: String) -> String? {
-
-    [
-        "us.zoom.xos": "Zoom", "ru.yandex.desktop.telemost": "Telemost",
-        "com.google.Chrome": "Chrome", "com.google.Chrome.helper": "Chrome",
-        "org.mozilla.firefox": "Firefox", "com.apple.Safari": "Safari", "com.apple.WebKit.GPU": "Safari",
-        "company.thebrowser.Browser": "Arc", "com.brave.Browser": "Brave", "com.microsoft.edgemac": "Edge",
-        "com.operasoftware.Opera": "Opera", "com.vivaldi.Vivaldi": "Vivaldi", "org.chromium.Chromium": "Chromium",
-        "ru.yandex.desktop.yandex-browser": "Yandex Browser", "com.duckduckgo.macos.browser": "DuckDuckGo",
-        "com.kagi.kagimacOS": "Orion", "app.zen-browser.zen": "Zen", "company.thebrowser.dia": "Dia",
-        "ai.perplexity.comet": "Comet",
-    ][app]
 }
 
 private struct RecordingProcessList: ProcessList {

@@ -227,18 +227,26 @@ public final class CoreAudioProcesses: Sendable {
         retired.forEach { $0.cancel() }
     }
 
+    /// The name a person knows a detected call app by, from the bundle ID detection reports.
+    public static func callAppName(_ app: String) -> String? {
+
+        callApps.first { $0.bundleID == app }?.name
+    }
+
     private static func callApp(_ bundleID: String) -> String? {
 
         // The list's first matching entry represents its helpers too.
-        [
-            "us.zoom.xos", "ru.yandex.desktop.telemost",
-            "com.google.Chrome", "com.google.Chrome.helper",
-            "org.mozilla.firefox", "com.apple.Safari", "com.apple.WebKit.GPU",
-            "company.thebrowser.Browser", "com.brave.Browser", "com.microsoft.edgemac",
-            "com.operasoftware.Opera", "com.vivaldi.Vivaldi", "org.chromium.Chromium",
-            "ru.yandex.desktop.yandex-browser", "com.duckduckgo.macos.browser",
-            "com.kagi.kagimacOS", "app.zen-browser.zen", "company.thebrowser.dia",
-            "ai.perplexity.comet",
-        ].first { bundleID.hasPrefix($0) }
+        callApps.first { bundleID.hasPrefix($0.bundleID) }?.bundleID
     }
+
+    static let callApps: [(bundleID: String, name: String)] = [
+        ("us.zoom.xos", "Zoom"), ("ru.yandex.desktop.telemost", "Telemost"),
+        ("com.google.Chrome", "Chrome"), ("com.google.Chrome.helper", "Chrome"),
+        ("org.mozilla.firefox", "Firefox"), ("com.apple.Safari", "Safari"), ("com.apple.WebKit.GPU", "Safari"),
+        ("company.thebrowser.Browser", "Arc"), ("com.brave.Browser", "Brave"), ("com.microsoft.edgemac", "Edge"),
+        ("com.operasoftware.Opera", "Opera"), ("com.vivaldi.Vivaldi", "Vivaldi"), ("org.chromium.Chromium", "Chromium"),
+        ("ru.yandex.desktop.yandex-browser", "Yandex Browser"), ("com.duckduckgo.macos.browser", "DuckDuckGo"),
+        ("com.kagi.kagimacOS", "Orion"), ("app.zen-browser.zen", "Zen"), ("company.thebrowser.dia", "Dia"),
+        ("ai.perplexity.comet", "Comet"),
+    ]
 }
