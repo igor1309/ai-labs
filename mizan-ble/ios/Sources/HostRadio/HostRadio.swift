@@ -39,7 +39,7 @@ import Foundation
     private struct Service {
         let id: UUID
         let handle: UUID
-        var serving: CheckedContinuation<Void, Never>?
+        var serving: PendingService?
         var added = false
         var advertising: UUID?
         var subscribers: [UUID: Int] = [:]
@@ -49,10 +49,39 @@ import Foundation
         var blocked = false
     }
 
-    private struct PendingService {
+    // Cancellation can arrive off the main actor, including before the wait is installed.
+    private final class PendingService: @unchecked Sendable {
         let id: UUID
         let bytes: [UInt8]
-        let continuation: CheckedContinuation<Void, Never>
+        private let lock = NSLock()
+        private var cancelled = false
+        private var continuation: CheckedContinuation<Void, Never>?
+
+        init(id: UUID, bytes: [UInt8]) {
+            self.id = id
+            self.bytes = bytes
+        }
+
+        var isCancelled: Bool { lock.withLock { cancelled } }
+
+        func suspend(_ continuation: CheckedContinuation<Void, Never>) -> Bool {
+            let waiting = lock.withLock {
+                guard !cancelled else { return false }
+                self.continuation = continuation
+                return true
+            }
+            if !waiting { continuation.resume() }
+            return waiting
+        }
+
+        func resume(cancelled: Bool = false) {
+            let waiting = lock.withLock {
+                self.cancelled = self.cancelled || cancelled
+                defer { continuation = nil }
+                return continuation
+            }
+            waiting?.resume()
+        }
     }
 
     private struct Advertisement {
@@ -66,26 +95,33 @@ import Foundation
     private var retired: Set<UUID> = []
     private var additions: Set<UUID> = []
 
-    /// Returns when the service has been added, or the session has ended.
+    /// Returns when the service has been added, the session has ended, or the task is cancelled.
     /// Serving failures arrive on `events` with the session they belong to.
     public func serve(_ bytes: [UInt8], for session: UUID) async {
         guard !retired.contains(session) else { return }
-        await withCheckedContinuation { continuation in
-            let request = PendingService(id: session, bytes: bytes, continuation: continuation)
-            if service?.finishing == true {
-                pendingServices.append(request)
-            } else {
-                if service != nil { removeService() }
-                addService(request)
+        let request = PendingService(id: session, bytes: bytes)
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                guard request.suspend(continuation) else { return }
+                if service?.finishing == true {
+                    pendingServices.append(request)
+                } else {
+                    if service != nil { removeService() }
+                    addService(request)
+                }
             }
+        } onCancel: {
+            request.resume(cancelled: true)
         }
     }
 
-    private func addService(_ request: PendingService) {
+    @discardableResult private func addService(_ request: PendingService) -> Bool {
+        guard !request.isCancelled else { return false }
         let handle = UUID()
-        service = Service(id: request.id, handle: handle, serving: request.continuation)
+        service = Service(id: request.id, handle: handle, serving: request)
         additions.insert(handle)
         binding.addService(handle, bytes: request.bytes)
+        return true
     }
 
     public func advertise(_ name: String, for session: UUID) {
@@ -106,7 +142,7 @@ import Foundation
         retired.insert(session)
         let cancelled = pendingServices.filter { $0.id == session }
         pendingServices.removeAll { $0.id == session }
-        for request in cancelled { request.continuation.resume() }
+        for request in cancelled { request.resume() }
         guard service?.id == session else { return }
         removeService()
     }
@@ -122,7 +158,9 @@ import Foundation
         // to remove that late service before releasing the handle.
         if !additions.contains(old.handle) { binding.releaseService(old.handle) }
         old.serving?.resume()
-        if !pendingServices.isEmpty { addService(pendingServices.removeFirst()) }
+        while !pendingServices.isEmpty {
+            if addService(pendingServices.removeFirst()) { break }
+        }
     }
 
     public func finish(_ session: UUID) {

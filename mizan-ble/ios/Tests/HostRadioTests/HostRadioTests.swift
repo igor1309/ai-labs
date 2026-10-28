@@ -185,6 +185,55 @@ import Testing
         #expect(await readEvents(radio, binding) == [.onAir(session: next)])
     }
 
+    @Test(arguments: [false, true])
+    func cancelledWaitingServeIsSkippedDuringHandoff(retireFirst: Bool) async throws {
+        let (radio, binding, session, peer) = await ownedRadio()
+        binding.full = true
+        try radio.send([5], for: session)
+        radio.finish(session)
+        let cancelled = UUID(), next = UUID()
+        let waiting = Task.immediate { await radio.serve([9], for: cancelled) }
+        let serving = Task.immediate { await radio.serve([8], for: next) }
+        if retireFirst { radio.retire(cancelled) }
+        waiting.cancel()
+        binding.drain()
+        #expect(binding.calls == [
+            .update(binding.handles[0], peer, [5]), .remove(binding.handles[0]),
+            .add(binding.handles.last!, [8]),
+        ])
+        // End both requests even if the cancelled request was incorrectly started.
+        radio.retire(cancelled)
+        binding.emit(.added(binding.handles.last!, nil))
+        await waiting.value
+        await serving.value
+        radio.retire(next)
+    }
+
+    @Test func cancellingWaitingServeReturnsBeforeTheFinishingQueueDrains() async throws {
+        let (radio, binding, session, peer) = await ownedRadio()
+        binding.full = true
+        try radio.send([5], for: session)
+        radio.finish(session)
+        let next = UUID()
+        let serving = Task.immediate { await radio.serve([9], for: next) }
+        serving.cancel()
+        await serving.value
+        #expect(binding.calls == [])
+        binding.drain()
+        #expect(binding.calls == [.update(binding.handles[0], peer, [5]), .remove(binding.handles[0])])
+    }
+
+    @Test func cancellingServeReturnsWhileServiceAdditionIsOutstanding() async {
+        let (radio, binding) = makeRadio()
+        let session = UUID()
+        let serving = Task.immediate { await radio.serve([9], for: session) }
+        serving.cancel()
+        await serving.value
+        radio.retire(session)
+        binding.emit(.added(binding.handles[0], nil))
+        #expect(binding.retainedServices.isEmpty)
+    }
+
     @Test func retiringAWaitingSessionPreventsItFromServing() async throws {
         let (radio, binding, session, peer) = await ownedRadio()
         binding.full = true
