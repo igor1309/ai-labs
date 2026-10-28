@@ -137,6 +137,9 @@ export type Texts = {
   // build, and its museum.
   skeletons: string;
   skeletonTitle: string;
+  picturePuzzle: string;
+  pictureCollection: string;
+  pictureNotCollected: string;
   museum: string;
   // The skeleton being built and its tray of bones.
   skeleton: string;

@@ -23,6 +23,28 @@ export function localProgress(storage: () => KeyValueStorage) {
   return levelledProgress(storage, "compare-dinosaurs", NO_PROGRESS);
 }
 
+// Only the switch is written here; collection data and other fields in
+// the game entry survive a choice made before a puzzle is finished.
+export function localPicturePuzzleChoice(storage: () => KeyValueStorage) {
+  type ChoiceEntry = { earned?: readonly string[]; levelChoice?: LevelChoice };
+  const entry = gameProgress<ChoiceEntry>(storage, "picture-puzzle", {}, (raw) => {
+    const levelChoice = choiceOf(raw.levelChoice);
+    return {
+      ...(isIds(raw.earned) && { earned: [...raw.earned] }),
+      ...(levelChoice && { levelChoice })
+    };
+  });
+  return {
+    load(): { earned: readonly string[]; levelChoice: LevelChoice | undefined } | undefined {
+      const saved = entry.load();
+      return saved === undefined ? undefined : { earned: saved.earned ?? [], levelChoice: saved.levelChoice };
+    },
+    saveLevel(levelChoice: LevelChoice): void {
+      entry.save({ levelChoice });
+    }
+  };
+}
+
 // Dinosaur care's progress, beside the quiz's in the same record.
 export function localCareProgress(storage: () => KeyValueStorage) {
   return gameProgress<CareProgress>(storage, "dinosaur-care", NO_CARE, ({ bestScore, visitsFinished, friends }) =>

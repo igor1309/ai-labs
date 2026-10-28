@@ -1,3 +1,144 @@
+.picture-puzzle-choice-screen {
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  padding: calc(32px + env(safe-area-inset-top)) calc(40px + var(--screen-right)) calc(48px + env(safe-area-inset-bottom)) calc(40px + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  overflow: hidden;
+  color: #1d2742;
+  background: #f2efe8;
+}
+
+.picture-puzzle-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.picture-puzzle-bar h1 {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 0;
+  font-size: clamp(24px, 3vw, 40px);
+}
+
+.picture-puzzle-collection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.picture-puzzle-levels {
+  width: 648px;
+  max-width: 100%;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.picture-puzzle-choices {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: center;
+  gap: 24px;
+}
+
+.picture-puzzle-choice {
+  min-width: 48px;
+  min-height: 48px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  padding: 16px 16px 24px;
+  border: 1px solid #1d27421f;
+  border-radius: 24px;
+  background: #fffdf8;
+  color: #1d2742;
+  box-shadow: 0 8px 24px #1d274224;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger)) both;
+}
+
+.picture-puzzle-name {
+  font-size: min(30px, 100cqi / 9.4);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.picture-puzzle-star {
+  align-self: center;
+  display: flex;
+  color: #5c647a;
+}
+
+.picture-puzzle-star[data-earned="true"] {
+  color: #e39b2d;
+}
+
+.picture-puzzle-star[data-earned="true"] svg {
+  fill: currentColor;
+}
+
+.picture-puzzle-crop {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+}
+
+.picture-puzzle-scene {
+  position: absolute;
+  display: block;
+  width: var(--scene-width);
+  height: var(--scene-height);
+  left: var(--scene-left);
+  top: var(--scene-top);
+}
+
+.picture-puzzle-backdrop,
+.picture-puzzle-body {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.picture-puzzle-body {
+  object-fit: contain;
+}
+
+[data-theme="dark"] .picture-puzzle-choice-screen {
+  background: #0f1320;
+  color: #ece8de;
+}
+
+[data-theme="dark"] .picture-puzzle-choice {
+  background: #181e2e;
+  border-color: #ece8de1f;
+  color: #ece8de;
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .picture-puzzle-star {
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .picture-puzzle-star[data-earned="true"] {
+  color: #f2b24b;
+}
+
 /* The standalone sand fills the viewport, including beneath its safe-area
    controls. Its texture and writing keep the same colours in both themes. */
 html:has(.sand-writing-screen),
