@@ -4,6 +4,13 @@
 
 - `LAB-*` issues live in the Multica workspace `ai-labs`, which is not the
   CLI default: `multica --workspace-id 4bffb154-c309-4416-917d-22a9fb2b5950 issue get LAB-<n>`.
+- Run `multica` and `gh` outside the sandbox (`dangerouslyDisableSandbox`)
+  from the first call; the owner allows it for both. Inside, they fail with
+  a TLS certificate error from the sandbox proxy. Do not stop to ask, and
+  do not report Multica as unreachable before trying it outside.
+- `issue children LAB-<n>` lists a parent's sub-issues with their status;
+  `issue create --parent LAB-<n> --title ... --description-file ...`
+  adds one; `issue status LAB-<n> <status>` moves it.
 
 ## Designing in pen.dev
 
