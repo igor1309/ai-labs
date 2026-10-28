@@ -131,8 +131,7 @@ let package = Package(
             dependencies: ["GlassLedger"]
         ),
         .target(
-            name: "Session",
-            dependencies: ["Machine"]
+            name: "Session"
         ),
         .target(
             name: "SideText"
@@ -258,7 +257,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SessionTests",
-            dependencies: ["Session", "Machine"]
+            dependencies: ["Session", .product(name: "IMRxObservation", package: "swift-imrx")]
         ),
         .testTarget(
             name: "SideTextTests",

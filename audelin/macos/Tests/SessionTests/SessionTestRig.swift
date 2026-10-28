@@ -2,7 +2,6 @@
 // what was asked of them, and connected the way compose connects the pieces.
 
 import Foundation
-@testable import Machine
 import Session
 import Testing
 
@@ -17,7 +16,7 @@ struct Rig {
     let callTrack: TestTrack
     let callText: TestCallText
     let transcript: TestTranscript
-    let session: Session
+    let session: TestSession
 
     init(
         held: Set<String> = [],
@@ -26,7 +25,7 @@ struct Rig {
         callAudioSelection: SessionCallCaptureSelection? = nil,
         callFolder: SessionCallFolder = .init(id: "made-folder"),
         missingModels: [String] = []
-    ) {
+    ) async {
 
         output = TestOutput(held: held, failing: failing)
         let folder = TestFolder(output: output, made: callFolder)
@@ -47,19 +46,19 @@ struct Rig {
             microphoneTrack: microphoneTrack, callTrack: callTrack,
             callText: callText, transcript: transcript
         )
-        session = Session(handler: handler)
+        session = await TestSession(handler: handler)
     }
 
     func begin(liveText: Bool) async {
 
         await callText.observe(session)
-        session.send(.begin(liveText: liveText))
+        await session.send(.begin(liveText: liveText))
     }
 
     func settleEffects() async {
 
         await withTaskCancellationHandler {
-            await session.machine.waitForEffects()
+            await session.waitForEffects()
         } onCancel: {
             Task { await output.releaseAll() }
         }
@@ -253,24 +252,24 @@ actor TestCallText: SessionCallText {
     let transcript: TestTranscript
     var enabled = false
     private var started = false
-    private weak var session: Session?
+    private weak var session: TestSession?
     private var switchStatus: SessionState.LiveText = .on
     func setSwitchStatus(_ status: SessionState.LiveText) { switchStatus = status }
-    func observe(_ session: Session) { self.session = session }
-    func report(_ status: SessionState.LiveText) { session?.send(.callTextStatusChanged(status)) }
+    func observe(_ session: TestSession) { self.session = session }
+    func report(_ status: SessionState.LiveText) async { await session?.send(.callTextStatusChanged(status)) }
     init(output: TestOutput, transcript: TestTranscript) { self.output = output; self.transcript = transcript }
     func start(enabled: Bool) async throws {
         try await output.perform("callText.start(\(enabled ? "on" : "off"))")
         self.enabled = enabled
         started = true
-        report(enabled ? .gettingReady : .off)
+        await report(enabled ? .gettingReady : .off)
         await output.performUnchecked("call.text")
         if enabled { await transcript.appendText("callText-first") }
     }
     func setEnabled(_ enabled: Bool) async throws {
         try await output.perform("callText.set(\(enabled ? "on" : "off"))")
         self.enabled = enabled
-        report(enabled ? switchStatus : .off)
+        await report(enabled ? switchStatus : .off)
     }
     func stop() async throws {
         try await output.perform("callText.stop")
