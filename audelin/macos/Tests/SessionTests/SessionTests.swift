@@ -449,6 +449,54 @@ struct SessionTests {
         #expect(await rig.callTrack.values() == ["call-first", "call kept"])
     }
 
+    @Test(arguments: [SessionSide.microphone, .call])
+    func failedCaptureStreamStopsItsSide(_ side: SessionSide) {
+
+        let other: SessionSide = side == .microphone ? .call : .microphone
+        var state = SessionState(
+            phase: .recording,
+            folder: .up,
+            microphoneTrack: .up,
+            callTrack: .up,
+            microphoneCapture: .up,
+            callCapture: .up
+        )
+        let effect: SessionEffect?
+        (state, effect) = SessionReducer.reduce(state, .pieceFailed(.capture(side), error: "stream failed"))
+        #expect(state.health[.capture(side)] == .failed("stream failed"))
+        #expect(status(state, side) == .stopping)
+        #expect(status(state, other) == .up)
+        #expect(effect == .stopCapture(side))
+        (state, _) = SessionReducer.reduce(state, .captureStopped(side, error: nil))
+        #expect(status(state, side) == .closed)
+        #expect(state.phase == .recording)
+        var ending: SessionEffect?
+        (state, ending) = SessionReducer.reduce(state, .end)
+        #expect(ending == .stopCapture(other))
+    }
+
+    @Test(arguments: [SessionSide.microphone, .call])
+    func captureStreamEndingAfterStopChangesNoHealth(_ side: SessionSide) {
+
+        var state = SessionState(
+            phase: .ending,
+            folder: .up,
+            microphoneTrack: .up,
+            callTrack: .up,
+            microphoneCapture: side == .microphone ? .stopping : .closed,
+            callCapture: side == .call ? .stopping : .closed
+        )
+        (state, _) = SessionReducer.reduce(state, .captureStopped(side, error: nil))
+        #expect(state.health.isEmpty)
+        #expect(state.failures.isEmpty)
+        #expect(status(state, side) == .closed)
+    }
+
+    private func status(_ state: SessionState, _ side: SessionSide) -> SessionState.PieceStatus {
+
+        side == .microphone ? state.microphoneCapture : state.callCapture
+    }
+
     @Test func lateCaptureSuccessDoesNotEraseRuntimeFailure() {
 
         var state = SessionState(
@@ -571,7 +619,13 @@ struct SessionTests {
             #expect(state.phase == .recording)
             #expect(state.failures.contains(failure.expected))
         }
-        #expect(state.lifecycles.allSatisfy { $0 == .up })
+        // A failed capture is stopped; every other piece stays up.
+        if case let .pieceFailed(.capture(side), _) = failure.event {
+            #expect(status(state, side) == .closed)
+            #expect(state.lifecycles.filter { $0 != .up } == [.closed])
+        } else {
+            #expect(state.lifecycles.allSatisfy { $0 == .up })
+        }
         switch failure.event {
         case let .pieceFailed(piece, error):
             #expect(state.health(of: piece) == .failed(error))

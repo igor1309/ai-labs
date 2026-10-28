@@ -105,7 +105,7 @@ func withDrainRig(
         prepared.makeCallText = { ReadyCallText(text: $0) }
         let rig = SessionRig(
             root: root, microphoneFails: false, processesFail: false, construction: prepared,
-            stopFailure: nil, stopEndsStream: true, rates: nil, recognizers: recognizers,
+            stopFailure: nil, stopEndsStream: true, streamFailure: nil, rates: nil, recognizers: recognizers,
             beforeForward: beforeForward
         )
         do {
