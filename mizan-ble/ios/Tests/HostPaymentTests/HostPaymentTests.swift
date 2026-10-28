@@ -147,6 +147,80 @@ struct HostPaymentTests {
         #expect(flow.ports.calls == calls)
     }
 
+    @Test(arguments: [HostPayment.Phase.declined, .paid, .failed, .linkLost, .cancelled])
+    func newAmountWaitsForLinkEnded(_ phase: HostPayment.Phase) async throws {
+        let acknowledgementSteps = phase == .paid || phase == .failed ? [0, 1, 2] : [0]
+        for steps in acknowledgementSteps {
+            let flow = Flow()
+            var effect: HostPayment.Effect?
+            let messages: [HostPayment.Message]
+            switch phase {
+            case .declined:
+                effect = flow.reduce(.opened(.decline))
+                messages = [.acknowledgement]
+            case .paid, .failed:
+                let outcome: HostPayment.Outcome = phase == .paid ? .success : .failure
+                var acknowledgement = flow.reduce(.opened(.confirm))
+                if steps == 2 {
+                    await flow.drain(acknowledgement)
+                    acknowledgement = nil
+                } else if steps == 1 {
+                    let current = try #require(acknowledgement)
+                    let event = try #require(await flow.handler.handle(current))
+                    acknowledgement = flow.reduce(event)
+                }
+                let result = flow.reduce(.outcome(outcome))
+                if let acknowledgement {
+                    #expect(result == nil)
+                    effect = acknowledgement
+                } else {
+                    effect = result
+                }
+                messages = steps < 2 ? [.acknowledgement, .result(outcome)] : [.result(outcome)]
+            case .linkLost:
+                effect = flow.reduce(.linkLost)
+                messages = []
+            case .cancelled:
+                effect = flow.reduce(.cancel)
+                messages = [.end]
+            default:
+                Issue.record("Expected a terminal payment phase")
+                return
+            }
+
+            let expectedEffects: [HostPayment.Effect] = messages.flatMap {
+                [.seal($0), .send($0, [83, 17])]
+            } + [.closeSession, .endLink]
+            let remainingEffects = steps == 1 ? Array(expectedEffects.dropFirst()) : expectedEffects
+            #expect(flow.state.phase == phase)
+
+            func expectNewAmountBlocked() {
+                let before = flow.state
+                #expect(!before.canEnterNewAmount)
+                #expect(flow.reduce(.newAmount) == nil)
+                #expect(flow.state == before)
+            }
+
+            for expected in remainingEffects {
+                #expect(effect == expected)
+                expectNewAmountBlocked()
+                let current = try #require(effect)
+                let event = try #require(await flow.handler.handle(current))
+                expectNewAmountBlocked()
+                effect = flow.reduce(event)
+            }
+
+            #expect(effect == nil)
+            #expect(flow.state.phase == phase)
+            #expect(flow.state.canEnterNewAmount)
+            #expect(flow.state.resultSent == (phase == .paid || phase == .failed))
+            #expect(flow.ports.calls.suffix(2) == [.close, .end])
+            #expect(flow.reduce(.newAmount) == nil)
+            #expect(flow.state.isOver)
+            #expect(!flow.state.canEnterNewAmount)
+        }
+    }
+
     @Test func confirmAcknowledgementCannotBeSent() async {
         let flow = Flow()
         flow.ports.decision = .confirm
