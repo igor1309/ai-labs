@@ -67,30 +67,29 @@ Skeletons, traced from these pictures and cut into pieces, follow
 ## Jaw style prompt
 
 For Whose Jaw? (`research/whose-jaw-design.md`). One loose jaw per
-dinosaur, made by `scripts/jaw-picture.sh`.
+dinosaur, made with Pencil's AI image generation in the frame
+"Whose Jaw · Art · Jaws" of `design/rexlab.pen` on white, exported, and
+its white background cleared to alpha.
 
 > Children's picture-book illustration of a single loose cartoon jaw on
 > its own: the upper and lower jaw together, slightly open, side view
 > facing left, no head, no skin, no eyes, no tongue. Ivory bone colour
 > with soft shading and a clean dark outline. The teeth are big, white
 > and clear, so their shape reads at a glance, never bloody or scary.
-> Plain flat solid pure magenta (#FF00FF) background, no ground, no
-> shadow, no other objects, no text, and no magenta or pink anywhere on
-> the jaw.
+> Plain flat white background, no ground, no shadow, no other objects,
+> no text.
 
 ## Gummy mouth prompt
 
-The same dinosaur as its body picture, edited, never redrawn: the jaw
-fits a mouth that matches the picture the child already knows.
+Made the same way, in the frame "Whose Jaw · Art · Gummy mouths". Pencil
+cannot edit a picture, so each dinosaur is drawn again from its line in
+`prompts.md`, with this added: the mouth is open and has pink gums and
+no teeth at all, friendly and a little funny; plain flat white
+background.
 
-> Edit the attached picture only around the mouth: the mouth is gently
-> open and has pink gums and no teeth at all, friendly and a little
-> funny. Keep everything else exactly the same: pose, colours, outline,
-> framing and size. Plain flat solid pure magenta (#FF00FF) background,
-> no magenta anywhere on the animal.
-
-Jaws are delivered as 600×450 WebP with alpha at
-`src/assets/jaws/<id>.webp` (the game draws them at 1x–3x from this one
-file, as with the bodies), gummy mouths as 800×600 WebP with alpha at
-`src/assets/dinos/<id>/gummy.webp`. Both are recorded in
-`src/assets/jaws/CREDITS.md`.
+Pictures are exported from Pencil, then delivered as 600×450 (jaw) and
+800×600 (gummy mouth) WebP with alpha at `src/assets/jaws/<id>.webp` and
+`src/assets/dinos/<id>/gummy.webp`, and recorded in
+`src/assets/jaws/CREDITS.md`. The game's other parts (reactions, tooth
+sockets, shelf place and labels, game tile) are drawn in the frame
+"Whose Jaw · Art · Game parts".
