@@ -2,11 +2,17 @@
 
 ## 2026-10-27
 
+- HostPreview lets the operator inspect every host screen and its events, and export iPad PNGs in light and dark for comparison with the design (LAB-676).
+- SettingsPreview lets the operator inspect every iPad settings state, log taps and export light/dark PNGs for comparison with the design (LAB-677).
+- ClientPreview lets you inspect every payer find/connect state, log its actions and export iPhone PNGs in light and dark for comparison with the design (LAB-678).
+- ClientPaymentPreview lets you select every payer review and result state, inspect its events and export iPhone PNGs in light and dark for comparison with the design (LAB-679).
 - SettingsUI gives the operator countdown choices with a full-ring preview and shows the advertised name, currency and processor read-only (LAB-672).
 - ClientUI gives the payer find and connect screens for nearby tills, connection progress and failures, with start, cancel and retry actions (LAB-673).
 - HostUI gives the operator an amount pad, broadcast countdown, connection and payment screens, with controls for cancelling, retrying and picking the mock result (LAB-671).
+- ClientPaymentUI gives the payer amount review, confirm and decline progress, the host's result and clear cancelled or lost-link outcomes (LAB-674).
 - ModeSwitchUI shows the chosen host or client screen with its header switch dimmed during a payment (LAB-670).
 - ModeSwitchPreview lets you try both device shells and compare every switch state in light and dark as device-sized PNGs (LAB-670).
+- AmountEntry keeps the keypad's typed amount within six whole digits and two decimals, and allows locking a positive amount only while Bluetooth is available (LAB-651).
 - HostPicker chooses a clear nearest host from smoothed signal readings, asks to hold closer when uncertain, and forgets faded hosts (LAB-650).
 - SessionCrypto derives a fresh transaction key, seals and opens authenticated messages, and refuses replays and messages after closure (LAB-649).
 - MessageCodec encodes and decodes session characteristics, sealed frames and message bodies, refusing unreadable bytes (LAB-648).

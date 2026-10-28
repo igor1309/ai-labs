@@ -17,12 +17,17 @@ public struct AmountView: View {
     let digits: String
     let size: Size
     let digitsColor: Color
+    let isMonospaced: Bool
 
-    public init(_ digits: String, size: Size, digitsColor: Color = Tokens.text) {
+    /// `isMonospaced` keeps every digit one width, for an amount that
+    /// changes as it is typed; a fixed amount sets it false to keep the
+    /// design's proportional width.
+    public init(_ digits: String, size: Size, digitsColor: Color = Tokens.text, isMonospaced: Bool = true) {
 
         self.digits = digits
         self.size = size
         self.digitsColor = digitsColor
+        self.isMonospaced = isMonospaced
     }
 
     public var body: some View {
@@ -33,14 +38,15 @@ public struct AmountView: View {
                 .frame(width: signHeight * MizanSign.aspectRatio, height: signHeight)
                 .accessibilityHidden(true)
             Text(digits)
-                .font(Tokens.display(fontSize, .semibold))
+                .font(isMonospaced ? font.monospacedDigit() : font)
                 .tracking(-2)
                 .foregroundStyle(digitsColor)
-                .monospacedDigit()
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(digits) Mizan")
     }
+
+    private var font: Font { Tokens.display(fontSize, .semibold) }
 
     private var fontSize: CGFloat {
 
