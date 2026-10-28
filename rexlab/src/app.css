@@ -11756,13 +11756,13 @@ html[data-size="wide-short"] .whose-jaw-welcome-actions svg { width: 24px; heigh
   .jaw-feedback { min-height: 60px; }
 }
 
-html[data-size="tall-narrow"] .whose-jaw-board { gap: 10px; }
+html[data-size="tall-narrow"] .whose-jaw-board { gap: 8px; }
 html[data-size="tall"] .jaw-board-title,
 html[data-size="tall-narrow"] .jaw-board-title { line-height: 1.2; }
 html[data-size="tall"] .jaw-choices,
 html[data-size="tall-narrow"] .jaw-choices {
   flex: 0 0 auto; grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: stretch; align-content: start; width: min(100%, 680px); margin-top: auto;
+  align-items: stretch; align-content: start; width: min(100%, 680px, 58dvh); margin-top: 0;
 }
 html[data-size="tall"] .jaw-dinosaur,
 html[data-size="tall-narrow"] .jaw-dinosaur {
@@ -11777,15 +11777,20 @@ html[data-size="tall-narrow"] .jaw-name {
 }
 html[data-size="tall"] .jaw-feedback,
 html[data-size="tall-narrow"] .jaw-feedback { min-height: 48px; width: min(100%, 680px); align-self: center; }
+html[data-size="tall"] .jaw-feedback:empty,
+html[data-size="tall-narrow"] .jaw-feedback:empty { display: none; }
 html[data-size="tall"] .jaw-feedback p,
 html[data-size="tall-narrow"] .jaw-feedback p { box-sizing: border-box; max-width: 100%; padding: 8px 12px; font-size: clamp(16px, 2.2vw, 20px); line-height: 1.25; }
 html[data-size="tall"] .jaw-tray,
 html[data-size="tall-narrow"] .jaw-tray {
-  box-sizing: border-box; flex: 0 0 auto; width: min(100%, 440px); min-height: 0; padding: 4px 12px; margin-bottom: auto;
+  box-sizing: border-box; flex: 0 0 auto; width: min(100%, 520px); min-height: 0; padding: 4px 8px; margin-bottom: 0;
   background: #fffdf8; border: 2px dashed #c9c2b3;
 }
 html[data-size="tall"] .jaw-loose,
-html[data-size="tall-narrow"] .jaw-loose { width: clamp(160px, 24vw, 184px); }
+html[data-size="tall-narrow"] .jaw-loose { width: clamp(300px, 40dvh, 440px); max-width: 100%; }
+/* The hidden loose art must release its grid row for the fact and Next. */
+html[data-size="tall"] .whose-jaw-board:is([data-phase="right"], [data-phase="reading"], [data-phase="wrong"]) .jaw-loose,
+html[data-size="tall-narrow"] .whose-jaw-board:is([data-phase="right"], [data-phase="reading"], [data-phase="wrong"]) .jaw-loose { display: none; }
 html[data-size="tall"][data-theme="dark"] .jaw-dinosaur,
 html[data-size="tall-narrow"][data-theme="dark"] .jaw-dinosaur,
 html[data-size="tall"][data-theme="dark"] .jaw-tray,
