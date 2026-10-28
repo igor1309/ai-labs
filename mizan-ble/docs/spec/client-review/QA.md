@@ -1,6 +1,6 @@
 # Client review — QA
 
-Driven through its reducer as tables, and through the machine with fakes
+Driven through its reducer as tables, and its effect handler with fakes
 of the session, sender (with a chosen largest write and a chosen answer)
 and link. Rows read the state and what the fakes recorded.
 

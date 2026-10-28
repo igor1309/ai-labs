@@ -1,6 +1,6 @@
 # Client payment — QA
 
-Driven through its reducer as tables, and through the machine with fakes
+Driven through its reducer as tables, and its effect handler with fakes
 of the session and link. Rows read the state and what the fakes recorded.
 
 ## S-1 Waiting for the host

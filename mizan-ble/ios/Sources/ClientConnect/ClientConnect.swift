@@ -306,30 +306,33 @@ public enum ClientConnect {
             self.deadline = deadline
         }
 
-        public func handle(_ effect: Effect) async -> Event? {
-            switch effect {
-            case .startDeadline(let seconds):
-                deadline.start(seconds: seconds)
-                return .deadlineStarted
-            case .connect(let host):
-                link.connect(to: host)
-                return .connectionInitiated
-            case .derive(let host):
-                return .derivationResult(session.derive(with: host))
-            case .writeKey(let key):
-                link.writeKey(key)
-                return .keyWriteInitiated
-            case .open(let amount):
-                return .amountOpened(session.open(amount), link: link, session: session)
-            case .stopDeadline:
-                deadline.stop()
-                return .deadlineStopped
-            case .dropLink:
-                link.drop()
-                return .linkDroppedForCleanup
-            case .closeSession:
-                session.close()
-                return .sessionClosed
+        public func handle(_ effect: Effect) -> AsyncStream<Event> {
+            AsyncStream { continuation in
+                switch effect {
+                case .startDeadline(let seconds):
+                    deadline.start(seconds: seconds)
+                    continuation.yield(.deadlineStarted)
+                case .connect(let host):
+                    link.connect(to: host)
+                    continuation.yield(.connectionInitiated)
+                case .derive(let host):
+                    continuation.yield(.derivationResult(session.derive(with: host)))
+                case .writeKey(let key):
+                    link.writeKey(key)
+                    continuation.yield(.keyWriteInitiated)
+                case .open(let amount):
+                    continuation.yield(.amountOpened(session.open(amount), link: link, session: session))
+                case .stopDeadline:
+                    deadline.stop()
+                    continuation.yield(.deadlineStopped)
+                case .dropLink:
+                    link.drop()
+                    continuation.yield(.linkDroppedForCleanup)
+                case .closeSession:
+                    session.close()
+                    continuation.yield(.sessionClosed)
+                }
+                continuation.finish()
             }
         }
     }
