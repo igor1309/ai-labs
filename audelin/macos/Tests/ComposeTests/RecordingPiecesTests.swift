@@ -30,6 +30,20 @@ struct RecordingPiecesTests {
         }
     }
 
+    @Test func callFolderIsNamedWithTheCallAppAndAManualOneIsNot() async throws {
+
+        try await withComposeFolder { root in
+            let rig = try RecordingPiecesRig(root: root)
+            defer { rig.finish() }
+            let manual = try await rig.makePieces(1).create()
+            rig.callApp.started("us.zoom.xos")
+            let call = try await rig.makePieces(2).create()
+            #expect(URL(fileURLWithPath: manual.id).lastPathComponent == "1970.01.01-0000")
+            #expect(URL(fileURLWithPath: call.id).lastPathComponent.hasSuffix(" Zoom"))
+            #expect(URL(fileURLWithPath: call.id).lastPathComponent == "1970.01.01-0000 Zoom")
+        }
+    }
+
     @Test func lastAppIsReadAtBuildAndKeptByThatSession() async throws {
 
         try await withComposeFolder { root in
