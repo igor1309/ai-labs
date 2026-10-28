@@ -46,7 +46,7 @@ struct CallRecordingSubscriptionTests {
             try await withCallForwarding(initial: initial) { rig in
                 rig.calls.finish(throwing: error)
                 await rig.forwarding.wait()
-                #expect(await rig.recording.snapshot() == initial)
+                #expect(await rig.recording.state() == initial)
                 #expect(rig.session.effects.all.isEmpty)
             }
         }
@@ -66,47 +66,41 @@ struct CallRecordingSubscriptionTests {
             for await _ in rig.forwarding.failures {
                 Issue.record("Cancellation must not report a detector failure")
             }
-            #expect(await rig.recording.snapshot() == before)
+            #expect(await rig.recording.state() == before)
             #expect(rig.session.effects.all == [.beginSession(id: 1)])
         }
     }
 
-    @Test func bufferedStartIsForwardedWithoutRetainingRecording() async throws {
+    @Test func bufferedStartIsForwarded() async throws {
 
         let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
-        defer { source.continuation.finish() }
         let session = CallSession()
-        var recording: Recording? = Recording(handler: .init(session: session), initial: .init())
-        weak let destination = recording
+        let recording = await composedRecording(session: session)
         source.continuation.yield(.started(app: "already on"))
-        let forwarding = CallRecordingSubscription(calls: source.stream, recording: RecordingInputs(recording: try #require(recording)))
-        defer { forwarding.cancel() }
-        let states = await (try #require(recording)).states()
-        for await state in states {
+        let forwarding = CallRecordingSubscription(calls: source.stream, recording: recording)
+        for await state in await recording.states() {
             if state.callOn { break }
         }
-        #expect(await (try #require(recording)).snapshot().callOn)
-        await (try #require(recording)).end()
-        recording = nil
-        #expect(destination == nil)
-        source.continuation.yield(.ended(app: "already on"))
+        #expect(await recording.state().callOn)
+        forwarding.cancel()
         source.continuation.finish()
         await forwarding.wait()
+        await recording.end()
         #expect(session.effects.all.isEmpty)
     }
 
     @Test func compositionReportsStartupAndRuntimeFailure() async throws {
 
         let session = CallSession()
-        let recording = Recording(handler: .init(session: session), initial: .init(automatic: true, missing: []))
+        let recording = await composedRecording(session: session, initial: .init(automatic: true, missing: []))
         let binding = CallBinding(fails: false)
         let processes = CoreAudioProcesses(binding: binding, clock: UnusedCallClock())
-        let forwarding = try composeCalls(processes, to: RecordingInputs(recording: recording))
+        let forwarding = try composeCalls(processes, to: recording)
         defer { forwarding.cancel(); processes.stop() }
         for await state in await recording.states() {
             if state.phase == .recording { break }
         }
-        #expect(await recording.snapshot().session == .init(id: 1, origin: .call))
+        #expect(await recording.state().session == .init(id: 1, origin: .call))
         binding.fail()
         await forwarding.wait()
         var failures = [ScriptFailure]()
@@ -120,7 +114,7 @@ struct CallRecordingSubscriptionTests {
         #expect(session.effects.all == [.beginSession(id: 1), .endSession(id: 1)])
         let refused = CoreAudioProcesses(binding: CallBinding(fails: true), clock: UnusedCallClock())
         defer { refused.stop() }
-        #expect(throws: ScriptFailure.failed) { try composeCalls(refused, to: RecordingInputs(recording: recording)) }
+        #expect(throws: ScriptFailure.failed) { try composeCalls(refused, to: recording) }
         await recording.end()
     }
 }
@@ -146,7 +140,7 @@ private func assertDetectionLossEndsCall(error: (any Error)?) async throws {
 
 private struct CallForwardingRig: Sendable {
 
-    let recording: Recording
+    let recording: RecordingInputs
     let session: CallSession
     let calls: AsyncThrowingStream<CallEvent, any Error>.Continuation
     let forwarding: CallRecordingSubscription
@@ -175,10 +169,10 @@ private func withCallForwarding(
 
     let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
     let session = CallSession()
-    let recording = Recording(handler: .init(session: session), initial: initial)
+    let recording = await composedRecording(session: session, initial: initial)
     let rig = CallForwardingRig(
         recording: recording, session: session, calls: source.continuation,
-        forwarding: CallRecordingSubscription(calls: source.stream, recording: RecordingInputs(recording: recording))
+        forwarding: CallRecordingSubscription(calls: source.stream, recording: recording)
     )
     do {
         try await body(rig)

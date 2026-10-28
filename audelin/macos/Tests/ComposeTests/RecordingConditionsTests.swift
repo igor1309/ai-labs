@@ -61,15 +61,15 @@ struct RecordingConditionsTests {
     @Test func refreshRunsBeforeEachCallStartReachesRecording() async throws {
 
         let session = ConditionsSession()
-        let recording = Recording(handler: .init(session: session), initial: .init(automatic: true))
+        let recording = await composedRecording(session: session, initial: .init(automatic: true))
         let allowed = Mutex(true)
         let refreshes = Values<Bool>()
         let checker = RecordingConditions(
-            recording: RecordingInputs(recording: recording), microphoneAccess: { allowed.withLock { $0 } },
+            recording: recording, microphoneAccess: { allowed.withLock { $0 } },
             callAudioAccess: { true }, callsFolder: { true }, room: { true }
         )
         let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
-        let forwarding = CallRecordingSubscription(calls: source.stream, recording: RecordingInputs(recording: recording), beforeCallStarted: {
+        let forwarding = CallRecordingSubscription(calls: source.stream, recording: recording, beforeCallStarted: {
             refreshes.append(true)
             await checker.refresh()
         })
@@ -99,13 +99,13 @@ struct RecordingConditionsTests {
         source.continuation.finish()
         await forwarding.wait()
         #expect(refreshes.all == [true, true])
-        let ended = await recording.snapshot()
+        let ended = await recording.state()
         #expect(!ended.callOn)
 
         // A new detector starts with the last unavailable value still in Recording.
         allowed.withLock { $0 = true }
         let processes = CoreAudioProcesses(binding: ConditionsCallBinding(), clock: ConditionsCallClock())
-        let composed = try composeCalls(processes, to: RecordingInputs(recording: recording), conditions: checker)
+        let composed = try composeCalls(processes, to: recording, conditions: checker)
         defer { composed.cancel(); processes.stop() }
         for await state in await recording.states() {
             if state.callOn {

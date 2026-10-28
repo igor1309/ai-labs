@@ -14,20 +14,20 @@ struct QuitTests {
             let log = Log()
             let firstEnd = Gate(), secondEnd = Gate()
             let session = Session(log: log, firstEnd: firstEnd, secondEnd: secondEnd)
-            let recording = Recording(handler: .init(session: session), initial: .init(automatic: true, missing: []))
+            let recording = await composedRecording(session: session, initial: .init(automatic: true, missing: []))
             let delivery = Delivery()
-            let port = RecordingPort(base: ApplicationRecording(recording: RecordingInputs(recording: recording)), log: log)
+            let port = RecordingPort(base: ApplicationRecording(recording: recording), log: log)
             let handler = LifecycleEffectHandler(delivery: delivery, recording: port, terminate: { log.append("terminate") })
 
             if scenario != .queuedStart {
-                recording.send(.callStarted)
+                await recording.send(.callStarted)
                 await wait(recording, phase: .recording, id: 1)
             }
             if scenario == .pendingResumes || scenario == .pendingCleared {
-                recording.send(.callEnded)
+                await recording.send(.callEnded)
                 await firstEnd.entered()
-                recording.send(.callStarted)
-                #expect(await recording.snapshot().pendingCall)
+                await recording.send(.callStarted)
+                #expect(await recording.state().pendingCall)
             }
 
             let quit = Task { await runQuit(handler) }
@@ -35,7 +35,7 @@ struct QuitTests {
             #expect(log.values.filter { $0 == "stop" }.isEmpty)
             if scenario == .queuedStart {
                 // Delivery already accepted this start; quit must drain it with the stop.
-                recording.send(.callStarted)
+                await recording.send(.callStarted)
             }
             if scenario == .pendingResumes {
                 await firstEnd.release()
@@ -45,7 +45,7 @@ struct QuitTests {
 
             await port.drainGate.entered()
             #expect(log.values.contains("stop"))
-            #expect(!(await recording.snapshot().pendingCall))
+            #expect(!(await recording.state().pendingCall))
             #expect(!log.values.contains("observe"))
             await port.drainGate.release()
             await port.observeGate.entered()
@@ -66,7 +66,7 @@ struct QuitTests {
             #expect(!log.values.contains("end delivery"))
             await port.observeGate.release()
             await port.endGate.entered()
-            #expect(await recording.snapshot().phase == .idle)
+            #expect(await recording.state().phase == .idle)
             let ids = scenario == .pendingResumes ? [1, 2] : [1]
             #expect(log.values.filter { $0.hasPrefix("begin ") } == ids.map { "begin \($0)" })
             #expect(log.values.filter { $0.hasPrefix("end ") } == ids.map { "end \($0)" })
@@ -81,9 +81,9 @@ struct QuitTests {
 
         let log = Log()
         let firstEnd = Gate(), secondEnd = Gate()
-        let recording = Recording(handler: .init(session: Session(log: log, firstEnd: firstEnd, secondEnd: secondEnd)))
+        let recording = await composedRecording(session: Session(log: log, firstEnd: firstEnd, secondEnd: secondEnd))
         let delivery = Delivery()
-        let port = RecordingPort(base: ApplicationRecording(recording: RecordingInputs(recording: recording)), log: log)
+        let port = RecordingPort(base: ApplicationRecording(recording: recording), log: log)
         await delivery.gate.release()
         await port.drainGate.release()
         await port.observeGate.release()
@@ -112,7 +112,7 @@ private enum Scenario {
     case active, queuedStart, pendingResumes, pendingCleared
 }
 
-private func wait(_ recording: Recording, phase: RecordingState.Phase, id: UInt64?) async {
+private func wait(_ recording: RecordingInputs, phase: RecordingState.Phase, id: UInt64?) async {
 
     for await state in await recording.states() {
         if state.phase == phase && state.session?.id == id { return }

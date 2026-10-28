@@ -49,3 +49,9 @@ private final class RecordingModel {
         }
     }
 }
+
+/// Recording composed as the app composes it, with no state log.
+func composedRecording(session: any RecordingSession, initial: RecordingState = .init()) async -> RecordingInputs {
+
+    await makeRecording(initial, session, { _ in })
+}
