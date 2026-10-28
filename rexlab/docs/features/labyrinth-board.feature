@@ -1,8 +1,11 @@
 Feature: Guide a baby dinosaur home
   The global age level chooses Hatchling, Explorer or Paleontologist.
   Explorer is the default. A level switch is available on the result.
-  A per-game choice is remembered until the global age level changes, which resets it.
-  Both walls and paths occupy grid cells. Mazes are connected trees without loops.
+  A per-game level choice is remembered until the global age level changes, which resets it.
+  Both walls and paths occupy grid cells. The dimensions count every visible cell.
+  No outer wall border or odd-coordinate path lattice is required; paths may touch the edge.
+  Mazes are connected trees without loops. Start and goal are distinct path cells chosen by generation.
+  They may be anywhere on the board provided the solution meets the difficulty requirements.
   Each round generates a random maze that stays unchanged during play, with no timer, lives or moving threats.
 
   Scenario: A clear board
@@ -33,8 +36,10 @@ Feature: Guide a baby dinosaur home
     Then the old hint clears
 
   Scenario: A maze worth exploring
+    Given a round is generated at any level
     Then every generated maze has a reachable goal and satisfies its level difficulty requirements
     And the next round generates a layout different from the previous round, even if the random source repeats
+    And a different layout means a different set of wall cells, not just moved endpoints
     And all path cells are reachable from the start
 
   Scenario: Input and appearance
@@ -49,10 +54,10 @@ Feature: Guide a baby dinosaur home
     Given the round is played at <level>
     Then its board has <columns> columns and <rows> rows
     And its shortest solution has at least <steps> single-space moves
-    And at least <decisions> junctions on the solution have a wrong branch
-    And at least <detours> wrong branches have a path from the solution junction to a dead end of 4 or more moves, measured along their longest simple path
+    And at least <decisions> interior junctions on the solution, excluding start and goal, have a wrong branch
+    And at least <detours> distinct interior solution junctions have a wrong branch whose longest simple path from that junction to a dead end is at least 4 moves
     And the board is generated procedurally rather than selected from stored layouts
-    And no route or correct direction is marked unless HINT is explicitly tapped
+    And no route or correct direction is marked unless the hint control is explicitly tapped
     And footprints indicate all legal adjacent spaces equally, including wrong turns
 
     Examples:
