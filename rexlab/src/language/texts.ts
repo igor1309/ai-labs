@@ -139,6 +139,8 @@ export type Texts = {
   skeletonTitle: string;
   picturePuzzle: string;
   pictureCollection: string;
+  pictureAnother: string;
+  pictureFacts: Record<"tyrannosaurus" | "triceratops" | "stegosaurus", string>;
   pictureNotCollected: string;
   pictureBoard: string;
   picturePieces: string;

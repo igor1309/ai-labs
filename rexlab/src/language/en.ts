@@ -100,6 +100,12 @@ export const en: Texts = {
   skeletonTitle: "BUILD A SKELETON",
   picturePuzzle: "PICTURE PUZZLE",
   pictureCollection: "PICTURE COLLECTION",
+  pictureAnother: "ANOTHER PICTURE",
+  pictureFacts: {
+    tyrannosaurus: "T. REX HAD TINY ARMS BUT HUGE LEGS.",
+    triceratops: "TRICERATOPS HAD THREE HORNS AND A BONY FRILL.",
+    stegosaurus: "STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK."
+  },
   pictureBoard: "PICTURE BOARD",
   picturePieces: "PIECES",
   picturePiece: (place) => `PIECE ${place}`,

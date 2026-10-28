@@ -5,7 +5,7 @@ import records from "../src/data/dinosaurs.json";
 import { readPictureDinosaurs } from "../src/dinosaurs.ts";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { localPicturePuzzleChoice, PROGRESS_KEY } from "../src/localProgress.ts";
+import { localPicturePuzzleChoice, localPicturePuzzleProgress, PROGRESS_KEY } from "../src/localProgress.ts";
 import { usePicturePuzzleGame } from "../src/picturePuzzleGame.tsx";
 import type { Theme } from "../src/theme.ts";
 import { withPictures } from "./pictures.tsx";
@@ -18,7 +18,7 @@ const button = (name: string) => screen.getByRole("button", { name });
 function openChoice(storage: MemoryStorage, setting: AgeLevelSetting, language: Language, theme: Theme, random: () => number) {
   let current: ReturnType<typeof usePicturePuzzleGame> | undefined;
   const onHome = vi.fn<() => void>();
-  const props = { dinosaurs: DINOSAURS, bodyPicture: fakeBodyPicture, choiceStore: localPicturePuzzleChoice(() => storage), random };
+  const props = { dinosaurs: DINOSAURS, bodyPicture: fakeBodyPicture, choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage), random };
   function Choice({ setting }: { setting: AgeLevelSetting }) {
     current = usePicturePuzzleGame(props, setting, onHome);
     return <div data-theme={theme}>{current.choice(language)}</div>;
@@ -155,7 +155,7 @@ it("renders the board from the choice, keeps placements through hints and previe
   const onHome = vi.fn<() => void>();
   function Game() {
     const game = usePicturePuzzleGame({ dinosaurs: DINOSAURS, bodyPicture: fakeBodyPicture,
-      choiceStore: localPicturePuzzleChoice(() => storage), random: seededRandom(17) }, INITIAL, onHome);
+      choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage), random: seededRandom(17) }, INITIAL, onHome);
     current = game;
     return <>{game.choice("en")}{game.board("en")}</>;
   }

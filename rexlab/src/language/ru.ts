@@ -104,6 +104,12 @@ export const ru: Texts = {
   skeletonTitle: "СОБЕРИ СКЕЛЕТ",
   picturePuzzle: "СОБЕРИ КАРТИНКУ",
   pictureCollection: "КОЛЛЕКЦИЯ КАРТИНОК",
+  pictureAnother: "ДРУГАЯ КАРТИНКА",
+  pictureFacts: {
+    tyrannosaurus: "У ТИРАННОЗАВРА БЫЛИ КРОШЕЧНЫЕ ЛАПЫ И ОГРОМНЫЕ НОГИ.",
+    triceratops: "У ТРИЦЕРАТОПСА БЫЛО ТРИ РОГА И КОСТЯНОЙ ВОРОТНИК.",
+    stegosaurus: "У СТЕГОЗАВРА ВДОЛЬ СПИНЫ БЫЛИ БОЛЬШИЕ ПЛАСТИНЫ."
+  },
   pictureBoard: "ПОЛЕ ДЛЯ КАРТИНКИ",
   picturePieces: "ДЕТАЛИ",
   picturePiece: (place) => `ДЕТАЛЬ ${place}`,

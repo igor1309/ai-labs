@@ -5,6 +5,7 @@ import type { FeaturedHistory, Featuring } from "./featured.ts";
 import { NO_LEVEL_OFFER, type LevelOffer } from "./levelOffer.ts";
 import { CLIMB_LEVELS, LARGE_LEVELS, NO_PAIRS, type ClimbLevel, type PairsProgress } from "./pairs/index.ts";
 import { NO_PROGRESS } from "./quiz/index.ts";
+import { collectedPictures, mergePictures, NO_PICTURES, type PictureProgress } from "./picturePuzzle/index.ts";
 import { BADGES, NO_SKELETONS, type Badge, type SkeletonProgress } from "./skeletons/index.ts";
 import { NO_SORTING } from "./sorting/index.ts";
 import type { LevelChoice } from "./startLevel.ts";
@@ -43,6 +44,29 @@ export function localPicturePuzzleChoice(storage: () => KeyValueStorage) {
       entry.save({ levelChoice });
     }
   };
+}
+
+// The per-level collections are also their best scores: completing the
+// same picture again earns a round star without adding stored currency.
+export function localPicturePuzzleProgress(storage: () => KeyValueStorage) {
+  const entry = gameProgress<PictureProgress>(storage, "picture-puzzle", NO_PICTURES, readPictures);
+  return {
+    load: (): PictureProgress | undefined => entry.load(),
+    save(progress: PictureProgress): boolean {
+      const stored = entry.load();
+      if (stored === undefined) return false;
+      return entry.save(mergePictures(stored, progress));
+    }
+  };
+}
+
+function readPictures(raw: Entry): PictureProgress {
+  const completed = isObject(raw.completed) ? raw.completed : {};
+  const ids = (value: unknown) => isIds(value) ? collectedPictures(value) : [];
+  return mergePictures(NO_PICTURES, {
+    earned: ids(raw.earned),
+    completed: { hatchling: ids(completed.hatchling), explorer: ids(completed.explorer), paleontologist: ids(completed.paleontologist) }
+  });
 }
 
 // Dinosaur care's progress, beside the quiz's in the same record.
@@ -361,7 +385,7 @@ function gameProgress<P extends object>(storage: () => KeyValueStorage, game: st
     // progress that cannot be saved is dropped. A readable record keeps its
     // other games, and a readable entry its other fields; an unusable
     // record, or this game's unusable entry, is replaced.
-    save(progress: P): void {
+    save(progress: P): boolean {
       try {
         const target = storage();
         const games = parse(target.getItem(PROGRESS_KEY)) ?? {};
@@ -369,8 +393,9 @@ function gameProgress<P extends object>(storage: () => KeyValueStorage, game: st
         const kept = entry && read(entry) !== undefined ? entry : {};
         const record = { schemaVersion: SCHEMA_VERSION, games: { ...games, [game]: { ...kept, ...progress } } };
         target.setItem(PROGRESS_KEY, JSON.stringify(record));
+        return true;
       } catch {
-        return;
+        return false;
       }
     }
   };

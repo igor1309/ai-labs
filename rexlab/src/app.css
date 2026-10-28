@@ -12376,3 +12376,51 @@ body:has(.picture-puzzle-board-screen) {
 
 [data-theme="dark"] .picture-puzzle-board-screen { background: #0f1320; color: #ece8de; }
 .picture-puzzle-board-bar p span { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+.picture-puzzle-result-screen {
+  box-sizing: border-box;
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: calc(20px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(20px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: #f2efe8;
+  color: #1d2742;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.picture-puzzle-result-screen > .festivity { z-index: -1; pointer-events: none; }
+.picture-puzzle-result-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+.picture-puzzle-reveal {
+  width: min(100%, 72dvh);
+  justify-self: center;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px #1d274224;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+.picture-puzzle-reward { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.picture-puzzle-reward h2 { margin: 0; font-size: clamp(24px, 3vw, 40px); overflow-wrap: anywhere; }
+.picture-puzzle-round-star {
+  color: #cb8112;
+  display: flex;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both;
+}
+.picture-puzzle-round-star svg { fill: currentColor; }
+.picture-puzzle-fact, .picture-puzzle-level-score { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0; font-size: clamp(16px, 1.8vw, 24px); font-weight: 700; }
+.picture-puzzle-fact svg, .picture-puzzle-level-score svg { flex-shrink: 0; }
+.picture-puzzle-reward > :not(.picture-puzzle-round-star) { animation: fade-in var(--motion-screen) var(--ease-out) var(--motion-small) both; }
+.picture-puzzle-result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.picture-puzzle-reward .best-score-beaten { color: #5c647a; }
+[data-theme="dark"] .picture-puzzle-result-screen { background: #0f1320; color: #ece8de; }
+[data-theme="dark"] .picture-puzzle-round-star { color: #f2b24b; }
+[data-theme="dark"] .picture-puzzle-reward .best-score-beaten { color: #9ca3b6; }
