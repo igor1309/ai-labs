@@ -183,8 +183,8 @@ separator row's `---` too, as the feature tables are aligned. A part
 that both reads a text and refers to a file gives both rules,
 joined by "; ". A `|` in a heading or a read text is written `\|`, and
 a read text holding a back quote is set in double back quotes, so no
-cell breaks its table or code span. The generator writes the file whole only when the
-render and both markers are sound; else it exits 1, writing nothing.
+cell breaks its table or code span. The generator writes the file whole
+only when the render and both markers are sound; else it exits 1, writing nothing.
 `cmd/skillforms`' test renders the committed folder and compares the
 committed skill's section byte for byte, so a form added, removed or
 changed without regenerating fails `scripts/test.sh`. The render and the
