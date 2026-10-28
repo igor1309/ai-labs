@@ -14,13 +14,15 @@ public func composeSessionPieces(
     startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
     startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
     microphoneRecognizerSource: @escaping @Sendable () async throws -> any Recognizer = { try await ParakeetRecognizer() },
-    callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer = { try await ParakeetRecognizer() }
+    callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer = { try await ParakeetRecognizer() },
+    missingModels: @escaping @Sendable () -> [String]
 ) -> SessionPieces {
 
     SessionPieces(
         folder: folder, folderTitle: folderTitle, processes: processes,
         startMicrophone: startMicrophone, startCall: startCall,
-        microphoneRecognizerSource: microphoneRecognizerSource, callRecognizerSource: callRecognizerSource
+        microphoneRecognizerSource: microphoneRecognizerSource, callRecognizerSource: callRecognizerSource,
+        missingModels: missingModels
     )
 }
 

@@ -28,7 +28,7 @@ public struct StartedCapture<Piece: Sendable>: Sendable {
 }
 
 /// Owns one recording's concrete pieces and exposes their distinct Session roles.
-public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
+public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCallText {
 
     // Folder creation and synchronous file initializers perform blocking disk I/O.
     nonisolated let queue = DispatchSerialQueue(label: "audelin.SessionPieces")
@@ -60,6 +60,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
     let startCall: @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>
     let microphoneRecognizerSource: @Sendable () async throws -> any Recognizer
     let callRecognizerSource: @Sendable () async throws -> any Recognizer
+    let missingModels: @Sendable () -> [String]
     let captureLogSink: any LogSink
     let executor: (any TaskExecutor)?
     let openTrackFile: @Sendable (URL) throws -> TrackFile
@@ -105,6 +106,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
         microphoneRecognizer: any Recognizer,
         callRecognizer: any Recognizer,
+        missingModels: @escaping @Sendable () -> [String],
         executor: (any TaskExecutor)? = nil,
         openTrack: @escaping @Sendable (URL) throws -> TrackFile = { try TrackFile(url: $0) },
         recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
@@ -117,6 +119,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         self.init(
             folder: folder, folderTitle: folderTitle, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
             microphoneRecognizerSource: { microphoneRecognizer }, callRecognizerSource: { callRecognizer },
+            missingModels: missingModels,
             executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
             makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText,
             captureLogSink: SystemLogSink()
@@ -131,6 +134,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
         microphoneRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
+        missingModels: @escaping @Sendable () -> [String],
         executor: (any TaskExecutor)? = nil,
         openTrack: @escaping @Sendable (URL) throws -> TrackFile = { try TrackFile(url: $0) },
         recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
@@ -143,7 +147,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         self.init(
             folder: folder, folderTitle: folderTitle, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
             microphoneRecognizerSource: microphoneRecognizerSource, callRecognizerSource: callRecognizerSource,
-            executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
+            missingModels: missingModels, executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
             makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText,
             captureLogSink: SystemLogSink()
         )
@@ -157,6 +161,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
         microphoneRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
+        missingModels: @escaping @Sendable () -> [String],
         executor: (any TaskExecutor)? = nil,
         openTrack: @escaping @Sendable (URL) throws -> TrackFile = { try TrackFile(url: $0) },
         recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
@@ -174,6 +179,7 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         self.startCall = startCall
         self.microphoneRecognizerSource = microphoneRecognizerSource
         self.callRecognizerSource = callRecognizerSource
+        self.missingModels = missingModels
         self.captureLogSink = captureLogSink
         self.executor = executor
         self.openTrackFile = openTrack
@@ -187,6 +193,11 @@ public actor SessionPieces: SessionFolder, SessionProcesses, SessionCallText {
         sides = Dictionary(uniqueKeysWithValues: [SessionSide.microphone, .call].map { side in
             (side, Side(audio: DeferredAudio()))
         })
+    }
+
+    public nonisolated func missing() -> [String] {
+
+        missingModels()
     }
 
     public func create() throws -> SessionCallFolder {

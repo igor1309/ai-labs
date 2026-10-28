@@ -260,7 +260,8 @@ private struct RecordingPiecesRig: Sendable {
                 let recognizer = SessionRecognizer(name: "live")
                 recognizers.append(recognizer)
                 return recognizer
-            }
+            },
+            missingModels: { [] }
         )
     }
 

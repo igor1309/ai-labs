@@ -2,6 +2,19 @@ import Foundation
 import Recording
 import Session
 
+struct LoggingModels: SessionModels {
+    let base: any SessionModels
+    let sink: any LogSink
+
+    func missing() async -> [String] {
+        let missing = await base.missing()
+        if !missing.isEmpty {
+            sink.write(.init(category: .model, message: "recording refused", error: missing.joined(separator: ", ") + " not on disk"))
+        }
+        return missing
+    }
+}
+
 struct LoggingFolder: SessionFolder {
     let base: any SessionFolder
     let log: PortLog

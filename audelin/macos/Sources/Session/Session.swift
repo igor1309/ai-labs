@@ -36,6 +36,13 @@ public struct SessionCallFolder: Equatable, Sendable {
     }
 }
 
+/// Reports the models a recording needs whose files are not complete on disk.
+public protocol SessionModels: Sendable {
+
+    /// The names of the missing models; empty when every model is on disk.
+    func missing() async -> [String]
+}
+
 public protocol SessionFolder: Sendable {
 
     func create() async throws -> SessionCallFolder
@@ -219,6 +226,7 @@ public enum SessionEvent: Equatable, Sendable {
 
     case begin(liveText: Bool)
     case end
+    case modelsChecked(missing: [String])
     case liveTextChanged(Bool)
     case preferenceChanged(Bool)
     case accessChanged(SessionSide, available: Bool)
@@ -239,6 +247,7 @@ public enum SessionEvent: Equatable, Sendable {
 
 public enum SessionEffect: Equatable, Sendable {
 
+    case checkModels
     case createFolder
     case selectProcesses
     case openTrack(SessionSide)
@@ -264,6 +273,18 @@ public enum SessionReducer {
             guard state.phase == .idle else { return (state, nil) }
             state.phase = .bringingUp
             state.wantedLiveText = enabled
+            return (state, .checkModels)
+
+        case let .modelsChecked(missing):
+            // An end during the check found nothing starting and has already ended.
+            guard state.phase == .bringingUp, state.folder == .down else { return (state, nil) }
+            guard missing.isEmpty else {
+                // A recording without its models would write an empty transcript.
+                let names = missing.joined(separator: ", ")
+                addFailure(&state, .init(piece: "model", message: "\(names) not on disk"))
+                state.cannotRecord = "model: \(names) not on disk"
+                return (state, nil)
+            }
             state.folder = .starting
             return (state, .createFolder)
 
@@ -558,6 +579,7 @@ private extension SessionState {
 /// Dispatches effects to exactly one supplied dependency and maps its result.
 public final class SessionEffectHandler: Sendable {
 
+    private let models: any SessionModels
     private let folder: any SessionFolder
     private let processes: any SessionProcesses
     private let microphoneCapture: any SessionMicrophoneCapture
@@ -569,6 +591,7 @@ public final class SessionEffectHandler: Sendable {
     private let madeFolder = Mutex<SessionCallFolder?>(nil)
 
     public init(
+        models: any SessionModels,
         folder: any SessionFolder,
         processes: any SessionProcesses,
         microphoneCapture: any SessionMicrophoneCapture,
@@ -579,6 +602,7 @@ public final class SessionEffectHandler: Sendable {
         transcript: any SessionTranscript
     ) {
 
+        self.models = models
         self.folder = folder
         self.processes = processes
         self.microphoneCapture = microphoneCapture
@@ -592,6 +616,8 @@ public final class SessionEffectHandler: Sendable {
     public func handle(_ effect: SessionEffect) async -> SessionEvent {
 
         switch effect {
+        case .checkModels:
+            return .modelsChecked(missing: await models.missing())
         case .createFolder:
             return await result {
                 let made = try await self.folder.create()

@@ -98,6 +98,35 @@ struct LoggingTests {
         }
     }
 
+    @Test(arguments: [["Parakeet v3"], ["Parakeet v3", "Nemotron"]])
+    func missingModelRefusesTheRecordingBeforeAnythingIsMade(missing: [String]) async throws {
+        try await withComposeFolder { root in
+            let sink = LogSpy()
+            let rig = LogPieces(root: root, sink: sink, missingModels: missing)
+            defer { rig.finish() }
+            let handler = rig.pieces.handler(sink: sink)
+            let names = missing.joined(separator: ", ")
+            var state = SessionState()
+            for command in [SessionEvent.begin(liveText: true), .end] {
+                var event = command
+                while true {
+                    let (updated, effect) = SessionReducer.reduce(state, event)
+                    state = updated
+                    guard let effect else { break }
+                    event = await handler.handle(effect)
+                }
+                #expect(state.cannotRecord == "model: \(names) not on disk")
+            }
+            #expect(state.phase == .ended)
+            #expect(sink.entries.all.filter { $0.category == .model } == [
+                .init(category: .model, message: "recording refused", error: "\(names) not on disk"),
+            ])
+            #expect(sink.entries.all.filter { $0.category == .session }.isEmpty)
+            let made = try FileManager.default.contentsOfDirectory(atPath: root.path)
+            #expect(made.isEmpty)
+        }
+    }
+
     @Test func captureLogsOnlyFirstFormatAndFinalCounts() async throws {
         for side in ["microphone", "call"] {
             let sink = LogSpy()
@@ -261,6 +290,7 @@ struct LoggingTests {
             let pieces = states.map { $0.message.components(separatedBy: " ")[2...10].joined(separator: " ") }
             #expect(pieces == [
                 "phase=idle folder=down processes=down microphoneTrack=down callTrack=down microphoneCapture=down callCapture=down transcript=down callText=down",
+                "phase=bringingUp folder=down processes=down microphoneTrack=down callTrack=down microphoneCapture=down callCapture=down transcript=down callText=down",
                 "phase=bringingUp folder=starting processes=down microphoneTrack=down callTrack=down microphoneCapture=down callCapture=down transcript=down callText=down",
                 "phase=bringingUp folder=up processes=starting microphoneTrack=down callTrack=down microphoneCapture=down callCapture=down transcript=down callText=down",
                 "phase=bringingUp folder=up processes=up microphoneTrack=starting callTrack=down microphoneCapture=down callCapture=down transcript=down callText=down",
@@ -421,7 +451,7 @@ private struct LogPieces: Sendable {
     let microphone: CaptureScript<MicrophoneCapture.AudioPiece>
     let call: CaptureScript<SystemAudioCapture.AudioPiece>
 
-    init(root: URL, sink: any LogSink) {
+    init(root: URL, sink: any LogSink, missingModels: [String] = []) {
         let microphone = CaptureScript<MicrophoneCapture.AudioPiece>(
             first: .init(samples: [0.25, -0.5], sampleRate: 48_000),
             last: .init(samples: [0.125], sampleRate: 48_000), fails: false)
@@ -435,7 +465,8 @@ private struct LogPieces: Sendable {
             processes: CallAppProcesses(app: "meeting", list: SessionProcessList(answer: .success([]))),
             startMicrophone: { try microphone.start() }, startCall: { _ in try call.start() },
             microphoneRecognizerSource: { preconditionFailure("Live text is disabled") },
-            callRecognizerSource: { preconditionFailure("Live text is disabled") }, captureLogSink: sink)
+            callRecognizerSource: { preconditionFailure("Live text is disabled") },
+            missingModels: { missingModels }, captureLogSink: sink)
     }
 
     func finish() { microphone.end(); call.end() }

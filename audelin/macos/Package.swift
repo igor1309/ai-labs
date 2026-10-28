@@ -227,7 +227,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ParakeetRecognizerTests",
-            dependencies: ["ParakeetRecognizer"]
+            dependencies: ["ParakeetRecognizer", .product(name: "FluidAudio", package: "FluidAudio")]
         ),
         .testTarget(
             name: "PreferencesTests",

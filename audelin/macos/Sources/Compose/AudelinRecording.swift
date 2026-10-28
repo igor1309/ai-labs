@@ -27,7 +27,7 @@ public final class AudelinRecording: Sendable {
             processes: CoreAudioProcesses(binding: CoreAudioBinding(), clock: ContinuousCallClock()),
             now: { Date() }, timeZone: { .current },
             startMicrophone: startProductionMicrophone, startCall: startProductionCallAudio,
-            recognizerSource: { try await ParakeetRecognizer() },
+            recognizerSource: { try await ParakeetRecognizer() }, missingModels: productionMissingModels,
             makeConditions: composeRecordingConditions,
             startModel: { startLiveModelLoading() }, panel: AudelinPanel()
         )
@@ -41,6 +41,7 @@ public final class AudelinRecording: Sendable {
         startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
         recognizerSource: @escaping @Sendable () async throws -> any Recognizer,
+        missingModels: @escaping @Sendable () -> [String],
         makeConditions: (Recording, URL) -> RecordingConditions,
         startModel: () -> Task<Void, any Error>,
         panel: AudelinPanel
@@ -53,7 +54,7 @@ public final class AudelinRecording: Sendable {
             makePieces: composeRecordingPieces(
                 preferences: preferences, callApp: app, processes: processes,
                 now: now, timeZone: timeZone, startMicrophone: startMicrophone,
-                startCall: startCall, recognizerSource: recognizerSource
+                startCall: startCall, recognizerSource: recognizerSource, missingModels: missingModels
             ),
             makeConditions: makeConditions, panel: panel
         )
