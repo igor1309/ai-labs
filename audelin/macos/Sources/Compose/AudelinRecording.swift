@@ -7,6 +7,7 @@ import struct MicrophoneCapture.AudioPiece
 import ParakeetRecognizer
 import Preferences
 import Recording
+import Synchronization
 import struct SystemAudioCapture.AudioPiece
 import enum SystemAudioCapture.ProcessSelection
 
@@ -14,6 +15,7 @@ import enum SystemAudioCapture.ProcessSelection
 public final class AudelinRecording: Sendable {
 
     public let recording: Recording
+    public let inputs: RecordingInputs
     public let panel: AudelinPanel
     public let detectionFailures: AsyncStream<any Error>
     private let conditions: RecordingConditions
@@ -32,7 +34,7 @@ public final class AudelinRecording: Sendable {
             startModel: { startLiveModelLoading() }, panel: AudelinPanel(makeReading: makeReading)
         )
         // Reading the status never asks; without this request macOS never prompts.
-        AVCaptureDevice.requestAccess(for: .audio) { [conditions] _ in conditions.refresh() }
+        AVCaptureDevice.requestAccess(for: .audio) { [conditions] _ in Task { await conditions.refresh() } }
     }
 
     init(
@@ -42,7 +44,7 @@ public final class AudelinRecording: Sendable {
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
         recognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         missingModels: @escaping @Sendable () -> [String],
-        makeConditions: (Recording, URL) -> RecordingConditions,
+        makeConditions: (RecordingInputs, URL) -> RecordingConditions,
         startModel: () -> Task<Void, any Error>,
         panel: AudelinPanel
     ) async throws {
@@ -58,12 +60,14 @@ public final class AudelinRecording: Sendable {
             ),
             makeConditions: makeConditions, panel: panel
         )
+        let inputs = RecordingInputs(recording: recording)
         self.recording = recording
+        self.inputs = inputs
         self.conditions = conditions
-        conditions.refresh()
+        await conditions.refresh()
         let calls: CallRecordingSubscription
         do {
-            calls = try composeCalls(processes, to: recording, conditions: conditions, startedApp: { app.started($0) })
+            calls = try composeCalls(processes, to: inputs, conditions: conditions, startedApp: { app.started($0) })
         } catch {
             processes.stop()
             Task { await recording.end() }
@@ -75,7 +79,7 @@ public final class AudelinRecording: Sendable {
 
     public func lifecycle(terminate: @escaping @Sendable () async -> Void) -> LifecycleEffectHandler {
 
-        LifecycleEffectHandler(delivery: delivery, recording: ApplicationRecording(recording: recording), terminate: terminate)
+        LifecycleEffectHandler(delivery: delivery, recording: ApplicationRecording(recording: inputs), terminate: terminate)
     }
 }
 
@@ -94,12 +98,33 @@ private struct ApplicationDelivery: LifecycleDelivery {
     }
 }
 
-struct ApplicationRecording: LifecycleRecording {
+final class ApplicationRecording: LifecycleRecording {
 
-    let recording: Recording
+    let recording: RecordingInputs
+    private let stopping = Mutex<Task<Void, Never>?>(nil)
 
-    func requestStop() { recording.send(.userStop) }
-    func drain() async { _ = await recording.snapshot() }
+    init(recording: RecordingInputs) {
+
+        self.recording = recording
+    }
+
+    // Lifecycle asks for a stop without waiting, so the drain that follows joins the send.
+    func requestStop() {
+
+        stopping.withLock { [recording] previous in
+            let earlier = previous
+            previous = Task {
+                await earlier?.value
+                await recording.send(.userStop)
+            }
+        }
+    }
+
+    func drain() async {
+
+        await stopping.withLock { $0 }?.value
+        _ = await recording.state()
+    }
     func end() async { await recording.end() }
 
     func states() async -> AsyncStream<LifecycleRecordingState> {

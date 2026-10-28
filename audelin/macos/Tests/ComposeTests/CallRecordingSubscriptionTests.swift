@@ -79,7 +79,7 @@ struct CallRecordingSubscriptionTests {
         var recording: Recording? = Recording(handler: .init(session: session), initial: .init())
         weak let destination = recording
         source.continuation.yield(.started(app: "already on"))
-        let forwarding = CallRecordingSubscription(calls: source.stream, recording: try #require(recording))
+        let forwarding = CallRecordingSubscription(calls: source.stream, recording: RecordingInputs(recording: try #require(recording)))
         defer { forwarding.cancel() }
         let states = await (try #require(recording)).states()
         for await state in states {
@@ -101,7 +101,7 @@ struct CallRecordingSubscriptionTests {
         let recording = Recording(handler: .init(session: session), initial: .init(automatic: true, missing: []))
         let binding = CallBinding(fails: false)
         let processes = CoreAudioProcesses(binding: binding, clock: UnusedCallClock())
-        let forwarding = try composeCalls(processes, to: recording)
+        let forwarding = try composeCalls(processes, to: RecordingInputs(recording: recording))
         defer { forwarding.cancel(); processes.stop() }
         for await state in await recording.states() {
             if state.phase == .recording { break }
@@ -120,7 +120,7 @@ struct CallRecordingSubscriptionTests {
         #expect(session.effects.all == [.beginSession(id: 1), .endSession(id: 1)])
         let refused = CoreAudioProcesses(binding: CallBinding(fails: true), clock: UnusedCallClock())
         defer { refused.stop() }
-        #expect(throws: ScriptFailure.failed) { try composeCalls(refused, to: recording) }
+        #expect(throws: ScriptFailure.failed) { try composeCalls(refused, to: RecordingInputs(recording: recording)) }
         await recording.end()
     }
 }
@@ -178,7 +178,7 @@ private func withCallForwarding(
     let recording = Recording(handler: .init(session: session), initial: initial)
     let rig = CallForwardingRig(
         recording: recording, session: session, calls: source.continuation,
-        forwarding: CallRecordingSubscription(calls: source.stream, recording: recording)
+        forwarding: CallRecordingSubscription(calls: source.stream, recording: RecordingInputs(recording: recording))
     )
     do {
         try await body(rig)

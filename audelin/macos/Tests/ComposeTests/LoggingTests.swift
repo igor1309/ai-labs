@@ -211,11 +211,11 @@ struct LoggingTests {
             defer { rig.finish() }
             let recording = await composeRecording(initial: .init(automatic: true),
                 makePieces: { _ in rig.pieces }, liveText: { false }, sink: sink, panel: ReadingClockSpy().panel())
-            let conditions = RecordingConditions(recording: recording, microphoneAccess: { true },
+            let conditions = RecordingConditions(recording: RecordingInputs(recording: recording), microphoneAccess: { true },
                 callAudioAccess: { true }, callsFolder: { true }, room: { true })
-            conditions.refresh()
+            await conditions.refresh()
             let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
-            let calls = try composeCalls(processes, to: recording, conditions: conditions)
+            let calls = try composeCalls(processes, to: RecordingInputs(recording: recording), conditions: conditions)
             defer { calls.cancel(); processes.stop() }
             for await state in await recording.states() {
                 if state.phase == .recording { break }
@@ -337,8 +337,8 @@ struct LoggingTests {
         let sink = LogSpy(), events = Values<RecordingEvent>()
         let conditions = RecordingConditions(send: events.append, microphoneAccess: { false },
             callAudioAccess: { true }, callsFolder: { true }, room: { false }, sink: sink)
-        conditions.refresh()
-        conditions.refresh()
+        await conditions.refresh()
+        await conditions.refresh()
         #expect(events.all.count == 4)
         #expect(sink.entries.all.map(\.message) == [
             "condition=microphoneAccess available=false", "condition=callAudioAccess available=true",
@@ -346,7 +346,7 @@ struct LoggingTests {
         ])
         let recording = Recording(handler: .init(session: RecordingSpy(report: .ready, calls: Values<String>())))
         let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
-        let calls = CallRecordingSubscription(calls: source.stream, recording: recording, sink: sink)
+        let calls = CallRecordingSubscription(calls: source.stream, recording: RecordingInputs(recording: recording), sink: sink)
         source.continuation.yield(.started(app: "meeting.app"))
         source.continuation.yield(.ended(app: "meeting.app"))
         source.continuation.yield(.started(app: "other.app"))

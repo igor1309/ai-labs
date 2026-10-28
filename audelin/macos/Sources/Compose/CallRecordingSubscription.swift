@@ -12,8 +12,8 @@ public final class CallRecordingSubscription: Sendable {
     private let stop: @Sendable () -> Void
 
     public convenience init(
-        calls: AsyncThrowingStream<CallEvent, any Error>, recording: Recording,
-        beforeCallStarted: (@Sendable () -> Void)? = nil,
+        calls: AsyncThrowingStream<CallEvent, any Error>, recording: RecordingInputs,
+        beforeCallStarted: (@Sendable () async -> Void)? = nil,
         startedApp: (@Sendable (String) -> Void)? = nil
     ) {
 
@@ -22,35 +22,35 @@ public final class CallRecordingSubscription: Sendable {
     }
 
     init(
-        calls: AsyncThrowingStream<CallEvent, any Error>, recording: Recording,
-        beforeCallStarted: (@Sendable () -> Void)? = nil,
+        calls: AsyncThrowingStream<CallEvent, any Error>, recording: RecordingInputs,
+        beforeCallStarted: (@Sendable () async -> Void)? = nil,
         startedApp: (@Sendable (String) -> Void)? = nil,
         sink: any LogSink
     ) {
-        let destination = Mutex(Destination(recording: recording))
+        let destination = Mutex(Destination())
         let (failures, output) = AsyncStream<any Error>.makeStream()
         self.failures = failures
         let task = Task {
             defer { output.finish() }
             do {
                 for try await event in calls {
-                    let forwarded = destination.withLock { state in
-                        guard !state.stopped else { return false }
+                    let forwarded = destination.withLock { state -> RecordingEvent? in
+                        guard !state.stopped else { return nil }
                         switch event {
                         case let .started(app):
                             sink.write(.init(category: .calls, message: "started app=\(app)"))
                             state.callOn = true
                             startedApp?(app)
-                            beforeCallStarted?()
-                            state.recording?.send(.callStarted)
+                            return .callStarted
                         case .ended:
                             sink.write(.init(category: .calls, message: "ended"))
                             state.callOn = false
-                            state.recording?.send(.callEnded)
+                            return .callEnded
                         }
-                        return true
                     }
-                    if !forwarded { return }
+                    guard let forwarded else { return }
+                    if forwarded == .callStarted { await beforeCallStarted?() }
+                    await recording.send(forwarded)
                 }
             } catch {
                 destination.withLock { state in
@@ -59,19 +59,18 @@ public final class CallRecordingSubscription: Sendable {
                     output.yield(error)
                 }
             }
-            destination.withLock { state in
-                guard !state.stopped else { return }
-                if state.callOn {
-                    sink.write(.init(category: .calls, message: "ended (detection stream ended)"))
-                    state.recording?.send(.callEnded)
-                }
+            let endsCall = destination.withLock { state in
+                guard !state.stopped else { return false }
+                let callOn = state.callOn
+                if callOn { sink.write(.init(category: .calls, message: "ended (detection stream ended)")) }
                 state.callOn = false
                 state.stopped = true
+                return callOn
             }
+            if endsCall { await recording.send(.callEnded) }
         }
         self.task = task
         stop = {
-            // Sending under the same lock makes cancellation a delivery boundary.
             destination.withLock { $0.stopped = true }
             task.cancel()
         }
@@ -79,16 +78,14 @@ public final class CallRecordingSubscription: Sendable {
 
     deinit { stop() }
 
-    /// On return, no more events will be sent, including a synthetic call end.
+    /// On return, no further event will start to be sent, including a synthetic call end.
     public func cancel() { stop() }
 
-    /// Joins consumption after stream termination or cancellation.
+    /// Joins consumption after stream termination or cancellation, including a send in flight.
     public func wait() async { await task.value }
 
     private struct Destination: Sendable {
 
-        // The destination must not keep its Recording alive through the task.
-        weak var recording: Recording?
         var callOn = false
         var stopped = false
     }
@@ -96,7 +93,7 @@ public final class CallRecordingSubscription: Sendable {
 
 /// The caller owns the detector's lifetime and stops it when detection is no longer needed.
 public func composeCalls(
-    _ processes: CoreAudioProcesses, to recording: Recording,
+    _ processes: CoreAudioProcesses, to recording: RecordingInputs,
     conditions: RecordingConditions? = nil,
     startedApp: (@Sendable (String) -> Void)? = nil
 ) throws -> CallRecordingSubscription {
@@ -104,6 +101,6 @@ public func composeCalls(
     try processes.start()
     return CallRecordingSubscription(
         calls: processes.calls, recording: recording,
-        beforeCallStarted: { conditions?.refresh() }, startedApp: startedApp
+        beforeCallStarted: { await conditions?.refresh() }, startedApp: startedApp
     )
 }

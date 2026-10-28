@@ -10,7 +10,7 @@ struct MenuApplication {
 
     let states: () async -> AsyncStream<RecordingState>
     let failures: AsyncStream<any Error>
-    let send: (RecordingEvent) -> Void
+    let send: (RecordingEvent) async -> Void
     let quit: () async -> Void
     let panelStates: () async -> AsyncStream<PanelState>
     let sendPanel: (PanelEvent) async -> Void
@@ -32,7 +32,7 @@ public final class AudelinMenu {
     private var failure: String?
     private let sink: any LogSink
     private let settings: PreferenceSettings
-    private let send: (RecordingEvent) -> Void
+    private let send: (RecordingEvent) async -> Void
     private let openFolder: (URL) -> Void
     private let quit: () async -> Void
     private var observation: Task<Void, Never>?
@@ -57,9 +57,9 @@ public final class AudelinMenu {
             makeApplication: {
                 let application = try await AudelinRecording(preferences: preferences, makeReading: makeReading)
                 return MenuApplication(
-                    states: { await application.recording.states() },
+                    states: { await application.inputs.states() },
                     failures: application.detectionFailures,
-                    send: { application.recording.send($0) },
+                    send: { await application.inputs.send($0) },
                     quit: { await quit(application.lifecycle(terminate: terminate)) },
                     panelStates: { await application.panel.states() },
                     sendPanel: { await application.panel.send($0) }
@@ -94,7 +94,7 @@ public final class AudelinMenu {
             failure = "Не удалось начать наблюдение за звонками: \(error)"
         }
         let send = application?.send ?? { _ in }
-        settings = PreferenceSettings(storage: storage, automaticChanged: { send(.automaticChanged($0)) })
+        settings = PreferenceSettings(storage: storage, automaticChanged: { await send(.automaticChanged($0)) })
         self.send = send
         self.openFolder = openFolder
         self.quit = application?.quit ?? terminate
@@ -139,10 +139,10 @@ public final class AudelinMenu {
         guard !quitting else { return }
         sink.write(.init(category: .menu, message: "action=\(action)"))
         switch action {
-        case .start: send(.userStart)
-        case .stop: send(.userStop)
+        case .start: await send(.userStart)
+        case .stop: await send(.userStop)
         case let .setAutomatic(enabled):
-            settings.setAutomatic(enabled)
+            await settings.setAutomatic(enabled)
         case let .setLiveText(enabled):
             settings.setLiveText(enabled)
         case .showPanel: receivePanelPresence(.reopen)

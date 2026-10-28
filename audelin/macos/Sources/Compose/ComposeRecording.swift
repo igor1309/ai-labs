@@ -24,7 +24,7 @@ func composeRecording(
         destination.withLock { $0.recording }?.send(.sessionReported(id: id, report))
     }, connect: subscribe, sink: sink, panel: panel)
     let recording = Recording(handler: RecordingEffectHandler(session: LoggingRecordingSession(base: sessions, sink: sink)), initial: initial)
-    let logging = await RecordingStateLogging(recording: recording, sink: sink)
+    let logging = await RecordingStateLogging(recording: RecordingInputs(recording: recording), sink: sink)
     destination.withLock { $0.recording = recording; $0.logging = logging }
     return recording
 }

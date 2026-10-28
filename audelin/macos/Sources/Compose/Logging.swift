@@ -94,7 +94,7 @@ final class RecordingStateLogging: Sendable {
 
     private let task: Task<Void, Never>
 
-    init(recording: Recording, sink: any LogSink) async {
+    init(recording: RecordingInputs, sink: any LogSink) async {
 
         // Registration retains every change before composition exposes Recording to startup sources.
         let states = await recording.states()

@@ -20,7 +20,7 @@ struct PreferencesCompositionTests {
                     preconditionFailure("An idle recording must not build a session")
                 }, panel: ReadingClockSpy().panel())
                 #expect(await recording.snapshot() == RecordingState(automatic: automatic))
-                conditions.refresh()
+                await conditions.refresh()
                 // A snapshot reads after every event already sent is reduced.
                 #expect(await recording.snapshot().missing.contains(.callsFolder) != automatic)
                 await recording.end()

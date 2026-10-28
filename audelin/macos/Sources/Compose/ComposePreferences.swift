@@ -16,7 +16,7 @@ public func composeRecordingWithPreferences(
 func composeRecordingWithPreferences(
     preferences: PreferencesStore,
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
-    makeConditions: (Recording, URL) -> RecordingConditions,
+    makeConditions: (RecordingInputs, URL) -> RecordingConditions,
     panel: AudelinPanel
 ) async -> (recording: Recording, conditions: RecordingConditions) {
 
@@ -26,6 +26,6 @@ func composeRecordingWithPreferences(
         makePieces: makePieces,
         liveText: { preferences.read().liveText }, panel: panel
     )
-    let conditions = makeConditions(recording, stored.callsFolder)
+    let conditions = makeConditions(RecordingInputs(recording: recording), stored.callsFolder)
     return (recording, conditions)
 }

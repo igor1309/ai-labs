@@ -16,7 +16,7 @@ struct QuitTests {
             let session = Session(log: log, firstEnd: firstEnd, secondEnd: secondEnd)
             let recording = Recording(handler: .init(session: session), initial: .init(automatic: true, missing: []))
             let delivery = Delivery()
-            let port = RecordingPort(base: ApplicationRecording(recording: recording), log: log)
+            let port = RecordingPort(base: ApplicationRecording(recording: RecordingInputs(recording: recording)), log: log)
             let handler = LifecycleEffectHandler(delivery: delivery, recording: port, terminate: { log.append("terminate") })
 
             if scenario != .queuedStart {
@@ -83,7 +83,7 @@ struct QuitTests {
         let firstEnd = Gate(), secondEnd = Gate()
         let recording = Recording(handler: .init(session: Session(log: log, firstEnd: firstEnd, secondEnd: secondEnd)))
         let delivery = Delivery()
-        let port = RecordingPort(base: ApplicationRecording(recording: recording), log: log)
+        let port = RecordingPort(base: ApplicationRecording(recording: RecordingInputs(recording: recording)), log: log)
         await delivery.gate.release()
         await port.drainGate.release()
         await port.observeGate.release()

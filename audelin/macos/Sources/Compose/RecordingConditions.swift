@@ -6,11 +6,12 @@ import Synchronization
 public final class RecordingConditions: Sendable {
 
     private let checks: [(RecordingCondition, @Sendable () -> Bool)]
-    private let send: @Sendable (RecordingEvent) -> Void
+    private let send: @Sendable (RecordingEvent) async -> Void
     private let lastSent = Mutex<[RecordingCondition: Bool]>([:])
+    private let turn = Turn()
 
     public convenience init(
-        recording: Recording,
+        recording: RecordingInputs,
         microphoneAccess: @escaping @Sendable () -> Bool,
         callAudioAccess: @escaping @Sendable () -> Bool,
         callsFolder: @escaping @Sendable () -> Bool,
@@ -18,7 +19,7 @@ public final class RecordingConditions: Sendable {
     ) {
 
         self.init(
-            send: { [weak recording] in recording?.send($0) },
+            send: recording.send,
             microphoneAccess: microphoneAccess, callAudioAccess: callAudioAccess,
             callsFolder: callsFolder, room: room, sink: SystemLogSink()
         )
@@ -26,7 +27,7 @@ public final class RecordingConditions: Sendable {
 
     // The delivery seam exposes events that Recording may reduce without a state change.
     init(
-        send: @escaping @Sendable (RecordingEvent) -> Void,
+        send: @escaping @Sendable (RecordingEvent) async -> Void,
         microphoneAccess: @escaping @Sendable () -> Bool,
         callAudioAccess: @escaping @Sendable () -> Bool,
         callsFolder: @escaping @Sendable () -> Bool,
@@ -36,7 +37,7 @@ public final class RecordingConditions: Sendable {
 
         self.send = { event in
             logCondition(event, sink: sink)
-            send(event)
+            await send(event)
         }
         checks = [
             (.microphoneAccess, microphoneAccess), (.callAudioAccess, callAudioAccess),
@@ -44,21 +45,62 @@ public final class RecordingConditions: Sendable {
         ]
     }
 
-    public func refresh() {
+    /// Refreshes run one at a time, so their sends reach Recording in the order they were read.
+    public func refresh() async {
 
-        lastSent.withLock { previous in
-            for (condition, read) in checks {
+        await turn.take()
+        let changes = lastSent.withLock { previous in
+            checks.compactMap { condition, read -> RecordingEvent? in
                 let available = read()
-                if previous[condition] != available {
-                    send(.conditionChanged(condition, available: available))
-                    previous[condition] = available
-                }
+                guard previous[condition] != available else { return nil }
+                previous[condition] = available
+                return .conditionChanged(condition, available: available)
             }
         }
+        for change in changes { await send(change) }
+        turn.give()
     }
 }
 
-public func composeRecordingConditions(recording: Recording, callsURL: URL) -> RecordingConditions {
+/// A first-come lock that an async holder keeps across its awaits.
+private final class Turn: Sendable {
+
+    private struct State {
+
+        var taken = false
+        var waiting: [CheckedContinuation<Void, Never>] = []
+    }
+    private let state = Mutex(State())
+
+    func take() async {
+
+        await withCheckedContinuation { (waiter: CheckedContinuation<Void, Never>) in
+            let granted = state.withLock { state in
+                guard state.taken else {
+                    state.taken = true
+                    return true
+                }
+                state.waiting.append(waiter)
+                return false
+            }
+            if granted { waiter.resume() }
+        }
+    }
+
+    func give() {
+
+        let next = state.withLock { state -> CheckedContinuation<Void, Never>? in
+            guard !state.waiting.isEmpty else {
+                state.taken = false
+                return nil
+            }
+            return state.waiting.removeFirst()
+        }
+        next?.resume()
+    }
+}
+
+public func composeRecordingConditions(recording: RecordingInputs, callsURL: URL) -> RecordingConditions {
 
     RecordingConditions(
         recording: recording,

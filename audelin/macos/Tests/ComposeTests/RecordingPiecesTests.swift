@@ -169,7 +169,7 @@ struct RecordingPiecesTests {
         }, liveText: { false }, panel: ReadingClockSpy().panel())
         let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
         let forwarding = CallRecordingSubscription(
-            calls: source.stream, recording: recording,
+            calls: source.stream, recording: RecordingInputs(recording: recording),
             beforeCallStarted: { beforeStarts.append(app.current) },
             startedApp: { app.started($0); observed.append($0) }
         )
@@ -190,7 +190,7 @@ struct RecordingPiecesTests {
         }, liveText: { false }, panel: ReadingClockSpy().panel())
         let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
         defer { processes.stop() }
-        let subscription = try composeCalls(processes, to: detectorRecording, startedApp: {
+        let subscription = try composeCalls(processes, to: RecordingInputs(recording: detectorRecording), startedApp: {
             detectedApp.started($0)
             detected.append($0)
         })
