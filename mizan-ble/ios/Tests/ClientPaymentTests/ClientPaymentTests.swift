@@ -46,6 +46,78 @@ struct ClientPaymentTests {
         #expect(ports.calls == [.close, .drop])
     }
 
+    @Test func successReceivedBeforeOpeningSurvivesLinkLoss() async throws {
+        let ports = Ports(openedResult: .success)
+        let flow = Flow(ports: ports, hostName: "MIZAN-7F3A", amountMinorUnits: 12_450)
+        let opening = try #require(flow.receive(.message([0x42])))
+        await flow.send(.linkDropped)
+        #expect(flow.state.status == .waiting)
+        #expect(ports.calls.isEmpty)
+        await flow.handle(opening)
+        #expect(flow.state.status == .paid)
+        #expect(flow.state.hostName == "MIZAN-7F3A")
+        #expect(flow.state.amountMinorUnits == 12_450)
+        #expect(ports.calls == [.open([0x42]), .close, .drop])
+    }
+
+    @Test func failureReceivedBeforeOpeningSurvivesLinkLoss() async throws {
+        let ports = Ports(openedResult: .failure)
+        let flow = Flow(ports: ports, hostName: "MIZAN-7F3A", amountMinorUnits: 12_450)
+        let opening = try #require(flow.receive(.message([0x29])))
+        await flow.send(.linkDropped)
+        #expect(flow.state.status == .waiting)
+        #expect(ports.calls.isEmpty)
+        await flow.handle(opening)
+        #expect(flow.state.status == .failed)
+        #expect(flow.state.hostName == "MIZAN-7F3A")
+        #expect(flow.state.amountMinorUnits == 12_450)
+        #expect(ports.calls == [.open([0x29]), .close, .drop])
+    }
+
+    @Test func refusalReceivedBeforeOpeningResolvesLinkLoss() async throws {
+        let ports = Ports(openedResult: nil)
+        let flow = Flow(ports: ports, hostName: "MIZAN-7F3A", amountMinorUnits: 12_450)
+        let opening = try #require(flow.receive(.message([0x00])))
+        await flow.send(.linkDropped)
+        #expect(flow.state.status == .waiting)
+        #expect(ports.calls.isEmpty)
+        await flow.handle(opening)
+        #expect(flow.state.status == .lost)
+        #expect(flow.state.hostName == "MIZAN-7F3A")
+        #expect(flow.state.amountMinorUnits == 12_450)
+        #expect(ports.calls == [.open([0x00]), .close, .drop])
+    }
+
+    @Test func allMessagesReceivedBeforeOpeningResolveBeforeCleanup() async throws {
+        for (outcome, status): (ClientPayment.Outcome?, ClientPayment.Status) in [
+            (.success, .paid), (.failure, .failed), (nil, .lost),
+        ] {
+            for resultFirst in [false, true] {
+                let ports = Ports(openedResult: nil)
+                let flow = Flow(ports: ports, hostName: "MIZAN-7F3A", amountMinorUnits: 12_450)
+                let first = try #require(flow.receive(.message([0x01])))
+                let second = try #require(flow.receive(.message([0x02])))
+                await flow.send(.linkDropped)
+                await flow.send(.linkDropped)
+                await flow.send(.message([0x03]))
+                ports.openedResult = resultFirst ? outcome : nil
+                await flow.handle(resultFirst ? second : first)
+                #expect(flow.state.status == (resultFirst && outcome != nil ? status : .waiting))
+                #expect(ports.calls == [.open(resultFirst ? [0x02] : [0x01])])
+                await flow.send(.done)
+                ports.openedResult = resultFirst ? nil : outcome
+                await flow.handle(resultFirst ? first : second)
+                #expect(flow.state.status == (resultFirst && outcome != nil ? .over : status))
+                #expect(ports.calls == [
+                    .open(resultFirst ? [0x02] : [0x01]),
+                    .open(resultFirst ? [0x01] : [0x02]), .close, .drop,
+                ])
+                await flow.send(.done)
+                #expect(flow.state.status == .over)
+            }
+        }
+    }
+
     @Test func refusedMessageKeepsWaiting() async {
         let ports = Ports(openedResult: nil)
         let flow = Flow(ports: ports, hostName: "MIZAN-7F3A", amountMinorUnits: 12_450)

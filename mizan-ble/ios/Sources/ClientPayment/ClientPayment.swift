@@ -22,6 +22,8 @@ public enum ClientPayment {
         public fileprivate(set) var status: Status = .waiting
         fileprivate var resourcesReleased = false
         fileprivate var doneRequested = false
+        fileprivate var pendingMessages = 0
+        fileprivate var linkLost = false
 
         /// The host and amount from the secure link's acknowledged confirm.
         public init(hostName: String?, amountMinorUnits: UInt64) {
@@ -56,14 +58,33 @@ public enum ClientPayment {
     public static func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
         var next = state
         switch (state.status, event) {
-        case (.waiting, .message(let message)):
-            return (state, .open(message))
-        case (.waiting, .opened(.some(let outcome))):
-            next.status = outcome == .success ? .paid : .failed
-            return (next, .finish)
+        case (.waiting, .message(let message)) where !state.linkLost:
+            next.pendingMessages += 1
+            return (next, .open(message))
+        case (.waiting, .opened(let outcome)):
+            if next.pendingMessages > 0 { next.pendingMessages -= 1 }
+            if let outcome {
+                next.status = outcome == .success ? .paid : .failed
+            }
+            // A received message still needs the session, even after link loss
+            // or another message has supplied the payment outcome.
+            if next.pendingMessages == 0 {
+                if next.status != .waiting { return (next, .finish) }
+                if next.linkLost {
+                    next.status = .lost
+                    return (next, .finish)
+                }
+            }
+        case (.paid, .opened) where state.pendingMessages > 0,
+             (.failed, .opened) where state.pendingMessages > 0:
+            next.pendingMessages -= 1
+            if next.pendingMessages == 0 { return (next, .finish) }
         case (.waiting, .linkDropped):
-            next.status = .lost
-            return (next, .finish)
+            next.linkLost = true
+            if next.pendingMessages == 0 {
+                next.status = .lost
+                return (next, .finish)
+            }
         case (.paid, .done), (.failed, .done), (.lost, .done):
             // The root may end the machine as soon as it reads over, so cleanup
             // must have run even when the payer beats the independent effect.
