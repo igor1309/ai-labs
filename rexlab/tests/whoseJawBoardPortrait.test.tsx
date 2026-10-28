@@ -29,7 +29,7 @@ function show(size: WindowSize, layout: string, level: AgeLevel, language: "en" 
     jawPicture="jaw.webp" placed={[]} target={undefined} hint={undefined} jawDiet="meat"
     foodShown={level === "hatchling"} namesShown={level === "paleontologist"}
     feedback={{ words: JAWS.find(({ id }) => id === "edmontosaurus")!.fact[language], symbol: "🦷" }}
-    onPlace={vi.fn()} onName={vi.fn()} onSlide={vi.fn()} onBack={vi.fn()} onHome={vi.fn()} />,
+    onNext={vi.fn()} onPlace={vi.fn()} onName={vi.fn()} onSlide={vi.fn()} onBack={vi.fn()} onHome={vi.fn()} />,
   withManualPictures(manualPictures()));
   return count;
 }

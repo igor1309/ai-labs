@@ -2,6 +2,8 @@
 
 ## 2026-10-28
 
+- WHOSE JAW? keeps correct-answer messages until NEXT, selects matching narration voices, and uses larger portrait cards and a balanced welcome (LAB-705).
+
 - WHOSE JAW? offers five jaw puzzles at three levels, tap/drag/keyboard controls, hints, stars, personal bests and next-level invitations (LAB-705).
 - Collected jaws fill a sixteen-slot museum shelf with dinosaur pictures, spoken facts and playful chomps in English and Russian (LAB-705).
 

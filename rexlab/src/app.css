@@ -11678,6 +11678,7 @@ html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-shelf { min-he
 html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-shelf svg { width: 24px; height: 24px; }
 html[data-size="tall-narrow"] .whose-jaw-welcome { padding: calc(16px + env(safe-area-inset-top)) calc(16px + var(--screen-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + var(--screen-left)); }
 html[data-size="wide-short"] .whose-jaw-welcome { padding: calc(12px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) calc(12px + env(safe-area-inset-bottom)) calc(20px + var(--screen-left)); }
+html[data-size="wide-short"] .whose-jaw-hero { width: min(100%, 55dvh); justify-self: center; }
 html[data-size="wide-short"] .whose-jaw-start { gap: 8px; }
 html[data-size="wide-short"] .whose-jaw-start h1 { font-size: 28px; }
 html[data-size="wide-short"] .whose-jaw-play,

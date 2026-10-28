@@ -89,5 +89,10 @@ describe("Whose Jaw welcome portrait balance", () => {
     expect(style(".whose-jaw-chomp", size).value("position")).toBe("relative");
     expect(style(".whose-jaw-start .level-switch-level", size).px("height")).toBe(64);
     expect(style(".whose-jaw-start", size).rowGap()).toBe(layout === "wide" ? 20 : 8);
+    if (layout === "wide-short") {
+      const hero = style(".whose-jaw-hero", size).px("width");
+      const page = style(".whose-jaw-welcome", size);
+      expect(hero + style(".home-button", size).px("height") + page.px("padding-top") + page.px("padding-bottom")).toBeLessThan(height);
+    }
   });
 });
