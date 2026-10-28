@@ -11,7 +11,7 @@ public actor AudelinPanel {
     private let now: @Sendable () -> Double
     private let ticks: @Sendable () -> AsyncStream<Void>
     private let sink: any LogSink
-    private var current: (id: UInt64, reading: ReadingMachine)?
+    private var current: (id: UInt64, reading: ReadingMachine, enableLiveText: @Sendable () -> Void)?
     private var state = PanelState(recording: .off, log: .empty)
     private var subscribers: [UInt64: AsyncStream<PanelState>.Continuation] = [:]
     private var nextSubscriber: UInt64 = 0
@@ -45,16 +45,17 @@ public actor AudelinPanel {
         return stream
     }
 
-    /// Recording and live-text controls are connected separately from reading actions.
+    /// The menu wires recording controls; session controls and reading actions stay here.
     public func send(_ event: PanelEvent) {
 
+        if event == .switchLiveTextOn { current?.enableLiveText() }
         if let event = readingEvent(event) { current?.reading.send(event) }
     }
 
-    func begin(id: UInt64, text: AsyncStream<State>) async -> ReadingSubscription {
+    func begin(id: UInt64, text: AsyncStream<State>, enableLiveText: @escaping @Sendable () -> Void) async -> ReadingSubscription {
 
         let reading = ReadingReducer.machine()
-        current = (id, reading)
+        current = (id, reading, enableLiveText)
         return await ReadingSubscription(reading: reading, text: text, now: now, ticks: ticks(), sink: sink) { [weak self] state in
             await self?.receive(state, id: id)
         }
