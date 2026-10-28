@@ -4,7 +4,7 @@ Feature: Guide a baby dinosaur home
   A per-game level choice is remembered until the global age level changes, which resets it.
   Both walls and paths occupy grid cells. The dimensions count every visible cell.
   No outer wall border or odd-coordinate path lattice is required; paths may touch the edge.
-  Mazes are connected trees without loops. Start and goal are distinct path cells chosen by generation.
+  Path cells linked by orthogonal adjacency form connected trees without loops. Start and goal are distinct path cells chosen by generation.
   They may be anywhere on the board provided the solution meets the difficulty requirements.
   Each round generates a random maze that stays unchanged during play, with no timer, lives or moving threats.
 
@@ -15,7 +15,7 @@ Feature: Guide a baby dinosaur home
     And the parent is visibly marked as the goal
     And each path cell has a touch target at least 48 CSS pixels wide and high
     And adjacent legal moves are visibly indicated without relying only on colour
-    And all child-facing words are capitalised in English and Russian
+    And all child-facing words are in capitals in English and Russian
     And every labelled control has a symbol or picture
 
   Scenario: Move one space and backtrack
@@ -55,7 +55,7 @@ Feature: Guide a baby dinosaur home
     Then its board has <columns> columns and <rows> rows
     And its shortest solution has at least <steps> single-space moves
     And at least <decisions> interior junctions on the solution, excluding start and goal, have a wrong branch
-    And at least <detours> distinct interior solution junctions have a wrong branch whose longest simple path from that junction to a dead end is at least 4 moves
+    And at least <detours> distinct interior solution junctions have a wrong branch whose depth from the junction through that wrong branch to its farthest dead end is at least 4 moves
     And the board is generated procedurally rather than selected from stored layouts
     And no route or correct direction is marked unless the hint control is explicitly tapped
     And footprints indicate all legal adjacent spaces equally, including wrong turns
@@ -68,9 +68,12 @@ Feature: Guide a baby dinosaur home
 
   Scenario: Generated complexity is guaranteed
     Then generation checks the length, junction and detour requirements before returning a board
-    And automated independent graph checks verify varied random seeds at every level
+    And automated independent graph checks verify at least 100 varied random seeds at every level
     And identical seed, level and previous-board inputs reproduce the same maze
-    And generation has bounded work and terminates even for a constant random source
+    And generation always returns a qualifying board within bounded work, even for a constant random source
+    And it uses a deterministic construction when a bounded candidate search cannot find a qualifying board
+    And the previous wall layout supplies variation when the random source repeats
+    And first rounds have no previous-layout exclusion; changing dimensions already makes a different layout
     And no prebuilt maze bank or hardcoded board fallback is used
     And every layout is connected and solvable
     And retrying or asking for help never moves the child to an easier level
