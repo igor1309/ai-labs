@@ -1,30 +1,39 @@
 import Compose
 import IMRxObservation
 import Session
+import Synchronization
 
-/// A Session composed as the app composes it: the observable model on the main actor.
+/// A Session composed as the app composes it: the observable model on its own actor.
 let makeSession: MakeSessionModel = { handler in
 
-    await MainActor.run {
-        let model = SessionModel(handler: handler)
-        return SessionInputs(
-            send: { await model.send($0) },
-            states: { await model.states() },
-            end: { await model.end() }
-        )
-    }
+    let model = SessionModel()
+    await model.start(handler: handler)
+    return SessionInputs(
+        send: { await model.send($0) },
+        states: { await model.states() },
+        end: { await model.end() }
+    )
 }
 
-@MainActor
-final class SessionModel {
+/// Unlike the app's, its states wait until every event already sent is reduced, so a test reads
+/// the state its sends produced.
+actor SessionModel {
 
-    private let model: ObservableModel<SessionState, SessionEvent, SessionEffect>
+    private final class Counts: Sendable {
+
+        let sent = Mutex(0)
+        let reduced = Mutex(0)
+    }
+
+    private let counts = Counts()
+    private var model: ObservableModel<SessionState, SessionEvent, SessionEffect>?
     private let feed = StateFeed<SessionState>()
 
-    init(handler: SessionEffectHandler, initial: SessionState = .init()) {
+    func start(handler: SessionEffectHandler, initial: SessionState = .init()) {
 
-        let feed = feed
+        let feed = feed, counts = counts
         model = ObservableModel(initialState: initial, reduce: { state, event in
+            counts.reduced.withLock { $0 += 1 }
             guard !feed.finished else { return (state, nil) }
             let (next, effect) = SessionReducer.reduce(state, event)
             if next != state { feed.publish(next) }
@@ -32,17 +41,28 @@ final class SessionModel {
         }, handleEffect: { effect in
             AsyncStream { events in
                 let task = Task {
-                    events.yield(await handler.handle(effect))
+                    let event = await handler.handle(effect)
+                    // An effect's result is reduced like a sent event, so it is counted as one.
+                    counts.sent.withLock { $0 += 1 }
+                    events.yield(event)
                     events.finish()
                 }
                 events.onTermination = { _ in task.cancel() }
             }
-        })
+        }, isolation: self)
     }
 
-    func send(_ event: SessionEvent) { model.event(event) }
+    func send(_ event: SessionEvent) {
 
-    func states() -> AsyncStream<SessionState> { feed.subscribe(from: model.state) }
+        counts.sent.withLock { $0 += 1 }
+        model?.event(event)
+    }
+
+    func states() async -> AsyncStream<SessionState> {
+
+        while counts.reduced.withLock({ $0 }) < counts.sent.withLock({ $0 }) { await Task.yield() }
+        return feed.subscribe(from: model?.state ?? .init())
+    }
 
     func end() { feed.finish() }
 }

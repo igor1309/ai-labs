@@ -146,11 +146,11 @@ final class RecordingModel {
     func end() { feed.finish() }
 }
 
-/// One Session's model, reducing on the main actor and running its effects through the handler.
-@MainActor
-func makeSession(handler: SessionEffectHandler) -> SessionInputs {
+/// One Session's model, reducing on its own actor and running its effects through the handler.
+func makeSession(handler: SessionEffectHandler) async -> SessionInputs {
 
-    let model = SessionModel(handler: handler)
+    let model = SessionModel()
+    await model.start(handler: handler)
     return SessionInputs(
         send: { await model.send($0) },
         states: { await model.states() },
@@ -158,14 +158,13 @@ func makeSession(handler: SessionEffectHandler) -> SessionInputs {
     )
 }
 
-/// Holds the observable model on the main actor; callers elsewhere await the hop.
-@MainActor
-final class SessionModel {
+/// Holds the observable model on its own actor, off the main actor; callers await the hop.
+actor SessionModel {
 
-    private let model: ObservableModel<SessionState, SessionEvent, SessionEffect>
+    private var model: ObservableModel<SessionState, SessionEvent, SessionEffect>?
     private let feed = StateFeed<SessionState>()
 
-    init(handler: SessionEffectHandler, initial: SessionState = .init()) {
+    func start(handler: SessionEffectHandler, initial: SessionState = .init()) {
 
         let feed = feed
         model = ObservableModel(initialState: initial, reduce: { state, event in
@@ -181,13 +180,13 @@ final class SessionModel {
                 }
                 events.onTermination = { _ in task.cancel() }
             }
-        })
+        }, isolation: self)
     }
 
-    func send(_ event: SessionEvent) { model.event(event) }
+    func send(_ event: SessionEvent) { model?.event(event) }
 
     /// Starts with the current state and retains every change.
-    func states() -> AsyncStream<SessionState> { feed.subscribe(from: model.state) }
+    func states() -> AsyncStream<SessionState> { feed.subscribe(from: model?.state ?? .init()) }
 
     /// Finishes every states stream; later ones finish at once and later events change nothing.
     func end() { feed.finish() }
