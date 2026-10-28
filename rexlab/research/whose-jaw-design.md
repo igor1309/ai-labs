@@ -8,8 +8,7 @@ description: "Design and game mechanics for Whose Jaw? (Чья челюсть?),
 
 This doc builds on `whose-jaw-idea.md` (the oracle, approved by Igor on
 2026-10-28). Where the oracle is silent, this doc makes a choice and marks
-it **[choice]**. Where a choice stretches what the oracle says, it is marked
-**[flag]** and listed under "For Igor" at the end. It follows the product
+it **[choice]**. Igor's decisions on these are at the end. It follows the product
 principles in `../AGENTS.md`, the levels in `../docs/age-levels.md` and
 double-tap safety in `../docs/tap-safety.md`.
 
@@ -23,8 +22,8 @@ from the same diet still differ in shape.
 
 ## Roster
 
-- Only dinosaurs from `src/data/dinosaurs.json` with `group: "dinosaur"`.
-  Flying and sea reptiles stay out, because the game says "dinosaur" **[flag]**.
+- Every creature in `src/data/dinosaurs.json`, flying and sea reptiles
+  included: RexLab calls them all dinosaurs (Igor, 2026-10-28).
 - `diet` decides right and wrong at 🥚 and 🦖. At 🦴, a jaw belongs to
   exactly one dinosaur (its `id`).
 - `diet: "both"` (gallimimus, oviraptor, troodon) is left out of 🥚, as the
@@ -32,7 +31,7 @@ from the same diet still differ in shape.
   shown on its own, never as a choice that a diet rule has to decide
   **[choice]**: a "both" jaw is never put next to a meat-eater and a
   plant-eater where either answer could look right.
-- First release, 12 dinosaurs with jaws **[choice]**: enough for every level
+- First release, 16 dinosaurs with jaws: enough for every level
   and few enough for the art budget:
 
 | Pair (for 🦴) | Dinosaur A | Dinosaur B | Tooth cue |
@@ -43,6 +42,8 @@ from the same diet still differ in shape.
 | long necks | diplodocus | brachiosaurus | pencil-like front teeth vs spoon-shaped teeth |
 | plated / armoured | stegosaurus | ankylosaurus | tiny leaf teeth in a long narrow head vs tiny leaf teeth in a wide, armoured head |
 | fish / sail | spinosaurus | baryonyx | straight cone teeth in a crocodile snout vs a snout with a kink and more teeth |
+| flying | rhamphorhynchus | dimorphodon | long, forward-pointing fish-grabbing teeth vs a short, deep beak with two kinds of teeth |
+| sea | mosasaurus | kronosaurus | cone teeth and extra teeth on the palate vs huge, long, pointed teeth in a giant head |
 
 Every pair shares one diet, so at 🦴 the shape, not the diet, decides. Each
 fact goes through `../docs/sources.md` before it ships.
@@ -60,7 +61,7 @@ new MUSEUM shelf.
   child's choice, as in other games.
 - A big PLAY ▶ button and a 🏛 JAW SHELF button.
 - The best score for this level, a small badge with 🦷 and a number.
-- States: first visit (no best, empty shelf hint "0 / 12"), returning
+- States: first visit (no best, empty shelf hint "0 / 16"), returning
   (best and shelf count).
 
 ### 2. Board (one round)
@@ -98,7 +99,7 @@ Board states:
 
 ### 4. MUSEUM: Jaw shelf
 
-- A wooden shelf with 12 places, in 3 rows of 4, one place per dinosaur
+- A wooden shelf with 16 places, in 4 rows of 4, one place per dinosaur
   with a jaw. Each shelf is labelled with a diet picture, 🥩 or 🌿.
 - A won jaw stands on its place with the dinosaur's name in capitals
   under it. An unwon place shows a faint outline of the jaw and a "?".
@@ -220,11 +221,11 @@ Art (style follows `../art/style.md`):
 1. **Jaw style prompt**: one new section in `art/style.md` for jaws: a
    cartoon, ivory jaw, a side view, with clear, big teeth whose shape
    reads at a glance (sharp vs flat).
-2. **12 jaws**: one per dinosaur in the roster, on a transparent
+2. **16 jaws**: one per dinosaur in the roster, on a transparent
    background, at 1x/2x/3x.
-3. **12 gummy-mouth states**: each dinosaur with its mouth slightly open
+3. **16 gummy-mouth states**: each dinosaur with its mouth slightly open
    and no teeth, matching its existing picture.
-4. **12 mouth-with-jaw (closed) states**: for the snap and chomp
+4. **16 mouth-with-jaw (closed) states**: for the snap and chomp
    **[choice]**. These may be made as the jaw layered on the gummy state
    if that looks right; then they are not needed.
 5. **Food**: a steak and a leafy branch, each with a "bitten" frame.
@@ -240,21 +241,15 @@ Sound:
 
 Text (EN and RU, capitals):
 
-- Game title, button labels, the reaction lines, and for each of the 12
+- Game title, button labels, the reaction lines, and for each of the 16
   dinosaurs a one-line jaw fact and a 🦴 hint line. All facts are checked
   against `../docs/sources.md`.
 
-## For Igor
+## Decisions (Igor, 2026-10-28, LAB-703)
 
-These are the places where the doc goes beyond the oracle. Please confirm
-them in LAB-704 or change them:
-
-1. **Dinosaurs only:** flying and sea reptiles are left out, even though
-   they are in `dinosaurs.json`.
-2. **12-dinosaur first release**, in 6 look-alike pairs. The oracle's
-   example triceratops/edmontosaurus is a pair here.
-3. **🦴 is decided by shape, not diet:** look-alikes such as
-   tyrannosaurus/allosaurus share one diet, so the wrong-answer reaction
-   there is "does not fit", not a diet joke.
-4. **Stars:** 3/2/1 for 0/1/2+ wrong tries, and no timer.
-5. **Hint after 2 wrong tries** on one jaw.
+- Flying and sea reptiles are in: RexLab calls every creature a dinosaur.
+- First release: 16 creatures in 8 look-alike pairs.
+- 🦴 is decided by jaw shape, not diet; a wrong answer there "does not fit".
+- Stars 3/2/1 for 0/1/2+ wrong tries; no timer.
+- A hint after 2 wrong tries on one jaw.
+- Every other choice marked **[choice]** is accepted.
