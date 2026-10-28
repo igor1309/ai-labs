@@ -71,9 +71,12 @@
 
 ## State machines
 
-- A module defines its domain only: `State`, `Event`, `Effect`, a pure
-  reducer `(State, Event) -> (State, Effect?)` and an effect handler with
-  injected collaborators. No module imports swift-imrx or any state
+- State machines are defined in modules, but not every module defines
+  one: an adapter binds an outside API and a UI module draws a screen. The
+  project's architecture says which modules are machines.
+- A machine's module defines its domain only: `State`, `Event`, `Effect`, a
+  pure reducer `(State, Event) -> (State, Effect?)` and an effect handler
+  with injected collaborators. No module imports swift-imrx or any state
   machine, and none wraps or re-implements one.
 - Only an app (a main app or a preview app) imports swift-imrx. It composes
   each instance from the generic `ObservableModel`, the tested reducer and
