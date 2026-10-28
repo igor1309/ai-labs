@@ -30,9 +30,42 @@ Feature: A text input is checked against its brief forms
     When it resolves to a text of the form "f"
     Then it resolves
 
-  Scenario: A text that takes none of its forms says what each lacks
+  Scenario: A text that takes none of its forms names the closest form's
+    faults, and counts the others'
     Given the input "brief" names the forms "f" and "e", "e" requiring
       "## Intent"
     When it resolves to the text "x"
-    Then it is refused, failed, class "refused", naming for "f" its
-      parts "## Goal" and "## Open" missing, and for "e" "## Intent"
+    Then it is refused, failed, class "refused", reading: it takes none
+      of its forms; closest "e": part "## Intent" is missing; other
+      forms: "f" 2 faults
+
+  Scenario Outline: The closest form has the fewest faults, the first
+    declared winning a tie
+    Given the input "brief" names the forms <forms>
+    When it resolves to a text <faults>
+    Then the refusal names <closest> closest, lists its faults alone,
+      and reads "other forms: <others>"
+
+    Examples:
+      | forms         | faults                            | closest | others                    |
+      | "a", "b"      | with 3 faults of "a" and 1 of "b" | "b"     | "a" 3 faults              |
+      | "a", "b"      | with 2 faults of each             | "a"     | "b" 2 faults              |
+      | "a", "b", "c" | with 2 of "a", 1 of "b", 1 of "c" | "b"     | "a" 2 faults, "c" 1 fault |
+
+  Scenario: A form alone that the text does not take has no other forms
+    Given the input "brief" names the form "f" alone
+    When it resolves to the text "x"
+    Then the refusal reads: it takes none of its forms; closest "f":
+      part "## Goal" is missing, part "## Open" is missing
+
+  Scenario: Paths failing to tell is the error, not a fault
+    Given the input "brief" names the forms "f" and "e", and paths fail
+      for "g.md"
+    When it resolves to a text whose "## Goal" names "g.md"
+    Then it fails with paths' error, naming the part and the path, and
+      no form is named closest
+
+  Scenario: A text is checked against forms without resolving an input
+    Given the forms "f" and "e" and the path "g.md" exists
+    When the resolver checks a text of the form "e" against them
+    Then it gives the form "e", and no source is asked for a value
