@@ -3,6 +3,20 @@ import Testing
 
 @MainActor
 struct ClientFindTests {
+    @Test func effectsRunBeforeReturningTheirStreams() async {
+        let cases: [(ClientFind.Effect, Ports.Call, ClientFind.Event)] = [
+            (.startScanning, .start, .scanningStarted),
+            (.stopScanning, .stop, .scanningStopped),
+        ]
+        for (effect, call, expected) in cases {
+            let ports = Ports()
+            let handler = ClientFind.EffectHandler(scanner: ports)
+            let stream = handler.handle(effect)
+            #expect(ports.calls == [call])
+            #expect(await collect(stream) == [expected])
+        }
+    }
+
     @Test func noHostNearby() async {
         let flow = Flow()
         #expect(flow.state == ClientFind.State())
@@ -350,10 +364,9 @@ private final class Flow {
     }
 
     func finish(_ effect: ClientFind.Effect?) async {
-        var pending = effect
-        while let effect = pending {
-            guard let event = await handler.handle(effect) else { return }
-            pending = reduce(event)
+        guard let effect else { return }
+        for await event in handler.handle(effect) {
+            await finish(reduce(event))
         }
     }
 }
@@ -373,4 +386,11 @@ private final class Ports: ClientFind.Scanner {
         calls.append(.stop)
         isScanning = false
     }
+}
+
+@MainActor
+private func collect(_ stream: AsyncStream<ClientFind.Event>) async -> [ClientFind.Event] {
+    var events: [ClientFind.Event] = []
+    for await event in stream { events.append(event) }
+    return events
 }

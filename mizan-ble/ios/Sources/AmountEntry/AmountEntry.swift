@@ -35,7 +35,7 @@ public enum AmountEntry {
         }
     }
 
-    /// No effect can be produced; the root can run this on its generic machine.
+    /// No effect can be produced; the root can run this on its model.
     public static func reduce(_ state: State, _ event: Event) -> (State, Never?) {
         var next = state
         switch event {
