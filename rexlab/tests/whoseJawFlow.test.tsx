@@ -44,6 +44,7 @@ describe("Whose Jaw full visit", () => {
         act(() => { fireEvent.click(jaw); fireEvent.click(owner); fireEvent.click(owner); });
         expect(app.parts.played.filter((sound) => sound === "snap")).toHaveLength(at + 1);
         act(() => app.timers.fire(JAW_TIMING.right));
+        fireEvent.click(button(text.next));
       }
       act(() => app.timers.fire(JAW_TIMING.done));
       expect(new Set(ids).size).toBe(5);

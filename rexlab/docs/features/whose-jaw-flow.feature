@@ -7,6 +7,7 @@ Feature: Whose Jaw across a complete visit
     Then no try or reward is recorded
     When I place five different jaws correctly
     And I tap repeatedly during feedback
+    And I press Next once I have read each correct answer
     Then exactly five teeth fill and the result awards three stars
     And the five jaws are collected immediately
     When I open the shelf from the result and inspect a collected jaw
@@ -56,3 +57,13 @@ Feature: Whose Jaw across a complete visit
     When I complete a round and visit the shelf
     Then the same rewards, navigation and narration are available
     And feedback and chomps use short fades
+    And correct feedback remains until I press the arrow and Next button
+
+  Scenario: The final answer can be read at the child's pace
+    Given I have correctly placed the fifth jaw
+    When the animation settles and several minutes pass
+    Then the correct feedback remains on the board
+    And the fifth tooth is filled
+    And no best score or result is saved yet
+    When I double tap Next
+    Then the result opens once with five teeth and the round's rewards
