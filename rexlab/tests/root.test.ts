@@ -77,6 +77,18 @@ describe("the app in a browser", () => {
     for (const phase of ["choice", "puzzle", "result"] as const) expect(reloaded.portraitLayouts[`picturePuzzle-${phase}`]).toBeUndefined();
   });
 
+  it("wires Whose Jaw welcome to shipped art, the 16-place collection and persistent choices", () => {
+    const local = memoryStorage({ [PROGRESS_KEY]: record(6, 3) });
+    const given = browser({ local });
+    const game = appProps(given).whoseJaw!;
+    expect(game.total).toBe(16);
+    expect(game.jawPicture).toContain("assets/jaws/tyrannosaurus.webp");
+    expect(game.gummyPicture).toContain("assets/dinos/tyrannosaurus/gummy.webp");
+    game.progress.saveLevel({ level: "hatchling", revision: "parent" });
+    expect(appProps(given).whoseJaw!.progress.load()?.levelChoice).toEqual({ level: "hatchling", revision: "parent" });
+    expect(appProps(given).progress.load()).toEqual(quizSaved(6, 3));
+  });
+
   // The words of a dinosaur's page leave out a scrollbar that takes room:
   // the window's width less its root's, which an overlay scrollbar leaves
   // whole.
@@ -331,7 +343,7 @@ describe("the app in a browser", () => {
   });
 
   it("gives the home page, catalogue, dinosaur page, compare quiz's question and result, find the pair's welcome, board and result, sort's board and result, the skeleton choice, museum, puzzle, guess and result, every DIG and care screen and sand writing for both portrait sizes", () => {
-    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] });
+    expect(appProps(browser()).portraitLayouts).toEqual({ "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] });
   });
 
   it("wires the window media queries and the screen's own orientation into one viewport", () => {

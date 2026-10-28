@@ -1,3 +1,6 @@
+import jawRecords from "./data/jaws.json";
+import welcomeJaw from "./assets/jaws/tyrannosaurus.webp";
+import welcomeGummy from "./assets/dinos/tyrannosaurus/gummy.webp";
 import type { AppProps } from "./App.tsx";
 import digFile from "./data/dig.json";
 import records from "./data/dinosaurs.json";
@@ -12,7 +15,7 @@ import { HOME_GAMES } from "./HomePage.tsx";
 import { itemPictures } from "./itemPictures.ts";
 import { localAgeLevel } from "./localAgeLevel.ts";
 import { localLanguage } from "./localLanguage.ts";
-import { localLabyrinthProgress, localCareProgress, localDigProgress, localFeatured, localPairsProgress, localPicturePuzzleChoice, localPicturePuzzleProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
+import { localWhoseJawProgress, localLabyrinthProgress, localCareProgress, localDigProgress, localFeatured, localPairsProgress, localPicturePuzzleChoice, localPicturePuzzleProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
 import { localTheme } from "./localTheme.ts";
 import { mediaAppearance } from "./mediaAppearance.ts";
 import { mediaReducedMotion } from "./mediaMotion.ts";
@@ -235,13 +238,14 @@ export function appProps(browser: Browser): AppProps {
     dinosaurs,
     catalogue: readCatalogue(records),
     bodyPicture,
+    whoseJaw: { progress: localWhoseJawProgress(storage, jawRecords.map(({ id }) => id)), total: jawRecords.length, jawPicture: welcomeJaw, gummyPicture: welcomeGummy },
     picturePuzzle: {
       dinosaurs: readPictureDinosaurs(records), bodyPicture, random: Math.random,
       choiceStore: localPicturePuzzleChoice(storage), progressStore: localPicturePuzzleProgress(storage)
     },
     random: Math.random,
     viewport,
-    portraitLayouts: { home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] },
+    portraitLayouts: { "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] },
     pictureMotion: {
       now: () => browser.performance.now(),
       duration: Number.parseFloat(token("--motion-screen")),

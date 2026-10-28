@@ -1,6 +1,9 @@
 import type { Texts } from "./texts.ts";
 
 export const ru: Texts = {
+  whoseJaw: "ЧЬЯ ЧЕЛЮСТЬ?",
+  jawShelf: "ПОЛКА ЧЕЛЮСТЕЙ",
+  jawCollection: "СОБРАННЫЕ ЧЕЛЮСТИ",
   labyrinth: "ЛАБИРИНТ",
   labyrinthResult: { title: "ВМЕСТЕ ДОМА!", earned: "+3 ЗВЕЗДЫ", total: (stars) => `ВСЕГО ${stars}`, again: "ЕЩЁ РАЗ" },
   labyrinthBoard: {

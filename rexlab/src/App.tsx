@@ -40,6 +40,8 @@ import { useSortingGame, type SortingGameProps, type SortingPhase } from "./sort
 import { themeOf, type ThemeChoice } from "./theme.ts";
 import { turnMotion, type TurnMotion, type TurnMotionSeams } from "./turnMotion.ts";
 
+import { useWhoseJawGame, type WhoseJawGameProps, type WhoseJawPhase } from "./whoseJawGame.tsx";
+
 export type LanguageStore = {
   // The language a parent chose, or undefined when none can be read.
   load(): Language | undefined;
@@ -90,7 +92,7 @@ export type PortraitSizeClass = Extract<SizeClass, "tall" | "tall-narrow">;
 // compare quiz's own, a question or its result, and each of find the
 // pair's, its welcome, a board or its result, which each game names as it
 // shows them.
-export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}` | `dig-${DigPhase}` | `care-${CarePhase}` | `picturePuzzle-${PicturePuzzlePhase}` | `labyrinth-${LabyrinthPhase}`;
+export type LayoutScreen = Screen["kind"] | `compare-${QuizPhase}` | `pairs-${PairsPhase}` | `sorting-${SortingPhase}` | `skeletons-${SkeletonPhase}` | `dig-${DigPhase}` | `care-${CarePhase}` | `picturePuzzle-${PicturePuzzlePhase}` | `labyrinth-${LabyrinthPhase}` | `whoseJaw-${WhoseJawPhase}`;
 
 // Each screen with a portrait layout, named with the size classes its
 // layout is built for; a screen not named has none.
@@ -124,6 +126,7 @@ export type AppProps = CareGameProps &
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
     picturePuzzle?: PicturePuzzleGameProps;
+    whoseJaw?: WhoseJawGameProps;
     // The skeleton game's sounds, silent if none.
     skeletonSounds?: SkeletonSounds;
     viewport: Viewport;
@@ -202,7 +205,8 @@ type Screen =
   | { kind: "dig" }
   | { kind: "sandWriting" }
   | { kind: "picturePuzzle" }
-  | { kind: "labyrinth" };
+  | { kind: "labyrinth" }
+  | { kind: "whoseJaw" };
 
 // A food chosen changes the screen at once. A dinosaur's page opens from its
 // card and closes back to it, and a step slides the next page in the
@@ -252,6 +256,7 @@ export function App({
   digProgress,
   sandContext,
   picturePuzzle,
+  whoseJaw,
   ...careProps
 }: AppProps) {
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
@@ -270,7 +275,7 @@ export function App({
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
-  const [featured] = useState<HomeGame>(() => chooseFeatured(HOME_GAMES.filter((game) => game !== "picturePuzzle" || picturePuzzle !== undefined), { store: featuredStore, random, today: calendarDay(now()) }));
+  const [featured] = useState<HomeGame>(() => chooseFeatured(HOME_GAMES.filter((game) => (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined)), { store: featuredStore, random, today: calendarDay(now()) }));
   // The device language is only the first guess: a parent's choice is kept
   // and wins on every later visit.
   const [language, setLanguage] = useState<Language>(() => languageStore.load() ?? languageOfDevice(deviceLanguage));
@@ -323,6 +328,8 @@ export function App({
   // Each game counts a start where it begins, wherever the child began it
   // from, and not as it opens on a welcome or choice screen.
   const counting = (game: HomeGame) => () => startCounter.countStart(game);
+
+  const jawGame = useWhoseJawGame(whoseJaw, ageLevel, home, counting("whoseJaw"));
 
   const pictureGame = usePicturePuzzleGame(picturePuzzle, ageLevel, pageVisibility, home, counting("picturePuzzle"));
 
@@ -416,6 +423,8 @@ export function App({
               ? `dig-${dig.phase}`
               : screen.kind === "care"
                 ? `care-${care.phase}`
+                : screen.kind === "whoseJaw"
+                  ? `whoseJaw-${jawGame.phase}`
                 : screen.kind === "picturePuzzle"
                   ? `picturePuzzle-${pictureGame.phase}`
                 : screen.kind === "labyrinth" && labyrinth.phase
@@ -659,6 +668,8 @@ export function App({
         return skeletonGame.content(language);
       case "dig":
         return dig.content(language);
+      case "whoseJaw":
+        return jawGame.content(language);
       case "picturePuzzle":
         return pictureGame.content(language);
       case "labyrinth":
@@ -689,6 +700,7 @@ export function App({
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
             dig={{ picture: digTile, dugUp: dig.dugUp }}
+            whoseJaw={whoseJaw && { picture: whoseJaw.jawPicture, collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
             picturePuzzle={picturePuzzle && { picture: bodyPicture("tyrannosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
             labyrinth={{ picture: bodyPicture("triceratops"), stars: labyrinth.stars }}
             moreComing={bodyPicture(MORE_COMING)}

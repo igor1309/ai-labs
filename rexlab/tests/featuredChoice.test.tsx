@@ -29,8 +29,8 @@ import {
 } from "./support.ts";
 
 // The start counts of the feature's draw: COMPARE 9, ANCIENT REPTILES 4,
-// FIND THE PAIR 3, SKELETONS 2, DIG 2, SAND WRITING 2, SORT 5, CARE 2 and LABYRINTH 2.
-const STARTS: Record<HomeGame, number> = { compare: 9, catalogue: 4, pairs: 3, skeletons: 2, dig: 2, sandWriting: 2, sort: 5, care: 2, labyrinth: 2, picturePuzzle: 2 };
+// FIND THE PAIR 3, SKELETONS 2, DIG 2, SAND WRITING 2, SORT 5, CARE 2, LABYRINTH 2, PICTURE PUZZLE 2 and WHOSE JAW 2.
+const STARTS: Record<HomeGame, number> = { compare: 9, catalogue: 4, pairs: 3, skeletons: 2, dig: 2, sandWriting: 2, sort: 5, care: 2, labyrinth: 2, picturePuzzle: 2, whoseJaw: 2 };
 
 const TODAY = "2026-10-18";
 const YESTERDAY = "2026-10-17";
@@ -61,18 +61,18 @@ function shares<Game extends string>(games: readonly Game[], starts: Record<stri
 }
 
 describe("choosing the featured game", () => {
-  it("gives the games started least a weight of 2 and every other game 1: CARE, SKELETONS, DIG, SAND WRITING and LABYRINTH 2 chances in 16 each", () => {
+  it("gives the games started least a weight of 2 and every other game 1: each least-started game 2 chances in 18", () => {
     const weights = weightsOf(HOME_GAMES.map((game) => STARTS[game]));
 
-    expect(weights).toEqual([1, 1, 1, 2, 2, 1, 2, 2, 2, 2]);
-    expect(shares(HOME_GAMES, STARTS)).toEqual({ compare: 63, catalogue: 62, pairs: 63, skeletons: 125, dig: 125, sort: 62, care: 125, sandWriting: 125, labyrinth: 125, picturePuzzle: 125 });
+    expect(weights).toEqual([1, 1, 1, 2, 2, 1, 2, 2, 2, 2, 2]);
+    expect(shares(HOME_GAMES, STARTS)).toEqual({ compare: 56, catalogue: 56, pairs: 55, skeletons: 111, dig: 111, sort: 56, care: 111, sandWriting: 111, labyrinth: 111, picturePuzzle: 111, whoseJaw: 111 });
   });
 
   it.each([
-    [0, "compare"], [1 / 16 - 0.001, "compare"], [1 / 16, "catalogue"], [2 / 16 - 0.001, "catalogue"],
-    [2 / 16, "pairs"], [3 / 16 - 0.001, "pairs"], [3 / 16, "skeletons"], [5 / 16 - 0.001, "skeletons"],
-    [5 / 16, "dig"], [7 / 16 - 0.001, "dig"], [7 / 16, "sort"], [8 / 16 - 0.001, "sort"],
-    [8 / 16, "care"], [10 / 16 - 0.001, "care"], [10 / 16, "sandWriting"], [12 / 16 - 0.001, "sandWriting"], [12 / 16, "labyrinth"], [14 / 16 - 0.001, "labyrinth"], [14 / 16, "picturePuzzle"], [0.999, "picturePuzzle"]
+    [0, "compare"], [1 / 18 - 0.001, "compare"], [1 / 18, "catalogue"], [2 / 18 - 0.001, "catalogue"],
+    [2 / 18, "pairs"], [3 / 18 - 0.001, "pairs"], [3 / 18, "skeletons"], [5 / 18 - 0.001, "skeletons"],
+    [5 / 18, "dig"], [7 / 18 - 0.001, "dig"], [7 / 18, "sort"], [8 / 18 - 0.001, "sort"],
+    [8 / 18, "care"], [10 / 18 - 0.001, "care"], [10 / 18, "sandWriting"], [12 / 18 - 0.001, "sandWriting"], [12 / 18, "labyrinth"], [14 / 18 - 0.001, "labyrinth"], [14 / 18, "picturePuzzle"], [16 / 18 - 0.001, "picturePuzzle"], [16 / 18, "whoseJaw"], [0.999, "whoseJaw"]
   ] as const)("maps the draw %s to %s, in tile order", (draw, game) => {
     expect(chooseFeatured(HOME_GAMES, { store: featuredSpy(record(STARTS)), random: () => draw, today: TODAY })).toBe(game);
   });
@@ -127,8 +127,8 @@ describe("choosing the featured game", () => {
     const starts: Record<string, number> = { compare: 1, catalogue: 1, care: 1, sort: 1, pairs: 1, skeletons: 1 };
     const games = HOME_GAMES;
 
-    expect(weightsOf(games.map((game) => starts[game] ?? 0))).toEqual([1, 1, 1, 1, 2, 1, 1, 2, 2, 2]);
-    expect(shares(games, starts, { game: "care", on: YESTERDAY })).toEqual({ compare: 72, catalogue: 71, pairs: 72, skeletons: 71, dig: 143, sort: 71, care: 72, sandWriting: 143, labyrinth: 143, picturePuzzle: 142 });
+    expect(weightsOf(games.map((game) => starts[game] ?? 0))).toEqual([1, 1, 1, 1, 2, 1, 1, 2, 2, 2, 2]);
+    expect(shares(games, starts, { game: "care", on: YESTERDAY })).toEqual({ compare: 63, catalogue: 62, pairs: 63, skeletons: 62, dig: 125, sort: 63, care: 62, sandWriting: 125, labyrinth: 125, picturePuzzle: 125, whoseJaw: 125 });
   });
 
   it.each([
@@ -150,7 +150,7 @@ describe("choosing the featured game", () => {
   });
 
   it("takes the games in their tiles' order on the home page", () => {
-    expect(HOME_GAMES).toEqual([...TILES.map(([game]) => game), "picturePuzzle"]);
+    expect(HOME_GAMES).toEqual([...TILES.map(([game]) => game), "picturePuzzle", "whoseJaw"]);
   });
 });
 

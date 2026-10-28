@@ -11543,6 +11543,82 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .labyrinth-record .best-score-value { color: #ece8de; }
 [data-theme="dark"] .labyrinth-record .best-score-beaten { color: #9ca3b6; }
 
+
+.whose-jaw-welcome,
+.whose-jaw-destination {
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: calc(28px + env(safe-area-inset-top)) calc(28px + var(--screen-right)) calc(28px + env(safe-area-inset-bottom)) calc(28px + var(--screen-left));
+  background: #f2efe8;
+  color: #1d2742;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+.whose-jaw-welcome header,
+.whose-jaw-destination header { display: flex; }
+.whose-jaw-welcome-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+  max-width: 1200px;
+  margin: auto;
+  min-height: 65vh;
+  min-height: 65dvh;
+}
+.whose-jaw-hero { position: relative; min-width: 0; }
+.whose-jaw-gummy { width: 100%; height: auto; }
+.whose-jaw-chomp {
+  width: 60%;
+  margin: -22% 0 0 30%;
+  position: relative;
+  transform-origin: center;
+}
+.whose-jaw-chomp[data-ready] { animation: whose-jaw-chomp var(--motion-alive) var(--ease-out) 2; }
+.whose-jaw-chomp .picture { width: 100%; height: auto; }
+@keyframes whose-jaw-chomp {
+  50% { transform: scaleY(calc(1 - .3 * var(--motion-amount))) rotate(calc(-8deg * var(--motion-amount))); }
+}
+.whose-jaw-start { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.whose-jaw-start h1 { margin: 0; font-size: clamp(28px, 4vw, 54px); line-height: 1.15; }
+.whose-jaw-badges { display: flex; flex-wrap: wrap; gap: 12px; }
+.whose-jaw-badges p { margin: 0; padding: 8px 16px; border-radius: 24px; background: #e6e2d9; display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 700; }
+.whose-jaw-play,
+.whose-jaw-shelf { display: flex; align-items: center; justify-content: center; gap: 14px; min-height: 64px; padding: 16px; border: 0; border-radius: 24px; font-weight: 700; font-size: clamp(20px, 2.6vw, 32px); }
+.whose-jaw-play { background: #e39b2d; color: #1d2742; }
+.whose-jaw-shelf { background: #fffdf8; color: #1d2742; }
+.whose-jaw-play svg,
+.whose-jaw-shelf svg { width: 32px; height: 32px; flex-shrink: 0; }
+.whose-jaw-tile,
+.featured-card[data-game="whoseJaw"] { background: #e39b2d; color: #1d2742; }
+.whose-jaw-tile { position: relative; flex: 1 1 0; min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; border: 0; border-radius: 28px; text-align: left; }
+.whose-jaw-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
+.whose-jaw-tile-row { display: flex; align-items: center; gap: 8px; padding: 12px; font-size: 22px; font-weight: 700; }
+.whose-jaw-tile-count { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 24px; background: #fffdf8; color: #1d2742; font-size: 20px; }
+.featured-card[data-game="whoseJaw"] .whose-jaw-tile-picture { height: 100%; }
+.whose-jaw-destination { display: flex; flex-direction: column; gap: 20px; align-items: center; }
+.whose-jaw-destination > .picture { width: min(50vw, 400px); height: auto; }
+.whose-jaw-destination > button { padding: 20px; display: flex; gap: 12px; align-items: center; background: #fffdf8; color: #1d2742; }
+html[data-size="tall"] .whose-jaw-welcome-body,
+html[data-size="tall-narrow"] .whose-jaw-welcome-body { grid-template-columns: minmax(0, 1fr); gap: 8px; max-width: 620px; }
+html[data-size="tall"] .whose-jaw-hero,
+html[data-size="tall-narrow"] .whose-jaw-hero { width: 70%; margin: auto; }
+html[data-size="tall-narrow"] .whose-jaw-welcome { padding: calc(16px + env(safe-area-inset-top)) calc(16px + var(--screen-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + var(--screen-left)); }
+html[data-size="wide-short"] .whose-jaw-welcome { padding: calc(12px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) calc(12px + env(safe-area-inset-bottom)) calc(20px + var(--screen-left)); }
+html[data-size="wide-short"] .whose-jaw-start { gap: 8px; }
+html[data-size="wide-short"] .whose-jaw-start h1 { font-size: 28px; }
+html[data-size="wide-short"] .whose-jaw-play,
+html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 8px; font-size: 20px; }
+
+[data-theme="dark"] .whose-jaw-welcome,
+[data-theme="dark"] .whose-jaw-destination { background: #0f1320; color: #ece8de; }
+[data-theme="dark"] .whose-jaw-badges p { background: #222a3d; }
+[data-theme="dark"] .whose-jaw-shelf,
+[data-theme="dark"] .whose-jaw-tile-count,
+[data-theme="dark"] .whose-jaw-destination > button { background: #181e2e; color: #ece8de; }
+[data-theme="dark"] .whose-jaw-play,
+[data-theme="dark"] .whose-jaw-tile,
+[data-theme="dark"] .featured-card[data-game="whoseJaw"] { background: #f2b24b; color: #1d2742; }
+
 /* Reduced motion comes after every rule it overrides, so that it wins
    over them: a later rule of the same weight would undo it. */
 @media (prefers-reduced-motion: reduce) {
@@ -11553,6 +11629,9 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
     --motion-stagger: 0ms;
     --motion-amount: 0;
   }
+
+  .whose-jaw-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
 
   .labyrinth-board-screen,
   .labyrinth-step {

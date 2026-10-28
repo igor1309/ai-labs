@@ -160,6 +160,11 @@ describe("the motion", () => {
     ]);
   });
 
+  it("chomps the decoded welcome jaw twice and uses a short fade with reduced motion", () => {
+    expect(declared(PLAIN, ".whose-jaw-chomp[data-ready]").animation).toBe("whose-jaw-chomp var(--motion-alive) var(--ease-out) 2");
+    expect(declared(REDUCED, ".whose-jaw-chomp[data-ready]").animation).toBe("fade-in var(--motion-small) var(--ease-out) both");
+  });
+
   it("has reduced motion win over the rules it overrides: none of them comes after it to undo it", () => {
     const reducedAt = RULES.findIndex(({ prelude }) => prelude === "@media (prefers-reduced-motion: reduce)");
     const overridden = new Set(REDUCED.map(({ prelude }) => prelude));

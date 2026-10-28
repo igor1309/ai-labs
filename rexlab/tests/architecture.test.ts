@@ -52,6 +52,7 @@ const SCREENS = [
   "PairsBoardScreen.tsx",
   "PairsResultScreen.tsx",
   "PairsWelcomeScreen.tsx",
+  "WhoseJawWelcomeScreen.tsx",
   "PicturePuzzleBoardScreen.tsx",
   "PicturePuzzleChoiceScreen.tsx",
   "PicturePuzzleResultScreen.tsx",
@@ -108,6 +109,7 @@ const COMPOSITION = [
   "main.tsx",
   "pairsGame.tsx",
   "picturePuzzleGame.tsx",
+  "whoseJawGame.tsx",
   "presentation.ts",
   "quizGame.tsx",
   "root.ts",
@@ -159,6 +161,13 @@ describe("the import graph", () => {
       "LabyrinthBoardScreen.tsx", "LabyrinthResultScreen.tsx", "screens.ts", "startLevel.ts", "levelOffer.ts", BEST_SCORE
     ]));
     expect(edges((file) => file === "labyrinthGame.tsx", (target) => ADAPTERS.includes(target))).toEqual([]);
+  });
+
+  it("wires Whose Jaw through its game module, with presentation independent of persistence", () => {
+    expect(GRAPH.get("App.tsx")).toContain("whoseJawGame.tsx");
+    expect(GRAPH.get("whoseJawGame.tsx")).toEqual(expect.arrayContaining(["WhoseJawWelcomeScreen.tsx", "screens.ts", "startLevel.ts"]));
+    expect(edges((file) => file !== "App.tsx", (target) => target === "whoseJawGame.tsx")).toEqual([]);
+    expect(edges((file) => file === "whoseJawGame.tsx" || file === "WhoseJawWelcomeScreen.tsx", (target) => ADAPTERS.includes(target))).toEqual([]);
   });
 
   it("is read from the source", () => {
@@ -333,7 +342,7 @@ describe("the import graph", () => {
 const TAP_SAFETY = "docs/tap-safety.md";
 
 // The modules that keep screens, each with useScreens.
-const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "digGame.tsx", "pairsGame.tsx", "picturePuzzleGame.tsx", "skeletonGame.tsx", "sortingGame.tsx", "labyrinthGame.tsx"];
+const SCREEN_KEEPERS = ["App.tsx", "careGame.tsx", "digGame.tsx", "pairsGame.tsx", "picturePuzzleGame.tsx", "skeletonGame.tsx", "sortingGame.tsx", "labyrinthGame.tsx", "whoseJawGame.tsx"];
 
 // The module that alone reads the browser's clock and timers, and the
 // service worker's own root, which runs apart from the app and its taps.

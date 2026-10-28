@@ -47,6 +47,31 @@ export function localPicturePuzzleChoice(storage: () => KeyValueStorage) {
   };
 }
 
+// A welcome-level choice writes only the choice, preserving rewards and
+// collection entries that another screen may have saved meanwhile.
+export function localWhoseJawProgress(storage: () => KeyValueStorage, ids: readonly string[]) {
+  const entry = gameProgress<{ levelChoice?: LevelChoice }>(storage, "whose-jaw", {}, (raw) => {
+    const levelChoice = choiceOf(raw.levelChoice);
+    return levelChoice ? { levelChoice } : {};
+  });
+  return {
+    load() {
+      let raw: string | null;
+      try { raw = storage().getItem(PROGRESS_KEY); } catch { return undefined; }
+      const saved = parse(raw)?.["whose-jaw"];
+      const fields = isObject(saved) ? saved : {};
+      const best = isObject(fields.best) ? fields.best : {};
+      const score = (value: unknown): number | null => Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 3 ? value as number : null;
+      const earned = Array.isArray(fields.earned) ? fields.earned : [];
+      return {
+        best: { hatchling: score(best.hatchling), explorer: score(best.explorer), paleontologist: score(best.paleontologist) },
+        earned: ids.filter((id) => earned.includes(id)), levelChoice: choiceOf(fields.levelChoice)
+      };
+    },
+    saveLevel(levelChoice: LevelChoice): void { entry.save({ levelChoice }); }
+  };
+}
+
 // The per-level collections are also their best scores: completing the
 // same picture again earns a round star without adding stored currency.
 export function localPicturePuzzleProgress(storage: () => KeyValueStorage) {
