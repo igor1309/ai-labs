@@ -1,6 +1,7 @@
 import AppKit
 @testable import Audelin
 @testable import Compose
+import PanelUI
 import Preferences
 import Recording
 import Testing
@@ -9,6 +10,33 @@ import Testing
 struct FloatingPanelTests {
 
     @Test func windowDriverCarriesConfigurationVisibilityCloseAndFrames() async throws {
+
+        let recording = AsyncStream<RecordingState>.makeStream()
+        let failures = AsyncStream<any Error>.makeStream()
+        let states = AsyncStream<PanelState>.makeStream()
+        var events: [PanelEvent] = []
+        let model = await AudelinMenu(storage: WindowPreferences(), makeApplication: {
+            MenuApplication(states: { recording.stream }, failures: failures.stream,
+                send: { _ in Issue.record("Content binding does not send recording events") },
+                quit: { Issue.record("Content binding does not quit") },
+                panelStates: { states.stream }, sendPanel: { events.append($0) })
+        }, openFolder: { _ in Issue.record("Content binding does not open folders") },
+            terminate: { Issue.record("Content binding does not terminate") }, didDeliver: {},
+            sink: WindowLogSpy(), presentPanel: { _ in Issue.record("Content binding does not change visibility") },
+            sleep: { _ in Issue.record("Content binding does not start a hide delay") })
+        let initial = panelContentBinding(model)
+        #expect(initial.state == PanelState(recording: .off, log: .empty))
+        let state = PanelState(recording: .on(elapsed: "00:02"), log: .liveTextOff(kept: nil))
+        states.continuation.yield(state)
+        recording.continuation.finish()
+        failures.continuation.finish()
+        states.continuation.finish()
+        await model.waitForObservers()
+        let updated = panelContentBinding(model)
+        #expect(updated.state == state)
+        #expect(initial.state == PanelState(recording: .off, log: .empty))
+        await updated.event(.jumpToLive).value
+        #expect(events == [.jumpToLive])
 
         let screen = NSRect(x: -1440, y: 24, width: 1440, height: 876)
         let initialFrame = NSRect(x: 0, y: 0, width: 360, height: 588)
@@ -28,27 +56,14 @@ struct FloatingPanelTests {
                     #expect(style == [.titled, .closable, .resizable, .nonactivatingPanel])
                     return window
                 }, screenFrame: { screenReads += 1; return screen })
-                let states = AsyncStream<RecordingState> { continuation in
-                    var state = RecordingState()
-                    state.phase = .beginning
-                    state.session = .init(id: 1, origin: .hand)
-                    continuation.yield(state)
-                    continuation.finish()
-                }
-                let model = await AudelinMenu(storage: WindowPreferences(), makeApplication: {
-                    MenuApplication(states: { states }, failures: .init { $0.finish() },
-                        send: { _ in Issue.record("Window actions do not send recording events") },
-                        quit: { Issue.record("Window actions do not quit") },
-                        panelStates: { .init { $0.finish() } },
-                        sendPanel: { _ in Issue.record("Window actions do not send reading events") })
-                }, openFolder: { _ in Issue.record("Window actions do not open folders") },
-                    terminate: { Issue.record("Window actions do not terminate") }, didDeliver: {},
-                    sink: WindowLogSpy(), presentPanel: { [weak panel] in panel?.setVisible($0) },
-                    sleep: { _ in Issue.record("Window actions do not start a hide delay") })
-                await model.waitForObservers()
+                let content = NSView()
+                var closes = 0
+                panel.setVisible(initiallyVisible)
                 #expect(window.visibility.isEmpty)
-                if !initiallyVisible { panel.setVisible(false) }
-                panel.install(model)
+                panel.install(content: content, onClose: { [weak panel] in
+                    closes += 1
+                    panel?.setVisible(false)
+                })
 
                 #expect(window.title == "Audelin")
                 #expect(!window.isReleasedWhenClosed)
@@ -58,7 +73,7 @@ struct FloatingPanelTests {
                 #expect(window.level == .floating)
                 #expect(window.collectionBehavior == [.canJoinAllSpaces, .canJoinAllApplications, .fullScreenAuxiliary])
                 #expect(window.minSize == NSSize(width: 300, height: 240))
-                #expect(window.contentView != nil)
+                #expect(window.contentView === content)
                 #expect(window.restoreNames == ["TranscriptPanel"])
                 #expect(window.autosaveNames == ["TranscriptPanel"])
                 #expect(window.frame == expectedFrame)
@@ -71,10 +86,11 @@ struct FloatingPanelTests {
                 panel.setVisible(true)
                 #expect(window.visibility == [initiallyVisible, false, true])
                 let close = try #require(window.shouldClose)
+                #expect(closes == 0)
                 #expect(close() == false)
+                #expect(closes == 1)
                 #expect(window.visibility == [initiallyVisible, false, true, false])
-                #expect(model.menu.entries.contains(.button("Показать панель", .showPanel)))
-                await model.perform(.showPanel)
+                panel.setVisible(true)
                 #expect(window.visibility == [initiallyVisible, false, true, false, true])
                 #expect(creations == 1)
                 #expect(window.frame == expectedFrame)

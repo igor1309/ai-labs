@@ -1,7 +1,4 @@
 import AppKit
-import Compose
-import PanelUI
-import SwiftUI
 
 @MainActor
 protocol PanelWindowDriver: AnyObject {
@@ -39,7 +36,7 @@ final class FloatingPanel {
         self.screenFrame = screenFrame
     }
 
-    func install(_ model: AudelinMenu) {
+    func install(content: NSView, onClose: @escaping () -> Void) {
 
         let panel = makeWindow(
             .init(x: 0, y: 0, width: 360, height: 560),
@@ -53,7 +50,7 @@ final class FloatingPanel {
         panel.level = .floating
         panel.collectionBehavior = [.canJoinAllSpaces, .canJoinAllApplications, .fullScreenAuxiliary]
         panel.minSize = .init(width: 300, height: 240)
-        panel.contentView = NSHostingView(rootView: PanelContent(model: model))
+        panel.contentView = content
         if !panel.setFrameUsingName("TranscriptPanel"), let screen = screenFrame() {
             var frame = panel.frame
             frame.origin = .init(x: screen.maxX - frame.width,
@@ -61,8 +58,8 @@ final class FloatingPanel {
             panel.setFrame(frame, display: false)
         }
         panel.setFrameAutosaveName("TranscriptPanel")
-        panel.shouldClose = { [weak model] in
-            model?.panelClosed()
+        panel.shouldClose = {
+            onClose()
             // Retain one window and its frame for the next recording or menu reopen.
             return false
         }
@@ -88,26 +85,4 @@ final class TranscriptPanel: NSPanel, PanelWindowDriver, NSWindowDelegate {
 
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
-}
-
-private struct PanelContent: View {
-
-    let model: AudelinMenu
-
-    var body: some View {
-
-        GeometryReader { geometry in
-            PanelView(state: model.panelState, event: { event in
-                Task { await model.sendPanel(event) }
-            }, config: config(width: geometry.size.width))
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        }
-    }
-
-    private func config(width: CGFloat) -> PanelConfig {
-
-        var config = PanelConfig.glassLedger
-        config.panelWidth = width
-        return config
-    }
 }
