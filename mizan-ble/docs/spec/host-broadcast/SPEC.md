@@ -47,7 +47,7 @@ Feature: Broadcasting a locked amount until a client holds a secure link
 
   Scenario: S-6 The link is secure
     Given a client's key has arrived
-    When the session key is derived and the amount is sent
+    When the session key is derived and the protected amount is sent
     Then I can read that a secure link is handed over, with no countdown
 
   Scenario: S-7 The client's key does not agree
@@ -60,9 +60,9 @@ Feature: Broadcasting a locked amount until a client holds a secure link
     When the client's link drops
     Then I can read that the handshake failed, and that the host can broadcast again or take a new amount
 
-  Scenario: S-9 The amount cannot be sent
+  Scenario: S-9 The amount cannot be protected or sent
     Given the session key is derived
-    When sending the amount fails
+    When the session cannot protect the amount, or sending it fails
     Then I can read that the handshake failed, and that the host can broadcast again or take a new amount
 
   Scenario: S-10 Broadcast again
