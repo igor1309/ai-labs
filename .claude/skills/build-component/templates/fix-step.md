@@ -15,9 +15,17 @@ The judge's fix ruling from agister code_review of commit <sha>:
 - **<the item's title>** (<severity>). <The item's detail and action,
   verbatim.>
 
+<If a rejected major was real and only the goal stood in its way:>
+
+And, decided by the caller, from a finding the judge rejected only because
+the goal required it:
+
+- **<the finding's title>.** <What is wrong, and the goal corrected.>
+
 ## Constraints
 
-Write the new test first and show it red on its assertion, then green;
+Write the new test first and show it red on its assertion, then green (a
+test that pins behaviour already there is green only; say so);
 put the red and green runs' failing and passing lines in your report's
 checks. No mutation tests. Do not import any other module. Do not change
 any spec; if the ruling needs a spec change, stop and report it. If the
