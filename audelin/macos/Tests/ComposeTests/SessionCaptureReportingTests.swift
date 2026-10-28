@@ -29,6 +29,17 @@ struct SessionCaptureReportingTests {
         }
     }
 
+    @Test(arguments: [SessionSide.microphone, .call])
+    func streamFailingBeforeAnyPieceReachesSession(side: SessionSide) async throws {
+
+        try await withSessionRig(streamFailure: side) { rig, _ in
+            rig.session.send(.begin(liveText: true))
+            let state = try await rig.state { $0.health(of: .capture(side)) != .fine }
+            #expect(state.health(of: .capture(side)) == .failed(String(describing: ScriptFailure.failed)))
+            #expect(state.failures == [.init(piece: "\(side) capture", message: String(describing: ScriptFailure.failed))])
+        }
+    }
+
     @Test func switchingTextOnMarksUndeliveredCaptureAsWrittenLater() async throws {
 
         let delivery = Signal(), written = Signal()

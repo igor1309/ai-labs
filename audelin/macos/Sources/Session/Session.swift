@@ -292,6 +292,7 @@ public enum SessionReducer {
             recordFailure(&state, piece, error)
             if piece == .folder { state.cannotRecord = "folder: \(error)" }
             else { updateRecordability(&state) }
+            if case let .capture(side) = piece { return stopFailedCapture(&state, side) }
             return (state, nil)
 
         case let .folderFinished(error):
@@ -421,6 +422,18 @@ public enum SessionReducer {
         if state.processes == .up { state.processes = .closed }
         state.phase = .ended
         return (state, nil)
+    }
+
+    /// Ending stops every capture still up, so only bring-up and recording stop one here,
+    /// and only between operations, so that one runs at a time.
+    private static func stopFailedCapture(_ state: inout SessionState, _ side: SessionSide) -> (SessionState, SessionEffect?) {
+
+        guard state.phase != .ending, state.capture(for: side) == .up, state.pendingLiveText == nil else { return (state, nil) }
+        let pieces = [state.folder, state.processes, state.microphoneCapture, state.callCapture,
+                      state.microphoneTrack, state.callTrack, state.callText, state.transcript]
+        guard !pieces.contains(.starting), !pieces.contains(.stopping) else { return (state, nil) }
+        setCapture(&state, side, .stopping)
+        return (state, .stopCapture(side))
     }
 
     private static func addFailure(_ state: inout SessionState, _ failure: SessionFailure) {
