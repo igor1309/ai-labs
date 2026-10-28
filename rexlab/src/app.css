@@ -11693,6 +11693,7 @@ html[data-size="wide-short"] .whose-jaw-welcome-actions svg { width: 24px; heigh
 
 .whose-jaw-board {
   min-height: 100dvh; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px;
+  overflow-x: clip;
   padding: calc(16px + env(safe-area-inset-top)) calc(20px + var(--screen-right)) calc(16px + env(safe-area-inset-bottom)) calc(20px + var(--screen-left));
   background: #f2efe8; color: #1d2742;
 }

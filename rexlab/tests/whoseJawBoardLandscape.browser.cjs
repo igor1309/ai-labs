@@ -1,13 +1,10 @@
-// Run against the app's separately started dev server, with Playwright on NODE_PATH:
-// BOARD_URL=http://127.0.0.1:5188 node tests/whoseJawBoardLandscape.browser.cjs
 const assert = require("node:assert/strict");
-const { mkdir } = require("node:fs/promises");
+const { mkdtemp } = require("node:fs/promises");
+const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 const { chromium } = require("playwright");
 const jaws = require("../src/data/jaws.json");
 
-const url = process.env.BOARD_URL || "http://127.0.0.1:5188";
-const screenshots = process.env.BOARD_SCREENSHOTS || "/tmp/lab-705";
 const sizes = [[1180, 820], [1366, 956], [844, 390], [390, 844], [820, 1180]];
 
 async function settle(page) {
@@ -72,7 +69,7 @@ function fits(measured, width, height) {
   }
 }
 
-async function check(browser, width, height, language, theme, level, reducedMotion = "reduce") {
+async function check(browser, url, screenshots, width, height, language, theme, level, reducedMotion = "reduce") {
   const context = await browser.newContext({ viewport: { width, height }, reducedMotion, colorScheme: theme });
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
@@ -138,6 +135,14 @@ async function check(browser, width, height, language, theme, level, reducedMoti
     }
     await page.waitForFunction(() => document.querySelector(".whose-jaw-board")?.dataset.phase === "reading");
     await settle(page);
+    if (reducedMotion === "no-preference") {
+      const walk = await owner.evaluate((card) => ({
+        distance: new DOMMatrixReadOnly(getComputedStyle(card).transform).m41,
+        right: card.getBoundingClientRect().right
+      }));
+      assert.equal(walk.distance, 80, "normal motion keeps the full outward walk");
+      assert(walk.right > width, "walking dinosaur exercises containment beyond the viewport");
+    }
     if (level === 2) {
       assert((await page.locator(".jaw-feedback p").textContent()).includes(jaws.find((jaw) => jaw.id === id).fact[language]));
     } else {
@@ -167,19 +172,29 @@ async function check(browser, width, height, language, theme, level, reducedMoti
 }
 
 (async () => {
-  await mkdir(screenshots, { recursive: true });
-  const browser = await chromium.launch({
-    executablePath: process.env.CHROME_PATH || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-    headless: true
-  });
+  const screenshots = await mkdtemp(join(tmpdir(), "rexlab-board-"));
+  console.log(`Board screenshots: ${screenshots}`);
+  let server, browser;
   try {
-    for (const [width, height] of sizes) for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) for (const level of [0, 1, 2]) {
-      await check(browser, width, height, language, theme, level);
+    let url = process.env.BOARD_URL;
+    if (!url) {
+      const { createServer } = await import("vite");
+      server = await createServer({ root: join(__dirname, ".."), server: { host: "127.0.0.1", port: 0, open: false } });
+      await server.listen();
+      url = server.resolvedUrls.local[0];
     }
-    await check(browser, 1180, 820, "en", "light", 2, "no-preference");
+    browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
+    for (const [width, height] of sizes) for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) for (const level of [0, 1, 2]) {
+      await check(browser, url, screenshots, width, height, language, theme, level);
+    }
+    await check(browser, url, screenshots, 1180, 820, "en", "light", 2, "no-preference");
     console.log("PASS 61 board configurations: all geometry and interactions fit");
   } finally {
-    await browser.close();
+    try {
+      await browser?.close();
+    } finally {
+      await server?.close();
+    }
   }
 })().catch((error) => {
   console.error(error);
