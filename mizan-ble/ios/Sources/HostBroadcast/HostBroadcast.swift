@@ -244,6 +244,7 @@ public enum HostBroadcast {
             return end(state, phase: .ready, amount: state.amount, reason: reason)
         case .bluetoothUnavailable(let attempt, let reason):
             guard state.attempt == attempt else { return (state, nil) }
+            if state.expiryPending { return end(state, phase: .timedOut, amount: "") }
             if state.isHandshaking { return end(state, phase: .failed, amount: state.amount, reason: reason) }
             guard state.canCancel else { return (state, nil) }
             return end(state, phase: .ready, amount: state.amount, reason: reason)
@@ -293,6 +294,7 @@ public enum HostBroadcast {
             return end(state, phase: .failed, amount: state.amount, reason: reason)
         case .linkLost(let attempt, let link)
             where state.attempt == attempt && state.link == link && state.isHandshaking:
+            if state.expiryPending { return end(state, phase: .timedOut, amount: "") }
             return end(state, phase: .failed, amount: state.amount, reason: "Client link lost")
         case .countdownStopped(let attempt, retire: true):
             return (state, .retire(attempt))

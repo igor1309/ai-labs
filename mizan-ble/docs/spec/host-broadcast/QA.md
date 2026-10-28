@@ -15,7 +15,7 @@ Locked, serving or advertising fails: the state reads the error and 124.50 not l
 
 ## S-3 The countdown ends with no secure link
 
-Advertised, a countdown event reaches zero: advertising stopped, the service retired, the session closed; the state reads timed out with an empty amount. Evidence: HostBroadcastTests.countdownExpiryClearsAmountAndRetiresSession. The same deadline applies throughout the handshake. Evidence: HostBroadcastTests.countdownRemainsHandshakeDeadline. Through a real machine, expiry before a queued seal result prevents a send; a send started first keeps its resources until its result arrives, handing over on success and applying expiry on failure. Evidence: HostBroadcastTests.queuedSendAfterExpiryDoesNotReachClient.
+Advertised, a countdown event reaches zero: advertising stopped, the service retired, the session closed; the state reads timed out with an empty amount. Evidence: HostBroadcastTests.countdownExpiryClearsAmountAndRetiresSession. The same deadline applies throughout the handshake. Evidence: HostBroadcastTests.countdownRemainsHandshakeDeadline. Through a real machine, expiry before a queued seal result prevents a send; a send started first keeps its resources until its result arrives, handing over on success and applying expiry on failure. Evidence: HostBroadcastTests.queuedSendAfterExpiryDoesNotReachClient. A lost link or Bluetooth before that result also times out. Evidence: HostBroadcastTests.lossAfterExpiryDuringSendTimesOut.
 
 ## S-4 Cancel while advertising
 

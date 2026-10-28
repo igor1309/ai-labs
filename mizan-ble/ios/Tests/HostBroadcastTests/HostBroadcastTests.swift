@@ -190,6 +190,27 @@ struct HostBroadcastTests {
         #expect(!fake.calls.contains { if case .sent = $0 { true } else { false } })
     }
 
+    @Test(arguments: [false, true])
+    func lossAfterExpiryDuringSendTimesOut(_ bluetooth: Bool) async throws {
+        let loss: Broadcast.Event = bluetooth
+            ? .bluetoothUnavailable(first, reason: "Bluetooth is off") : .linkLost(first, client)
+        let fake = Ports(seconds: 30, sessions: [session(1)],
+                         protectedAmounts: ["124.50": protectedAmount])
+        let flow = Flow(fake)
+        _ = try await flow.beginHandshake(stoppingAt: .sealingAmount)
+        // The send is under way and its result still queued when the countdown ends.
+        _ = try #require(flow.accept(.amountSealed(first, protectedAmount)))
+        #expect(flow.accept(.secondsLeft(first, 0)) == nil)
+
+        await flow.send(loss)
+
+        #expect(flow.state.phase == .timedOut)
+        #expect(flow.state.amount.isEmpty)
+        #expect(flow.state.reason == nil)
+        #expect(!flow.state.canRetry)
+        expectRetired(fake, first)
+    }
+
     @Test(arguments: [false, true], [false, true])
     func queuedSendAfterExpiryDoesNotReachClient(_ expireFirst: Bool, _ sendFails: Bool) async throws {
         let fake = Ports(seconds: 30, sessions: [session(1)],
