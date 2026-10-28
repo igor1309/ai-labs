@@ -50,24 +50,31 @@ struct TrackFileConversionTests {
             let sizes = [1, 31, 997, 4_096, 7, 8_191]
             var position = 0
             var chunk = 0
+            var duration = 0.0
             var expected: [Float] = []
             var acknowledged = Data()
             while position < input.count {
                 let end = min(input.count, position + sizes[chunk % sizes.count])
                 let samples = Array(input[position..<end])
-                expected += try referenceWrite(samples, preceding: Array(input[..<position]), rate: rate)
+                duration += Double(samples.count) / rate
+                let last = Int((duration * 48_000).rounded())
+                expected += try referenceWrite(
+                    samples, preceding: Array(input[..<position]), rate: rate, frames: expected.count..<last
+                )
                 try await track.write(samples, sampleRate: rate)
-                let written = try await track.read(from: 0, to: Double(expected.count) / 48_000)
+                let disk = try externalSamples(url)
+                try #require(disk.count == last)
+                let written = try await track.read(from: 0, to: duration)
                 expectSamples(written, expected)
                 let bytes = try Data(contentsOf: url).dropFirst(68)
                 #expect(bytes.starts(with: acknowledged))
                 acknowledged = Data(bytes)
-                expectSamples(try externalSamples(url), expected)
+                expectSamples(disk, expected)
                 position = end
                 chunk += 1
             }
             try await track.close()
-            expectSamples(try await track.read(from: 0, to: Double(expected.count) / 48_000), expected)
+            expectSamples(try await track.read(from: 0, to: duration), expected)
             expectSamples(try externalSamples(url), expected)
             try await expectAfinfo(url, frames: expected.count)
         }
@@ -105,7 +112,7 @@ private final class FailingConversion: TrackFileConversion {
 
     private var written = false
 
-    func convert(_ samples: [Float]) throws -> [Float] {
+    func convert(_ samples: [Float], frames: Int) throws -> [Float] {
 
         if written { throw ConversionFailure() }
         written = true
