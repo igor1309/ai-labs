@@ -3,6 +3,32 @@ import Testing
 
 @MainActor
 struct MachineTests {
+    @Test func effectStartsBeforeNextReduction() async {
+        let effects = HeldEffects(results: [1: .value(11)])
+        let record = OrderRecord()
+        let machine = Machine<[Int], Event, Int>(initialState: [], reducer: { state, event in
+            switch event {
+            case .work(let number):
+                record.entries.append("first reduction")
+                return (state + [number], number)
+            default:
+                record.entries.append("later reduction")
+                return (state, nil)
+            }
+        }, handler: { effect in
+            record.entries.append("effect started")
+            return await effects.run(effect)
+        })
+        defer { effects.releaseAll(); machine.end() }
+
+        machine.send(.work(1))
+        machine.send(.value(2))
+
+        #expect(record.entries == ["first reduction", "effect started", "later reduction"])
+        effects.releaseAll()
+        await machine.waitForEffects()
+    }
+
     @Test func eventsAreReducedInArrivalOrder() {
         let effects = HeldEffects(results: [:])
         let machine = makeMachine(effects)
@@ -11,6 +37,25 @@ struct MachineTests {
         for number in 1...10 { machine.send(.value(number)) }
 
         #expect(machine.state == Array(1...10))
+    }
+
+    @Test(arguments: [false, true])
+    func synchronousHandlerCompletionFollowsEventsAlreadySent(_ returnsResult: Bool) async {
+        let machine = Machine<[Int], Event, Int>(initialState: [], reducer: { state, event in
+            switch event {
+            case .work(let number): (state + [number], number)
+            case .value(let number): (state + [number], nil)
+            default: (state, nil)
+            }
+        }, handler: { _ in returnsResult ? .value(11) : nil })
+        defer { machine.end() }
+
+        machine.send(.work(1))
+        machine.send(.value(2))
+
+        #expect(machine.state == [1, 2])
+        await machine.waitForEffects()
+        #expect(machine.state == (returnsResult ? [1, 2, 11] : [1, 2]))
     }
 
     @Test func effectResultChangesState() async {
@@ -167,7 +212,7 @@ struct MachineTests {
         #expect(await states.next() == nil)
     }
 
-    @Test func endingBeforeEffectStartsPreventsWork() async {
+    @Test func endingImmediatelyAfterSendDropsResult() async {
         let effects = HeldEffects(results: [1: .value(11)])
         let machine = makeMachine(effects)
         machine.send(.work(1))
@@ -177,7 +222,8 @@ struct MachineTests {
         await machine.waitForEffects()
 
         #expect(machine.state == [1])
-        #expect(effects.output == [])
+        // Sending starts synchronous work before the caller can end the machine.
+        #expect(effects.output == [1])
     }
 
     private func makeMachine(_ effects: HeldEffects) -> Machine<[Int], Event, Int> {
@@ -203,6 +249,11 @@ private enum Event: Sendable {
     case work(Int)
     case silent(Int)
     case ignored
+}
+
+@MainActor
+private final class OrderRecord {
+    var entries: [String] = []
 }
 
 @MainActor
