@@ -3,6 +3,7 @@
 ## 2026-10-28
 
 - HostBroadcast takes a locked amount through advertising and the handshake to a secure link, with a countdown, cancellation, retry and a fresh amount after payment; the session protects the amount before it is sent (LAB-652).
+- An effect starts before the next event is reduced, so a flow never has to check whether its effect is still wanted (LAB-683).
 
 ## 2026-10-27
 
