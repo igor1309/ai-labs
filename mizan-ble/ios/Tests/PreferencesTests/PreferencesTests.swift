@@ -64,6 +64,19 @@ struct PreferencesTests {
         }
     }
 
+    @Test func registeredDefaultDoesNotReadFromAnEmptySuite() {
+        withSuite { suiteName in
+            let key = "registered.\(UUID().uuidString)"
+            let standard = UserDefaults.standard
+            let registration = standard.volatileDomain(forName: UserDefaults.registrationDomain)
+            defer { standard.setVolatileDomain(registration, forName: UserDefaults.registrationDomain) }
+            standard.register(defaults: [key: 90])
+            let preferences = Preferences(suiteName: suiteName)
+
+            #expect(preferences.value(for: key) == nil)
+        }
+    }
+
     private func withSuite(_ body: (String) -> Void) {
         let suiteName = "PreferencesTests.\(UUID().uuidString)"
         defer { UserDefaults(suiteName: suiteName)!.removePersistentDomain(forName: suiteName) }
