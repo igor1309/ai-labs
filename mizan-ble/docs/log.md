@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-28
+
+- HostPayment takes the client's decision through the operator's mock result, acknowledges decisions, and ends cancelled or lost-link payments before a new amount (LAB-653).
+
 ## 2026-10-27
 
 - HostPreview lets the operator inspect every host screen and its events, and export iPad PNGs in light and dark for comparison with the design (LAB-676).

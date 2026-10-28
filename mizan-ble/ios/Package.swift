@@ -7,6 +7,7 @@ let package = Package(
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "AmountEntry", targets: ["AmountEntry"]),
+        .library(name: "HostPayment", targets: ["HostPayment"]),
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
         .library(name: "HostUI", targets: ["HostUI"]),
         .library(name: "ModeSwitchUI", targets: ["ModeSwitchUI"]),
@@ -20,6 +21,8 @@ let package = Package(
         .library(name: "HostPicker", targets: ["HostPicker"]),
     ],
     targets: [
+        .target(name: "HostPayment"),
+        .testTarget(name: "HostPaymentTests", dependencies: ["HostPayment"]),
         .target(name: "AmountEntry"),
         .testTarget(name: "AmountEntryTests", dependencies: ["AmountEntry"]),
         .target(name: "HostUI", dependencies: ["DesignSystem"]),
