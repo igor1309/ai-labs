@@ -1,4 +1,3 @@
-import Machine
 import Synchronization
 
 public enum RecordingCondition: CaseIterable, Hashable, Sendable {
@@ -83,34 +82,28 @@ public enum RecordingEvent: Equatable, Sendable {
     case sessionReported(id: UInt64, RecordingSessionReport)
 }
 
-public enum RecordingEffect: Equatable, Sendable {
-
-    case beginSession(id: UInt64)
-    case endSession(id: UInt64)
-}
-
 public enum RecordingReducer {
 
-    public static func reduce(_ state: RecordingState, _ event: RecordingEvent) -> (RecordingState, RecordingEffect?) {
+    public static func reduce(_ state: RecordingState, _ event: RecordingEvent) -> RecordingState {
 
         var state = state
         switch event {
         case .callStarted:
-            guard !state.callOn else { return (state, nil) }
+            guard !state.callOn else { return state }
             state.callOn = true
-            guard state.automatic, !state.heldForCall else { return (state, nil) }
+            guard state.automatic, !state.heldForCall else { return state }
             if state.phase == .ending {
                 state.pendingCall = true
-                return (state, nil)
+                return state
             }
             return begin(&state, origin: .call)
 
         case .callEnded:
-            guard state.callOn else { return (state, nil) }
+            guard state.callOn else { return state }
             state.callOn = false
             state.heldForCall = false
             state.pendingCall = false
-            guard state.sessionBeganDuringCall else { return (state, nil) }
+            guard state.sessionBeganDuringCall else { return state }
             return end(&state)
 
         case .userStart:
@@ -124,7 +117,7 @@ public enum RecordingReducer {
         case let .automaticChanged(enabled):
             state.automatic = enabled
             if !enabled { state.pendingCall = false }
-            return (state, nil)
+            return state
 
         case let .conditionChanged(condition, available):
             if available { state.missing.remove(condition) }
@@ -132,7 +125,7 @@ public enum RecordingReducer {
             if !available && (condition == .callsFolder || condition == .room) {
                 return end(&state)
             }
-            return (state, nil)
+            return state
 
         case let .sessionReported(id, report):
             guard state.session?.id == id else {
@@ -140,12 +133,12 @@ public enum RecordingReducer {
                    case let .cannotRecord(reason) = report {
                     state.cannotRecord = reason
                 }
-                return (state, nil)
+                return state
             }
             switch report {
             case .ready:
                 if state.phase == .beginning { state.phase = .recording }
-                return (state, nil)
+                return state
             case let .cannotRecord(reason):
                 state.cannotRecord = reason
                 return end(&state)
@@ -156,63 +149,29 @@ public enum RecordingReducer {
                 let resumeCall = state.pendingCall && state.callOn && state.automatic && !state.heldForCall
                 state.pendingCall = false
                 if resumeCall { return begin(&state, origin: .call) }
-                return (state, nil)
+                return state
             }
         }
     }
 
-    private static func begin(_ state: inout RecordingState, origin: RecordingState.Origin) -> (RecordingState, RecordingEffect?) {
+    private static func begin(_ state: inout RecordingState, origin: RecordingState.Origin) -> RecordingState {
 
-        guard state.phase == .idle, state.missing.isEmpty else { return (state, nil) }
+        guard state.phase == .idle, state.missing.isEmpty else { return state }
         state.lastSessionID += 1
         state.session = .init(id: state.lastSessionID, origin: origin)
         // A hand start during a call belongs to that call too: Audelin may have missed its start.
         state.sessionBeganDuringCall = state.callOn
         state.phase = .beginning
         state.cannotRecord = nil
-        return (state, .beginSession(id: state.lastSessionID))
+        return state
     }
 
-    private static func end(_ state: inout RecordingState) -> (RecordingState, RecordingEffect?) {
+    private static func end(_ state: inout RecordingState) -> RecordingState {
 
         guard state.phase == .beginning || state.phase == .recording,
-              let session = state.session else { return (state, nil) }
+              state.session != nil else { return state }
         state.phase = .ending
-        return (state, .endSession(id: session.id))
-    }
-}
-
-/// Dispatches each effect to its supplied Session dependency and maps the result.
-public struct RecordingEffectHandler: Sendable {
-
-    private let session: any RecordingSession
-
-    public init(session: any RecordingSession) {
-
-        self.session = session
-    }
-
-    /// Delivers the one event that completes the effect, then finishes.
-    public func handle(_ effect: RecordingEffect) -> AsyncStream<RecordingEvent> {
-
-        AsyncStream { output in
-            let task = Task {
-                output.yield(await perform(effect))
-                output.finish()
-            }
-            output.onTermination = { _ in task.cancel() }
-        }
-    }
-
-    private func perform(_ effect: RecordingEffect) async -> RecordingEvent {
-
-        switch effect {
-        case let .beginSession(id):
-            return .sessionReported(id: id, await session.begin(id: id))
-        case let .endSession(id):
-            await session.end(id: id)
-            return .sessionReported(id: id, .ended)
-        }
+        return state
     }
 }
 
@@ -260,39 +219,5 @@ public final class RecordingDoer: Sendable {
                 await send(.sessionReported(id: id, .ended))
             }
         }
-    }
-}
-
-public final class Recording: Sendable {
-
-    public let machine: Machine<RecordingState, RecordingEvent, RecordingEffect>
-
-    public init(handler: RecordingEffectHandler, initial: RecordingState = .init()) {
-
-        // Bridge until the app composes Recording's model.
-        machine = Machine(initial: initial, reduce: RecordingReducer.reduce, handle: { effect in
-            for await event in handler.handle(effect) { return event }
-            preconditionFailure("A Recording effect delivers one event")
-        })
-    }
-
-    public nonisolated func send(_ event: RecordingEvent) {
-
-        machine.send(event)
-    }
-
-    public func states() async -> AsyncStream<RecordingState> {
-
-        await machine.states()
-    }
-
-    public func snapshot() async -> RecordingState {
-
-        await machine.snapshot()
-    }
-
-    public func end() async {
-
-        await machine.end()
     }
 }

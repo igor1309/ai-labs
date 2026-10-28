@@ -185,7 +185,9 @@ private func withCallForwarding(
 
 private final class CallSession: RecordingSession {
 
-    let effects = Values<RecordingEffect>()
+    enum Call: Equatable { case beginSession(id: UInt64), endSession(id: UInt64) }
+
+    let effects = Values<Call>()
 
     func begin(id: UInt64) async -> RecordingSessionReport {
 

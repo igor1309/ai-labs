@@ -79,7 +79,7 @@ final class TestRecording {
 
     init(initial: RecordingState, session: any RecordingSession) {
 
-        model = SyncModel(initialState: initial, reduce: { RecordingReducer.reduce($0, $1).0 })
+        model = SyncModel(initialState: initial, reduce: { RecordingReducer.reduce($0, $1) })
         let doer = RecordingDoer(session: session, send: { [weak self] in await self?.deliver($0) })
         self.doer = doer
         let states = states()

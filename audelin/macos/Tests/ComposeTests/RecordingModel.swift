@@ -30,7 +30,7 @@ private final class RecordingModel {
     init(initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void) {
 
         model = SyncModel(initialState: initial, reduce: { state, event in
-            let (next, _) = RecordingReducer.reduce(state, event)
+            let next = RecordingReducer.reduce(state, event)
             if next != state { log(next) }
             return next
         })

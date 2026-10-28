@@ -124,8 +124,7 @@ let package = Package(
             name: "Reading"
         ),
         .target(
-            name: "Recording",
-            dependencies: ["Machine"]
+            name: "Recording"
         ),
         .target(
             name: "SettingsUI",
