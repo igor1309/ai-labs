@@ -8,8 +8,9 @@ import { advanceJaw, placeJaw, startJawRound, type Jaw, type JawRound } from "./
 import type { StartTimer } from "./ownedTimers.ts";
 import { useGateShown } from "./OrientationGate.tsx";
 import { TEXTS } from "./language/texts.ts";
-import { WhoseJawDestination, WhoseJawWelcomeScreen } from "./WhoseJawWelcomeScreen.tsx";
+import { WhoseJawWelcomeScreen } from "./WhoseJawWelcomeScreen.tsx";
 import { WhoseJawResultScreen, type JawResult } from "./WhoseJawResultScreen.tsx";
+import { WhoseJawShelfScreen } from "./WhoseJawShelfScreen.tsx";
 import { beatBest } from "./bestScore.ts";
 import { acceptOffer, countBoard, NO_LEVEL_OFFER, offeredLevel, showOffer, type LevelOffer } from "./levelOffer.ts";
 
@@ -33,7 +34,7 @@ export type WhoseJawGameProps = {
   jawFor(id: string): string;
   gummyFor(id: string): string;
   foodFor(diet: "meat" | "plants"): string;
-  sounds: { play(sound: "snap" | "chomp" | "ow" | "hmm" | "steps" | "slide"): void; stop(): void };
+  sounds: { play(sound: "snap" | "chomp" | "ow" | "hmm" | "steps" | "slide", pitch?: number): void; stop(): void };
   voice: { speak(words: string, language: Language): void; stop(): void };
 };
 type WhoseJawScreen = { kind: "welcome" } | { kind: "board"; round: JawRound; newly: readonly string[] }
@@ -108,8 +109,9 @@ export function useWhoseJawGame(props: WhoseJawGameProps | undefined, setting: A
           onYes: () => keep({ ...latest.current, offer: acceptOffer(latest.current.offer), levelChoice: { level: screen.offer!, revision: setting.revision } }),
           onNotNow: () => {}
         } : undefined} />
-    : <WhoseJawDestination language={language} jawPicture={props.jawPicture} onBack={welcome} onHome={home} />;
-  return { content, phase: screen.kind, best: kept.best[level], collected: kept.earned.length, open: () => set({ kind: "welcome" }) };
+    : <WhoseJawShelfScreen language={language} jaws={props.jaws} earned={kept.earned} jawFor={props.jawFor} gummyFor={props.gummyFor}
+        sounds={props.sounds} voice={props.voice} startTimer={startTimer} onBack={welcome} onHome={home} />;
+  return { content, phase: screen.kind, best: kept.best[level], collected: kept.earned.length, open: () => set({ kind: "welcome" }), openShelf: () => set({ kind: "shelf" }) };
 }
 
 export const JAW_TIMING = { entering: 240, right: 1350, wrong: 1200, done: 320, reduced: 160, reducedWrong: 800 };

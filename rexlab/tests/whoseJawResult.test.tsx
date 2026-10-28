@@ -89,6 +89,8 @@ describe("Whose Jaw result and rewards", () => {
     for (const name of [TEXTS[language].playAgain, TEXTS[language].jawShelf, TEXTS[language].home]) expect(button(name).querySelector("svg")).not.toBeNull();
     fireEvent.click(button(TEXTS[language].jawShelf));
     expect(screen.getByRole("heading", { name: TEXTS[language].jawShelf })).toBeDefined();
+    expect(document.querySelectorAll(".jaw-shelf-place")).toHaveLength(16);
+    expect(Array.from(document.querySelectorAll(".jaw-shelf-place[data-unlocked]")).map((place) => place.getAttribute("aria-label")).sort()).toEqual(placed.map((id) => JAWS.find((jaw) => jaw.id === id)!.name[language].toLocaleUpperCase(language)).sort());
     fireEvent.click(button(TEXTS[language].back)); fireEvent.click(button(TEXTS[language].play));
     finish(app, 1, language);
     expect(screen.queryByRole("region", { name: TEXTS[language].jawCollection })).toBeNull();

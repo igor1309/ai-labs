@@ -1,7 +1,7 @@
 import type { Language } from "./language/language.ts";
 
 export type JawSound = "snap" | "chomp" | "ow" | "hmm" | "steps" | "slide";
-export type JawSounds = { play(sound: JawSound): void; stop(): void };
+export type JawSounds = { play(sound: JawSound, pitch?: number): void; stop(): void };
 export type JawVoice = { speak(words: string, language: Language): void; stop(): void };
 
 // Short pitch sweeps make the reactions playful without a failure buzzer.
@@ -18,7 +18,7 @@ export function jawSounds(makeAudio: () => AudioContext | undefined): JawSounds 
     for (const node of playing) { try { node.stop(); } catch { /* Already ended. */ } }
     playing.clear();
   };
-  return { stop, play(sound) {
+  return { stop, play(sound, pitch = 1) {
     try {
       audio ??= makeAudio();
       if (!audio) return;
@@ -28,8 +28,8 @@ export function jawSounds(makeAudio: () => AudioContext | undefined): JawSounds 
         const gain = audio!.createGain();
         const start = audio!.currentTime + at * 0.25;
         node.type = sound === "chomp" ? "sawtooth" : "triangle";
-        node.frequency.setValueAtTime(from, start);
-        node.frequency.exponentialRampToValueAtTime(to, start + length);
+        node.frequency.setValueAtTime(from * pitch, start);
+        node.frequency.exponentialRampToValueAtTime(to * pitch, start + length);
         gain.gain.setValueAtTime(0.12, start);
         gain.gain.exponentialRampToValueAtTime(0.001, start + length);
         node.connect(gain).connect(audio!.destination);

@@ -45,6 +45,13 @@ describe("jaw audio", () => {
     for (const node of nodes.slice(1)) expect(node.stop).toHaveBeenCalledTimes(2);
   });
 
+  it("changes both bites by the shelf jaw's pitch while keeping their timing", () => {
+    const { audio, nodes } = audioSpy();
+    jawSounds(() => audio).play("chomp", 1.4);
+    expect(nodes.map(({ pitches }) => pitches)).toEqual([[182, 84], [210, 98]]);
+    expect(nodes.map(({ start }) => start.mock.calls[0]![0])).toEqual([10, 10.25]);
+  });
+
   it("remains playable when audio is absent, refuses construction or rejects resume", async () => {
     expect(() => jawSounds(() => undefined).play("snap")).not.toThrow();
     expect(() => jawSounds(() => { throw new Error("refused"); }).play("snap")).not.toThrow();

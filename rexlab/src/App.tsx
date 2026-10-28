@@ -665,7 +665,7 @@ export function App({
       case "pairs":
         return pairs.content(language, pairsWelcomeType(welcomeWidth, size === "tall-narrow" ? NARROW_WELCOME : PORTRAIT_WELCOME), boardWidth, pairsResultRoom, size === "tall-narrow" ? NARROW_BOARD : PORTRAIT_BOARD, size === "tall-narrow" ? NARROW_PAIRS_RESULT : PORTRAIT_PAIRS_RESULT);
       case "skeletons":
-        return skeletonGame.content(language);
+        return skeletonGame.content(language, whoseJaw ? () => go({ kind: "whoseJaw" }, { also: jawGame.openShelf }) : undefined);
       case "dig":
         return dig.content(language);
       case "whoseJaw":

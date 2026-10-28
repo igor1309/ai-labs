@@ -11587,8 +11587,7 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   .jaw-result-collection { width: min(45%, 320px); }
 }
 
-.whose-jaw-welcome,
-.whose-jaw-destination {
+.whose-jaw-welcome {
   box-sizing: border-box;
   min-height: 100%;
   padding: calc(28px + env(safe-area-inset-top)) calc(28px + var(--screen-right)) calc(28px + env(safe-area-inset-bottom)) calc(28px + var(--screen-left));
@@ -11596,8 +11595,7 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   color: #1d2742;
   animation: fade-in var(--motion-screen) var(--ease-out) both;
 }
-.whose-jaw-welcome header,
-.whose-jaw-destination header { display: flex; }
+.whose-jaw-welcome header { display: flex; }
 .whose-jaw-welcome-body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -11638,9 +11636,6 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 .whose-jaw-tile-row { display: flex; align-items: center; gap: 8px; padding: 12px; font-size: 22px; font-weight: 700; }
 .whose-jaw-tile-count { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 24px; background: #fffdf8; color: #1d2742; font-size: 20px; }
 .featured-card[data-game="whoseJaw"] .whose-jaw-tile-picture { height: 100%; }
-.whose-jaw-destination { display: flex; flex-direction: column; gap: 20px; align-items: center; }
-.whose-jaw-destination > .picture { width: min(50vw, 400px); height: auto; }
-.whose-jaw-destination > button { padding: 20px; display: flex; gap: 12px; align-items: center; background: #fffdf8; color: #1d2742; }
 html[data-size="tall"] .whose-jaw-welcome-body,
 html[data-size="tall-narrow"] .whose-jaw-welcome-body { grid-template-columns: minmax(0, 1fr); gap: 8px; max-width: 620px; }
 html[data-size="tall"] .whose-jaw-hero,
@@ -11653,11 +11648,10 @@ html[data-size="wide-short"] .whose-jaw-play,
 html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 8px; font-size: 20px; }
 
 [data-theme="dark"] .whose-jaw-welcome,
-[data-theme="dark"] .whose-jaw-destination { background: #0f1320; color: #ece8de; }
+[data-theme="dark"] .whose-jaw-shelf-screen { background: #0f1320; color: #ece8de; }
 [data-theme="dark"] .whose-jaw-badges p { background: #222a3d; }
 [data-theme="dark"] .whose-jaw-shelf,
-[data-theme="dark"] .whose-jaw-tile-count,
-[data-theme="dark"] .whose-jaw-destination > button { background: #181e2e; color: #ece8de; }
+[data-theme="dark"] .whose-jaw-tile-count { background: #181e2e; color: #ece8de; }
 [data-theme="dark"] .whose-jaw-play,
 [data-theme="dark"] .whose-jaw-tile,
 [data-theme="dark"] .featured-card[data-game="whoseJaw"] { background: #f2b24b; color: #1d2742; }
@@ -11728,6 +11722,44 @@ html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 8px; 
 [data-theme="dark"] .whose-jaw-board { background: #0f1320; color: #ece8de; }
 [data-theme="dark"] .jaw-tray { background: #253b37; }
 
+.jaw-museum-tooth { font-size: clamp(64px, 12vh, 140px); font-size: clamp(64px, 12dvh, 140px); margin: auto; }
+
+.whose-jaw-shelf-screen {
+  min-height: 100dvh; box-sizing: border-box; background: #f2efe8; color: #1d2742;
+  padding: calc(16px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(16px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
+}
+.jaw-shelf-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.jaw-shelf-bar h1 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: clamp(22px, 3vw, 36px); }
+.jaw-shelf-count { text-align: center; margin: 8px 0; font-size: 22px; font-weight: 700; }
+.jaw-shelves { max-width: 1120px; margin: auto; display: grid; gap: 12px; }
+.jaw-shelf-row { min-width: 0; animation: rise-in var(--motion-screen) var(--ease-out) both; }
+.jaw-shelf-labels { display: flex; gap: 12px; margin-bottom: 4px; font-size: 16px; line-height: 20px; font-weight: 700; }
+.jaw-shelf-labels > span { background: #fffdf8; border-radius: 12px; padding: 2px 12px; }
+.jaw-shelf-places { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; border-bottom: 14px solid #a9774a; border-radius: 6px; }
+.jaw-shelf-place { position: relative; display: flex; flex-direction: column; align-items: center; width: 100%; height: clamp(84px, 12vh, 148px); height: clamp(84px, 12dvh, 148px); min-width: 0; border: 0; padding: 0 4px; border-radius: 20px 20px 0 0; background: transparent; color: inherit; }
+.jaw-shelf-picture { width: 100%; height: calc(100% - 36px); object-fit: contain; }
+.jaw-shelf-silhouette { filter: brightness(0) opacity(.16); }
+.jaw-shelf-name { display: grid; place-items: center; height: 36px; width: 100%; font-size: clamp(14px, 1.5vw, 20px); font-weight: 700; line-height: 1.1; overflow-wrap: anywhere; }
+.jaw-shelf-place:disabled { opacity: 1; }
+.jaw-shelf-place:disabled .jaw-shelf-name { color: #5c647a; font-size: 28px; }
+.jaw-shelf-place:focus-visible, .jaw-shelf-card button:focus-visible { outline: 3px solid #c9583d; outline-offset: 3px; }
+.jaw-card-scrim { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: #0f1320aa; animation: fade-in var(--motion-small) var(--ease-out) both; }
+.jaw-shelf-card { box-sizing: border-box; width: min(640px, 100%); max-height: calc(100dvh - 48px); overflow-y: auto; overscroll-behavior: none; padding: 20px; border-radius: 28px; background: #fffdf8; color: #1d2742; text-align: center; animation: rise-in var(--motion-screen) var(--ease-out) both; }
+.jaw-shelf-card > button { margin-left: auto; }
+.jaw-shelf-card h2 { margin: 12px 0; font-size: clamp(24px, 3vw, 36px); overflow-wrap: anywhere; }
+.jaw-card-pictures { display: flex; align-items: center; justify-content: center; height: min(30vh, 240px); height: min(30dvh, 240px); }
+.jaw-card-dinosaur { width: 65%; height: 100%; object-fit: contain; }
+.jaw-card-chomp { width: 35%; }
+.jaw-card-chomp[data-ready] { animation: jaw-chomp var(--motion-alive) var(--ease-out) 2; }
+.jaw-card-jaw { display: block; width: 100%; height: auto; }
+.jaw-card-diet { margin: 8px 0; font-size: 24px; font-weight: 700; }
+.jaw-card-fact { font-size: clamp(18px, 2.4vw, 26px); font-weight: 700; }
+.jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-screen) var(--ease-out) both; }
+.jaw-card-scrim[data-leaving] .jaw-shelf-card { animation: none; }
+[data-theme="dark"] .jaw-shelf-labels > span, [data-theme="dark"] .jaw-shelf-card { background: #181e2e; color: #ece8de; }
+[data-theme="dark"] .jaw-shelf-silhouette { filter: brightness(0) invert(1) opacity(.2); }
+[data-theme="dark"] .jaw-shelf-place:disabled .jaw-shelf-name { color: #9ca3b6; }
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --motion-standard: 160ms;
@@ -11736,6 +11768,9 @@ html[data-size="wide-short"] .whose-jaw-shelf { min-height: 48px; padding: 8px; 
     --motion-stagger: 0ms;
     --motion-amount: 0;
   }
+
+  .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
+  .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }
 
   .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
 
