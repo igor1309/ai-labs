@@ -60,3 +60,25 @@ in `style.md` in place of the dinosaur one.
 - `kronosaurus`: Kronosaurus, a pliosaur, huge long head with big jaws, short thick neck, heavy body, four big flippers, short tail, brown and sand.
 - `plesiosaurus`: Plesiosaurus, a plesiosaur, long neck, small head, broad flat body, four flippers, short tail, orange-brown with a cream belly.
 - `ophthalmosaurus`: Ophthalmosaurus, an ichthyosaur, dolphin-shaped body, very big round eyes, long thin snout, a fin on its back, a half-moon tail fin, four flippers, blue with a white belly.
+
+## Jaws
+
+Add each line to the jaw style prompt in `style.md`. Each names the cue
+that tells it from its look-alike in `research/whose-jaw-design.md`.
+
+- `tyrannosaurus`: Tyrannosaurus jaw, deep and massive, with thick, rounded, banana-shaped teeth.
+- `allosaurus`: Allosaurus jaw, long and lighter, with many thin, flat, blade-like curved teeth.
+- `triceratops`: Triceratops jaw, a hooked parrot-like beak at the front and a row of shearing cheek teeth behind it.
+- `edmontosaurus`: Edmontosaurus jaw, a wide flat duck-like beak at the front and a tightly packed pavement of many small grinding teeth behind it.
+- `velociraptor`: Velociraptor jaw, long, low and narrow snout with small, hooked teeth curving backwards.
+- `deinonychus`: Deinonychus jaw, shorter and deeper snout with curved, hooked teeth.
+- `diplodocus`: Diplodocus jaw, long and low with thin pencil-like teeth only at the front, like a rake.
+- `brachiosaurus`: Brachiosaurus jaw, tall and rounded with broad, spoon-shaped teeth.
+- `stegosaurus`: Stegosaurus jaw, small, long and narrow, a toothless beak tip and tiny leaf-shaped teeth.
+- `ankylosaurus`: Ankylosaurus jaw, short and very wide, armoured, a beak tip and tiny leaf-shaped teeth.
+- `spinosaurus`: Spinosaurus jaw, very long crocodile-like snout with straight, cone-shaped teeth.
+- `baryonyx`: Baryonyx jaw, long crocodile-like snout with a kink near the tip and many small teeth.
+- `rhamphorhynchus`: Rhamphorhynchus jaw, slim pointed jaws with long needle teeth pointing forwards.
+- `dimorphodon`: Dimorphodon jaw, short, deep and tall, a few big fangs at the front and tiny teeth behind.
+- `mosasaurus`: Mosasaurus jaw, long lizard-like jaws with cone teeth and a second small row of teeth on the roof of the mouth.
+- `kronosaurus`: Kronosaurus jaw, a giant long head with huge, long, pointed teeth at the front.

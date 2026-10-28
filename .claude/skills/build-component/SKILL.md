@@ -16,15 +16,25 @@ them. Keep each issue's briefs and logs in thread storage, in `lab-<n>/`.
    `lab-<n>-<name>` off `origin/trunk`, or off the unmerged branch it needs.
 2. **Brief.** Write `goal.md` from `templates/goal.md` and `step.md` from
    `templates/step.md`. The goal fixes the API: it is a technical choice
-   and yours; mirror the module the root will connect it to. A UI
-   module's "Done when" is its state shape, events, view, previews,
-   package target, README and log line; its sources name the frames by
-   node id with their dark and light PNGs and the frames' copy as a text
-   file to use exactly; its "Out of scope" names the preview app and the
-   machines. Read the
-   brief once for contradictions between "Done when" and "Out of scope"
-   before the run; Codex resolves one silently, its own way.
-3. **Implement**, in the background (about 3 min, $0.30 for an adapter):
+   and yours. Read the interface of every module the root will connect
+   it to (an adapter often answers several) and pick a shape each can be
+   translated to in a line or two.
+   - An adapter's QA rows drive the real binding; its own logic (a
+     deadline, a translation) is tested as well through a fake of the
+     binding, passed to an internal init. A test on a real clock or radio
+     asserts lower bounds and a stream's end, never how late something
+     may be, with steps long enough that a stall on a loaded runner does
+     not skip one.
+   - A UI module's "Done when" is its state shape, events, view,
+     previews, package target, README and log line; its sources name the
+     frames by node id with their dark and light PNGs and the frames' copy
+     as a text file to use exactly; its "Out of scope" names the preview
+     app and the machines.
+
+   Read the brief once for contradictions between "Done when" and "Out of
+   scope" before the run; Codex resolves one silently, its own way.
+3. **Implement**, in the background (3 to 12 min, about $0.30–0.40 for an
+   adapter):
 
    ```sh
    agister run --process implement --agent codex-sol-61 \
@@ -44,11 +54,13 @@ them. Keep each issue's briefs and logs in thread storage, in `lab-<n>/`.
    rebuilt inside the module; frame copy bent to force a line break. Fix
    by hand what needs no rerun. Your look does not replace the review,
    which reads the platform's behaviour more closely than a diff shows.
-6. **Commit**, then `git merge origin/trunk`, before the review. A review
-   of a branch behind trunk spends its words on other issues' changes
-   showing as reverted.
+6. **Commit**, then `git merge origin/trunk` before every review, not
+   only the first. Do not pipe the merge's output away: a conflict leaves
+   it half done. `git merge-base --is-ancestor origin/trunk HEAD` must
+   pass before the review starts. A review of a branch behind trunk
+   spends its words on other issues' changes showing as reverted.
 7. **Review** cores and adapters (UI modules and preview apps get none),
-   in the background (about 4–5 min, $1.50):
+   in the background (4 to 8 min, $1.50–3.50; it grows with the tests):
 
    ```sh
    agister run code_review --param goal=<lab-n>/goal.md \
@@ -64,8 +76,14 @@ them. Keep each issue's briefs and logs in thread storage, in `lab-<n>/`.
    `reject`; minor findings are rejected by rule. For a `fix`, write
    `step<k>.md` from `templates/fix-step.md`, quoting the item under
    "Acts on", run implement again, commit, and review again until the
-   judge has no fix. Take a rejected minor point by hand when it is cheap
-   and real, such as a comment that says why.
+   judge has no fix. A fix that only pins behaviour already there (a
+   default value) cannot be shown red without changing the code; make it
+   by hand, green only. Take a rejected minor point by hand when it is
+   cheap and real, such as a comment that says why.
+
+   Read every rejected major. The judge rejects a real finding when its
+   fix contradicts the goal; the goal is yours, so correct it in the fix
+   step under "Decided by the caller".
 
    **Codex limited:** `code_review` pins its reviewers to Codex.
    `scripts/review-fallback.sh <goal.md> <worktree> <lab-n>` runs the five

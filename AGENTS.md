@@ -71,7 +71,10 @@
 
 ## State machines
 
-A module picks one of two shapes; an app composes it.
+Not every module defines a state machine: an adapter binds an outside API
+and a UI module draws a screen. The project's architecture says which
+modules are machines. A machine's module picks one of two shapes; an app
+composes it.
 
 - **Async** (`ObservableModel`): the machine runs effects. A module defines
   `State`, `Event`, `Effect`, a pure reducer

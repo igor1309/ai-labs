@@ -30,9 +30,10 @@ export type SkeletonMuseumScreenProps = {
   onRebuild: (id: string) => void;
   onBuildAnother: () => void;
   onHome: () => void;
+  onJawShelf?: (() => void) | undefined;
 };
 
-export function SkeletonMuseumScreen({ language, stands, score, total, best, onBuild, onRebuild, onBuildAnother, onHome }: SkeletonMuseumScreenProps) {
+export function SkeletonMuseumScreen({ language, stands, score, total, best, onBuild, onRebuild, onBuildAnother, onHome, onJawShelf }: SkeletonMuseumScreenProps) {
   const text = TEXTS[language];
   return (
     <main className="skeleton-screen skeleton-museum-screen">
@@ -57,6 +58,11 @@ export function SkeletonMuseumScreen({ language, stands, score, total, best, onB
         {stands.map((stand, index) => (
           <StandCard key={stand.id} language={language} stand={stand} index={index} onBuild={onBuild} onRebuild={onRebuild} />
         ))}
+        {onJawShelf && <section className="skeleton-stand jaw-museum-stand" aria-label={text.jawShelf} data-turn-part="jaw-shelf" style={{ "--stand": stands.length } as CSSProperties}>
+          <div className="skeleton-stand-top"><h2 className="skeleton-stand-name">{text.jawShelf}</h2></div>
+          <div className="skeleton-exhibit"><span className="jaw-museum-tooth" aria-hidden="true">🦷</span></div>
+          <Button className="skeleton-stand-button" onClick={onJawShelf}><Landmark size={24} aria-hidden="true" />{text.jawShelf}</Button>
+        </section>}
       </div>
     </main>
   );
