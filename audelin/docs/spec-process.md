@@ -103,6 +103,11 @@ so no builder edits another target after an unrelated test times out. The
 second merges trunk first, so no review reports trunk's newer work as
 removed (each happened three times on 2026-10-27).
 
+Gate a step with `scripts/gate-step.sh` and land it with
+`scripts/land-step.sh <issue> <title>`, never with a hand-written chain:
+on 2026-10-27 such chains waited for lines never printed, wrote to a
+`/tmp` that was cleared, and landed branches behind trunk.
+
 Never wait for CI. Once a step passes its gate, the next step branches from
 that step's branch and its builder starts at once; its PR goes up after
 the earlier one lands, and a fix CI asks for is merged forward (owner,
