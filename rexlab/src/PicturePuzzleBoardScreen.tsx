@@ -4,15 +4,31 @@ import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { OrientationGate, useGateShown } from "./OrientationGate.tsx";
-import { fitPicturePiece, pictureDropFits, type PicturePuzzle } from "./picturePuzzle/index.ts";
 import { pictureBoardLayout } from "./picturePuzzleLayout.ts";
-import { PicturePuzzlePicture } from "./PicturePuzzlePicture.tsx";
+import { PicturePuzzlePicture, type PictureCrop } from "./PicturePuzzlePicture.tsx";
 
+export type BoardPresence = {
+  isHidden(): boolean;
+  subscribe(onChange: () => void): () => void;
+};
+export type BoardBounds = { x: number; y: number; width: number; height: number };
+export type BoardPoint = { x: number; y: number };
+export type BoardTile = { id: number; crop: PictureCrop };
+export type PictureBoard = {
+  name: string;
+  columns: number;
+  rows: number;
+  guide: boolean;
+  slots: readonly (BoardTile & { filled: boolean })[];
+  tray: readonly BoardTile[];
+};
 export type PicturePuzzleBoardScreenProps = {
   language: Language;
-  puzzle: PicturePuzzle;
+  scene: PictureBoard;
   picture: string;
-  onFit: (piece: number) => void;
+  presence: BoardPresence;
+  onPlace: (piece: number, slot: number) => boolean;
+  dropFits: (piece: number, bounds: BoardBounds, point: BoardPoint) => boolean;
   onBack: () => void;
   onHome: () => void;
 };
@@ -27,7 +43,7 @@ type Release = { piece: number; x: number; y: number; count: number; fitted: boo
 // Following a pointer changes the held tile, while fitted scenes stay still.
 const BoardPicture = memo(PicturePuzzlePicture);
 
-export function PicturePuzzleBoardScreen({ language, puzzle, picture, onFit, onBack, onHome }: PicturePuzzleBoardScreenProps) {
+export function PicturePuzzleBoardScreen({ language, scene, picture, presence, onPlace, dropFits, onBack, onHome }: PicturePuzzleBoardScreenProps) {
   const text = TEXTS[language];
   const externalGate = useGateShown();
   const [selected, setSelected] = useState<number>();
@@ -44,13 +60,12 @@ export function PicturePuzzleBoardScreen({ language, puzzle, picture, onFit, onB
   const hold = useRef<Hold>(undefined);
   const tap = useRef<SlotTap>(undefined);
   const skipClick = useRef<boolean>(false);
-  const latest = useRef<PicturePuzzle>(puzzle);
-  latest.current = puzzle;
-  const layout = pictureBoardLayout(room, puzzle.cut);
+  const layout = pictureBoardLayout(room, scene);
   const gated = externalGate || !layout.fits || room.upright;
   const blocked = useRef<boolean>(gated);
   blocked.current = gated;
-  const unplaced = puzzle.order.filter((id) => !puzzle.fitted.includes(id));
+  const fittedCount = scene.slots.filter((slot) => slot.filled).length;
+  const unplaced = scene.tray;
   const pages = Math.max(1, Math.ceil(unplaced.length / 4));
   const shownPage = Math.min(page, pages - 1);
   const visible = unplaced.slice(shownPage * 4, shownPage * 4 + 4);
@@ -97,15 +112,12 @@ export function PicturePuzzleBoardScreen({ language, puzzle, picture, onFit, onB
   useLayoutEffect(() => { if (gated) cancel(); }, [gated]);
 
   const fit = (piece: number, slot: number): boolean => {
-    if (blocked.current || document.hidden) return false;
-    const next = fitPicturePiece(latest.current, piece, slot);
-    if (next === latest.current) return false;
-    latest.current = next;
+    if (blocked.current || presence.isHidden()) return false;
+    if (!onPlace(piece, slot)) return false;
     setSelected(undefined);
     setHint(undefined);
     // Keep the current slice after removals, including a shrinking last page.
     setPage(shownPage);
-    onFit(piece);
     return true;
   };
 
@@ -120,7 +132,7 @@ export function PicturePuzzleBoardScreen({ language, puzzle, picture, onFit, onB
     const end = (event: PointerEvent) => {
       const current = hold.current;
       if (current && event.pointerId === current.pointer) {
-        if (event.type !== "pointerup" || blocked.current || document.hidden) {
+        if (event.type !== "pointerup" || blocked.current || presence.isHidden()) {
           cancel();
           return;
         }
@@ -130,13 +142,13 @@ export function PicturePuzzleBoardScreen({ language, puzzle, picture, onFit, onB
         if (!moved) return;
         skipClick.current = true;
         const bounds = board.current?.getBoundingClientRect();
-        const piece = latest.current.cut.pieces.find(({ id }) => id === current.piece);
-        const accepted = bounds && piece && pictureDropFits(piece, latest.current.cut,
+        const piece = scene.slots.find(({ id }) => id === current.piece);
+        const accepted = bounds && piece && dropFits(piece.id,
           { x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height }, { x: event.clientX, y: event.clientY });
         const fitted = Boolean(accepted && fit(current.piece, current.piece));
         const destination = fitted && bounds && piece ? {
-          left: bounds.left + piece.column * bounds.width / puzzle.cut.columns,
-          top: bounds.top + piece.row * bounds.height / puzzle.cut.rows,
+          left: bounds.left + scene.slots.indexOf(piece) % scene.columns * bounds.width / scene.columns,
+          top: bounds.top + Math.floor(scene.slots.indexOf(piece) / scene.columns) * bounds.height / scene.rows,
           width: current.width, height: current.height
         } : current.source.getBoundingClientRect();
         setRelease((before) => ({ piece: current.piece, x: event.clientX - destination.left - destination.width / 2,
@@ -146,28 +158,28 @@ export function PicturePuzzleBoardScreen({ language, puzzle, picture, onFit, onB
       if (pressed && pressed.pointer === event.pointerId) {
         tap.current = undefined;
         const bounds = board.current?.getBoundingClientRect();
-        const piece = latest.current.cut.pieces.find(({ id }) => id === pressed.slot);
+        const piece = scene.slots.find(({ id }) => id === pressed.slot);
         const inside = bounds && event.clientX >= bounds.left && event.clientX < bounds.right
           && event.clientY >= bounds.top && event.clientY < bounds.bottom;
         if (event.type === "pointerup" && !blocked.current && inside && piece && bounds
-          && pictureDropFits(piece, latest.current.cut, { x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height }, { x: event.clientX, y: event.clientY })
+          && dropFits(piece.id, { x: bounds.left, y: bounds.top, width: bounds.width, height: bounds.height }, { x: event.clientX, y: event.clientY })
           && event.target instanceof Node && pressed.source.contains(event.target)) {
           placeSelected(pressed.slot);
         }
       }
     };
-    const hidden = () => { if (document.hidden) cancel(); };
+    const hidden = () => { if (presence.isHidden()) cancel(); };
     window.addEventListener("pointermove", move, { passive: false });
     window.addEventListener("pointerup", end);
     window.addEventListener("pointercancel", end);
     window.addEventListener("blur", cancel);
-    document.addEventListener("visibilitychange", hidden);
+    const stopPresence = presence.subscribe(hidden);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", end);
       window.removeEventListener("pointercancel", end);
       window.removeEventListener("blur", cancel);
-      document.removeEventListener("visibilitychange", hidden);
+      stopPresence();
     };
   });
 
@@ -179,28 +191,28 @@ export function PicturePuzzleBoardScreen({ language, puzzle, picture, onFit, onB
   }, []);
 
   const select = (piece: number) => {
-    if (blocked.current || hold.current || tap.current || document.hidden) return;
+    if (blocked.current || hold.current || tap.current || presence.isHidden()) return;
     setSelected(piece);
     setHint(undefined);
     setRelease(undefined);
   };
   const press = (piece: number, event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (blocked.current || hold.current || tap.current || document.hidden || event.button !== 0 || event.isPrimary === false) return;
+    if (blocked.current || hold.current || tap.current || presence.isHidden() || event.button !== 0 || event.isPrimary === false) return;
     event.preventDefault();
     select(piece);
     const bounds = board.current?.getBoundingClientRect();
     updateHold({ pointer: event.pointerId, piece, x: event.clientX, y: event.clientY,
       startX: event.clientX, startY: event.clientY, moved: false,
-      width: (bounds?.width ?? layout.width) / puzzle.cut.columns,
-      height: (bounds?.height ?? layout.height) / puzzle.cut.rows, source: event.currentTarget });
+      width: (bounds?.width ?? layout.width) / scene.columns,
+      height: (bounds?.height ?? layout.height) / scene.rows, source: event.currentTarget });
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
   const placeSelected = (slot: number) => {
-    if (selected === undefined || hold.current || blocked.current || document.hidden) return;
+    if (selected === undefined || hold.current || blocked.current || presence.isHidden()) return;
     if (!fit(selected, slot)) setRelease((before) => ({ piece: selected, x: 0, y: 0, count: (before?.count ?? 0) + 1, fitted: false }));
   };
   const askHint = () => {
-    const piece = selected ?? visible[0];
+    const piece = selected ?? visible[0]?.id;
     if (piece === undefined) return;
     setSelected(piece);
     setHint(piece);
@@ -215,45 +227,45 @@ export function PicturePuzzleBoardScreen({ language, puzzle, picture, onFit, onB
       <main className="picture-puzzle-board-screen" onPointerDownCapture={() => {
         if (!hold.current && !tap.current) skipClick.current = false;
       }} onClickCapture={(event) => {
-        if (blocked.current || hold.current || tap.current || document.hidden || (event.detail > 0 && skipClick.current)) {
+        if (blocked.current || hold.current || tap.current || presence.isHidden() || (event.detail > 0 && skipClick.current)) {
           event.preventDefault(); event.stopPropagation();
         }
       }}>
         <header className="picture-puzzle-board-bar">
           <Button className="picture-puzzle-control" onClick={() => leave(onBack)}><ArrowLeft aria-hidden="true" />{text.back}</Button>
-          <h1>{puzzle.dinosaur.name[language].toLocaleUpperCase(language)}</h1>
-          <p role="status" aria-label={text.pictureFitted}><Puzzle aria-hidden="true" /><span key={puzzle.fitted.length}>{puzzle.fitted.length}/{puzzle.cut.pieces.length}</span></p>
+          <h1>{scene.name.toLocaleUpperCase(language)}</h1>
+          <p role="status" aria-label={text.pictureFitted}><Puzzle aria-hidden="true" /><span key={fittedCount}>{fittedCount}/{scene.slots.length}</span></p>
           <Button className="picture-puzzle-control" onClick={() => leave(onHome)}><House aria-hidden="true" />{text.home}</Button>
         </header>
         <div className="picture-puzzle-stage" ref={stage}>
           <div className="picture-puzzle-board" ref={board} role="group" aria-label={text.pictureBoard}
-            style={{ width: layout.width, height: layout.height, gridTemplateColumns: `repeat(${puzzle.cut.columns}, 1fr)`, gridTemplateRows: `repeat(${puzzle.cut.rows}, 1fr)` }}>
-            {puzzle.level === "hatchling" && <span className="picture-puzzle-guide"><BoardPicture src={picture} /></span>}
-            {puzzle.cut.pieces.map((piece) => {
-              const fitted = puzzle.fitted.includes(piece.id);
+            style={{ width: layout.width, height: layout.height, gridTemplateColumns: `repeat(${scene.columns}, 1fr)`, gridTemplateRows: `repeat(${scene.rows}, 1fr)` }}>
+            {scene.guide && <span className="picture-puzzle-guide"><BoardPicture src={picture} /></span>}
+            {scene.slots.map((piece) => {
+              const fitted = piece.filled;
               return <Button key={piece.id} className="picture-puzzle-slot" aria-label={text.pictureSlot(piece.id + 1)}
                 aria-disabled={fitted} data-fitted={fitted || undefined} data-hint={hint === piece.id || undefined}
                 onPointerDown={(event) => {
-                  if (!blocked.current && !hold.current && !tap.current && !fitted && event.button === 0 && event.isPrimary !== false) {
+                  if (!blocked.current && !presence.isHidden() && !hold.current && !tap.current && !fitted && event.button === 0 && event.isPrimary !== false) {
                     tap.current = { pointer: event.pointerId, slot: piece.id, source: event.currentTarget };
                   }
                 }} onClick={(event) => { if (!fitted && event.detail === 0) placeSelected(piece.id); }}>
                 {fitted && <span key={release?.piece === piece.id ? release.count : 0} className="picture-puzzle-fitted" style={releasedStyle(piece.id, true)}>
-                  <BoardPicture src={picture} crop={piece.home} />
+                  <BoardPicture src={picture} crop={piece.crop} />
                 </span>}
               </Button>;
             })}
           </div>
           <aside className="picture-puzzle-tools">
             <div className="picture-puzzle-tray" role="group" aria-label={text.picturePieces}>
-              {visible.map((id) => {
-                const piece = puzzle.cut.pieces[id]!;
+              {visible.map((piece) => {
+                const { id } = piece;
                 const retry = release?.piece === id && !release.fitted;
-                return <Button key={id} className="picture-puzzle-tray-piece" style={{ "--tile-aspect": piece.home.width / piece.home.height } as CSSProperties} aria-label={text.picturePiece(id + 1)} aria-pressed={selected === id}
+                return <Button key={id} className="picture-puzzle-tray-piece" style={{ "--tile-aspect": piece.crop.width / piece.crop.height } as CSSProperties} aria-label={text.picturePiece(id + 1)} aria-pressed={selected === id}
                   onPointerDown={(event) => press(id, event)} onLostPointerCapture={(event) => { if (hold.current?.pointer === event.pointerId) cancel(); }}
                   onClick={(event) => { if (event.detail === 0) select(id); }}>
                   <span key={retry ? release.count : 0} className="picture-puzzle-tray-art" data-held={held?.piece === id && held.moved || undefined}
-                    data-retry={retry || undefined} style={releasedStyle(id, false)}><BoardPicture src={picture} crop={piece.home} /></span>
+                    data-retry={retry || undefined} style={releasedStyle(id, false)}><BoardPicture src={picture} crop={piece.crop} /></span>
                 </Button>;
               })}
             </div>
@@ -272,7 +284,7 @@ export function PicturePuzzleBoardScreen({ language, puzzle, picture, onFit, onB
         </div>
       </main>
       {held?.moved && <span className="picture-puzzle-lifted" style={{ width: held.width, height: held.height, left: held.x - held.width / 2, top: held.y - held.height / 2 }}>
-        <BoardPicture src={picture} crop={puzzle.cut.pieces[held.piece]!.home} />
+        <BoardPicture src={picture} crop={scene.slots.find(({ id }) => id === held.piece)!.crop} />
       </span>}
     </OrientationGate>
   );

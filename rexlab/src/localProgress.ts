@@ -51,13 +51,35 @@ export function localPicturePuzzleChoice(storage: () => KeyValueStorage) {
 export function localPicturePuzzleProgress(storage: () => KeyValueStorage) {
   const entry = gameProgress<PictureProgress>(storage, "picture-puzzle", NO_PICTURES, readPictures);
   return {
-    load: (): PictureProgress | undefined => entry.load(),
+    load(): { progress: PictureProgress; historyReadable: boolean } | undefined {
+      let raw: string | null;
+      try {
+        raw = storage().getItem(PROGRESS_KEY);
+      } catch {
+        return undefined;
+      }
+      const saved = parse(raw)?.["picture-puzzle"];
+      return {
+        progress: isObject(saved) ? readPictures(saved) : NO_PICTURES,
+        historyReadable: isObject(saved) && pictureHistoryReadable(saved)
+      };
+    },
     save(progress: PictureProgress): boolean {
       const stored = entry.load();
       if (stored === undefined) return false;
       return entry.save(mergePictures(stored, progress));
     }
   };
+}
+
+// Recovery may retain usable collections without verifying their history.
+// Choice-only entries are valid before any picture has been completed.
+function pictureHistoryReadable(raw: Entry): boolean {
+  if (raw.earned !== undefined && !isIds(raw.earned)) return false;
+  if (raw.completed === undefined) return true;
+  const completed = raw.completed;
+  return isObject(completed) && ["hatchling", "explorer", "paleontologist"].every((level) =>
+    completed[level] === undefined || isIds(completed[level]));
 }
 
 function readPictures(raw: Entry): PictureProgress {

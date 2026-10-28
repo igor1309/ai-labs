@@ -50,6 +50,7 @@ const SCREENS = [
   "PairsBoardScreen.tsx",
   "PairsResultScreen.tsx",
   "PairsWelcomeScreen.tsx",
+  "PicturePuzzleBoardScreen.tsx",
   "PicturePuzzleChoiceScreen.tsx",
   "PicturePuzzleResultScreen.tsx",
   "QuestionScreen.tsx",

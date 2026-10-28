@@ -26,7 +26,7 @@ export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs",
 
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
-type Badge = { symbol: LucideIcon; value: number };
+type Badge = { symbol: LucideIcon; value: number | string };
 
 // The window's width and its changes.
 export type WindowWidth = {
@@ -199,7 +199,7 @@ export function HomePage({
       name: text.picturePuzzle,
       symbol: Puzzle,
       picture: <span className="picture-puzzle-tile-art"><PicturePuzzlePicture src={picturePuzzle.picture} /></span>,
-      badge: { symbol: Star, value: picturePuzzle.collected },
+      badge: { symbol: Star, value: `${picturePuzzle.collected}/3` },
       onOpen: picturePuzzle.onOpen
     },
     sandWriting: {

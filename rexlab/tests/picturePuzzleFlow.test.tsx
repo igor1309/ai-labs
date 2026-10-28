@@ -13,7 +13,7 @@ import { localPicturePuzzleChoice, localPicturePuzzleProgress, PROGRESS_KEY } fr
 import { localTheme } from "../src/localTheme.ts";
 import type { Theme } from "../src/theme.ts";
 import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, emptyCare, emptyDig, emptyPairs, emptyProgress, emptySkeletons, emptySorting,
-  fakeBodyPicture, featuring, manualPictures, manualViewport, memoryStorage, pageAtRest, seededRandom, type MemoryStorage } from "./support.ts";
+  fakeBodyPicture, featuring, manualPictures, manualVisibility, manualViewport, memoryStorage, pageAtRest, seededRandom, type MemoryStorage } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
 import { openWindow } from "./windowSizes.ts";
 
@@ -25,6 +25,7 @@ function openApp(storage: MemoryStorage, language: Language, theme: Theme, featu
   localTheme(() => storage).save(theme);
   const viewport = manualViewport("landscape");
   const pictures = manualPictures();
+  const pageVisibility = manualVisibility("visible");
   const countStart = vi.fn<(game: HomeGame) => void>();
   const props: AppProps = {
     dinosaurs: SHIPPED_DINOSAURS, catalogue: SHIPPED_CATALOGUE, bodyPicture: fakeBodyPicture, random: seededRandom(17),
@@ -34,9 +35,9 @@ function openApp(storage: MemoryStorage, language: Language, theme: Theme, featu
     progress: emptyProgress(), deviceLanguage: "en-GB", languageStore: localLanguage(() => storage), nameVersion: () => {},
     appearance: { isDark: () => false, subscribe: () => () => {} }, themeStore: localTheme(() => storage), ageLevelStore: localAgeLevel(() => storage),
     ...emptyCare(), ...emptyDig(), ...emptyPairs(), ...emptySkeletons(), ...emptySorting(), ...pageAtRest(), ...featuring(featured),
-    ...pictures, startCounter: { countStart }, reducedMotion: () => reduced
+    ...pictures, pageVisibility, startCounter: { countStart }, reducedMotion: () => reduced
   };
-  return { ...render(<App {...props} />), viewport, pictures, countStart };
+  return { ...render(<App {...props} />), viewport, pictures, pageVisibility, countStart };
 }
 
 function firstPiece(language: Language): number {
@@ -48,8 +49,8 @@ function firstPiece(language: Language): number {
 
 function place(language: Language, piece: number) {
   const text = TEXTS[language];
-  fireEvent.click(button(text.picturePiece(piece)), { detail: 0 });
-  fireEvent.click(button(text.pictureSlot(piece)), { detail: 0 });
+  fireEvent.click(screen.getByLabelText(text.picturePiece(piece)), { detail: 0 });
+  fireEvent.click(screen.getByLabelText(text.pictureSlot(piece)), { detail: 0 });
 }
 
 function finish(language: Language, remaining: number) {
@@ -73,7 +74,7 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     const door = button(text.picturePuzzle);
     expect(getComputedStyle(door).backgroundColor).toBe(theme === "dark" ? "rgb(37, 59, 55)" : "rgb(220, 234, 222)");
     expect(door.querySelector(".picture-puzzle-backdrop")).not.toBeNull();
-    expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("0");
+    expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("0/3");
     fireEvent.click(door);
     expect(app.countStart).not.toHaveBeenCalled();
     fireEvent.click(button(text.ageLevels.hatchling.name));
@@ -87,7 +88,13 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     const first = firstPiece(language);
     board.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, toJSON: () => ({}) });
     const home = { x: ((first - 1) % 4 + 0.5) * 200, y: (Math.floor((first - 1) / 4) + 0.5) * 200 };
+    const neighbor = { x: ((first % 4) + 0.5) * 200, y: home.y };
     touch(button(text.picturePiece(first)), "pointerdown", 0, { x: 1000, y: 200 });
+    touch(window, "pointermove", 10, neighbor);
+    touch(window, "pointerup", 20, neighbor);
+    expect(screen.getByLabelText(text.pictureFitted).textContent).toBe("0/12");
+    expect(app.container.querySelector("[data-retry]")).not.toBeNull();
+    touch(button(text.picturePiece(first)), "pointerdown", 25, { x: 1000, y: 200 });
     touch(window, "pointermove", 30, home);
     touch(window, "pointerup", 50, home);
     expect(screen.getByLabelText(text.pictureFitted).textContent).toBe("1/12");
@@ -105,14 +112,14 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("1/3");
     expect(within(button(readPictureDinosaurs(records)[0]!.name[language].toLocaleUpperCase(language))).getByRole("img", { name: text.star })).not.toBeNull();
     fireEvent.click(button(text.home));
-    expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("1");
+    expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("1/3");
     fireEvent.click(button(text.catalogueTile));
     expect(screen.getByRole("main", { name: text.catalogue })).not.toBeNull();
     expect(screen.queryByLabelText(text.pictureCollection)).toBeNull();
     fireEvent.click(button(text.home));
     app.unmount();
     const reloaded = openApp(storage, language, theme, featured);
-    expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("1");
+    expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("1/3");
     fireEvent.click(button(text.picturePuzzle));
     expect(button(text.ageLevels.hatchling.name).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("1/3");
@@ -165,7 +172,7 @@ it.each(["hatchling", "explorer", "paleontologist"] as const)("keeps a %s board 
   act(() => app.viewport.turn("landscape"));
   expect(screen.getByLabelText(TEXTS.en.pictureFitted).textContent).toBe(fitted);
   fireEvent.click(button(TEXTS.en.home));
-  expect(button(TEXTS.en.picturePuzzle).querySelector(".picture-puzzle-tile-count")!.textContent).toBe("0");
+  expect(button(TEXTS.en.picturePuzzle).querySelector(".picture-puzzle-tile-count")!.textContent).toBe("0/3");
   expect(storage.items.get(PROGRESS_KEY)).toBeUndefined();
   fireEvent.click(button(TEXTS.en.picturePuzzle));
   fireEvent.click(button("TRICERATOPS"));
@@ -179,7 +186,7 @@ it.each(["compare", "picturePuzzle"] as const)("shows the collection across leve
   const app = openApp(storage, "en", "dark", featured);
   const text = TEXTS.en;
   const door = button(text.picturePuzzle);
-  expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("2");
+  expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("2/3");
   fireEvent.click(door);
   fireEvent.click(button(text.ageLevels.paleontologist.name));
   expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("2/3");
@@ -192,4 +199,35 @@ it.each(["compare", "picturePuzzle"] as const)("shows the collection across leve
   expect(button(text.ageLevels.hatchling.name).getAttribute("aria-pressed")).toBe("true");
   expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("2/3");
   reloaded.unmount();
+});
+
+it.each(["drag", "slot"])("cancels a %s through App's supplied visibility and rejects its stale release", (input) => {
+  const storage = memoryStorage();
+  localAgeLevel(() => storage).save({ level: "hatchling", revision: "parent" });
+  const app = openApp(storage, "en", "light");
+  fireEvent.click(button(TEXTS.en.picturePuzzle));
+  fireEvent.click(button("TYRANNOSAURUS"));
+  const id = firstPiece("en");
+  const board = screen.getByRole("group", { name: TEXTS.en.pictureBoard });
+  vi.spyOn(board, "getBoundingClientRect").mockReturnValue(DOMRect.fromRect({ x: 80, y: 100, width: 768, height: 576 }));
+  const source = button(TEXTS.en.picturePiece(id));
+  const slot = button(TEXTS.en.pictureSlot(id));
+  const point = { x: 80 + ((id - 1) % 4 + 0.5) * 192, y: 100 + (Math.floor((id - 1) / 4) + 0.5) * 192 };
+  if (input === "drag") {
+    touch(source, "pointerdown", 1000, { x: 1000, y: 200 });
+    touch(window, "pointermove", 1100, point);
+    expect(app.container.querySelector(".picture-puzzle-lifted")).not.toBeNull();
+  } else {
+    fireEvent.click(source);
+    touch(slot, "pointerdown", 1000, point);
+  }
+  act(() => app.pageVisibility.switchTo("hidden"));
+  expect(app.container.querySelector(".picture-puzzle-lifted")).toBeNull();
+  act(() => app.pageVisibility.switchTo("visible"));
+  touch(input === "drag" ? window : slot, "pointerup", 1200, point);
+  expect(screen.getByLabelText(TEXTS.en.pictureFitted).textContent).toBe("0/12");
+  expect(slot.hasAttribute("data-fitted")).toBe(false);
+  place("en", id);
+  expect(screen.getByLabelText(TEXTS.en.pictureFitted).textContent).toBe("1/12");
+  expect(storage.items.get(PROGRESS_KEY)).toBeUndefined();
 });

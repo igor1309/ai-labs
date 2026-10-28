@@ -9,7 +9,7 @@ import { localPicturePuzzleChoice, localPicturePuzzleProgress, PROGRESS_KEY } fr
 import { usePicturePuzzleGame } from "../src/picturePuzzleGame.tsx";
 import type { Theme } from "../src/theme.ts";
 import { withPictures } from "./pictures.tsx";
-import { fakeBodyPicture, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
+import { fakeBodyPicture, manualVisibility, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
 
 const DINOSAURS = readPictureDinosaurs(records);
 const INITIAL: AgeLevelSetting = { level: "explorer", revision: null };
@@ -18,9 +18,10 @@ const button = (name: string) => screen.getByRole("button", { name });
 function openChoice(storage: MemoryStorage, setting: AgeLevelSetting, language: Language, theme: Theme, random: () => number) {
   let current: ReturnType<typeof usePicturePuzzleGame> | undefined;
   const onHome = vi.fn<() => void>();
+  const presence = manualVisibility("visible");
   const props = { dinosaurs: DINOSAURS, bodyPicture: fakeBodyPicture, choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage), random };
   function Choice({ setting }: { setting: AgeLevelSetting }) {
-    current = usePicturePuzzleGame(props, setting, onHome);
+    current = usePicturePuzzleGame(props, setting, presence, onHome);
     return <div data-theme={theme}>{current.choice(language)}</div>;
   }
   const view = render(<Choice setting={setting} />, withPictures);
@@ -153,9 +154,10 @@ it("renders the board from the choice, keeps placements through hints and previe
   const storage = memoryStorage();
   let current: ReturnType<typeof usePicturePuzzleGame> | undefined;
   const onHome = vi.fn<() => void>();
+  const presence = manualVisibility("visible");
   function Game() {
     const game = usePicturePuzzleGame({ dinosaurs: DINOSAURS, bodyPicture: fakeBodyPicture,
-      choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage), random: seededRandom(17) }, INITIAL, onHome);
+      choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage), random: seededRandom(17) }, INITIAL, presence, onHome);
     current = game;
     return <>{game.choice("en")}{game.board("en")}</>;
   }
@@ -163,6 +165,9 @@ it("renders the board from the choice, keeps placements through hints and previe
   fireEvent.click(button("TYRANNOSAURUS"));
   const id = current!.puzzle!.order[0]!;
   fireEvent.click(screen.getByLabelText(TEXTS.en.picturePiece(id + 1)));
+  fireEvent.click(screen.getByLabelText(TEXTS.en.pictureSlot((id + 1) % 24 + 1)));
+  expect(current!.puzzle!.fitted).toEqual([]);
+  expect(screen.getByLabelText(TEXTS.en.picturePiece(id + 1)).getAttribute("aria-pressed")).toBe("true");
   fireEvent.click(screen.getByLabelText(TEXTS.en.pictureSlot(id + 1)));
   expect(current!.puzzle!.fitted).toEqual([id]);
   fireEvent.click(button(TEXTS.en.pictureHint));

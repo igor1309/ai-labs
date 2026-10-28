@@ -72,7 +72,7 @@ describe("the app in a browser", () => {
     expect(game.progressStore.save({ earned: ["stegosaurus"], completed: { hatchling: [], explorer: ["stegosaurus"], paleontologist: [] } })).toBe(true);
     const reloaded = appProps(given);
     expect(reloaded.picturePuzzle!.choiceStore.load()).toEqual({ earned: ["stegosaurus"], levelChoice: { level: "paleontologist", revision: "parent" } });
-    expect(reloaded.picturePuzzle!.progressStore.load()).toEqual({ earned: ["stegosaurus"], completed: { hatchling: [], explorer: ["stegosaurus"], paleontologist: [] } });
+    expect(reloaded.picturePuzzle!.progressStore.load()).toEqual({ historyReadable: true, progress: { earned: ["stegosaurus"], completed: { hatchling: [], explorer: ["stegosaurus"], paleontologist: [] } } });
     expect(reloaded.progress.load()).toEqual(quizSaved(6, 3));
     for (const phase of ["choice", "puzzle", "result"] as const) expect(reloaded.portraitLayouts[`picturePuzzle-${phase}`]).toBeUndefined();
   });

@@ -320,7 +320,7 @@ export function App({
   // from, and not as it opens on a welcome or choice screen.
   const counting = (game: HomeGame) => () => startCounter.countStart(game);
 
-  const pictureGame = usePicturePuzzleGame(picturePuzzle, ageLevel, home, counting("picturePuzzle"));
+  const pictureGame = usePicturePuzzleGame(picturePuzzle, ageLevel, pageVisibility, home, counting("picturePuzzle"));
 
   const quiz = useQuizGame({ dinosaurs, progress, bodyPicture, random }, ageLevel, home, counting("compare"));
 

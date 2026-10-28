@@ -3,9 +3,9 @@ import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { PicturePuzzleChoiceScreen } from "./PicturePuzzleChoiceScreen.tsx";
-import { PicturePuzzleBoardScreen } from "./PicturePuzzleBoardScreen.tsx";
+import { PicturePuzzleBoardScreen, type BoardPresence, type BoardBounds, type BoardPoint } from "./PicturePuzzleBoardScreen.tsx";
 import { PicturePuzzleResultScreen } from "./PicturePuzzleResultScreen.tsx";
-import { collectedPictures, finishPicture, fitPicturePiece, mergePictures, NO_PICTURES, pictureComplete, startPicturePuzzle, type PictureDinosaur, type PictureProgress, type PicturePuzzle, type PictureResult } from "./picturePuzzle/index.ts";
+import { collectedPictures, finishPicture, fitPicturePiece, mergePictures, NO_PICTURES, pictureComplete, pictureDropFits, startPicturePuzzle, type PictureDinosaur, type PictureProgress, type PicturePuzzle, type PictureResult } from "./picturePuzzle/index.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.ts";
 
@@ -15,7 +15,7 @@ export type PicturePuzzleChoiceStore = {
   saveLevel(choice: LevelChoice): void;
 };
 export type PicturePuzzleProgressStore = {
-  load(): PictureProgress | undefined;
+  load(): { progress: PictureProgress; historyReadable: boolean } | undefined;
   save(progress: PictureProgress): boolean;
 };
 export type PicturePuzzleGameProps = {
@@ -35,14 +35,15 @@ export function transitionFor(from: PicturePuzzleScreen, to: PicturePuzzleScreen
   return from.kind === to.kind ? undefined : SCREEN_CHANGE;
 }
 
-export function usePicturePuzzleGame(props: PicturePuzzleGameProps | undefined, setting: AgeLevelSetting, onHome: () => void, onStart?: () => void) {
+export function usePicturePuzzleGame(props: PicturePuzzleGameProps | undefined, setting: AgeLevelSetting, presence: BoardPresence, onHome: () => void, onStart?: () => void) {
   const { screen, go } = useScreens<PicturePuzzleScreen>({ kind: "choice" }, transitionFor);
   const [kept, setKept] = useState<KeptChoice>(() => {
     const saved = props?.choiceStore.load();
-    const progress = props?.progressStore.load();
+    const stored = props?.progressStore.load();
+    const progress = stored?.progress;
     const earned = progress?.earned ?? collectedPictures(saved?.earned ?? []);
     return { earned, levelChoice: saved?.levelChoice, readable: saved !== undefined,
-      progress: progress ?? { ...NO_PICTURES, earned }, historyReadable: progress !== undefined };
+      progress: progress ?? { ...NO_PICTURES, earned }, historyReadable: stored?.historyReadable ?? false };
   });
   const keptNow = useRef<KeptChoice>(kept);
   const live = useRef<PicturePuzzle | undefined>(undefined);
@@ -83,25 +84,32 @@ export function usePicturePuzzleGame(props: PicturePuzzleGameProps | undefined, 
       { also: () => { live.current = puzzle; onStart?.(); } });
   };
 
-  const fit = (piece: number) => {
+  const fit = (piece: number, slot: number): boolean => {
     const current = live.current;
-    if (!props || !current || pictureComplete(current)) return;
-    const puzzle = fitPicturePiece(current, piece, piece);
-    if (puzzle === current) return;
+    if (!props || !current || pictureComplete(current)) return false;
+    const puzzle = fitPicturePiece(current, piece, slot);
+    if (puzzle === current) return false;
     live.current = puzzle;
     if (pictureComplete(puzzle)) {
       const stored = props.progressStore.load();
-      const progress = mergePictures(keptNow.current.progress, stored ?? NO_PICTURES);
-      const finished = finishPicture({ progress, readable: keptNow.current.historyReadable && stored !== undefined }, puzzle);
+      const progress = mergePictures(keptNow.current.progress, stored?.progress ?? NO_PICTURES);
+      const finished = finishPicture({ progress, readable: keptNow.current.historyReadable && (stored?.historyReadable ?? false) }, puzzle);
       const saved = props.progressStore.save(finished.kept.progress);
       const readable = finished.kept.readable && saved;
       const result = readable ? finished.result : { ...finished.result, best: undefined, previousBest: undefined, celebration: null };
       const next = { ...keptNow.current, progress: finished.kept.progress, earned: finished.kept.progress.earned, historyReadable: readable };
       keptNow.current = next;
       go({ kind: "result", result }, { also: () => setKept(next) });
-      return;
+      return true;
     }
     go((shown) => shown.kind === "puzzle" ? { kind: "puzzle", puzzle } : shown);
+    return true;
+  };
+
+  const dropFits = (id: number, bounds: BoardBounds, point: BoardPoint): boolean => {
+    const current = live.current;
+    const piece = current?.cut.pieces.find((piece) => piece.id === id);
+    return Boolean(current && piece && pictureDropFits(piece, current.cut, bounds, point));
   };
 
   const choice = (language: Language) => props && screen.kind === "choice" ? (
@@ -110,8 +118,13 @@ export function usePicturePuzzleGame(props: PicturePuzzleGameProps | undefined, 
   ) : null;
 
   const board = (language: Language) => props && screen.kind === "puzzle" ? (
-    <PicturePuzzleBoardScreen language={language} puzzle={screen.puzzle} picture={props.bodyPicture(screen.puzzle.dinosaur.id)}
-      onFit={fit} onBack={back} onHome={home} />
+    <PicturePuzzleBoardScreen language={language} scene={{
+      name: screen.puzzle.dinosaur.name[language], columns: screen.puzzle.cut.columns, rows: screen.puzzle.cut.rows,
+      guide: screen.puzzle.level === "hatchling",
+      slots: screen.puzzle.cut.pieces.map(({ id, home }) => ({ id, crop: home, filled: screen.puzzle.fitted.includes(id) })),
+      tray: screen.puzzle.order.filter((id) => !screen.puzzle.fitted.includes(id)).map((id) => ({ id, crop: screen.puzzle.cut.pieces[id]!.home }))
+    }} picture={props.bodyPicture(screen.puzzle.dinosaur.id)}
+      presence={presence} onPlace={fit} dropFits={dropFits} onBack={back} onHome={home} />
   ) : null;
 
   const result = (language: Language) => props && screen.kind === "result" ? (
