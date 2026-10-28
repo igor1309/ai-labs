@@ -54,6 +54,24 @@ struct NativeMicrophoneRestartTests {
         #expect(error?.code == Int(kAudioUnitErr_FormatNotSupported))
         #expect(engine.starts == 2)
     }
+
+    @Test func aFailedRestartOfARunningCaptureRebuildsItOnItsInput() async throws {
+
+        let engine = FakeMicrophoneEngine(formats: [48_000, 16_000], refusedStarts: [2])
+        let clock = ManualMicrophoneClock()
+        let capture = try MicrophoneCapture(binding: SeamBinding(engine: engine, clock: clock))
+        defer { capture.stop() }
+        var audio = capture.audio.makeAsyncIterator()
+        try clock.deliver(through: engine, value: 1)
+        #expect(try await audio.next() == AudioPiece(samples: [1, 1], sampleRate: 48_000))
+        engine.changeConfiguration()
+        await capture.synchronize()
+        #expect(engine.taps == [48_000, 16_000, 16_000])
+        #expect(engine.installsOverATap == 0)
+        #expect(engine.starts == 3)
+        try clock.deliver(through: engine, value: 4)
+        #expect(try await audio.next() == AudioPiece(samples: [4, 4], sampleRate: 16_000))
+    }
 }
 
 /// The capture's device following stays out of the way: one input that is
@@ -116,6 +134,7 @@ private final class FakeMicrophoneEngine: MicrophoneEngine, @unchecked Sendable 
     private struct State {
         var formats: [Double]
         var refusals: Int
+        var refusedStarts: Set<Int>
         var taps: [Double] = []
         var block: (@Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void)?
         var changed: (@Sendable () -> Void)?
@@ -125,9 +144,11 @@ private final class FakeMicrophoneEngine: MicrophoneEngine, @unchecked Sendable 
 
     private let state: Mutex<State>
 
-    init(formats: [Double], refusals: Int = 0) {
+    /// `refusals` refuses that many starts from the first; `refusedStarts`
+    /// refuses the starts with those ordinals, counted from 1.
+    init(formats: [Double], refusals: Int = 0, refusedStarts: Set<Int> = []) {
 
-        state = Mutex(State(formats: formats, refusals: refusals))
+        state = Mutex(State(formats: formats, refusals: refusals, refusedStarts: refusedStarts))
     }
 
     var taps: [Double] { state.withLock { $0.taps } }
@@ -169,8 +190,11 @@ private final class FakeMicrophoneEngine: MicrophoneEngine, @unchecked Sendable 
 
         let refusal: NSError? = state.withLock {
             $0.starts += 1
-            guard $0.refusals > 0 else { return nil }
-            $0.refusals -= 1
+            if $0.refusals > 0 {
+                $0.refusals -= 1
+            } else if !$0.refusedStarts.contains($0.starts) {
+                return nil
+            }
             return NSError(domain: NSOSStatusErrorDomain, code: Int(kAudioUnitErr_FormatNotSupported))
         }
         if let refusal { throw refusal }
