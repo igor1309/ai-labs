@@ -7,6 +7,7 @@ let package = Package(
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
         .library(name: "AmountEntry", targets: ["AmountEntry"]),
+        .library(name: "ClientPayment", targets: ["ClientPayment"]),
         .library(name: "ClientFind", targets: ["ClientFind"]),
         .library(name: "HostPayment", targets: ["HostPayment"]),
         .library(name: "DesignSystem", targets: ["DesignSystem"]),
@@ -27,6 +28,8 @@ let package = Package(
         .testTarget(name: "HostPaymentTests", dependencies: ["HostPayment"]),
         .target(name: "AmountEntry"),
         .testTarget(name: "AmountEntryTests", dependencies: ["AmountEntry"]),
+        .target(name: "ClientPayment"),
+        .testTarget(name: "ClientPaymentTests", dependencies: ["ClientPayment"]),
         .target(name: "ClientFind"),
         .testTarget(name: "ClientFindTests", dependencies: ["ClientFind"]),
         .target(name: "HostUI", dependencies: ["DesignSystem"]),
