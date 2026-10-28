@@ -101,12 +101,17 @@ is committed to the reviewed branch while it runs. Start builders with
 hand. The first checks the brief's parts and adds `scripts/brief-rules.md`,
 so no builder edits another target after an unrelated test times out. The
 second merges trunk first, so no review reports trunk's newer work as
-removed (each happened three times on 2026-10-27).
+removed (each happened three times on 2026-10-27). A brief's `## Open` reads
+exactly "None."; a rule for the builder goes in Intent.
 
 Gate a step with `scripts/gate-step.sh` and land it with
 `scripts/land-step.sh <issue> <title>`, never with a hand-written chain:
 on 2026-10-27 such chains waited for lines never printed, wrote to a
 `/tmp` that was cleared, and landed branches behind trunk.
+
+A test orders concurrent work only by handshakes on events: a gate, a
+received snapshot, an awaited call. A `TaskExecutor` preference does not
+reach a plain `Task { }`, so it fixes no order (LAB-684, 2026-10-28).
 
 Never wait for CI. Once a step passes its gate, the next step branches from
 that step's branch and its builder starts at once; its PR goes up after
