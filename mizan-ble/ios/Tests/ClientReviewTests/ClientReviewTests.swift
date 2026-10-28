@@ -130,6 +130,77 @@ struct ClientReviewTests {
         #expect(flow.ports.calls == [.seal(.confirm), .write([9, 8, 7]), .open([5, 6]), .close, .drop])
     }
 
+    @Test(arguments: [nil, Review.Decision.confirm, .decline], [false, true])
+    @MainActor func receivedCancellationSurvivesLinkLoss(_ decision: Review.Decision?, _ cancellationFirst: Bool) async {
+        let flow = Flow()
+        if let decision { await flow.drive(.decide(decision)) }
+        let calls = flow.ports.calls
+        let first = flow.send(.message([5]))
+        let second = flow.send(.message([6]))
+        await flow.drive(.linkLost)
+        await flow.drive(.linkLost)
+        #expect(flow.ports.calls == calls)
+        #expect(!flow.state.canDecide)
+        #expect(!flow.state.canFinish)
+        #expect(!flow.state.isDone)
+
+        flow.ports.opened = cancellationFirst ? .end : .unrelated
+        await flow.run(first)
+        #expect(flow.ports.calls == calls + [.open([5])])
+        flow.ports.opened = cancellationFirst ? .unrelated : .end
+        await flow.run(second)
+        #expect(flow.state.phase == .ended(.hostCancelled))
+        #expect(flow.state.charge == .notCharged)
+        #expect(flow.state.acknowledgedDecision == nil)
+        #expect(flow.ports.calls == calls + [.open([5]), .open([6]), .close, .drop])
+    }
+
+    @Test(arguments: [Review.Message?.none, .unrelated])
+    @MainActor func linkLossWaitsForEveryUninterpretableMessage(_ message: Review.Message?) async {
+        let flow = Flow()
+        await flow.drive(.decide(.confirm))
+        let calls = flow.ports.calls
+        let first = flow.send(.message([0]))
+        let second = flow.send(.message([255]))
+        await flow.drive(.linkLost)
+        #expect(flow.ports.calls == calls)
+        flow.ports.opened = message
+        await flow.run(first)
+        #expect(!flow.state.canFinish)
+        #expect(flow.ports.calls == calls + [.open([0])])
+        await flow.run(second)
+        #expect(flow.state.phase == .ended(.linkLost(.unknown)))
+        #expect(flow.state.charge == .unknown)
+        #expect(flow.ports.calls == calls + [.open([0]), .open([255]), .close, .drop])
+    }
+
+    @Test(arguments: [Review.Decision.confirm, .decline])
+    @MainActor func receivedAcknowledgementSurvivesLinkLoss(_ decision: Review.Decision) async {
+        let flow = Flow()
+        await flow.drive(.decide(decision))
+        let opening = flow.send(.message([1]))
+        await flow.drive(.linkLost)
+        flow.ports.opened = .decisionAcknowledged
+        await flow.run(opening)
+        #expect(flow.state.phase == (decision == .confirm ? .handedOver : .ended(.declined)))
+        #expect(flow.state.acknowledgedDecision == decision)
+        let cleanup: [Ports.Call] = decision == .confirm ? [] : [.close, .drop]
+        #expect(flow.ports.calls == [.seal(decision), .write([9, 8, 7]), .open([1])] + cleanup)
+    }
+
+    @Test(arguments: [Review.Decision.confirm, .decline])
+    @MainActor func receivedCancellationSurvivesWriteRefusal(_ decision: Review.Decision) async {
+        let flow = Flow()
+        await flow.drive(.decide(decision))
+        let opening = flow.send(.message([5, 6]))
+        await flow.drive(.written(decision, .refused))
+        flow.ports.opened = .end
+        await flow.run(opening)
+        #expect(flow.state.phase == .ended(.hostCancelled))
+        #expect(flow.state.charge == .notCharged)
+        #expect(flow.ports.calls == [.seal(decision), .write([9, 8, 7]), .open([5, 6]), .close, .drop])
+    }
+
     @Test(arguments: [Review.Decision.confirm, .decline])
     @MainActor func refusedWriteIsNotCharged(_ decision: Review.Decision) async {
         let flow = Flow()
