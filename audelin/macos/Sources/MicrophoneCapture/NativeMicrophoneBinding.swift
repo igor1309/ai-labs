@@ -5,16 +5,57 @@ import Darwin
 import Foundation
 import Synchronization
 
-// Engine and listener ownership is confined to the capture's lifecycle queue.
+/// The audio engine the binding drives, so its restarts can be driven by a test.
+protocol MicrophoneEngine: AnyObject, Sendable {
+
+    var voiceProcessingEnabled: Bool { get }
+    func disableVoiceProcessing() throws
+    func use(device: UInt32) throws
+    /// The hardware format of the input bus, read anew on each call.
+    func inputFormat() -> AVAudioFormat
+    func observeConfigurationChange(_ changed: @escaping @Sendable () -> Void) -> any NSObjectProtocol
+    func installTap(format: AVAudioFormat, block: @escaping @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void)
+    func removeTap()
+    func start() throws
+    func stop()
+}
+
+// Engine and listener ownership is confined to the capture's lifecycle queue,
+// except a configuration change, which restarts the engine under its lock.
 // Native callbacks own only immutable handlers and a separately locked tap.
 final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
 
-    private var engine: AVAudioEngine?
+    private enum Phase {
+        case running
+        // The first start was refused while the device changed its profile;
+        // the configuration change that follows gets one more start.
+        case awaitingFormat
+        case ended
+    }
+
+    private let makeEngine: @Sendable () -> any MicrophoneEngine
+    private let readClock: @Sendable () throws -> MicrophoneClockReading
+    private var engine: (any MicrophoneEngine)?
     private var tap: NativeTap?
+    private var phase = Phase.ended
     private var configurationObserver: (any NSObjectProtocol)?
     private var defaultListener: AudioObjectPropertyListenerBlock?
     private let notifications = DispatchQueue(label: "audelin.microphone-notifications")
     private let engineLock = NSLock()
+
+    init(
+        makeEngine: @escaping @Sendable () -> any MicrophoneEngine,
+        readClock: @escaping @Sendable () throws -> MicrophoneClockReading
+    ) {
+
+        self.makeEngine = makeEngine
+        self.readClock = readClock
+    }
+
+    static func system() -> NativeMicrophoneBinding {
+
+        NativeMicrophoneBinding(makeEngine: { SystemMicrophoneEngine() }, readClock: readClock)
+    }
 
     var now: Double { Self.clockSeconds }
 
@@ -22,7 +63,7 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
 
         engineLock.lock()
         defer { engineLock.unlock() }
-        return engine?.inputNode.isVoiceProcessingEnabled ?? false
+        return engine?.voiceProcessingEnabled ?? false
     }
 
     func defaultInput() throws -> UInt32 {
@@ -72,59 +113,82 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
 
         engineLock.lock()
         defer { engineLock.unlock() }
-        let engine = AVAudioEngine()
+        let engine = makeEngine()
         self.engine = engine
-        let input = engine.inputNode
-        try input.setVoiceProcessingEnabled(false)
-        guard let unit = input.audioUnit else { throw CaptureError.noInput }
-        // Setting the device, even to the one in use, raises a configuration
-        // change; set it only when it differs (LAB-638).
-        var device = device
-        var current = AudioObjectID(kAudioObjectUnknown)
-        var size = UInt32(MemoryLayout<UInt32>.size)
-        let read = AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &current, &size)
-        if read != noErr || current != device {
-            try Self.check(AudioUnitSetProperty(
-                unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
-                &device, UInt32(MemoryLayout<UInt32>.size)
-            ))
+        phase = .ended
+        try engine.disableVoiceProcessing()
+        try engine.use(device: device)
+        configurationObserver = engine.observeConfigurationChange { [weak self, weak engine] in
+            guard let self, let engine else { return }
+            self.configurationChanged(engine, notify: configurationChanged)
         }
-        // A change that leaves the engine running needs no rebuild; rebuilding
-        // on it restarted the engine in a loop and the track stayed empty.
-        configurationObserver = NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
-        ) { [weak engine] _ in
-            guard engine?.isRunning != true else { return }
-            configurationChanged()
+        let tap = NativeTap(receive: receive, readClock: readClock)
+        self.tap = tap
+        try installTap(tap, on: engine)
+        do {
+            try engine.start()
+            phase = .running
+        } catch let error as NSError where error.code == Int(kAudioUnitErr_FormatNotSupported) {
+            // AirPods switch to their headset profile when their microphone
+            // opens, so the format read a moment ago no longer holds.
+            phase = .awaitingFormat
         }
-        // After switching the device the output format can still describe the
-        // old one; a tap whose rate differs from the hardware's raises an
-        // Objective-C exception that aborts the app (LAB-638), so tap in the
-        // device's own format and refuse anything else as an error.
-        let hardware = input.inputFormat(forBus: 0)
+    }
+
+    // The device's format can change under a running engine, which then
+    // delivers nothing at the old one; the tap follows the format it has now.
+    private func configurationChanged(_ changed: any MicrophoneEngine, notify: @Sendable () -> Void) {
+
+        engineLock.lock()
+        guard engine === changed, let tap, phase != .ended else {
+            engineLock.unlock()
+            return
+        }
+        let retrying = phase == .awaitingFormat
+        do {
+            changed.removeTap()
+            changed.stop()
+            try installTap(tap, on: changed)
+            try changed.start()
+            phase = .running
+            engineLock.unlock()
+        } catch {
+            phase = .ended
+            engineLock.unlock()
+            // The one retry is spent; a running capture lets the capture
+            // decide whether its input is still there.
+            if retrying { tap.fail(error) } else { notify() }
+        }
+    }
+
+    // After switching the device the output format can still describe the
+    // old one; a tap whose rate differs from the hardware's raises an
+    // Objective-C exception that aborts the app (LAB-638), so tap in the
+    // device's own format and refuse anything else as an error.
+    private func installTap(_ tap: NativeTap, on engine: any MicrophoneEngine) throws {
+
+        let hardware = engine.inputFormat()
         guard hardware.sampleRate.isFinite, hardware.sampleRate > 0, hardware.channelCount > 0,
               let format = AVAudioFormat(
                   standardFormatWithSampleRate: hardware.sampleRate, channels: hardware.channelCount
               ),
               format.commonFormat == .pcmFormatFloat32 else { throw CaptureError.unsupportedFormat }
-        let tap = NativeTap(receive: receive, readClock: Self.readClock)
-        self.tap = tap
-        input.installTap(onBus: 0, bufferSize: 1_024, format: format) { buffer, time in
+        engine.installTap(format: format) { buffer, time in
             tap.deliver(buffer, time: time)
         }
-        try engine.start()
     }
 
     func stop() {
 
         engineLock.lock()
         defer { engineLock.unlock() }
+        phase = .ended
         if let observer = configurationObserver {
             NotificationCenter.default.removeObserver(observer)
             configurationObserver = nil
         }
         if let engine {
-            if tap != nil { engine.inputNode.removeTap(onBus: 0) }
+            if tap != nil { engine.removeTap() }
             engine.stop()
         }
         // Removing the tap prevents further delivery; closing waits behind any
@@ -247,9 +311,76 @@ final class NativeTap: Sendable {
         }
     }
 
+    func fail(_ error: any Error) {
+
+        receive.withLock { $0?(.failure(error)) }
+    }
+
     func close() {
 
         receive.withLock { $0 = nil }
+    }
+}
+
+// The binding serializes every call under its engine lock.
+final class SystemMicrophoneEngine: MicrophoneEngine, @unchecked Sendable {
+
+    private let engine = AVAudioEngine()
+
+    var voiceProcessingEnabled: Bool { engine.inputNode.isVoiceProcessingEnabled }
+
+    func disableVoiceProcessing() throws {
+
+        try engine.inputNode.setVoiceProcessingEnabled(false)
+    }
+
+    func use(device: UInt32) throws {
+
+        guard let unit = engine.inputNode.audioUnit else { throw CaptureError.noInput }
+        // Setting the device, even to the one in use, raises a configuration
+        // change; set it only when it differs (LAB-638).
+        var device = device
+        var current = AudioObjectID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        let read = AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &current, &size)
+        guard read != noErr || current != device else { return }
+        let status = AudioUnitSetProperty(
+            unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0,
+            &device, UInt32(MemoryLayout<UInt32>.size)
+        )
+        guard status == noErr else { throw NativeMicrophoneError(status: status) }
+    }
+
+    func inputFormat() -> AVAudioFormat {
+
+        engine.inputNode.inputFormat(forBus: 0)
+    }
+
+    func observeConfigurationChange(_ changed: @escaping @Sendable () -> Void) -> any NSObjectProtocol {
+
+        NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
+        ) { _ in changed() }
+    }
+
+    func installTap(format: AVAudioFormat, block: @escaping @Sendable (AVAudioPCMBuffer, AVAudioTime) -> Void) {
+
+        engine.inputNode.installTap(onBus: 0, bufferSize: 1_024, format: format, block: block)
+    }
+
+    func removeTap() {
+
+        engine.inputNode.removeTap(onBus: 0)
+    }
+
+    func start() throws {
+
+        try engine.start()
+    }
+
+    func stop() {
+
+        engine.stop()
     }
 }
 

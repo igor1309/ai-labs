@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { App, type AppProps } from "../src/App.tsx";
@@ -87,6 +88,7 @@ export function openHomeApp({
   skeletonSounds = SILENT
 }: SkeletonsAppOptions = {}) {
   const props: AppProps = {
+    ...emptyLabyrinth(),
     portraitLayouts,
     dinosaurs: SHIPPED_DINOSAURS,
     catalogue: SHIPPED_CATALOGUE,
@@ -119,7 +121,7 @@ export function openHomeApp({
     ...(startCounter && { startCounter }),
     ...pictures
   };
-  const view = render(<App {...props} />);
+  const view = render(<App {...emptyLabyrinth()} {...props} />);
   if (loadHome) loadShownPictures(pictures);
   return { user: userEvent.setup({ delay: null }), storage, pictures, viewport, visibility, ageLevels, unmount: view.unmount };
 }

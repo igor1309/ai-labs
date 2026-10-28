@@ -257,6 +257,27 @@ struct LoggingTests {
             #expect(phases.first == "phase=idle")
             #expect(phases.last == "phase=ended")
             #expect(Set(phases) == ["phase=idle", "phase=bringingUp", "phase=recording", "phase=ending", "phase=ended"])
+            // Each piece's effect waits for the previous piece's event, so every status change is its own state.
+            let pieces = states.map { $0.message.components(separatedBy: " ")[2...10].joined(separator: " ") }
+            #expect(pieces == [
+                "phase=idle folder=down processes=down microphoneTrack=down callTrack=down microphoneCapture=down callCapture=down transcript=down callText=down",
+                "phase=bringingUp folder=starting processes=down microphoneTrack=down callTrack=down microphoneCapture=down callCapture=down transcript=down callText=down",
+                "phase=bringingUp folder=up processes=starting microphoneTrack=down callTrack=down microphoneCapture=down callCapture=down transcript=down callText=down",
+                "phase=bringingUp folder=up processes=up microphoneTrack=starting callTrack=down microphoneCapture=down callCapture=down transcript=down callText=down",
+                "phase=bringingUp folder=up processes=up microphoneTrack=up callTrack=starting microphoneCapture=down callCapture=down transcript=down callText=down",
+                "phase=bringingUp folder=up processes=up microphoneTrack=up callTrack=up microphoneCapture=down callCapture=down transcript=starting callText=down",
+                "phase=bringingUp folder=up processes=up microphoneTrack=up callTrack=up microphoneCapture=down callCapture=down transcript=up callText=starting",
+                "phase=bringingUp folder=up processes=up microphoneTrack=up callTrack=up microphoneCapture=starting callCapture=down transcript=up callText=up",
+                "phase=bringingUp folder=up processes=up microphoneTrack=up callTrack=up microphoneCapture=up callCapture=starting transcript=up callText=up",
+                "phase=recording folder=up processes=up microphoneTrack=up callTrack=up microphoneCapture=up callCapture=up transcript=up callText=up",
+                "phase=ending folder=up processes=up microphoneTrack=up callTrack=up microphoneCapture=stopping callCapture=up transcript=up callText=up",
+                "phase=ending folder=up processes=up microphoneTrack=up callTrack=up microphoneCapture=closed callCapture=stopping transcript=up callText=up",
+                "phase=ending folder=up processes=up microphoneTrack=stopping callTrack=up microphoneCapture=closed callCapture=closed transcript=up callText=up",
+                "phase=ending folder=up processes=up microphoneTrack=closed callTrack=stopping microphoneCapture=closed callCapture=closed transcript=up callText=up",
+                "phase=ending folder=up processes=up microphoneTrack=closed callTrack=closed microphoneCapture=closed callCapture=closed transcript=up callText=stopping",
+                "phase=ending folder=up processes=up microphoneTrack=closed callTrack=closed microphoneCapture=closed callCapture=closed transcript=stopping callText=closed",
+                "phase=ended folder=closed processes=closed microphoneTrack=closed callTrack=closed microphoneCapture=closed callCapture=closed transcript=closed callText=closed",
+            ])
             #expect(states.allSatisfy { $0.message.hasPrefix("state id=8 ") && !$0.message.contains(root.path) })
             #expect(states.last?.message.contains("microphoneCapture=closed") == true)
             #expect(states.last?.message.contains("callCapture=closed") == true)

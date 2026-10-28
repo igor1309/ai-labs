@@ -29,9 +29,11 @@ final class CaptureScript<Piece: Sendable>: Sendable {
     let fails: Bool
     let stopFails: Bool
     let stopEndsStream: Bool
+    let streamFails: Bool
 
     init(
-        first: Piece, last: Piece, fails: Bool, stopFails: Bool = false, stopEndsStream: Bool = true
+        first: Piece, last: Piece, fails: Bool, stopFails: Bool = false, stopEndsStream: Bool = true,
+        streamFails: Bool = false
     ) {
 
         self.first = first
@@ -39,13 +41,15 @@ final class CaptureScript<Piece: Sendable>: Sendable {
         self.fails = fails
         self.stopFails = stopFails
         self.stopEndsStream = stopEndsStream
+        self.streamFails = streamFails
     }
 
     func start() throws -> StartedCapture<Piece> {
 
         starts.append(true)
         if fails { throw ScriptFailure.failed }
-        source.continuation.yield(first)
+        if streamFails { source.continuation.finish(throwing: ScriptFailure.failed) }
+        else { source.continuation.yield(first) }
         return StartedCapture(stream: source.stream, stop: {
             self.stops.append(true)
             self.source.continuation.yield(self.last)
@@ -94,7 +98,7 @@ struct SessionRig: Sendable {
 
     init(
         root: URL, microphoneFails: Bool, processesFail: Bool, construction: SessionConstruction,
-        stopFailure: SessionSide?, stopEndsStream: Bool, rates: [Double]?,
+        stopFailure: SessionSide?, stopEndsStream: Bool, streamFailure: SessionSide?, rates: [Double]?,
         recognizers: (any Recognizer, any Recognizer)?,
         connect: (@Sendable (SessionPieces, Session) -> Task<Void, Never>)? = nil,
         beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in },
@@ -107,13 +111,15 @@ struct SessionRig: Sendable {
             first: .init(samples: firstSamples ?? [0.25, -0.5], sampleRate: rates?[0] ?? 48_000),
             last: .init(samples: lastSamples ?? [0.125], sampleRate: rates?[1] ?? 48_000),
             fails: microphoneFails, stopFails: stopFailure == .microphone,
-            stopEndsStream: stopFailure == .microphone ? stopEndsStream : true
+            stopEndsStream: stopFailure == .microphone ? stopEndsStream : true,
+            streamFails: streamFailure == .microphone
         )
         call = CaptureScript(
             first: .init(samples: firstSamples ?? [-0.25, 0.5], sampleRate: rates?[0] ?? 48_000),
             last: .init(samples: lastSamples ?? [-0.125], sampleRate: rates?[1] ?? 48_000),
             fails: false, stopFails: stopFailure == .call,
-            stopEndsStream: stopFailure == .call ? stopEndsStream : true
+            stopEndsStream: stopFailure == .call ? stopEndsStream : true,
+            streamFails: streamFailure == .call
         )
         mine = SessionRecognizer(name: "mine")
         theirs = SessionRecognizer(name: "theirs")
@@ -163,7 +169,7 @@ struct SessionRig: Sendable {
 
 func withSessionRig(
     microphoneFails: Bool = false, processesFail: Bool = false, construction: SessionConstruction = .init(),
-    stopFailure: SessionSide? = nil, stopEndsStream: Bool = true, rates: [Double]? = nil,
+    stopFailure: SessionSide? = nil, stopEndsStream: Bool = true, streamFailure: SessionSide? = nil, rates: [Double]? = nil,
     recognizers: (any Recognizer, any Recognizer)? = nil,
     connect: (@Sendable (SessionPieces, Session) -> Task<Void, Never>)? = nil,
     beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in },
@@ -174,7 +180,7 @@ func withSessionRig(
     try await withComposeFolder { root in
         let rig = SessionRig(
             root: root, microphoneFails: microphoneFails, processesFail: processesFail, construction: construction,
-            stopFailure: stopFailure, stopEndsStream: stopEndsStream, rates: rates, recognizers: recognizers,
+            stopFailure: stopFailure, stopEndsStream: stopEndsStream, streamFailure: streamFailure, rates: rates, recognizers: recognizers,
             connect: connect, beforeForward: beforeForward, beforeMicrophoneStartReturns: beforeMicrophoneStartReturns
         )
         do {

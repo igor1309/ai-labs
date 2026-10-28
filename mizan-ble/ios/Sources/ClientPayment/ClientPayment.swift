@@ -86,7 +86,7 @@ public enum ClientPayment {
                 return (next, .finish)
             }
         case (.paid, .done), (.failed, .done), (.lost, .done):
-            // The root may end the machine as soon as it reads over, so cleanup
+            // The root may end the flow as soon as it reads over, so cleanup
             // must have run even when the payer beats the independent effect.
             next.doneRequested = true
             if next.resourcesReleased { next.status = .over }
@@ -108,14 +108,17 @@ public enum ClientPayment {
             self.link = link
         }
 
-        public func handle(_ effect: Effect) async -> Event? {
-            switch effect {
-            case .open(let message):
-                return .opened(session.open(message))
-            case .finish:
-                session.close()
-                link.drop()
-                return .finished
+        public func handle(_ effect: Effect) -> AsyncStream<Event> {
+            AsyncStream { continuation in
+                switch effect {
+                case .open(let message):
+                    continuation.yield(.opened(session.open(message)))
+                case .finish:
+                    session.close()
+                    link.drop()
+                    continuation.yield(.finished)
+                }
+                continuation.finish()
             }
         }
     }

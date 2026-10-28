@@ -1,5 +1,16 @@
 # rexlab — Change Log
 
+## 2026-10-28
+
+- A first picture puzzle on readable storage celebrates FIRST BEST, while corrupt or lost known history keeps the finishing reward without a best claim (LAB-669).
+- Picture puzzles celebrate later collection bests after recovered progress saves successfully; the recovery round still earns its star without claiming a historical best (LAB-669).
+- Picture puzzles offer Tyrannosaurus, Triceratops and Stegosaurus with 12, 24 or 36 pieces and a remembered difficulty choice (LAB-669).
+- Picture puzzle pieces can be dragged, tapped or placed with the keyboard, with a four-piece tray, hints and a full-picture preview (LAB-669).
+- Finished pictures reveal a dinosaur fact and a round star, save a shared collection, and celebrate new collection bests independently at each difficulty (LAB-669).
+- The picture puzzle is available from its own home tile and featured card, both showing the shared collection (LAB-669).
+- LABYRINTH generates fresh random mazes at all three levels, with long wrong turns and no repeated board on replay (LAB-668).
+- LABYRINTH opens from its tile or featured card, rewards every reunion with three saved stars and keeps the child's level choice; hints leave rewards whole and restart the next-level offer streak (LAB-668).
+
 ## 2026-10-26
 
 - DIG's FIELD GUIDE fits an iPhone on its side: its five treasure cards under a short bar, in one row, or three over two in Russian, every name whole (LAB-589).

@@ -138,6 +138,8 @@ Call folders (owner, 2026-10-21), following Amanu:
 
 - One folder per call, `yyyy.MM.dd-HHmm <title>`. The timestamp stays in
   front so folders sort by time. The folder name is the title.
+  A taken name gets a number after the timestamp (`yyyy.MM.dd-HHmm-2 Zoom`),
+  `/` and `:` become `-`, and a call with no app is the bare timestamp (LAB-636).
 - The title starts as the call app's name ("Zoom"); from v3 it is the
   calendar event's name when one overlaps the call (Calendar is an optional
   permission in setup).

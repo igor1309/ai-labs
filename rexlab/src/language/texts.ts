@@ -7,6 +7,19 @@ import { ru } from "./ru.ts";
 // typecheck. Children are just learning to read, so every text for them,
 // shown or read out, is written in capitals here rather than styled so.
 export type Texts = {
+  labyrinth: string;
+  labyrinthResult: { title: string; earned: string; total: (stars: number) => string; again: string };
+  labyrinthBoard: {
+    title: string;
+    hint: string;
+    maze: string;
+    goal: string;
+    baby: string;
+    parent: string;
+    bringHome: string;
+    tapStep: string;
+    cell: (column: number, row: number) => string;
+  };
   greeting: string;
   quizCard: string;
   quizCardPicture: string;
@@ -137,6 +150,21 @@ export type Texts = {
   // build, and its museum.
   skeletons: string;
   skeletonTitle: string;
+  picturePuzzle: string;
+  pictureCollection: string;
+  pictureAnother: string;
+  pictureFacts: Record<"tyrannosaurus" | "triceratops" | "stegosaurus", string>;
+  pictureNotCollected: string;
+  pictureBoard: string;
+  picturePieces: string;
+  picturePiece: (place: number) => string;
+  pictureSlot: (place: number) => string;
+  pictureFitted: string;
+  picturePrevious: string;
+  pictureNext: string;
+  pictureHint: string;
+  picturePreview: string;
+  pictureRetry: string;
   museum: string;
   // The skeleton being built and its tray of bones.
   skeleton: string;

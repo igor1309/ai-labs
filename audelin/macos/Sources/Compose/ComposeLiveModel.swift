@@ -9,6 +9,7 @@ import enum SystemAudioCapture.ProcessSelection
 /// Builds a session immediately; each side gets its own recognizer over the shared model.
 public func composeSessionPieces(
     folder: CallFolder,
+    folderTitle: String? = nil,
     processes: CallAppProcesses,
     startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
     startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
@@ -17,7 +18,7 @@ public func composeSessionPieces(
 ) -> SessionPieces {
 
     SessionPieces(
-        folder: folder, processes: processes,
+        folder: folder, folderTitle: folderTitle, processes: processes,
         startMicrophone: startMicrophone, startCall: startCall,
         microphoneRecognizerSource: microphoneRecognizerSource, callRecognizerSource: callRecognizerSource
     )

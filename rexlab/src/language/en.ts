@@ -1,6 +1,13 @@
 import type { Texts } from "./texts.ts";
 
 export const en: Texts = {
+  labyrinth: "LABYRINTH",
+  labyrinthResult: { title: "HOME TOGETHER!", earned: "+3 STARS", total: (stars) => `TOTAL ${stars}`, again: "AGAIN" },
+  labyrinthBoard: {
+    title: "LABYRINTH", hint: "HINT", maze: "MAZE", goal: "HOME", baby: "BABY", parent: "PARENT",
+    bringHome: "BRING THE BABY HOME", tapStep: "TAP A FOOTPRINT TO TAKE A STEP",
+    cell: (column, row) => `PATH ${column}, ${row}`
+  },
   greeting: "PICK A GAME",
   quizCard: "COMPARE",
   quizCardPicture: "TWO DINOSAURS",
@@ -98,6 +105,25 @@ export const en: Texts = {
   found: "FOUND",
   skeletons: "SKELETONS",
   skeletonTitle: "BUILD A SKELETON",
+  picturePuzzle: "PICTURE PUZZLE",
+  pictureCollection: "PICTURE COLLECTION",
+  pictureAnother: "ANOTHER PICTURE",
+  pictureFacts: {
+    tyrannosaurus: "T. REX HAD TINY ARMS BUT HUGE LEGS.",
+    triceratops: "TRICERATOPS HAD THREE HORNS AND A BONY FRILL.",
+    stegosaurus: "STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK."
+  },
+  pictureBoard: "PICTURE BOARD",
+  picturePieces: "PIECES",
+  picturePiece: (place) => `PIECE ${place}`,
+  pictureSlot: (place) => `SLOT ${place}`,
+  pictureFitted: "PIECES IN PLACE",
+  picturePrevious: "PREVIOUS PIECES",
+  pictureNext: "NEXT PIECES",
+  pictureHint: "HINT",
+  picturePreview: "PICTURE",
+  pictureRetry: "TRY AGAIN",
+  pictureNotCollected: "PICTURE TO COLLECT",
   museum: "MUSEUM",
   skeleton: "SKELETON",
   bones: "BONES",

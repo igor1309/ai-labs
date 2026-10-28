@@ -51,6 +51,7 @@ func composeRecordingPieces(
         let app = callApp.current
         return composeSessionPieces(
             folder: CallFolder(callsURL: callsURL, now: now, timeZone: timeZone()),
+            folderTitle: app.flatMap(CoreAudioProcesses.callAppName),
             processes: CallAppProcesses(app: app ?? "", list: RecordingProcessList(
                 source: processes, appKnown: app != nil
             )),

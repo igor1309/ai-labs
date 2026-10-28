@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { addTransitionType, startTransition, ViewTransition, type ViewTransitionProps } from "react";
@@ -200,7 +201,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   const shared = recordedSharedPictures();
   let clock = 0;
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

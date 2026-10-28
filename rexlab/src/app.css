@@ -1,3 +1,144 @@
+.picture-puzzle-choice-screen {
+  box-sizing: border-box;
+  height: 100vh;
+  height: 100dvh;
+  padding: calc(32px + env(safe-area-inset-top)) calc(40px + var(--screen-right)) calc(48px + env(safe-area-inset-bottom)) calc(40px + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  overflow: hidden;
+  color: #1d2742;
+  background: #f2efe8;
+}
+
+.picture-puzzle-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.picture-puzzle-bar h1 {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 0;
+  font-size: clamp(24px, 3vw, 40px);
+}
+
+.picture-puzzle-collection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.picture-puzzle-levels {
+  width: 648px;
+  max-width: 100%;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.picture-puzzle-choices {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: center;
+  gap: 24px;
+}
+
+.picture-puzzle-choice {
+  min-width: 48px;
+  min-height: 48px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+  padding: 16px 16px 24px;
+  border: 1px solid #1d27421f;
+  border-radius: 24px;
+  background: #fffdf8;
+  color: #1d2742;
+  box-shadow: 0 8px 24px #1d274224;
+  container-type: inline-size;
+  animation: rise-in var(--motion-screen) var(--ease-out) calc(var(--choice) * var(--motion-stagger)) both;
+}
+
+.picture-puzzle-name {
+  font-size: min(30px, 100cqi / 9.4);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.picture-puzzle-star {
+  align-self: center;
+  display: flex;
+  color: #5c647a;
+}
+
+.picture-puzzle-star[data-earned="true"] {
+  color: #e39b2d;
+}
+
+.picture-puzzle-star[data-earned="true"] svg {
+  fill: currentColor;
+}
+
+.picture-puzzle-crop {
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+}
+
+.picture-puzzle-scene {
+  position: absolute;
+  display: block;
+  width: var(--scene-width);
+  height: var(--scene-height);
+  left: var(--scene-left);
+  top: var(--scene-top);
+}
+
+.picture-puzzle-backdrop,
+.picture-puzzle-body {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.picture-puzzle-body {
+  object-fit: contain;
+}
+
+[data-theme="dark"] .picture-puzzle-choice-screen {
+  background: #0f1320;
+  color: #ece8de;
+}
+
+[data-theme="dark"] .picture-puzzle-choice {
+  background: #181e2e;
+  border-color: #ece8de1f;
+  color: #ece8de;
+  box-shadow: 0 8px 24px #00000066;
+}
+
+[data-theme="dark"] .picture-puzzle-star {
+  color: #9ca3b6;
+}
+
+[data-theme="dark"] .picture-puzzle-star[data-earned="true"] {
+  color: #f2b24b;
+}
+
 /* The standalone sand fills the viewport, including beneath its safe-area
    controls. Its texture and writing keep the same colours in both themes. */
 html:has(.sand-writing-screen),
@@ -855,6 +996,7 @@ body:has(.result) #version {
 .featured-card .catalogue-tile-picture,
 .featured-card .care-tile-picture,
 .featured-card .sort-tile-picture,
+.featured-card .labyrinth-tile-picture,
 .featured-card .skeletons-tile-picture {
   padding: 36px 32px 8px;
 }
@@ -923,7 +1065,8 @@ body:has(.result) #version {
   color: #1d2742;
 }
 
-.featured-card[data-game="sort"] {
+.featured-card[data-game="sort"],
+.featured-card[data-game="labyrinth"] {
   outline: 1px solid #1d27421f;
   outline-offset: -0.5px;
   background: #fffdf8;
@@ -960,7 +1103,8 @@ body:has(.result) #version {
   background: #ffffff59;
 }
 
-.featured-card[data-game="sort"] .featured-card-symbol {
+.featured-card[data-game="sort"] .featured-card-symbol,
+.featured-card[data-game="labyrinth"] .featured-card-symbol {
   background: #c9583d;
   color: #ffffff;
 }
@@ -980,12 +1124,14 @@ body:has(.result) #version {
   background: #ffffff59;
 }
 
-.featured-card[data-game="sort"] .featured-card-badge {
+.featured-card[data-game="sort"] .featured-card-badge,
+.featured-card[data-game="labyrinth"] .featured-card-badge {
   background: #e6e2d9;
 }
 
 .featured-card[data-game="compare"] .featured-card-badge svg,
 .featured-card[data-game="sort"] .featured-card-badge svg,
+.featured-card[data-game="labyrinth"] .featured-card-badge svg,
 .featured-card[data-game="skeletons"] .featured-card-badge svg {
   color: #e39b2d;
 }
@@ -1567,9 +1713,9 @@ body:has(.result) #version {
   font-weight: 700;
 }
 
-/* The sorting game's tile, on paper over SORT's own terracotta symbol,
-   in the other tiles' shape. */
-.sort-tile {
+/* Sorting and labyrinth use paper cards with terracotta symbols. */
+.sort-tile,
+.labyrinth-tile {
   position: relative;
   flex: 1 1 0;
   min-height: 0;
@@ -1587,7 +1733,8 @@ body:has(.result) #version {
   text-align: left;
 }
 
-.sort-tile-picture {
+.sort-tile-picture,
+.labyrinth-tile-picture {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
@@ -1596,14 +1743,16 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-.sort-tile-row {
+.sort-tile-row,
+.labyrinth-tile-row {
   padding: 12px 12px 14px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.sort-tile-symbol {
+.sort-tile-symbol,
+.labyrinth-tile-symbol {
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -1614,7 +1763,8 @@ body:has(.result) #version {
   color: #ffffff;
 }
 
-.sort-tile-title {
+.sort-tile-title,
+.labyrinth-tile-title {
   flex: 1 1 0;
   min-width: 0;
   font-size: 28px;
@@ -1623,7 +1773,8 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
-.sort-tile-best {
+.sort-tile-best,
+.labyrinth-tile-best {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -1639,7 +1790,8 @@ body:has(.result) #version {
   font-weight: 700;
 }
 
-.sort-tile-best svg {
+.sort-tile-best svg,
+.labyrinth-tile-best svg {
   color: #e39b2d;
 }
 
@@ -11063,6 +11215,334 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   outline-offset: -1px;
 }
 
+.labyrinth-board-screen {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-width: 1024px;
+  height: 100dvh;
+  min-height: 670px;
+  padding: calc(24px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.labyrinth-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex: 0 0 56px;
+}
+
+.labyrinth-bar h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 28px;
+}
+
+.labyrinth-room {
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.labyrinth-maze {
+  --cell: 64px;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--columns), var(--cell));
+  grid-template-rows: repeat(var(--rows), var(--cell));
+  flex: 0 0 auto;
+  padding: 8px;
+  border-radius: 16px;
+  background: #244b3b;
+  isolation: isolate;
+}
+
+.labyrinth-cell,
+.labyrinth-wall {
+  box-sizing: border-box;
+  width: var(--cell);
+  height: var(--cell);
+}
+
+.labyrinth-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #1d27421f;
+  border-radius: 0;
+  background: #e6e2d9;
+  color: #1d2742;
+}
+
+.labyrinth-cell[data-legal] {
+  outline: 2px solid #2e7d4f;
+  outline-offset: -4px;
+  background: #fffdf8;
+}
+
+.labyrinth-cell[data-legal] > svg {
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.labyrinth-cell[data-goal] { border: 3px solid #e39b2d; }
+
+.labyrinth-cell[data-goal] .labyrinth-footprint {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 22px;
+  height: 22px;
+}
+
+.labyrinth-cell[data-hint] {
+  outline: 4px dashed #1d2742;
+  outline-offset: -6px;
+  background: #e39b2d;
+}
+
+.labyrinth-hint {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+}
+
+.labyrinth-baby {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: var(--cell);
+  height: var(--cell);
+  translate: calc(var(--baby-x) * var(--cell)) calc(var(--baby-y) * var(--cell));
+  pointer-events: none;
+}
+
+.labyrinth-step {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: labyrinth-step var(--motion-standard) var(--ease-out) both;
+}
+
+@keyframes labyrinth-step {
+  from {
+    translate: calc(var(--step-x) * var(--cell) * var(--motion-amount)) calc(var(--step-y) * var(--cell) * var(--motion-amount));
+  }
+}
+
+.labyrinth-baby-picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.labyrinth-parent {
+  flex: 0 0 270px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+}
+
+.labyrinth-parent-picture {
+  width: 250px;
+  height: 180px;
+  object-fit: contain;
+}
+
+.labyrinth-parent p {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.labyrinth-guidance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  font-size: 22px;
+  line-height: 32px;
+  font-weight: 700;
+}
+
+.labyrinth-maze:focus-visible,
+.labyrinth-cell:focus-visible,
+.labyrinth-bar button:focus-visible {
+  outline: 3px solid #c9583d;
+  outline-offset: 3px;
+  z-index: 1;
+}
+
+[data-theme="dark"] .labyrinth-maze { background: #315f49; }
+[data-theme="dark"] .labyrinth-cell { background: #222a3d; color: #ece8de; border-color: #ece8de1f; }
+[data-theme="dark"] .labyrinth-cell[data-legal] { background: #181e2e; outline-color: #63c98c; }
+[data-theme="dark"] .labyrinth-cell[data-goal] { border-color: #f2b24b; }
+[data-theme="dark"] .labyrinth-cell[data-hint] { background: #f2b24b; color: #1d2742; }
+[data-theme="dark"] .labyrinth-maze:focus-visible,
+[data-theme="dark"] .labyrinth-cell:focus-visible,
+[data-theme="dark"] .labyrinth-bar button:focus-visible { outline-color: #e57a5d; }
+
+.labyrinth-board-screen[data-compact] {
+  gap: 12px;
+  padding: calc(16px + env(safe-area-inset-top)) calc(16px + var(--screen-right)) calc(16px + env(safe-area-inset-bottom)) calc(16px + var(--screen-left));
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-bar h1 {
+  font-size: 22px;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-maze {
+  --cell: 48px;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-baby {
+  left: 4px;
+  top: 4px;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-baby-picture {
+  width: 36px;
+  height: 30px;
+  margin: 9px 6px;
+}
+
+.labyrinth-goal-picture {
+  width: 46px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-goal-symbol {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-guidance {
+  font-size: 18px;
+  line-height: 22px;
+}
+
+.labyrinth-board-screen[data-compact] .labyrinth-guidance > svg {
+  width: 22px;
+  height: 22px;
+}
+
+.labyrinth-result-screen {
+  position: relative;
+  isolation: isolate;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-width: 1024px;
+  min-height: 670px;
+  height: 100dvh;
+  padding: calc(24px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
+  background: #f2efe8;
+  color: #1d2742;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+
+.labyrinth-result-screen > * { flex-shrink: 0; }
+
+.labyrinth-reunion-title {
+  margin: 0;
+  font-size: 40px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+/* The family leaves room for the reward and all five controls in Safari. */
+.labyrinth-family {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  height: min(220px, 28dvh);
+}
+
+.labyrinth-reunion-baby,
+.labyrinth-reunion-parent {
+  display: block;
+  object-fit: contain;
+}
+
+.labyrinth-reunion-baby { width: 120px; height: 100px; }
+.labyrinth-reunion-parent { width: 300px; height: 100%; }
+
+.labyrinth-reunion-stars { gap: 16px; }
+.labyrinth-reunion-stars .star { display: flex; }
+
+.labyrinth-reward {
+  margin: 0;
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 800;
+}
+
+.labyrinth-record {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.labyrinth-record .celebration { height: 52px; font-size: 22px; }
+.labyrinth-record .best-score { background: #1d27420d; }
+.labyrinth-record .best-score-value { color: #1d2742; }
+.labyrinth-record .best-score-beaten { color: #5c647a; }
+
+.labyrinth-reunion-levels { width: 648px; }
+
+.labyrinth-reunion-actions {
+  display: flex;
+  gap: 20px;
+}
+
+.labyrinth-reunion-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 72px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 16px;
+  background: #fffdf8;
+  color: #1d2742;
+  font-size: 24px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.labyrinth-result-screen button:focus-visible { outline: 3px solid #c9583d; outline-offset: 3px; }
+.labyrinth-result-screen .glow { left: 50%; }
+
+[data-theme="dark"] .labyrinth-result-screen { background: #0f1320; color: #ece8de; }
+[data-theme="dark"] .labyrinth-reunion-actions button { background: #181e2e; color: #ece8de; }
+[data-theme="dark"] .labyrinth-record .best-score { background: #222a3d; }
+[data-theme="dark"] .labyrinth-record .best-score-value { color: #ece8de; }
+[data-theme="dark"] .labyrinth-record .best-score-beaten { color: #9ca3b6; }
+
 /* Reduced motion comes after every rule it overrides, so that it wins
    over them: a later rule of the same weight would undo it. */
 @media (prefers-reduced-motion: reduce) {
@@ -11072,6 +11552,11 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
     --motion-count: 0ms;
     --motion-stagger: 0ms;
     --motion-amount: 0;
+  }
+
+  .labyrinth-board-screen,
+  .labyrinth-step {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 
   .sand-writing-options {
@@ -11223,7 +11708,9 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"],
 [data-theme="dark"] .parent-menu-choice-code,
 [data-theme="dark"] .sort-tile-best,
+[data-theme="dark"] .labyrinth-tile-best,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge,
 [data-theme="dark"] .catalogue-art,
 [data-theme="dark"] .step,
 [data-theme="dark"] .dinosaur-art,
@@ -11246,9 +11733,11 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .parent-menu-tick,
 [data-theme="dark"] .compare-tile-best svg,
 [data-theme="dark"] .sort-tile-best svg,
+[data-theme="dark"] .labyrinth-tile-best svg,
 [data-theme="dark"] .skeletons-tile-best svg,
 [data-theme="dark"] .featured-card[data-game="compare"] .featured-card-badge svg,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge svg,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge svg,
 [data-theme="dark"] .featured-card[data-game="skeletons"] .featured-card-badge svg,
 [data-theme="dark"] .result-score-total,
 [data-theme="dark"] .star-won,
@@ -11272,17 +11761,21 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   box-shadow: 0 8px 24px #00000066;
 }
 
-[data-theme="dark"] .sort-tile {
+[data-theme="dark"] .sort-tile,
+[data-theme="dark"] .labyrinth-tile {
   background: #181e2e;
   box-shadow: 0 8px 24px #00000066;
 }
 
-[data-theme="dark"] .featured-card[data-game="sort"] {
+[data-theme="dark"] .featured-card[data-game="sort"],
+[data-theme="dark"] .featured-card[data-game="labyrinth"] {
   background: #181e2e;
 }
 
 [data-theme="dark"] .sort-tile,
-[data-theme="dark"] .featured-card[data-game="sort"] {
+[data-theme="dark"] .labyrinth-tile,
+[data-theme="dark"] .featured-card[data-game="sort"],
+[data-theme="dark"] .featured-card[data-game="labyrinth"] {
   outline-color: #ece8de1f;
 }
 
@@ -11377,16 +11870,20 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .diet-tag,
 [data-theme="dark"] .sort-tile-symbol,
+[data-theme="dark"] .labyrinth-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
-[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol {
+[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
   color: #0f1320;
 }
 
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .diet-tag[data-diet="meat"],
 [data-theme="dark"] .sort-tile-symbol,
+[data-theme="dark"] .labyrinth-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
-[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol {
+[data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
+[data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
   background: #e57a5d;
 }
 
@@ -12044,4 +12541,288 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 
 [data-theme="dark"] .pairs-offer-yes {
   background: #f2b24b;
+}
+
+html:has(.picture-puzzle-board-screen),
+body:has(.picture-puzzle-board-screen) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.picture-puzzle-board-screen {
+  box-sizing: border-box;
+  height: 100dvh;
+  padding: calc(16px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(48px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: hidden;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+  background: #f2efe8;
+  color: #1d2742;
+}
+
+.picture-puzzle-board-bar {
+  flex: 0 0 56px;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.picture-puzzle-board-bar h1 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: clamp(16px, 2.5vw, 30px);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.picture-puzzle-board-bar p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.picture-puzzle-control {
+  box-sizing: border-box;
+  min-width: 48px;
+  min-height: 48px;
+  height: 48px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 14px;
+  background: #fffdf8;
+  color: #1d2742;
+  box-shadow: 0 2px 8px #1d27421f;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.picture-puzzle-control svg { flex-shrink: 0; }
+.picture-puzzle-control:disabled { opacity: 0.35; }
+
+.picture-puzzle-stage {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.picture-puzzle-board {
+  position: relative;
+  flex: none;
+  display: grid;
+  gap: 0;
+  background: #dce5df;
+  outline: 6px solid #fffdf8;
+  box-shadow: 0 8px 24px #1d274224;
+  isolation: isolate;
+}
+
+.picture-puzzle-guide {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.22;
+  pointer-events: none;
+}
+
+.picture-puzzle-slot {
+  position: relative;
+  min-width: 48px;
+  min-height: 48px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px #58736766;
+  touch-action: none;
+}
+
+.picture-puzzle-slot[data-fitted] { box-shadow: none; }
+.picture-puzzle-slot[data-hint] {
+  z-index: 1;
+  outline: 4px solid #e39b2d;
+  outline-offset: -4px;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+}
+
+.picture-puzzle-fitted,
+.picture-puzzle-tray-art { display: block; width: 100%; }
+.picture-puzzle-fitted { --from-x: 0px; --from-y: 0px; animation: settle-in var(--motion-standard) var(--ease-out) both; }
+
+.picture-puzzle-tools {
+  flex: 0 0 224px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.picture-puzzle-tray {
+  flex: 1 1 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.picture-puzzle-tray-piece {
+  min-width: 48px;
+  min-height: 48px;
+  padding: 8px;
+  border: none;
+  border-radius: 14px;
+  background: #fffdf8;
+  display: grid;
+  place-items: center;
+  overflow: visible;
+  container-type: size;
+  touch-action: none;
+  animation: fade-in var(--motion-small) var(--ease-out) both;
+  transition: outline var(--motion-small) var(--ease-out);
+}
+
+.picture-puzzle-tray-piece[aria-pressed="true"] { outline: 4px solid #e39b2d; outline-offset: -4px; }
+.picture-puzzle-tray-art { --from-x: 0px; --from-y: 0px; width: min(100cqw, 100cqh * var(--tile-aspect)); }
+.picture-puzzle-tray-art[data-held] { opacity: 0.2; }
+.picture-puzzle-tray-art[data-retry] { animation: settle-in var(--motion-standard) var(--ease-out) both; }
+
+.picture-puzzle-pages { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.picture-puzzle-tools > .picture-puzzle-control { flex-shrink: 0; }
+.picture-puzzle-retry { flex: 0 0 32px; min-height: 32px; margin: 0; font-size: 14px; font-weight: 700; }
+.picture-puzzle-retry span { display: flex; justify-content: center; align-items: center; gap: 8px; animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+.picture-puzzle-preview {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: min(35%, 280px);
+  outline: 6px solid #fffdf8;
+  box-shadow: 0 4px 16px #1d274266;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--motion-small) var(--ease-out), visibility var(--motion-small) var(--ease-out);
+}
+.picture-puzzle-preview[data-shown] { opacity: 1; visibility: visible; }
+
+.picture-puzzle-lifted { position: fixed; z-index: 90; pointer-events: none; box-shadow: 0 12px 24px #1d274266; }
+
+[data-theme="dark"] .picture-puzzle-control,
+[data-theme="dark"] .picture-puzzle-tray-piece { background: #181e2e; color: #f6f2e9; }
+[data-theme="dark"] .picture-puzzle-board { background: #253b37; outline-color: #181e2e; }
+[data-theme="dark"] .picture-puzzle-preview { outline-color: #181e2e; }
+[data-theme="dark"] .picture-puzzle-slot { box-shadow: inset 0 0 0 1px #adc8bb66; }
+[data-theme="dark"] .picture-puzzle-slot[data-fitted] { box-shadow: none; }
+
+[data-theme="dark"] .picture-puzzle-board-screen { background: #0f1320; color: #ece8de; }
+.picture-puzzle-board-bar p span { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+.picture-puzzle-result-screen {
+  box-sizing: border-box;
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: calc(20px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(20px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: #f2efe8;
+  color: #1d2742;
+  animation: fade-in var(--motion-screen) var(--ease-out) both;
+}
+
+.picture-puzzle-result-screen > .festivity { z-index: -1; pointer-events: none; }
+.picture-puzzle-result-content {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 1fr);
+  align-items: center;
+  gap: 24px;
+}
+.picture-puzzle-reveal {
+  width: min(100%, 72dvh);
+  justify-self: center;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px #1d274224;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+.picture-puzzle-reward { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.picture-puzzle-reward h2 { margin: 0; font-size: clamp(24px, 3vw, 40px); overflow-wrap: anywhere; }
+.picture-puzzle-round-star {
+  color: #cb8112;
+  display: flex;
+  animation: pop-in var(--motion-standard) var(--ease-overshoot) var(--motion-screen) both;
+}
+.picture-puzzle-round-star svg { fill: currentColor; }
+.picture-puzzle-fact, .picture-puzzle-level-score { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 0; font-size: clamp(16px, 1.8vw, 24px); font-weight: 700; }
+.picture-puzzle-fact svg, .picture-puzzle-level-score svg { flex-shrink: 0; }
+.picture-puzzle-reward > :not(.picture-puzzle-round-star) { animation: fade-in var(--motion-screen) var(--ease-out) var(--motion-small) both; }
+.picture-puzzle-result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.picture-puzzle-reward .best-score-beaten { color: #5c647a; }
+[data-theme="dark"] .picture-puzzle-result-screen { background: #0f1320; color: #ece8de; }
+[data-theme="dark"] .picture-puzzle-round-star { color: #f2b24b; }
+[data-theme="dark"] .picture-puzzle-reward .best-score-beaten { color: #9ca3b6; }
+
+.picture-puzzle-tile {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: none;
+  border-radius: 28px;
+  background: #dceade;
+  color: #1d2742;
+  box-shadow: 0 8px 24px #1d274224;
+  text-align: left;
+}
+.picture-puzzle-tile-art { display: block; flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
+.picture-puzzle-tile-art > .picture-puzzle-crop { width: 100%; height: 100%; }
+.picture-puzzle-tile-row { padding: 10px 12px 14px; display: flex; align-items: center; gap: 8px; }
+.picture-puzzle-tile-symbol {
+  flex-shrink: 0; display: grid; place-items: center; width: 36px; height: 36px;
+  border-radius: 11px; background: #ffffff80;
+}
+.picture-puzzle-tile-title { min-width: 0; font-size: clamp(16px, 1.8vw, 24px); font-weight: 700; letter-spacing: 1px; }
+.picture-puzzle-tile-count {
+  position: absolute; top: 12px; right: 12px; padding: 8px 12px; display: flex; align-items: center; gap: 6px;
+  border-radius: 20px; background: #fffdf8; color: #1d2742; font-size: 20px; font-weight: 700;
+}
+.featured-card[data-game="picturePuzzle"] { background: #dceade; color: #1d2742; }
+.featured-card[data-game="picturePuzzle"] .featured-card-symbol { background: #ffffff80; }
+.featured-card[data-game="picturePuzzle"] .featured-card-badge { background: #fffdf8; color: #1d2742; }
+.picture-puzzle-tile-count svg,
+.featured-card[data-game="picturePuzzle"] .featured-card-badge svg { color: #a66c16; }
+[data-theme="dark"] .picture-puzzle-tile,
+[data-theme="dark"] .featured-card[data-game="picturePuzzle"] { background: #253b37; color: #ece8de; }
+[data-theme="dark"] .picture-puzzle-tile-symbol,
+[data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-symbol { background: #ffffff1f; }
+[data-theme="dark"] .picture-puzzle-tile-count,
+[data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-badge { background: #181e2e; color: #ece8de; }
+[data-theme="dark"] .picture-puzzle-tile-count svg,
+[data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-badge svg { color: #f2b24b; }
+/* The maze name keeps its route symbol beside it at tablet tile widths. */
+.labyrinth-tile-title {
+  font-size: 24px;
+  letter-spacing: 1px;
 }

@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -69,7 +70,7 @@ function openWelcome(from: Window, { reduced = false }: { reduced?: boolean } = 
   const animations: Recorded[] = [];
   const fades: Array<{ update: () => void; finished: () => void; size: string | undefined }> = [];
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
