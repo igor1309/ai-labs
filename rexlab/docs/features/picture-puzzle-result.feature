@@ -4,6 +4,10 @@ Feature: Completing a dinosaur picture
   Facts use the project's trusted science sources.
   A level's collection score is the number of distinct dinosaurs completed
   at that level, from zero to three, independently of the shared collection.
+  Round stars are immediate feedback only, not an accumulated currency.
+  Choice stars mark the shared collection and do not change with level.
+  The home tile and featured card show the shared distinct-dinosaur count out of 3.
+  The result shows the played-level count, plus the shared collection count.
   Its first completion celebrates a first best; a larger count celebrates
   a new best. Repeating a dinosaur at that level keeps the count unchanged.
 
@@ -14,7 +18,7 @@ Feature: Completing a dinosaur picture
     And I see the full picture, the dinosaur name and its feature fact
     And I earn one round star at every level, even on a replay
     And my collection marks that dinosaur as completed
-    And a first collection best or a larger collection best for this level is celebrated
+    And with readable storage a first or larger collection best for this level is celebrated
     And the result displays the played level and its collection score out of 3
     And the shared collection across levels never loses dinosaurs
     And the result offers replay, another picture and home
@@ -37,6 +41,8 @@ Feature: Completing a dinosaur picture
     When I open and complete a puzzle
     Then I can play and see my earned star without a crash
     And unavailable storage is never presented as a verified historical best
+    And the round star and completion reveal still celebrate finishing
+    And no FIRST BEST or NEW BEST wording is shown
 
   Scenario: The same dinosaur earns independent level bests
     Given no puzzle has been completed

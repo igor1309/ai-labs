@@ -19,9 +19,12 @@ Feature: Assembling a dinosaur picture
     Given I have unplaced pieces
     When I drag a tray piece
     Then a matching picture tile follows my finger without scrolling the page
-    When its center is released in its home slot or within 24 CSS pixels of that slot
+    When its center is released in its home slot
+    Or outside the board within its home rectangle expanded by 24 CSS pixels
     Then the piece snaps into exact alignment once and stays fitted
-    And tolerance accepts only releases outside the board or inside its own slot
+    And inner slots have no extra tolerance because neighboring slots touch
+    And the board tiles meet with no gaps; the frame is outside the board
+    And shared boundaries belong to the slot to the right or below
     And a release inside a different slot is rejected even within 24 pixels of home
     And exactly 24 pixels beyond the home bounds is accepted when outside the board
     And greater than 24 pixels beyond the home bounds is rejected
@@ -36,7 +39,8 @@ Feature: Assembling a dinosaur picture
     Given I have placed some pieces
     When I drop a piece outside its home snap area or tap another slot
     Then no additional piece is fitted
-    And the piece gently returns to the tray with a visible retry reaction
+    And a dragged piece gently returns to the tray with a visible retry reaction
+    And a tapped piece stays selected in the tray for another try
     And fitted pieces and earned progress remain
     And there is no timer, penalty or failure screen
 
@@ -48,6 +52,8 @@ Feature: Assembling a dinosaur picture
     When I toggle the picture preview
     Then a separate complete picture is shown without fitting any pieces
     And toggling again hides it
+    When I request a hint with no piece selected
+    Then the first visible unplaced tray piece is selected and its home highlighted
     When I request a hint with a piece selected
     Then its matching home is highlighted without placing it
     And hints and preview never reduce rewards

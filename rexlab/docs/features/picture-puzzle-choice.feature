@@ -7,7 +7,9 @@ Feature: Choosing a dinosaur picture puzzle
     Then I see the three named dinosaur pictures and my collection stars
     And a level switch starts at the global age level unless I chose a puzzle level under that setting
     When I choose another level
-    Then that choice is remembered until the global setting changes
+    Then that choice survives reloads until the global setting changes
+    And it is stored with the game entry in rexlab-progress
+    And unreadable storage keeps the choice for this session only
     And no puzzle starts until I choose a dinosaur
     When I choose a dinosaur
     Then I enter a fresh shuffled puzzle of that dinosaur at the chosen level
