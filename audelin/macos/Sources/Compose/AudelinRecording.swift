@@ -73,9 +73,9 @@ public final class AudelinRecording: Sendable {
         delivery = ApplicationDelivery(processes: processes, calls: calls, model: startModel())
     }
 
-    public func quit(terminate: @escaping @Sendable () async -> Void) async {
+    public func lifecycle(terminate: @escaping @Sendable () async -> Void) -> LifecycleEffectHandler {
 
-        await Lifecycle(delivery: delivery, recording: ApplicationRecording(recording: recording), terminate: terminate).quit()
+        LifecycleEffectHandler(delivery: delivery, recording: ApplicationRecording(recording: recording), terminate: terminate)
     }
 }
 

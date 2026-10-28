@@ -41,7 +41,7 @@ let package = Package(
         .executableTarget(
             name: "Audelin",
             dependencies: [
-                "Compose", "MenuBar", "Preferences", "PanelUI", "Reading",
+                "Compose", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
@@ -72,8 +72,7 @@ let package = Package(
             resources: [.copy("Resources/Fonts")]
         ),
         .target(
-            name: "Lifecycle",
-            dependencies: ["Machine"]
+            name: "Lifecycle"
         ),
         .target(
             name: "LiveAudio"
@@ -182,7 +181,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ComposeTests",
-            dependencies: ["Compose"]
+            dependencies: ["Compose", "Lifecycle", "Recording"]
         ),
         .testTarget(
             name: "CoreAudioProcessesTests",
@@ -194,7 +193,7 @@ let package = Package(
         ),
         .testTarget(
             name: "LifecycleTests",
-            dependencies: ["Lifecycle", "Recording", "Compose"]
+            dependencies: ["Lifecycle"]
         ),
         .testTarget(
             name: "LiveAudioTests",

@@ -1,6 +1,7 @@
 import AppKit
 import Compose
 import IMRxObservation
+import Lifecycle
 import MenuBar
 import PanelUI
 import Preferences
@@ -28,6 +29,7 @@ struct AudelinApp: App {
             openCallsFolder: { NSWorkspace.shared.open($0) },
             presentPanel: { [weak panel] in panel?.setVisible($0) },
             terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } },
+            quit: quit,
             makeReading: makeReading
         )
         self.model = model
@@ -89,6 +91,15 @@ func makeReading() -> ReadingInputs {
         initialState: .init(), reduce: ReadingReducer.reduce, handleEffect: { switch $0 {} }
     )
     return ReadingInputs(state: { model.state }, send: { model.event($0) })
+}
+
+/// Returns once the lifecycle has terminated: every begun session has ended first.
+@MainActor
+func quit(_ handler: LifecycleEffectHandler) async {
+
+    let model = ObservableModel(initialState: LifecycleState.running, reduce: LifecycleReducer.reduce, handleEffect: handler.handle)
+    model.event(.quit)
+    for await state in Observations({ model.state }) where state == .terminated { break }
 }
 
 @MainActor

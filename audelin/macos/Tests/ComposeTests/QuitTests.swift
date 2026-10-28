@@ -4,8 +4,9 @@ import Recording
 import Synchronization
 import Testing
 
+/// Runs the application's quit effects in the reducer's order against a real recording.
 @Suite(.timeLimit(.minutes(1)))
-struct LifecycleTests {
+struct QuitTests {
 
     @Test func quitWaitsForEveryBegunSession() async {
 
@@ -16,7 +17,7 @@ struct LifecycleTests {
             let recording = Recording(handler: .init(session: session), initial: .init(automatic: true, missing: []))
             let delivery = Delivery()
             let port = RecordingPort(base: ApplicationRecording(recording: recording), log: log)
-            let lifecycle = Lifecycle(delivery: delivery, recording: port, terminate: { log.append("terminate") })
+            let handler = LifecycleEffectHandler(delivery: delivery, recording: port, terminate: { log.append("terminate") })
 
             if scenario != .queuedStart {
                 recording.send(.callStarted)
@@ -29,7 +30,7 @@ struct LifecycleTests {
                 #expect(await recording.snapshot().pendingCall)
             }
 
-            let quit = Task { await lifecycle.quit() }
+            let quit = Task { await runQuit(handler) }
             await delivery.gate.entered()
             #expect(log.values.filter { $0 == "stop" }.isEmpty)
             if scenario == .queuedStart {
@@ -87,9 +88,23 @@ struct LifecycleTests {
         await port.drainGate.release()
         await port.observeGate.release()
         await port.endGate.release()
-        await Lifecycle(delivery: delivery, recording: port, terminate: { log.append("terminate") }).quit()
+        await runQuit(LifecycleEffectHandler(delivery: delivery, recording: port, terminate: { log.append("terminate") }))
         #expect(log.values == ["stop", "observe", "end delivery", "terminate"])
     }
+}
+
+/// Feeds each effect the reducer asks for to the handler, and its event back, until no effect is left.
+func runQuit(_ handler: LifecycleEffectHandler) async {
+
+    var (state, effect) = LifecycleReducer.reduce(.running, .quit)
+    while let next = effect {
+        var events: [LifecycleEvent] = []
+        for await event in handler.handle(next) { events.append(event) }
+        #expect(events.count == 1, "\(next)")
+        guard let event = events.first else { return }
+        (state, effect) = LifecycleReducer.reduce(state, event)
+    }
+    #expect(state == .terminated)
 }
 
 private enum Scenario {

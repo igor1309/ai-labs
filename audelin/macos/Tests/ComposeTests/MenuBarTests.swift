@@ -81,7 +81,7 @@ struct MenuBarTests {
                     #expect(failures == [.failed])
                     #expect(binding.activeListeners == 0)
                     #expect(await app.recording.snapshot().phase == .idle)
-                    await app.quit { events.append("terminated") }
+                    await runQuit(app.lifecycle { events.append("terminated") })
                     #expect(events.all == ["model started", "terminated"])
                     #expect(model.isCancelled)
                     return
@@ -111,7 +111,7 @@ struct MenuBarTests {
                 binding.setInput(false)
                 #expect(clock.active)
                 let lateNotifications = binding.queuedNotifications()
-                let quit = Task { await app.quit { events.append("terminated") } }
+                let quit = Task { await runQuit(app.lifecycle { events.append("terminated") }) }
                 await stopping.next()
                 #expect(events.all == ["model started", "microphone started", "stopping"])
                 clock.fireQueued()

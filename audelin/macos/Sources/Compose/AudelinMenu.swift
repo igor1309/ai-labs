@@ -1,4 +1,5 @@
 import Foundation
+import Lifecycle
 import MenuBar
 import Observation
 import PanelUI
@@ -47,6 +48,7 @@ public final class AudelinMenu {
         openCallsFolder: @escaping (URL) -> Void,
         presentPanel: @escaping (Bool) -> Void,
         terminate: @escaping @Sendable () async -> Void,
+        quit: @escaping (LifecycleEffectHandler) async -> Void,
         makeReading: @escaping @MainActor @Sendable () -> ReadingInputs
     ) async {
 
@@ -58,7 +60,7 @@ public final class AudelinMenu {
                     states: { await application.recording.states() },
                     failures: application.detectionFailures,
                     send: { application.recording.send($0) },
-                    quit: { await application.quit(terminate: terminate) },
+                    quit: { await quit(application.lifecycle(terminate: terminate)) },
                     panelStates: { await application.panel.states() },
                     sendPanel: { await application.panel.send($0) }
                 )

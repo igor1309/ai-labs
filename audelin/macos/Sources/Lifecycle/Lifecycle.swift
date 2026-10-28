@@ -1,5 +1,3 @@
-import Machine
-
 public protocol LifecycleDelivery: Sendable {
 
     /// Returns after producers have stopped and their forwarding work has joined.
@@ -27,12 +25,12 @@ public enum LifecycleState: Equatable, Sendable {
     case running, stoppingDelivery, draining, waiting, ending, terminating, terminated
 }
 
-public enum LifecycleEvent: Sendable {
+public enum LifecycleEvent: Equatable, Sendable {
 
     case quit, deliveryStopped, drained, idle, ended, terminated
 }
 
-public enum LifecycleEffect: Sendable {
+public enum LifecycleEffect: Equatable, Sendable {
 
     case stopDelivery, stopRecording, waitForIdle, end, terminate
 }
@@ -53,46 +51,56 @@ public enum LifecycleReducer {
     }
 }
 
-public final class Lifecycle: Sendable {
+public struct LifecycleEffectHandler: Sendable {
 
-    private let machine: Machine<LifecycleState, LifecycleEvent, LifecycleEffect>
+    private let delivery: any LifecycleDelivery
+    private let recording: any LifecycleRecording
+    private let terminate: @Sendable () async -> Void
 
     public init(
         delivery: any LifecycleDelivery, recording: any LifecycleRecording,
         terminate: @escaping @Sendable () async -> Void
     ) {
 
-        machine = Machine(initial: .running, reduce: LifecycleReducer.reduce, handle: { effect in
-            switch effect {
-            case .stopDelivery:
-                await delivery.stop()
-                return .deliveryStopped
-            case .stopRecording:
-                recording.requestStop()
-                await recording.drain()
-                return .drained
-            case .waitForIdle:
-                for await state in await recording.states() {
-                    if state == .idle { return .idle }
-                }
-                // An ended observation is not evidence that cleanup completed.
-                return .drained
-            case .end:
-                await recording.end()
-                return .ended
-            case .terminate:
-                await terminate()
-                return .terminated
-            }
-        })
+        self.delivery = delivery
+        self.recording = recording
+        self.terminate = terminate
     }
 
-    public func quit() async {
+    /// Delivers the one event that completes the effect, then finishes.
+    public func handle(_ effect: LifecycleEffect) -> AsyncStream<LifecycleEvent> {
 
-        machine.send(.quit)
-        for await state in await machine.states() {
-            if state == .terminated { break }
+        AsyncStream { output in
+            let task = Task {
+                output.yield(await perform(effect))
+                output.finish()
+            }
+            output.onTermination = { _ in task.cancel() }
         }
-        await machine.end()
+    }
+
+    private func perform(_ effect: LifecycleEffect) async -> LifecycleEvent {
+
+        switch effect {
+        case .stopDelivery:
+            await delivery.stop()
+            return .deliveryStopped
+        case .stopRecording:
+            recording.requestStop()
+            await recording.drain()
+            return .drained
+        case .waitForIdle:
+            for await state in await recording.states() {
+                if state == .idle { return .idle }
+            }
+            // An ended observation is not evidence that cleanup completed.
+            return .drained
+        case .end:
+            await recording.end()
+            return .ended
+        case .terminate:
+            await terminate()
+            return .terminated
+        }
     }
 }
