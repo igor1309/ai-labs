@@ -11,6 +11,39 @@ import Testing
         #expect(events == states.map { .bluetooth($0) })
     }
 
+    @Test(arguments: [nil, .unknown, .resetting, .unsupported, .notAllowed, .off] as [ClientRadio.BluetoothState?])
+    func connectBeforeBluetoothIsOnFails(state: ClientRadio.BluetoothState?) async {
+        var expected: [ClientRadio.Event] = []
+        let events = await record { radio, fake in
+            if let state {
+                fake.send(.bluetooth(state))
+                expected.append(.bluetooth(state))
+            }
+            radio.connect(to: fake.host)
+            #expect(fake.calls.isEmpty)
+            expected.append(.couldNotConnect(host: fake.host, reason: .bluetooth(state ?? .unknown)))
+            radio.drop()
+            #expect(fake.calls.isEmpty)
+            let unavailable = state ?? .unknown
+            fake.send(.bluetooth(.on))
+            fake.send(.bluetooth(unavailable))
+            radio.connect(to: fake.host)
+            #expect(fake.calls.isEmpty)
+            expected += [
+                .bluetooth(.on), .bluetooth(unavailable),
+                .couldNotConnect(host: fake.host, reason: .bluetooth(unavailable)),
+            ]
+            fake.send(.bluetooth(.on))
+            #expect(fake.calls.isEmpty)
+            fake.establish(radio)
+            expected += [
+                .bluetooth(.on),
+                .connected(host: fake.host, session: [1, 2, 3], largestWrite: 182),
+            ]
+        }
+        #expect(events == expected)
+    }
+
     @Test func readingsAndIdempotentScanning() async {
         var expected: [ClientRadio.Event] = []
         let events = await record { radio, fake in
@@ -38,6 +71,7 @@ import Testing
     @Test func connectsThroughWholeGATTSetup() async {
         var expected: [ClientRadio.Event] = []
         let events = await record { radio, fake in
+            fake.send(.bluetooth(.on))
             let host = fake.host
             radio.connect(to: host)
             #expect(fake.calls == [.connect(host)])
@@ -53,7 +87,7 @@ import Testing
             #expect(fake.calls.last == .maximum(host))
             expected = [.connected(host: host, session: [0, 255, 17], largestWrite: 182)]
         }
-        #expect(events == expected)
+        #expect(events == [.bluetooth(.on)] + expected)
     }
 
     @Test func requestedScanRestartsWhenBluetoothTurnsOn() async {
@@ -80,6 +114,7 @@ import Testing
     @Test(arguments: 0...5) func replacingHostTearsDownPreviousLink(stage: Int) async {
         var expected: [ClientRadio.Event] = []
         let events = await record { radio, fake in
+            fake.send(.bluetooth(.on))
             let first = fake.host
             let second = UUID()
             let steps: [RadioCallback] = [
@@ -122,11 +157,12 @@ import Testing
             expected += [.connected(host: second, session: [4, 5, 6], largestWrite: 182),
                          .writeAnswered(.message, .att(code: 7))]
         }
-        #expect(events == expected)
+        #expect(events == [.bluetooth(.on)] + expected)
     }
 
     @Test(arguments: 0...4) func setupRejectsWritesAndOutOfStageCallbacks(stage: Int) async {
         let events = await record { radio, fake in
+            fake.send(.bluetooth(.on))
             let host = fake.host
             let error: ClientRadio.Failure = .att(code: 5)
             let steps: [RadioCallback] = [
@@ -166,7 +202,7 @@ import Testing
             }
             #expect(fake.calls.isEmpty)
         }
-        #expect(events == [.writeAnswered(.key, .notConnected), .writeAnswered(.message, .notConnected)])
+        #expect(events == [.bluetooth(.on), .writeAnswered(.key, .notConnected), .writeAnswered(.message, .notConnected)])
     }
 
     @Test func setupFailuresKeepTheirReasons() async {
@@ -174,6 +210,7 @@ import Testing
             for missing in [false, true] {
                 var expected: [ClientRadio.Event] = []
                 let events = await record { radio, fake in
+                    fake.send(.bluetooth(.on))
                     let host = fake.host
                     radio.connect(to: host)
                     let success: [RadioCallback] = [
@@ -207,7 +244,7 @@ import Testing
                     #expect(fake.calls == calls)
                     expected = [.couldNotConnect(host: host, reason: reason)]
                 }
-                #expect(events == expected)
+                #expect(events == [.bluetooth(.on)] + expected)
             }
         }
     }
@@ -217,6 +254,7 @@ import Testing
         for (index, error) in errors.enumerated() {
             var expected: [ClientRadio.Event] = []
             let events = await record { radio, fake in
+                fake.send(.bluetooth(.on))
                 fake.establish(radio)
                 let key = [UInt8](repeating: 9, count: 33)
                 radio.writeKey(key)
@@ -236,7 +274,7 @@ import Testing
                     .writeAnswered(.key, error), .writeAnswered(.message, error),
                 ]
             }
-            #expect(events == expected)
+            #expect(events == [.bluetooth(.on)] + expected)
         }
     }
 
@@ -244,6 +282,7 @@ import Testing
         for count in [21, 41, 183] {
             var expected: [ClientRadio.Event] = []
             let events = await record { radio, fake in
+                fake.send(.bluetooth(.on))
                 fake.establish(radio)
                 fake.largestWrite = 20
                 fake.calls = []
@@ -260,13 +299,14 @@ import Testing
                     .writeAnswered(.message, .tooLarge(maximum: 20)),
                 ]
             }
-            #expect(events == expected)
+            #expect(events == [.bluetooth(.on)] + expected)
         }
     }
 
     @Test func notificationsDeliverOnlyTheReadyHostsBytes() async {
         var expected: [ClientRadio.Event] = []
         let events = await record { radio, fake in
+            fake.send(.bluetooth(.on))
             fake.send(.value(fake.host, .toClient, .success([99])))
             fake.establish(radio)
             expected = [.connected(host: fake.host, session: [1, 2, 3], largestWrite: 182)]
@@ -278,13 +318,14 @@ import Testing
                 expected.append(.message(host: fake.host, bytes: bytes))
             }
         }
-        #expect(events == expected)
+        #expect(events == [.bluetooth(.on)] + expected)
     }
 
     @Test func linksDropAndRejectLateCallbacks() async {
         for cause in 0...2 {
             var expected: [ClientRadio.Event] = []
             let events = await record { radio, fake in
+                fake.send(.bluetooth(.on))
                 fake.establish(radio)
                 fake.calls = []
                 fake.send(.disconnected(UUID()))
@@ -303,13 +344,14 @@ import Testing
                 #expect(fake.calls == [.disconnect(fake.host)])
                 expected = [.connected(host: fake.host, session: [1, 2, 3], largestWrite: 182), .dropped(host: fake.host)]
             }
-            #expect(events == expected)
+            #expect(events == [.bluetooth(.on)] + expected)
         }
     }
 
     @Test func unrelatedCallbacksKeepTheSelectedLink() async {
         var expected: [ClientRadio.Event] = []
         let events = await record { radio, fake in
+            fake.send(.bluetooth(.on))
             fake.establish(radio)
             fake.calls = []
             let other = UUID()
@@ -324,13 +366,14 @@ import Testing
                 .message(host: fake.host, bytes: [5]),
             ]
         }
-        #expect(events == expected)
+        #expect(events == [.bluetooth(.on)] + expected)
     }
 
     @Test func bluetoothLossDropsTheLink() async {
         for state: ClientRadio.BluetoothState in [.unknown, .resetting, .unsupported, .notAllowed, .off] {
             var expected: [ClientRadio.Event] = []
             let events = await record { radio, fake in
+                fake.send(.bluetooth(.on))
                 fake.establish(radio)
                 fake.calls = []
                 fake.send(.bluetooth(.on))
@@ -344,13 +387,14 @@ import Testing
                     .bluetooth(.on), .bluetooth(state), .dropped(host: fake.host),
                 ]
             }
-            #expect(events == expected)
+            #expect(events == [.bluetooth(.on)] + expected)
         }
     }
 
     @Test func droppingCompletesPendingWritesBeforeReconnect() async {
         var expected: [ClientRadio.Event] = []
         let events = await record { radio, fake in
+            fake.send(.bluetooth(.on))
             fake.establish(radio)
             radio.writeKey([1])
             let oldWrite = Task.immediate { await radio.write([2]) }
@@ -373,7 +417,7 @@ import Testing
                 .writeAnswered(.message, nil),
             ]
         }
-        #expect(events == expected)
+        #expect(events == [.bluetooth(.on)] + expected)
     }
 
     @Test func interruptedSetupReportsWhyItCouldNotConnect() async {
@@ -381,6 +425,7 @@ import Testing
             for cause in 0...2 {
                 var expected: [ClientRadio.Event] = []
                 let events = await record { radio, fake in
+                    fake.send(.bluetooth(.on))
                     let host = fake.host
                     radio.connect(to: host)
                     let steps: [RadioCallback] = [
@@ -400,7 +445,7 @@ import Testing
                     expected = [.couldNotConnect(host: host, reason: reason)]
                     if cause == 2 { expected.insert(.bluetooth(.off), at: 0) }
                 }
-                #expect(events == expected)
+                #expect(events == [.bluetooth(.on)] + expected)
             }
         }
     }

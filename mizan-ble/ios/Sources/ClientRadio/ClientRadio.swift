@@ -51,6 +51,7 @@ import Foundation
 
     deinit { continuation.finish() }
 
+    private var bluetoothState: BluetoothState = .unknown
     private var scanRequested = false
 
     public func startScanning() {
@@ -77,6 +78,10 @@ import Foundation
     /// Opens the chosen host and completes service discovery, subscription and Session reading.
     public func connect(to host: UUID) {
         tearDown()
+        guard bluetoothState == .on else {
+            continuation.yield(.couldNotConnect(host: host, reason: .bluetooth(bluetoothState)))
+            return
+        }
         self.host = host
         setup = .connecting
         binding.connect(host)
@@ -136,6 +141,7 @@ import Foundation
     private func receive(_ callback: RadioCallback) {
         switch callback {
         case .bluetooth(let state):
+            bluetoothState = state
             continuation.yield(.bluetooth(state))
             if state == .on {
                 if scanRequested { binding.scan(service: GATT.service, allowDuplicates: true) }
