@@ -1,16 +1,25 @@
 public final class SystemClock: Sendable {
-    private let clock: ContinuousClock
+    private let readNow: @Sendable () -> ContinuousClock.Instant
+    private let sleep: @Sendable (ContinuousClock.Instant) async throws -> Void
     private let origin: ContinuousClock.Instant
 
-    public init() {
+    public convenience init() {
         let clock = ContinuousClock()
-        self.clock = clock
-        origin = clock.now
+        self.init(now: { clock.now }, sleep: { try await clock.sleep(until: $0, tolerance: .zero) })
+    }
+
+    internal init(
+        now: @escaping @Sendable () -> ContinuousClock.Instant,
+        sleep: @escaping @Sendable (ContinuousClock.Instant) async throws -> Void
+    ) {
+        readNow = now
+        self.sleep = sleep
+        origin = now()
     }
 
     /// Seconds since this instance was constructed, from a monotonic clock.
     public func now() -> Double {
-        seconds(at: clock.now)
+        seconds(at: readNow())
     }
 
     /// Remaining steps against a fixed deadline. The interval must be positive.
@@ -21,19 +30,19 @@ public final class SystemClock: Sendable {
                 return
             }
             precondition(interval > .zero, "The interval must be positive.")
-            let deadline = clock.now.advanced(by: interval * count)
+            let deadline = readNow().advanced(by: interval * count)
             let timer = Task {
                 defer { continuation.finish() }
                 var remaining = count
                 while remaining > 0 {
                     let next = deadline.advanced(by: interval * (1 - remaining))
                     do {
-                        try await clock.sleep(until: next, tolerance: .zero)
+                        try await sleep(next)
                     } catch {
                         return
                     }
                     guard !Task.isCancelled else { return }
-                    let left = clock.now.duration(to: deadline)
+                    let left = readNow().duration(to: deadline)
                     // Read the deadline again after waking so a delayed tick
                     // skips expired steps rather than extending the countdown.
                     remaining = left > .zero
@@ -49,19 +58,19 @@ public final class SystemClock: Sendable {
     /// Instants from the same origin as `now()`. The interval must be positive.
     public func ticks(every interval: Duration) -> AsyncStream<Double> {
         precondition(interval > .zero, "The interval must be positive.")
-        let start = clock.now
+        let start = readNow()
         return AsyncStream { continuation in
             let timer = Task {
                 defer { continuation.finish() }
                 var previous = start
                 while !Task.isCancelled {
                     do {
-                        try await clock.sleep(until: previous.advanced(by: interval), tolerance: .zero)
+                        try await sleep(previous.advanced(by: interval))
                     } catch {
                         return
                     }
                     guard !Task.isCancelled else { return }
-                    previous = clock.now
+                    previous = readNow()
                     continuation.yield(seconds(at: previous))
                 }
             }
