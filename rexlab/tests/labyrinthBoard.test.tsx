@@ -4,14 +4,22 @@ import { describe, expect, it, vi } from "vitest";
 import { LabyrinthBoardScreen, type LabyrinthBoardScreenProps } from "../src/LabyrinthBoardScreen.tsx";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { adjacentPaths, hintInMaze, isPath, MAZES, mazeSolved, moveInMaze, startMaze, type LabyrinthRound } from "../src/labyrinth/index.ts";
+import { adjacentPaths, hintInMaze, isPath, nextMaze, mazeSolved, moveInMaze, startMaze, type LabyrinthRound, type Maze } from "../src/labyrinth/index.ts";
 import { useScreens } from "../src/screens.ts";
 import { withPictures } from "./pictures.tsx";
 import { filterTaps, tapAt } from "./taps.ts";
 import { openWindow, styleAt, windowsAnd } from "./windowSizes.ts";
 import triceratops from "../src/assets/dinos/triceratops/body.webp";
 
-function propsFor(round = startMaze(MAZES[0]!)): LabyrinthBoardScreenProps {
+const layoutFor = (level: AgeLevel) => nextMaze(level, undefined, 0.25);
+const defaultMaze = layoutFor("hatchling");
+const first = hintInMaze(startMaze(defaultMaze)).hint!;
+const second = hintInMaze(moveInMaze(startMaze(defaultMaze), first)).hint!;
+const labelFor = (place: number, layout: Maze = defaultMaze) => TEXTS.en.labyrinthBoard.cell(place % layout.rows[0]!.length + 1, Math.floor(place / layout.rows[0]!.length) + 1);
+const arrow = (from: number, to: number, columns: number = defaultMaze.rows[0]!.length) =>
+  to === from + 1 ? "ArrowRight" : to === from - 1 ? "ArrowLeft" : to > from ? "ArrowDown" : "ArrowUp";
+
+function propsFor(round = startMaze(defaultMaze)): LabyrinthBoardScreenProps {
   const { maze } = round;
   const legal = adjacentPaths(maze, round.position);
   return {
@@ -22,15 +30,14 @@ function propsFor(round = startMaze(MAZES[0]!)): LabyrinthBoardScreenProps {
   };
 }
 
-function PlayableBoard({ initial = startMaze(MAZES[0]!) }: { initial?: LabyrinthRound }) {
+function PlayableBoard({ initial = startMaze(defaultMaze) }: { initial?: LabyrinthRound }) {
   const { screen: round, go } = useScreens<LabyrinthRound>(initial, () => undefined);
   return <LabyrinthBoardScreen {...propsFor(round)} onMove={(place) => go((current) => moveInMaze(current, place))} onHint={() => go(hintInMaze)} />;
 }
 
-const layoutFor = (level: AgeLevel) => MAZES.find((maze) => maze.level === level)!;
-
 const maze = () => screen.getByRole("group", { name: "MAZE" });
 const cell = (column: number, row: number) => screen.getByRole("button", { name: new RegExp(`^PATH ${column}, ${row}(?: ·|$)`) });
+const cellAt = (place: number) => cell(place % defaultMaze.rows[0]!.length + 1, Math.floor(place / defaultMaze.rows[0]!.length) + 1);
 const position = () => document.querySelector('[aria-current="location"]')?.getAttribute("aria-label");
 const part = (selector: string) => {
   const element = document.querySelector<HTMLElement>(selector);
@@ -44,35 +51,35 @@ describe("a playable labyrinth board", () => {
     render(<PlayableBoard />, withPictures);
     await user.click(screen.getByRole("button", { name: "HINT" }));
     expect(document.querySelectorAll("[data-hint]")).toHaveLength(1);
-    expect(position()).toBe("PATH 1, 1 · BABY");
-    await user.click(cell(2, 1));
-    expect(position()).toBe("PATH 2, 1 · BABY");
+    expect(position()).toBe(`${labelFor(defaultMaze.start)} · BABY`);
+    await user.click(cellAt(first));
+    expect(position()).toBe(`${labelFor(first)} · BABY`);
     expect(document.querySelectorAll("[data-hint]")).toHaveLength(0);
-    expect(cell(1, 1).getAttribute("data-legal")).toBe("true");
-    await user.click(cell(1, 1));
-    expect(position()).toBe("PATH 1, 1 · BABY");
+    expect(cellAt(defaultMaze.start).getAttribute("data-legal")).toBe("true");
+    await user.click(cellAt(defaultMaze.start));
+    expect(position()).toBe(`${labelFor(defaultMaze.start)} · BABY`);
   });
 
   it("ignores walls and distant destinations without automatic movement", () => {
     const props = propsFor();
     render(<LabyrinthBoardScreen {...props} />, withPictures);
-    fireEvent.click(cell(3, 1));
-    fireEvent.click(cell(9, 7));
+    fireEvent.click(cellAt(second));
+    fireEvent.click(cellAt(defaultMaze.goal));
     fireEvent.click(part(".labyrinth-wall"));
     expect(props.onMove).not.toHaveBeenCalled();
-    expect(position()).toBe("PATH 1, 1 · BABY");
-    fireEvent.click(cell(2, 1));
-    expect(props.onMove).toHaveBeenCalledExactlyOnceWith(1);
+    expect(position()).toBe(`${labelFor(defaultMaze.start)} · BABY`);
+    fireEvent.click(cellAt(first));
+    expect(props.onMove).toHaveBeenCalledExactlyOnceWith(first);
   });
 
   it("uses the root double-tap filter and accepts a later backtrack", () => {
     render(<PlayableBoard />, withPictures);
     filterTaps();
-    tapAt(cell(2, 1), 0, { x: 100, y: 100 });
-    tapAt(cell(3, 1), 250, { x: 164, y: 100 });
-    expect(position()).toBe("PATH 2, 1 · BABY");
-    tapAt(cell(1, 1), 1000, { x: 36, y: 100 });
-    expect(position()).toBe("PATH 1, 1 · BABY");
+    tapAt(cellAt(first), 0, { x: 100, y: 100 });
+    tapAt(cellAt(second), 250, { x: 164, y: 100 });
+    expect(position()).toBe(`${labelFor(first)} · BABY`);
+    tapAt(cellAt(defaultMaze.start), 1000, { x: 36, y: 100 });
+    expect(position()).toBe(`${labelFor(defaultMaze.start)} · BABY`);
   });
 
   it("moves with arrows only inside the focused board and keeps controls keyboard accessible", async () => {
@@ -82,19 +89,23 @@ describe("a playable labyrinth board", () => {
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "HOME" }));
     await user.keyboard("{ArrowRight}");
-    expect(position()).toBe("PATH 1, 1 · BABY");
+    expect(position()).toBe(`${labelFor(defaultMaze.start)} · BABY`);
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "HINT" }));
     await user.keyboard("{Enter}");
     expect(document.querySelectorAll("[data-hint]")).toHaveLength(1);
     await user.tab();
     expect(document.activeElement).toBe(maze());
-    await user.keyboard("{ArrowUp}{ArrowLeft}{ArrowDown}");
-    expect(position()).toBe("PATH 1, 1 · BABY");
-    await user.keyboard("{ArrowRight}{ArrowRight}{ArrowDown}");
-    expect(position()).toBe("PATH 3, 2 · BABY");
-    await user.keyboard("{ArrowUp}{ArrowLeft}");
-    expect(position()).toBe("PATH 2, 1 · BABY");
+    const columns = defaultMaze.rows[0]!.length;
+    const legal = adjacentPaths(defaultMaze, defaultMaze.start);
+    for (const [key, offset] of [["ArrowUp", -columns], ["ArrowRight", 1], ["ArrowDown", columns], ["ArrowLeft", -1]] as const) {
+      if (!legal.includes(defaultMaze.start + offset)) await user.keyboard(`{${key}}`);
+    }
+    expect(position()).toBe(`${labelFor(defaultMaze.start)} · BABY`);
+    await user.keyboard(`{${arrow(defaultMaze.start, first)}}{${arrow(first, second)}}`);
+    expect(position()).toBe(`${labelFor(second)} · BABY`);
+    await user.keyboard(`{${arrow(second, first)}}`);
+    expect(position()).toBe(`${labelFor(first)} · BABY`);
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "OUTSIDE" }));
     await user.keyboard("{Enter}");
@@ -102,20 +113,26 @@ describe("a playable labyrinth board", () => {
   });
 
   it("does not wrap an arrow from the end of a row to the next row", () => {
-    const props = propsFor({ ...startMaze(MAZES[0]!), position: 8 });
+    const columns = defaultMaze.rows[0]!.length;
+    const boundary = Array.from({ length: columns * defaultMaze.rows.length }, (_, at) => at).find((place) =>
+      place % columns === columns - 1 && isPath(defaultMaze, place + 1) && adjacentPaths(defaultMaze, place).some((next) => next % columns === columns - 1)
+    )!;
+    expect(boundary).toBeDefined();
+    const vertical = adjacentPaths(defaultMaze, boundary).find((next) => next % columns === columns - 1)!;
+    const props = propsFor({ ...startMaze(defaultMaze), position: boundary });
     render(<LabyrinthBoardScreen {...props} />, withPictures);
     fireEvent.keyDown(maze(), { key: "ArrowRight" });
     expect(props.onMove).not.toHaveBeenCalled();
-    fireEvent.keyDown(maze(), { key: "ArrowDown" });
-    expect(props.onMove).toHaveBeenCalledExactlyOnceWith(17);
+    fireEvent.keyDown(maze(), { key: arrow(boundary, vertical) });
+    expect(props.onMove).toHaveBeenCalledExactlyOnceWith(vertical);
   });
 
   it.each(AGE_LEVELS)("moves and backtracks by one arrow step at %s", async (level) => {
     const layout = layoutFor(level);
     const columns = layout.rows[0]!.length;
     const destination = adjacentPaths(layout, layout.start)[0]!;
-    const outward = destination === layout.start + 1 ? "ArrowRight" : "ArrowDown";
-    const back = outward === "ArrowRight" ? "ArrowLeft" : "ArrowUp";
+    const outward = arrow(layout.start, destination, columns);
+    const back = arrow(destination, layout.start, columns);
     const user = userEvent.setup({ delay: null });
     render(<PlayableBoard initial={startMaze(layout)} />, withPictures);
     maze().focus();
@@ -124,13 +141,13 @@ describe("a playable labyrinth board", () => {
     expect(part(".labyrinth-baby").style.getPropertyValue("--baby-x")).toBe(String(destination % columns));
     expect(part(".labyrinth-baby").style.getPropertyValue("--baby-y")).toBe(String(Math.floor(destination / columns)));
     await user.keyboard(`{${back}}`);
-    expect(position()).toBe("PATH 1, 1 · BABY");
+    expect(position()).toBe(`${labelFor(layout.start, layout)} · BABY`);
   });
 
   it("hands home to its caller and stops moves and help on a solved board", () => {
-    const props = propsFor({ ...startMaze(MAZES[0]!), position: 62 });
+    const props = propsFor({ ...startMaze(defaultMaze), position: defaultMaze.goal });
     render(<LabyrinthBoardScreen {...props} />, withPictures);
-    fireEvent.click(cell(8, 7));
+    fireEvent.click(cellAt(adjacentPaths(defaultMaze, defaultMaze.goal)[0]!));
     fireEvent.keyDown(maze(), { key: "ArrowLeft" });
     fireEvent.click(screen.getByRole("button", { name: "HINT" }));
     expect(props.onMove).not.toHaveBeenCalled();
@@ -169,7 +186,7 @@ describe("a playable labyrinth board", () => {
     else expect(getComputedStyle(parent).width).toBe("250px");
   });
 
-  it.each(MAZES)("indicates all legal turns equally, including the goal, without revealing a route in $id", (layout) => {
+  it.each(AGE_LEVELS.map(layoutFor))("indicates all legal turns equally, including the goal, without revealing a route in $id", (layout) => {
     const position = adjacentPaths(layout, layout.goal)[0]!;
     const props = propsFor({ ...startMaze(layout), position });
     render(<LabyrinthBoardScreen {...props} />, withPictures);
