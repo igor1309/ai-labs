@@ -54,7 +54,8 @@ How any component, core, adapter or UI module, goes from issue to trunk.
   agister's implement process): intent, a numbered "Done when", "Out of
   scope", sources and decisions. Name in "Out of scope" every neighbouring
   component, the root and any follow-up issue; a brief that leaves one out
-  gets it built.
+  gets it built. Say that the step writes its own component's log line
+  only; a run that sees siblings missing from the log adds theirs too.
 - Start every component whose dependencies are on trunk at once, each on
   its own branch and worktree with its own Codex run. Do not wait for a
   PR's CI to start the next; stack a branch on the unmerged one it needs.
@@ -97,7 +98,9 @@ How any component, core, adapter or UI module, goes from issue to trunk.
   Bluetooth is never the thing under test; the user spec on a real iPad and
   iPhone proves the binding.
 - Each Codex run on a core or adapter is reviewed with agister's review
-  processes before it merges.
+  processes before it merges. Name the machine's spec in the review goal:
+  its `## Decided` fixes the order of events, effects and results, and a
+  reviewer without it reports interleavings the loop cannot produce.
 - A change to behaviour, a fix included, goes spec change, then build, then
   review.
 
