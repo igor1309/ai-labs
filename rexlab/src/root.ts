@@ -1,3 +1,5 @@
+import { readJaws, jawPictures } from "./jawContent.ts";
+import { jawSounds, jawVoice } from "./jawSounds.ts";
 import jawRecords from "./data/jaws.json";
 import welcomeJaw from "./assets/jaws/tyrannosaurus.webp";
 import welcomeGummy from "./assets/dinos/tyrannosaurus/gummy.webp";
@@ -35,6 +37,10 @@ const CARE_PICTURES = import.meta.glob<string>("./assets/care/*.webp", { eager: 
 // Every skeleton picture, the whole skeleton and each of its pieces,
 // loaded the same way.
 const SKELETON_PICTURES = import.meta.glob<string>("./assets/skeletons/*/*.webp", { eager: true, query: "?url&no-inline", import: "default" });
+
+// The jaws and toothless dinosaurs used throughout a round.
+const JAW_PICTURES = import.meta.glob<string>("./assets/jaws/*.webp", { eager: true, query: "?url&no-inline", import: "default" });
+const GUMMY_PICTURES = import.meta.glob<string>("./assets/dinos/*/gummy.webp", { eager: true, query: "?url&no-inline", import: "default" });
 
 // The pictures care shows: each item, and the empty bowl of hunger.
 const CARE_PICTURE_NAMES = ["plants", "meat", "water", "bath", "nest", "bowl"];
@@ -238,7 +244,12 @@ export function appProps(browser: Browser): AppProps {
     dinosaurs,
     catalogue: readCatalogue(records),
     bodyPicture,
-    whoseJaw: { progress: localWhoseJawProgress(storage, jawRecords.map(({ id }) => id)), total: jawRecords.length, jawPicture: welcomeJaw, gummyPicture: welcomeGummy },
+    whoseJaw: { progress: localWhoseJawProgress(storage, jawRecords.map(({ id }) => id)), total: jawRecords.length, jawPicture: welcomeJaw, gummyPicture: welcomeGummy,
+      jaws: readJaws(jawRecords, records), jawFor: jawPictures(JAW_PICTURES, jawRecords.map(({ id }) => id), "jaw"),
+      gummyFor: jawPictures(GUMMY_PICTURES, jawRecords.map(({ id }) => id), "gummy"),
+      foodFor: itemPictures(CARE_PICTURES, ["meat", "plants"]),
+      sounds: jawSounds(() => typeof AudioContext === "undefined" ? undefined : new AudioContext()),
+      voice: jawVoice(typeof speechSynthesis === "undefined" ? undefined : speechSynthesis, (words) => new SpeechSynthesisUtterance(words)) },
     picturePuzzle: {
       dinosaurs: readPictureDinosaurs(records), bodyPicture, random: Math.random,
       choiceStore: localPicturePuzzleChoice(storage), progressStore: localPicturePuzzleProgress(storage)

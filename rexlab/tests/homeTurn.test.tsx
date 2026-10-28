@@ -1,3 +1,4 @@
+import { jawGameParts } from "./whoseJaw.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -157,7 +158,7 @@ function openTurning(
       random={seededRandom(7)}
       {...(withOptionalGames && { picturePuzzle: { dinosaurs: readPictureDinosaurs(records), bodyPicture: fakeBodyPicture, random: seededRandom(17),
         choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage) },
-        whoseJaw: { progress: localWhoseJawProgress(() => storage, jaws.map(({ id }) => id)), total: jaws.length, jawPicture: "jaw.webp", gummyPicture: "gummy.webp" } })}
+        whoseJaw: { ...jawGameParts(), progress: localWhoseJawProgress(() => storage, jaws.map(({ id }) => id)), total: jaws.length, jawPicture: "jaw.webp", gummyPicture: "gummy.webp" } })}
       portraitLayouts={{ home: narrow ? ["tall", "tall-narrow"] : ["tall"] }}
       viewport={viewport}
       progress={emptyProgress()}

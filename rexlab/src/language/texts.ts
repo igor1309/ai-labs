@@ -10,6 +10,11 @@ export type Texts = {
   whoseJaw: string;
   jawShelf: string;
   jawCollection: string;
+  jawProgress: string;
+  jawPick: string;
+  jawOw: string;
+  jawHmm: string;
+  jawFoods: { meat: string; plants: string };
   labyrinth: string;
   labyrinthResult: { title: string; earned: string; total: (stars: number) => string; again: string };
   labyrinthBoard: {

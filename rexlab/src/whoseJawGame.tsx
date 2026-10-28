@@ -1,8 +1,13 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AgeLevel, AgeLevelSetting } from "./ageLevel.ts";
 import type { Language } from "./language/language.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { startLevel, type LevelChoice } from "./startLevel.ts";
+import { WhoseJawBoardScreen } from "./WhoseJawBoardScreen.tsx";
+import { advanceJaw, placeJaw, startJawRound, type Jaw, type JawRound } from "./whoseJaw/index.ts";
+import type { StartTimer } from "./ownedTimers.ts";
+import { useGateShown } from "./OrientationGate.tsx";
+import { TEXTS } from "./language/texts.ts";
 import { WhoseJawDestination, WhoseJawWelcomeScreen } from "./WhoseJawWelcomeScreen.tsx";
 
 export type WhoseJawSaved = {
@@ -19,8 +24,14 @@ export type WhoseJawGameProps = {
   total: number;
   jawPicture: string;
   gummyPicture: string;
+  jaws: readonly Jaw[];
+  jawFor(id: string): string;
+  gummyFor(id: string): string;
+  foodFor(diet: "meat" | "plants"): string;
+  sounds: { play(sound: "snap" | "chomp" | "ow" | "hmm" | "steps" | "slide"): void; stop(): void };
+  voice: { speak(words: string, language: Language): void; stop(): void };
 };
-type WhoseJawScreen = { kind: "welcome" } | { kind: "board"; level: AgeLevel } | { kind: "shelf" };
+type WhoseJawScreen = { kind: "welcome" } | { kind: "board"; round: JawRound } | { kind: "result"; round: JawRound } | { kind: "shelf" };
 export type WhoseJawPhase = WhoseJawScreen["kind"];
 const LEVELS = ["hatchling", "explorer", "paleontologist"] as const;
 
@@ -28,7 +39,7 @@ export function transitionFor(from: WhoseJawScreen, to: WhoseJawScreen): string 
   return from.kind === to.kind ? undefined : SCREEN_CHANGE;
 }
 
-export function useWhoseJawGame(props: WhoseJawGameProps | undefined, setting: AgeLevelSetting, onHome: () => void, onStart: () => void) {
+export function useWhoseJawGame(props: WhoseJawGameProps | undefined, setting: AgeLevelSetting, onHome: () => void, onStart: () => void, random: () => number, startTimer: StartTimer, reducedMotion: () => boolean) {
   const { screen, go, set } = useScreens<WhoseJawScreen>({ kind: "welcome" }, transitionFor);
   const [kept, setKept] = useState<WhoseJawSaved>(() => props?.progress.load() ?? {
     best: { hatchling: null, explorer: null, paleontologist: null }, earned: [], levelChoice: undefined
@@ -44,12 +55,71 @@ export function useWhoseJawGame(props: WhoseJawGameProps | undefined, setting: A
   };
   const welcome = () => go({ kind: "welcome" });
   const home = () => go({ kind: "welcome" }, { also: onHome });
-  const play = () => go((current) => current.kind === "welcome"
-    ? { kind: "board", level: startLevel(setting, LEVELS, latest.current.levelChoice) } : current, { also: onStart });
+  const play = () => go((current) => props && current.kind === "welcome"
+    ? { kind: "board", round: startJawRound(props.jaws, startLevel(setting, LEVELS, latest.current.levelChoice), random) } : current, { also: onStart });
+  const place = (round: JawRound, id: string) => go((current) => {
+    if (current.kind !== "board" || current.round !== round) return current;
+    const next = placeJaw(round, id);
+    return next === round ? current : { kind: "board", round: next };
+  });
+  const advance = (round: JawRound) => go((current) => current.kind !== "board" || current.round !== round ? current
+    : round.phase === "done" ? { kind: "result", round } : { kind: "board", round: advanceJaw(round) });
   const shelf = () => go((current) => current.kind === "welcome" ? { kind: "shelf" } : current);
   const content = (language: Language) => !props ? null : screen.kind === "welcome"
     ? <WhoseJawWelcomeScreen language={language} level={level} best={kept.best[level]} collected={kept.earned.length} total={props.total}
         jawPicture={props.jawPicture} gummyPicture={props.gummyPicture} onLevel={chooseLevel} onPlay={play} onShelf={shelf} onHome={home} />
+    : screen.kind === "board" ? <BoardVisit props={props} round={screen.round} language={language} startTimer={startTimer} reducedMotion={reducedMotion}
+        onPlace={(id) => place(screen.round, id)} onAdvance={() => advance(screen.round)} onBack={welcome} onHome={home} />
     : <WhoseJawDestination key={screen.kind} language={language} shelf={screen.kind === "shelf"} jawPicture={props.jawPicture} onBack={welcome} onHome={home} />;
   return { content, phase: screen.kind, best: kept.best[level], collected: kept.earned.length, open: () => set({ kind: "welcome" }) };
+}
+
+export const JAW_TIMING = { entering: 240, right: 1350, wrong: 1200, done: 320, reduced: 160, reducedWrong: 800 };
+
+function BoardVisit({ props, round, language, startTimer, reducedMotion, onPlace, onAdvance, onBack, onHome }: {
+  props: WhoseJawGameProps; round: JawRound; language: Language; startTimer: StartTimer; reducedMotion(): boolean;
+  onPlace(id: string): void; onAdvance(): void; onBack(): void; onHome(): void;
+}) {
+  const gate = useGateShown();
+  const latest = useRef(onAdvance);
+  latest.current = onAdvance;
+  const text = TEXTS[language];
+  // The completed board keeps its last pictures during the tooth celebration.
+  const question = round.questions[Math.min(round.placed.length, 4)]!;
+  const { owner, choices } = question;
+  const target = choices.find(({ id }) => id === round.target);
+  const shape = round.level === "paleontologist";
+  const reaction = shape && target ? { words: target.hint[language], symbol: "📏" }
+    : owner.diet === "meat" ? { words: text.jawOw, symbol: "🌿" } : { words: text.jawHmm, symbol: "🥩" };
+  const feedback = round.phase === "wrong" ? reaction : round.phase === "right" && round.level === "paleontologist"
+    ? { words: owner.fact[language], symbol: "🦷" } : undefined;
+
+  useEffect(() => () => { props.voice.stop(); props.sounds.stop(); }, [props.voice, props.sounds]);
+  useEffect(() => {
+    if (gate) { props.voice.stop(); props.sounds.stop(); return; }
+    if (round.phase === "waiting") return;
+    let active = true;
+    const stops: Array<() => void> = [];
+    const later = (ms: number, action: () => void) => stops.push(startTimer(ms, () => { if (active) action(); }));
+    const reduced = reducedMotion();
+    if (round.phase === "right") {
+      props.sounds.play("snap");
+      later(reduced ? 80 : 150, () => props.sounds.play("chomp"));
+      if (!reduced) later(850, () => props.sounds.play("steps"));
+    } else if (round.phase === "wrong") {
+      props.sounds.play(shape ? "slide" : owner.diet === "meat" ? "ow" : "hmm");
+    }
+    if (feedback) props.voice.speak(feedback.words, language);
+    const delay = reduced ? (round.phase === "wrong" ? JAW_TIMING.reducedWrong : JAW_TIMING.reduced) : JAW_TIMING[round.phase];
+    later(delay, () => latest.current());
+    return () => { active = false; stops.forEach((stop) => stop()); props.sounds.stop(); };
+  }, [round, gate, startTimer, reducedMotion, props.sounds, props.voice, language]);
+
+  return <WhoseJawBoardScreen key={owner.id} language={language} phase={round.phase} choices={choices.map((jaw) => ({
+    id: jaw.id, name: jaw.name[language].toLocaleUpperCase(language), picture: props.gummyFor(jaw.id), food: props.foodFor(jaw.diet), diet: jaw.diet
+  }))} jawPicture={props.jawFor(owner.id)} placed={round.placed} target={round.target}
+    hint={round.misses >= 2 ? owner.id : undefined} jawDiet={owner.diet} foodShown={round.level === "hatchling"}
+    namesShown={round.level === "paleontologist"} feedback={feedback} onPlace={onPlace}
+    onName={(id) => { const jaw = choices.find((jaw) => jaw.id === id); if (jaw) props.voice.speak(jaw.name[language], language); }}
+    onSlide={() => props.sounds.play("slide")} onBack={onBack} onHome={onHome} />;
 }

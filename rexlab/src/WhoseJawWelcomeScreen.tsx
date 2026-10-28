@@ -51,8 +51,8 @@ function WelcomeHero({ jawPicture, gummyPicture }: { jawPicture: string; gummyPi
   </div>;
 }
 
-// These destinations keep welcome navigation usable while the board and
-// interactive museum are built in their own screen steps.
+// Result and museum destinations keep navigation available while their
+// rewards and collection views are built in their own screen steps.
 export function WhoseJawDestination({ language, shelf, jawPicture, onBack, onHome }: {
   language: Language; shelf: boolean; jawPicture: string; onBack: () => void; onHome: () => void;
 }) {

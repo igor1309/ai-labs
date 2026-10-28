@@ -53,6 +53,7 @@ const SCREENS = [
   "PairsResultScreen.tsx",
   "PairsWelcomeScreen.tsx",
   "WhoseJawWelcomeScreen.tsx",
+  "WhoseJawBoardScreen.tsx",
   "PicturePuzzleBoardScreen.tsx",
   "PicturePuzzleChoiceScreen.tsx",
   "PicturePuzzleResultScreen.tsx",
@@ -93,6 +94,8 @@ const ADAPTERS = [
   "dinosaurs.ts",
   "documentVisibility.ts",
   "itemPictures.ts",
+  "jawContent.ts",
+  "jawSounds.ts",
   "localAgeLevel.ts",
   "localLanguage.ts",
   "localProgress.ts",
@@ -138,6 +141,15 @@ const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps jaw rules pure, reached through their entrypoint and independent of presentation", () => {
+    const inJaw = (file: string) => file.startsWith("whoseJaw/");
+    expect(GRAPH.get("whoseJawGame.tsx")).toContain("whoseJaw/index.ts");
+    expect(edges(inJaw, (file) => !inJaw(file) && file !== AGE_LEVEL && !file.startsWith("language/"))).toEqual([]);
+    expect(edges((file) => !inJaw(file), (target) => inJaw(target) && target !== "whoseJaw/index.ts")).toEqual([]);
+    expect(edges((file) => PRESENTATION.includes(file), inJaw)).toEqual([]);
+    expect(edges((file) => file === "whoseJawGame.tsx" || file === "WhoseJawBoardScreen.tsx", (file) => ADAPTERS.includes(file))).toEqual([]);
+  });
+
   it("keeps the picture puzzle domain behind its entrypoint and free of UI and storage", () => {
     expect(GRAPH.get("picturePuzzleGame.tsx")).toContain("picturePuzzle/index.ts");
     expect(edges((file) => !inPicturePuzzle(file), (target) => inPicturePuzzle(target) && target !== "picturePuzzle/index.ts")).toEqual([]);

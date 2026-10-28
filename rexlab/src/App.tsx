@@ -329,7 +329,7 @@ export function App({
   // from, and not as it opens on a welcome or choice screen.
   const counting = (game: HomeGame) => () => startCounter.countStart(game);
 
-  const jawGame = useWhoseJawGame(whoseJaw, ageLevel, home, counting("whoseJaw"));
+  const jawGame = useWhoseJawGame(whoseJaw, ageLevel, home, counting("whoseJaw"), random, startTimer, careProps.reducedMotion);
 
   const pictureGame = usePicturePuzzleGame(picturePuzzle, ageLevel, pageVisibility, home, counting("picturePuzzle"));
 

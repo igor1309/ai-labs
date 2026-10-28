@@ -3,6 +3,11 @@ import type { Texts } from "./texts.ts";
 export const en: Texts = {
   whoseJaw: "WHOSE JAW?",
   jawShelf: "JAW SHELF",
+  jawProgress: "JAWS PLACED",
+  jawPick: "PICK UP THE JAW",
+  jawOw: "OW! SHARP TEETH!",
+  jawHmm: "HMM? FLAT TEETH!",
+  jawFoods: { meat: "MEAT", plants: "PLANTS" },
   jawCollection: "JAWS COLLECTED",
   labyrinth: "LABYRINTH",
   labyrinthResult: { title: "HOME TOGETHER!", earned: "+3 STARS", total: (stars) => `TOTAL ${stars}`, again: "AGAIN" },

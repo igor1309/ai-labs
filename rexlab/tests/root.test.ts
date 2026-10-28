@@ -82,6 +82,12 @@ describe("the app in a browser", () => {
     const given = browser({ local });
     const game = appProps(given).whoseJaw!;
     expect(game.total).toBe(16);
+    expect(game.jaws).toHaveLength(16);
+    for (const jaw of game.jaws) {
+      expect(game.jawFor(jaw.id)).toContain(`assets/jaws/${jaw.id}.webp`);
+      expect(game.gummyFor(jaw.id)).toContain(`assets/dinos/${jaw.id}/gummy.webp`);
+    }
+    for (const diet of ["meat", "plants"] as const) expect(game.foodFor(diet)).toContain(`assets/care/${diet}.webp`);
     expect(game.jawPicture).toContain("assets/jaws/tyrannosaurus.webp");
     expect(game.gummyPicture).toContain("assets/dinos/tyrannosaurus/gummy.webp");
     game.progress.saveLevel({ level: "hatchling", revision: "parent" });

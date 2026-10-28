@@ -3,6 +3,11 @@ import type { Texts } from "./texts.ts";
 export const ru: Texts = {
   whoseJaw: "ЧЬЯ ЧЕЛЮСТЬ?",
   jawShelf: "ПОЛКА ЧЕЛЮСТЕЙ",
+  jawProgress: "ЧЕЛЮСТИ НА МЕСТЕ",
+  jawPick: "ВОЗЬМИ ЧЕЛЮСТЬ",
+  jawOw: "АЙ! ОСТРЫЕ ЗУБЫ!",
+  jawHmm: "ХМ? ПЛОСКИЕ ЗУБЫ!",
+  jawFoods: { meat: "МЯСО", plants: "РАСТЕНИЯ" },
   jawCollection: "СОБРАННЫЕ ЧЕЛЮСТИ",
   labyrinth: "ЛАБИРИНТ",
   labyrinthResult: { title: "ВМЕСТЕ ДОМА!", earned: "+3 ЗВЕЗДЫ", total: (stars) => `ВСЕГО ${stars}`, again: "ЕЩЁ РАЗ" },
