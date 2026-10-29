@@ -114,9 +114,9 @@ agister runs, fix rounds and stacked merges.
 - Each UI module has a macOS preview app in `ios/PreviewApps`, built as
   its own issue after the module, never in the module's step. It shows
   the module's preview states, the events they send, and exports them to
-  PNGs; that is where the module is matched with the design. Driving a
-  screen live with its real machines, timers and Bluetooth stubbed, is
-  later work, once the machines exist. The no-logic rule binds the UI
+  PNGs; that is where the module is matched with the design. A screen
+  driven live by its real machines is the rehearsal app's job. The
+  no-logic rule binds the UI
   module, not its preview app; the app copies no feature code and has no
   tests.
 
@@ -134,6 +134,38 @@ agister runs, fix rounds and stacked merges.
   `devices:` for a one-device screen. Compare the PNGs with the frames
   yourself, fix the module in the same PR, and send the owner each
   difference that the design causes, with the fix you suggest.
+
+## The rehearsal app
+
+The rehearsal app is the real app with its radios replaced by a script,
+driven by Maestro on simulators. It proves the wiring before any device.
+
+- It is built from the `MizanBLE Rehearsal` scheme. That scheme links
+  `ScriptedRadio` in place of `HostRadio` and `ClientRadio`; everything
+  else, the flows, crypto, codec, picker, screens and logging, is the
+  shipping code. The device scheme never links `ScriptedRadio`, and the
+  root's only difference between the two is which radio pair it builds.
+- `ScriptedRadio` is a spy that reads its settings from disk, as a fake
+  in a test does from its setup. A JSON file says which hosts the client
+  sees and at what signal, what the other side answers at each step, where
+  it fails and how long it waits. Its path comes in as a launch argument,
+  and the file is read again each time a mode starts, so a lane changes
+  behaviour by passing another file, never by a rebuild.
+- Each side runs on its own simulator against a scripted other side: the
+  host on an iPad, the client on an iPhone. Nothing connects the two
+  simulators. Two real parties meet only on devices.
+- A lane is a Maestro flow and a settings file, one per user-spec
+  scenario, under `maestro/`. It checks what the person sees through
+  Maestro, and what the app did through its own log:
+  `xcrun simctl spawn <udid> log show --predicate 'subsystem == "mizan-ble"'`.
+  There is no other record.
+- The log never holds an amount, a key, a nonce, a message's plaintext or
+  ciphertext, or a peer or device identifier, in any form. Every lane
+  searches its run's log for the secret values in its settings file and
+  fails on a match.
+- Every wiring change is proven in the rehearsal app before a device. The
+  device check is left with what a script cannot show: real Bluetooth,
+  signal strength and range, and two real parties paying each other.
 
 ## Design
 

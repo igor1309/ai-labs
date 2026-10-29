@@ -13,3 +13,11 @@ themes.
 - Dinosaur pictures: `art/style.md`; placeholders stand in until the
   artwork is generated.
 - Running it locally, commands and releases: `AGENTS.md`.
+
+For the board's browser geometry checks, run `npx playwright install chromium`
+once, then `npm run test:browser` from `rexlab/`. The check starts and closes
+its own Vite server and browser, and prints a unique temporary directory for
+screenshots. It checks 60 reduced-motion configurations and one normal-motion
+outward walk. Set `CHROME_PATH` to use a local Chrome executable, or `BOARD_URL`
+to check an already running server instead. CI installs Chromium with its OS
+dependencies and runs these checks on shard 1.

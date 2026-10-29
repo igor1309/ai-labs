@@ -91,6 +91,7 @@ describe("Whose Jaw board", () => {
     act(() => app.timers.fire(JAW_TIMING.right));
     expect(toothCount()).toBe(1);
     expect(document.querySelector(".jaw-socket[data-shining]")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: TEXTS[language].next }));
     act(() => app.timers.fire(JAW_TIMING.entering));
     expect(document.querySelector("[data-hint]")).toBeNull();
     expect(document.querySelector(".jaw-diet-hint")).toBeNull();
@@ -120,6 +121,7 @@ describe("Whose Jaw board", () => {
     for (let at = 0; at < 2; at++) {
       put(ownerId());
       act(() => plants.timers.fire(JAW_TIMING.right));
+      fireEvent.click(screen.getByRole("button", { name: TEXTS.en.next }));
       act(() => plants.timers.fire(JAW_TIMING.entering));
     }
     const meat = JAWS.find((each) => each.diet === "meat" && screen.queryByRole("button", { name: each.name.en.toUpperCase() }))!;
@@ -139,6 +141,9 @@ describe("Whose Jaw board", () => {
       expect(app.parts.spoken).toEqual([]);
       expect(app.parts.played.filter((sound) => sound === "snap")).toHaveLength(index + 1);
       act(() => app.timers.fire(JAW_TIMING.right));
+      expect(toothCount()).toBe(index + 1);
+      const next = screen.getByRole("button", { name: TEXTS.en.next });
+      act(() => { fireEvent.click(next); fireEvent.click(next); });
       expect(toothCount()).toBe(index + 1);
       if (index < 4) act(() => app.timers.fire(JAW_TIMING.entering));
     }
@@ -202,7 +207,9 @@ describe("Whose Jaw board", () => {
     act(() => app.timers.fire(80));
     expect(app.parts.played.slice(-2)).toEqual(["snap", "chomp"]);
     act(() => app.timers.fire(160));
-    expect(toothCount()).toBe(1);
+    expect([toothCount(), board().dataset.phase]).toEqual([1, "reading"]);
+    fireEvent.click(screen.getByRole("button", { name: TEXTS.en.next }));
+    expect(board().dataset.phase).toBe("entering");
   });
 });
 
@@ -260,17 +267,73 @@ describe("jaw pointer input", () => {
     expect(board().dataset.phase).toBe("right");
     expect(app.parts.played).toEqual(["snap"]);
   });
+
+  it("filters the second Next tap before it can pick up the new jaw", () => {
+    filterTaps();
+    const app = openBoard();
+    put(ownerId());
+    act(() => app.timers.fire(JAW_TIMING.right));
+    tapAt(screen.getByRole("button", { name: TEXTS.en.next }), 1000, { x: 500, y: 500 });
+    expect([board().dataset.phase, toothCount()]).toEqual(["entering", 1]);
+    act(() => app.timers.fire(JAW_TIMING.entering));
+    tapAt(jaw(), 1100, { x: 500, y: 500 });
+    expect([board().dataset.phase, toothCount(), jaw().getAttribute("aria-pressed")]).toEqual(["waiting", 1, "false"]);
+    tapAt(jaw(), 1700, { x: 500, y: 500 });
+    expect(jaw().getAttribute("aria-pressed")).toBe("true");
+  });
 });
 
 function viewProps(): WhoseJawBoardScreenProps {
   return {
     language: "en", phase: "waiting", choices: JAWS.slice(0, 2).map((jaw) => ({ id: jaw.id, name: jaw.name.en.toUpperCase(), picture: `gummy-${jaw.id}.webp`, food: "meat.webp", diet: jaw.diet, mouth: jawMouth(jaw.id) })),
     jawPicture: "loose.webp", placed: [], target: undefined, hint: undefined, jawDiet: "meat", foodShown: false, namesShown: false, feedback: undefined,
-    onPlace: vi.fn(), onName: vi.fn(), onSlide: vi.fn(), onBack: vi.fn(), onHome: vi.fn()
+    onPlace: vi.fn(), onNext: vi.fn(), onName: vi.fn(), onSlide: vi.fn(), onBack: vi.fn(), onHome: vi.fn()
   };
 }
 
 describe("pictures and gate", () => {
+  it.each(["en", "ru"] as const)("shows an arrow and uppercase %s Next, with keyboard activation only after settling", async (language) => {
+    const props = viewProps();
+    props.language = language;
+    props.choices = props.choices.map((choice) => ({ ...choice, name: JAWS.find(({ id }) => id === choice.id)!.name[language].toLocaleUpperCase(language) }));
+    const pictures = manualPictures();
+    const feedback = { words: JAWS[0]!.fact[language], symbol: "🦷" };
+    const view = render(<WhoseJawBoardScreen {...props} phase="right" target={JAWS[0]!.id} feedback={feedback} />, withManualPictures(pictures));
+    const next = screen.getByRole("button", { name: TEXTS[language].next }) as HTMLButtonElement;
+    expect(next.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(next.textContent).toBe(language === "en" ? "NEXT" : "ДАЛЬШЕ");
+    expect(next.disabled).toBe(true);
+    const paragraph = screen.getByText(feedback.words);
+    view.rerender(<WhoseJawBoardScreen {...props} phase="reading" target={JAWS[0]!.id} feedback={feedback} />);
+    expect(screen.getByText(feedback.words)).toBe(paragraph);
+    expect(next.disabled).toBe(false);
+    expect(jaw(language).getAttribute("aria-disabled")).toBe("true");
+    put(JAWS[0]!.id, language);
+    expect(props.onPlace).not.toHaveBeenCalled();
+    const user = userEvent.setup({ delay: null });
+    next.focus();
+    await user.keyboard("{Enter>3/}");
+    expect(props.onNext).toHaveBeenCalledTimes(1);
+    await user.keyboard(" ");
+    expect(props.onNext).toHaveBeenCalledTimes(2);
+    view.rerender(<WhoseJawBoardScreen {...props} phase="entering" />);
+    expect(screen.queryByRole("button", { name: TEXTS[language].next })).toBeNull();
+  });
+
+  it("keeps Next disabled behind the orientation gate", () => {
+    const props = viewProps();
+    const show = (shown: boolean) => <OrientationGate shown={shown} screenUpright={true} language="en"><WhoseJawBoardScreen {...props} phase="reading" /></OrientationGate>;
+    const view = render(show(true), withManualPictures(manualPictures()));
+    const next = document.querySelector<HTMLButtonElement>(".jaw-next")!;
+    expect(next.disabled).toBe(true);
+    fireEvent.click(next);
+    expect(props.onNext).not.toHaveBeenCalled();
+    view.rerender(show(false));
+    expect(next.disabled).toBe(false);
+    fireEvent.click(next);
+    expect(props.onNext).toHaveBeenCalledTimes(1);
+  });
+
   it.each(JAWS)("anchors fitted feedback, mouth glow and food to $id", (creature) => {
     const props = viewProps();
     const mouth = jawMouth(creature.id);

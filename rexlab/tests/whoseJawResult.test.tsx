@@ -44,6 +44,7 @@ function finish(app: ReturnType<typeof begin>, errors = 0, language: "en" | "ru"
     }
     put(button(owner.name[language].toLocaleUpperCase(language)));
     act(() => app.timers.fire(reduced ? JAW_TIMING.reduced : JAW_TIMING.right));
+    fireEvent.click(button(TEXTS[language].next));
   }
   act(() => app.timers.fire(reduced ? JAW_TIMING.reduced : JAW_TIMING.done));
   expect(result()).not.toBeNull();

@@ -24,14 +24,14 @@ the goal required it:
 
 ## Constraints
 
-Write the new test first and show it red on its assertion, then green (a
+Write each new test first and show it red on its assertion, then green (a
 test that pins behaviour already there is green only; say so);
-put the red and green runs' failing and passing lines in your report's
-checks. No mutation tests. Do not import any other module. Do not change
+put one red run's failing line per new test, and the green run's passing
+line, in your report's checks. No mutation tests. Do not import any other module. Do not change
 any spec; if the ruling needs a spec change, stop and report it. If the
 Swift module cache is not writable, set `CLANG_MODULE_CACHE_PATH` and
-`SWIFTPM_MODULECACHE_OVERRIDE` under `mizan-ble/ios/.build/`. Leave changes
-uncommitted. Do not launch nested agents. Do not leave background
+`SWIFTPM_MODULECACHE_OVERRIDE` under `mizan-ble/ios/.build/`. Do not touch
+`mizan-ble/docs/log.md`. Leave changes uncommitted. Do not launch nested agents. Do not leave background
 processes.
 
 ## Open

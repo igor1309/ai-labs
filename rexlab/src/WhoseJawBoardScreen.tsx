@@ -1,5 +1,5 @@
-import { ArrowLeft, House } from "lucide-react";
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { ArrowLeft, ArrowRight, House } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { Button } from "./Button.tsx";
 import { useGateShown } from "./OrientationGate.tsx";
 import { Picture, PictureImage, usePicture } from "./Picture.tsx";
@@ -11,8 +11,9 @@ export type JawChoiceView = {
   mouth: { x: number; y: number; width: number; mirror: boolean; angle: number };
 };
 export type WhoseJawBoardScreenProps = {
+  audioControl?: ReactNode;
   language: Language;
-  phase: "entering" | "waiting" | "right" | "wrong" | "done";
+  phase: "entering" | "waiting" | "right" | "reading" | "wrong" | "done";
   choices: readonly JawChoiceView[];
   jawPicture: string;
   placed: readonly { firstTry: boolean }[];
@@ -23,6 +24,7 @@ export type WhoseJawBoardScreenProps = {
   namesShown: boolean;
   feedback: { words: string; symbol: string } | undefined;
   onPlace(id: string): void;
+  onNext(): void;
   onName(id: string): void;
   onSlide(): void;
   onBack(): void;
@@ -31,7 +33,7 @@ export type WhoseJawBoardScreenProps = {
 type Hold = { pointerId: number; x: number; y: number; dx: number; dy: number; dragging: boolean };
 type Returned = { x: number; y: number; count: number };
 
-export function WhoseJawBoardScreen({ language, phase, choices, jawPicture, placed, target, hint, jawDiet, foodShown, namesShown, feedback, onPlace, onName, onSlide, onBack, onHome }: WhoseJawBoardScreenProps) {
+export function WhoseJawBoardScreen({ audioControl, language, phase, choices, jawPicture, placed, target, hint, jawDiet, foodShown, namesShown, feedback, onPlace, onNext, onName, onSlide, onBack, onHome }: WhoseJawBoardScreenProps) {
   const text = TEXTS[language];
   const gate = useGateShown();
   const [picked, setPicked] = useState(false);
@@ -47,6 +49,7 @@ export function WhoseJawBoardScreen({ language, phase, choices, jawPicture, plac
   const look = usePicture(jawPicture);
   const ready = look === "appearing" || look === "shown";
   const enabled = phase === "waiting" && !gate;
+  const correct = phase === "right" || phase === "reading";
   const locked = useRef(!enabled);
   const holding = picked || !!held?.dragging;
   const updateHold = (next: Hold | undefined) => { hold.current = next; setHeld(next); };
@@ -149,12 +152,13 @@ export function WhoseJawBoardScreen({ language, phase, choices, jawPicture, plac
         if (!hold.current) suppressClick.current = false;
       }
     }} onClick={() => pick(false)}>
-    <header className="whose-jaw-board-bar">
-      <Button className="home-button" onClick={onHome}><House aria-hidden="true" /><span className="narrow-hidden">{text.home}</span></Button>
+    <header className="whose-jaw-board-bar" data-audio={audioControl ? true : undefined}>
+      <Button className="home-button" aria-label={text.home} onClick={onHome}><House aria-hidden="true" /><span className="narrow-hidden">{text.home}</span></Button>
       <div className="jaw-teeth" role="img" aria-label={`${text.jawProgress}: ${placed.length} / 5`}>
         {Array.from({ length: 5 }, (_, at) => <span key={at} className="jaw-socket" data-filled={!!placed[at] || undefined}
           data-shining={(placed[at]?.firstTry || phase === "done") || undefined} aria-hidden="true">{placed[at] ? "🦷" : ""}</span>)}
       </div>
+      {audioControl}
       <Button className="home-button" aria-label={text.back} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
     </header>
     <h1 className="jaw-board-title"><span aria-hidden="true">🦷</span> {text.whoseJaw}</h1>
@@ -171,16 +175,18 @@ export function WhoseJawBoardScreen({ language, phase, choices, jawPicture, plac
           <span className="jaw-breath"><Picture className="jaw-gummy" src={choice.picture} alt="" width={800} height={600} />
           <span className="jaw-mouth-glow" aria-hidden="true" />
           {target === choice.id && <span className="jaw-fitted"><Picture className="jaw-fitted-picture" src={jawPicture} alt="" width={600} height={450} /></span>}
-          {(foodShown || (target === choice.id && phase === "right")) && <span className="jaw-food"><Picture className="jaw-food-picture" src={choice.food} alt={text.jawFoods[choice.diet]} width={400} height={400} /></span>}
+          {(foodShown || (target === choice.id && correct)) && <span className="jaw-food"><Picture className="jaw-food-picture" src={choice.food} alt={text.jawFoods[choice.diet]} width={400} height={400} /></span>}
           </span>
         </span>
         {namesShown && <span className="jaw-name">{choice.name}</span>}
       </Button>)}
     </div>
     <div className="jaw-feedback" aria-live="polite">
-      {feedback && <p key={`${target}-${phase}`} data-reaction={feedback.symbol}><span aria-hidden="true">{feedback.symbol}</span> {feedback.words}</p>}
+      {feedback && <p key={`${target}-${feedback.symbol}`} data-reaction={feedback.symbol}><span aria-hidden="true">{feedback.symbol}</span> {feedback.words}</p>}
     </div>
     <div className="jaw-tray">
+      {correct && <Button className="jaw-next" disabled={phase !== "reading" || gate} onClick={onNext}
+        onKeyDown={(event) => { if (event.repeat) event.preventDefault(); }}><ArrowRight aria-hidden="true" />{text.next}</Button>}
       <Button key={back?.count ?? 0} className="jaw-loose" aria-label={text.jawPick} aria-pressed={holding} aria-disabled={!enabled}
         data-dragging={held?.dragging || undefined} data-returning={!!back || undefined} data-inviting={enabled && !touched && ready || undefined}
         style={{ ...(held?.dragging && { translate: `${held.dx}px ${held.dy}px` }), "--from-x": `${back?.x ?? 0}px`, "--from-y": `${back?.y ?? 0}px` } as CSSProperties}

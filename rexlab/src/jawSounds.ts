@@ -42,14 +42,35 @@ export function jawSounds(makeAudio: () => AudioContext | undefined): JawSounds 
   } };
 }
 
-export function jawVoice(speech: Pick<SpeechSynthesis, "speak" | "cancel"> | undefined, utterance: (words: string) => SpeechSynthesisUtterance): JawVoice {
+function narration(words: string, language: Language): string {
+  // Display capitals can be pronounced as acronyms; authored mixed case keeps proper names.
+  return words.replace(/[^.!?]+[.!?]*/gu, (sentence) => sentence !== sentence.toLocaleUpperCase(language) ? sentence
+    : sentence.toLocaleLowerCase(language).replace(/\p{L}/u, (letter) => letter.toLocaleUpperCase(language)));
+}
+
+function matchingVoice(voices: readonly SpeechSynthesisVoice[], language: Language, locale: string): SpeechSynthesisVoice | undefined {
+  const tag = (voice: SpeechSynthesisVoice) => voice.lang.toLowerCase().replaceAll("_", "-");
+  // The browser exposes no quality field; some providers advertise it in the name or URI.
+  const rank = (voice: SpeechSynthesisVoice) =>
+    (/enhanced|premium|natural|neural|high[- ]quality/i.test(`${voice.name} ${voice.voiceURI}`) ? 4 : 0)
+    + (tag(voice) === locale.toLowerCase() ? 2 : 0) + (voice.default ? 1 : 0);
+  return voices.filter((voice) => tag(voice).split("-")[0] === language)
+    .reduce<SpeechSynthesisVoice | undefined>((best, voice) => !best || rank(voice) > rank(best) ? voice : best, undefined);
+}
+
+export function jawVoice(speech: Pick<SpeechSynthesis, "speak" | "cancel" | "getVoices"> | undefined, utterance: (words: string) => SpeechSynthesisUtterance): JawVoice {
   const stop = () => { try { speech?.cancel(); } catch { /* Speech is optional. */ } };
   return { stop, speak(words, language) {
     try {
       stop();
       if (!speech) return;
-      const line = utterance(words);
+      const line = utterance(narration(words, language));
       line.lang = language === "ru" ? "ru-RU" : "en-US";
+      try {
+        // Voice lists can arrive late: refresh per request and use lang until they do.
+        const selected = matchingVoice(speech.getVoices(), language, line.lang);
+        if (selected) line.voice = selected;
+      } catch { /* Voice discovery must not prevent language-based speech. */ }
       speech.speak(line);
     } catch { /* Speech is optional. */ }
   } };
