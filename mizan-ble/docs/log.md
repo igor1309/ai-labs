@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-30
+
+- On an iPhone the host's header clears the status bar, and both sides keep clear of the status bar and home indicator; the client's detail keeps its two lines (LAB-728).
+
 ## 2026-10-29
 
 - The host's screens now fit an iPhone, edge to edge like the client's, so a phone switched to Host can switch back (LAB-728).
