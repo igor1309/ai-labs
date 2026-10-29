@@ -75,6 +75,8 @@ public struct ResultMark: View {
 /// actions that follow, such as starting a new amount.
 public struct ResultCard<Actions: View>: View {
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let outcome: Outcome
     let title: String
     let actions: Actions
@@ -99,6 +101,8 @@ public struct ResultCard<Actions: View>: View {
         .padding(Tokens.space7)
         .frame(maxWidth: .infinity)
         .background(Tokens.raised, in: RoundedRectangle(cornerRadius: Tokens.radiusXl))
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: title)
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: outcome)
     }
 }
 

@@ -2,6 +2,7 @@
 
 ## 2026-10-29
 
+- Screens now animate between states (LAB-741).
 - The client side pays end to end in the app (LAB-725).
 
 - The rehearsal app plays the other side from a settings file (LAB-723).
