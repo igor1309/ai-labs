@@ -222,9 +222,9 @@ extension ClientBluetoothState {
         switch self {
         case .on: .available
         case .unknown, .resetting: .unknown
-        case .off: .unavailable(reason: "Bluetooth is off")
-        case .notAllowed: .unavailable(reason: "Bluetooth not allowed")
-        case .unsupported: .unavailable(reason: "Bluetooth unsupported")
+        case .off: .unavailable(reason: BluetoothReason.off.rawValue)
+        case .notAllowed: .unavailable(reason: BluetoothReason.notAllowed.rawValue)
+        case .unsupported: .unavailable(reason: BluetoothReason.unsupported.rawValue)
         }
     }
 }
