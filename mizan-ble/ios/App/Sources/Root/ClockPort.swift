@@ -11,6 +11,12 @@ public protocol ClockPort: Sendable {
 extension SystemClock: ClockPort {}
 
 extension Preferences: @retroactive SettingsStore {
+    /// The app's settings live in the `mizan-ble` suite. A suite named as
+    /// the app's own bundle identifier does not open, so neither app passes
+    /// one of its own.
+    public static let appSuiteName = "mizan-ble"
+    public static func app() -> Preferences { Preferences(suiteName: appSuiteName) }
+
     public func value(for key: Settings.Key) -> Settings.Value? {
         switch value(for: key.rawValue) {
         case .number(let value): .number(value)

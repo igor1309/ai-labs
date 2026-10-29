@@ -16,13 +16,16 @@ public struct AppModeState: Equatable, Sendable, LogDescribable {
     public private(set) var state: AppModeState
     private let modeLog: ModeLog
     private(set) var host: HostMode?
+    private(set) var client: ClientMode?
     private let clock: any ClockPort
     private let settings: Settings
     private let log: any LogSink
     private var bluetooth: HostBluetoothState = .unknown
+    private var clientBluetooth: ClientBluetoothState = .unknown
+    @ObservationIgnored private var clientRadioTask: Task<Void, Never>?
     @ObservationIgnored private var radioTask: Task<Void, Never>?
 
-    public var isAtRest: Bool { host?.isAtRest ?? true }
+    public var isAtRest: Bool { host?.isAtRest ?? client?.isAtRest ?? true }
 
     public var modeSwitchState: ModeSwitchState { .init(side: state.side, isEnabled: isAtRest) }
 
@@ -41,6 +44,14 @@ public struct AppModeState: Equatable, Sendable, LogDescribable {
                 self?.receive(event)
             }
         }
+        let clientSource = self.radios.client.events
+        clientRadioTask = Task.immediate { [weak self] in
+            for await event in clientSource {
+                guard !Task.isCancelled else { return }
+                if case .bluetooth(let value) = event { self?.clientBluetooth = value }
+                self?.client?.receive(event)
+            }
+        }
     }
 
     public func choose(_ side: Side) {
@@ -50,7 +61,7 @@ public struct AppModeState: Equatable, Sendable, LogDescribable {
         buildMode()
     }
 
-    deinit { radioTask?.cancel() }
+    deinit { radioTask?.cancel(); clientRadioTask?.cancel() }
 
     private func receive(_ event: HostRadioEvent) {
         if case .bluetoothState(let value) = event { bluetooth = value }
@@ -58,6 +69,8 @@ public struct AppModeState: Equatable, Sendable, LogDescribable {
     }
 
     private func tearDownMode() {
+        client?.stop()
+        client = nil
         host?.stop()
         host = nil
         modeLog.tornDown(state.side)
@@ -67,6 +80,9 @@ public struct AppModeState: Equatable, Sendable, LogDescribable {
         if state.side == .host {
             host = HostMode(radio: radios.host, clock: clock, settings: settings, bluetooth: bluetooth, log: log,
                             restChanged: { [weak self] in self?.updateRest() })
+        } else {
+            client = ClientMode(radio: radios.client, clock: clock, settings: settings, bluetooth: clientBluetooth, log: log,
+                                restChanged: { [weak self] in self?.updateRest() })
         }
     }
     private func updateRest() {

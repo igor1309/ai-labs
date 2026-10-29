@@ -21,7 +21,7 @@ import UIKit
         let log = SystemLogSink()
         _root = State(initialValue: AppRoot(
             radios: scriptedRadios(settingsPath: path, log: log), launchSide: side, clock: SystemClock(),
-            store: Preferences(suiteName: "dev.igor1309.mizan-ble.rehearsal"), log: log
+            store: Preferences.app(), log: log
         ))
     }
 
