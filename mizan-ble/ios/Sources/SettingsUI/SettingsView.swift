@@ -2,6 +2,7 @@ import DesignSystem
 import SwiftUI
 
 public struct SettingsView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let state: SettingsState
     private let event: (SettingsEvent) -> Void
 
@@ -50,10 +51,12 @@ public struct SettingsView: View {
                 Text(state.countdown.selectedText)
                     .font(Tokens.display(Tokens.sizeTitle, .medium))
                     .foregroundStyle(Tokens.hostHi)
+                    .contentTransition(.numericText())
+                    .animation(Motion.fast(reduced: reduceMotion).animation, value: state.countdown.selectedText)
             }
             HStack(spacing: Tokens.space1) {
-                ForEach(state.countdown.choices.indices, id: \.self) { index in
-                    countdownChoice(state.countdown.choices[index])
+                ForEach(state.countdown.choices, id: \.seconds) { choice in
+                    countdownChoice(choice)
                 }
             }
             .padding(Tokens.space1)
@@ -81,6 +84,7 @@ public struct SettingsView: View {
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: selected)
     }
 
     private var readOnlyCard: some View {

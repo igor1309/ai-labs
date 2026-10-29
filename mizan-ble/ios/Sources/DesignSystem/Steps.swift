@@ -48,6 +48,7 @@ public struct SessionStep: Equatable, Sendable {
 }
 
 private struct StepNode: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let state: StepState
     let side: Side
     let number: Int
@@ -70,6 +71,7 @@ private struct StepNode: View {
             }
         }
         .frame(width: diameter, height: diameter)
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: state)
         .accessibilityHidden(true)
     }
 }
@@ -110,6 +112,7 @@ public struct HostRailStep: View {
 }
 
 public struct HostRail: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let steps: [SessionStep]
 
     public init(_ steps: [SessionStep]) { self.steps = steps }
@@ -120,6 +123,7 @@ public struct HostRail: View {
                 HostRailStep(steps[index], number: index + 1, isLast: index == steps.indices.last)
             }
         }
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: steps)
     }
 }
 
@@ -156,6 +160,7 @@ public struct ClientStepperStep: View {
 }
 
 public struct ClientStepper: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let steps: [SessionStep]
 
     public init(_ steps: [SessionStep]) { self.steps = steps }
@@ -167,5 +172,6 @@ public struct ClientStepper: View {
                     .frame(width: index == steps.indices.last ? 64 : nil)
             }
         }
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: steps)
     }
 }

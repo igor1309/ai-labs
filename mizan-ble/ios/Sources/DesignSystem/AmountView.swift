@@ -4,6 +4,8 @@ import SwiftUI
 /// digits; the view only sets them.
 public struct AmountView: View {
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public enum Size: CaseIterable, Sendable {
 
         /// The iPad's amount.
@@ -41,6 +43,8 @@ public struct AmountView: View {
                 .font(isMonospaced ? font.monospacedDigit() : font)
                 .tracking(-2)
                 .foregroundStyle(digitsColor)
+                .contentTransition(.numericText())
+                .animation(Motion.fast(reduced: reduceMotion).animation, value: digits)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(digits) Mizan")

@@ -120,6 +120,7 @@ public struct Message: View {
 }
 
 public struct ExchangeStrip: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let host: DeviceChip
     let message: Message
     let client: DeviceChip
@@ -139,5 +140,11 @@ public struct ExchangeStrip: View {
         .padding(.vertical, Tokens.space3)
         .overlay(alignment: .top) { Rectangle().fill(Tokens.lineSoft).frame(height: 1) }
         .overlay(alignment: .bottom) { Rectangle().fill(Tokens.lineSoft).frame(height: 1) }
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: host.code)
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: host.state)
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: message.title)
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: message.tone)
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: client.code)
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: client.state)
     }
 }

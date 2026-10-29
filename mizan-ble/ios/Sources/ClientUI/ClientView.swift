@@ -6,6 +6,7 @@ public struct ClientView: View {
     private let event: (ClientEvent) -> Void
 
     @Environment(\.isEnabled) private var environmentIsEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(state: ClientState, event: @escaping (ClientEvent) -> Void) {
         self.state = state
@@ -42,18 +43,20 @@ public struct ClientView: View {
                     .multilineTextAlignment(.center)
                 }
                 Spacer(minLength: Tokens.space1)
-                ForEach(state.actions.indices, id: \.self) { index in
-                    button(state.actions[index])
+                ForEach(state.actions, id: \.id) { action in
+                    button(action).transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
                 }
+                .animation(Motion.standard(reduced: reduceMotion).animation, value: state.actionsProjection)
             }
         }
         .frame(maxWidth: Tokens.space20 * 5)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(Motion.panel(reduced: reduceMotion).animation, value: state.contentProjection)
     }
 
     @ViewBuilder
     private var illustration: some View {
-        switch state.content {
+        Group { switch state.content {
         case let .discovery(icon, isInRange):
             iconView(icon, foreground: isInRange ? Tokens.onAccent : Tokens.text2)
                 .frame(width: Tokens.sizeRing, height: Tokens.sizeRing)
@@ -64,7 +67,9 @@ public struct ClientView: View {
                 .overlay { Circle().strokeBorder(isInRange ? Tokens.clientTint : Tokens.line, lineWidth: 1.5) }
                 .frame(width: Tokens.space20 * 3, height: Tokens.space20 * 3)
                 .overlay { Circle().strokeBorder(isInRange ? Tokens.clientTint : Tokens.line, lineWidth: 1.5) }
+                .animation(Motion.standard(reduced: reduceMotion).animation, value: state.rangeProjection)
                 .accessibilityHidden(true)
+                .transition(Motion.panelTransition(reduced: reduceMotion))
         case .connectionFailure:
             BluetoothSymbol(isSlashed: true)
                 .fill(Tokens.bad)
@@ -72,20 +77,23 @@ public struct ClientView: View {
                 .frame(width: Tokens.space14 * 2, height: Tokens.space14 * 2)
                 .background(Tokens.badTint, in: Circle())
                 .accessibilityHidden(true)
-        }
+                .transition(Motion.panelTransition(reduced: reduceMotion))
+        }}
     }
 
     @ViewBuilder
     private func iconView(_ icon: ClientState.Icon, foreground: Color) -> some View {
-        switch icon {
+        Group { switch icon {
         case let .bluetooth(isSlashed):
             BluetoothSymbol(isSlashed: isSlashed)
                 .fill(foreground)
                 .frame(width: Tokens.sizeHeading, height: Tokens.sizeHeading)
+                .animation(Motion.standard(reduced: reduceMotion).animation, value: isSlashed)
         case let .system(name, rotation):
             Image(systemName: name).typeRole(.heading).foregroundStyle(foreground)
                 .rotationEffect(.degrees(rotation))
-        }
+                .animation(Motion.standard(reduced: reduceMotion).animation, value: rotation)
+        }}
     }
 
     private func button(_ action: ClientState.Action) -> some View {

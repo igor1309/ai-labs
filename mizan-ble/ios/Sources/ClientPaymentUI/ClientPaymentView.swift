@@ -6,6 +6,7 @@ public struct ClientPaymentView: View {
     private let event: (ClientPaymentEvent) -> Void
 
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(state: ClientPaymentState, event: @escaping (ClientPaymentEvent) -> Void) {
         self.state = state
@@ -37,10 +38,11 @@ public struct ClientPaymentView: View {
                 Spacer(minLength: Tokens.space1)
                 if !state.actions.isEmpty {
                     HStack(spacing: Tokens.space3) {
-                        ForEach(state.actions.indices, id: \.self) { index in
-                            button(state.actions[index])
+                        ForEach(state.actions, id: \.id) { action in
+                            button(action).transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
                         }
                     }
+                    .animation(Motion.standard(reduced: reduceMotion).animation, value: state.actionsProjection)
                 }
             }
         }
@@ -48,7 +50,7 @@ public struct ClientPaymentView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch state.content {
+        Group { switch state.content {
         case let .review(title, digits, detail):
             VStack(spacing: Tokens.space2) {
                 Text(title).typeRole(.title)
@@ -56,6 +58,7 @@ public struct ClientPaymentView: View {
                 detailText(detail)
             }
             .multilineTextAlignment(.center)
+            .transition(Motion.panelTransition(reduced: reduceMotion))
         case let .result(mark, title, detail):
             VStack(spacing: Tokens.space5) {
                 ResultMark(mark)
@@ -65,14 +68,16 @@ public struct ClientPaymentView: View {
                 }
             }
             .multilineTextAlignment(.center)
+            .transition(Motion.panelTransition(reduced: reduceMotion))
         case let .processing(digits, rows):
             VStack(alignment: .leading, spacing: Tokens.space4) {
                 amount(digits)
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(rows.indices, id: \.self) { index in
-                        receiptRow(rows[index])
+                    ForEach(Array(rows.enumerated()), id: \.element.title) { index, row in
+                        receiptRow(row)
                             .padding(.vertical, Tokens.space3)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                            .transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
                             .overlay(alignment: .bottom) {
                                 if index != rows.indices.last {
                                     Rectangle().fill(Tokens.lineSoft).frame(height: 1)
@@ -85,6 +90,7 @@ public struct ClientPaymentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Tokens.raised, in: RoundedRectangle(cornerRadius: Tokens.radiusLg))
             }
+            .transition(Motion.panelTransition(reduced: reduceMotion))
         case let .paid(title, digits, detail):
             VStack(spacing: Tokens.space5) {
                 ResultMark(.success)
@@ -95,7 +101,9 @@ public struct ClientPaymentView: View {
                 }
             }
             .multilineTextAlignment(.center)
-        }
+            .transition(Motion.panelTransition(reduced: reduceMotion))
+        }}
+        .animation(Motion.panel(reduced: reduceMotion).animation, value: state.contentProjection)
     }
 
     private func amount(_ digits: String) -> some View {

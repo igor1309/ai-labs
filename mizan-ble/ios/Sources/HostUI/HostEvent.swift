@@ -25,3 +25,7 @@ public struct HostAction: Equatable, Sendable {
         self.isEnabled = isEnabled
     }
 }
+
+extension HostAction: Identifiable {
+    public var id: String { "\(title)-\(String(describing: event))" }
+}
