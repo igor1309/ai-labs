@@ -1,0 +1,20 @@
+{
+  "parts": [
+    {
+      "name": "switch",
+      "device": "iPad",
+      "expected": [
+        {
+          "category": "mode",
+          "phase": "client built"
+        },
+        {
+          "category": "clientPayment",
+          "phase": "paid"
+        }
+      ],
+      "flow": "switch.yaml",
+      "settings": "switch.json"
+    }
+  ]
+}

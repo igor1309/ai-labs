@@ -1,0 +1,14 @@
+{
+  "client": {
+    "drop": "afterDecision",
+    "delays": {
+      "drop": 5
+    }
+  },
+  "hosts": [
+    {
+      "amount": 12345
+    }
+  ],
+  "enteredAmount": 12345
+}

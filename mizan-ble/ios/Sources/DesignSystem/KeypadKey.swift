@@ -35,6 +35,18 @@ public struct KeypadKey: View {
             .contentShape(RoundedRectangle(cornerRadius: Tokens.radiusMd))
         }
         .buttonStyle(KeyStyle())
+        // UI tests find a key by this, not by its text, which other views
+        // on the screen may also show.
+        .accessibilityIdentifier(identifier)
+    }
+}
+
+private extension KeypadKey {
+    var identifier: String {
+        switch content {
+        case .digit(let digit): "key \(digit)"
+        case .icon(_, let label): "key \(label)"
+        }
     }
 }
 
