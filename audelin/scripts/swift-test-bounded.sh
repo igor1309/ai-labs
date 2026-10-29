@@ -6,8 +6,8 @@
 #   swift-test-bounded.sh <seconds> [swift test args]
 #
 # Build first with `swift build --build-tests`: compiling is not bounded
-# here. Exits as `swift test` does, or 124 on the limit, after naming the
-# tests that started and never ended.
+# here. Exits as `swift test` does, or 124 on the limit, after printing
+# every thread's stack and naming the tests that started and never ended.
 
 [ $# -ge 1 ] || { echo "usage: $(basename "$0") <seconds> [swift test args]" >&2; exit 2; }
 limit=$1
@@ -31,6 +31,11 @@ perl -e '
   exec(@cmd) or die "exec: $!" if $pid == 0;
   local $SIG{ALRM} = sub {
     my @all = tree($pid);
+    # Every thread'"'"'s stack, to show what the hung tests wait on.
+    for my $p (@all) {
+      print STDERR "--- stacks of process $p\n";
+      system("/usr/bin/sample", $p, "1", "-mayDie", "-file", "/dev/stderr");
+    }
     kill("TERM", @all); sleep 3; kill("KILL", tree($pid), @all);
     waitpid($pid, 0);
     exit 124;
