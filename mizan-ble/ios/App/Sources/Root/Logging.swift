@@ -7,7 +7,7 @@ public protocol LogDescribable {
 
 public struct LogEntry: Sendable, Equatable {
     public enum Category: String, Sendable {
-        case mode, hostRadio, clientRadio
+        case mode, hostRadio, clientRadio, rehearsal
         case amountEntry, hostBroadcast, hostPayment, clientFind, clientConnect, clientReview, clientPayment
     }
 
@@ -19,6 +19,11 @@ public struct LogEntry: Sendable, Equatable {
         self.category = category
         self.message = message
         self.error = error
+    }
+
+    /// A rehearsal line takes a literal only, so no runtime value reaches the log.
+    public static func rehearsal(_ message: StaticString) -> LogEntry {
+        LogEntry(category: .rehearsal, message: "\(message)")
     }
 }
 

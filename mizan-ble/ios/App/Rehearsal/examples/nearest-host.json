@@ -1,0 +1,30 @@
+{
+  "hosts": [
+    {
+      "name": "Near",
+      "readings": [
+        {
+          "time": 0,
+          "rssi": -35
+        },
+        {
+          "time": 1,
+          "rssi": -35
+        }
+      ]
+    },
+    {
+      "name": "Far",
+      "readings": [
+        {
+          "time": 0,
+          "rssi": -70
+        },
+        {
+          "time": 1,
+          "rssi": -70
+        }
+      ]
+    }
+  ]
+}
