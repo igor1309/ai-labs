@@ -36,21 +36,17 @@ struct ParakeetRecognizerTests {
                 ScriptedReader([[WindowWord(String(model), start: 0.1, end: 0.4)]])
             }
         )
-        let original = ParakeetRecognizer.readers.withLock { $0 }
-        defer { ParakeetRecognizer.readers.withLock { $0 = original } }
         let (building, arrivals) = AsyncStream<Void>.makeStream()
         defer { arrivals.finish() }
-        ParakeetRecognizer.readers.withLock {
-            $0 = {
-                arrivals.yield(())
-                return try await makeReader()
-            }
+        let build: @Sendable () async throws -> ParakeetRecognizer = {
+            arrivals.yield(())
+            return ParakeetRecognizer(reader: try await makeReader())
         }
         let recognizers = 4
 
         let built = try await withThrowingTaskGroup(of: ParakeetRecognizer.self) { group in
             for _ in 0..<recognizers {
-                group.addTask { try await ParakeetRecognizer() }
+                group.addTask { try await build() }
             }
             var entries = building.makeAsyncIterator()
             for _ in 0..<recognizers { await entries.next() }
@@ -177,6 +173,18 @@ struct ParakeetRecognizerTests {
 
         #expect(updates.dropFirst().first?.all.map(\.pending) == ["долгое старое"])
         #expect(updates.last?.all.map(\.settled) == ["долгое новое"])
+    }
+
+    @Test func aPendingWordStartingBeforeAFinalWordEndsKeepsItPending() async throws {
+
+        let reader = ScriptedReader([
+            [word("в", 3.7, 3.95), word("полдень", 3.9, 4.3)],
+            [word("полдень", 1.9, 2.3)],
+        ])
+
+        let updates = await listen(ParakeetRecognizer(reader: reader), to: [silence(6)])
+
+        #expect(updates.last?.all.map(\.settled) == ["в полдень"])
     }
 
     @Test func finishingHearsTheRest() async throws {
