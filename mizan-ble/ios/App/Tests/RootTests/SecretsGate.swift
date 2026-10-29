@@ -9,11 +9,15 @@ struct SecretsGate {
     let frame = Array(UInt8(65)...UInt8(96))
     let session = UUID(uuidString: "8F4B6E9C-3D71-42A5-B620-971E5CDA803F")!
     let peer = UUID(uuidString: "9A2E7D6B-5C84-41F3-A109-6DEB732CF850")!
+    let amountMinorUnits = "98765432123"
+
+    private func uuidBytes(_ id: UUID) -> [UInt8] { withUnsafeBytes(of: id.uuid) { Array($0) } }
 
     func assertAbsent(from entries: [LogEntry], sourceLocation: SourceLocation = #_sourceLocation) {
         let text = entries.map { "\($0.category.rawValue) \($0.message) \($0.error ?? "")" }.joined(separator: "\n")
-        let strings = [amount, session.uuidString, peer.uuidString]
-        let bytes = [key, nonce, frame] + strings.map { Array($0.utf8) }
+        // The amount also as the minor units the flows carry.
+        let strings = [amount, amountMinorUnits, session.uuidString, peer.uuidString]
+        let bytes = [key, nonce, frame, uuidBytes(session), uuidBytes(peer)] + strings.map { Array($0.utf8) }
         var forbidden = strings.flatMap { [$0, $0.lowercased(), $0.uppercased()] }
         for value in bytes {
             forbidden += [
