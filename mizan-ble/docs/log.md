@@ -2,6 +2,7 @@
 
 ## 2026-10-29
 
+- On a device the screens fill the display to its edges, with no inset rounded outline or black margins.
 - Every payment scenario has a simulator rehearsal lane, with screen, log and encrypted-air checks (LAB-726).
 - On an iPad in portrait, settings opens full screen and its countdown can be chosen again, and the host's amount shows whole (LAB-726).
 

@@ -148,6 +148,7 @@ public struct DesignSystemGallery: View {
                     Text("Stage content").typeRole(.body)
                 }
                 .frame(width: 1194, height: 834)
+                .deviceOutline(Tokens.radiusIpad)
                 IPhoneShell(
                     eyebrow: "STEP 1 OF 4 · FIND", status: StatusPill("Idle"), onSwitch: { _ in }
                 ) {
@@ -156,6 +157,7 @@ public struct DesignSystemGallery: View {
                     Text("Stage content").typeRole(.body)
                 }
                 .frame(width: 393, height: 852)
+                .deviceOutline(Tokens.radiusIphone)
             }
         }
     }
