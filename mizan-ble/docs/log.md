@@ -2,6 +2,7 @@
 
 ## 2026-10-29
 
+- The host's screens now fit an iPhone, so a phone switched to Host can switch back (LAB-728).
 - The client log now says that the picker chose a host or asked to hold closer, with the signal it saw (LAB-728).
 - Every payment scenario has a simulator rehearsal lane, with screen, log and encrypted-air checks (LAB-726).
 - On an iPad in portrait, settings opens full screen and its countdown can be chosen again, and the host's amount shows whole (LAB-726).

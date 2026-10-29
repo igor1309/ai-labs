@@ -51,13 +51,22 @@ class LaneRunTests(unittest.TestCase):
         for lane in lanes:
             number = int(lane['id'].split('-')[1])
             parts = lane['parts']
-            self.assertEqual(len(parts), 2 if number in (1, 2, 3, 7, 9, 15) else 1)
+            self.assertEqual(len(parts), 2 if number in (1, 2, 3, 7, 9, 11, 15) else 1)
             for part in parts:
                 flow = (lane['path'] / part['flow']).read_text()
                 self.assertIn('assertVisible:', flow)
                 self.assertNotIn('launchArguments', flow)
                 self.assertNotIn('runScript', flow)
                 self.assertTrue(part['expected'])
+            if number == 11:
+                phone = next(part for part in parts if part['device'] == 'iPhone')
+                flow = (lane['path'] / phone['flow']).read_text()
+                for digit in (3, 6, 9):
+                    self.assertIn(f'id: "key {digit}"', flow)
+                self.assertEqual(phone['expected'], [
+                    {'category': 'mode', 'phase': 'host built'},
+                    {'category': 'mode', 'phase': 'client built'},
+                ])
             if number == 14:
                 self.assertIn('stopApp', flow)
                 self.assertIn('clearState: false', flow)

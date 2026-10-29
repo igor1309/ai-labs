@@ -3,6 +3,7 @@ import SwiftUI
 
 public struct SettingsView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     private let state: SettingsState
     private let event: (SettingsEvent) -> Void
 
@@ -12,6 +13,25 @@ public struct SettingsView: View {
     }
 
     public var body: some View {
+        if horizontalSizeClass == .compact {
+            IPhoneShell(
+                side: .host, eyebrow: state.eyebrow, status: StatusPill(state.statusText),
+                onSwitch: { _ in }, headerTopPadding: Tokens.space2,
+                contentBottomPadding: Tokens.space4
+            ) {
+                CompactHostSteps(state.steps, onSettings: {})
+            } content: {
+                ViewThatFits(in: .vertical) {
+                    column { doneButton }.fixedSize(horizontal: false, vertical: true)
+                    ScrollView { column { doneButton } }
+                }
+            }
+        } else {
+            regularShell
+        }
+    }
+
+    private var regularShell: some View {
         IPadShell(
             eyebrow: state.eyebrow, status: StatusPill(state.statusText),
             deviceCode: state.deviceCode, deviceMeta: state.deviceMeta,
@@ -32,7 +52,7 @@ public struct SettingsView: View {
     }
 
     private func column(@ViewBuilder footer: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: Tokens.space6) {
+        VStack(alignment: .leading, spacing: horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space6) {
             Text(state.title)
                 .font(Tokens.display(Tokens.sizeTitle, .medium))
                 .foregroundStyle(Tokens.text)
@@ -41,7 +61,8 @@ public struct SettingsView: View {
             footer()
             Spacer(minLength: .zero)
         }
-        .frame(minWidth: Tokens.space20 * 4, maxWidth: .infinity, alignment: .leading)
+        .frame(minWidth: horizontalSizeClass == .compact ? nil : Tokens.space20 * 4,
+               maxWidth: .infinity, alignment: .leading)
     }
 
     private var doneButton: some View {
@@ -53,23 +74,16 @@ public struct SettingsView: View {
 
     private var countdownCard: some View {
         VStack(alignment: .leading, spacing: Tokens.space5) {
-            ZStack(alignment: .trailing) {
-                VStack(alignment: .leading, spacing: Tokens.space1) {
-                    Text(state.countdown.title)
-                        .font(Tokens.text(Tokens.sizeLead, .bold))
-                        .foregroundStyle(Tokens.text)
-                    Text(state.countdown.detail)
-                        .font(Tokens.text(Tokens.sizeLabel))
-                        .foregroundStyle(Tokens.text2)
-                        .lineLimit(1)
-                        .allowsTightening(true)
+            if horizontalSizeClass == .compact {
+                VStack(alignment: .leading, spacing: Tokens.space2) {
+                    countdownCopy
+                    selectedCountdown
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                Text(state.countdown.selectedText)
-                    .font(Tokens.display(Tokens.sizeTitle, .medium))
-                    .foregroundStyle(Tokens.hostHi)
-                    .contentTransition(.numericText())
-                    .animation(Motion.fast(reduced: reduceMotion).animation, value: state.countdown.selectedText)
+            } else {
+                ZStack(alignment: .trailing) {
+                    countdownCopy
+                    selectedCountdown
+                }
             }
             HStack(spacing: Tokens.space1) {
                 ForEach(state.countdown.choices, id: \.seconds) { choice in
@@ -79,8 +93,30 @@ public struct SettingsView: View {
             .padding(Tokens.space1)
             .background(Tokens.rail, in: RoundedRectangle(cornerRadius: Tokens.radiusMd))
         }
-        .padding(Tokens.space7)
+        .padding(horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space7)
         .background(Tokens.raised, in: RoundedRectangle(cornerRadius: Tokens.radiusXl))
+    }
+
+    private var countdownCopy: some View {
+        VStack(alignment: .leading, spacing: Tokens.space1) {
+            Text(state.countdown.title)
+                .font(Tokens.text(Tokens.sizeLead, .bold))
+                .foregroundStyle(Tokens.text)
+            Text(state.countdown.detail)
+                .font(Tokens.text(Tokens.sizeLabel))
+                .foregroundStyle(Tokens.text2)
+                .lineLimit(horizontalSizeClass == .compact ? nil : 1)
+                .allowsTightening(true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var selectedCountdown: some View {
+        Text(state.countdown.selectedText)
+            .font(Tokens.display(Tokens.sizeTitle, .medium))
+            .foregroundStyle(Tokens.hostHi)
+            .contentTransition(.numericText())
+            .animation(Motion.fast(reduced: reduceMotion).animation, value: state.countdown.selectedText)
     }
 
     private func countdownChoice(_ choice: SettingsState.CountdownChoice) -> some View {
@@ -121,8 +157,8 @@ public struct SettingsView: View {
                 .accessibilityElement(children: .combine)
             }
         }
-        .padding(.horizontal, Tokens.space7)
-        .padding(.vertical, Tokens.space6)
+        .padding(.horizontal, horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space7)
+        .padding(.vertical, horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space6)
         .background(Tokens.raised, in: RoundedRectangle(cornerRadius: Tokens.radiusXl))
     }
 

@@ -108,24 +108,29 @@ struct SettingsGear: View {
     }
 }
 
-/// The client session header above the current stage. Its parent supplies the size.
+/// The session header above the current stage. Its parent supplies the size.
 public struct IPhoneShell<Steps: View, Content: View>: View {
     let side: Side
     let eyebrow: String
     let status: StatusPill
     let onSwitch: (Side) -> Void
+    let headerTopPadding: CGFloat
+    let contentBottomPadding: CGFloat
     let steps: Steps
     let content: Content
 
     public init(
         side: Side = .client, eyebrow: String, status: StatusPill,
-        onSwitch: @escaping (Side) -> Void,
+        onSwitch: @escaping (Side) -> Void, headerTopPadding: CGFloat = Tokens.space14,
+        contentBottomPadding: CGFloat = Tokens.space8,
         @ViewBuilder steps: () -> Steps, @ViewBuilder content: () -> Content
     ) {
         self.side = side
         self.eyebrow = eyebrow
         self.status = status
         self.onSwitch = onSwitch
+        self.headerTopPadding = headerTopPadding
+        self.contentBottomPadding = contentBottomPadding
         self.steps = steps()
         self.content = content()
     }
@@ -136,7 +141,7 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
                 ModeHeader(side: side, layout: .bar, onSwitch: onSwitch)
                 steps
             }
-            .padding(.top, Tokens.space14)
+            .padding(.top, headerTopPadding)
             .padding([.horizontal, .bottom], Tokens.space5)
             .frame(maxWidth: .infinity)
             .background(Tokens.rail, in: UnevenRoundedRectangle(
@@ -152,7 +157,7 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
                 content.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .padding([.top, .horizontal], Tokens.space5)
-            .padding(.bottom, Tokens.space8)
+            .padding(.bottom, contentBottomPadding)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
