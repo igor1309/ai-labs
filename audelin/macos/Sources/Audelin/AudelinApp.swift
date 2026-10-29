@@ -123,9 +123,13 @@ final class AudelinAppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
 
-        reopen?()
+        handleReopen()
         return true
     }
+
+    /// Tests call this: touching `NSApplication.shared` there takes seconds on CI
+    /// and holds the main actor.
+    func handleReopen() { reopen?() }
 }
 
 /// Each recording's reading model, reducing on the main actor.

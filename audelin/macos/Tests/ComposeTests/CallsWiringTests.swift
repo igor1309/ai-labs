@@ -30,7 +30,7 @@ struct CallsWiringTests {
         await menu.waitForObservers()
         let delegate = AudelinAppDelegate()
         delegate.connect(menu)
-        #expect(delegate.applicationShouldHandleReopen(.shared, hasVisibleWindows: false))
+        delegate.handleReopen()
         await wait(controller) { !$0.busy && $0.rows.map(\.id) == ["A"] }
         spy.calls.withLock { $0 = [call("B")] }
         menu.appReopened()
