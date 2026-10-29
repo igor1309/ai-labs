@@ -59829,6 +59829,799 @@
               ]
             }
           ]
+        },
+        {
+          "type": "frame",
+          "id": "cysY5",
+          "name": "E · Chosen",
+          "gap": 120,
+          "children": [
+            {
+              "type": "frame",
+              "id": "x7MBK",
+              "name": "E · Soft",
+              "layout": "vertical",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "HeYB7",
+                  "name": "Icon",
+                  "clip": true,
+                  "width": 1024,
+                  "height": 1024,
+                  "fill": {
+                    "type": "gradient",
+                    "gradientType": "linear",
+                    "enabled": true,
+                    "rotation": 180,
+                    "size": {
+                      "height": 1
+                    },
+                    "colors": [
+                      {
+                        "color": "$mz-raised",
+                        "position": 0
+                      },
+                      {
+                        "color": "$mz-rail",
+                        "position": 1
+                      }
+                    ]
+                  },
+                  "cornerRadius": 229,
+                  "layout": "none",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "ONn2F",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Host beacon",
+                      "width": 1024,
+                      "height": 1024,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "q7MjR",
+                          "x": -190,
+                          "y": 834,
+                          "name": "Source",
+                          "fill": "$mz-host",
+                          "width": 380,
+                          "height": 380
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "N6m9K",
+                          "x": -278,
+                          "y": 746,
+                          "name": "Wave 1",
+                          "opacity": 0.78,
+                          "width": 556,
+                          "height": 556,
+                          "stroke": "$mz-host",
+                          "strokeWidth": 44
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "y3G9O",
+                          "x": -388,
+                          "y": 636,
+                          "name": "Wave 2",
+                          "opacity": 0.46,
+                          "width": 776,
+                          "height": 776,
+                          "stroke": "$mz-host",
+                          "strokeWidth": 44
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "dvAAS",
+                      "x": 0,
+                      "y": 0,
+                      "name": "Client beacon",
+                      "width": 1024,
+                      "height": 1024,
+                      "layout": "none",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "K8AYIF",
+                          "x": 834,
+                          "y": -190,
+                          "name": "Source",
+                          "fill": "$mz-client",
+                          "width": 380,
+                          "height": 380
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "Q1lnR",
+                          "x": 746,
+                          "y": -278,
+                          "name": "Wave 1",
+                          "opacity": 0.78,
+                          "width": 556,
+                          "height": 556,
+                          "stroke": "$mz-client",
+                          "strokeWidth": 44
+                        },
+                        {
+                          "type": "ellipse",
+                          "id": "y0q49s",
+                          "x": 636,
+                          "y": -388,
+                          "name": "Wave 2",
+                          "opacity": 0.46,
+                          "width": 776,
+                          "height": 776,
+                          "stroke": "$mz-client",
+                          "strokeWidth": 44
+                        }
+                      ]
+                    },
+                    {
+                      "id": "IovnJ",
+                      "type": "ref",
+                      "ref": "svyms",
+                      "name": "Sign",
+                      "width": 538,
+                      "height": 1024,
+                      "x": 243,
+                      "y": -76.91515151515159,
+                      "effect": [
+                        {
+                          "type": "shadow",
+                          "shadowType": "outer",
+                          "color": "#000000F2",
+                          "offset": {
+                            "x": 0,
+                            "y": 36
+                          },
+                          "blur": 44
+                        },
+                        {
+                          "type": "shadow",
+                          "shadowType": "outer",
+                          "color": "#000000A6",
+                          "offset": {
+                            "x": 0,
+                            "y": 10
+                          },
+                          "blur": 14
+                        }
+                      ],
+                      "descendants": {
+                        "tERn9": {
+                          "fill": {
+                            "type": "gradient",
+                            "gradientType": "linear",
+                            "enabled": true,
+                            "rotation": 180,
+                            "size": {
+                              "height": 1
+                            },
+                            "colors": [
+                              {
+                                "color": "$mz-text",
+                                "position": 0
+                              },
+                              {
+                                "color": "$mz-text-body",
+                                "position": 0.5
+                              },
+                              {
+                                "color": "$mz-text-2",
+                                "position": 1
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "T4Yhu3",
+                  "name": "Label",
+                  "layout": "vertical",
+                  "gap": 6,
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "f1BPDh",
+                      "name": "Name",
+                      "fill": "$mz-text",
+                      "content": "E — Soft · chosen",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-title",
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "GX0Ol",
+                      "name": "Caption",
+                      "fill": "$mz-text-2",
+                      "textGrowth": "fixed-width",
+                      "width": 1024,
+                      "content": "Two beacons: the host's orange from the lower left, the client's cyan from the upper right, and the sign between them with depth: a gradient from white at the top to a muted warm grey at the foot, over a soft drop shadow. The shadow is raw black: a token colour does not show on the dark ground. Chosen by the owner.",
+                      "fontFamily": "$mz-font-text",
+                      "fontSize": "$mz-size-body",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "nbN7i",
+              "name": "E · Icon Composer layers",
+              "layout": "vertical",
+              "gap": 24,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oJAVz",
+                  "name": "Layers",
+                  "gap": 48,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "fbte1",
+                      "name": "sign tile",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "r2FJVV",
+                          "name": "sign",
+                          "clip": true,
+                          "width": 1024,
+                          "height": 1024,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "id": "wGIZd",
+                              "type": "ref",
+                              "ref": "svyms",
+                              "x": 243,
+                              "y": -76.91515151515159,
+                              "effect": [],
+                              "name": "Sign",
+                              "width": 538,
+                              "height": 1024,
+                              "descendants": {
+                                "tERn9": {
+                                  "fill": {
+                                    "type": "gradient",
+                                    "gradientType": "linear",
+                                    "enabled": true,
+                                    "rotation": 180,
+                                    "size": {
+                                      "height": 1
+                                    },
+                                    "colors": [
+                                      {
+                                        "color": "$mz-text",
+                                        "position": 0
+                                      },
+                                      {
+                                        "color": "$mz-text-body",
+                                        "position": 0.5
+                                      },
+                                      {
+                                        "color": "$mz-text-2",
+                                        "position": 1
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "qYgaj",
+                          "name": "Layer name",
+                          "fill": "$mz-text-2",
+                          "content": "sign.png",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-body",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "J0bcp",
+                      "name": "host tile",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "PINZq",
+                          "name": "host",
+                          "clip": true,
+                          "width": 1024,
+                          "height": 1024,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "CRNMv",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Host beacon",
+                              "width": 1024,
+                              "height": 1024,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "hKmQ9",
+                                  "x": -190,
+                                  "y": 834,
+                                  "name": "Source",
+                                  "fill": "$mz-host",
+                                  "width": 380,
+                                  "height": 380
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "g5KYe",
+                                  "x": -278,
+                                  "y": 746,
+                                  "name": "Wave 1",
+                                  "opacity": 0.78,
+                                  "width": 556,
+                                  "height": 556,
+                                  "stroke": "$mz-host",
+                                  "strokeWidth": 44
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "L5wwnD",
+                                  "x": -388,
+                                  "y": 636,
+                                  "name": "Wave 2",
+                                  "opacity": 0.46,
+                                  "width": 776,
+                                  "height": 776,
+                                  "stroke": "$mz-host",
+                                  "strokeWidth": 44
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "p2ehLM",
+                          "name": "Layer name",
+                          "fill": "$mz-text-2",
+                          "content": "host.png",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-body",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "vb1cf",
+                      "name": "client tile",
+                      "layout": "vertical",
+                      "gap": 12,
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "DlJUv",
+                          "name": "client",
+                          "clip": true,
+                          "width": 1024,
+                          "height": 1024,
+                          "layout": "none",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "G1Bmmh",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Client beacon",
+                              "width": 1024,
+                              "height": 1024,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "Q7Al7",
+                                  "x": 834,
+                                  "y": -190,
+                                  "name": "Source",
+                                  "fill": "$mz-client",
+                                  "width": 380,
+                                  "height": 380
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "ECXLd",
+                                  "x": 746,
+                                  "y": -278,
+                                  "name": "Wave 1",
+                                  "opacity": 0.78,
+                                  "width": 556,
+                                  "height": 556,
+                                  "stroke": "$mz-client",
+                                  "strokeWidth": 44
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "sYu3I",
+                                  "x": 636,
+                                  "y": -388,
+                                  "name": "Wave 2",
+                                  "opacity": 0.46,
+                                  "width": 776,
+                                  "height": 776,
+                                  "stroke": "$mz-client",
+                                  "strokeWidth": 44
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "iSh9U",
+                          "name": "Layer name",
+                          "fill": "$mz-text-2",
+                          "content": "client.png",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-body",
+                          "fontWeight": "normal"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "sbXcI",
+                  "name": "Caption",
+                  "fill": "$mz-text-2",
+                  "textGrowth": "fixed-width",
+                  "width": 3168,
+                  "content": "Each layer is a transparent 1024 px square exported to ios/App/MizanBLE/AppIcon.icon. Icon Composer adds the rest: the ground as a gradient from mz-raised to mz-rail, the glass, and the sign's shadow, which replaces the drawn one.",
+                  "fontFamily": "$mz-font-text",
+                  "fontSize": "$mz-size-body",
+                  "fontWeight": "normal"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "gDQMA",
+      "x": 1401.1788124519094,
+      "y": 15274.031485103405,
+      "name": "C3 · Quiet",
+      "layout": "vertical",
+      "gap": 24,
+      "children": [
+        {
+          "type": "frame",
+          "id": "YUfxS",
+          "name": "Icon",
+          "clip": true,
+          "width": 1024,
+          "height": 1024,
+          "fill": {
+            "type": "gradient",
+            "gradientType": "radial",
+            "enabled": true,
+            "rotation": 0,
+            "size": {
+              "width": 1.3,
+              "height": 1.3
+            },
+            "colors": [
+              {
+                "color": "$mz-raised-2",
+                "position": 0
+              },
+              {
+                "color": "$mz-ground",
+                "position": 1
+              }
+            ],
+            "center": {
+              "y": 0.42
+            }
+          },
+          "cornerRadius": 229,
+          "layout": "none",
+          "children": [
+            {
+              "type": "path",
+              "id": "Sxyw1",
+              "x": 0,
+              "y": 0,
+              "name": "Host half",
+              "opacity": 0.8,
+              "geometry": "M463.29 858.59a350 350 0 0 1 0-693.18",
+              "viewBox": [
+                0,
+                0,
+                1024,
+                1024
+              ],
+              "width": 1024,
+              "height": 1024,
+              "stroke": "$mz-host-hi",
+              "strokeWidth": 26,
+              "strokeLinecap": "round"
+            },
+            {
+              "type": "path",
+              "id": "M4s2T",
+              "x": 0,
+              "y": 0,
+              "name": "Client half",
+              "opacity": 0.8,
+              "geometry": "M560.71 165.41a350 350 0 0 1 0 693.18",
+              "viewBox": [
+                0,
+                0,
+                1024,
+                1024
+              ],
+              "width": 1024,
+              "height": 1024,
+              "stroke": "$mz-client-hi",
+              "strokeWidth": 26,
+              "strokeLinecap": "round"
+            },
+            {
+              "id": "jLB2J",
+              "type": "ref",
+              "ref": "svyms",
+              "name": "Sign",
+              "width": 306.890756302521,
+              "height": 584.2016806722689,
+              "x": 358.5546218487395,
+              "y": 147.7983193277311,
+              "descendants": {
+                "tERn9": {
+                  "fill": "$mz-text-body"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "u5DLW",
+          "name": "Label",
+          "layout": "vertical",
+          "gap": 6,
+          "children": [
+            {
+              "type": "text",
+              "id": "OSGPa",
+              "name": "Name",
+              "fill": "$mz-text",
+              "content": "C3 — Quiet",
+              "fontFamily": "$mz-font-display",
+              "fontSize": "$mz-size-title",
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "Rmkzi",
+              "name": "Caption",
+              "fill": "$mz-text-2",
+              "textGrowth": "fixed-width",
+              "width": 1024,
+              "content": "The C1 ring at the lighter hi colours, held back to 80% so the sign leads.",
+              "fontFamily": "$mz-font-text",
+              "fontSize": "$mz-size-body",
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "kNGyA",
+      "x": 2545.1788124519094,
+      "y": 15274.031485103405,
+      "name": "E · Two beacons",
+      "layout": "vertical",
+      "gap": 24,
+      "children": [
+        {
+          "type": "frame",
+          "id": "bgaTZ",
+          "name": "Icon",
+          "clip": true,
+          "width": 1024,
+          "height": 1024,
+          "fill": {
+            "type": "gradient",
+            "gradientType": "linear",
+            "enabled": true,
+            "rotation": 180,
+            "size": {
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "$mz-raised",
+                "position": 0
+              },
+              {
+                "color": "$mz-rail",
+                "position": 1
+              }
+            ]
+          },
+          "cornerRadius": 229,
+          "layout": "none",
+          "children": [
+            {
+              "type": "frame",
+              "id": "w06exj",
+              "x": 0,
+              "y": 0,
+              "name": "Host beacon",
+              "width": 1024,
+              "height": 1024,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "t5E2v",
+                  "x": -190,
+                  "y": 834,
+                  "name": "Source",
+                  "fill": "$mz-host",
+                  "width": 380,
+                  "height": 380
+                },
+                {
+                  "type": "ellipse",
+                  "id": "NIcdc",
+                  "x": -278,
+                  "y": 746,
+                  "name": "Wave 1",
+                  "opacity": 0.78,
+                  "width": 556,
+                  "height": 556,
+                  "stroke": "$mz-host",
+                  "strokeWidth": 44
+                },
+                {
+                  "type": "ellipse",
+                  "id": "BSJKx",
+                  "x": -388,
+                  "y": 636,
+                  "name": "Wave 2",
+                  "opacity": 0.46,
+                  "width": 776,
+                  "height": 776,
+                  "stroke": "$mz-host",
+                  "strokeWidth": 44
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "M5LH64",
+              "x": 0,
+              "y": 0,
+              "name": "Client beacon",
+              "width": 1024,
+              "height": 1024,
+              "layout": "none",
+              "children": [
+                {
+                  "type": "ellipse",
+                  "id": "X8Jbk",
+                  "x": 834,
+                  "y": -190,
+                  "name": "Source",
+                  "fill": "$mz-client",
+                  "width": 380,
+                  "height": 380
+                },
+                {
+                  "type": "ellipse",
+                  "id": "fdoHx",
+                  "x": 746,
+                  "y": -278,
+                  "name": "Wave 1",
+                  "opacity": 0.78,
+                  "width": 556,
+                  "height": 556,
+                  "stroke": "$mz-client",
+                  "strokeWidth": 44
+                },
+                {
+                  "type": "ellipse",
+                  "id": "jE37s",
+                  "x": 636,
+                  "y": -388,
+                  "name": "Wave 2",
+                  "opacity": 0.46,
+                  "width": 776,
+                  "height": 776,
+                  "stroke": "$mz-client",
+                  "strokeWidth": 44
+                }
+              ]
+            },
+            {
+              "id": "Xjzvw",
+              "type": "ref",
+              "ref": "svyms",
+              "name": "Sign",
+              "width": 538,
+              "height": 1024,
+              "x": 243,
+              "y": -76.91515151515159,
+              "flipX": false,
+              "flipY": false,
+              "descendants": {
+                "tERn9": {
+                  "fill": "$mz-text-body"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "p7PCzd",
+          "name": "Label",
+          "layout": "vertical",
+          "gap": 6,
+          "children": [
+            {
+              "type": "text",
+              "id": "burZ6",
+              "name": "Name",
+              "fill": "$mz-text",
+              "content": "E — Two beacons",
+              "fontFamily": "$mz-font-display",
+              "fontSize": "$mz-size-title",
+              "fontWeight": "600"
+            },
+            {
+              "type": "text",
+              "id": "URtPo",
+              "name": "Caption",
+              "fill": "$mz-text-2",
+              "textGrowth": "fixed-width",
+              "width": 1024,
+              "content": "The host and the client as two beacons in opposite corners, each sending its waves toward the other. The sign sits in the quiet channel between them: the point of balance that mizan names. Point symmetry gives both sides equal weight. The colour corners still read at 60 px, where C's thin ring fades. Proposed, not decided.",
+              "fontFamily": "$mz-font-text",
+              "fontSize": "$mz-size-body",
+              "fontWeight": "normal"
+            }
+          ]
         }
       ]
     }

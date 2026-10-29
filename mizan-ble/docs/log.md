@@ -2,6 +2,9 @@
 
 ## 2026-10-29
 
+- The app has its designed icon, two beacons and the Mizan sign, with a
+  Liquid Glass edition (LAB-742).
+
 - The client side pays end to end in the app (LAB-725).
 
 - The rehearsal app plays the other side from a settings file (LAB-723).

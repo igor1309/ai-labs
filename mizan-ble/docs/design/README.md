@@ -100,7 +100,7 @@ The components without the `DS /` prefix (`Status Bar`, `Mode Switch`,
 |---|---|
 | x = 0 | Mizan · Design System (`pHq12`): header, colour, type, spacing and radius, the Mizan sign with its candidates, components |
 | x = 2800 | Mizan · Paired Flow (`OKjZH`): one row per moment, the iPad and the iPhone side by side with the message between them |
-| Below the design system | Mizan · App icon (`JzIjX`): three proposals, not decided: A the sign alone, B the sign in the host ring, C the sign in a ring of host and client halves |
+| Below the design system | Mizan · App icon (`JzIjX`): the proposals that were not chosen (A the sign alone, B the sign in the host ring, C the sign in a ring of host and client halves, and C1–C3, softer versions of C); then the chosen design, "E · Soft" (owner, 2026-10-29): the host's and the client's beacons from opposite corners and the sign between them with depth, and its Icon Composer layers (sign, host, client), exported to `ios/App/MizanBLE/AppIcon.icon` |
 | — | Mizan · Design System · Light and Mizan · Paired Flow · Light: the same, in the light appearance |
 | x < 0 | Mizan · Explorations (`omPk6`): earlier covers, palettes and flows, kept as they were; not current |
 

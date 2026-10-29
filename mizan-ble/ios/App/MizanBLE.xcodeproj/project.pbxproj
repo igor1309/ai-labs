@@ -8,8 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		0E25540BDD41676300105F3D /* Root in Frameworks */ = {isa = PBXBuildFile; productRef = 7AB2CB1B61A66C96662B740D /* Root */; };
-		1255DB58FC0E7CD56E0BD758 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EFD5CE07C67A09EF80AA8887 /* Assets.xcassets */; };
-		411931CAC51B4D04D27C962A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EFD5CE07C67A09EF80AA8887 /* Assets.xcassets */; };
+		4A128516FC5A47B7B16785C6 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = FCC291B84ED9F3E7204B79F4 /* AppIcon.icon */; };
+		565A571058EA086BE81623C6 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = FCC291B84ED9F3E7204B79F4 /* AppIcon.icon */; };
 		873530F894419C611283CB00 /* DeviceRadios in Frameworks */ = {isa = PBXBuildFile; productRef = CCE0FD4DBD2F9DDD53395A2F /* DeviceRadios */; };
 		8D9F402FD2995D03AABCD764 /* Root in Frameworks */ = {isa = PBXBuildFile; productRef = D51E20BBDC1E44A88019170E /* Root */; };
 		BA1A1297CB7E787E60288EE3 /* MizanBLERehearsalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D546591B7B3AFD581890B /* MizanBLERehearsalApp.swift */; };
@@ -23,7 +23,7 @@
 		66EE18FDEFEA08EFA4BFE4DC /* MizanBLE.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MizanBLE.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0ACAFF566C7A4D6A206C105 /* MizanBLE Rehearsal.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "MizanBLE Rehearsal.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DCA2959248989DCB0BBFDB67 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = .; sourceTree = SOURCE_ROOT; };
-		EFD5CE07C67A09EF80AA8887 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FCC291B84ED9F3E7204B79F4 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = wrapper.icon; path = AppIcon.icon; sourceTree = "<group>"; };
 		FD6E8D0AC5FA9839396A1A32 /* MizanBLEApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MizanBLEApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -78,7 +78,7 @@
 		31B1834340500A664A1F8B98 /* MizanBLE */ = {
 			isa = PBXGroup;
 			children = (
-				EFD5CE07C67A09EF80AA8887 /* Assets.xcassets */,
+				FCC291B84ED9F3E7204B79F4 /* AppIcon.icon */,
 				386DDE1BDD1239EA92EBC715 /* Info.plist */,
 				FD6E8D0AC5FA9839396A1A32 /* MizanBLEApp.swift */,
 			);
@@ -178,7 +178,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1255DB58FC0E7CD56E0BD758 /* Assets.xcassets in Resources */,
+				565A571058EA086BE81623C6 /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -186,7 +186,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				411931CAC51B4D04D27C962A /* Assets.xcassets in Resources */,
+				4A128516FC5A47B7B16785C6 /* AppIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

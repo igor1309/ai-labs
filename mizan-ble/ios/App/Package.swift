@@ -51,9 +51,6 @@ let package = Package(
         ]),
         .testTarget(name: "ScriptedSettingsTests", dependencies: ["ScriptedSettings"]),
         .testTarget(name: "ScriptedRadioTests", dependencies: ["ScriptedRadio"]),
-        .executableTarget(name: "RenderAppIcon", dependencies: [
-            .product(name: "DesignSystem", package: "ios"),
-        ], path: "Tools/RenderAppIcon"),
         .testTarget(name: "RootTests", dependencies: ["Root"]),
     ]
 )
