@@ -14,7 +14,7 @@ import Settings
     private let settings: Settings
     private let log: any LogSink
     private var picker: HostPicker<UUID>
-    private var lastPickerLine: (answer: HostPicker<UUID>.Answer, rssi: Int?)?
+    private var lastPickerLine: (answer: HostPicker<UUID>.Answer, rssi: Int?, time: Double)?
     private var hosts: [UUID: ClientFind.Host] = [:]
     private var ticks: Task<Void, Never>?
     private(set) var isScanning = false
@@ -77,8 +77,8 @@ import Settings
         let view = picker.view(at: time)
         let rssi = view.leaderAverage.map { Int($0.rounded()) }
         let signalMoved: Bool
-        if let previous = lastPickerLine?.rssi, let rssi {
-            signalMoved = abs(rssi - previous) >= 3
+        if let previous = lastPickerLine, let previousRSSI = previous.rssi, let rssi {
+            signalMoved = abs(rssi - previousRSSI) >= 3 && time - previous.time >= 1
         } else {
             signalMoved = false
         }
@@ -88,7 +88,7 @@ import Settings
         case .holdCloser: "holdCloser"
         case .host: "host"
         }
-        lastPickerLine = (answer, rssi)
+        lastPickerLine = (answer, rssi, time)
         let signal = rssi.map { " rssi=\($0)" } ?? ""
         log.write(.init(category: .clientFind, message: "picker \(name)\(signal) hosts=\(view.candidateCount)"))
     }

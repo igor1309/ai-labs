@@ -72,12 +72,95 @@ import Settings
             let discovery = makeDiscovery(h)
             defer { discovery.stop() }
             discovery.start()
-            for reading in readings {
-                discovery.reading(host: SecretsGate().peer, name: "private", rssi: reading, time: 0)
+            for (time, reading) in readings.enumerated() {
+                discovery.reading(host: SecretsGate().peer, name: "private", rssi: reading, time: Double(time))
             }
-            discovery.reading(host: SecretsGate().session, name: "other private", rssi: -90, time: 0)
+            discovery.reading(host: SecretsGate().session, name: "other private", rssi: -90, time: Double(readings.count))
             #expect(messages(h) == ["picker none hosts=0"] + expected.map { "picker holdCloser rssi=\($0) hosts=1" })
         }
+    }
+
+    @Test func pickerSuppressesThreeDBMovesWithinOneSecond() {
+        let h = Harness()
+        defer { h.finish() }
+        h.store.set(.number(1), for: .pickerAlpha)
+        let discovery = makeDiscovery(h)
+        defer { discovery.stop() }
+        discovery.start()
+        for (rssi, time): (Int, Double) in [(-70, 0), (-67, 0.1), (-80, 0.5), (-66, 0.999)] {
+            discovery.reading(host: SecretsGate().peer, name: "private", rssi: rssi, time: time)
+        }
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1"])
+    }
+
+    @Test(arguments: [1.0, 1.25])
+    func pickerLogsHeldMoveOnReadingAtOrAfterOneSecond(time: Double) {
+        let h = Harness()
+        defer { h.finish() }
+        h.store.set(.number(1), for: .pickerAlpha)
+        let discovery = makeDiscovery(h)
+        defer { discovery.stop() }
+        discovery.start()
+        discovery.reading(host: SecretsGate().peer, name: "private", rssi: -70, time: 0)
+        discovery.reading(host: SecretsGate().peer, name: nil, rssi: -67, time: 0.25)
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1"])
+        discovery.reading(host: SecretsGate().peer, name: nil, rssi: -67, time: time)
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1", "picker holdCloser rssi=-67 hosts=1"])
+    }
+
+    @Test(arguments: [1, 2])
+    func pickerLogsHeldMoveOnTickAtOrAfterOneSecond(seconds: Int) async {
+        let h = Harness()
+        defer { h.finish() }
+        h.store.set(.number(1), for: .pickerAlpha)
+        let discovery = makeDiscovery(h)
+        defer { discovery.stop() }
+        discovery.start()
+        discovery.reading(host: SecretsGate().peer, name: "private", rssi: -70, time: 0)
+        discovery.reading(host: SecretsGate().peer, name: nil, rssi: -67, time: 0.25)
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1"])
+        let (events, sink) = AsyncStream<ClientFind.Event>.makeStream()
+        defer { sink.finish() }
+        discovery.send = { sink.yield($0) }
+        var answers = events.makeAsyncIterator()
+        h.clock.advance(seconds)
+        #expect(await answers.next() == .pickerAnswered(.holdCloser))
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1", "picker holdCloser rssi=-67 hosts=1"])
+    }
+
+    @Test func pickerLogsAnswerAndHostChangesWithinOneSecond() {
+        let h = Harness()
+        defer { h.finish() }
+        h.store.set(.number(1), for: .pickerWindowReadings)
+        h.store.set(.number(0.5), for: .pickerWindowSeconds)
+        h.store.set(.number(1), for: .pickerAlpha)
+        h.store.set(.number(0), for: .pickerMargin)
+        let discovery = makeDiscovery(h)
+        defer { discovery.stop() }
+        let secret = SecretsGate()
+        discovery.start()
+        discovery.reading(host: secret.peer, name: "private", rssi: -50, time: 0)
+        discovery.reading(host: secret.session, name: "other private", rssi: -51, time: 0)
+        discovery.reading(host: secret.peer, name: nil, rssi: -50, time: 0.5)
+        discovery.reading(host: secret.session, name: nil, rssi: -49, time: 0.5)
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-50 hosts=1", "picker host rssi=-50 hosts=2", "picker host rssi=-49 hosts=2"])
+    }
+
+    @Test func pickerAnswerChangeResetsOneSecondInterval() {
+        let h = Harness()
+        defer { h.finish() }
+        h.store.set(.number(1), for: .pickerWindowReadings)
+        h.store.set(.number(0.5), for: .pickerWindowSeconds)
+        h.store.set(.number(1), for: .pickerAlpha)
+        let discovery = makeDiscovery(h)
+        defer { discovery.stop() }
+        discovery.start()
+        discovery.reading(host: SecretsGate().peer, name: "private", rssi: -50, time: 0)
+        discovery.reading(host: SecretsGate().peer, name: nil, rssi: -50, time: 0.5)
+        discovery.reading(host: SecretsGate().peer, name: nil, rssi: -53, time: 1)
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-50 hosts=1", "picker host rssi=-50 hosts=1"])
+        discovery.reading(host: SecretsGate().peer, name: nil, rssi: -53, time: 1.5)
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-50 hosts=1", "picker host rssi=-50 hosts=1", "picker host rssi=-53 hosts=1"])
     }
 
     @Test func pickerLogsChangedHostBelowTheSignalThreshold() {
