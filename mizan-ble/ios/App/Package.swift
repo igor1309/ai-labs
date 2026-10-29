@@ -7,10 +7,26 @@ let package = Package(
     products: [
         .library(name: "Root", targets: ["Root"]),
         .library(name: "DeviceRadios", targets: ["DeviceRadios"]),
+        .library(name: "ScriptedSettings", targets: ["ScriptedSettings"]),
+        .library(name: "ScriptedRadio", targets: ["ScriptedRadio"]),
     ],
-    dependencies: [.package(path: "..")],
+    dependencies: [
+        .package(path: ".."),
+        .package(url: "https://github.com/igor1309/swift-imrx.git", from: "1.0.0"),
+    ],
     targets: [
         .target(name: "Root", dependencies: [
+            .product(name: "IMRxObservation", package: "swift-imrx"),
+            .product(name: "AmountEntry", package: "ios"),
+            .product(name: "HostBroadcast", package: "ios"),
+            .product(name: "HostPayment", package: "ios"),
+            .product(name: "HostUI", package: "ios"),
+            .product(name: "SettingsUI", package: "ios"),
+            .product(name: "Settings", package: "ios"),
+            .product(name: "SessionCrypto", package: "ios"),
+            .product(name: "MessageCodec", package: "ios"),
+            .product(name: "SystemClock", package: "ios"),
+            .product(name: "Preferences", package: "ios"),
             .product(name: "ModeSwitchUI", package: "ios"),
             .product(name: "DesignSystem", package: "ios"),
         ]),
@@ -20,6 +36,14 @@ let package = Package(
             .product(name: "ClientRadio", package: "ios"),
             .product(name: "SystemClock", package: "ios"),
         ]),
+        .target(name: "ScriptedSettings"),
+        .target(name: "ScriptedRadio", dependencies: [
+            "Root", "ScriptedSettings",
+            .product(name: "SessionCrypto", package: "ios"),
+            .product(name: "MessageCodec", package: "ios"),
+        ]),
+        .testTarget(name: "ScriptedSettingsTests", dependencies: ["ScriptedSettings"]),
+        .testTarget(name: "ScriptedRadioTests", dependencies: ["ScriptedRadio"]),
         .executableTarget(name: "RenderAppIcon", dependencies: [
             .product(name: "DesignSystem", package: "ios"),
         ], path: "Tools/RenderAppIcon"),

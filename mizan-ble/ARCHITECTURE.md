@@ -97,6 +97,8 @@ nothing; what a screen offers follows from the state.
 | Client radio | `ClientRadio` | Adapter | Core Bluetooth central: scanning, connecting, reading, writing, notifications |
 | Clock | `SystemClock` | Adapter | Now, and ticks every interval asked for, until stopped |
 | Preferences | `Preferences` | Adapter | The settings' stored values in `UserDefaults` |
+| Scripted settings | `ScriptedSettings` | Rehearsal | The rehearsal's settings file: read, watched, validated, and Bluetooth's state from it |
+| Scripted radio | `ScriptedRadio` | Rehearsal | The other side of a transaction, played from scripted settings behind the root's radio interfaces |
 | App | `MizanBLE` (app target), `Root` and `DeviceRadios` | Root | Builds everything, runs each flow on a swift-imrx `ObservableModel`, wires each interface, decorates with logging |
 
 All modules but the root live in one Swift package under
@@ -104,9 +106,12 @@ All modules but the root live in one Swift package under
 so its wiring is tested with `swift test` like the rest: `Root` builds the
 flows, keeps the mode, wires and logs, and drives the radios through
 interfaces of its own; `DeviceRadios` answers those with the host and
-client radios. The app target is a thin shell over them, in an Xcode
-project generated from `project.yml` by XcodeGen. The app targets iOS 26,
-as the package does. The UI modules depend on `DesignSystem` only; that is the
+client radios. The rehearsal's `ScriptedSettings` and `ScriptedRadio`
+live there too, answering the same interfaces with a scripted other side;
+`ScriptedRadio` uses session crypto and the codec to play it, and only the
+`MizanBLE Rehearsal` app target links them. The app target is a thin
+shell over them, in an Xcode project generated from `project.yml` by
+XcodeGen. The app targets iOS 26, as the package does. The UI modules depend on `DesignSystem` only; that is the
 one dependency between modules, since a design system is a library the
 screens are drawn in, not a collaborator. The root package alone depends on
 swift-imrx (`IMRxObservation`, `from: "1.0.0"`) for the loop; no module in
@@ -144,14 +149,21 @@ flowchart TB
     SystemClock
     Preferences
   end
+  subgraph Rehearsal["Rehearsal (rehearsal app only)"]
+    ScriptedRadio --> ScriptedSettings
+    ScriptedRadio --> SessionCrypto
+    ScriptedRadio --> MessageCodec
+  end
   Root --> UI
   Root --> Core
   Root --> Adapters
+  Root --> Rehearsal
 ```
 
 The root is the only node with outgoing arrows to components: no core,
 adapter or UI module imports another, except the UI modules' use of
-`DesignSystem`.
+`DesignSystem`. The rehearsal's parts are root code, so they may use the
+cores, as the root does.
 
 ## Contracts
 
@@ -183,6 +195,8 @@ settings' store over preferences.
 | Client radio | Scan, stop, connect, write and drop; readings, and events for each GATT step, a message and a lost link | `CBCentralManager`, `CBPeripheral`, and a `now` of its own |
 | Clock | Now; ticks every interval asked for; a countdown that reports the seconds left and ends at zero; each until stopped | `ContinuousClock` |
 | Preferences | A number or a text under a key | `UserDefaults` |
+| Scripted settings | The settings, each change of them, and Bluetooth's state from them | A file path and a file-change seam |
+| Scripted radio | The root's host and client radio interfaces, played from the settings | Scripted settings, session crypto, the codec and a clock |
 | App | The running app | Every component and adapter; swift-imrx's `ObservableModel` |
 
 ## SOLID, checked

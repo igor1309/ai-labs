@@ -149,8 +149,9 @@ driven by Maestro on simulators. It proves the wiring before any device.
   in a test does from its setup. A JSON file says which hosts the client
   sees and at what signal, what the other side answers at each step, where
   it fails and how long it waits. Its path comes in as a launch argument,
-  and the file is read again each time a mode starts, so a lane changes
-  behaviour by passing another file, never by a rebuild.
+  and the file is read again at each transaction's start and whenever it
+  changes, so a lane changes behaviour by changing the file, never by a
+  rebuild.
 - Each side runs on its own simulator against a scripted other side: the
   host on an iPad, the client on an iPhone. Nothing connects the two
   simulators. Two real parties meet only on devices.
