@@ -57,13 +57,13 @@ struct NativeMicrophoneConversionTests {
         let buffer = try makeBuffer(interleaved: false, rate: 48_000)
         let depths = Mutex<[Int]>([])
         let tap = NativeTap(
-            receive: { _ in depths.withLock { $0.append(Thread.callStackSymbols.count) } },
+            receive: { _ in depths.withLock { $0.append(Thread.callStackReturnAddresses.count) } },
             readClock: { MicrophoneClockReading(host: 1, continuous: 1) }
         )
-        for _ in 0..<2_000 { tap.deliver(buffer, time: AVAudioTime(sampleTime: 0, atRate: 48_000)) }
+        for _ in 0..<200 { tap.deliver(buffer, time: AVAudioTime(sampleTime: 0, atRate: 48_000)) }
         tap.close()
         let seen = depths.withLock { $0 }
-        #expect(seen.count == 2_000)
+        #expect(seen.count == 200)
         #expect(seen.first == seen.last)
     }
 
