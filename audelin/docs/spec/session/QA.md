@@ -129,3 +129,41 @@ The processes fake fails its choice; every other piece comes up. The call
 capture fake sends numbered audio only when started for every app but
 Audelin's. The state names the processes failure and shows both tracks
 recording, and the call track holds that numbered audio. Evidence: `failedProcessChoiceHearsEveryAppButAudelin`.
+
+## Silent call warning
+
+Pure reducer tests supply interval statistics and microphone windows using a
+shared time origin, without clocks or sleeps. Every asserted state transition
+has a separate effect assertion; statistics always yield no effect.
+
+`prolongedCallZerosWithRecentMicActivityWarnOnce`,
+`nonzeroCallSampleResetsSilenceInterval` and
+`laterCallAudioClearsWarningWithoutRearmingNotification` establish the warning,
+the silence interval's reset and clearing without another warning in the same
+recording. `nonzeroCallAudioClearsWarningEvenWhileMicrophoneLags` proves that
+clearing does not wait for microphone coverage.
+
+`staleMicActivityDoesNotWarn`,
+`callSilenceThresholdIncludesExactly300Seconds`,
+`microphoneRecencyIncludesExactly120Seconds`,
+`microphoneActivityNeeds100Milliseconds` and
+`microphoneActivityIncludesRMSOfPoint01` cover the 300-second, 120-second,
+99-versus-100 ms and RMS 0.01 boundaries. These are uncalibrated Amanu values:
+300 seconds excludes natural pauses, 120 seconds of recent microphone activity
+suggests the user is talking, and RMS 0.01 sustained for 100 ms excludes clicks
+and room noise.
+
+`captureStartOffsetsDoNotCauseWarning`,
+`delayedCallStatisticsDoNotCauseFalseWarning` and
+`delayedMicrophoneCoverageDoesNotWarnEarly` cover different start offsets,
+delays on either stream, future activity and retaining earlier activity while
+the microphone is ahead. `gapInMicrophoneWindowsBreaksSustainedActivity`,
+`quietMicrophoneWindowBreaksSustainedActivity` and
+`gapsInCallStatisticsDoNotCountAsExactZeros` cover interrupted observations.
+`audioEventsOutsideRecordingAreIgnored`, `beginStartsWithCleanAudioObservation`
+and `warningLeavesHealthFailuresAndRecordabilityAlone` establish phase gating,
+reset and independence from recording failures.
+
+`invalidAndOverlappingIntervalsAreIgnored` proves that malformed or overlapping
+observations cannot advance coverage or clear an existing warning.
+`nonfiniteMicrophoneRMSDoesNotQualify` excludes invalid levels from activity.
