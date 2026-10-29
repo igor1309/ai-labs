@@ -1,6 +1,8 @@
 import DesignSystem
 import ModeSwitchUI
 import SwiftUI
+import HostUI
+import SettingsUI
 
 public struct RootView: View {
     private let root: AppRoot
@@ -13,7 +15,7 @@ public struct RootView: View {
             case .choose(let side): root.choose(side)
             }
         }, host: {
-            placeholder(.host)
+            if let host = root.host { HostScreen(host: host) }
         }, client: {
             placeholder(.client)
         })
@@ -34,5 +36,15 @@ public struct RootView: View {
         .padding(Tokens.space5)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Tokens.ground)
+    }
+}
+
+private struct HostScreen: View {
+    @Bindable var host: HostMode
+    var body: some View {
+        HostView(state: host.screen, event: host.event)
+            .sheet(isPresented: $host.settingsPresented) {
+                SettingsView(state: host.settingsScreen, event: host.event)
+            }
     }
 }
