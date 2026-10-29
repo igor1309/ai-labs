@@ -171,7 +171,7 @@ struct LoggingTests {
                     .init(category: .capture, message: "\(side) first piece sampleRate=48000.0 channels=1 frames=2"),
                     .init(category: .capture, message: "\(side) stream stopped pieces=2 frames=3"),
                 ])
-                #expect(try recordedSamples(URL(fileURLWithPath: folder.id).appendingPathComponent("\(side).caf")) == [0.25, -0.5, 0.125])
+                #expect(try await recordedSamples(URL(fileURLWithPath: folder.id).appendingPathComponent("\(side).caf")) == [0.25, -0.5, 0.125])
             }
         }
     }

@@ -22,7 +22,7 @@ struct SessionSelectionTests {
             try await rig.pieces.callCapture.stop()
             try await rig.pieces.callTrack.close()
             #expect(rig.selections.all == [.allExcept([getpid()])])
-            #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
+            #expect(try await recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
         }
     }
 
@@ -66,7 +66,7 @@ struct SessionSelectionTests {
             try await recording.callCapture.stop()
             try await recording.callTrack.close()
             #expect(selections.all == [allExcept ? .allExcept([17]) : .only([17])])
-            #expect(try recordedSamples(root.appendingPathComponent("1970.01.01-0000/call.caf")) == [0.5, 0.25])
+            #expect(try await recordedSamples(root.appendingPathComponent("1970.01.01-0000/call.caf")) == [0.5, 0.25])
         }
     }
 }

@@ -100,7 +100,7 @@ struct RecordingPiecesTests {
             try await pieces.callCapture.stop()
             try await pieces.callTrack.close()
             #expect(rig.selections.all == [.allExcept([getpid()])])
-            #expect(try recordedSamples(URL(fileURLWithPath: folder.id).appendingPathComponent("call.caf")) == [-0.25, -0.5])
+            #expect(try await recordedSamples(URL(fileURLWithPath: folder.id).appendingPathComponent("call.caf")) == [-0.25, -0.5])
         }
     }
 
@@ -133,7 +133,7 @@ struct RecordingPiecesTests {
             try await second.microphoneTrack.close()
             #expect(captures[1].stops.all == [true])
             for folder in [firstFolder, secondFolder] {
-                #expect(try recordedSamples(URL(fileURLWithPath: folder.id).appendingPathComponent("microphone.caf")) == [0.25, 0.5])
+                #expect(try await recordedSamples(URL(fileURLWithPath: folder.id).appendingPathComponent("microphone.caf")) == [0.25, 0.5])
             }
         }
     }

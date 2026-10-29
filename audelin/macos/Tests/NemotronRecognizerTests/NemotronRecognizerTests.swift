@@ -94,6 +94,20 @@ struct NemotronRecognizerTests {
         #expect(hearing.from == 0.2)
     }
 
+    @Test func decodingStaysOnTheRecognizersQueueAcrossSuspension() async throws {
+
+        let decoder = QueueCheckingDecoder()
+        let recognizer = NemotronRecognizer(decoder: decoder)
+        recognizer.queue.setSpecific(key: recognizerQueue, value: ())
+
+        _ = try await recognizer.hear(silence(1.12))
+        _ = try await recognizer.finish()
+
+        let checks = await decoder.onQueue
+        #expect(checks.count >= 4)
+        #expect(checks.allSatisfy { $0 })
+    }
+
     @Test func aWordFollowedByAnotherIsFinal() async throws {
 
         let recognizer = NemotronRecognizer(decoder: ScriptedDecoder([twoWords]))
@@ -338,23 +352,20 @@ struct NemotronRecognizerTests {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
-        defer { afterwards { try? FileManager.default.removeItem(at: directory) } }
-        let url = directory.appendingPathComponent("spoken.wav")
-        let say = Process()
-        say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
-        say.arguments = ["-v", "Milena", "--file-format=WAVE", "--data-format=LEF32@48000", "-o", url.path, text]
-        let exited = AsyncStream<Void>.makeStream()
-        say.terminationHandler = { _ in exited.continuation.finish() }
-        try await offPool { try say.run() }
-        for await _ in exited.stream {}
-        try #require(say.terminationStatus == 0)
+        return try await withCleanup {
+            let url = directory.appendingPathComponent("spoken.wav")
+            let say = Process()
+            say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
+            say.arguments = ["-v", "Milena", "--file-format=WAVE", "--data-format=LEF32@48000", "-o", url.path, text]
+            try #require(try await exitStatus(of: say) == 0)
 
-        let file = try AVAudioFile(forReading: url)
-        #expect(file.processingFormat.sampleRate == 48_000)
-        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)))
-        try file.read(into: buffer)
-        try #require(buffer.frameLength > 0)
-        return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
+            let audio = try await audioFile(url)
+            #expect(audio.sampleRate == 48_000)
+            try #require(!audio.samples.isEmpty)
+            return audio.samples
+        } cleanup: {
+            try FileManager.default.removeItem(at: directory)
+        }
     }
 }
 
@@ -399,6 +410,34 @@ private actor ControlledModelLoad {
 }
 
 /// Replies with cumulative snapshots once enough audio has arrived.
+private nonisolated(unsafe) let recognizerQueue = DispatchSpecificKey<Void>()
+
+/// Records whether each feed and finish runs on the recognizer's queue, before and after it suspends.
+private actor QueueCheckingDecoder: TokenDecoder {
+
+    let chunk = 1.12
+    private(set) var onQueue: [Bool] = []
+
+    func feed(_ samples: [Float]) async throws -> [DecodedToken] {
+
+        await check()
+        return []
+    }
+
+    func finish() async throws -> [DecodedToken] {
+
+        await check()
+        return []
+    }
+
+    private func check() async {
+
+        onQueue.append(DispatchQueue.getSpecific(key: recognizerQueue) != nil)
+        await Task.yield()
+        onQueue.append(DispatchQueue.getSpecific(key: recognizerQueue) != nil)
+    }
+}
+
 private actor ScriptedDecoder: TokenDecoder {
 
     struct Failed: Error {}

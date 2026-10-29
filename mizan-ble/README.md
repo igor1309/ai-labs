@@ -41,3 +41,11 @@ Client. To run on a device, select your signing team and enable signing
 in the target settings. The shell keeps both radios idle until flows
 are wired. Test the root with `swift test` in `ios/App`; regenerate the
 icon from `DesignSystem` with `swift run RenderAppIcon` there.
+
+Run the `MizanBLE Rehearsal` scheme on a simulator to play against a
+scripted other side. Add `-scriptedRadio /absolute/path/to/settings.json`
+to the scheme's launch arguments, or put `scripted-radio.json` in the
+app container's Documents directory. The JSON format and scenario examples
+are in [Rehearsal](ios/App/Rehearsal/README.md). File changes take effect
+without relaunching; each transaction keeps its starting settings. Both
+sides run their flows against the scripted other side.

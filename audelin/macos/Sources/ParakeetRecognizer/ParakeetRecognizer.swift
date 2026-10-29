@@ -28,6 +28,9 @@ public struct WindowWord: Equatable, Sendable {
 public actor ParakeetRecognizer: Recognizer {
 
     // Conversion and inference block, so they run on this queue, not the cooperative pool.
+    // Inference reaches it through a task executor preference, which default actors and
+    // nonisolated async code follow; an actor with its own executor, or an unstructured
+    // task it starts, does not.
     nonisolated let queue = DispatchSerialQueue(label: "audelin.ParakeetRecognizer")
     public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 

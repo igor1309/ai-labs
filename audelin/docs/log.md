@@ -2,6 +2,11 @@
 
 ## 2026-10-29
 
+- Capture setup, track and transcript files, recognizer inference, process
+  discovery and test fixtures run their blocking work off the cooperative
+  pool (LAB-694, #1400); test cleanup, child reaping and audio reads are
+  awaited, and TrackFile releases its file on its queue (LAB-734).
+
 - Recording, Session, Reading and Lifecycle keep only their domain: each app
   model comes from swift-imrx, and the hand-written Machine is gone (LAB-694).
 
