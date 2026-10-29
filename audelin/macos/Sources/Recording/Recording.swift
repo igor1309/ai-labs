@@ -8,10 +8,16 @@ public enum RecordingCondition: CaseIterable, Hashable, Sendable {
     case room
 }
 
+public enum RecordingFault: CaseIterable, Hashable, Sendable {
+
+    case microphone, callAudio, diskFull
+}
+
 public enum RecordingSessionReport: Equatable, Sendable {
 
     case ready
     case cannotRecord(String)
+    case failed(RecordingFault)
     case ended
 }
 
@@ -62,6 +68,7 @@ public struct RecordingState: Equatable, Sendable {
     public var pendingCall = false
     public var lastSessionID: UInt64 = 0
     public var cannotRecord: String?
+    public var faults: Set<RecordingFault> = []
 
     /// Conditions start unknown, so a start waits for each to be reported available.
     public init(automatic: Bool = false, missing: Set<RecordingCondition> = Set(RecordingCondition.allCases)) {
@@ -136,6 +143,11 @@ public enum RecordingReducer {
                 return state
             }
             switch report {
+            case let .failed(fault):
+                if state.phase == .beginning || state.phase == .recording || state.phase == .ending {
+                    state.faults.insert(fault)
+                }
+                return state
             case .ready:
                 if state.phase == .beginning { state.phase = .recording }
                 return state
@@ -164,6 +176,7 @@ public enum RecordingReducer {
         state.sessionBeganDuringCall = state.callOn
         state.phase = .beginning
         state.cannotRecord = nil
+        state.faults = []
         return state
     }
 

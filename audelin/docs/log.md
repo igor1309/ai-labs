@@ -2,6 +2,9 @@
 
 ## 2026-10-29
 
+- The menu bar names microphone, call-audio and track-write faults while recording
+  and ending, keeping each fault until the next recording begins (LAB-510).
+
 - A missing call-audio permission now shows as missing call audio and holds
   recording back, instead of recording a silent call side (LAB-604).
 
