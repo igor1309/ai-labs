@@ -23,10 +23,10 @@ Feature: The composition records each run
       "/r", HEAD "c1", the content "t1", and its result, completed,
       its session "s1"
 
-  Scenario: A record is lost until the run ends, its ended calls kept
+  Scenario: A record is running until the run ends, its ended calls kept
     Given the steps of "pair", "a" completed and "b" started, not ended
     When "agister run pair" runs in "/r"
-    Then runstore was last given, while "b" runs, the record "lost",
+    Then runstore was last given, while "b" runs, the record "running",
       its result null, holding "a"'s call completed
 
   Scenario: Each event reaches runstore, in order
@@ -68,4 +68,4 @@ Feature: The composition records each run
     Examples:
       | which      | then                                                      |
       | the first  | it prints the failure to stderr, nothing runs, it exits 1 |
-      | the second | the run goes on, its result warning of the failure        |
+      | the second | the run fails with class "persistence"        |

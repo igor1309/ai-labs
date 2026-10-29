@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-690: New runs keep one ordered log with active calls and waits; readers
+  include unfinished spend and retain access to older records.
+
 - LAB-565: Agister is public to read at github.com/igor1309/agister, with
   its site and architecture pages at igor1309.dev/agister/.
 - LAB-567: Agister's public README shows how a run executes and how

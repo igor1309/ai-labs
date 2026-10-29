@@ -160,11 +160,16 @@ type Stream struct {
 }
 
 // Report is a line a turn read: the tool call it made, where Tool is not
-// nil; a tool's result, where Result is set; else another line. A call
+// nil; a tool's result, where Result is set; the runtime session id, where
+// Session is set; else another line. A call
 // reports besides each turn that went stale, where Stale is not nil; each
 // turn at capacity, where Capacity is not nil; and that it is made again
-// on its fallback, where Fallback is set; a runtime reports none.
+// on its fallback, where Fallback is set; when a turn starts running;
+// and its reported cost when known. A runtime reports no call policy events.
 type Report struct {
+	Running  bool
+	Session  string
+	Cost     *float64
 	Tool     *Tool
 	Result   bool
 	Stale    *StaleTurn
@@ -469,7 +474,15 @@ func (c *Caller) Call(ctx context.Context, step Step, report func(Report)) Resul
 	for {
 		turn.SessionCostBefore = before
 		turn.Budget = step.budget(knownCost)
+		report(Report{Running: true})
 		last := c.take(callCtx, turn, step.Staleness, report)
+		var cost *float64
+		if last.err == nil && last.ended.Reply != nil {
+			cost = last.ended.Reply.Cost
+		}
+		if last.session() != "" || cost != nil {
+			report(Report{Session: last.session(), Cost: cost})
+		}
 		turns = append(turns, last)
 		before = nil
 		if reply := last.ended.Reply; last.err == nil && reply != nil {

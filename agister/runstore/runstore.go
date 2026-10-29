@@ -1,7 +1,5 @@
-// Package runstore keeps runs, in its own types (ADR-001, "Runs"): under
-// a folder it is given, each run a folder of its id, holding its record,
-// record.json, written whole each time, and its events, events.jsonl, a
-// line each. A run kept is exported as a copy of its folder.
+// Package runstore persists run facts and folds them into records.
+// Legacy snapshot records remain readable without migration.
 package runstore
 
 import (
@@ -197,18 +195,25 @@ type Timing struct {
 type Kind string
 
 const (
-	Started      Kind = "started"  // the step started, on its agent
-	Reused       Kind = "reused"   // the step took an earlier call in place of making one
-	Tool         Kind = "tool"     // the step called a tool
-	Stale        Kind = "stale"    // the step's turn went stale
-	Capacity     Kind = "capacity" // the step's turn failed at capacity
-	Fallback     Kind = "fallback" // the step's call is made again on its agent's fallback
-	Branch       Kind = "branch"   // a branch selected an arm
-	Pass         Kind = "pass"     // a repeat bound its next state
-	Stopped      Kind = "stopped"  // a repeat stopped
-	Ended        Kind = "ended"    // the step ended
-	ChildStarted Kind = "child_started"
-	ChildEnded   Kind = "child_ended"
+	Prepared      Kind = "prepared"
+	Progress      Kind = "progress"
+	RunStarted    Kind = "run_started"
+	RunEnded      Kind = "run_ended"
+	InputResolved Kind = "input_resolved"
+	CallEnded     Kind = "call_ended"
+	Resumed       Kind = "resumed"
+	Started       Kind = "started"  // the step started, on its agent
+	Reused        Kind = "reused"   // the step took an earlier call in place of making one
+	Tool          Kind = "tool"     // the step called a tool
+	Stale         Kind = "stale"    // the step's turn went stale
+	Capacity      Kind = "capacity" // the step's turn failed at capacity
+	Fallback      Kind = "fallback" // the step's call is made again on its agent's fallback
+	Branch        Kind = "branch"   // a branch selected an arm
+	Pass          Kind = "pass"     // a repeat bound its next state
+	Stopped       Kind = "stopped"  // a repeat stopped
+	Ended         Kind = "ended"    // the step ended
+	ChildStarted  Kind = "child_started"
+	ChildEnded    Kind = "child_ended"
 )
 
 // Event is what a step did, at a time. Of the rest, each kind has its
@@ -220,30 +225,36 @@ const (
 // "" for none, and how long it took. Branch, pass and stopped events keep
 // the chosen arm and condition reads, next state, and stopping reason.
 type Event struct {
-	At         time.Time
-	Step       string
-	Kind       Kind
-	Agent      string
-	Call       string
-	Name       string
-	Input      string
-	What       string
-	Recovering bool
-	Reason     string
-	Retrying   bool
-	Status     string
-	Class      string
-	Duration   time.Duration
-	Arm        string
-	Conditions []Condition
-	Pass       int
-	State      map[string]any
-	Stopped    string
-	Passes     int
-	Workflow   string
-	Params     map[string]string
-	Inputs     []Input
-	Output     any
+	InputFact  *Input            `json:"input_fact,omitempty"`
+	CallFact   *Call             `json:"call_fact,omitempty"`
+	Session    string            `json:"session,omitempty"`
+	Cost       *float64          `json:"cost,omitempty"`
+	Record     *Record           `json:"record,omitempty"`
+	Waiting    *Waiting          `json:"waiting,omitempty"`
+	At         time.Time         `json:"at,omitempty"`
+	Step       string            `json:"step,omitempty"`
+	Kind       Kind              `json:"kind,omitempty"`
+	Agent      string            `json:"agent,omitempty"`
+	Call       string            `json:"call,omitempty"`
+	Name       string            `json:"name,omitempty"`
+	Input      string            `json:"input,omitempty"`
+	What       string            `json:"what,omitempty"`
+	Recovering bool              `json:"recovering,omitempty"`
+	Reason     string            `json:"reason,omitempty"`
+	Retrying   bool              `json:"retrying,omitempty"`
+	Status     string            `json:"status,omitempty"`
+	Class      string            `json:"class,omitempty"`
+	Duration   time.Duration     `json:"duration,omitempty"`
+	Arm        string            `json:"arm,omitempty"`
+	Conditions []Condition       `json:"conditions,omitempty"`
+	Pass       int               `json:"pass,omitempty"`
+	State      map[string]any    `json:"state,omitempty"`
+	Stopped    string            `json:"stopped,omitempty"`
+	Passes     int               `json:"passes,omitempty"`
+	Workflow   string            `json:"workflow,omitempty"`
+	Params     map[string]string `json:"params,omitempty"`
+	Inputs     []Input           `json:"inputs,omitempty"`
+	Output     any               `json:"output,omitempty"`
 }
 
 // Condition is an evaluated branch arm and the values it read.
@@ -255,8 +266,11 @@ type Condition struct {
 
 // MarshalJSON writes e as events.jsonl holds it: the fields of its kind
 // alone, a class that is none as null.
-func (e Event) MarshalJSON() ([]byte, error) {
+func (e Event) marshalFact() ([]byte, error) {
 	switch e.Kind {
+	case RunStarted, RunEnded, InputResolved, CallEnded, Resumed, Prepared, Progress:
+		type fact Event
+		return json.Marshal(fact(e))
 	case ChildStarted:
 		return json.Marshal(struct {
 			At       time.Time         `json:"at"`
@@ -365,12 +379,45 @@ func (e Event) MarshalJSON() ([]byte, error) {
 	return nil, fmt.Errorf("runstore: no kind of event %q", e.Kind)
 }
 
+func (e Event) MarshalJSON() ([]byte, error) {
+	data, err := e.marshalFact()
+	if err != nil || e.Waiting == nil {
+		return data, err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+	fields["waiting"], err = json.Marshal(e.Waiting)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(fields)
+}
+
+func (e *Event) UnmarshalJSON(data []byte) error {
+	type fact Event
+	var wire struct {
+		fact
+		DurationMS int64 `json:"duration_ms"`
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	*e = Event(wire.fact)
+	e.Duration = time.Duration(wire.DurationMS) * time.Millisecond
+	// An unknown complete fact is corruption, not an ignorable tail.
+	_, err := e.marshalFact()
+	return err
+}
+
 // Store keeps runs under its folder.
 type Store struct {
 	folder string
 	// appending is held for each append, so that events appended side by
 	// side are one whole line each.
 	appending sync.Mutex
+	writers   map[string]*LogWriter
 }
 
 // New gives a store that keeps runs under folder.
@@ -378,20 +425,28 @@ func New(folder string) (*Store, error) {
 	if folder == "" {
 		return nil, errors.New("runstore: no folder")
 	}
-	return &Store{folder: folder}, nil
+	return &Store{folder: folder, writers: map[string]*LogWriter{}}, nil
 }
 
-// Write writes record as the record of the run its id names, in place of
-// any written before: whole, to a temporary file in the run's folder,
-// then renamed, so that a reader meets the one or the other, and no
-// temporary file is left behind. Calls, params and inputs that are none
-// are written as empty, as are a call's permission lists, its primary's
-// too, and its environment.
+// Write commits a terminal record to its claimed log. Mid-run updates
+// arrive as typed facts through Append. Without Begin, Write retains the
+// legacy snapshot format.
 func (s *Store) Write(record Record) error {
+	if w := s.writer(record.ID); w != nil {
+		if record.Ended == nil {
+			return errors.New("runstore: missing terminal result")
+		}
+		return w.Append(Event{At: *record.Ended, Kind: RunEnded, Record: &record})
+	}
+
 	folder, err := s.run(record.ID)
 	if err != nil {
 		return err
 	}
+	if _, err := os.Stat(filepath.Join(folder, "run.jsonl")); !errors.Is(err, fs.ErrNotExist) {
+		return errors.New("runstore: log has no writer in this store")
+	}
+
 	record.Calls = append([]Call{}, record.Calls...)
 	for i, call := range record.Calls {
 		if call.Inputs == nil {
@@ -511,6 +566,18 @@ func (s *Store) Record(id string) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
+	log, err := os.Open(filepath.Join(folder, "run.jsonl"))
+	if err == nil {
+		defer log.Close()
+		record, err := Fold(log)
+		if err == nil && record.ID != id {
+			return Record{}, errors.New("runstore: log id disagrees with folder")
+		}
+		return record, err
+	}
+	if !errors.Is(err, fs.ErrNotExist) {
+		return Record{}, err
+	}
 	data, err := os.ReadFile(filepath.Join(folder, "record.json"))
 	if err != nil {
 		return Record{}, fmt.Errorf("runstore: the record of %q: %w", id, err)
@@ -522,7 +589,7 @@ func (s *Store) Record(id string) (Record, error) {
 	return record, nil
 }
 
-// Runs gives the ids of the runs kept, each a folder holding its record,
+// Runs gives the ids of the runs kept, each a folder holding its log or legacy record,
 // in name order; none where the store's folder is not there yet.
 func (s *Store) Runs() ([]string, error) {
 	entries, err := os.ReadDir(s.folder)
@@ -537,7 +604,10 @@ func (s *Store) Runs() ([]string, error) {
 		if !entry.IsDir() {
 			continue
 		}
-		info, err := os.Stat(filepath.Join(s.folder, entry.Name(), "record.json"))
+		info, err := os.Stat(filepath.Join(s.folder, entry.Name(), "run.jsonl"))
+		if errors.Is(err, fs.ErrNotExist) {
+			info, err = os.Stat(filepath.Join(s.folder, entry.Name(), "record.json"))
+		}
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
@@ -552,17 +622,28 @@ func (s *Store) Runs() ([]string, error) {
 }
 
 // Export copies the run id names into a folder of its id under folder:
-// its record.json, events.jsonl, patches and definitions where present, each folder made
+// its native log or legacy record and events, patches and definitions, each folder made
 // where missing and a copy already there written over. A run not kept is
 // an error that is, or wraps, fs.ErrNotExist, and nothing is copied. Each
 // file is read whole before anything is written: a record is as it was
-// last written, an event line being appended may be cut.
+// last written. An unterminated log tail is excluded from the export.
 func (s *Store) Export(id, folder string) error {
 	from, err := s.run(id)
 	if err != nil {
 		return err
 	}
-	record, err := os.ReadFile(filepath.Join(from, "record.json"))
+	recordName := "run.jsonl"
+	record, err := os.ReadFile(filepath.Join(from, recordName))
+	if errors.Is(err, fs.ErrNotExist) {
+		recordName = "record.json"
+		record, err = os.ReadFile(filepath.Join(from, recordName))
+	}
+	if recordName == "run.jsonl" && err == nil {
+		if _, err := Fold(bytes.NewReader(record)); err != nil {
+			return err
+		}
+		record = record[:bytes.LastIndexByte(record, '\n')+1]
+	}
 	if err != nil {
 		return fmt.Errorf("runstore: the export of %q: %w", id, err)
 	}
@@ -598,7 +679,7 @@ func (s *Store) Export(id, folder string) error {
 	if err := os.MkdirAll(to, 0o755); err != nil {
 		return fmt.Errorf("runstore: the export of %q: %w", id, err)
 	}
-	if err := os.WriteFile(filepath.Join(to, "record.json"), record, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(to, recordName), record, 0o600); err != nil {
 		return fmt.Errorf("runstore: the export of %q: %w", id, err)
 	}
 	if hasEvents {
@@ -614,13 +695,21 @@ func (s *Store) Export(id, folder string) error {
 	return nil
 }
 
-// Append appends event to the events of the run id names, as a line of
-// its own, one append at a time.
+// Append submits a fact to the run's writer. Without Begin it retains
+// legacy event appends; an existing log always requires its owning writer.
 func (s *Store) Append(id string, event Event) error {
+	if w := s.writer(id); w != nil {
+		return w.Append(event)
+	}
+
 	folder, err := s.run(id)
 	if err != nil {
 		return err
 	}
+	if _, err := os.Stat(filepath.Join(folder, "run.jsonl")); !errors.Is(err, fs.ErrNotExist) {
+		return errors.New("runstore: log has no writer in this store")
+	}
+
 	line, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("runstore: an event of %q: %w", id, err)
