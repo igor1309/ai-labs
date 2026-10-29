@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-30
+
+- v0.0.1 is built: payments confirm, fail and decline on a real iPad and iPhone, with the signal values measured there and no secret in the log (LAB-728).
+
 ## 2026-10-29
 
 - The host's screens now fit an iPhone, so a phone switched to Host can switch back (LAB-728).
