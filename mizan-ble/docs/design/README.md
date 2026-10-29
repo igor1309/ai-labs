@@ -102,6 +102,7 @@ The components without the `DS /` prefix (`Status Bar`, `Mode Switch`,
 |---|---|
 | x = 0 | Mizan · Design System (`pHq12`): header, colour, type, spacing and radius, the Mizan sign with its candidates, components |
 | x = 2800 | Mizan · Paired Flow (`OKjZH`): one row per moment, the iPad and the iPhone side by side with the message between them |
+| Below the paired flow | Mizan · Client Find States (`ta0QK`): the iPhone in every state before the amount, S-1 to S-8 of the client UI, side by side ([preview](preview/client-find-states.png)) |
 | Below the design system | Mizan · App icon (`JzIjX`): the proposals that were not chosen (A the sign alone, B the sign in the host ring, C the sign in a ring of host and client halves, and C1–C3, softer versions of C); then the chosen design, "E · Soft" (owner, 2026-10-29): the host's and the client's beacons from opposite corners and the sign between them with depth, and its Icon Composer layers (sign, host, client), exported to `ios/App/MizanBLE/AppIcon.icon` |
 | — | Mizan · Design System · Light and Mizan · Paired Flow · Light: the same, in the light appearance |
 | x < 0 | Mizan · Explorations (`omPk6`): earlier covers, palettes and flows, kept as they were; not current |
@@ -121,6 +122,11 @@ The paired flow, top to bottom:
 | M9 | Failure | H6 failed | C5 failed |
 | M10 | Countdown expired | H1 timed out | C1, host went quiet |
 | S1 | Host settings | Settings | — |
+
+The client's screens before the amount share one layout: the rings or the
+failure mark keep one 240 pt slot, the title one line, the subtitle two
+lines whatever its length, and the button one place. A change of state
+changes words and colours and moves nothing.
 
 The PNGs in [preview/](preview/) are exports of these frames for pages
 that cannot open the `.pen` file.

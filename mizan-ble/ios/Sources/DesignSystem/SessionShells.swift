@@ -1,6 +1,8 @@
 import SwiftUI
 
 /// The host session rail beside the current stage. Its parent supplies the size.
+/// It fills the screen to its edges; the rail and the stage keep the design's
+/// insets, or clear the status bar and home indicator where those are larger.
 public struct IPadShell<Steps: View, Content: View>: View {
     let side: Side
     let eyebrow: String
@@ -33,6 +35,11 @@ public struct IPadShell<Steps: View, Content: View>: View {
     }
 
     public var body: some View {
+        GeometryReader { proxy in layout(proxy.safeAreaInsets) }
+            .ignoresSafeArea(.container)
+    }
+
+    private func layout(_ safe: EdgeInsets) -> some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: Tokens.space8) {
                 ModeHeader(side: side, layout: .rail, onSwitch: onSwitch)
@@ -44,9 +51,11 @@ public struct IPadShell<Steps: View, Content: View>: View {
                 Spacer(minLength: 0)
                 deviceFooter
             }
-            .padding(.top, Tokens.space18)
-            .padding([.horizontal, .bottom], Tokens.space7)
-            .frame(width: 300)
+            .padding(.top, clear(Tokens.space18, safe.top))
+            .padding(.leading, clear(Tokens.space7, safe.leading))
+            .padding(.trailing, Tokens.space7)
+            .padding(.bottom, clear(Tokens.space7, safe.bottom))
+            .frame(width: 300 + safe.leading)
             .frame(maxHeight: .infinity, alignment: .top)
             .background(Tokens.rail)
             VStack(alignment: .leading, spacing: Tokens.space6) {
@@ -58,15 +67,14 @@ public struct IPadShell<Steps: View, Content: View>: View {
                 }
                 content.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.top, Tokens.space18)
-            .padding(.horizontal, Tokens.space14)
-            .padding(.bottom, Tokens.space12)
+            .padding(.top, clear(Tokens.space18, safe.top))
+            .padding(.leading, Tokens.space14)
+            .padding(.trailing, clear(Tokens.space14, safe.trailing))
+            .padding(.bottom, clear(Tokens.space12, safe.bottom))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Tokens.ground)
-        .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusIpad))
-        .overlay { RoundedRectangle(cornerRadius: Tokens.radiusIpad).strokeBorder(Tokens.lineSoft, lineWidth: 1) }
     }
 
     private var deviceFooter: some View {
@@ -109,6 +117,8 @@ struct SettingsGear: View {
 }
 
 /// The client session header above the current stage. Its parent supplies the size.
+/// It fills the screen to its edges; the header and the stage keep the design's
+/// insets, or clear the status bar and home indicator where those are larger.
 public struct IPhoneShell<Steps: View, Content: View>: View {
     let side: Side
     let eyebrow: String
@@ -131,13 +141,20 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
     }
 
     public var body: some View {
+        GeometryReader { proxy in layout(proxy.safeAreaInsets) }
+            .ignoresSafeArea(.container)
+    }
+
+    private func layout(_ safe: EdgeInsets) -> some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: Tokens.space5) {
                 ModeHeader(side: side, layout: .bar, onSwitch: onSwitch)
                 steps
             }
-            .padding(.top, Tokens.space14)
-            .padding([.horizontal, .bottom], Tokens.space5)
+            .padding(.top, clear(Tokens.space14, safe.top))
+            .padding(.leading, clear(Tokens.space5, safe.leading))
+            .padding(.trailing, clear(Tokens.space5, safe.trailing))
+            .padding(.bottom, Tokens.space5)
             .frame(maxWidth: .infinity)
             .background(Tokens.rail, in: UnevenRoundedRectangle(
                 bottomLeadingRadius: 28, bottomTrailingRadius: 28
@@ -151,13 +168,27 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
                 }
                 content.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding([.top, .horizontal], Tokens.space5)
-            .padding(.bottom, Tokens.space8)
+            .padding(.top, Tokens.space5)
+            .padding(.leading, clear(Tokens.space5, safe.leading))
+            .padding(.trailing, clear(Tokens.space5, safe.trailing))
+            .padding(.bottom, clear(Tokens.space8, safe.bottom))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Tokens.ground)
-        .clipShape(RoundedRectangle(cornerRadius: Tokens.radiusIphone))
-        .overlay { RoundedRectangle(cornerRadius: Tokens.radiusIphone).strokeBorder(Tokens.lineSoft, lineWidth: 1) }
+    }
+}
+
+/// A design inset, or a gap past the safe area inset when that reaches further.
+private func clear(_ design: CGFloat, _ safe: CGFloat) -> CGFloat {
+    max(design, safe + Tokens.space2)
+}
+
+public extension View {
+    /// The device outline the design frames draw around a screen; for previews
+    /// and the gallery, where no real screen edge clips the shell.
+    func deviceOutline(_ cornerRadius: CGFloat) -> some View {
+        clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            .overlay { RoundedRectangle(cornerRadius: cornerRadius).strokeBorder(Tokens.lineSoft, lineWidth: 1) }
     }
 }
