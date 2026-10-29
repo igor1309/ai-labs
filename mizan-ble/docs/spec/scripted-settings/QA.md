@@ -4,7 +4,7 @@ Driven in `ScriptedSettingsTests` with files in a temporary directory and an inj
 
 ## S-1 A valid file
 
-Write a file with a client, two hosts, Bluetooth on and a key: the settings read back equal the file's, and Bluetooth reads on. Evidence: Missing.
+Write a file with a client, two hosts and Bluetooth on: the settings read back equal the file's, and Bluetooth reads on. Evidence: Missing.
 
 ## S-2 No valid file
 

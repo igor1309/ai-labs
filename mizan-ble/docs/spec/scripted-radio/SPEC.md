@@ -18,8 +18,8 @@ crypto and codec run on a simulator with no Bluetooth.
   readings.
 - **The settings set** the scripted client's coming, decision and drop
   point; each scripted host's name, timed readings, amount, cancel,
-  outcome and drop point; and the scripted side's key. A scripted host
-  acknowledges either decision; a decline has no outcome.
+  outcome and drop point. A scripted host acknowledges either decision;
+  a decline has no outcome. Its keys are fresh per session.
 - **The scripted side opens what it gets;** a message it cannot open drops
   the link at once, so a link that holds means it opened.
 - **A drop is told as the real radio tells it;** a client leaving before

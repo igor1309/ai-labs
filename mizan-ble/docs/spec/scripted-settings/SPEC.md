@@ -15,8 +15,9 @@ to play.
 - **Missing or invalid reads as unavailable,** with its kind (missing,
   invalid) and never the file's contents; a valid file read later
   restores what it says. How a kind is logged is the app spec's.
-- **The file holds every secret the scripted side uses** (amounts, its
-  key), so a lane can search the app's log for them.
+- **The file holds the amounts the scripted side uses,** so a lane can
+  search the app's log for them; keys are made fresh per session, as the
+  app makes them, and the app's secrets test covers them.
 
 ```gherkin
 Feature: Reading the rehearsal's settings
