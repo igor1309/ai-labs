@@ -1,3 +1,5 @@
+import CallsListUI
+import Recordings
 import AppKit
 import CallAudioAccess
 import CallAudioProbe
@@ -19,6 +21,7 @@ struct AudelinApp: App {
 
     @State private var model: AudelinMenu?
     @State private var panel: FloatingPanel?
+    @State private var callsWindow: CallsWindow?
 
     @MainActor
     private func start() async {
@@ -28,12 +31,19 @@ struct AudelinApp: App {
             TranscriptPanel(contentRect: $0, styleMask: $1, backing: .buffered, defer: false)
         }, screenFrame: { NSScreen.main?.visibleFrame })
         self.panel = panel
+        let callsWindow = CallsWindow(makeWindow: {
+            NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1000, height: 560),
+                     styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        }, activate: { NSApplication.shared.activate() })
+        self.callsWindow = callsWindow
         let access = await makeCallAudioAccess()
         let model = await AudelinMenu(
             preferences: PreferencesStore(fileURL: FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".audelin/preferences.json")),
             access: access,
             openCallsFolder: { NSWorkspace.shared.open($0) },
+            presentCalls: { callsWindow.show() },
+            makeRecordings: makeRecordings,
             openURL: { NSWorkspace.shared.open($0) },
             presentPanel: { [weak panel] in panel?.setVisible($0) },
             terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } },
@@ -46,6 +56,7 @@ struct AudelinApp: App {
             makeSession: { await makeSession(handler: $0) }
         )
         self.model = model
+        if let calls = model.calls { callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls))) }
         panel.install(content: NSHostingView(rootView: PanelContent(model: model)), onClose: { [weak model] in
             model?.panelClosed()
         })
@@ -246,5 +257,19 @@ private struct PanelContent: View {
         var config = PanelConfig.glassLedger
         config.panelWidth = width
         return config
+    }
+}
+
+@MainActor
+func makeRecordings(handler: RecordingsEffectHandler) -> RecordingsInputs {
+    let model = ObservableModel(initialState: RecordingsState(), reduce: RecordingsReducer.reduce,
+                                handleEffect: { handleRecordingsEffect(handler, $0) })
+    return RecordingsInputs(state: { model.state }, send: { model.event($0) })
+}
+
+private struct CallsContent: View {
+    let model: AudelinCalls
+    var body: some View {
+        CallsListView(state: model.state, event: { event in Task { await model.send(event) } })
     }
 }

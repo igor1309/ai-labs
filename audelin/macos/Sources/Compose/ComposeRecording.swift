@@ -40,7 +40,7 @@ func composeRecording(
     let destination = Mutex<RecordingInputs?>(nil)
     let sessions = RecordingSessions(makePieces: makePieces, liveText: liveText, report: { id, report in
         guard let recording = destination.withLock({ $0 }) else { return }
-        Task { await recording.send(.sessionReported(id: id, report)) }
+        await recording.send(.sessionReported(id: id, report))
     }, connect: subscribe, sink: sink, panel: panel, makeSession: makeSession)
     let log = { @Sendable state in StateLog(sink: sink).recording(state) }
     log(initial)

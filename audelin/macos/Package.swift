@@ -5,6 +5,9 @@ let package = Package(
     name: "Audelin",
     platforms: [.macOS(.v26)],
     products: [
+        .library(name: "Calls", targets: ["Calls"]),
+        .library(name: "Recordings", targets: ["Recordings"]),
+        .library(name: "CallsListUI", targets: ["CallsListUI"]),
         .library(name: "CallAudioProbe", targets: ["CallAudioProbe"]),
         .library(name: "CallAudioAccess", targets: ["CallAudioAccess"]),
         .library(name: "CallAppProcesses", targets: ["CallAppProcesses"]),
@@ -39,6 +42,12 @@ let package = Package(
         .package(url: "https://github.com/igor1309/swift-imrx", from: "1.1.0"),
     ],
     targets: [
+        .target(name: "Calls"),
+        .target(name: "Recordings"),
+        .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
+        .testTarget(name: "CallsTests", dependencies: ["Calls", "BlockingTestWork"]),
+        .testTarget(name: "RecordingsTests", dependencies: ["Recordings"]),
+        .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI"]),
         .target(name: "CallAudioProbe"),
         .target(name: "CallAudioAccess"),
         .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe"]),
@@ -46,7 +55,7 @@ let package = Package(
         .executableTarget(
             name: "Audelin",
             dependencies: [
-                "Compose", "CallAudioAccess", "CallAudioProbe", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading", "Recording", "Session",
+                "Compose", "Recordings", "CallsListUI", "CallAudioAccess", "CallAudioProbe", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading", "Recording", "Session",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
@@ -64,7 +73,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["CallAudioAccess", "MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI"]
+            dependencies: ["Calls", "Recordings", "CallsListUI", "CallAudioAccess", "MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI"]
         ),
         .target(
             name: "CoreAudioProcesses"

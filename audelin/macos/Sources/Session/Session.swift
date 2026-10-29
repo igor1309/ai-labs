@@ -169,6 +169,7 @@ public struct SessionState: Equatable, Sendable {
     public var pendingLiveText: LiveTextRequest?
     public var phase: Phase
     public var liveText: LiveText
+    public var recordedFolder: SessionCallFolder?
     public var folder: PieceStatus
     public var processes: PieceStatus
     public var microphoneTrack: PieceStatus
@@ -191,6 +192,7 @@ public struct SessionState: Equatable, Sendable {
         phase: Phase = .idle,
         liveText: LiveText = .off,
         folder: PieceStatus = .down,
+        recordedFolder: SessionCallFolder? = nil,
         processes: PieceStatus = .down,
         microphoneTrack: PieceStatus = .down,
         callTrack: PieceStatus = .down,
@@ -211,6 +213,7 @@ public struct SessionState: Equatable, Sendable {
         self.phase = phase
         self.liveText = liveText
         self.folder = folder
+        self.recordedFolder = recordedFolder
         self.processes = processes
         self.microphoneTrack = microphoneTrack
         self.callTrack = callTrack
@@ -241,7 +244,7 @@ public enum SessionEvent: Equatable, Sendable {
     case liveTextChanged(Bool)
     case preferenceChanged(Bool)
     case accessChanged(SessionSide, available: Bool)
-    case folderFinished(error: String?)
+    case folderFinished(error: String?, folder: SessionCallFolder? = nil)
     case processesFinished(selection: SessionProcessSelection?, error: String?)
     case trackFinished(SessionSide, error: String?)
     case transcriptFinished(error: String?)
@@ -420,9 +423,10 @@ public enum SessionReducer {
             else { updateRecordability(&state) }
             return stopFailedCaptures(&state)
 
-        case let .folderFinished(error):
+        case let .folderFinished(error, folder):
             guard state.folder == .starting else { return (state, nil) }
             state.folder = error == nil ? .up : .down
+            if error == nil { state.recordedFolder = folder }
             if let error {
                 recordFailure(&state, .folder, error)
                 state.cannotRecord = "folder: \(error)"
@@ -724,10 +728,11 @@ public final class SessionEffectHandler: Sendable {
         case .checkModels:
             return .modelsChecked(missing: await models.missing())
         case .createFolder:
-            return await result {
-                let made = try await self.folder.create()
-                self.madeFolder.withLock { $0 = made }
-            }.map(SessionEvent.folderFinished)
+            do {
+                let made = try await folder.create()
+                madeFolder.withLock { $0 = made }
+                return .folderFinished(error: nil, folder: made)
+            } catch { return .folderFinished(error: String(describing: error)) }
         case .selectProcesses:
             do { return .processesFinished(selection: try await processes.select(), error: nil) }
             catch { return .processesFinished(selection: nil, error: String(describing: error)) }

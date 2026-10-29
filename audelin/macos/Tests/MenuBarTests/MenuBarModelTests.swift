@@ -96,6 +96,7 @@ struct MenuBarModelTests {
         [
             .toggle("Записывать звонки автоматически", checked: automatic, .setAutomatic(!automatic)),
             .toggle("Живой текст", checked: liveText, .setLiveText(!liveText)),
+            .button("Звонки…", .showCalls),
             .button("Открыть папку звонков", .openCallsFolder),
             .button("Выйти", .quit),
         ]

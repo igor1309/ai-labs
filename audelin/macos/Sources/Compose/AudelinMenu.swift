@@ -1,3 +1,5 @@
+import Calls
+import Recordings
 import Foundation
 import CallAudioAccess
 import Lifecycle
@@ -20,6 +22,7 @@ struct MenuApplication {
 @MainActor @Observable
 public final class AudelinMenu {
 
+    public private(set) var calls: AudelinCalls?
     public private(set) var state = RecordingState()
     public var preferences: Preferences { settings.snapshot }
     public private(set) var quitting = false
@@ -48,7 +51,9 @@ public final class AudelinMenu {
     public convenience init(
         preferences: PreferencesStore,
         access: AccessPolicy,
-        openCallsFolder: @escaping (URL) -> Void,
+        openCallsFolder: @escaping (URL) -> Bool,
+        presentCalls: @escaping () -> Void,
+        makeRecordings: @escaping (RecordingsEffectHandler) -> RecordingsInputs,
         openURL: @escaping (URL) -> Void,
         presentPanel: @escaping (Bool) -> Void,
         terminate: @escaping @Sendable () async -> Void,
@@ -71,9 +76,14 @@ public final class AudelinMenu {
                     sendPanel: { await application.panel.send($0) }
                 )
             },
-            openFolder: openCallsFolder, openURL: openURL, terminate: { await terminate() }, didDeliver: {}, sink: SystemLogSink(),
+            openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: { await terminate() }, didDeliver: {}, sink: SystemLogSink(),
             presentPanel: presentPanel, sleep: { try await ContinuousClock().sleep(for: $0) }
         )
+        let disk = ComposeCalls(disk: Calls(folder: self.preferences.callsFolder, timeZone: .current))
+        calls = AudelinCalls(inputs: makeRecordings(RecordingsEffectHandler(calls: disk)), timeZone: .current,
+                             recordingState: { [weak self] in self?.state ?? .init() },
+                             location: { try await disk.location(id: $0) }, openFolder: openCallsFolder, present: presentCalls)
+        calls?.recordingChanged(state)
     }
 
     // Delivery is acknowledged after the observable state or failure has been updated.
@@ -86,10 +96,12 @@ public final class AudelinMenu {
         didDeliver: @escaping () -> Void,
         sink: any LogSink,
         presentPanel: @escaping (Bool) -> Void,
-        sleep: @escaping @Sendable (Duration) async throws -> Void
+        sleep: @escaping @Sendable (Duration) async throws -> Void,
+        calls: AudelinCalls? = nil
     ) async {
 
         self.sink = sink
+        self.calls = calls
         self.presentPanel = presentPanel
         self.sleep = sleep
         let application: MenuApplication?
@@ -118,6 +130,7 @@ public final class AudelinMenu {
                 for await state in await states() {
                     guard let self else { return }
                     self.state = state
+                    self.calls?.recordingChanged(state)
                     self.receivePanelPresence(.recordingChanged(panelRecordingID(state)))
                     sink.write(.init(category: .menu, message: "item symbol=\(self.menu.item.symbol) red=\(self.menu.item.isRed)"))
                     didDeliver()
@@ -153,6 +166,7 @@ public final class AudelinMenu {
             await settings.setAutomatic(enabled)
         case let .setLiveText(enabled):
             settings.setLiveText(enabled)
+        case .showCalls: calls?.show()
         case .showPanel: receivePanelPresence(.reopen)
         case .openCallsFolder: openFolder(settings.callsFolder)
         case .quit:

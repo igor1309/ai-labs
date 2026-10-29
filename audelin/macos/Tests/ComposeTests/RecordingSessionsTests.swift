@@ -103,7 +103,7 @@ struct RecordingSessionsTests {
             #expect(rig.microphone.stops.all == [true])
             #expect(rig.call.stops.all == [true])
             #expect(connection.joined.all == [true])
-            #expect(connection.reports.all.isEmpty)
+            #expect(connection.reports.all == [.init(id: 12, report: .callCreated(id: "1970.01.01-0000"))])
         }
     }
 
@@ -125,7 +125,7 @@ struct RecordingSessionsTests {
             _ = try await sessionState(connection.session) { $0.phase == .ending }
             release.end()
             await end.value
-            #expect(connection.reports.all.isEmpty)
+            #expect(connection.reports.all == [.init(id: 3, report: .callCreated(id: "1970.01.01-0000"))])
             #expect(connection.joined.all == [true])
         }
     }
@@ -139,16 +139,18 @@ struct RecordingSessionsTests {
             #expect(await adapter.begin(id: 7) == .ready)
             rig.microphone.source.continuation.finish(throwing: ScriptFailure.failed)
             rig.call.source.continuation.finish(throwing: ScriptFailure.failed)
-            await connection.reported.next()
+            await connection.waitForReport(.init(id: 7, report: .failed(.microphone)))
             await rig.pieces.news.continuation.yield(.pieceFailed(.transcript, error: "unavailable"))
             _ = try await sessionState(connection.session) { $0.health(of: .transcript) == .failed("unavailable") }
+            await connection.waitForReport(.init(id: 7, report: .cannotRecord("no track can record")))
             await adapter.end(id: 7)
             // Capture faults can arrive in either order from the independent streams.
             #expect(connection.faults.count == 2)
             #expect(connection.faults.contains(.init(id: 7, report: .failed(.microphone))))
             #expect(connection.faults.contains(.init(id: 7, report: .failed(.callAudio))))
             #expect(connection.reports.all.filter { if case .failed = $0.report { false } else { true } }
-                    == [.init(id: 7, report: .cannotRecord("no track can record"))])
+                    == [.init(id: 7, report: .callCreated(id: "1970.01.01-0000")),
+                        .init(id: 7, report: .cannotRecord("no track can record"))])
             #expect(connection.joined.all == [true])
         }
     }
@@ -175,7 +177,7 @@ struct RecordingSessionsTests {
             #expect(rig.microphone.stops.all == [true])
             #expect(rig.call.starts.all.isEmpty)
             #expect(connection.joined.all == [true])
-            #expect(connection.reports.all.isEmpty)
+            #expect(connection.reports.all == [.init(id: 4, report: .callCreated(id: "1970.01.01-0000"))])
         }
     }
 
@@ -212,7 +214,7 @@ struct RecordingSessionsTests {
             await adapter.end(id: 8)
             #expect(ids.all == [8])
             #expect(connection.joined.all == [true])
-            #expect(connection.reports.all.isEmpty)
+            #expect(connection.reports.all == [.init(id: 8, report: .callCreated(id: "1970.01.01-0000"))])
         }
     }
 
@@ -245,9 +247,11 @@ struct RecordingSessionsTests {
                 #expect(await adapter.begin(id: 21) == .ready)
                 #expect(await adapter.begin(id: 34) == .ready)
                 await firstConnection.session.send(.end)
-                await reports.reported.next()
+                await reports.waitForReport(.init(id: 21, report: .ended))
                 await adapter.end(id: 21)
-                #expect(reports.reports.all == [.init(id: 21, report: .ended)])
+                #expect(reports.reports.all == [.init(id: 21, report: .callCreated(id: "1970.01.01-0000")),
+                                                .init(id: 34, report: .callCreated(id: "1970.01.01-0000")),
+                                                .init(id: 21, report: .ended)])
                 #expect(await secondConnection.session.snapshot().phase == .recording)
                 #expect(second.microphone.stops.all.isEmpty)
                 #expect(second.call.stops.all.isEmpty)
@@ -256,7 +260,9 @@ struct RecordingSessionsTests {
                 #expect(secondConnection.joined.all == [true])
                 #expect(second.microphone.stops.all == [true])
                 #expect(second.call.stops.all == [true])
-                #expect(reports.reports.all == [.init(id: 21, report: .ended)])
+                #expect(reports.reports.all == [.init(id: 21, report: .callCreated(id: "1970.01.01-0000")),
+                                                .init(id: 34, report: .callCreated(id: "1970.01.01-0000")),
+                                                .init(id: 21, report: .ended)])
             }
         }
     }
@@ -286,6 +292,10 @@ private final class RecordingConnection: Sendable {
 
         reports.append(.init(id: id, report: report))
         reported.send()
+    }
+
+    func waitForReport(_ expected: SessionReport) async {
+        while !reports.all.contains(expected) { await reported.next() }
     }
 
     func connect(_ pieces: SessionPieces, _ session: SessionInputs) -> Task<Void, Never> {
