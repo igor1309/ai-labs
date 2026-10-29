@@ -5,11 +5,11 @@ row reads the log lines.
 
 ## S-1 Both radios built, one mode at work
 
-Launch on the iPad: the log names both radios built and the host flows built; the client radio logs no scan. Evidence: Missing.
+Launch on the iPad: the log names both radios built and the host flows built; the client radio logs no scan. Evidence: RootTests `AppRootTests.launchUsesDeviceRole` and `radiosKeptAcrossSwitchesAndNeverStartedByShell` prove the shell's launch role, radio build log and idle radios; host flows await wiring.
 
 ## S-2 A switch tears the old mode down
 
-Switch at rest: the host flows' teardown is logged before the client flows are built; neither radio is torn down. Evidence: Missing.
+Switch at rest: the host flows' teardown is logged before the client flows are built; neither radio is torn down. Evidence: RootTests `AppRootTests.teardownPrecedesBuildAndSameChoiceDoesNothing`, `switchAtRest` and `radiosKeptAcrossSwitchesAndNeverStartedByShell` prove the shell's mode lifecycle order and retained radios; flow teardown and build await wiring.
 
 ## S-3 Every message is logged without its contents
 
