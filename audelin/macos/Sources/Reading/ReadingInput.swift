@@ -63,8 +63,27 @@ public enum ReadingEvent: Equatable, Sendable {
     /// Switching live text is reflected by the update's status.
     case textUpdated(ReadingTextUpdate)
     case recordingChanged(ReadingRecording)
+    case problemsChanged([ReadingProblem])
     case hold(ReadingState.Held)
     case letGo(ReadingState.Held)
     case scrolled(atBottom: Bool)
     case jumpToLive
+}
+
+/// A recording problem, stamped on the same elapsed clock as the text.
+public struct ReadingProblem: Equatable, Sendable {
+
+    public enum Kind: Hashable, Sendable {
+
+        case callAudio, microphone, diskFull(ReadingState.Speaker), callSilent
+    }
+
+    public let kind: Kind
+    public let began: Double
+
+    public init(_ kind: Kind, began: Double) {
+
+        self.kind = kind
+        self.began = began
+    }
 }

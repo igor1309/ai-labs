@@ -76,6 +76,7 @@ struct FakeCall: Equatable {
         case .stop:
             isRecording = false
 
+        case .openSettings, .openCallsFolder: break
         case .switchLiveTextOn:
             setLiveText(true)
 

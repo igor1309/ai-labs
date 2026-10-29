@@ -18,6 +18,9 @@ public actor RecordingSessions: RecordingSession {
         var started = false
         var endRequested = false
         var reportedFailure = false
+        var faults: Set<RecordingFault> = []
+        var reportedFaults: Set<RecordingFault> = []
+        var callSilent = false
     }
 
     public nonisolated let panel: AudelinPanel
@@ -87,8 +90,12 @@ public actor RecordingSessions: RecordingSession {
                 })
                 self.running[id]?.reading = reading
                 self.start(id: id, liveText: enabled)
+                var previous: ObservedSession?
                 for await state in states {
-                    await reading.recordingChanged(readingRecording(state))
+                    let observed = ObservedSession(state)
+                    guard observed != previous else { continue }
+                    previous = observed
+                    await reading.sessionChanged(state)
                     StateLog(sink: self.sink).session(state, id: id)
                     if self.receive(state, id: id) { return }
                 }
@@ -150,6 +157,17 @@ public actor RecordingSessions: RecordingSession {
         if state.phase == .recording, entry.first == nil {
             deliver(.ready, id: id, entry: &entry)
         }
+        entry.faults.formUnion(recordingFaults(state))
+        if entry.first == .ready {
+            let callSilent = state.audioWarning == .callSilent
+            if callSilent != entry.callSilent {
+                entry.callSilent = callSilent
+                deliver(.callSilent(callSilent), id: id, entry: &entry)
+            }
+            for fault in RecordingFault.allCases where entry.faults.contains(fault) && entry.reportedFaults.insert(fault).inserted {
+                deliver(.failed(fault), id: id, entry: &entry)
+            }
+        }
         if state.phase == .ended {
             if entry.first == nil || !entry.endRequested {
                 deliver(.ended, id: id, entry: &entry)
@@ -186,5 +204,27 @@ public actor RecordingSessions: RecordingSession {
 
         guard let entry = running.removeValue(forKey: id) else { return }
         for answer in entry.enders { answer.resume() }
+    }
+}
+
+// Compare the fields read by the panel mapping, state log and report delivery.
+// Session's private audio tracking can change for every measured window.
+private struct ObservedSession: Equatable {
+
+    let value: SessionState
+
+    init(_ state: SessionState) {
+
+        value = SessionState(
+            health: state.health, wantedLiveText: state.wantedLiveText,
+            liveTextRequestID: state.liveTextRequestID, pendingLiveText: state.pendingLiveText,
+            phase: state.phase, liveText: state.liveText,
+            folder: state.folder, processes: state.processes,
+            microphoneTrack: state.microphoneTrack, callTrack: state.callTrack,
+            microphoneCapture: state.microphoneCapture, callCapture: state.callCapture,
+            transcript: state.transcript, callText: state.callText,
+            failures: state.failures, cannotRecord: state.cannotRecord,
+            audioWarning: state.audioWarning
+        )
     }
 }

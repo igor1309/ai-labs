@@ -52,6 +52,7 @@ type host struct {
 	timer   call.Timer
 	signals signals
 	random  io.Reader
+	probe   func(int) (string, bool, error)
 }
 
 // turn is a runtime a step takes its turn on: the contract of its wrapper,
@@ -1504,6 +1505,8 @@ func (s *sessionCalls) went(made sessionCall, sessions ...string) {
 // goroutines at once, one for each step of a parallel.
 type callRecords interface {
 	Called(ended endedCall)
+	Prepared(ended endedCall)
+	Observed(step string, report call.Report)
 }
 
 func newStepCalls(inputs declaredResolver, admits admission, callers map[string]turnCaller, clock clock, calls map[string]plannedCall, records callRecords, daily func() (*call.DailyBudget, []string)) (*stepCalls, error) {
@@ -1610,6 +1613,7 @@ func (s *stepCalls) call(ctx context.Context, name, declared string, params map[
 		request.Left = &latest.left
 	}
 	relay := func(r call.Report) {
+		s.records.Observed(name, r)
 		switch {
 		case r.Tool != nil:
 			report(workflow.Report{Tool: &workflow.Tool{Name: r.Tool.Name, Input: r.Tool.Input}})
@@ -1619,10 +1623,14 @@ func (s *stepCalls) call(ctx context.Context, name, declared string, params map[
 			report(workflow.Report{Capacity: &workflow.Capacity{Reason: r.Capacity.Reason, Retry: r.Capacity.Retry}})
 		case r.Fallback:
 			report(workflow.Report{Fallback: planned.fallback.agent})
+			prepared := *ended
+			prepared.agent, prepared.permissions = planned.fallback.agent, planned.fallback.permissions
+			s.records.Prepared(prepared)
 		}
 	}
 	var called call.Result
 	err = s.admits.Make(ctx, request, func(ctx context.Context) {
+		s.records.Prepared(*ended)
 		caller := s.callers[planned.contract]
 		if planned.fallback == nil {
 			called = caller.Call(ctx, step, relay)
@@ -1791,7 +1799,7 @@ func (c *claudeCodeTurns) Turn(ctx context.Context, turn call.Turn, report func(
 			if t := r.Tool; t != nil {
 				tool = &call.Tool{Name: t.Name, Input: t.Input}
 			}
-			report(call.Report{Tool: tool, Result: r.Result})
+			report(call.Report{Tool: tool, Result: r.Result, Session: r.Session})
 		})
 	if errors.Is(err, claudecode.ErrNotStarted) {
 		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)
@@ -1854,7 +1862,7 @@ func (c *codexTurns) Turn(ctx context.Context, turn call.Turn, report func(call.
 			if t := r.Tool; t != nil {
 				tool = &call.Tool{Name: t.Name, Input: t.Input}
 			}
-			report(call.Report{Tool: tool, Result: r.Result})
+			report(call.Report{Tool: tool, Result: r.Result, Session: r.Session})
 		})
 	if errors.Is(err, codex.ErrNotStarted) {
 		return call.Ended{}, fmt.Errorf("%w: %w", call.ErrNotStarted, err)

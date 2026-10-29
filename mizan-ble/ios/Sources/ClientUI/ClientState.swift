@@ -2,6 +2,10 @@ import DesignSystem
 
 /// The root supplies presentation values, including formatted names and copy.
 public struct ClientState: Equatable, Sendable {
+    public enum ContentProjection: Equatable, Sendable { case discovery, connectionFailure }
+    public var contentProjection: ContentProjection { if case .discovery = content { .discovery } else { .connectionFailure } }
+    public var actionsProjection: [Action] { actions }
+    public var rangeProjection: Bool { if case .discovery(_, true) = content { true } else { false } }
     public struct Steps: Equatable, Sendable {
         public var find: SessionStep
         public var connect: SessionStep
@@ -60,6 +64,7 @@ public struct ClientState: Equatable, Sendable {
         public var icon: Icon
         public var kind: ActionButtonStyle.Kind
         public var isEnabled: Bool
+        public var id: String { "\(title)-\(String(describing: event))" }
 
         public init(
             _ title: String, event: ClientEvent, icon: Icon,

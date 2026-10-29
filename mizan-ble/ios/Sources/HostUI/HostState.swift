@@ -2,6 +2,15 @@ import DesignSystem
 
 /// A presentation value: all copy and countdown values come from the caller.
 public struct HostState: Equatable, Sendable {
+    public enum PanelProjection: Equatable, Sendable { case keypad, countdown, connection, result, processor }
+    public var panelProjection: PanelProjection {
+        switch panel { case .keypad: .keypad; case .countdown: .countdown; case .connection: .connection; case .result: .result; case .processor: .processor }
+    }
+    public var noticeProjection: NoticeProjection { NoticeProjection(isPresent: notice != nil, isFailure: notice?.isFailure ?? false) }
+    public struct NoticeProjection: Equatable, Sendable { let isPresent: Bool; let isFailure: Bool }
+    public var toneProjection: ToneProjection { ToneProjection(status: statusTone, accent: accent, steps: steps, exchangeTone: exchange.tone, direction: exchange.direction) }
+    public struct ToneProjection: Equatable, Sendable { let status: StatusPill.State; let accent: Message.Tone; let steps: [SessionStep]; let exchangeTone: Message.Tone; let direction: Message.Direction }
+    public var buttonsProjection: [HostAction] { buttons }
     public struct Exchange: Equatable, Sendable {
         public var hostCode: String
         public var hostDetail: String

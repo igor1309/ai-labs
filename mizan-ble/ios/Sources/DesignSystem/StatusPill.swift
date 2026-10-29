@@ -2,6 +2,8 @@ import SwiftUI
 
 public struct StatusPill: View {
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public enum State: CaseIterable, Sendable {
         case idle, host, client, ok, bad
 
@@ -35,6 +37,7 @@ public struct StatusPill: View {
         .padding(.horizontal, Tokens.space3)
         .overlay { Capsule().strokeBorder(state.border, lineWidth: 1) }
         .fixedSize()
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: state)
         .accessibilityElement(children: .combine)
     }
 }

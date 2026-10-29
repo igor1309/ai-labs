@@ -42,6 +42,8 @@ Rules for new frames:
 
 ### Tokens
 
+Motion tokens for state transitions are Swift-only: Proposed, not decided.
+
 | Group | Tokens |
 |---|---|
 | Ground and surfaces | `mz-ground` #16181D, `mz-rail` #111317, `mz-raised` #20232A, `mz-raised-2` #2A2E36, `mz-overlay` |

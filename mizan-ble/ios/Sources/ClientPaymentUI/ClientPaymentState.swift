@@ -2,6 +2,11 @@ import DesignSystem
 
 /// Presentation values supplied by the caller, including all formatted copy.
 public struct ClientPaymentState: Equatable, Sendable {
+    public enum ContentProjection: Equatable, Sendable { case review, processing, paid, result }
+    public var contentProjection: ContentProjection {
+        switch content { case .review: .review; case .processing: .processing; case .paid: .paid; case .result: .result }
+    }
+    public var actionsProjection: [Action] { actions }
     public struct Steps: Equatable, Sendable {
         public var find: SessionStep
         public var connect: SessionStep
@@ -79,6 +84,7 @@ public struct ClientPaymentState: Equatable, Sendable {
         public var symbol: String
         public var kind: ActionButtonStyle.Kind
         public var isEnabled: Bool
+        public var id: String { "\(title)-\(String(describing: event))" }
 
         public init(
             _ title: String, event: ClientPaymentEvent, symbol: String,

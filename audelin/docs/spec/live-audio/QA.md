@@ -67,3 +67,42 @@ Evidence: `LiveAudioTests.secondListeningEndsWithoutTakingAudioFromTheFirst`.
 The listener holds before taking a tone; how far it has captured already
 includes that tone's end.
 Evidence: `LiveAudioTests.capturedThroughIncludesAudioBeforeItIsHeard`.
+
+## Piece statistics
+
+Give a fake capture zero-only pieces, one nonzero sample among zeros,
+NaN-only pieces, infinities, a finite nonzero mixed with nonfinite values,
+and an empty piece. Assert the finite-nonzero flag for every piece and its
+start and end on the captured timeline.
+
+## RMS windows
+
+Feed the same samples as one piece and as uneven pieces, including pieces
+shorter than a window, at several capture rates. Compare every complete
+window's times and RMS. Check known RMS values from signed samples and
+zeros, and boundaries falling halfway through a sample's duration. A NaN
+or infinity makes its window's RMS nonfinite, while the following finite
+window has its expected RMS. Try lengths just before, at and after window
+boundaries to prove a trailing partial window is omitted. Change rate with
+a partial window pending and assert the new window begins at the new
+piece's start and contains only the new rate's samples.
+
+## Independent statistics subscriber
+
+Subscribe before start in both orders relative to the listener. Receive
+the first measurement while both audio consumers are unread. A second
+statistics caller ends empty, as does a second listener, while the first
+subscribers and reader retain every piece and matching intervals. Leave
+statistics entirely unread while taking each piece from the listener and
+reader before stopping; the buffered measurements remain available after
+both audio views end.
+
+## Statistics completion
+
+Finish or fail the fake input after several pieces and assert that
+statistics finish after the same intervals the listener received. Stop
+with pieces pending and check that statistics drain before ending. For a
+failed stop, hold input processing until stop has been called, then release
+it and assert every piece is measured before statistics end, whether the
+fake closes its source or leaves it open. A refused start and a stop before
+start both finish a waiting statistics subscriber without values.

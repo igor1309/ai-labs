@@ -95,7 +95,7 @@ struct LoggingRecordingSession: RecordingSession {
         sink.write(.init(category: .recording, message: "begin id=\(id) called"))
         let report = await base.begin(id: id)
         switch report {
-        case .ready, .ended:
+        case .ready, .ended, .failed, .callSilent:
             sink.write(.init(category: .recording, message: "begin id=\(id) report=\(report)"))
         case let .cannotRecord(error):
             sink.write(.init(category: .recording, message: "begin id=\(id) report=cannotRecord", error: error))

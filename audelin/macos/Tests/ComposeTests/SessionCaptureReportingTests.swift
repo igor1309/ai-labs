@@ -13,6 +13,11 @@ struct SessionCaptureReportingTests {
         let release = Signal(), forwarded = Values<SessionEvent>()
         defer { release.end() }
         try await withSessionRig(stopFailure: side, stopEndsStream: stopEndsStream, beforeForward: { event in
+            // Only failure delivery participates in this gate.
+            switch event {
+            case .callAudioStatistics, .microphoneLevel: return
+            default: break
+            }
             await release.next()
             forwarded.append(event)
         }) { rig, _ in

@@ -103,6 +103,11 @@ public struct SessionFailure: Equatable, Sendable, Error, CustomStringConvertibl
 
 public struct SessionState: Equatable, Sendable {
 
+    public enum AudioWarning: Equatable, Sendable {
+
+        case callSilent
+    }
+
     public enum Phase: Equatable, Sendable {
 
         case idle
@@ -175,6 +180,8 @@ public struct SessionState: Equatable, Sendable {
     public var processSelection: SessionProcessSelection?
     public var failures: [SessionFailure]
     public var cannotRecord: String?
+    public var audioWarning: AudioWarning?
+    var audioObservation = SessionAudioObservation()
 
     public init(
         health: [Piece: Health] = [:],
@@ -193,7 +200,8 @@ public struct SessionState: Equatable, Sendable {
         callText: PieceStatus = .down,
         processSelection: SessionProcessSelection? = nil,
         failures: [SessionFailure] = [],
-        cannotRecord: String? = nil
+        cannotRecord: String? = nil,
+        audioWarning: AudioWarning? = nil
     ) {
 
         self.health = health
@@ -213,6 +221,7 @@ public struct SessionState: Equatable, Sendable {
         self.processSelection = processSelection
         self.failures = failures
         self.cannotRecord = cannotRecord
+        self.audioWarning = audioWarning
     }
 
     public func health(of piece: Piece) -> Health {
@@ -223,6 +232,9 @@ public struct SessionState: Equatable, Sendable {
 
 public enum SessionEvent: Equatable, Sendable {
 
+    /// Intervals use seconds from the same origin, ordered without overlap within each stream.
+    case callAudioStatistics(start: Double, end: Double, hasFiniteNonzeroSample: Bool)
+    case microphoneLevel(start: Double, end: Double, rms: Double)
     case begin(liveText: Bool)
     case end
     case modelsChecked(missing: [String])
@@ -261,6 +273,83 @@ public enum SessionEffect: Equatable, Sendable {
     case setLiveText(SessionState.LiveTextRequest)
 }
 
+enum SessionAudioThresholds {
+
+    // Amanu's values, not yet calibrated for Audelin.
+    static let callSilenceSeconds = 300.0
+    static let recentMicrophoneSeconds = 120.0
+    static let activeMicrophoneRMS = 0.01
+    static let sustainedMicrophoneSeconds = 0.1
+}
+
+struct SessionAudioObservation: Equatable, Sendable {
+
+    struct Activity: Equatable, Sendable {
+
+        var qualifiedAt: Double
+        var through: Double
+    }
+
+    var callCoveredThrough: Double?
+    var callSilentSince: Double?
+    var microphoneCoveredThrough: Double?
+    var microphoneActiveSince: Double?
+    // Keep activity ahead of the call stream until their common coverage can evaluate it.
+    var microphoneActivity: [Activity] = []
+    var warningIssued = false
+
+    mutating func acceptCall(start: Double, end: Double, nonzero: Bool) -> Bool {
+
+        guard valid(start: start, end: end, after: callCoveredThrough) else { return false }
+        if callCoveredThrough != start { callSilentSince = start }
+        if nonzero { callSilentSince = end }
+        callCoveredThrough = end
+        return true
+    }
+
+    mutating func acceptMicrophone(start: Double, end: Double, rms: Double) -> Bool {
+
+        guard valid(start: start, end: end, after: microphoneCoveredThrough) else { return false }
+        if microphoneCoveredThrough != start { microphoneActiveSince = nil }
+        microphoneCoveredThrough = end
+        guard rms.isFinite, rms >= SessionAudioThresholds.activeMicrophoneRMS else {
+            microphoneActiveSince = nil
+            return true
+        }
+        let activeSince = microphoneActiveSince ?? start
+        microphoneActiveSince = activeSince
+        let qualifiedAt = activeSince + SessionAudioThresholds.sustainedMicrophoneSeconds
+        if end >= qualifiedAt {
+            if microphoneActivity.last?.qualifiedAt == qualifiedAt {
+                microphoneActivity[microphoneActivity.count - 1].through = end
+            } else {
+                microphoneActivity.append(Activity(qualifiedAt: qualifiedAt, through: end))
+            }
+        }
+        return true
+    }
+
+    mutating func shouldWarn() -> Bool {
+
+        guard let callCoveredThrough, let microphoneCoveredThrough, let callSilentSince else { return false }
+        let coveredThrough = min(callCoveredThrough, microphoneCoveredThrough)
+        microphoneActivity.removeAll { $0.through + SessionAudioThresholds.recentMicrophoneSeconds < coveredThrough }
+        guard !warningIssued,
+              coveredThrough >= callSilentSince + SessionAudioThresholds.callSilenceSeconds,
+              microphoneActivity.contains(where: { $0.qualifiedAt <= coveredThrough })
+        else { return false }
+        warningIssued = true
+        return true
+    }
+
+    private func valid(start: Double, end: Double, after previousEnd: Double?) -> Bool {
+
+        guard start.isFinite, end.isFinite, end > start else { return false }
+        if let previousEnd { return start >= previousEnd }
+        return true
+    }
+}
+
 /// Purely orders one bring-up or bring-down operation at a time.
 public enum SessionReducer {
 
@@ -270,9 +359,26 @@ public enum SessionReducer {
         switch event {
         case let .begin(enabled):
             guard state.phase == .idle else { return (state, nil) }
+            state.audioWarning = nil
+            state.audioObservation = SessionAudioObservation()
             state.phase = .bringingUp
             state.wantedLiveText = enabled
             return (state, .checkModels)
+
+        case let .callAudioStatistics(start, end, hasFiniteNonzeroSample):
+            guard state.phase == .recording,
+                  state.audioObservation.acceptCall(start: start, end: end, nonzero: hasFiniteNonzeroSample)
+            else { return (state, nil) }
+            if hasFiniteNonzeroSample { state.audioWarning = nil }
+            if state.audioObservation.shouldWarn() { state.audioWarning = .callSilent }
+            return (state, nil)
+
+        case let .microphoneLevel(start, end, rms):
+            guard state.phase == .recording,
+                  state.audioObservation.acceptMicrophone(start: start, end: end, rms: rms)
+            else { return (state, nil) }
+            if state.audioObservation.shouldWarn() { state.audioWarning = .callSilent }
+            return (state, nil)
 
         case let .modelsChecked(missing):
             // An end during the check found nothing starting and has already ended.

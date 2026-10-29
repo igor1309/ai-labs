@@ -41,6 +41,9 @@ struct Transcript {
             case let .entry(entry):
                 builder.entry(entry, alpha: 1, spacing: log)
 
+            case let .gap(gap):
+                builder.caption("\(gap.speaker == .me ? "я" : "они")  \(gap.text)", alpha: 1, spacing: log)
+
             case let .late(late):
                 // The design dims the whole group, spaces it tighter than the
                 // log around it, and rules it off from what follows.

@@ -136,6 +136,9 @@ func latestCall(kept keptRuns, run string, first runstore.Call, session string) 
 			break
 		}
 		record, err := kept.Record(id)
+		if errors.Is(err, runstore.ErrNotStarted) {
+			continue
+		}
 		if err != nil {
 			return runstore.Call{}, err
 		}

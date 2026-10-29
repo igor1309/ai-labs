@@ -4,6 +4,25 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingReducerTests {
 
+    @Test(arguments: faultTransitions)
+    func faultsFollowTheCurrentSession(_ c: FaultTransition) { assert(c.state, c.event, reducedTo: c.expected) }
+
+    @Test(arguments: [RecordingState.Phase.beginning, .recording, .ending], [false, true])
+    func callSilenceFollowsTheCurrentSession(_ phase: RecordingState.Phase, _ value: Bool) { assert(changed(running) { $0.phase = phase; $0.callSilent = !value; $0.faults = [.microphone] }, .sessionReported(id: 1, .callSilent(value)), reducedTo: changed(running) { $0.phase = phase; $0.callSilent = value; $0.faults = [.microphone] }) }
+
+    @Test func endingTheSessionClearsCallSilence() { assert(changed(ending) { $0.callSilent = true }, .sessionReported(id: 1, .ended), reducedTo: changed(idle) { $0.lastSessionID = 1 }) }
+
+    @Test func aNewBeginClearsCallSilence() { assert(changed(idle) { $0.callSilent = true }, .userStart, reducedTo: beginning) }
+
+    @Test(arguments: [false, true])
+    func staleCallSilenceAfterEndIsIgnored(_ value: Bool) { assert(idleAfter(1), .sessionReported(id: 1, .callSilent(value)), reducedTo: idleAfter(1)) }
+
+    @Test func callSilenceWhileIdleIsIgnored() { assert(changed(idleAfter(1)) { $0.session = .init(id: 1, origin: .hand) }, .sessionReported(id: 1, .callSilent(true)), reducedTo: changed(idleAfter(1)) { $0.session = .init(id: 1, origin: .hand) }) }
+
+    @Test func anotherSessionsCallSilenceIsIgnored() { assert(running, .sessionReported(id: 99, .callSilent(true)), reducedTo: running) }
+
+    @Test func endingKeepsCallSilence() { assert(changed(running) { $0.callSilent = true }, .userStop, reducedTo: changed(ending) { $0.callSilent = true }) }
+
     @Test func userStartBeginsAHandSession() { assert(idle, .userStart, reducedTo: beginning) }
 
     @Test func callStartedBeginsACallSession() { assert(idle, .callStarted, reducedTo: call) }
@@ -141,3 +160,29 @@ private let conditionPairs = RecordingCondition.allCases.flatMap { recovered in
     RecordingCondition.allCases.filter { $0 != recovered }.map { ConditionPair(recovered: recovered, remaining: $0) }
 }
 private func blockedByTwo(_ p: ConditionPair) -> RecordingState { changed(idle) { $0.missing = [p.recovered, p.remaining] } }
+
+struct FaultTransition: Sendable, CustomTestStringConvertible {
+    let state: RecordingState
+    let event: RecordingEvent
+    let expected: RecordingState
+    var testDescription: String { "\(state.phase) + \(event)" }
+}
+
+private let faultTransitions: [FaultTransition] = RecordingFault.allCases.flatMap { fault in
+    let faulted = changed(running) { $0.faults = [fault] }
+    let faultedIdle = changed(idleAfter(1)) { $0.automatic = true; $0.faults = [fault] }
+    return [beginning, running, ending].flatMap { state in
+        [FaultTransition(state: state, event: .sessionReported(id: 1, .failed(fault)), expected: changed(state) { $0.faults = [fault] }),
+         FaultTransition(state: state, event: .sessionReported(id: 99, .failed(fault)), expected: state)]
+    } + [
+        FaultTransition(state: faulted, event: .sessionReported(id: 1, .failed(fault)), expected: faulted),
+        FaultTransition(state: faulted, event: .sessionReported(id: 1, .failed(.diskFull)), expected: changed(faulted) { $0.faults.insert(.diskFull) }),
+        FaultTransition(state: faulted, event: .userStop, expected: changed(faulted) { $0.phase = .ending }),
+        FaultTransition(state: faulted, event: .sessionReported(id: 1, .ended), expected: faultedIdle),
+        FaultTransition(state: faultedIdle, event: .sessionReported(id: 1, .failed(.diskFull)), expected: faultedIdle),
+        FaultTransition(state: changed(faultedIdle) { $0.session = .init(id: 1, origin: .hand) }, event: .sessionReported(id: 1, .failed(.diskFull)), expected: changed(faultedIdle) { $0.session = .init(id: 1, origin: .hand) }),
+        FaultTransition(state: faultedIdle, event: .userStart, expected: changed(beginning) { $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .hand) }),
+        FaultTransition(state: changed(pending) { $0.faults = [fault] }, event: .sessionReported(id: 1, .ended), expected: changed(call) { $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .call) }),
+        FaultTransition(state: changed(faultedIdle) { $0.missing = [.room] }, event: .userStart, expected: changed(faultedIdle) { $0.missing = [.room] }),
+    ]
+}

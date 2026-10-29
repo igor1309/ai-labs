@@ -70,6 +70,11 @@ struct SessionTranscriptTests {
             })
         }
         try await withSessionRig(construction: construction, beforeForward: { event in
+            // This gate holds transcript/control delivery, independently of measurements.
+            switch event {
+            case .callAudioStatistics, .microphoneLevel: return
+            default: break
+            }
             forwarding.send()
             await release.wait()
             forwarded.append(event)
@@ -112,6 +117,11 @@ struct SessionTranscriptTests {
         try await withSessionRig(construction: construction, connect: { pieces, session in
             Task {
                 for await event in pieces.events {
+                    // Only transcript/control events participate in this forwarding gate.
+                    switch event {
+                    case .callAudioStatistics, .microphoneLevel: continue
+                    default: break
+                    }
                     news.append(event)
                     reported.send()
                     await release.wait()

@@ -34,6 +34,7 @@ struct AudelinApp: App {
                 .appendingPathComponent(".audelin/preferences.json")),
             access: access,
             openCallsFolder: { NSWorkspace.shared.open($0) },
+            openURL: { NSWorkspace.shared.open($0) },
             presentPanel: { [weak panel] in panel?.setVisible($0) },
             terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } },
             quit: quit,

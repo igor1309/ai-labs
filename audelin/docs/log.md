@@ -2,6 +2,17 @@
 
 ## 2026-10-29
 
+- The panel shows each recording problem the menu bar shows (no call audio,
+  no microphone, disk full, call silent) as a banner, with a gap row in the
+  transcript where a track stopped, and opens the matching macOS setting or
+  the recordings folder (LAB-739).
+- While recording, the menu bar warns when the call side has been silent for
+  five minutes while you talk, usually a revoked System Audio Recording
+  permission; the warning goes when call audio returns (LAB-733).
+
+- The menu bar names microphone, call-audio and track-write faults while recording
+  and ending, keeping each fault until the next recording begins (LAB-510).
+
 - A missing call-audio permission now shows as missing call audio and holds
   recording back, instead of recording a silent call side (LAB-604).
 

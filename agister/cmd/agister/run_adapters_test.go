@@ -50,7 +50,7 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 	t.Parallel()
 	roots := &countedRoots{asked: map[string]int{}}
 	clock := clocktest.NewClock(runStart)
-	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch,
+	machine := host{probe: unexpectedProbe(t), ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch,
 		random: randomSpy{0x55, 0xfd, 0x36}}
 	wrappers := newRuntimesSpy(t)
 	wrappers.bash.answer = echoes
@@ -582,7 +582,7 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 	full := func() (string, links, *filesystemSpy, rootSpy, wrappersSpy, []turn, host) {
 		return "/u/.agister", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappersSpy{},
 			[]turn{{contract: "bash/1", inputs: call.InEnvironment, runtime: turns}},
-			host{ctx: context.Background(), clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch, random: randomSpy{0}}
+			host{probe: unexpectedProbe(t), ctx: context.Background(), clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch, random: randomSpy{0}}
 	}
 	home, l, fs, roots, wrappers, tu, machine := full()
 	sources := (&sourcesSpy{}).sourcing()
