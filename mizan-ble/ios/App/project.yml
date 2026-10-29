@@ -1,0 +1,42 @@
+name: MizanBLE
+options:
+  deploymentTarget:
+    iOS: "26.0"
+packages:
+  MizanBLEApp:
+    path: .
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGNING_ALLOWED: NO
+targets:
+  MizanBLE:
+    type: application
+    platform: iOS
+    sources:
+      - MizanBLE
+    dependencies:
+      - package: MizanBLEApp
+        product: Root
+      - package: MizanBLEApp
+        product: DeviceRadios
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.igor1309.mizan-ble
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: MizanBLE/Info.plist
+      properties:
+        CFBundleDisplayName: Mizan BLE
+        NSBluetoothAlwaysUsageDescription: Mizan BLE uses Bluetooth to pay a nearby till, or to be the till.
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+schemes:
+  MizanBLE:
+    build:
+      targets:
+        MizanBLE: all
+    run:
+      config: Debug
