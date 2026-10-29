@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Darwin
 import Foundation
 import Testing
@@ -17,7 +18,7 @@ final class TrackCommand: @unchecked Sendable {
     private let pipe: Pipe
     private let input: Pipe
 
-    init(_ executable: String, _ arguments: [String]) throws {
+    init(_ executable: String, _ arguments: [String]) async throws {
 
         process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
@@ -43,7 +44,9 @@ final class TrackCommand: @unchecked Sendable {
             ended.continuation.yield(process.terminationStatus)
             ended.continuation.finish()
         }
-        do { try process.run() }
+        // Launching blocks while the child is spawned, so it happens off the cooperative pool.
+        let launching = process
+        do { try await offPool { try launching.run() } }
         catch {
             pipe.fileHandleForReading.readabilityHandler = nil
             bytes.continuation.finish()
@@ -69,14 +72,16 @@ final class TrackCommand: @unchecked Sendable {
         kill()
         _ = await finish()
         pipe.fileHandleForReading.readabilityHandler = nil
-        try? pipe.fileHandleForReading.close()
-        try? input.fileHandleForWriting.close()
+        await offPool { [self] in
+            try? pipe.fileHandleForReading.close()
+            try? input.fileHandleForWriting.close()
+        }
     }
 }
 
 func runCommand(_ executable: String, _ arguments: [String]) async throws -> CommandResult {
 
-    let command = try TrackCommand(executable, arguments)
+    let command = try await TrackCommand(executable, arguments)
     return try await withTaskCancellationHandler {
         var data = Data()
         for await bytes in command.output { data.append(bytes) }
@@ -104,7 +109,7 @@ func withDiskImage(
 
     let image = folder.appendingPathComponent("small.dmg")
     let mount = folder.appendingPathComponent("volume", isDirectory: true)
-    try FileManager.default.createDirectory(at: mount, withIntermediateDirectories: false)
+    try await offPool { try FileManager.default.createDirectory(at: mount, withIntermediateDirectories: false) }
     let created = try await run("/usr/bin/hdiutil", [
         "create", "-size", "2m", "-fs", "HFS+", "-type", "UDIF", "-volname", "TrackFileTest", "-o", image.path,
     ])

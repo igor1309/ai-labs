@@ -42,6 +42,8 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
     private var defaultListener: AudioObjectPropertyListenerBlock?
     private let notifications = DispatchQueue(label: "audelin.microphone-notifications")
     private let engineLock = NSLock()
+    // Read without the engine lock, which configuration changes hold across native calls.
+    private let voiceProcessing = Mutex(false)
 
     init(
         makeEngine: @escaping @Sendable () -> any MicrophoneEngine,
@@ -59,12 +61,7 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
 
     var now: Double { Self.clockSeconds }
 
-    var voiceProcessingEnabled: Bool {
-
-        engineLock.lock()
-        defer { engineLock.unlock() }
-        return engine?.voiceProcessingEnabled ?? false
-    }
+    var voiceProcessingEnabled: Bool { voiceProcessing.withLock { $0 } }
 
     func defaultInput() throws -> UInt32 {
 
@@ -117,6 +114,8 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         self.engine = engine
         phase = .ended
         try engine.disableVoiceProcessing()
+        let enabled = engine.voiceProcessingEnabled
+        voiceProcessing.withLock { $0 = enabled }
         try engine.use(device: device)
         configurationObserver = engine.observeConfigurationChange { [weak self, weak engine] in
             guard let self, let engine else { return }

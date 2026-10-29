@@ -100,13 +100,13 @@ struct PanelWindowWiringTests {
         let panel = ReadingClockSpy().panel()
         try await withSessionRig(connect: { _, _ in Task {} }) { first, _ in
             try await withSessionRig(connect: { _, _ in Task {} }) { second, _ in
-                let connected = Values<Session>()
+                let connected = Values<SessionInputs>()
                 let sessions = RecordingSessions(
                     makePieces: { $0 == 1 ? first.pieces : second.pieces }, liveText: { false },
                     report: { _, _ in }, connect: { pieces, session in
                         connected.append(session)
                         return subscribe(pieces, to: session)
-                    }, sink: PanelLogSpy(), panel: panel
+                    }, sink: PanelLogSpy(), panel: panel, makeSession: makeSession
                 )
                 do {
                     #expect(await sessions.begin(id: 1) == .ready)
@@ -116,7 +116,7 @@ struct PanelWindowWiringTests {
                     await panel.send(.switchLiveTextOn)
                     #expect(await firstSession.snapshot().wantedLiveText)
 
-                    firstSession.send(.liveTextChanged(false))
+                    await firstSession.send(.liveTextChanged(false))
                     #expect(await firstSession.snapshot().wantedLiveText == false)
                     #expect(await sessions.begin(id: 2) == .ready)
                     #expect(connected.all.count == 2)
@@ -129,7 +129,7 @@ struct PanelWindowWiringTests {
                     #expect(await firstSession.snapshot().wantedLiveText == false)
 
                     await sessions.end(id: 1)
-                    secondSession.send(.liveTextChanged(false))
+                    await secondSession.send(.liveTextChanged(false))
                     #expect(await secondSession.snapshot().wantedLiveText == false)
                     await panel.send(.switchLiveTextOn)
                     #expect(await secondSession.snapshot().wantedLiveText)

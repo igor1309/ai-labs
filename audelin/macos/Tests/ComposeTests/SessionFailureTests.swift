@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Session
 import Testing
@@ -26,7 +27,7 @@ struct SessionFailureTests {
                     guard let effect else { break }
                     event = await handler.handle(effect)
                     if case .createFolder = effect {
-                        try Data("existing track".utf8).write(to: blocked)
+                        try await offPool { try Data("existing track".utf8).write(to: blocked) }
                     }
                 }
                 #expect(state.phase == (command == .end ? .ended : .recording))
@@ -48,7 +49,7 @@ struct SessionFailureTests {
             }
             #expect(rig.microphone.starts.all == (side == .microphone ? [] : [true]))
             #expect(rig.call.starts.all == (side == .call ? [] : [true]))
-            #expect(try String(contentsOf: blocked, encoding: .utf8) == "existing track")
+            #expect(try await offPool { try String(contentsOf: blocked, encoding: .utf8) } == "existing track")
             let otherName = side == .microphone ? "call.caf" : "microphone.caf"
             #expect(try recordedSamples(folder.appendingPathComponent(otherName))
                 == (side == .microphone ? [-0.25, 0.5, -0.125] : [0.25, -0.5, 0.125]))
@@ -64,7 +65,7 @@ struct SessionFailureTests {
             return CaptureTrack(track: track)
         }
         try await withSessionRig(construction: construction, stopFailure: side, stopEndsStream: stopEndsStream) { rig, folder in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.mine.heard.next()
             await rig.theirs.heard.next()
@@ -93,7 +94,7 @@ struct SessionFailureTests {
             return CaptureTrack(track: track)
         }
         try await withSessionRig(construction: construction) { rig, folder in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.mine.heard.next()
             await rig.theirs.heard.next()
@@ -117,7 +118,7 @@ struct SessionFailureTests {
     func failedCaptureReachesSessionBeforeEnd(side: SessionSide) async throws {
 
         try await withSessionRig { rig, folder in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.mine.heard.next()
             await rig.theirs.heard.next()
@@ -148,7 +149,7 @@ private func expectOtherSideRecords(
         await rig.mine.heard.next()
         #expect(await rig.mine.chunks.last?.samples == [0.625])
     }
-    rig.session.send(.end)
+    await rig.session.send(.end)
     let ended = try await rig.state { $0.phase == .ended }
     #expect(ended.failures == failures)
     let name = failedSide == .microphone ? "call.caf" : "microphone.caf"

@@ -61,7 +61,7 @@ struct NativeCaptureBindingTests {
             format.mSampleRate = 24_000
             $0.formatOnRegistration = format
         }
-        let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         defer { capture.stop() }
         try calls.deliver(samples: [0.25])
         try calls.deliver(samples: [0.5, 0.75])
@@ -95,7 +95,7 @@ struct NativeCaptureBindingTests {
         let deliveries = Mutex(0)
         let install = {
             let io = try binding.installIO(device) { _ in deliveries.withLock { $0 += 1 } }
-            defer { binding.removeIO(device, io) }
+            binding.removeIO(device, io)
         }
         if readRefused {
             #expect(throws: NSError(domain: NSOSStatusErrorDomain, code: -50), performing: install)
@@ -120,7 +120,7 @@ struct NativeCaptureBindingTests {
     @Test func nativeBuffersKeepInputSamplesAndRatesInDeliveryOrder() async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
-        let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         let samples: [[Float]] = [
             [-0.875, -0.75, -0.625], [-0.5],
             [-0.375, -0.25, -0.125, 0], [0.125, 0.25],
@@ -287,7 +287,7 @@ struct NativeCaptureBindingTests {
     func nativeFormatFailuresKeepEarlierAudio(readRefused: Bool) async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
-        let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         let samples = (0..<480).map { tone(10, frame: $0, rate: 48_000) }
         try calls.deliver(samples: samples)
         calls.state.withLock {
@@ -354,7 +354,7 @@ struct NativeCaptureBindingTests {
     @Test func nativeAggregateContainsOnlyItsPrivateManualTap() async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
-        let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         capture.stop()
         #expect(try await drain(capture).isEmpty)
         let aggregate = try #require(calls.state.withLock { $0.aggregates.first?.value })
@@ -399,7 +399,7 @@ struct NativeCaptureBindingTests {
     func nativeRunningZeroNoticeKeepsDeliveringAudio(readStatus: OSStatus) async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
-        let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         defer { capture.stop() }
         calls.state.withLock {
             $0.running = 0
@@ -452,7 +452,7 @@ struct NativeCaptureBindingTests {
     @Test func nativeStopReleasesEveryHandleInTeardownOrder() async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
-        let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         capture.stop()
         capture.stop()
         #expect(try await drain(capture).isEmpty)
@@ -463,12 +463,12 @@ struct NativeCaptureBindingTests {
     }
 
     @Test(arguments: ["tap", "device", "format", "format watch", "io", "watch", "start"])
-    func eachRefusedNativeStartingStepReleasesOnlyItsHandles(step: String) {
+    func eachRefusedNativeStartingStepReleasesOnlyItsHandles(step: String) async {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
         calls.state.withLock { $0.refuse = step }
-        #expect(throws: NSError(domain: NSOSStatusErrorDomain, code: -50)) {
-            _ = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
+        await #expect(throws: NSError(domain: NSOSStatusErrorDomain, code: -50)) {
+            _ = try await SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         }
         let steps = ["tap", "device", "format", "format", "format watch", "io", "watch", "start"]
         let index = steps.firstIndex(of: step)!
@@ -511,8 +511,8 @@ struct NativeCaptureBindingTests {
     @Test func runningRenameWritesTheNativeTapDescription() async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
-        let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10, 20]))
-        try capture.name(.allExcept([30, 40]))
+        let capture = try await SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10, 20]))
+        try await capture.name(.allExcept([30, 40]))
         capture.stop()
         #expect(try await drain(capture).isEmpty)
         let created = try #require(calls.state.withLock { $0.created.first })
@@ -538,10 +538,10 @@ struct NativeCaptureBindingTests {
     @Test func aRefusedNativeDescriptionWriteIsThrown() async throws {
 
         let calls = RecordingCaptureCalls(format: .float32MonoLittleEndian)
-        let capture = try SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: CoreAudioBinding(native: calls.native), processes: .only([10]))
         calls.state.withLock { $0.writeStatus = -50 }
         do {
-            try capture.name(.only([20, 30]))
+            try await capture.name(.only([20, 30]))
             Issue.record("The native write must be refused")
         } catch {
             #expect((error as NSError).domain == NSOSStatusErrorDomain)

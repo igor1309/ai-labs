@@ -3,6 +3,7 @@ import PanelUI
 import Reading
 import Recording
 import Session
+import Observation
 import Synchronization
 import Testing
 import protocol TranscriptWriting.CallText
@@ -19,7 +20,7 @@ struct ReadingCompositionTests {
         try await withSessionRig(construction: construction) { rig, _ in
             let incoming = await rig.pieces.readingText()
             var consumer = incoming.makeAsyncIterator()
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             let original = callEntry(.mine, 3, start: 2, settled: "old")
             let other = callEntry(.theirs, 9, start: 8, settled: "other")
@@ -42,7 +43,7 @@ struct ReadingCompositionTests {
                 text.input.continuation.yield(.init(status: .listening, entries: [
                     other, callEntry(.mine, 3, start: 12, settled: "reused"),
                 ]))
-                rig.session.send(.end)
+                await rig.session.send(.end)
                 _ = try await rig.state { $0.phase == .ended }
                 while let state = await consumer.next() { feed.continuation.yield(state) }
 
@@ -58,7 +59,7 @@ struct ReadingCompositionTests {
     @Test func textUpdatesReachPanelAndLogsContainOnlyModesAndCounts() async throws {
 
         let clock = ReadingClockSpy(), sink = ReadingLogSpy()
-        let panel = AudelinPanel(now: clock.now, ticks: clock.ticks, sink: sink)
+        let panel = AudelinPanel(makeReading: ReadingStub.inputs, now: clock.now, ticks: clock.ticks, sink: sink)
         let input = AsyncStream<State>.makeStream()
         try await withReading(panel, id: 1, text: input.stream) {
             var states = await panel.states().makeAsyncIterator()
@@ -86,7 +87,7 @@ struct ReadingCompositionTests {
     @Test func aLaterRecordingStartsEmptyAndCannotReceiveAnEarlierRecordingsText() async throws {
 
         let clock = ReadingClockSpy()
-        let panel = AudelinPanel(now: clock.now, ticks: clock.ticks, sink: ReadingLogSpy())
+        let panel = AudelinPanel(makeReading: ReadingStub.inputs, now: clock.now, ticks: clock.ticks, sink: ReadingLogSpy())
         let first = AsyncStream<State>.makeStream(), second = AsyncStream<State>.makeStream()
         try await withReading(panel, id: 1, text: first.stream) {
             var states = await panel.states().makeAsyncIterator()
@@ -114,7 +115,7 @@ struct ReadingCompositionTests {
     @Test func elapsedUsesTheRecordingsStartAndStopsWithItsSubscription() async throws {
 
         let clock = ReadingClockSpy()
-        let panel = AudelinPanel(now: clock.now, ticks: clock.ticks, sink: ReadingLogSpy())
+        let panel = AudelinPanel(makeReading: ReadingStub.inputs, now: clock.now, ticks: clock.ticks, sink: ReadingLogSpy())
         let input = AsyncStream<State>.makeStream()
         try await withReading(panel, id: 1, text: input.stream) {
             var states = await panel.states().makeAsyncIterator()
@@ -138,7 +139,7 @@ struct ReadingCompositionTests {
     @Test func panelActionsReachTheCurrentReading() async throws {
 
         let clock = ReadingClockSpy()
-        let panel = AudelinPanel(now: clock.now, ticks: clock.ticks, sink: ReadingLogSpy())
+        let panel = AudelinPanel(makeReading: ReadingStub.inputs, now: clock.now, ticks: clock.ticks, sink: ReadingLogSpy())
         let input = AsyncStream<State>.makeStream()
         try await withReading(panel, id: 1, text: input.stream) {
             var states = await panel.states().makeAsyncIterator()
@@ -212,7 +213,7 @@ struct ReadingCompositionTests {
                 observed.send()
             }
         })
-        let panel = AudelinPanel(now: clock.now, ticks: clock.ticks, sink: sink)
+        let panel = AudelinPanel(makeReading: ReadingStub.inputs, now: clock.now, ticks: clock.ticks, sink: sink)
         var construction = SessionConstruction()
         construction.makeCallText = { _ in text }
         let starting = Signal(), release = Signal()
@@ -222,7 +223,7 @@ struct ReadingCompositionTests {
             await release.next()
         }) { rig, _ in
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { true },
-                                             report: { _, _ in }, connect: subscribe, sink: sink, panel: panel)
+                                             report: { _, _ in }, connect: subscribe, sink: sink, panel: panel, makeSession: makeSession)
             let begin = Task { await sessions.begin(id: 11) }
             await starting.next()
             await observed.next()
@@ -271,7 +272,7 @@ private func withReading(
 ) async rethrows {
 
     let subscription = await panel.begin(id: id, text: text, enableLiveText: { Issue.record("No live-text control was sent") })
-    subscription.recordingChanged(.on(elapsed: 0))
+    await subscription.recordingChanged(.on(elapsed: 0))
     for await state in await panel.states() {
         if state.recording == .on(elapsed: "00:00:00") { break }
     }
@@ -308,7 +309,7 @@ final class ReadingClockSpy: Sendable {
 
     func panel() -> AudelinPanel {
 
-        AudelinPanel(now: now, ticks: ticks, sink: ReadingLogSpy())
+        AudelinPanel(makeReading: ReadingStub.inputs, now: now, ticks: ticks, sink: ReadingLogSpy())
     }
 
     func now() -> Double { time.withLock { $0 } }
@@ -344,4 +345,19 @@ private final class PanelCallTextSpy: TranscriptWriting.CallText {
     }
     func setEnabled(_ enabled: Bool) async {}
     func stop() async { input.continuation.finish() }
+}
+
+/// Reduces synchronously on the main actor, observable as the app's model is.
+@MainActor @Observable
+final class ReadingStub {
+
+    private(set) var state = ReadingState()
+
+    func send(_ event: ReadingEvent) { state = ReadingReducer.reduce(state, event).0 }
+
+    static func inputs() -> ReadingInputs {
+
+        let stub = ReadingStub()
+        return ReadingInputs(state: { stub.state }, send: { stub.send($0) })
+    }
 }

@@ -1,3 +1,4 @@
+import Dispatch
 import Foundation
 import Synchronization
 
@@ -58,6 +59,8 @@ public final class CoreAudioProcesses: Sendable {
     private let clock: any CallClock
     private let continuation: AsyncThrowingStream<CallEvent, any Error>.Continuation
     private let state = Mutex(State())
+    // Callers reach Core Audio, which blocks, only through this queue; its notifications arrive on its own threads.
+    private let queue = DispatchSerialQueue(label: "audelin.CoreAudioProcesses")
 
     public init(binding: any ProcessBinding, clock: any CallClock) {
 
@@ -68,12 +71,18 @@ public final class CoreAudioProcesses: Sendable {
 
     deinit {
 
-        stop()
+        state.withLock { finish(&$0) }
+        cancelRetired()
     }
 
     /// The processes with audio open, or the binding's failure. Asking does
     /// not change the call or sample microphone use.
-    public func processes() throws -> [AudioProcess] {
+    public func processes() async throws -> [AudioProcess] {
+
+        try await onQueue { [self] in try listProcesses() }
+    }
+
+    private func listProcesses() throws -> [AudioProcess] {
 
         try binding.processObjects().compactMap { object in
             guard let pid = binding.pid(of: object) else { return nil }
@@ -85,7 +94,12 @@ public final class CoreAudioProcesses: Sendable {
     }
 
     /// Starts listening once; a call already on is told at once.
-    public func start() throws {
+    public func start() async throws {
+
+        try await onQueue { [self] in try startListening() }
+    }
+
+    private func startListening() throws {
 
         defer { cancelRetired() }
         try state.withLock { state in
@@ -105,10 +119,22 @@ public final class CoreAudioProcesses: Sendable {
     }
 
     /// Removes listeners and ends the stream, keeping buffered events.
-    public func stop() {
+    public func stop() async {
 
-        state.withLock { finish(&$0) }
-        cancelRetired()
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            queue.async { [self] in
+                state.withLock { finish(&$0) }
+                cancelRetired()
+                done.resume()
+            }
+        }
+    }
+
+    private func onQueue<Value: Sendable>(_ work: @escaping @Sendable () throws -> Value) async throws -> Value {
+
+        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Value, any Error>) in
+            queue.async { done.resume(with: Result { try work() }) }
+        }
     }
 
     private func receive(_ update: (inout State) throws -> Void) {

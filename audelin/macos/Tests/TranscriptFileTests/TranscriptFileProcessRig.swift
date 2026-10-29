@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Darwin
 import Foundation
 
@@ -10,7 +11,7 @@ final class TranscriptCommand: @unchecked Sendable {
     private let pipe: Pipe
     private let input: Pipe
 
-    init(_ executable: URL, _ arguments: [String]) throws {
+    init(_ executable: URL, _ arguments: [String]) async throws {
 
         process = Process()
         process.executableURL = executable
@@ -36,7 +37,9 @@ final class TranscriptCommand: @unchecked Sendable {
             ended.continuation.yield(process.terminationStatus)
             ended.continuation.finish()
         }
-        do { try process.run() }
+        // Launching blocks while the child is spawned, so it happens off the cooperative pool.
+        let launching = process
+        do { try await offPool { try launching.run() } }
         catch {
             pipe.fileHandleForReading.readabilityHandler = nil
             bytes.continuation.finish()
@@ -69,9 +72,11 @@ final class TranscriptCommand: @unchecked Sendable {
         kill()
         _ = await finish()
         pipe.fileHandleForReading.readabilityHandler = nil
-        try? pipe.fileHandleForReading.close()
-        try? input.fileHandleForWriting.close()
-        try? input.fileHandleForReading.close()
-        try? pipe.fileHandleForWriting.close()
+        await offPool { [self] in
+            try? pipe.fileHandleForReading.close()
+            try? input.fileHandleForWriting.close()
+            try? input.fileHandleForReading.close()
+            try? pipe.fileHandleForWriting.close()
+        }
     }
 }

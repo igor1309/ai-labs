@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Darwin
 import Foundation
 import Session
@@ -11,7 +12,7 @@ struct SessionRecordingTests {
     func keepsAudioAndFinalWordsWhenEnding(microphoneFails: Bool, processesFail: Bool) async throws {
 
         try await withSessionRig(microphoneFails: microphoneFails, processesFail: processesFail) { rig, folder in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             let recording = try await rig.state { $0.phase == .recording }
             #expect(recording.microphoneCapture == (microphoneFails ? .down : .up))
             #expect(recording.callCapture == .up)
@@ -19,13 +20,13 @@ struct SessionRecordingTests {
             if !microphoneFails { await rig.mine.heard.next() }
             await rig.theirs.heard.next()
 
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(ended.failures.count == (microphoneFails ? 1 : 0) + (processesFail ? 1 : 0))
             #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == (microphoneFails ? [] : [0.25, -0.5, 0.125]))
             #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
             let mine = microphoneFails ? "" : "**Me** 00:00:00\nmine final\n\n"
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
                 == "# Transcript\n\n" + mine + "**Them** 00:00:00\ntheirs final\n")
             #expect(await rig.mine.chunks.flatMap(\.samples) == (microphoneFails ? [] : [0.25, -0.5, 0.125]))
             #expect(await rig.theirs.chunks.flatMap(\.samples) == [-0.25, 0.5, -0.125])
@@ -53,9 +54,9 @@ struct SessionRecordingTests {
             await release.next()
         }) { rig, folder in
             defer { started.end(); release.end() }
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             await started.next()
-            rig.session.send(.end)
+            await rig.session.send(.end)
             _ = try await rig.state { $0.phase == .ending }
             release.end()
             let ended = try await rig.state { $0.phase == .ended }
@@ -75,7 +76,7 @@ struct SessionRecordingTests {
             #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf"))
                 == (microphoneStarted ? [0.25, -0.5, 0.125] : []))
             #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [])
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
                 == "# Transcript\n\n" + (microphoneStarted ? "**Me** 00:00:00\nmine final\n" : "No text was heard.\n"))
         }
     }
@@ -131,18 +132,18 @@ struct SessionRecordingTests {
     @Test func liveTextSwitchesForwardToTheRunningReader() async throws {
 
         try await withSessionRig { rig, folder in
-            rig.session.send(.begin(liveText: false))
+            await rig.session.send(.begin(liveText: false))
             _ = try await rig.state { $0.phase == .recording }
             let text = try #require(await rig.pieces.text)
             #expect(await text.state.status == .off)
-            rig.session.send(.liveTextChanged(true))
+            await rig.session.send(.liveTextChanged(true))
             _ = try await rig.state { $0.pendingLiveText == nil && $0.wantedLiveText }
             await rig.mine.heard.next()
             await rig.theirs.heard.next()
-            rig.session.send(.liveTextChanged(false))
+            await rig.session.send(.liveTextChanged(false))
             _ = try await rig.state { $0.pendingLiveText == nil && !$0.wantedLiveText }
             #expect(await text.state.status == .off)
-            rig.session.send(.end)
+            await rig.session.send(.end)
             _ = try await rig.state { $0.phase == .ended }
             #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
         }

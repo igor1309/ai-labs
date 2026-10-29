@@ -1,3 +1,4 @@
+import BlockingTestWork
 import AVFoundation
 import Dispatch
 import Foundation
@@ -36,21 +37,17 @@ struct ParakeetRecognizerTests {
                 ScriptedReader([[WindowWord(String(model), start: 0.1, end: 0.4)]])
             }
         )
-        let original = ParakeetRecognizer.readers.withLock { $0 }
-        defer { ParakeetRecognizer.readers.withLock { $0 = original } }
         let (building, arrivals) = AsyncStream<Void>.makeStream()
         defer { arrivals.finish() }
-        ParakeetRecognizer.readers.withLock {
-            $0 = {
-                arrivals.yield(())
-                return try await makeReader()
-            }
+        let build: @Sendable () async throws -> ParakeetRecognizer = {
+            arrivals.yield(())
+            return ParakeetRecognizer(reader: try await makeReader())
         }
         let recognizers = 4
 
         let built = try await withThrowingTaskGroup(of: ParakeetRecognizer.self) { group in
             for _ in 0..<recognizers {
-                group.addTask { try await ParakeetRecognizer() }
+                group.addTask { try await build() }
             }
             var entries = building.makeAsyncIterator()
             for _ in 0..<recognizers { await entries.next() }
@@ -84,7 +81,7 @@ struct ParakeetRecognizerTests {
 
     @Test func wordsBeforeTheRightContextAreFinal() async throws {
 
-        let recognizer = ParakeetRecognizer(reader: try RecordedReader())
+        let recognizer = ParakeetRecognizer(reader: try await RecordedReader())
 
         _ = try await recognizer.hear(silence(6))
         let hearing = try await recognizer.hear(silence(4))
@@ -95,7 +92,7 @@ struct ParakeetRecognizerTests {
 
     @Test func wordsInTheRightContextArePending() async throws {
 
-        let recognizer = ParakeetRecognizer(reader: try RecordedReader())
+        let recognizer = ParakeetRecognizer(reader: try await RecordedReader())
 
         let hearing = try await recognizer.hear(silence(6))
 
@@ -105,7 +102,7 @@ struct ParakeetRecognizerTests {
 
     @Test func theNextWindowReadsPendingWordsAnew() async throws {
 
-        let recognizer = ParakeetRecognizer(reader: try RecordedReader())
+        let recognizer = ParakeetRecognizer(reader: try await RecordedReader())
 
         let first = try await recognizer.hear(silence(6))
         let next = try await recognizer.hear(silence(4))
@@ -142,7 +139,7 @@ struct ParakeetRecognizerTests {
 
     @Test func wordsTwoWindowsReadAreHeardOnce() async throws {
 
-        let reader = try RecordedReader()
+        let reader = try await RecordedReader()
         let audio = stride(from: 0, to: reader.duration, by: 1).map { silence(min(1, reader.duration - $0)) }
 
         let updates = await listen(ParakeetRecognizer(reader: reader), to: audio)
@@ -177,6 +174,18 @@ struct ParakeetRecognizerTests {
 
         #expect(updates.dropFirst().first?.all.map(\.pending) == ["долгое старое"])
         #expect(updates.last?.all.map(\.settled) == ["долгое новое"])
+    }
+
+    @Test func aPendingWordStartingBeforeAFinalWordEndsKeepsItPending() async throws {
+
+        let reader = ScriptedReader([
+            [word("в", 3.7, 3.95), word("полдень", 3.9, 4.3)],
+            [word("полдень", 1.9, 2.3)],
+        ])
+
+        let updates = await listen(ParakeetRecognizer(reader: reader), to: [silence(6)])
+
+        #expect(updates.last?.all.map(\.settled) == ["в полдень"])
     }
 
     @Test func finishingHearsTheRest() async throws {
@@ -299,21 +308,17 @@ struct ParakeetRecognizerTests {
     private func spoken(_ text: String, sampleRate: Int) async throws -> [Float] {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
+        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        defer { afterwards { try? FileManager.default.removeItem(at: directory) } }
         let url = directory.appendingPathComponent("spoken.wav")
 
         let say = Process()
         say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
         say.arguments = ["-v", "Milena", "--file-format=WAVE", "--data-format=LEF32@\(sampleRate)", "-o", url.path, text]
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-            say.terminationHandler = { _ in continuation.resume() }
-            do { try say.run() }
-            catch {
-                say.terminationHandler = nil
-                continuation.resume(throwing: error)
-            }
-        }
+        let exited = AsyncStream<Void>.makeStream()
+        say.terminationHandler = { _ in exited.continuation.finish() }
+        try await offPool { try say.run() }
+        for await _ in exited.stream {}
         try #require(say.terminationStatus == 0)
 
         let file = try AVAudioFile(forReading: url)
@@ -422,13 +427,13 @@ private actor RecordedReader: WindowReader {
     /// word read on both sides of a chunk's edge once.
     nonisolated let chunkWords: [String]
 
-    init() throws {
+    init() async throws {
 
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .appendingPathComponent("../../../docs/research/spike/fixtures/terms-shift-0.jsonl")
             .standardizedFileURL
-        let windows = try String(contentsOf: url, encoding: .utf8)
+        let windows = try await offPool { try String(contentsOf: url, encoding: .utf8) }
             .split(separator: "\n")
             .map { try JSONDecoder().decode(Window.self, from: Data($0.utf8)) }
         self.windows = windows

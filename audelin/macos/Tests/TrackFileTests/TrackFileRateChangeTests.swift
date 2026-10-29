@@ -15,7 +15,7 @@ struct TrackFileRateChangeTests {
     func rateChangesKeepCallTimeAndReleaseCatchUp(pieces: [(Int, Double)]) async throws {
 
         try await withTrackFolder { folder in
-            let rig = try TrackRig(folder)
+            let rig = try await TrackRig(folder)
             let url = rig.track.url
             var duration = 0.0
             var acknowledged: [Float] = []
@@ -62,7 +62,7 @@ struct TrackFileRateChangeTests {
                 expectSamples(try await read.value, disk)
             }
             try await rig.track.close()
-            #expect(try dataChunkLength(url) == 4 + Int64(acknowledged.count) * 2)
+            #expect(try await dataChunkLength(url) == 4 + Int64(acknowledged.count) * 2)
             expectSamples(try await rig.track.read(from: 0, to: end), acknowledged)
             expectSamples(try externalSamples(url), acknowledged)
         }

@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Session
 import Synchronization
@@ -17,7 +18,7 @@ struct SessionTranscriptTests {
         let news = Values<String>()
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
                 if state.entries.count == 2, !failed.withLock({ value in
                     let previous = value
                     value = true
@@ -28,7 +29,7 @@ struct SessionTranscriptTests {
         try await withSessionRig(construction: construction, beforeForward: { event in
             if case let .pieceFailed(.transcript, error) = event { news.append(error) }
         }) { rig, folder in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             let state = try await rig.state { $0.health(of: .transcript) == .failed(message) }
             #expect(binding.failures.all == [operation])
@@ -41,7 +42,7 @@ struct SessionTranscriptTests {
             #expect(rig.call.stops.all.isEmpty)
             rig.microphone.source.continuation.yield(.init(samples: [0.625], sampleRate: 48_000))
             rig.call.source.continuation.yield(.init(samples: [-0.625], sampleRate: 48_000))
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(ended.failures == state.failures)
             #expect(ended.callText == .closed)
@@ -50,7 +51,7 @@ struct SessionTranscriptTests {
             #expect(news.all.isEmpty)
             #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.625, 0.125])
             #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.625, -0.125])
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
                 == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
         }
     }
@@ -64,7 +65,7 @@ struct SessionTranscriptTests {
         defer { forwarding.end(); release.release() }
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
                 if state.status == .finished { binding.arm(operation) }
             })
         }
@@ -74,11 +75,11 @@ struct SessionTranscriptTests {
             forwarded.append(event)
         }) { rig, _ in
             defer { release.release() }
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.pieces.news.continuation.yield(.liveTextChanged(true))
             await forwarding.next()
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(forwarded.all.isEmpty)
             #expect(binding.failures.all == [operation])
@@ -104,7 +105,7 @@ struct SessionTranscriptTests {
         defer { reported.end(); release.release() }
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
                 if state.status == .finished { binding.arm(operation) }
             })
         }
@@ -115,14 +116,14 @@ struct SessionTranscriptTests {
                     reported.send()
                     await release.wait()
                     guard !Task.isCancelled else { return }
-                    session.send(event)
+                    await session.send(event)
                 }
             }
         }) { rig, _ in
             defer { release.release() }
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
-            rig.session.send(.end)
+            await rig.session.send(.end)
             await reported.next()
             let ended = try await rig.state { $0.phase == .ended }
             let text = try #require(await rig.pieces.text)
@@ -142,26 +143,26 @@ struct SessionTranscriptTests {
 
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            try Data("existing transcript".utf8).write(to: url)
-            return try WritingTranscript(file: TranscriptFile(url: url))
+            try await offPool { try Data("existing transcript".utf8).write(to: url) }
+            return try await WritingTranscript(file: TranscriptFile(url: url))
         }
         try await withSessionRig(construction: construction) { rig, folder in
-            rig.session.send(.begin(liveText: enabled))
+            await rig.session.send(.begin(liveText: enabled))
             let recording = try await rig.state { $0.phase == .recording }
             #expect(recording.failures.map(\.piece) == ["transcript"])
             #expect(recording.callText == .up)
             #expect(await rig.pieces.transcriptFile == nil)
             let text = try #require(await rig.pieces.text)
             if !enabled { #expect(await text.state.status == .off) }
-            rig.session.send(.liveTextChanged(!enabled))
+            await rig.session.send(.liveTextChanged(!enabled))
             _ = try await rig.state { $0.pendingLiveText == nil && $0.wantedLiveText == !enabled }
             if enabled { #expect(await text.state.status == .off) }
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(ended.failures == recording.failures)
             #expect(ended.callText == .closed)
             #expect(await text.state.status == .finished)
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "existing transcript")
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) } == "existing transcript")
             #expect(rig.microphone.stops.all == [true])
             #expect(rig.call.stops.all == [true])
         }
