@@ -1,7 +1,7 @@
 import Foundation
 import TrackFile
 
-let track = try TrackFile(url: URL(fileURLWithPath: CommandLine.arguments[1]))
+let track = try await TrackFile(url: URL(fileURLWithPath: CommandLine.arguments[1]))
 let rate = Int(CommandLine.arguments[2])!
 let frames = CommandLine.arguments.count > 3 ? Int(CommandLine.arguments[3])! : rate
 for number in 1...4 {

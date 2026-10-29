@@ -14,11 +14,11 @@ struct SessionRateTests {
         var construction = SessionConstruction()
         construction.makeCallText = { ReadyCallText(text: $0) }
         try await withSessionRig(construction: construction, rates: rates) { rig, folder in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.mine.heard.next()
             await rig.theirs.heard.next()
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(ended.failures.isEmpty)
             let expected = rates.map { AudioChunk(samples: Array(repeating: 0, count: Int($0 / 100)), sampleRate: $0) }

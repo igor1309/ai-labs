@@ -66,26 +66,43 @@
 - Fix the root cause in the issue's own PR. No stopgap with a follow-up
   issue where the cause can be fixed now.
 - A PR closes the issue it names, whole.
+- Fix review findings in code and flaky tests at their cause before a PR is
+  marked ready. "It flaked before this branch" and doc-only rewording do not
+  count.
 - A check that fails or is slow (`-race`, a timeout, a required test) is
   kept: cut the work it checks, do not loosen the check.
 
 ## State machines
 
-- State machines are defined in modules, but not every module defines
-  one: an adapter binds an outside API and a UI module draws a screen. The
-  project's architecture says which modules are machines.
-- A machine's module defines its domain only: `State`, `Event`, `Effect`, a
-  pure reducer `(State, Event) -> (State, Effect?)` and an effect handler
-  with injected collaborators. No module imports swift-imrx or any state
-  machine, and none wraps or re-implements one.
-- Only an app (a main app or a preview app) imports swift-imrx. It composes
-  each instance from the generic `ObservableModel`, the tested reducer and
-  the tested effect handler.
-- Reducer tests come in pairs per case, one asserting the state and one the
-  effect, as one-line `assert(state, event, reducedTo:)` and
-  `assert(state, event, effect:)` helpers. Effect handler tests drive
-  collaborators through spies:
+Not every module defines a state machine: an adapter binds an outside API
+and a UI module draws a screen. The project's architecture says which
+modules are machines. A machine's module picks one of two shapes; an app
+composes it.
+
+- **Async** (`ObservableModel`): the machine runs effects. A module defines
+  `State`, `Event`, `Effect`, a pure reducer
+  `(State, Event) -> (State, Effect?)` and an effect handler with injected
+  collaborators. `event(_:)` returns before the event is reduced. Use it
+  unless a caller needs the sync order below.
+- **Sync** (`SyncModel`): `event(_:)` reduces before it returns, so a read
+  of `state` after it includes every event sent before. Use it when a
+  caller must read state that includes the events it already sent. A
+  module defines `State`, `Event`, a pure reducer `(State, Event) -> State`
+  with no effect output, and a doer with injected collaborators. The state
+  says what work is due (a phase that holds until its result arrives); the
+  doer observes the state, does the work once and sends the result back as
+  an event.
+- No module imports swift-imrx or any state machine, and none wraps or
+  re-implements one. Only an app (a main app or a preview app) imports
+  swift-imrx. It composes each instance from the generic model, the tested
+  reducer and the tested effect handler or doer. A sync model stays on the
+  actor that made it; callers elsewhere `await` the hop.
+- Reducer tests are one-line `assert(state, event, reducedTo:)` cases; an
+  async reducer pairs each with `assert(state, event, effect:)`. Effect
+  handler tests drive collaborators through spies:
   `expect(sut, with: effect, toDeliver: event, on: { spy.complete(…) })`.
+  Doer tests feed it states and check its collaborator and `send` spies,
+  including that a state seen twice does the work once.
 
 ## Writing docs and comments
 

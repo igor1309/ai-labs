@@ -7,7 +7,7 @@ struct SystemAudioCaptureTests {
     @Test func silentBuffersBeforeBetweenAndAfterTonesReachTheStream() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10, 20]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10, 20]))
         binding.play([])
         binding.play([10])
         binding.changeRate(to: 24_000)
@@ -30,7 +30,7 @@ struct SystemAudioCaptureTests {
     @Test func anInFlightBufferPrecedesTheSystemStopError() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .allExcept([]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .allExcept([]))
         binding.play([10])
         let finish = try #require(binding.beginBuffer([20]))
         binding.systemStops()
@@ -53,7 +53,7 @@ struct SystemAudioCaptureTests {
     @Test func anInFlightBufferPrecedesAnExplicitStopInOrder() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .allExcept([]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .allExcept([]))
         binding.play([10])
         let buffer = binding.beginBuffer([20], beforeReturn: { capture.stop() })
         let finish = try #require(buffer)
@@ -68,7 +68,7 @@ struct SystemAudioCaptureTests {
     @Test func anExplicitStopReadsTheBufferAlreadyInFlight() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .allExcept([]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .allExcept([]))
         binding.play([10])
         let finish = try #require(binding.beginBuffer([20]))
         capture.stop()
@@ -85,7 +85,7 @@ struct SystemAudioCaptureTests {
     @Test func anUnsupportedFormatKeepsEarlierAudioAndFinishesAfterCleanup() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         binding.play([10])
         binding.changeRate(to: 0)
         binding.play([10])
@@ -105,7 +105,7 @@ struct SystemAudioCaptureTests {
     @Test func cancellingTheReaderReleasesTheCaptureResources() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         let reader = Task {
             for try await _ in capture.audio {}
         }
@@ -113,13 +113,13 @@ struct SystemAudioCaptureTests {
         try await reader.value
         await binding.waitForCleanup()
         #expect(binding.events.suffix(5) == ["stop", "unwatch", "remove io", "destroy device", "destroy tap"])
-        #expect(throws: CaptureError.stopped) { try capture.name(.only([20])) }
+        await #expect(throws: CaptureError.stopped) { try await capture.name(.only([20])) }
     }
 
     @Test func releasingTheLastOwnerDuringIOFinishesCleanupAndAudio() async throws {
 
         let binding = FakeCaptureBinding()
-        let owner = Mutex<SystemAudioCapture?>(try SystemAudioCapture(binding: binding, processes: .only([10])))
+        let owner = Mutex<SystemAudioCapture?>(try await SystemAudioCapture(binding: binding, processes: .only([10])))
         let audio = try #require(owner.withLock { $0?.audio })
         let buffer = binding.beginBuffer([10], beforeReturn: { owner.withLock { $0 = nil } })
         let finish = try #require(buffer)
@@ -133,7 +133,7 @@ struct SystemAudioCaptureTests {
     @Test func piecesAreReadWhileTheCaptureIsRunning() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         defer { capture.stop() }
         binding.play([10])
         var iterator = capture.audio.makeAsyncIterator()
@@ -149,14 +149,14 @@ struct SystemAudioCaptureTests {
     func severalProcessesAreSelectedAtStartAndOnRenaming(selection: ProcessSelection) async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: selection)
+        let capture = try await SystemAudioCapture(binding: binding, processes: selection)
         binding.play([10, 20, 30, 40])
         let renamed: ProcessSelection
         switch selection {
         case .only: renamed = .only([30, 40])
         case .allExcept: renamed = .allExcept([10, 20])
         }
-        try capture.name(renamed)
+        try await capture.name(renamed)
         binding.play([10, 20, 30, 40])
         capture.stop()
         let pieces = try await drain(capture)
@@ -175,7 +175,7 @@ struct SystemAudioCaptureTests {
     @Test func aNamedProcessIsHeardWithoutMutingPlayback() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         binding.play([10])
         capture.stop()
         let pieces = try await drain(capture)
@@ -188,9 +188,9 @@ struct SystemAudioCaptureTests {
     @Test func newlyNamedProcessesAreHeardInTheSameCapture() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         binding.play([10, 20])
-        try capture.name(.only([20]))
+        try await capture.name(.only([20]))
         binding.play([10, 20])
         capture.stop()
         let pieces = try await drain(capture)
@@ -205,7 +205,7 @@ struct SystemAudioCaptureTests {
     @Test func anInFlightBufferKeepsItsRateAcrossAnOutputChange() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         let deliver = try #require(binding.beginBuffer([10]))
         binding.changeRate(to: 24_000)
         deliver()
@@ -220,7 +220,7 @@ struct SystemAudioCaptureTests {
     @Test func aNewOutputDeviceChangesThePiecesRate() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         binding.play([10])
         binding.changeRate(to: 24_000)
         binding.play([10])
@@ -231,12 +231,12 @@ struct SystemAudioCaptureTests {
     }
 
     @Test(arguments: ["tap", "device", "format", "io", "watch", "start"])
-    func eachRefusedStartingStepFailsAndReleasesItsResources(step: String) throws {
+    func eachRefusedStartingStepFailsAndReleasesItsResources(step: String) async throws {
 
         let binding = FakeCaptureBinding()
         binding.refuse(step)
-        #expect(throws: Refusal.self) {
-            _ = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        await #expect(throws: Refusal.self) {
+            _ = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         }
         let steps = ["tap", "device", "format", "io", "watch", "start"]
         let index = steps.firstIndex(of: step)!
@@ -251,7 +251,7 @@ struct SystemAudioCaptureTests {
     @Test func aSystemStopReportsFailure() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         binding.play([10])
         binding.systemStops()
         capture.stop()
@@ -265,7 +265,7 @@ struct SystemAudioCaptureTests {
     @Test func aFailedCaptureKeepsEveryPieceItHeard() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .allExcept([]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .allExcept([]))
         binding.play([10])
         binding.play([20])
         binding.play([30])
@@ -286,7 +286,7 @@ struct SystemAudioCaptureTests {
     @Test func stoppingEndsAudioAndReleasesInReverseOrder() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         binding.play([10])
         capture.stop()
         capture.stop()
@@ -302,10 +302,10 @@ struct SystemAudioCaptureTests {
     @Test func anotherCaptureCanFollowAStoppedOne() async throws {
 
         let binding = FakeCaptureBinding()
-        let first = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let first = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         first.stop()
         #expect(try await drain(first).isEmpty)
-        let second = try SystemAudioCapture(binding: binding, processes: .only([20]))
+        let second = try await SystemAudioCapture(binding: binding, processes: .only([20]))
         binding.play([20])
         second.stop()
         try expectTone(try await drain(second), pid: 20)
@@ -316,7 +316,7 @@ struct SystemAudioCaptureTests {
 
         let binding = FakeCaptureBinding()
         binding.state.withLock { $0.notifyOnStop = true }
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         binding.play([10])
         capture.stop()
         var pieces: [AudioPiece] = []
@@ -329,7 +329,7 @@ struct SystemAudioCaptureTests {
     @Test func aCaptureThatHeardNothingEndsCleanly() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([]))
         capture.stop()
         #expect(try await drain(capture).isEmpty)
         #expect(binding.events.contains("destroy tap"))
@@ -338,7 +338,7 @@ struct SystemAudioCaptureTests {
     @Test func anUnnamedProcessIsLeftOut() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         binding.play([10, 20])
         capture.stop()
         let pieces = try await drain(capture)
@@ -349,7 +349,7 @@ struct SystemAudioCaptureTests {
     @Test func anExcludedProcessIsNotHeard() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .allExcept([20]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .allExcept([20]))
         binding.play([10, 20])
         capture.stop()
         let pieces = try await drain(capture)
@@ -361,7 +361,7 @@ struct SystemAudioCaptureTests {
     @Test func aProcessStartingLaterIsHeard() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .allExcept([20]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .allExcept([20]))
         binding.play([10])
         binding.play([30])
         capture.stop()
@@ -373,9 +373,9 @@ struct SystemAudioCaptureTests {
     @Test func aRefusedNamingKeepsTheFirstNaming() async throws {
 
         let binding = FakeCaptureBinding()
-        let capture = try SystemAudioCapture(binding: binding, processes: .only([10]))
+        let capture = try await SystemAudioCapture(binding: binding, processes: .only([10]))
         binding.refuse("rename")
-        #expect(throws: Refusal.self) { try capture.name(.only([20])) }
+        await #expect(throws: Refusal.self) { try await capture.name(.only([20])) }
         binding.play([10, 20])
         capture.stop()
         let pieces = try await drain(capture)

@@ -49,22 +49,21 @@ public struct WritingTranscript: SessionTranscriptFile {
 
 final class TranscriptFailureReport: FailureReport, Sendable {
 
-    private let delivery: Mutex<@Sendable (SessionEvent) -> Void>
+    private let delivery: Mutex<@Sendable (SessionEvent) async -> Void>
 
-    init(deliver: @escaping @Sendable (SessionEvent) -> Void) {
+    init(deliver: @escaping @Sendable (SessionEvent) async -> Void) {
 
         delivery = Mutex(deliver)
     }
 
-    func connect(deliver: @escaping @Sendable (SessionEvent) -> Void) {
+    func connect(deliver: @escaping @Sendable (SessionEvent) async -> Void) {
 
         delivery.withLock { $0 = deliver }
     }
 
-    func transcriptFailed(_ error: any Error) {
+    func transcriptFailed(_ error: any Error) async {
 
-        delivery.withLock { deliver in
-            deliver(.pieceFailed(.transcript, error: String(describing: error)))
-        }
+        let deliver = delivery.withLock { $0 }
+        await deliver(.pieceFailed(.transcript, error: String(describing: error)))
     }
 }

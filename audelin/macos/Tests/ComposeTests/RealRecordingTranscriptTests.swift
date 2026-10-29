@@ -1,10 +1,10 @@
+import BlockingTestWork
 import AVFoundation
 import CoreAudioProcesses
 import Darwin
 import Foundation
 import PanelUI
 import Preferences
-import Synchronization
 import Testing
 @testable import Compose
 
@@ -33,29 +33,32 @@ struct RealRecordingTranscriptTests {
     @Test func spokenCallAudioReachesTheTranscript() async throws {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
+        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        defer { afterwards { try? FileManager.default.removeItem(at: directory) } }
         let calls = directory.appendingPathComponent("Calls", isDirectory: true)
-        try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: true)
+        try await offPool { try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: true) }
         let preferences = PreferencesStore(fileURL: directory.appendingPathComponent("preferences.json"))
         try preferences.write(Preferences(automaticRecording: false, liveText: true, callsFolder: calls))
-        let speech = try synthesize(Self.spoken, in: directory)
+        let speech = try await synthesize(Self.spoken, in: directory)
 
         let binding = CoreAudioBinding()
         let processes = CoreAudioProcesses(binding: binding, clock: ContinuousCallClock())
-        defer { processes.stop() }
-        let player = try await play(speech, binding: binding, processes: processes)
-        defer { _ = kill(player, SIGKILL) }
-
         let callApp = RecordingCallApp()
-        callApp.started("afplay")
-        let panel = AudelinPanel()
+        // A name no process has: other suites play their own afplay meanwhile, and
+        // selecting one of them by name would leave this call's speech out.
+        callApp.started("audelin-test-call-\(UUID().uuidString)")
+        let panel = AudelinPanel(makeReading: ReadingStub.inputs)
         let sessions = RecordingSessions(
             makePieces: composeRecordingPieces(preferences: preferences, callApp: callApp, processes: processes),
-            liveText: { preferences.read().liveText }, report: { _, _ in }, panel: panel
+            liveText: { preferences.read().liveText }, report: { _, _ in }, panel: panel,
+            makeSession: makeSession
         )
         let states = await panel.states()
         #expect(await sessions.begin(id: 1) == .ready)
+        // The call speaks only once its audio is being recorded; with no process of
+        // the call app's, the session hears every app but Audelin, afplay included.
+        let player = try await play(speech)
+        defer { _ = kill(player, SIGKILL) }
         // Stop waiting once afplay has finished and the recognizer had time to
         // catch up, so a miss fails on the transcript instead of the time limit.
         await withTaskGroup(of: Void.self) { group in
@@ -69,11 +72,12 @@ struct RealRecordingTranscriptTests {
         }
         await sessions.end(id: 1)
 
-        let folders = try FileManager.default.contentsOfDirectory(at: calls, includingPropertiesForKeys: nil)
+        let folders = try await offPool { try FileManager.default.contentsOfDirectory(at: calls, includingPropertiesForKeys: nil) }
         let folder = try #require(folders.first)
-        let transcript = try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+        let transcript = try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
         #expect(!transcript.contains("No text was heard."), "transcript.md: \(transcript)")
         #expect(Self.containsSpokenWord(transcript), "transcript.md: \(transcript)")
+        #expect(transcript.lowercased().contains("weather"), "The first words must be heard: \(transcript)")
     }
 
     private static func heardWords(in state: PanelState) -> Bool {
@@ -93,44 +97,29 @@ struct RealRecordingTranscriptTests {
         text.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init)
     }
 
-    private func synthesize(_ text: String, in directory: URL) throws -> URL {
+    private func synthesize(_ text: String, in directory: URL) async throws -> URL {
 
         let speech = directory.appendingPathComponent("speech.aiff")
         let say = Process()
         say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
         say.arguments = ["-o", speech.path, text]
-        try say.run()
-        say.waitUntilExit()
+        let exited = AsyncStream<Void>.makeStream()
+        say.terminationHandler = { _ in exited.continuation.finish() }
+        try await offPool { try say.run() }
+        for await _ in exited.stream {}
         try #require(say.terminationStatus == 0, "say must synthesize the speech")
-        let size = try FileManager.default.attributesOfItem(atPath: speech.path)[.size] as? NSNumber
-        try #require((size?.intValue ?? 0) > 0, "The speech file must contain audio")
+        let size = try await offPool { (try FileManager.default.attributesOfItem(atPath: speech.path)[.size] as? NSNumber)?.intValue }
+        try #require((size ?? 0) > 0, "The speech file must contain audio")
         return speech
     }
 
-    /// Starts afplay and returns its pid once Core Audio lists it with audio open,
-    /// so the session's selection finds it.
-    private func play(_ sound: URL, binding: CoreAudioBinding, processes: CoreAudioProcesses) async throws -> Int32 {
-
-        let pid = Mutex<Int32?>(nil)
-        let listed = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
-        defer { listed.continuation.finish() }
-        let inspect: @Sendable () -> Void = {
-
-            guard let target = pid.withLock({ $0 }),
-                  (try? processes.processes().contains(where: { $0.pid == target })) == true else { return }
-            listed.continuation.yield()
-        }
-        let listener = try binding.onProcessListChange(inspect)
-        defer { listener.cancel() }
+    /// Starts afplay and returns its pid.
+    private func play(_ sound: URL) async throws -> Int32 {
 
         let player = Process()
         player.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
         player.arguments = [sound.path]
-        try player.run()
-        pid.withLock { $0 = player.processIdentifier }
-        inspect()
-        var iterator = listed.stream.makeAsyncIterator()
-        _ = await iterator.next()
+        try await offPool { try player.run() }
         return player.processIdentifier
     }
 }

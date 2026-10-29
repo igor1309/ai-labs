@@ -17,9 +17,9 @@ struct SessionCaptureReportingTests {
             forwarded.append(event)
         }) { rig, _ in
             defer { release.end() }
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(ended.failures == [.init(piece: "\(side) capture", message: "failed")])
             #expect(ended.health(of: .capture(side)) == .failed("failed"))
@@ -33,7 +33,7 @@ struct SessionCaptureReportingTests {
     func streamFailingBeforeAnyPieceReachesSession(side: SessionSide) async throws {
 
         try await withSessionRig(streamFailure: side) { rig, _ in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             let state = try await rig.state { $0.health(of: .capture(side)) != .fine }
             #expect(state.health(of: .capture(side)) == .failed(String(describing: ScriptFailure.failed)))
             #expect(state.failures == [.init(piece: "\(side) capture", message: String(describing: ScriptFailure.failed))])
@@ -55,16 +55,16 @@ struct SessionCaptureReportingTests {
         construction.recordingTrack = { _, track in ReportingTrack(track: track, written: written) }
         try await withSessionRig(construction: construction) { rig, _ in
             defer { delivery.end() }
-            rig.session.send(.begin(liveText: false))
+            await rig.session.send(.begin(liveText: false))
             _ = try await rig.state { $0.phase == .recording }
             await written.next()
             await written.next()
-            rig.session.send(.liveTextChanged(true))
+            await rig.session.send(.liveTextChanged(true))
             _ = try await rig.state { $0.pendingLiveText == nil && $0.wantedLiveText }
             delivery.end()
             await rig.mine.heard.next()
             await rig.theirs.heard.next()
-            rig.session.send(.end)
+            await rig.session.send(.end)
             _ = try await rig.state { $0.phase == .ended }
             let text = try #require(await rig.pieces.text)
             let state = await text.state

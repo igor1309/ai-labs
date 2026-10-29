@@ -28,7 +28,7 @@ struct NativeMicrophoneBindingTests {
     @Test func theDefaultInputDeliversLiveAudioWithoutVoiceProcessing() async throws {
 
         let binding = NativeMicrophoneBinding.system()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         #expect(!binding.voiceProcessingEnabled)
         try await hearAndStop(capture)
@@ -37,10 +37,10 @@ struct NativeMicrophoneBindingTests {
     /// Contract test: native engine resources permit a second microphone capture after stop.
     @Test func aRealCaptureCanFollowAStoppedCapture() async throws {
 
-        let first = try MicrophoneCapture()
+        let first = try await MicrophoneCapture()
         defer { first.stop() }
         try await hearAndStop(first)
-        let second = try MicrophoneCapture()
+        let second = try await MicrophoneCapture()
         defer { second.stop() }
         try await hearAndStop(second)
     }

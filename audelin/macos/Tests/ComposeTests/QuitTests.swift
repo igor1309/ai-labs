@@ -4,8 +4,9 @@ import Recording
 import Synchronization
 import Testing
 
+/// Runs the application's quit effects in the reducer's order against a real recording.
 @Suite(.timeLimit(.minutes(1)))
-struct LifecycleTests {
+struct QuitTests {
 
     @Test func quitWaitsForEveryBegunSession() async {
 
@@ -13,28 +14,28 @@ struct LifecycleTests {
             let log = Log()
             let firstEnd = Gate(), secondEnd = Gate()
             let session = Session(log: log, firstEnd: firstEnd, secondEnd: secondEnd)
-            let recording = Recording(handler: .init(session: session), initial: .init(automatic: true, missing: []))
+            let recording = await composedRecording(session: session, initial: .init(automatic: true, missing: []))
             let delivery = Delivery()
             let port = RecordingPort(base: ApplicationRecording(recording: recording), log: log)
-            let lifecycle = Lifecycle(delivery: delivery, recording: port, terminate: { log.append("terminate") })
+            let handler = LifecycleEffectHandler(delivery: delivery, recording: port, terminate: { log.append("terminate") })
 
             if scenario != .queuedStart {
-                recording.send(.callStarted)
+                await recording.send(.callStarted)
                 await wait(recording, phase: .recording, id: 1)
             }
             if scenario == .pendingResumes || scenario == .pendingCleared {
-                recording.send(.callEnded)
+                await recording.send(.callEnded)
                 await firstEnd.entered()
-                recording.send(.callStarted)
-                #expect(await recording.snapshot().pendingCall)
+                await recording.send(.callStarted)
+                #expect(await recording.state().pendingCall)
             }
 
-            let quit = Task { await lifecycle.quit() }
+            let quit = Task { await runQuit(handler) }
             await delivery.gate.entered()
             #expect(log.values.filter { $0 == "stop" }.isEmpty)
             if scenario == .queuedStart {
                 // Delivery already accepted this start; quit must drain it with the stop.
-                recording.send(.callStarted)
+                await recording.send(.callStarted)
             }
             if scenario == .pendingResumes {
                 await firstEnd.release()
@@ -44,7 +45,7 @@ struct LifecycleTests {
 
             await port.drainGate.entered()
             #expect(log.values.contains("stop"))
-            #expect(!(await recording.snapshot().pendingCall))
+            #expect(!(await recording.state().pendingCall))
             #expect(!log.values.contains("observe"))
             await port.drainGate.release()
             await port.observeGate.entered()
@@ -65,7 +66,7 @@ struct LifecycleTests {
             #expect(!log.values.contains("end delivery"))
             await port.observeGate.release()
             await port.endGate.entered()
-            #expect(await recording.snapshot().phase == .idle)
+            #expect(await recording.state().phase == .idle)
             let ids = scenario == .pendingResumes ? [1, 2] : [1]
             #expect(log.values.filter { $0.hasPrefix("begin ") } == ids.map { "begin \($0)" })
             #expect(log.values.filter { $0.hasPrefix("end ") } == ids.map { "end \($0)" })
@@ -80,16 +81,30 @@ struct LifecycleTests {
 
         let log = Log()
         let firstEnd = Gate(), secondEnd = Gate()
-        let recording = Recording(handler: .init(session: Session(log: log, firstEnd: firstEnd, secondEnd: secondEnd)))
+        let recording = await composedRecording(session: Session(log: log, firstEnd: firstEnd, secondEnd: secondEnd))
         let delivery = Delivery()
         let port = RecordingPort(base: ApplicationRecording(recording: recording), log: log)
         await delivery.gate.release()
         await port.drainGate.release()
         await port.observeGate.release()
         await port.endGate.release()
-        await Lifecycle(delivery: delivery, recording: port, terminate: { log.append("terminate") }).quit()
+        await runQuit(LifecycleEffectHandler(delivery: delivery, recording: port, terminate: { log.append("terminate") }))
         #expect(log.values == ["stop", "observe", "end delivery", "terminate"])
     }
+}
+
+/// Feeds each effect the reducer asks for to the handler, and its event back, until no effect is left.
+func runQuit(_ handler: LifecycleEffectHandler) async {
+
+    var (state, effect) = LifecycleReducer.reduce(.running, .quit)
+    while let next = effect {
+        var events: [LifecycleEvent] = []
+        for await event in handler.handle(next) { events.append(event) }
+        #expect(events.count == 1, "\(next)")
+        guard let event = events.first else { return }
+        (state, effect) = LifecycleReducer.reduce(state, event)
+    }
+    #expect(state == .terminated)
 }
 
 private enum Scenario {
@@ -97,7 +112,7 @@ private enum Scenario {
     case active, queuedStart, pendingResumes, pendingCleared
 }
 
-private func wait(_ recording: Recording, phase: RecordingState.Phase, id: UInt64?) async {
+private func wait(_ recording: RecordingInputs, phase: RecordingState.Phase, id: UInt64?) async {
 
     for await state in await recording.states() {
         if state.phase == phase && state.session?.id == id { return }

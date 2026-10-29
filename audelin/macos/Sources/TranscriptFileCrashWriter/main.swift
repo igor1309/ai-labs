@@ -36,7 +36,7 @@ private struct PausingBinding: TranscriptFileBinding {
 
 let url = URL(fileURLWithPath: CommandLine.arguments[1])
 let point = CommandLine.arguments[2]
-let file = try TranscriptFile(url: url, binding: PausingBinding(point: point))
+let file = try await TranscriptFile(url: url, binding: PausingBinding(point: point))
 for number in 1...3 {
     try await file.write([
         .init(side: .mine, start: 1, settled: "\(number) mine settled", pending: "\(number) mine pending"),

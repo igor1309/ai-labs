@@ -1,4 +1,3 @@
-import Machine
 import Synchronization
 
 /// The two destinations in one recording.
@@ -658,14 +657,6 @@ public final class SessionEffectHandler: Sendable {
         }
     }
 
-    public func machine(initial: SessionState = .init()) -> Machine<SessionState, SessionEvent, SessionEffect> {
-
-        let handler = self
-        return Machine(initial: initial, reduce: SessionReducer.reduce, handle: { effect in
-            await handler.handle(effect)
-        })
-    }
-
     private func callFolder() throws -> SessionCallFolder {
 
         guard let folder = madeFolder.withLock({ $0 }) else {
@@ -683,37 +674,6 @@ public final class SessionEffectHandler: Sendable {
 
         do { try await operation(); return nil }
         catch { return String(describing: error) }
-    }
-}
-
-/// One recording's machine, assembled from a reducer and its handler.
-public final class Session: Sendable {
-
-    public let machine: Machine<SessionState, SessionEvent, SessionEffect>
-
-    public init(handler: SessionEffectHandler, initial: SessionState = .init()) {
-
-        machine = handler.machine(initial: initial)
-    }
-
-    public nonisolated func send(_ event: SessionEvent) {
-
-        machine.send(event)
-    }
-
-    public func states() async -> AsyncStream<SessionState> {
-
-        await machine.states()
-    }
-
-    public func snapshot() async -> SessionState {
-
-        await machine.snapshot()
-    }
-
-    public func end() async {
-
-        await machine.end()
     }
 }
 

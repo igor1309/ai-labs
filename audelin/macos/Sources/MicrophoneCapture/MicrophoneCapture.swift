@@ -9,12 +9,12 @@ public final class MicrophoneCapture: Sendable {
 
     private let lifetime: CaptureLifetime
 
-    public convenience init() throws {
+    public convenience init() async throws {
 
-        try self.init(binding: NativeMicrophoneBinding.system())
+        try await self.init(binding: NativeMicrophoneBinding.system())
     }
 
-    init(binding: any MicrophoneBinding) throws {
+    init(binding: any MicrophoneBinding) async throws {
 
         let stream = AsyncThrowingStream<AudioPiece, any Error>.makeStream()
         audio = stream.stream
@@ -22,7 +22,7 @@ public final class MicrophoneCapture: Sendable {
         stream.continuation.onTermination = { [weak lifetime] termination in
             if case .cancelled = termination { lifetime?.stop() }
         }
-        try lifetime.start()
+        try await lifetime.start()
     }
 
     public func stop() {
@@ -60,22 +60,29 @@ private final class CaptureLifetime: @unchecked Sendable {
         delivery = Mutex(Delivery(continuation: continuation))
     }
 
-    func start() throws {
+    /// Starting the engine can block, so it runs on the capture's queue and
+    /// the caller awaits it, never holding a pool thread.
+    func start() async throws {
 
-        try queue.sync {
-            do {
-                try binding.watchDefaultInput { [weak self] input in
-                    guard let self else { return }
-                    let time = binding.now
-                    queue.async { [self] in defaultChanged(input, at: time) }
-                }
-                following = DeviceFollowing(input: try binding.defaultInput())
-                delivery.withLock { $0.lastEnd = binding.now }
-                try startEngine(input: following.input)
-            } catch {
-                finish(error)
-                throw error
+        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
+            queue.async { [self] in done.resume(with: Result { try startOnQueue() }) }
+        }
+    }
+
+    private func startOnQueue() throws {
+
+        do {
+            try binding.watchDefaultInput { [weak self] input in
+                guard let self else { return }
+                let time = binding.now
+                queue.async { [self] in defaultChanged(input, at: time) }
             }
+            following = DeviceFollowing(input: try binding.defaultInput())
+            delivery.withLock { $0.lastEnd = binding.now }
+            try startEngine(input: following.input)
+        } catch {
+            finish(error)
+            throw error
         }
     }
 

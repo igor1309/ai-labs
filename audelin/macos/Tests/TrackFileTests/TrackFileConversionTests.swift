@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Testing
 @testable import TrackFile
@@ -11,7 +12,7 @@ struct TrackFileConversionTests {
             let url = folder.appendingPathComponent("track.caf")
             let signal = AsyncStream<Void>.makeStream()
             let conversion = FailingConversion()
-            let track = try TrackFile(
+            let track = try await TrackFile(
                 url: url, makeBinding: DiskTrackBinding.init,
                 makeConversion: { rate in
                     #expect(rate == 24_000)
@@ -45,7 +46,7 @@ struct TrackFileConversionTests {
 
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
-            let track = try TrackFile(url: url)
+            let track = try await TrackFile(url: url)
             let input = (0..<Int((rate * 3).rounded())).map { Float(0.6 * sin(2 * .pi * 300 * Double($0) / rate)) }
             let sizes = [1, 31, 997, 4_096, 7, 8_191]
             var position = 0
@@ -66,7 +67,7 @@ struct TrackFileConversionTests {
                 try #require(disk.count == last)
                 let written = try await track.read(from: 0, to: duration)
                 expectSamples(written, expected)
-                let bytes = try Data(contentsOf: url).dropFirst(68)
+                let bytes = try await offPool { try Data(contentsOf: url).dropFirst(68) }
                 #expect(bytes.starts(with: acknowledged))
                 acknowledged = Data(bytes)
                 expectSamples(disk, expected)
@@ -86,7 +87,7 @@ struct TrackFileConversionTests {
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
             let binding = try FailingBinding(url: url)
-            let rig = try TrackRig(folder, binding: binding)
+            let rig = try await TrackRig(folder, binding: binding)
             let expected = try referenceWrite(tone(1, rate: rate), preceding: [], rate: Double(rate))
             try await rig.track.write(tone(1, rate: rate), sampleRate: Double(rate))
             expectSamples(try await rig.track.read(from: 0, to: 1), expected)

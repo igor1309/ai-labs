@@ -11,7 +11,7 @@ protocol TrackFileConversion {
 public actor TrackFile {
 
     // Blocking file operations must not occupy the cooperative thread pool.
-    nonisolated let queue = DispatchSerialQueue(label: "audelin.TrackFile")
+    nonisolated let queue: DispatchSerialQueue
     public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     public enum Failure: Error, Equatable {
@@ -37,21 +37,38 @@ public actor TrackFile {
 
     init(
         url: URL,
-        makeBinding: (URL) throws -> any TrackFileBinding,
+        makeBinding: @escaping @Sendable (URL) throws -> any TrackFileBinding,
         makeConversion: @escaping (Double) throws -> any TrackFileConversion,
         readWaiting: (@Sendable () -> Void)? = nil
-    ) throws {
+    ) async throws {
 
-        let binding = try makeBinding(url)
-        do { try binding.initialize() }
-        catch {
-            binding.remove()
-            throw error
+        let queue = DispatchSerialQueue(label: "audelin.TrackFile")
+        // The header is written on the file's queue, not on the caller's thread.
+        let binding = try await withCheckedThrowingContinuation { (done: CheckedContinuation<any TrackFileBinding, any Error>) in
+            queue.async {
+                done.resume(with: Result {
+                    let binding = try makeBinding(url)
+                    do { try binding.initialize() }
+                    catch {
+                        binding.remove()
+                        throw error
+                    }
+                    return binding
+                })
+            }
         }
+        self.queue = queue
         self.url = url
         self.binding = binding
         self.makeConversion = makeConversion
         self.readWaiting = readWaiting
+    }
+
+    // The binding closes its descriptor when released, so release it on the file's queue.
+    deinit {
+
+        let binding = binding
+        queue.async { _ = binding }
     }
 
     /// Appends mono floating point audio. A failed write ends writing permanently.

@@ -8,12 +8,12 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingConditionsTests {
 
-    @Test func firstRefreshSendsEveryCondition() {
+    @Test func firstRefreshSendsEveryCondition() async {
 
         let rig = ConditionsRig()
         rig.available.set(.callAudioAccess, false)
         rig.available.set(.room, false)
-        rig.checker.refresh()
+        await rig.checker.refresh()
         #expect(rig.events.all == [
             .conditionChanged(.microphoneAccess, available: true),
             .conditionChanged(.callAudioAccess, available: false),
@@ -23,37 +23,37 @@ struct RecordingConditionsTests {
         #expect(rig.reads.all == RecordingCondition.allCases)
     }
 
-    @Test func unchangedRefreshReadsAllAndSendsNothing() {
+    @Test func unchangedRefreshReadsAllAndSendsNothing() async {
 
         let rig = ConditionsRig()
-        rig.checker.refresh()
+        await rig.checker.refresh()
         let first = rig.events.all
-        rig.checker.refresh()
+        await rig.checker.refresh()
         #expect(rig.events.all == first)
         #expect(rig.reads.all == RecordingCondition.allCases + RecordingCondition.allCases)
     }
 
-    @Test func oneChangeSendsOnlyThatCondition() {
+    @Test func oneChangeSendsOnlyThatCondition() async {
 
         for condition in RecordingCondition.allCases {
             let rig = ConditionsRig()
-            rig.checker.refresh()
+            await rig.checker.refresh()
             let first = rig.events.all
             rig.available.set(condition, false)
-            rig.checker.refresh()
+            await rig.checker.refresh()
             #expect(rig.events.all == first + [.conditionChanged(condition, available: false)])
         }
     }
 
-    @Test func returningConditionIsSentAsAvailable() {
+    @Test func returningConditionIsSentAsAvailable() async {
 
         for condition in RecordingCondition.allCases {
             let rig = ConditionsRig()
             rig.available.set(condition, false)
-            rig.checker.refresh()
+            await rig.checker.refresh()
             let first = rig.events.all
             rig.available.set(condition, true)
-            rig.checker.refresh()
+            await rig.checker.refresh()
             #expect(rig.events.all == first + [.conditionChanged(condition, available: true)])
         }
     }
@@ -61,7 +61,7 @@ struct RecordingConditionsTests {
     @Test func refreshRunsBeforeEachCallStartReachesRecording() async throws {
 
         let session = ConditionsSession()
-        let recording = Recording(handler: .init(session: session), initial: .init(automatic: true))
+        let recording = await composedRecording(session: session, initial: .init(automatic: true))
         let allowed = Mutex(true)
         let refreshes = Values<Bool>()
         let checker = RecordingConditions(
@@ -71,9 +71,9 @@ struct RecordingConditionsTests {
         let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
         let forwarding = CallRecordingSubscription(calls: source.stream, recording: recording, beforeCallStarted: {
             refreshes.append(true)
-            checker.refresh()
+            await checker.refresh()
         })
-        defer { forwarding.cancel(); source.continuation.finish() }
+        defer { source.continuation.finish() }
         source.continuation.yield(.started(app: "meeting"))
         for await state in await recording.states() {
             if state.callOn {
@@ -99,14 +99,13 @@ struct RecordingConditionsTests {
         source.continuation.finish()
         await forwarding.wait()
         #expect(refreshes.all == [true, true])
-        let ended = await recording.snapshot()
+        let ended = await recording.state()
         #expect(!ended.callOn)
 
         // A new detector starts with the last unavailable value still in Recording.
         allowed.withLock { $0 = true }
         let processes = CoreAudioProcesses(binding: ConditionsCallBinding(), clock: ConditionsCallClock())
-        let composed = try composeCalls(processes, to: recording, conditions: checker)
-        defer { composed.cancel(); processes.stop() }
+        let composed = try await composeCalls(processes, to: recording, conditions: checker)
         for await state in await recording.states() {
             if state.callOn {
                 #expect(state.missing.isEmpty)
@@ -114,7 +113,7 @@ struct RecordingConditionsTests {
                 break
             }
         }
-        processes.stop()
+        await processes.stop()
         await composed.wait()
         for await state in await recording.states() {
             if state.phase == .idle && !state.callOn { break }

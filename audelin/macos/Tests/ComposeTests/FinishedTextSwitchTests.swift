@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Testing
 import TranscriptFile
@@ -71,7 +72,7 @@ struct FinishedTextSwitchTests {
 
         try await withComposeFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let transcript = try TranscriptFile(url: url)
+            let transcript = try await TranscriptFile(url: url)
             var finishedTextSeen = false
             for state in snapshots {
                 let entries = state.entries.filter { $0.speaker == speaker }
@@ -79,11 +80,11 @@ struct FinishedTextSwitchTests {
                 if finishedTextSeen { #expect(entries == retained) }
                 try await transcript.write(Transcript.segments(from: state))
                 if finishedTextSeen {
-                    #expect(try String(contentsOf: url, encoding: .utf8).contains("first last"))
+                    #expect(try await offPool { try String(contentsOf: url, encoding: .utf8) }.contains("first last"))
                 }
             }
             #expect(finishedTextSeen)
-            #expect(try String(contentsOf: url, encoding: .utf8).contains("continuing"))
+            #expect(try await offPool { try String(contentsOf: url, encoding: .utf8) }.contains("continuing"))
             await transcript.close()
         }
     }

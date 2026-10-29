@@ -13,7 +13,7 @@ struct SessionConstruction: Sendable {
     var recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordingTrack = SessionPieces.defaultRecordingTrack
     var closeTrack: @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack
     var makeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio
-    var openTranscript: @Sendable (URL) throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript
+    var openTranscript: @Sendable (URL) async throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript
     var makeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
 }
 

@@ -20,7 +20,7 @@ public struct AudioProcess: Equatable, Sendable {
 /// The processes with audio open when asked.
 public protocol ProcessList: Sendable {
 
-    func processes() throws -> [AudioProcess]
+    func processes() async throws -> [AudioProcess]
 }
 
 /// Which process ids to hear, in the process list's order.
@@ -44,10 +44,10 @@ public final class CallAppProcesses: Sendable {
     }
 
     /// The app's processes, the last answer, or initially all but Audelin.
-    public func processes() throws -> ProcessSelection {
+    public func processes() async throws -> ProcessSelection {
 
-        try last.withLock { last in
-            let processes = try list.processes()
+        let processes = try await list.processes()
+        return last.withLock { last in
             let matching = processes.filter { belongsToApp($0) }.map(\.pid)
             let answer: ProcessSelection
             if !matching.isEmpty {

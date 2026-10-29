@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Testing
 
@@ -68,9 +69,9 @@ struct TrackFileDiskImageTests {
             }
         }
         let folder = try #require(await commands.folder)
-        defer { try? FileManager.default.removeItem(at: folder) }
-        #expect(try Data(contentsOf: folder.appendingPathComponent("small.dmg")) == Data("mounted image".utf8))
-        #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent("volume").path))
+        #expect(try await offPool { try Data(contentsOf: folder.appendingPathComponent("small.dmg")) } == Data("mounted image".utf8))
+        #expect(await offPool { FileManager.default.fileExists(atPath: folder.appendingPathComponent("volume").path) })
+        await offPool { try? FileManager.default.removeItem(at: folder) }
     }
 }
 
@@ -95,7 +96,11 @@ actor DiskImageCommands {
     }
 
     func setFolder(_ folder: URL) { self.folder = folder }
-    func folderExists() -> Bool { folder.map { FileManager.default.fileExists(atPath: $0.path) } ?? false }
+    func folderExists() async -> Bool {
+
+        guard let folder else { return false }
+        return await offPool { FileManager.default.fileExists(atPath: folder.path) }
+    }
 
     nonisolated func releaseDetach() {
 
@@ -114,12 +119,12 @@ actor DiskImageCommands {
         case "detach":
             #expect(mounted)
             #expect(!Task.isCancelled)
-            #expect(folderExists())
+            #expect(await folderExists())
             event.yield(.detaching)
             var iterator = detach.makeAsyncIterator()
             guard await iterator.next() != nil else { throw CancellationError() }
             try Task.checkCancellation()
-            #expect(folderExists())
+            #expect(await folderExists())
             mounted = false
             event.yield(.detached)
             event.finish()
@@ -159,13 +164,13 @@ private actor FailedDetachCommands {
 
     func setFolder(_ folder: URL) { self.folder = folder }
 
-    func run(_ executable: String, _ arguments: [String]) throws -> CommandResult {
+    func run(_ executable: String, _ arguments: [String]) async throws -> CommandResult {
 
         #expect(executable == "/usr/bin/hdiutil")
         switch arguments.first {
         case "create":
             let folder = try #require(folder)
-            try Data("mounted image".utf8).write(to: folder.appendingPathComponent("small.dmg"))
+            try await offPool { try Data("mounted image".utf8).write(to: folder.appendingPathComponent("small.dmg")) }
         case "attach": break
         case "detach":
             #expect(!Task.isCancelled)

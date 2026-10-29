@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Session
 import Testing
@@ -69,11 +70,11 @@ struct SessionDrainTests {
     func throwingStopEndsAnOpenStreamAndNamesTheFailure(side: SessionSide) async throws {
 
         try await withSessionRig(stopFailure: side, stopEndsStream: false) { rig, folder in
-            rig.session.send(.begin(liveText: true))
+            await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
             await rig.mine.heard.next()
             await rig.theirs.heard.next()
-            rig.session.send(.end)
+            await rig.session.send(.end)
             let ended = try await rig.state { $0.phase == .ended }
             #expect(ended.failures == [SessionFailure(piece: "\(side) capture", message: "failed")])
             #expect(ended.microphoneTrack == .closed)
@@ -93,7 +94,7 @@ struct SessionDrainTests {
         var construction = SessionConstruction()
         construction.executor = executor
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url)), beforeWrite: { state in
                 if state.status == .finished { await snapshot.wait() }
             })
         }
@@ -109,9 +110,9 @@ struct SessionDrainTests {
                 stopped.append(true)
                 let url = folder.appendingPathComponent("transcript.md")
                 let expected = "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n"
-                #expect(try String(contentsOf: url, encoding: .utf8) == expected)
+                #expect(try await offPool { try String(contentsOf: url, encoding: .utf8) } == expected)
                 try await rig.pieces.transcript.close()
-                #expect(try String(contentsOf: url, encoding: .utf8) == expected)
+                #expect(try await offPool { try String(contentsOf: url, encoding: .utf8) } == expected)
             }
         }
         defer { snapshot.release(); executor.run() }
