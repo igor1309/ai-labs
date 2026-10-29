@@ -348,6 +348,63 @@ import Testing
         }
     }
 
+    @Test(arguments: 0...5, 1...2)
+    func cancelledDisconnectDoesNotEndReconnect(stage: Int, cancellations: Int) async {
+        var expected: [ClientRadio.Event] = []
+        let events = await record { radio, fake in
+            fake.send(.bluetooth(.on))
+            fake.establish(radio)
+            let host = fake.host
+            for _ in 0..<cancellations { radio.connect(to: host) }
+            let steps: [RadioCallback] = [
+                .connected(host), .services(host, .success(true)),
+                .characteristics(host, .success(Set(Characteristic.allCases))),
+                .subscribed(host, .success(true)), .value(host, .session, .success([4, 5, 6])),
+            ]
+            for step in steps.prefix(stage) { fake.send(step) }
+            fake.calls = []
+            fake.send(.disconnected(UUID()))
+            for _ in 0..<cancellations { fake.send(.disconnected(host)) }
+            #expect(fake.calls.isEmpty)
+            for step in steps.dropFirst(stage) { fake.send(step) }
+            radio.writeKey([7])
+            fake.send(.written(host, .key, nil))
+            fake.send(.value(host, .toClient, .success([8])))
+            fake.send(.disconnected(host))
+            radio.writeKey([9])
+            fake.establish(radio)
+            fake.send(.disconnected(host))
+            expected = [
+                .connected(host: host, session: [1, 2, 3], largestWrite: 182),
+            ] + Array(repeating: .dropped(host: host), count: cancellations) + [
+                .connected(host: host, session: [4, 5, 6], largestWrite: 182),
+                .writeAnswered(.key, nil), .message(host: host, bytes: [8]),
+                .dropped(host: host), .writeAnswered(.key, .notConnected),
+                .connected(host: host, session: [1, 2, 3], largestWrite: 182),
+                .dropped(host: host),
+            ]
+        }
+        #expect(events == [.bluetooth(.on)] + expected)
+    }
+
+    @Test func failedConnectDoesNotMaskNextLinksDisconnect() async {
+        var expected: [ClientRadio.Event] = []
+        let events = await record { radio, fake in
+            fake.send(.bluetooth(.on))
+            radio.connect(to: fake.host)
+            fake.send(.connectionFailed(fake.host, .unavailableHost))
+            fake.establish(radio)
+            fake.send(.disconnected(fake.host))
+            radio.writeKey([1])
+            expected = [
+                .couldNotConnect(host: fake.host, reason: .unavailableHost),
+                .connected(host: fake.host, session: [1, 2, 3], largestWrite: 182),
+                .dropped(host: fake.host), .writeAnswered(.key, .notConnected),
+            ]
+        }
+        #expect(events == [.bluetooth(.on)] + expected)
+    }
+
     @Test func unrelatedCallbacksKeepTheSelectedLink() async {
         var expected: [ClientRadio.Event] = []
         let events = await record { radio, fake in

@@ -69,8 +69,14 @@ import Foundation
     private enum Setup { case connecting, service, characteristics, subscription, session, ready }
     private var host: UUID?
     private var setup: Setup?
+    private var pendingDisconnects: [UUID: Int] = [:]
 
-    private func selectedHost(at stage: Setup? = nil) -> UUID? {
+    private func selectedHost(at stage: Setup? = nil, disconnectFrom peer: UUID? = nil) -> UUID? {
+        // Cancel acknowledgements identify only the peer, so match them before the current link.
+        if let peer, let count = pendingDisconnects[peer] {
+            pendingDisconnects[peer] = count > 1 ? count - 1 : nil
+            return nil
+        }
         guard stage == nil || setup == stage else { return nil }
         return host
     }
@@ -124,7 +130,7 @@ import Foundation
         tearDown()
     }
 
-    private func tearDown(_ reason: Failure? = nil) {
+    private func tearDown(_ reason: Failure? = nil, alreadyDisconnected: Bool = false) {
         guard let peer = selectedHost() else { return }
         host = nil
         setup = nil
@@ -135,6 +141,7 @@ import Foundation
             continuation.yield(.writeAnswered(write.target, .disconnected))
             write.complete?(.failure(.disconnected))
         }
+        if !alreadyDisconnected { pendingDisconnects[peer, default: 0] += 1 }
         binding.disconnect(peer)
     }
 
@@ -168,7 +175,7 @@ import Foundation
             setup = .ready
             continuation.yield(.connected(host: peer, session: bytes, largestWrite: largestWrite))
         case .connectionFailed(let peer, let reason) where peer == selectedHost(at: .connecting):
-            tearDown(reason)
+            tearDown(reason, alreadyDisconnected: true)
         case .services(let peer, .failure(let reason)) where peer == selectedHost(at: .service):
             tearDown(reason)
         case .services(let peer, .success(false)) where peer == selectedHost(at: .service):
@@ -192,8 +199,9 @@ import Foundation
             write.complete?(error.map { .failure($0) } ?? .success(()))
         case .value(let peer, .toClient, .success(let bytes)) where peer == selectedHost(at: .ready):
             continuation.yield(.message(host: peer, bytes: bytes))
-        case .disconnected(let peer) where peer == selectedHost(),
-             .serviceRemoved(let peer) where peer == selectedHost():
+        case .disconnected(let peer) where peer == selectedHost(disconnectFrom: peer):
+            tearDown(setup == .ready ? nil : .disconnected, alreadyDisconnected: true)
+        case .serviceRemoved(let peer) where peer == selectedHost():
             if setup == .ready { drop() } else { tearDown(.disconnected) }
         default: break
         }
