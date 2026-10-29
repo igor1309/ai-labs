@@ -51,7 +51,7 @@ struct SessionFailureTests {
             #expect(rig.call.starts.all == (side == .call ? [] : [true]))
             #expect(try await offPool { try String(contentsOf: blocked, encoding: .utf8) } == "existing track")
             let otherName = side == .microphone ? "call.caf" : "microphone.caf"
-            #expect(try recordedSamples(folder.appendingPathComponent(otherName))
+            #expect(try await recordedSamples(folder.appendingPathComponent(otherName))
                 == (side == .microphone ? [-0.25, 0.5, -0.125] : [0.25, -0.5, 0.125]))
         }
     }
@@ -154,7 +154,7 @@ private func expectOtherSideRecords(
     #expect(ended.failures == failures)
     let name = failedSide == .microphone ? "call.caf" : "microphone.caf"
     let samples: [Float] = failedSide == .microphone ? [-0.25, 0.5, 0.625, -0.125] : [0.25, -0.5, 0.625, 0.125]
-    #expect(try recordedSamples(folder.appendingPathComponent(name)) == samples)
+    #expect(try await recordedSamples(folder.appendingPathComponent(name)) == samples)
 }
 
 private struct FailingTrack: RecordingTrack {

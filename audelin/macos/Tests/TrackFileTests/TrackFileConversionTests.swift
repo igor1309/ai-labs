@@ -63,7 +63,7 @@ struct TrackFileConversionTests {
                     samples, preceding: Array(input[..<position]), rate: rate, frames: expected.count..<last
                 )
                 try await track.write(samples, sampleRate: rate)
-                let disk = try externalSamples(url)
+                let disk = try await externalSamples(url)
                 try #require(disk.count == last)
                 let written = try await track.read(from: 0, to: duration)
                 expectSamples(written, expected)
@@ -76,7 +76,7 @@ struct TrackFileConversionTests {
             }
             try await track.close()
             expectSamples(try await track.read(from: 0, to: duration), expected)
-            expectSamples(try externalSamples(url), expected)
+            expectSamples(try await externalSamples(url), expected)
             try await expectAfinfo(url, frames: expected.count)
         }
     }
@@ -101,7 +101,7 @@ struct TrackFileConversionTests {
             }
             try await rig.track.close()
             expectSamples(try await rig.track.read(from: 0, to: 1), expected)
-            expectSamples(try externalSamples(url), expected)
+            expectSamples(try await externalSamples(url), expected)
             try await expectAfinfo(url, frames: expected.count)
         }
     }
