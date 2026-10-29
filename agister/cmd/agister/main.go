@@ -94,14 +94,22 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals(), random: rand.Reader}
+	probe, err := newProcessProbe(syscall.Kill, group.Token)
+	if err != nil {
+		return nil, err
+	}
+	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals(), random: rand.Reader, probe: probe}
 	inputsFrom := sourcing{texts: f, paths: f, commits: g, changes: g}
 	return build(user, f, fs, roots, wrappers, schemaValidator{}, inputsFrom, holding{facts: g, locks: f}, runsAt, machine, stdout, stderr)
 }
 
 // runsAt is runstore over folder.
 func runsAt(folder string) (homeRuns, error) {
-	store, err := runstore.New(folder)
+	probe, err := newProcessProbe(syscall.Kill, group.Token)
+	if err != nil {
+		return nil, err
+	}
+	store, err := runstore.NewLive(folder, runstore.Liveness{PID: os.Getpid(), Probe: probe, Now: wallClock{}.Now, Timer: wallTimer, Interval: time.Second})
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +261,11 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	for _, turn := range turns {
 		takes[turn.contract] = turn.inputs
 	}
-	return newCommandLine(home, links, fs, roots, wrappers, runner, store, stdout, stderr, takes)
+	states, err := newRunStates(store, machine.clock.Now, machine.probe, 10*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	return newCommandLine(home, links, fs, roots, wrappers, runner, store, states, stdout, stderr, takes)
 }
 
 // homeFolder is home's folder (ADR-002, rule 2): AGISTER_HOME where

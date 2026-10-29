@@ -53,7 +53,7 @@ func TestARetriedTurnIsAProgressLineAndAnEvent(t *testing.T) {
 		}
 	}
 	wantCapacity := []storedEvent{{id: recordID, event: runstore.Event{At: recordStart, Step: "ask", Kind: runstore.Capacity,
-		Reason: "Overloaded", Retrying: true}}}
+		Reason: "Overloaded", Retrying: true, Waiting: &runstore.Waiting{On: "capacity", Since: recordStart, Until: timeAt(recordStart.Add(30 * time.Second))}}}}
 	if !reflect.DeepEqual(capacity, wantCapacity) {
 		t.Errorf("runstore was given the capacity events\n%+v\nwant\n%+v", capacity, wantCapacity)
 	}

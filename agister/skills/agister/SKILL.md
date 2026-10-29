@@ -60,8 +60,30 @@ Run a named workflow with `agister run <workflow> --param <name>=<value>`;
 run one process with `agister run --process <name> --agent <name>` and its
 params. `--continue <run-id>` resumes a one-call run on its answering
 agent when its worktree is as recorded. `--reuse <run-id>` takes matching
-completed calls. Read records under home's `runs/<run-id>/`; use
-`agister runs export <run-id> --to <directory>` to export a run.
+completed calls. A run keeps one append-only log, `run.jsonl`, under
+home's `runs/<run-id>/`; use `agister runs export <run-id> --to
+<directory>` to export a run.
+
+## After you launch
+
+Run `agister run` in the foreground, or in the background with a
+completion notice; never launch it and go quiet. Ask what a run is doing
+with `agister status <run-id>` (or `--last`, `--json`); `agister runs
+list` shows recent runs, newest first. Each run gets one line:
+
+- `running <step> since T` or `waiting on <what> since T`: it is alive.
+- `writer stalled since T`: the process lives but its log stopped moving.
+- `failed: <class>: <reason>`: it ended without doing the work.
+- `lost`: its process is gone without a final line.
+- `unknown`: nothing can be told yet, such as a run that has just started.
+- `completed`.
+
+Report that line to whoever is waiting, in your own words. When a run
+waits longer than your turn, as on a capacity wait or a fallback, leave a
+Multica wakeup and a comment on the issue that says what it waits on and
+until when, then end the turn instead of going silent. On `failed` or
+`lost`, say so at once with the reason; do not launch the run again
+before reading it.
 
 For the design read the
 [run architecture](../../docs/run-architecture/index.html) and the

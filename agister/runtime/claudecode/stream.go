@@ -41,11 +41,12 @@ type event struct {
 // line naming one names, the last assistant text, whether a rate limit was
 // rejected, and the result event; and the report each line is given to.
 type stream struct {
-	report   func(Report)
-	session  string
-	lastText string
-	rejected bool
-	result   *event
+	report         func(Report)
+	session        string
+	pendingSession string
+	lastText       string
+	rejected       bool
+	result         *event
 }
 
 // line reads one line of stream-json, and reports each tool call it makes
@@ -54,7 +55,7 @@ type stream struct {
 // precedes it only adds to it.
 func (s *stream) line(line string) {
 	if s.read(line) == 0 {
-		s.report(Report{})
+		s.emit(Report{})
 	}
 }
 
@@ -67,6 +68,7 @@ func (s *stream) read(line string) (reported int) {
 	}
 	if s.session == "" {
 		s.session = e.SessionID
+		s.pendingSession = s.session
 	}
 	switch e.Type {
 	case "assistant":
@@ -75,14 +77,14 @@ func (s *stream) read(line string) (reported int) {
 			case block.Type == "text" && strings.TrimSpace(block.Text) != "":
 				s.lastText = block.Text
 			case block.Type == "tool_use":
-				s.report(Report{Tool: &Tool{Name: block.Name, Input: compact(block.Input)}})
+				s.emit(Report{Tool: &Tool{Name: block.Name, Input: compact(block.Input)}})
 				reported++
 			}
 		}
 	case "user":
 		for _, block := range e.Message.Content {
 			if block.Type == "tool_result" {
-				s.report(Report{Result: true})
+				s.emit(Report{Result: true})
 				reported++
 			}
 		}
@@ -174,4 +176,9 @@ func reason(r *event) string {
 		words[i] = fmt.Sprint(e)
 	}
 	return strings.Join(words, "; ")
+}
+
+func (s *stream) emit(r Report) {
+	r.Session, s.pendingSession = s.pendingSession, ""
+	s.report(r)
 }

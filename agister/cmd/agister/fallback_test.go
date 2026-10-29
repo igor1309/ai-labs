@@ -52,6 +52,16 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 			f.runtimes.claude.answer = func(ctx context.Context, turn claudecode.Turn) (claudecode.Result, error) {
 				_, alone, shared := f.holding.locks()
 				held = append(held, [2]int{alone, shared})
+				_, _, events := f.store.given()
+				var prepared *runstore.Call
+				for _, event := range events {
+					if event.event.Kind == runstore.Prepared {
+						prepared = event.event.CallFact
+					}
+				}
+				if prepared == nil || prepared.Agent != "claude-opus" || !slices.Equal(prepared.Permissions.Options, []string{"Glob"}) {
+					t.Errorf("fallback began without its admitted plan: %+v", prepared)
+				}
 				return answer(ctx, turn)
 			}
 			done := make(chan ran, 1)
