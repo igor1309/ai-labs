@@ -191,6 +191,8 @@ settings' store over preferences.
 
 Coupling, checked: no core module imports Core Bluetooth, SwiftUI or
 another component, and no flow's interface carries a Core Bluetooth type.
+No package module or test outside `SystemClockTests` imports `SystemClock`
+or reads real time; only the apps wire it in (`ios/scripts/tests/test_clock_boundary.py`).
 
 ## Data flow
 
