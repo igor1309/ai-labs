@@ -6,6 +6,7 @@ let package = Package(
     name: "MizanBLE",
     platforms: [.iOS(.v26), .macOS(.v26)],
     products: [
+        .library(name: "HostRadio", targets: ["HostRadio"]),
         .library(name: "ClientRadio", targets: ["ClientRadio"]),
         .library(name: "ClientReview", targets: ["ClientReview"]),
         .library(name: "AmountEntry", targets: ["AmountEntry"]),
@@ -28,6 +29,8 @@ let package = Package(
         .library(name: "HostPicker", targets: ["HostPicker"]),
     ],
     targets: [
+        .target(name: "HostRadio"),
+        .testTarget(name: "HostRadioTests", dependencies: ["HostRadio"]),
         .target(name: "ClientRadio"),
         .testTarget(name: "ClientRadioTests", dependencies: ["ClientRadio"]),
         .target(name: "ClientReview"),
