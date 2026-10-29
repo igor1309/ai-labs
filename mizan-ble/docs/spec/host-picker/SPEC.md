@@ -11,8 +11,9 @@ below uses the defaults unless it says otherwise.
 
 ## Decided
 
-- **Read-only view at a given time:** the live candidate count and leader’s smoothed average in dBm, absent when empty; inspecting it changes nothing.
-
+- **Its view at a given time** is the live candidate count and the
+  leader's smoothed average in dBm, none when empty; reading it changes
+  nothing.
 - **Smoothing:** an exponential moving average per host,
   `ema = α·rssi + (1 − α)·ema`, the first reading as the start, as
   `NOTES.md` decides.
