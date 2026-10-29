@@ -2,6 +2,9 @@
 
 ## 2026-10-29
 
+- Opening Audelin again shows the transcript panel during a call and the
+  calls list between calls (LAB-750).
+
 - Live text breaks long monologues into bounded paragraphs and joins short
   fragments before a pause to the following words (LAB-749).
 

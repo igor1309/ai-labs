@@ -19,6 +19,7 @@ import Synchronization
 @main
 struct AudelinApp: App {
 
+    @NSApplicationDelegateAdaptor(AudelinAppDelegate.self) private var appDelegate
     @State private var model: AudelinMenu?
     @State private var panel: FloatingPanel?
     @State private var callsWindow: CallsWindow?
@@ -60,6 +61,7 @@ struct AudelinApp: App {
         panel.install(content: NSHostingView(rootView: PanelContent(model: model)), onClose: { [weak model] in
             model?.panelClosed()
         })
+        appDelegate.connect(model)
     }
 
     init() {
@@ -105,6 +107,29 @@ struct AudelinApp: App {
         image.isTemplate = !item.isRed
         return image
     }
+}
+
+@MainActor
+final class AudelinAppDelegate: NSObject, NSApplicationDelegate {
+
+    /// Unset while the app starts: a reopen then is the launch itself, and
+    /// recording's state is not known yet to choose a window.
+    var reopen: (() -> Void)?
+
+    func connect(_ menu: AudelinMenu) {
+
+        reopen = { [weak menu] in menu?.appReopened() }
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+
+        handleReopen()
+        return true
+    }
+
+    /// Tests call this: touching `NSApplication.shared` there takes seconds on CI
+    /// and holds the main actor.
+    func handleReopen() { reopen?() }
 }
 
 /// Each recording's reading model, reducing on the main actor.

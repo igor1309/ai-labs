@@ -14,6 +14,65 @@ import Testing
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct CallsWiringTests {
+    @Test func appReopenBetweenCallsOpensAndRefreshesTheCallsWindow() async {
+        let spy = CallsStoreSpy()
+        spy.calls.withLock { $0 = [call("A")] }
+        let shown = Counter()
+        let controller = makeController(spy: spy, present: { shown.increment() })
+        let menu = await AudelinMenu(storage: CallsPreferences(), makeApplication: {
+            MenuApplication(states: { AsyncStream { $0.yield(.init()); $0.finish() } },
+                            failures: AsyncStream { $0.finish() },
+                            send: { _ in Issue.record("Reopening must not control recording") }, quit: {},
+                            panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in })
+        }, openFolder: { _ in Issue.record("Reopening opens a window") }, openURL: { _ in }, terminate: {},
+            didDeliver: {}, sink: CallsLog(), presentPanel: { _ in Issue.record("No recording panel between calls") },
+            sleep: { _ in Issue.record("No hide delay between calls") }, calls: controller)
+        await menu.waitForObservers()
+        let delegate = AudelinAppDelegate()
+        delegate.connect(menu)
+        delegate.handleReopen()
+        await wait(controller) { !$0.busy && $0.rows.map(\.id) == ["A"] }
+        spy.calls.withLock { $0 = [call("B")] }
+        menu.appReopened()
+        await wait(controller) { !$0.busy && $0.rows.map(\.id) == ["B"] }
+        #expect(shown.value == 2)
+        #expect(spy.operations.withLock { $0 } == ["list", "list"])
+    }
+
+    @Test func appReopenDuringARecordingBringsThePanelForwardAndLogsTheReason() async {
+        for origin: RecordingState.Origin in [.call, .hand] {
+            for phase: RecordingState.Phase in [.beginning, .recording, .ending] {
+                let spy = CallsStoreSpy()
+                let controller = makeController(spy: spy, present: { Issue.record("Recording reopens the panel") })
+                var state = RecordingState()
+                state.phase = phase
+                state.session = .init(id: 1, origin: origin)
+                var visibility: [Bool] = []
+                let log = CallsLog()
+                let menu = await AudelinMenu(storage: CallsPreferences(), makeApplication: {
+                    MenuApplication(states: { AsyncStream { $0.yield(state); $0.finish() } },
+                                    failures: AsyncStream { $0.finish() },
+                                    send: { _ in Issue.record("Reopening must not control recording") }, quit: {},
+                                    panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in })
+                }, openFolder: { _ in Issue.record("Reopening opens a window") }, openURL: { _ in }, terminate: {},
+                    didDeliver: {}, sink: log, presentPanel: { visibility.append($0) },
+                    sleep: { _ in Issue.record("Active recordings have no hide delay") }, calls: controller)
+                await menu.waitForObservers()
+                menu.appReopened()
+                #expect(visibility == [true, true])
+                menu.panelClosed()
+                menu.appReopened()
+                #expect(menu.panelPresence.visible)
+                #expect(visibility == [true, true, false, true])
+                #expect(log.entries.all.filter { $0.category == .panel }.map(\.message) == [
+                    "shown reason=recordingBegan", "shown reason=appReopen", "hidden reason=userClosed",
+                    "shown reason=appReopen",
+                ])
+                #expect(spy.operations.withLock { $0.isEmpty })
+            }
+        }
+    }
+
     @Test func menuActionOpensTheCallsWindowAndListsOnEveryOpen() async {
         let spy = CallsStoreSpy()
         let shown = Counter()
@@ -254,4 +313,7 @@ private struct CallsPreferences: PreferenceSettingsStorage {
     func read() -> Preferences { .init() }
     func write(_ preferences: Preferences) throws { Issue.record("Calls window does not change preferences") }
 }
-private struct CallsLog: LogSink { func write(_ entry: LogEntry) {} }
+private struct CallsLog: LogSink {
+    let entries = Values<LogEntry>()
+    func write(_ entry: LogEntry) { entries.append(entry) }
+}
