@@ -158,7 +158,7 @@ final class ProbeRig: Sendable {
             return 123
         }, createTap: { [self] description, tap in
             tapUUID.withLock { $0 = description.uuid.uuidString }
-            configuration.withLock { $0 = [description.processes == [123], description.isPrivate, description.muteBehavior == .muted] }
+            configuration.withLock { $0 = [description.process == 123, description.isPrivate, description.muted] }
             let status = status("create tap")
             if status == noErr { tap.pointee = 10 }
             return status

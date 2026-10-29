@@ -180,10 +180,7 @@ private final class Measurement: @unchecked Sendable {
         do {
             let process = try native.ownProcess()
             guard process != 0 else { throw ProbeFailure("own process unavailable") }
-            let description = CATapDescription(stereoMixdownOfProcesses: [process])
-            description.uuid = UUID()
-            description.isPrivate = true
-            description.muteBehavior = .muted
+            let description = ProbeTap(process: process, uuid: UUID(), isPrivate: true, muted: true)
             try check(native.createTap(description, &tap))
             guard tap != 0 else { throw ProbeFailure("missing tap") }
             var format = AudioStreamBasicDescription()
