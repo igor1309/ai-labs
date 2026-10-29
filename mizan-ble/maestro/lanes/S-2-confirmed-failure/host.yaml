@@ -1,0 +1,23 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Lock & broadcast"
+    timeout: 15000
+- tapOn: "1"
+- tapOn: "2"
+- tapOn: "3"
+- tapOn: "\\."
+- tapOn: "4"
+- tapOn: "5"
+- tapOn: "Lock & broadcast"
+- extendedWaitUntil:
+    visible: "Choose the outcome"
+    timeout: 15000
+- tapOn: "Failure"
+- extendedWaitUntil:
+    visible: "Payment failed"
+    timeout: 15000
+- assertVisible: "123.45 Mizan"
+- assertVisible: "The processor rejected the payment. The result was sent to the client."

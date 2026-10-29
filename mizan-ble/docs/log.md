@@ -2,6 +2,8 @@
 
 ## 2026-10-29
 
+- Every payment scenario has a simulator rehearsal lane, with screen, log and encrypted-air checks (LAB-726).
+
 - The client side pays end to end in the app (LAB-725).
 
 - The rehearsal app plays the other side from a settings file (LAB-723).

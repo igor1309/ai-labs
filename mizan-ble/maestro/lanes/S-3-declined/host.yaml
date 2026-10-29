@@ -1,0 +1,18 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Lock & broadcast"
+    timeout: 15000
+- tapOn: "1"
+- tapOn: "2"
+- tapOn: "3"
+- tapOn: "\\."
+- tapOn: "4"
+- tapOn: "5"
+- tapOn: "Lock & broadcast"
+- extendedWaitUntil:
+    visible: "Client declined"
+    timeout: 15000
+- assertVisible: "The client declined this payment. Nothing was charged."

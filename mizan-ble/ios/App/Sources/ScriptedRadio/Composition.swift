@@ -4,13 +4,15 @@ import Root
 import ScriptedSettings
 
 @MainActor public func scriptedRadios(settingsPath: String, log: any LogSink) -> RadioPair {
-    scriptedRadios(source: SettingsLoader(path: settingsPath, changes: DirectoryChanges()), clock: RealtimeClock(), log: log)
+    let file = AirFile(path: URL.documentsDirectory.appending(path: "air-recording.jsonl"))
+    return scriptedRadios(source: SettingsLoader(path: settingsPath, changes: DirectoryChanges()),
+                          clock: RealtimeClock(), log: log, recorder: AirRecorder(append: file.append))
 }
 
-@MainActor func scriptedRadios(source: any SettingsSource, clock: any RadioClock, log: any LogSink) -> RadioPair {
+@MainActor func scriptedRadios(source: any SettingsSource, clock: any RadioClock, log: any LogSink, recorder: AirRecorder) -> RadioPair {
     let settings = SettingsRelay(source: source, log: log)
-    return RadioPair(host: ScriptedHost(source: settings, clock: clock), client: ScriptedClient(
-        source: settings, clock: clock, sealMessage: { try Wire.seal($0, with: $1) }
+    return RadioPair(host: ScriptedHost(source: settings, clock: clock, recorder: recorder), client: ScriptedClient(
+        source: settings, clock: clock, recorder: recorder, sealMessage: { try Wire.seal($0, with: $1) }
     ))
 }
 

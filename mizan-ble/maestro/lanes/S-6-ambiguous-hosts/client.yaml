@@ -1,0 +1,11 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Hold closer"
+    timeout: 15000
+- assertVisible: "Hold your phone closer to the till"
+- assertVisible:
+    text: "Start handshake"
+    enabled: false

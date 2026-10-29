@@ -7,6 +7,7 @@ import MessageCodec
 @MainActor final class ScriptedHost: HostRadioPort {
     @MainActor private final class Transaction {
         enum Phase { case amount, acknowledgement, outcome, done }
+        let recordAir: Bool
         let id: UUID
         let peer = UUID()
         let settings: Settings.Client
@@ -16,7 +17,8 @@ import MessageCodec
         var advertising = false
         var phase = Phase.amount
         var confirmed = false
-        init(id: UUID, settings: Settings.Client, crypto: SessionCrypto) {
+        init(id: UUID, settings: Settings.Client, crypto: SessionCrypto, recordAir: Bool) {
+            self.recordAir = recordAir
             self.id = id; self.settings = settings; self.crypto = crypto
         }
     }
@@ -24,11 +26,13 @@ import MessageCodec
     let events: AsyncStream<HostRadioEvent>
     private let continuation: AsyncStream<HostRadioEvent>.Continuation
     private let source: any SettingsSource
+    private let recorder: AirRecorder
     private let clock: any RadioClock
     private var updatesTask: Task<Void, Never>?
     private var transaction: Transaction?
 
-    init(source: any SettingsSource, clock: any RadioClock) {
+    init(source: any SettingsSource, clock: any RadioClock, recorder: AirRecorder) {
+        self.recorder = recorder
         self.source = source; self.clock = clock
         (events, continuation) = AsyncStream.makeStream()
         continuation.yield(.bluetoothState(source.current().hostState))
@@ -48,7 +52,8 @@ import MessageCodec
               let description = try? MessageCodec.decodeSession(bytes),
               let crypto = try? SessionCrypto(sessionID: description.sessionID),
               (try? crypto.derive(peerPublicKey: description.publicKey)) != nil else { return }
-        transaction = Transaction(id: session, settings: settings.client, crypto: crypto)
+        transaction = Transaction(id: session, settings: settings.client, crypto: crypto, recordAir: settings.recordAir)
+        recorder.record(bytes, direction: "hostToClient", enabled: settings.recordAir)
     }
 
     func advertise(_ name: String, for session: UUID) {
@@ -60,6 +65,7 @@ import MessageCodec
             guard t.advertising else { return }
             if t.settings.drop == .beforeKey { radio.end(); return }
             t.keyed = true
+            radio.recorder.record(t.crypto.publicKey, direction: "clientToHost", enabled: t.recordAir)
             radio.continuation.yield(.clientKey(session: t.id, peer: t.peer, bytes: t.crypto.publicKey))
             if t.settings.drop == .afterKey { radio.dropLater(t) }
         }
@@ -74,6 +80,7 @@ import MessageCodec
 
     func send(_ bytes: [UInt8], for session: UUID) throws(HostRadioFailure) {
         guard let t = transaction, t.id == session, t.keyed else { return }
+        recorder.record(bytes, direction: "hostToClient", enabled: t.recordAir)
         do {
             let message = try Wire.open(bytes, with: t.crypto)
             if t.settings.drop == .afterKey { return }
@@ -86,6 +93,7 @@ import MessageCodec
                     do {
                         let decision: MessageCodec.Decision = t.settings.decision == .confirm ? .confirm : .decline
                         let bytes = try Wire.seal(.decision(decision), with: t.crypto)
+                        radio.recorder.record(bytes, direction: "clientToHost", enabled: t.recordAir)
                         t.confirmed = decision == .confirm
                         radio.continuation.yield(.decision(session: t.id, bytes: bytes))
                         if t.settings.drop == .afterDecision { radio.dropLater(t) }

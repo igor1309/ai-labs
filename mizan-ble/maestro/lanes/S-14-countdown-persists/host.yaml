@@ -1,0 +1,22 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- tapOn: "Settings"
+- tapOn: "90 s"
+- tapOn: "Done"
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Lock & broadcast"
+    timeout: 15000
+- tapOn: "1"
+- tapOn: "2"
+- tapOn: "3"
+- tapOn: "\\."
+- tapOn: "4"
+- tapOn: "5"
+- tapOn: "Lock & broadcast"
+- assertVisible: "90 seconds left"
+- assertVisible: "TIMEOUT 90 S · SETTINGS"

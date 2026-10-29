@@ -1,0 +1,25 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- tapOn: "Settings"
+- tapOn: "15 s"
+- tapOn: "Done"
+- extendedWaitUntil:
+    visible: "Lock & broadcast"
+    timeout: 15000
+- tapOn: "1"
+- tapOn: "2"
+- tapOn: "3"
+- tapOn: "\\."
+- tapOn: "4"
+- tapOn: "5"
+- tapOn: "Lock & broadcast"
+- extendedWaitUntil:
+    visible: "No client in 15 s"
+    timeout: 25000
+- assertVisible: "Advertising stopped. The amount was cleared."
+- assertNotVisible: "Advertising"
+- assertVisible: "Lock & broadcast"
+- tapOn: "7"
+- assertVisible: "7 Mizan"

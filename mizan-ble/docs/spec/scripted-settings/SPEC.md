@@ -8,7 +8,8 @@ to play.
 ## Decided
 
 - **The file is JSON,** its path given at launch (`-scriptedRadio
-  <path>`). It is read at launch and again on each change on disk; each
+  <path>`) or Documents/scripted-radio.json by default. It is read at launch
+  and again on each change on disk; each
   read tells Bluetooth's state, as the file gives it or unavailable.
 - **A transaction keeps what it started with:** the radio takes the
   settings once per serve or scan; a later change reaches the next one.
@@ -18,6 +19,9 @@ to play.
 - **The file holds the amounts the scripted side uses,** so a lane can
   search the app's log for them; keys are made fresh per session, as the
   app makes them, and the app's secrets test covers them.
+
+- **Air recording defaults off.** The optional recordAir boolean opts in;
+  each serve or scan snapshots it with the other settings.
 
 ```gherkin
 Feature: Reading the rehearsal's settings
@@ -45,3 +49,9 @@ Feature: Reading the rehearsal's settings
     Given no valid file was read
     When a valid file is written to the path
     Then the radio can read its settings and its Bluetooth state
+
+  Scenario: S-5 Choosing air capture
+    Given a file with an air recording choice
+    When the radio asks for settings
+    Then it can read that choice, with capture off when omitted
+```

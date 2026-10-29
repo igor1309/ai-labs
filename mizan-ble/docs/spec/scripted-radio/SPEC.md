@@ -1,9 +1,6 @@
 # Scripted radio
 
 Observer: the rehearsal app's root, through the real radios' interfaces.
-It plays the other side from a settings file, so the shipping flows,
-crypto and codec run on a simulator with no Bluetooth.
-
 ## Decided
 
 - **`ScriptedRadio` is a library in the root package,** since the side it
@@ -12,20 +9,19 @@ crypto and codec run on a simulator with no Bluetooth.
 - **It plays from scripted settings,** taken once per serve or scan, and
   tells Bluetooth's state from each read of them; scripted settings own
   the file.
-- **A spy, not a second radio:** nothing leaves the process. Each step
-  answers after the settings' delay on an injected clock. A retire or a
-  drop cancels its transaction's pending steps; a stopped scan, only
-  readings.
+- **Steps use an injected clock.** Retire and drop cancel pending transaction
+  steps; stop-scan cancels only readings.
 - **The settings set** the scripted client's coming, decision and drop
   point; each scripted host's name, timed readings, amount, cancel,
   outcome and drop point. A host on air is heard again at its last
-  strength every 0.2 s until the scan stops, unless it goes quiet. A scripted host acknowledges either decision;
-  a decline has no outcome. Its keys are fresh per session.
+  strength every 0.2 s until stop-scan unless quiet. Both decisions are
+  acknowledged; decline has no outcome. Keys are fresh per session.
 - **The scripted side opens what it gets;** a message it cannot open drops
   the link at once, so a link that holds means it opened.
-- **A drop is told as the real radio tells it;** a client leaving before
-  its key is unseen, as on air.
-
+- **A client leaving before its key is unseen,** as on air.
+- **Air capture is opt-in per transaction.** Append session reads, key writes
+  and sealed frames in both directions as direction and hex JSON lines in
+  Documents/air-recording.jsonl, never in the diagnostic log.
 ```gherkin
 Feature: Playing the other side from settings
 
@@ -96,4 +92,8 @@ Feature: Playing the other side from settings
       | side   | what            |
       | host   | the client lost |
       | client | the link lost   |
+  Scenario: S-9 Reading the scripted air
+    Given settings requesting an air recording
+    When I complete a payment
+    Then I can read every carried frame in order with its direction, also after a relaunch
 ```
