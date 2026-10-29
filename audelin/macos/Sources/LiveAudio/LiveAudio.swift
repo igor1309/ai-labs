@@ -1,6 +1,6 @@
 import Synchronization
 
-/// Gives one listener and one reader independent, ordered views of a capture.
+/// Gives a listener, a reader and a statistics subscriber independent views of a capture.
 public actor LiveAudio: Capture {
 
     private let capture: any Capture
@@ -8,8 +8,11 @@ public actor LiveAudio: Capture {
     private let beforeInput: @Sendable () async -> Void
     private let position = Mutex(0.0)
     private let live = AsyncStream<Audio>.makeStream()
+    private let measured = AsyncStream<AudioStatistics>.makeStream()
     private let output = AsyncThrowingStream<AudioPiece, any Error>.makeStream()
+    private var accumulator = AudioStatisticsAccumulator()
     private var listened = false
+    private var subscribed = false
     private var attempted = false
     private var started = false
     private var starting: Task<Void, any Error>?
@@ -43,6 +46,14 @@ public actor LiveAudio: Capture {
         return live.stream
     }
 
+    /// Only the first subscriber receives statistics; it may subscribe before start.
+    public func statistics() -> AsyncStream<AudioStatistics> {
+
+        guard !subscribed else { return AsyncStream { $0.finish() } }
+        subscribed = true
+        return measured.stream
+    }
+
     public func start() async throws -> AsyncThrowingStream<AudioPiece, any Error> {
 
         guard !attempted else { throw LifecycleError.alreadyStarted }
@@ -53,7 +64,7 @@ public actor LiveAudio: Capture {
         return output.stream
     }
 
-    /// Joins input even when stop fails, so both views contain every given piece.
+    /// Joins input even when stop fails, so every view contains each given piece.
     public func stop() async throws {
 
         if let stopping { return try await stopping.value }
@@ -89,14 +100,16 @@ public actor LiveAudio: Capture {
             position = audio.end
             return audio
         }
-        // Separate unbounded buffers keep either consumer from holding the other.
+        // Separate unbounded buffers keep consumers from holding one another.
         live.continuation.yield(audio)
+        measured.continuation.yield(accumulator.measure(audio))
         output.continuation.yield(piece)
     }
 
     private func finish(_ error: (any Error)? = nil) {
 
         live.continuation.finish()
+        measured.continuation.finish()
         output.continuation.finish(throwing: error)
     }
 
@@ -122,6 +135,7 @@ public actor LiveAudio: Capture {
 
         receiving?.cancel()
         live.continuation.finish()
+        measured.continuation.finish()
         output.continuation.finish()
     }
 }
