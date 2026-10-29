@@ -4,6 +4,30 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingTests {
 
+    @Test(arguments: RecordingFault.allCases)
+    func sessionFaultsStayNamedUntilTheNextRecording(_ fault: RecordingFault) async throws {
+
+        try await withRecording { rig in
+            try await rig.start(.call)
+            await rig.recording.send(.sessionReported(id: 1, .failed(fault)))
+            await rig.recording.send(.sessionReported(id: 1, .failed(fault)))
+            await rig.recording.send(.sessionReported(id: 1, .failed(.diskFull)))
+            let faulted = await rig.recording.snapshot()
+            #expect(faulted.phase == .recording)
+            #expect(faulted.faults == [fault, .diskFull])
+            #expect(await rig.session.values() == [.begin(1)])
+            try await rig.stop()
+            #expect(await rig.recording.snapshot().faults == [fault, .diskFull])
+            let ended = try await rig.finish()
+            #expect(ended.faults == [fault, .diskFull])
+            try await rig.start(.hand, id: 2)
+            await rig.recording.send(.sessionReported(id: 1, .failed(fault)))
+            #expect(await rig.recording.snapshot().faults.isEmpty)
+            #expect(await rig.session.values() == [.begin(1), .end(1), .begin(2)])
+        }
+    }
+
+
     @Test func callBeginsAutomaticRecording() async throws {
 
         try await withRecording { rig in
@@ -119,6 +143,9 @@ struct RecordingTests {
 
         try await withRecording(missing: [condition]) { rig in
             await rig.recording.send(callStart ? .callStarted : .userStart)
+            if condition == .callAudioAccess {
+                await rig.recording.waitForDelivery(of: .sessionReported(id: 1, .ended))
+            }
             let state = await rig.recording.snapshot()
             #expect(state.phase == .idle)
             #expect(state.missing == [condition])

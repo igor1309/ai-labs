@@ -7,7 +7,8 @@
 #
 # Build first with `swift build --build-tests`: compiling is not bounded
 # here. Exits as `swift test` does, or 124 on the limit, after naming the
-# tests that started and never ended.
+# tests that started and never ended. A crash is named the same way, with
+# the Swift runtime's backtrace in the output.
 
 [ $# -ge 1 ] || { echo "usage: $(basename "$0") <seconds> [swift test args]" >&2; exit 2; }
 limit=$1
@@ -39,14 +40,18 @@ perl -e '
   waitpid($pid, 0);
   alarm(0);
   exit($? & 127 ? 128 + ($? & 127) : $? >> 8);
-' "$limit" swift test --skip-build \
+' "$limit" env SWIFT_BACKTRACE=enable=yes swift test --skip-build \
   --event-stream-output-path "$events" --event-stream-version 0 "$@"
 code=$?
 
 # The event stream is written as the tests run; the console output is
 # buffered and lost with the killed run.
-if [ "$code" -eq 124 ]; then
-  echo "error: the tests ran past ${limit}s and were killed; started and never ended:"
+if [ "$code" -ne 0 ]; then
+  if [ "$code" -eq 124 ]; then
+    echo "error: the tests ran past ${limit}s and were killed; started and never ended:"
+  else
+    echo "error: the tests failed with exit code $code; started and never ended:"
+  fi
   python3 -I -c '
 import json, sys
 started, ended = [], set()

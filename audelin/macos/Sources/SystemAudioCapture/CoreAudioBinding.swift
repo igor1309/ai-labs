@@ -35,14 +35,7 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
     public func updateTap(_ tap: UInt32, _ request: TapRequest) throws {
 
         guard let uuid = state.withLock({ $0.taps[tap] }) else { throw CaptureError.stopped }
-        let description = try description(request, uuid: uuid)
-        var reference = Unmanaged.passUnretained(description).toOpaque()
-        var address = address(kAudioTapPropertyDescription)
-        try withExtendedLifetime(description) {
-            try check(native.write(
-                tap, &address, UInt32(MemoryLayout<UnsafeMutableRawPointer>.size), &reference
-            ))
-        }
+        try check(native.writeTap(tap, try description(request, uuid: uuid)))
     }
 
     public func destroyTap(_ tap: UInt32) {
@@ -204,7 +197,7 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
         _ = self.native.stop(device, native.io)
     }
 
-    private func description(_ request: TapRequest, uuid: UUID) throws -> CATapDescription {
+    private func description(_ request: TapRequest, uuid: UUID) throws -> TapSpec {
 
         let pids: [Int32]
         let exclusive: Bool
@@ -212,16 +205,10 @@ public final class CoreAudioBinding: CaptureBinding, Sendable {
         case .only(let named): pids = named; exclusive = false
         case .allExcept(let excluded): pids = excluded; exclusive = true
         }
-        let objects = try pids.map(processObject)
-        let description = CATapDescription()
-        description.uuid = uuid
-        description.processes = objects
-        description.isExclusive = exclusive
-        description.isMixdown = true
-        description.isMono = request.mono
-        description.isPrivate = request.isPrivate
-        description.muteBehavior = request.unmuted ? .unmuted : .muted
-        return description
+        return TapSpec(
+            uuid: uuid, processes: try pids.map(processObject), exclusive: exclusive,
+            mono: request.mono, isPrivate: request.isPrivate, unmuted: request.unmuted
+        )
     }
 
     func processObject(_ pid: Int32) throws -> UInt32 {
@@ -311,17 +298,41 @@ struct ListenerBlock: @unchecked Sendable {
     let value: @convention(block) (UInt32, UnsafePointer<AudioObjectPropertyAddress>) -> Void
 }
 
+/// A mixdown tap as plain values; only the system calls turn it into a Core Audio description.
+struct TapSpec: Equatable, Sendable {
+
+    let uuid: UUID
+    let processes: [UInt32]
+    let exclusive: Bool
+    let mono: Bool
+    let isPrivate: Bool
+    let unmuted: Bool
+
+    var native: CATapDescription {
+
+        let description = CATapDescription()
+        description.uuid = uuid
+        description.processes = processes
+        description.isExclusive = exclusive
+        description.isMixdown = true
+        description.isMono = mono
+        description.isPrivate = isPrivate
+        description.muteBehavior = unmuted ? .unmuted : .muted
+        return description
+    }
+}
+
 /// Native calls beneath tap translation and resource ownership.
 struct CoreAudioCalls: Sendable {
 
     typealias Address = AudioObjectPropertyAddress
 
-    var createTap: @Sendable (CATapDescription, inout UInt32) -> Int32
+    var createTap: @Sendable (TapSpec, inout UInt32) -> Int32
     var destroyTap: @Sendable (UInt32) -> Int32
     var createDevice: @Sendable (CFDictionary, inout UInt32) -> Int32
     var destroyDevice: @Sendable (UInt32) -> Int32
     var read: @Sendable (UInt32, inout Address, UInt32, UnsafeRawPointer?, inout UInt32, UnsafeMutableRawPointer) -> Int32
-    var write: @Sendable (UInt32, inout Address, UInt32, UnsafeRawPointer) -> Int32
+    var writeTap: @Sendable (UInt32, TapSpec) -> Int32
     var createIO: @Sendable (inout AudioDeviceIOProcID?, UInt32, IOBlock) -> Int32
     var removeIO: @Sendable (UInt32, AudioDeviceIOProcID) -> Int32
     var start: @Sendable (UInt32, AudioDeviceIOProcID) -> Int32
@@ -330,12 +341,22 @@ struct CoreAudioCalls: Sendable {
     var removeListener: @Sendable (UInt32, inout Address, DispatchQueue, ListenerBlock) -> Int32
 
     static let system = CoreAudioCalls(
-        createTap: { AudioHardwareCreateProcessTap($0, &$1) },
+        createTap: { AudioHardwareCreateProcessTap($0.native, &$1) },
         destroyTap: { AudioHardwareDestroyProcessTap($0) },
         createDevice: { AudioHardwareCreateAggregateDevice($0, &$1) },
         destroyDevice: { AudioHardwareDestroyAggregateDevice($0) },
         read: { AudioObjectGetPropertyData($0, &$1, $2, $3, &$4, $5) },
-        write: { AudioObjectSetPropertyData($0, &$1, 0, nil, $2, $3) },
+        writeTap: { tap, spec in
+            let description = spec.native
+            var reference = Unmanaged.passUnretained(description).toOpaque()
+            var address = AudioObjectPropertyAddress(
+                mSelector: kAudioTapPropertyDescription, mScope: kAudioObjectPropertyScopeGlobal,
+                mElement: kAudioObjectPropertyElementMain
+            )
+            return withExtendedLifetime(description) {
+                AudioObjectSetPropertyData(tap, &address, 0, nil, UInt32(MemoryLayout<UnsafeMutableRawPointer>.size), &reference)
+            }
+        },
         createIO: { AudioDeviceCreateIOProcIDWithBlock(&$0, $1, nil, $2.value) },
         removeIO: { AudioDeviceDestroyIOProcID($0, $1) },
         start: { AudioDeviceStart($0, $1) },

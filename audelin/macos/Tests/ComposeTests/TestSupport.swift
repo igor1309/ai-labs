@@ -1,3 +1,5 @@
+import CallAudioAccess
+
 import BlockingTestWork
 import Foundation
 import LiveText
@@ -98,4 +100,16 @@ actor ScriptRecognizer: Recognizer {
 
     var directory: ObjCBool = false
     return FileManager.default.fileExists(atPath: path, isDirectory: &directory) && directory.boolValue
+}
+
+/// A policy snapshot for tests of condition mapping and unrelated composition.
+func testAccessPolicy(available: @escaping @Sendable () -> Bool = { true }) -> AccessPolicy {
+    AccessPolicy(refresh: { available() }, reserve: { available() }, release: {}, states: {
+        AsyncStream { output in
+            var state = AccessState()
+            state.evidence = available() ? .heard : .silent
+            output.yield(state)
+            output.finish()
+        }
+    }, invalidate: {})
 }

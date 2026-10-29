@@ -13,12 +13,12 @@ Switch at rest: the host flows' teardown is logged before the client flows are b
 
 ## S-3 Every message is logged without its contents
 
-A payment from lock through confirm to a success result: each message logged with kind, counter and length; no amount or key. Evidence: Missing.
+A payment from lock through confirm to a success result: each message logged with kind, counter and length; no amount or key. Evidence: RootTests `HostWiringTests.hostTransactions` exercises six host outcomes and scans all log lines with `SecretsGate`, including the entered amount, minor units, public keys, session ids, nonces and frames. RootTests `ClientWiringTests.clientTransactions` proves the client messages through twelve transaction paths and scans every logged line with `SecretsGate`, including both hosts’ names and identifiers and the client session’s keys, id, nonces and frames.
 
 ## S-4 Every state change is logged
 
-A payment from lock through confirm to a success result: each flow's states in order. Evidence: Missing.
+A payment from lock through confirm to a success result: each flow's states in order. Evidence: RootTests `HostWiringTests.hostTransactions` checks the host flows' ordered state logs, including their initial states and payment end. RootTests `ClientWiringTests.clientTransactions` checks the client flows’ ordered phases, initial states and transaction end.
 
 ## S-5 A hand-over builds the next flow
 
-A handshake: client find logged handed over, not ended; client connect ended; client review built with the same session id. Evidence: Missing.
+A handshake: client find logged handed over, not ended; client connect ended; client review built with the same session id. Evidence: RootTests `HostWiringTests.hostTransactions` proves host broadcast waits with the served session, host payment uses its keys and counters, and its model is released at end; `decisionDuringAmountSendReachesTheHandedOverSession` covers a decision arriving at hand-over. RootTests `ClientWiringTests.clientTransactions` proves the chosen host and amount pass through the client chain, the session opens the host’s messages across hand-overs, the middle models are released and client find resumes after the end; `deferredHandovers` covers messages and lost links at both client hand-overs.

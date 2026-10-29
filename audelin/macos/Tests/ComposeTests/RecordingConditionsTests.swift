@@ -10,17 +10,18 @@ struct RecordingConditionsTests {
 
     @Test func firstRefreshSendsEveryCondition() async {
 
-        let rig = ConditionsRig()
-        rig.available.set(.callAudioAccess, false)
-        rig.available.set(.room, false)
+        let rig = ConditionsRig(missing: [.callAudioAccess, .room])
         await rig.checker.refresh()
-        #expect(rig.events.all == [
+        // Access publishes independently of the synchronous condition reads.
+        let expected: [RecordingEvent] = [
             .conditionChanged(.microphoneAccess, available: true),
             .conditionChanged(.callAudioAccess, available: false),
             .conditionChanged(.callsFolder, available: true),
             .conditionChanged(.room, available: false),
-        ])
-        #expect(rig.reads.all == RecordingCondition.allCases)
+        ]
+        #expect(rig.events.all.count == expected.count)
+        #expect(expected.allSatisfy { rig.events.all.contains($0) })
+        #expect(rig.reads.all == [.microphoneAccess, .callsFolder, .room])
     }
 
     @Test func unchangedRefreshReadsAllAndSendsNothing() async {
@@ -30,7 +31,7 @@ struct RecordingConditionsTests {
         let first = rig.events.all
         await rig.checker.refresh()
         #expect(rig.events.all == first)
-        #expect(rig.reads.all == RecordingCondition.allCases + RecordingCondition.allCases)
+        #expect(rig.reads.all == [.microphoneAccess, .callsFolder, .room, .microphoneAccess, .callsFolder, .room])
     }
 
     @Test func oneChangeSendsOnlyThatCondition() async {
@@ -48,8 +49,7 @@ struct RecordingConditionsTests {
     @Test func returningConditionIsSentAsAvailable() async {
 
         for condition in RecordingCondition.allCases {
-            let rig = ConditionsRig()
-            rig.available.set(condition, false)
+            let rig = ConditionsRig(missing: [condition])
             await rig.checker.refresh()
             let first = rig.events.all
             rig.available.set(condition, true)
@@ -66,7 +66,7 @@ struct RecordingConditionsTests {
         let refreshes = Values<Bool>()
         let checker = RecordingConditions(
             recording: recording, microphoneAccess: { allowed.withLock { $0 } },
-            callAudioAccess: { true }, callsFolder: { true }, room: { true }
+            callsFolder: { true }, room: { true }, access: testAccessPolicy()
         )
         let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
         let forwarding = CallRecordingSubscription(calls: source.stream, recording: recording, beforeCallStarted: {
@@ -154,13 +154,13 @@ struct RecordingConditionsTests {
 
 private struct ConditionsRig {
 
-    let available = ConditionsAvailability()
+    let available: ConditionsAvailability
     let events = Values<RecordingEvent>()
     let reads = Values<RecordingCondition>()
     let checker: RecordingConditions
 
-    init() {
-
+    init(missing: Set<RecordingCondition> = []) {
+        available = ConditionsAvailability(missing: missing)
         let available = available, reads = reads
         let read: @Sendable (RecordingCondition) -> Bool = { condition in
             reads.append(condition)
@@ -168,15 +168,18 @@ private struct ConditionsRig {
         }
         checker = RecordingConditions(
             send: events.append,
-            microphoneAccess: { read(.microphoneAccess) }, callAudioAccess: { read(.callAudioAccess) },
-            callsFolder: { read(.callsFolder) }, room: { read(.room) }, sink: SystemLogSink()
+            microphoneAccess: { read(.microphoneAccess) }, callsFolder: { read(.callsFolder) }, room: { read(.room) }, sink: SystemLogSink(), access: testAccessPolicy(available: { available.get(.callAudioAccess) })
         )
     }
 }
 
 private final class ConditionsAvailability: Sendable {
 
-    private let values = Mutex(Dictionary(uniqueKeysWithValues: RecordingCondition.allCases.map { ($0, true) }))
+    private let values: Mutex<[RecordingCondition: Bool]>
+
+    init(missing: Set<RecordingCondition>) {
+        values = Mutex(Dictionary(uniqueKeysWithValues: RecordingCondition.allCases.map { ($0, !missing.contains($0)) }))
+    }
 
     func set(_ condition: RecordingCondition, _ available: Bool) {
 

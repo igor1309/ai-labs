@@ -1,4 +1,6 @@
 import AppKit
+import CallAudioAccess
+import CallAudioProbe
 import Compose
 import IMRxObservation
 import Lifecycle
@@ -10,6 +12,7 @@ import Recording
 import Session
 import os
 import SwiftUI
+import Synchronization
 
 @main
 struct AudelinApp: App {
@@ -25,15 +28,20 @@ struct AudelinApp: App {
             TranscriptPanel(contentRect: $0, styleMask: $1, backing: .buffered, defer: false)
         }, screenFrame: { NSScreen.main?.visibleFrame })
         self.panel = panel
+        let access = await makeCallAudioAccess()
         let model = await AudelinMenu(
             preferences: PreferencesStore(fileURL: FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".audelin/preferences.json")),
+            access: access,
             openCallsFolder: { NSWorkspace.shared.open($0) },
             presentPanel: { [weak panel] in panel?.setVisible($0) },
             terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } },
             quit: quit,
             makeReading: makeReading,
-            makeRecording: { await makeRecording(initial: $0, session: $1, log: $2) },
+            makeRecording: { initial, session, log, ready, released in
+                await makeRecording(initial: initial, session: session, log: log,
+                                    callAudioReady: ready, callAudioReleased: released)
+            },
             makeSession: { await makeSession(handler: $0) }
         )
         self.model = model
@@ -100,11 +108,14 @@ func makeReading() -> ReadingInputs {
 /// Recording's model, reducing on the main actor, and the doer that makes the Session follow it.
 @MainActor
 func makeRecording(
-    initial: RecordingState, session: any RecordingSession, log: @escaping @Sendable (RecordingState) -> Void
+    initial: RecordingState, session: any RecordingSession, log: @escaping @Sendable (RecordingState) -> Void,
+    callAudioReady: @escaping @Sendable () async -> Bool,
+    callAudioReleased: @escaping @Sendable () async -> Void
 ) -> RecordingInputs {
 
     let model = RecordingModel(initial: initial, log: log)
-    let doer = RecordingDoer(session: session, send: { await model.send($0) })
+    let doer = RecordingDoer(session: session, callAudioReady: callAudioReady,
+                             callAudioReleased: callAudioReleased, send: { await model.send($0) })
     let acting = Task { for await state in model.states() { doer.act(on: state) } }
     return RecordingInputs(
         send: { await model.send($0) },

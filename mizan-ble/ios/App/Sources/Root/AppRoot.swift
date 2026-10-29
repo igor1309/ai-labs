@@ -1,6 +1,7 @@
 import DesignSystem
 import ModeSwitchUI
 import Observation
+import Settings
 
 public typealias Side = DesignSystem.Side
 
@@ -14,24 +15,43 @@ public struct AppModeState: Equatable, Sendable, LogDescribable {
     public let radios: RadioPair
     public private(set) var state: AppModeState
     private let modeLog: ModeLog
+    private(set) var host: HostMode?
+    private(set) var client: ClientMode?
+    private let clock: any ClockPort
+    private let settings: Settings
+    private let log: any LogSink
+    private var bluetooth: HostBluetoothState = .unknown
+    private var clientBluetooth: ClientBluetoothState = .unknown
+    @ObservationIgnored private var clientRadioTask: Task<Void, Never>?
+    @ObservationIgnored private var radioTask: Task<Void, Never>?
 
-    /// Flow wiring supplies whether the current mode holds a session or a link.
-    public var isAtRest: Bool {
-        get { state.isAtRest }
-        set {
-            guard newValue != state.isAtRest else { return }
-            state.isAtRest = newValue
-            modeLog.state(state)
-        }
-    }
+    public var isAtRest: Bool { host?.isAtRest ?? client?.isAtRest ?? true }
 
     public var modeSwitchState: ModeSwitchState { .init(side: state.side, isEnabled: isAtRest) }
 
-    public init(radios: RadioPair, launchSide: Side, log: any LogSink) {
+    public init(radios: RadioPair, launchSide: Side, clock: any ClockPort, store: any SettingsStore, log: any LogSink) {
         self.radios = .init(host: LoggedHostRadio(radios.host, log: log), client: LoggedClientRadio(radios.client, log: log))
         state = .init(side: launchSide, isAtRest: true)
         modeLog = ModeLog(sink: log)
+        self.clock = clock
+        self.settings = Settings(store: store)
+        self.log = log
         buildMode()
+        let source = self.radios.host.events
+        radioTask = Task.immediate { [weak self] in
+            for await event in source {
+                guard !Task.isCancelled else { return }
+                self?.receive(event)
+            }
+        }
+        let clientSource = self.radios.client.events
+        clientRadioTask = Task.immediate { [weak self] in
+            for await event in clientSource {
+                guard !Task.isCancelled else { return }
+                if case .bluetooth(let value) = event { self?.clientBluetooth = value }
+                self?.client?.receive(event)
+            }
+        }
     }
 
     public func choose(_ side: Side) {
@@ -41,9 +61,35 @@ public struct AppModeState: Equatable, Sendable, LogDescribable {
         buildMode()
     }
 
-    // Flow ownership and subscriptions belong at these two lifecycle boundaries.
-    private func tearDownMode() { modeLog.tornDown(state.side) }
-    private func buildMode() { modeLog.built(state.side) }
+    deinit { radioTask?.cancel(); clientRadioTask?.cancel() }
+
+    private func receive(_ event: HostRadioEvent) {
+        if case .bluetoothState(let value) = event { bluetooth = value }
+        host?.receive(event)
+    }
+
+    private func tearDownMode() {
+        client?.stop()
+        client = nil
+        host?.stop()
+        host = nil
+        modeLog.tornDown(state.side)
+    }
+    private func buildMode() {
+        modeLog.built(state.side)
+        if state.side == .host {
+            host = HostMode(radio: radios.host, clock: clock, settings: settings, bluetooth: bluetooth, log: log,
+                            restChanged: { [weak self] in self?.updateRest() })
+        } else {
+            client = ClientMode(radio: radios.client, clock: clock, settings: settings, bluetooth: clientBluetooth, log: log,
+                                restChanged: { [weak self] in self?.updateRest() })
+        }
+    }
+    private func updateRest() {
+        guard state.isAtRest != isAtRest else { return }
+        state.isAtRest = isAtRest
+        modeLog.state(state)
+    }
 }
 
 private struct ModeLog {

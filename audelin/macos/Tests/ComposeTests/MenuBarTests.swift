@@ -35,7 +35,7 @@ struct MenuBarTests {
                 let panelClock = ReadingClockSpy()
                 let panel = panelClock.panel()
                 let app = try await AudelinRecording(
-                    preferences: preferences, processes: processes,
+                    preferences: preferences, access: testAccessPolicy(), processes: processes,
                     now: { Date(timeIntervalSince1970: 0) }, timeZone: { TimeZone(secondsFromGMT: 0)! },
                     startMicrophone: {
                         events.append("microphone started")
@@ -58,7 +58,7 @@ struct MenuBarTests {
                         return RecordingConditions(
                             recording: recording,
                             microphoneAccess: { checks.append("microphone"); return true },
-                            callAudioAccess: { true }, callsFolder: { true }, room: { true }
+                            callsFolder: { true }, room: { true }, access: testAccessPolicy()
                         )
                     },
                     startModel: { events.append("model started"); return model }, panel: panel,
@@ -108,6 +108,7 @@ struct MenuBarTests {
                     if state.recording == .on(elapsed: "00:00:03") { break }
                 }
                 #expect(selections.all == [.only([42])])
+                // Starts consult the call-audio port; microphone status is read at launch.
                 #expect(checks.all == ["microphone", "microphone"])
                 binding.setInput(false)
                 #expect(clock.active)

@@ -171,7 +171,7 @@ struct LoggingTests {
                     .init(category: .capture, message: "\(side) first piece sampleRate=48000.0 channels=1 frames=2"),
                     .init(category: .capture, message: "\(side) stream stopped pieces=2 frames=3"),
                 ])
-                #expect(try recordedSamples(URL(fileURLWithPath: folder.id).appendingPathComponent("\(side).caf")) == [0.25, -0.5, 0.125])
+                #expect(try await recordedSamples(URL(fileURLWithPath: folder.id).appendingPathComponent("\(side).caf")) == [0.25, -0.5, 0.125])
             }
         }
     }
@@ -210,10 +210,10 @@ struct LoggingTests {
             let sink = LogSpy()
             let rig = LogPieces(root: root, sink: sink)
             defer { rig.finish() }
-            let recording = await composeRecording(initial: .init(automatic: true),
+            let recording = await composeRecording(initial: .init(automatic: true), access: testAccessPolicy(),
                 makePieces: { _ in rig.pieces }, liveText: { false }, sink: sink, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
             let conditions = RecordingConditions(recording: recording, microphoneAccess: { true },
-                callAudioAccess: { true }, callsFolder: { true }, room: { true })
+                callsFolder: { true }, room: { true }, access: testAccessPolicy())
             await conditions.refresh()
             let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
             let calls = try await composeCalls(processes, to: recording, conditions: conditions)
@@ -335,7 +335,7 @@ struct LoggingTests {
     @Test func conditionsCallsAndModelReportDeliveryAndOutcomes() async throws {
         let sink = LogSpy(), events = Values<RecordingEvent>()
         let conditions = RecordingConditions(send: events.append, microphoneAccess: { false },
-            callAudioAccess: { true }, callsFolder: { true }, room: { false }, sink: sink)
+            callsFolder: { true }, room: { false }, sink: sink, access: testAccessPolicy())
         await conditions.refresh()
         await conditions.refresh()
         #expect(events.all.count == 4)

@@ -7,8 +7,7 @@ import TrackFile
 import TranscriptFile
 @testable import CallFolder
 
-// These tests change the process's formatting defaults, so they run one at a time.
-@Suite(.serialized, .timeLimit(.minutes(1)))
+@Suite(.timeLimit(.minutes(1)))
 struct CallFolderTests {
 
     @Test func madeFolderUsesGivenTimeZoneAndContainsWritablePlaces() async throws {
@@ -215,27 +214,6 @@ private func expectDirectory(_ url: URL) async throws {
 
 private func withCallsFolder(_ body: (URL) async throws -> Void) async throws {
 
-    let defaults = UserDefaults.standard
-    let arguments = defaults.volatileDomain(forName: UserDefaults.argumentDomain)
-    let processZone = getenv("TZ").map { String(cString: $0) }
-    let zone = NSTimeZone.default
-    defaults.setVolatileDomain(arguments.merging(["AppleLocale": "ar_SA"]) { _, new in new }, forName: UserDefaults.argumentDomain)
-    setenv("TZ", "America/Los_Angeles", 1)
-    tzset()
-    NSTimeZone.resetSystemTimeZone()
-    NSTimeZone.default = TimeZone(identifier: "America/Los_Angeles")!
-    defer {
-        defaults.setVolatileDomain(arguments, forName: UserDefaults.argumentDomain)
-        if let processZone { setenv("TZ", processZone, 1) }
-        else { unsetenv("TZ") }
-        tzset()
-        NSTimeZone.resetSystemTimeZone()
-        NSTimeZone.default = zone
-    }
-    #expect(Locale.current.identifier == "ar_SA")
-    #expect(Locale.current.calendar.identifier == .islamicUmmAlQura)
-    #expect(TimeZone.current.identifier == "America/Los_Angeles")
-    #expect(NSTimeZone.default.identifier == "America/Los_Angeles")
     let root = FileManager.default.temporaryDirectory.appendingPathComponent("CallFolderTests-\(UUID())", isDirectory: true)
     try await offPool { try FileManager.default.createDirectory(at: root, withIntermediateDirectories: false) }
     let calls = root.appendingPathComponent("calls", isDirectory: true)

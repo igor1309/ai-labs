@@ -8,6 +8,30 @@ import Testing
 @MainActor
 struct MenuBarActionTests {
 
+    @Test func presentationMapsEveryRecordingFault() {
+
+        for (faults, expected): (Set<RecordingFault>, Set<MenuBarFault>) in [
+            ([.microphone], [.microphone]), ([.callAudio], [.callAudio]), ([.diskFull], [.diskFull]),
+            (Set(RecordingFault.allCases), Set(MenuBarFault.allCases)),
+        ] {
+            for phase: RecordingState.Phase in [.beginning, .recording, .ending, .idle] {
+                for origin: RecordingState.Origin in [.hand, .call] {
+                    var state = RecordingState(automatic: true, missing: [])
+                    state.phase = phase
+                    state.session = .init(id: 1, origin: origin)
+                    state.faults = faults
+                    let input: MenuBarRecording = switch phase {
+                    case .idle: .idle(automatic: true, unavailable: [], failure: nil)
+                    case .beginning, .recording: .recording(call: origin == .call, faults: expected)
+                    case .ending: .ending(faults: expected)
+                    }
+                    #expect(menuBarRecording(state) == input)
+                }
+            }
+        }
+    }
+
+
     @Test func actionsReachRecordingPreferencesFolderAndQuit() async {
 
         var stored = Preferences(automaticRecording: false, liveText: false,
@@ -112,7 +136,7 @@ struct MenuBarActionTests {
                     state.phase = phase
                     state.session = origin.map { .init(id: 42, origin: $0) }
                     state.callOn = origin != .call
-                    variants.append((state, phase == .ending ? .ending : .recording(call: origin == .call)))
+                    variants.append((state, phase == .ending ? .ending(faults: []) : .recording(call: origin == .call, faults: [])))
                 }
             }
             for liveText in [false, true] {

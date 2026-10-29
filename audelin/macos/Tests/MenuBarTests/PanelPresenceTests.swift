@@ -76,7 +76,7 @@ struct PanelPresenceTests {
             #expect(presence.offersReopen == offers)
             for recording: MenuBarRecording in [
                 .idle(automatic: true, unavailable: [], failure: nil),
-                .recording(call: true), .recording(call: false), .ending,
+                .recording(call: true, faults: []), .recording(call: false, faults: []), .ending(faults: []),
             ] {
                 let menu = MenuBarModel(recording: recording,
                     preferences: .init(automatic: true, liveText: true),

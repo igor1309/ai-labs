@@ -31,7 +31,7 @@ struct TrackFileFailureTests {
                     try #require(reported == [1, 2, 3])
                     command.kill()
                     #expect(await command.finish() == SIGKILL)
-                    let samples = try externalSamples(url)
+                    let samples = try await externalSamples(url)
                     var preceding: [Float] = []
                     var expected: [Float] = []
                     var acknowledgedCount = 0

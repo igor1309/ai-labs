@@ -50,7 +50,7 @@ struct TrackFilePositionedWriteTests {
                 expectSamples(try await read.value, expected)
             }
             #expect(try await offPool { try Data(contentsOf: url) } == acknowledged)
-            expectSamples(try externalSamples(url), expected)
+            expectSamples(try await externalSamples(url), expected)
             await #expect(throws: TrackFile.Failure.writingEnded) {
                 try await rig.track.write([0.5], sampleRate: Double(rate))
             }
@@ -58,7 +58,7 @@ struct TrackFilePositionedWriteTests {
             fault.disarm()
             try await rig.track.close()
             expectSamples(try await rig.track.read(from: 0, to: 60), expected)
-            expectSamples(try externalSamples(url), expected)
+            expectSamples(try await externalSamples(url), expected)
             try await expectAfinfo(url, frames: expected.count)
         }
     }

@@ -7,6 +7,79 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingSessionsTests {
 
+    @Test func sessionHealthMapsToFaultsOnce() async throws {
+
+        let cases: [(SessionEvent, RecordingFault?)] = [
+            (.pieceFailed(.access(.microphone), error: "lost"), .microphone),
+            (.pieceFailed(.capture(.microphone), error: "lost"), .microphone),
+            (.accessChanged(.microphone, available: false), .microphone),
+            (.pieceFailed(.access(.call), error: "lost"), .callAudio),
+            (.pieceFailed(.capture(.call), error: "lost"), .callAudio),
+            (.accessChanged(.call, available: false), .callAudio),
+            (.pieceFailed(.track(.microphone), error: "full"), .diskFull),
+            (.pieceFailed(.track(.call), error: "full"), .diskFull),
+            (.pieceFailed(.folder, error: "lost"), nil),
+            (.pieceFailed(.processes, error: "lost"), nil),
+            (.pieceFailed(.transcript, error: "lost"), nil),
+            (.pieceFailed(.callText, error: "lost"), nil),
+        ]
+        for (event, fault) in cases {
+            try await withSessionRig(connect: disconnected) { rig, _ in
+                let connection = RecordingConnection()
+                let adapter = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
+                                                report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
+                #expect(await adapter.begin(id: 17) == .ready)
+                await connection.session.send(event)
+                await connection.session.send(event)
+                await adapter.end(id: 17)
+                #expect(connection.faults == fault.map { [.init(id: 17, report: .failed($0))] } ?? [], "\(event)")
+            }
+        }
+    }
+
+    @Test func faultsBeforeReadyAreDeliveredAfterReady() async throws {
+
+        let started = Signal(), release = Signal()
+        defer { started.end(); release.end() }
+        try await withSessionRig(connect: disconnected, beforeMicrophoneStartReturns: {
+            started.send(); await release.next()
+        }) { rig, _ in
+            let connection = RecordingConnection()
+            let adapter = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
+                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
+            let begin = Task { await adapter.begin(id: 18) }
+            await started.next()
+            await connection.session.send(.pieceFailed(.track(.microphone), error: "full"))
+            _ = try await sessionState(connection.session) { $0.health(of: .track(.microphone)) == .failed("full") }
+            release.end()
+            #expect(await begin.value == .ready)
+            await connection.session.send(.pieceFailed(.track(.call), error: "also full"))
+            await adapter.end(id: 18)
+            #expect(connection.faults == [.init(id: 18, report: .failed(.diskFull))])
+        }
+    }
+
+    @Test func faultsAreDeduplicatedPerSession() async throws {
+
+        try await withSessionRig(connect: disconnected) { first, _ in
+            try await withSessionRig(connect: disconnected) { second, _ in
+                let reports = RecordingConnection(), firstConnection = RecordingConnection(), secondConnection = RecordingConnection()
+                let adapter = RecordingSessions(makePieces: { $0 == 21 ? first.pieces : second.pieces }, liveText: { false },
+                                                report: reports.report, connect: { pieces, session in
+                    if pieces === first.pieces { return firstConnection.connect(pieces, session) }
+                    return secondConnection.connect(pieces, session)
+                }, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
+                for (id, connection): (UInt64, RecordingConnection) in [(21, firstConnection), (34, secondConnection)] {
+                    #expect(await adapter.begin(id: id) == .ready)
+                    await connection.session.send(.accessChanged(.microphone, available: false))
+                    await connection.session.send(.pieceFailed(.capture(.microphone), error: "lost"))
+                    await adapter.end(id: id)
+                }
+                #expect(reports.faults == [.init(id: 21, report: .failed(.microphone)), .init(id: 34, report: .failed(.microphone))])
+            }
+        }
+    }
+
     @Test func readyUsesOneFactoryAndTheLiveTextPreference() async throws {
 
         try await withSessionRig(connect: disconnected) { rig, _ in
@@ -70,7 +143,12 @@ struct RecordingSessionsTests {
             await rig.pieces.news.continuation.yield(.pieceFailed(.transcript, error: "unavailable"))
             _ = try await sessionState(connection.session) { $0.health(of: .transcript) == .failed("unavailable") }
             await adapter.end(id: 7)
-            #expect(connection.reports.all == [.init(id: 7, report: .cannotRecord("no track can record"))])
+            // Capture faults can arrive in either order from the independent streams.
+            #expect(connection.faults.count == 2)
+            #expect(connection.faults.contains(.init(id: 7, report: .failed(.microphone))))
+            #expect(connection.faults.contains(.init(id: 7, report: .failed(.callAudio))))
+            #expect(connection.reports.all.filter { if case .failed = $0.report { false } else { true } }
+                    == [.init(id: 7, report: .cannotRecord("no track can record"))])
             #expect(connection.joined.all == [true])
         }
     }
@@ -104,7 +182,7 @@ struct RecordingSessionsTests {
     @Test func recordingWiringForwardsLaterFailureAndEndsTheSession() async throws {
 
         try await withSessionRig(connect: disconnected) { rig, folder in
-            let recording = await composeRecording(initial: .init(missing: []), makePieces: { _ in rig.pieces }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
+            let recording = await composeRecording(initial: .init(missing: []), access: testAccessPolicy(), makePieces: { _ in rig.pieces }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
             await recording.send(.userStart)
             _ = try await recordingState(recording) { $0.phase == .recording }
             let text = try #require(await rig.pieces.text)
@@ -114,8 +192,8 @@ struct RecordingSessionsTests {
             let ended = try await recordingState(recording) { $0.phase == .idle }
             #expect(ended.cannotRecord == "no track can record")
             #expect(ended.session == nil)
-            #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5])
-            #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5])
+            #expect(try await recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5])
+            #expect(try await recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5])
             await recording.end()
         }
     }
@@ -201,6 +279,8 @@ private final class RecordingConnection: Sendable {
     let cancelled = Values<Bool>()
 
     var session: SessionInputs { sessions.all[0] }
+
+    var faults: [SessionReport] { reports.all.filter { if case .failed = $0.report { true } else { false } } }
 
     func report(_ id: UInt64, _ report: RecordingSessionReport) {
 
