@@ -1,5 +1,6 @@
 import AVFAudio
 import Darwin
+import Foundation
 import Synchronization
 import Testing
 @testable import MicrophoneCapture
@@ -46,6 +47,24 @@ struct NativeMicrophoneConversionTests {
             let expectedTime = hasHostTime ? 7_200 : 7_200.5 - 2 / rate
             #expect(abs(input.time - expectedTime) < 1e-9)
         }
+    }
+
+    /// A long call delivers thousands of buffers; each must reach the receiver
+    /// through the same frames, or the chain overflows the stack mid-call or
+    /// when it is released at stop.
+    @Test func manyDeliveriesKeepTheReceiverAtTheSameDepth() throws {
+
+        let buffer = try makeBuffer(interleaved: false, rate: 48_000)
+        let depths = Mutex<[Int]>([])
+        let tap = NativeTap(
+            receive: { _ in depths.withLock { $0.append(Thread.callStackSymbols.count) } },
+            readClock: { MicrophoneClockReading(host: 1, continuous: 1) }
+        )
+        for _ in 0..<2_000 { tap.deliver(buffer, time: AVAudioTime(sampleTime: 0, atRate: 48_000)) }
+        tap.close()
+        let seen = depths.withLock { $0 }
+        #expect(seen.count == 2_000)
+        #expect(seen.first == seen.last)
     }
 
     /// Contract test: the native clock adapter reads the kernel's host and continuous clocks.
