@@ -98,3 +98,49 @@ Feature: Bringing a recording up and down
     When the call is captured
     Then I can read that the choice failed, and their side is recorded
 ```
+
+## Silent call warning
+
+Compose subscribes to each live capture's statistics before starting it. It
+forwards every call piece and every microphone RMS window to Session, shifted
+by that capture's start relative to one monotonic origin for the session.
+Both starts are read immediately before starting the recording capture, before
+any piece can arrive. Stopping a capture joins its statistics forwarding.
+The state subscriber updates the panel, log and recording reports only when a
+field they read changes, including the audio warning; private rule tracking
+alone causes no update.
+
+While recording, Session accepts call-piece statistics (a `start..<end`
+interval and whether any sample was finite and nonzero) and microphone RMS
+for each 20 ms window. Both use seconds from one shared origin. Each stream
+supplies finite, increasing, nonoverlapping intervals; malformed or overlapping
+intervals are ignored. A gap in call statistics starts a new silence interval,
+and a gap or inactive window on the microphone breaks sustained activity.
+
+Call silence starts at the first call piece's start, or at the end of the
+last piece containing a finite nonzero sample. At 300 seconds of exact zeros,
+Session exposes `audioWarning: .callSilent` if the microphone was active within
+the last 120 seconds, including the boundary. Microphone activity requires RMS
+at least 0.01 for 100 ms of contiguous windows. An isolated click or a 99 ms
+run does not qualify. Once qualified, a run remains active through its last
+active window's end.
+
+Evaluation uses the lesser of the two streams' covered-through times. Activity
+that qualifies after that time cannot warn yet; earlier qualifying activity
+is retained until that time passes its 120-second recency limit. Capture start
+offsets do not count as call silence before the first call piece, and delayed
+statistics cannot borrow activity from the future.
+
+The warning appears at most once per recording. A call piece containing a
+finite nonzero sample clears it immediately, including when the microphone
+lags, and subsequent silence cannot make it return. These events have no
+effect and change no health, failure or recordability state. Events outside
+the recording phase are ignored. An accepted begin resets the warning and
+all its tracking.
+
+The thresholds are Amanu's values and remain uncalibrated for Audelin. The
+300-second silence interval is long enough to exclude a natural call pause.
+Recent microphone activity within 120 seconds suggests the user is talking,
+which makes silence on the other side suspicious. RMS 0.01 sustained for
+100 ms is intended to exclude clicks and room noise. Calibration remains
+future work.

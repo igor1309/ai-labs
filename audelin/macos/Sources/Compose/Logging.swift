@@ -79,7 +79,7 @@ struct StateLog: Sendable {
         // Folder and process identifiers are opaque; never format the whole state.
         sink.write(.init(
             category: .session,
-            message: "state id=\(id) phase=\(state.phase) folder=\(state.folder) processes=\(state.processes) microphoneTrack=\(state.microphoneTrack) callTrack=\(state.callTrack) microphoneCapture=\(state.microphoneCapture) callCapture=\(state.callCapture) transcript=\(state.transcript) callText=\(state.callText) liveText=\(state.liveText) wantedLiveText=\(state.wantedLiveText) request=\(state.liveTextRequestID) pending=\(String(describing: state.pendingLiveText)) health=\(state.health)",
+            message: "state id=\(id) phase=\(state.phase) folder=\(state.folder) processes=\(state.processes) microphoneTrack=\(state.microphoneTrack) callTrack=\(state.callTrack) microphoneCapture=\(state.microphoneCapture) callCapture=\(state.callCapture) transcript=\(state.transcript) callText=\(state.callText) liveText=\(state.liveText) wantedLiveText=\(state.wantedLiveText) request=\(state.liveTextRequestID) pending=\(String(describing: state.pendingLiveText)) health=\(state.health) audioWarning=\(state.audioWarning.map { String(describing: $0) } ?? "none")",
             error: ([state.cannotRecord].compactMap { $0 } + state.failures.map { $0.description }).joined(separator: "; ").nilIfEmpty
         ))
     }

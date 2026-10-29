@@ -26,6 +26,44 @@ waiting for the other.
   text first to keep the first audio (Session, Decided), and call text
   runs one live text per track; a second listener hears nothing.
 
+## Statistics output
+
+`statistics()` supplies one independent stream of measurements. The first
+caller receives it and may subscribe before capture starts; later callers
+receive an already finished, empty stream. Listening and subscribing to
+statistics do not claim each other's output. Each output buffers in memory
+without a bound, so an unread statistics stream holds neither listening nor
+reading, and held audio consumers do not hold statistics.
+
+Every received piece produces one `AudioStatistics` value, in arrival order,
+with the same start and end as the listener's audio. Position begins at zero
+and advances by the duration of captured samples. Empty pieces still produce
+a value. `hasFiniteNonzeroSample` is true exactly when at least one sample
+is both finite and unequal to zero; NaN and either infinity do not count.
+These are measurements only: LiveAudio applies no activity threshold or
+warning policy.
+
+Each value also carries the complete 20 ms RMS windows that close during
+that piece, in time order. Each window has its own start, end and RMS.
+Windows align to position zero and retain unfinished samples across piece
+boundaries. RMS is the square root of the mean squared sample value,
+calculated in double precision. If a boundary falls within a sample's
+duration, that sample contributes to both windows in proportion to the
+duration on each side, keeping window lengths exactly 20 ms even at rates
+with a fractional number of samples per window.
+
+A window containing a nonfinite sample reports a nonfinite RMS, rather
+than disappearing. This does not affect later windows containing only
+finite samples. A trailing partial window is dropped when input ends.
+When a piece changes the sample rate, any partial window is discarded and
+window alignment restarts at that piece's start, including for an empty
+piece. Measurements retain the live audio timeline across that change.
+
+Statistics end with the live view after all received pieces: on normal end
+of input, stop, failed stop or input failure. A refused start or a stop
+before start ends statistics without values. Statistics do not throw;
+capture failures remain available through the reader and lifecycle calls.
+
 ```gherkin
 Feature: Hearing a capture live
 

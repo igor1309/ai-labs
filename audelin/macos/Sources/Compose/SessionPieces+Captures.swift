@@ -60,9 +60,30 @@ extension SessionPieces {
         let live = LiveAudio(capture: LoggingCapture(base: capture, sink: captureLogSink, side: String(describing: side)))
         let recorded = RecordedCapture(capture: RecordedInput(capture: live), track: recordingTrack(side, track))
         sides[side]?.audio.attach(makeCaptureAudio(side, live))
+        let measurements = await live.statistics()
+        let news = news.continuation
+        // Both sides take their offset immediately before starting RecordedCapture,
+        // before LiveAudio can accept its first piece on its local zero-based timeline.
+        let offset = monotonicNow() - timeOrigin
+        let statistics = Task(executorPreference: executor) {
+            for await piece in measurements {
+                switch side {
+                case .call:
+                    news.yield(.callAudioStatistics(
+                        start: offset + piece.start, end: offset + piece.end,
+                        hasFiniteNonzeroSample: piece.hasFiniteNonzeroSample
+                    ))
+                case .microphone:
+                    for window in piece.windows {
+                        news.yield(.microphoneLevel(
+                            start: offset + window.start, end: offset + window.end, rms: window.rms
+                        ))
+                    }
+                }
+            }
+        }
         do {
             try await recorded.start()
-            let news = news.continuation
             let failures = Task(executorPreference: executor) {
                 var stopFailure: (any Error)?
                 for await failure in recorded.failures {
@@ -81,10 +102,13 @@ extension SessionPieces {
             sides[side]?.stopCapture = {
                 // Runtime failures already have their own forwarding path.
                 _ = try? await recorded.stop()
+                await statistics.value
                 await audio.drain()
                 if let failure = await failures.value { throw failure }
             }
-        } catch let RecordingFailure.capture(error) {
+        } catch {
+            await statistics.value
+            if case let RecordingFailure.capture(cause) = error { throw cause }
             throw error
         }
     }

@@ -4,13 +4,14 @@ import Recording
 
 func menuBarRecording(_ state: RecordingState) -> MenuBarRecording {
 
-    let faults = Set(state.faults.map { fault -> MenuBarFault in
+    var faults = Set(state.faults.map { fault -> MenuBarFault in
         switch fault {
         case .microphone: .microphone
         case .callAudio: .callAudio
         case .diskFull: .diskFull
         }
     })
+    if state.callSilent { faults.insert(.callSilent) }
     switch state.phase {
     case .idle:
         let unavailable = Set(state.missing.map { condition -> MenuBarBlocker in

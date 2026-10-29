@@ -251,7 +251,7 @@ struct LoggingTests {
     }
 
     @Test func recordingSessionLogsReportsAndEndAndSessionStateOmitsOpaqueIDs() async throws {
-        for report: RecordingSessionReport in [.ready, .cannotRecord("no track"), .ended] {
+        for report: RecordingSessionReport in [.ready, .cannotRecord("no track"), .ended, .callSilent(true), .callSilent(false)] {
             let sink = LogSpy(), calls = Values<String>()
             let session = LoggingRecordingSession(base: RecordingSpy(report: report, calls: calls), sink: sink)
             #expect(await session.begin(id: 8) == report)
@@ -310,6 +310,32 @@ struct LoggingTests {
             #expect(states.allSatisfy { $0.message.hasPrefix("state id=8 ") && !$0.message.contains(root.path) })
             #expect(states.last?.message.contains("microphoneCapture=closed") == true)
             #expect(states.last?.message.contains("callCapture=closed") == true)
+        }
+    }
+
+    @Test func statisticsWithoutAWarningWriteNoSessionStateLog() async throws {
+        try await withSessionRig(connect: { _, _ in Task {} }) { rig, _ in
+            let sink = LogSpy()
+            let session = await makeSession(rig.pieces.handler())
+            let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
+                report: { _, _ in }, connect: subscribe, sink: sink,
+                panel: ReadingClockSpy().panel(), makeSession: { _ in session })
+            #expect(await sessions.begin(id: 1) == .ready)
+            let before = await session.snapshot()
+            for index in 0..<20 {
+                let start = Double(index), end = start + 1
+                await session.send(.callAudioStatistics(start: start, end: end, hasFiniteNonzeroSample: false))
+                await session.send(.microphoneLevel(start: start, end: end, rms: 0.5))
+            }
+            let after = await session.snapshot()
+            #expect(after != before)
+            #expect(after.audioWarning == nil)
+            await sessions.end(id: 1)
+            let recordingLogs = sink.entries.all.filter {
+                $0.category == .session && $0.message.hasPrefix("state ") && $0.message.contains("phase=recording")
+            }
+            #expect(recordingLogs.count == 1)
+            #expect(recordingLogs.first?.message.contains("audioWarning=none") == true)
         }
     }
 

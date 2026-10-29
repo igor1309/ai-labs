@@ -61,6 +61,8 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     let microphoneRecognizerSource: @Sendable () async throws -> any Recognizer
     let callRecognizerSource: @Sendable () async throws -> any Recognizer
     let missingModels: @Sendable () -> [String]
+    let monotonicNow: @Sendable () -> Double
+    let timeOrigin: Double
     let captureLogSink: any LogSink
     let executor: (any TaskExecutor)?
     let openTrackFile: @Sendable (URL) async throws -> TrackFile
@@ -98,6 +100,9 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     @usableFromInline
     static let defaultMakeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = { WritingCallText(text: $0) }
 
+    @usableFromInline
+    static let defaultMonotonicNow: @Sendable () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000 }
+
     public init(
         folder: CallFolder,
         folderTitle: String? = nil,
@@ -107,6 +112,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         microphoneRecognizer: any Recognizer,
         callRecognizer: any Recognizer,
         missingModels: @escaping @Sendable () -> [String],
+        monotonicNow: @escaping @Sendable () -> Double = SessionPieces.defaultMonotonicNow,
         executor: (any TaskExecutor)? = nil,
         openTrack: @escaping @Sendable (URL) async throws -> TrackFile = { try await TrackFile(url: $0) },
         recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
@@ -119,7 +125,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         self.init(
             folder: folder, folderTitle: folderTitle, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
             microphoneRecognizerSource: { microphoneRecognizer }, callRecognizerSource: { callRecognizer },
-            missingModels: missingModels,
+            missingModels: missingModels, monotonicNow: monotonicNow,
             executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
             makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText,
             captureLogSink: SystemLogSink()
@@ -135,6 +141,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         microphoneRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         missingModels: @escaping @Sendable () -> [String],
+        monotonicNow: @escaping @Sendable () -> Double = SessionPieces.defaultMonotonicNow,
         executor: (any TaskExecutor)? = nil,
         openTrack: @escaping @Sendable (URL) async throws -> TrackFile = { try await TrackFile(url: $0) },
         recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
@@ -147,7 +154,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         self.init(
             folder: folder, folderTitle: folderTitle, processes: processes, startMicrophone: startMicrophone, startCall: startCall,
             microphoneRecognizerSource: microphoneRecognizerSource, callRecognizerSource: callRecognizerSource,
-            missingModels: missingModels, executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
+            missingModels: missingModels, monotonicNow: monotonicNow, executor: executor, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
             makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText,
             captureLogSink: SystemLogSink()
         )
@@ -162,6 +169,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         microphoneRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         missingModels: @escaping @Sendable () -> [String],
+        monotonicNow: @escaping @Sendable () -> Double = SessionPieces.defaultMonotonicNow,
         executor: (any TaskExecutor)? = nil,
         openTrack: @escaping @Sendable (URL) async throws -> TrackFile = { try await TrackFile(url: $0) },
         recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
@@ -179,6 +187,8 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         self.startCall = startCall
         self.microphoneRecognizerSource = microphoneRecognizerSource
         self.callRecognizerSource = callRecognizerSource
+        self.monotonicNow = monotonicNow
+        self.timeOrigin = monotonicNow()
         self.missingModels = missingModels
         self.captureLogSink = captureLogSink
         self.executor = executor

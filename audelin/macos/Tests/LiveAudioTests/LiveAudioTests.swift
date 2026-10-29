@@ -98,11 +98,16 @@ struct LiveAudioTests {
             defer { executor.complete() }
             let live = LiveAudio(capture: capture, beforeInput: { await input.wait() }, executor: executor)
             let listener = await live.listen()
+            let statistics = await live.statistics()
             let stream = try await live.start()
             capture.give(tones())
             await #expect(throws: Refusal.stop) { try await live.stop() }
             returned.withLock { $0 = true }
             #expect(pieces(await heard(listener)) == tones())
+            var measured: [AudioStatistics] = []
+            for await value in statistics { measured.append(value) }
+            #expect(measured.map(\.end).last == live.capturedThrough)
+            #expect(measured.count == tones().count)
             #expect(try await read(stream) == tones())
         }
         defer { input.release(); capture.finish(); executor.run() }

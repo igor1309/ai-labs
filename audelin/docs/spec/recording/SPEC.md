@@ -42,6 +42,13 @@ whether a recording runs; its Session brings the pieces up and down.
   changes nothing. The menu bar shows each fault beside its recording line
   while recording and ending.
 
+- **Call silence is carried only while the warning holds.** The current
+  Session can report that its call side is silent and later clear that
+  warning. Recording accepts these values while beginning, recording or
+  ending, without adding a fault or changing recording control. A new
+  recording begins without the warning, and the Session ending clears it.
+  A warning report from an earlier or ended Session changes nothing.
+
 ```gherkin
 Feature: Deciding when a call is recorded
 
