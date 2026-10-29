@@ -279,7 +279,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         self.writing = writing
         if let output = readingOutput {
             readingObservation = Task {
-                for await state in writing.updates { output.yield(state) }
+                for await state in writing.updates.removingRepeats() { output.yield(state) }
                 output.finish()
             }
         }

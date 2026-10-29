@@ -85,12 +85,8 @@ struct SessionEnduranceTests {
             let (textStates, repeats) = await reader.value
             log("panel read \(textStates) text states, \(repeats) the same as the one before")
             // The text changes as words arrive, a few times a second on each side.
-            withKnownIssue("a hearing that changes nothing still publishes its text") {
-                #expect(repeats == 0)
-            }
-            withKnownIssue("the last entry ends where the audio was heard through, so every piece is a new state") {
-                #expect(Double(textStates) / seconds <= 10)
-            }
+            #expect(repeats == 0)
+            #expect(Double(textStates) / seconds <= 10)
             log("ended in \(ContinuousClock.now - started); failures \(ended.failures), footprint \(footprintMiB()) MiB")
             #expect(ended.failures.isEmpty)
 

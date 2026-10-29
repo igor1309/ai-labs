@@ -22,6 +22,8 @@ public struct Segments: Equatable, Sendable {
 
     public private(set) var all: [Segment] = []
     public private(set) var ending: Ending?
+    /// Seconds into the track where the last word ends.
+    public var end: Double { words.last?.end ?? 0 }
 
     /// The silence between two words that starts a new segment.
     let pause: Double

@@ -37,7 +37,7 @@ struct TextTests {
         try await adapter.prepare()
         try await adapter.prepare()
         #expect(try await adapter.hear(.init(start: 0, samples: [0.25, 0.5], sampleRate: 1)) == [
-            .init(id: 0, start: 0.5, end: 2, pending: "one."),
+            .init(id: 0, start: 0.5, end: 1, pending: "one."),
         ])
         try await adapter.prepare()
         #expect(try await adapter.hear(.init(start: 2, samples: [0.125, -0.5, 0.5, 0.25], sampleRate: 2)) == [

@@ -49,7 +49,7 @@ struct CallSide: CallText.Side {
 
     func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async {
 
-        for await snapshot in side.updates {
+        for await snapshot in side.updates.removingRepeats() {
             let status: SideState.Status = switch snapshot.status {
             case .off: .off
             case .fillingIn: .gettingReady

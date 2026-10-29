@@ -176,7 +176,7 @@ public actor TrackText {
         guard let listening else { throw Failure.notPrepared }
         var lower = 0
         if let accepted {
-            let text = try await nextUpdate(accepted.reply, through: accepted.audio.end)
+            let text = try await nextUpdate(accepted.reply)
             lower = Int(min(Double(audio.samples.count), max(
                 0, ((accepted.audio.end - audio.start) * audio.sampleRate).rounded()
             )))
@@ -190,7 +190,7 @@ public actor TrackText {
         accepted = Accepted(audio: unheard, reply: reply)
         listening.requests.yield(reply)
         listening.source.yield(AudioChunk(samples: unheard.samples, sampleRate: unheard.sampleRate))
-        return try await nextUpdate(reply, through: unheard.end)
+        return try await nextUpdate(reply)
     }
 
     public func finish() async throws -> [Text] {
@@ -202,11 +202,11 @@ public actor TrackText {
         return try await withTaskCancellationHandler {
             do {
                 if let accepted {
-                    _ = try await nextUpdate(accepted.reply, through: accepted.audio.end)
+                    _ = try await nextUpdate(accepted.reply)
                 }
                 let reply = Reply()
                 session.requests.yield(reply)
-                let text = try await nextUpdate(reply, through: accepted?.audio.end ?? 0)
+                let text = try await nextUpdate(reply)
                 session.requests.finish()
                 await session.reading.value
                 await session.task.value
@@ -233,7 +233,7 @@ public actor TrackText {
         await session.task.value
     }
 
-    private func nextUpdate(_ reply: Reply, through end: Double) async throws -> [Text] {
+    private func nextUpdate(_ reply: Reply) async throws -> [Text] {
 
         guard let session = listening else { throw Failure.notPrepared }
         let update = await reply.update()
@@ -241,7 +241,7 @@ public actor TrackText {
         do {
             guard let update else { throw Failure.updatesEnded }
             guard update.ending != .failed else { throw Failure.updateFailed }
-            return Self.text(from: update.all, through: end)
+            return Self.text(from: update.all, through: update.end)
         } catch {
             session.stop()
             await session.reading.value
@@ -258,6 +258,7 @@ public actor TrackText {
         listening?.stop()
     }
 
+    /// A segment runs to the next one's start, and the last to `end`.
     public static func text(from segments: [Segments.Segment], through end: Double) -> [Text] {
 
         segments.enumerated().map { index, segment in
