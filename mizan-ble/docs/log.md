@@ -2,6 +2,7 @@
 
 ## 2026-10-28
 
+- ClientRadio supplies nearby host readings, connects through the GATT setup, writes keys and messages with responses, and reports host messages and lost links (LAB-661).
 - HostRadio serves and advertises a session, accepts its owner's writes, queues messages for that owner, and retires or finishes the service while reporting Bluetooth and link changes (LAB-660).
 - The flows hand each effect's results back as a stream and run on swift-imrx's `ObservableModel` in the app; the package's own machine is gone (LAB-693).
 - SystemClock supplies monotonic instants, deadline-based countdowns and periodic ticks that stop when their reader is cancelled (LAB-658).
