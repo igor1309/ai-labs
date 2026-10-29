@@ -71,12 +71,7 @@ import Foundation
     private var setup: Setup?
     private var pendingDisconnects: [UUID: Int] = [:]
 
-    private func selectedHost(at stage: Setup? = nil, disconnectFrom peer: UUID? = nil) -> UUID? {
-        // Cancel acknowledgements identify only the peer, so match them before the current link.
-        if let peer, let count = pendingDisconnects[peer] {
-            pendingDisconnects[peer] = count > 1 ? count - 1 : nil
-            return nil
-        }
+    private func selectedHost(at stage: Setup? = nil) -> UUID? {
         guard stage == nil || setup == stage else { return nil }
         return host
     }
@@ -141,7 +136,7 @@ import Foundation
             continuation.yield(.writeAnswered(write.target, .disconnected))
             write.complete?(.failure(.disconnected))
         }
-        if !alreadyDisconnected { pendingDisconnects[peer, default: 0] += 1 }
+        if bluetoothState == .on && !alreadyDisconnected { pendingDisconnects[peer, default: 0] += 1 }
         binding.disconnect(peer)
     }
 
@@ -153,6 +148,8 @@ import Foundation
             if state == .on {
                 if scanRequested { binding.scan(service: GATT.service, allowDuplicates: true) }
             } else {
+                // Core Bluetooth no longer owes disconnect callbacks while Bluetooth is unavailable.
+                pendingDisconnects.removeAll()
                 if setup == .ready { drop() } else { tearDown(.bluetooth(state)) }
             }
         case .discovery(let host, let name, let rssi) where scanRequested:
@@ -199,7 +196,13 @@ import Foundation
             write.complete?(error.map { .failure($0) } ?? .success(()))
         case .value(let peer, .toClient, .success(let bytes)) where peer == selectedHost(at: .ready):
             continuation.yield(.message(host: peer, bytes: bytes))
-        case .disconnected(let peer) where peer == selectedHost(disconnectFrom: peer):
+        case .disconnected(let peer):
+            // Cancel acknowledgements identify only the peer, so match them before the current link.
+            if let count = pendingDisconnects[peer] {
+                pendingDisconnects[peer] = count > 1 ? count - 1 : nil
+                return
+            }
+            guard peer == selectedHost() else { return }
             tearDown(setup == .ready ? nil : .disconnected, alreadyDisconnected: true)
         case .serviceRemoved(let peer) where peer == selectedHost():
             if setup == .ready { drop() } else { tearDown(.disconnected) }

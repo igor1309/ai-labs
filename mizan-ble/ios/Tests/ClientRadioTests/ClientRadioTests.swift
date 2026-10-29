@@ -448,6 +448,59 @@ import Testing
         }
     }
 
+    @Test(arguments: [ClientRadio.BluetoothState.unknown, .resetting, .unsupported, .notAllowed, .off], 0...2)
+    func bluetoothLossDoesNotMaskReconnectedLinksDisconnect(state: ClientRadio.BluetoothState, cancellations: Int) async {
+        var expected: [ClientRadio.Event] = []
+        let events = await record { radio, fake in
+            let host = fake.host
+            let connected: ClientRadio.Event = .connected(host: host, session: [1, 2, 3], largestWrite: 182)
+            fake.send(.bluetooth(.on))
+            fake.establish(radio)
+            expected = [.bluetooth(.on), connected]
+            for _ in 0..<cancellations {
+                radio.drop()
+                fake.establish(radio)
+                expected += [.dropped(host: host), connected]
+            }
+            fake.calls = []
+            fake.send(.bluetooth(state))
+            #expect(fake.calls == [.disconnect(host)])
+            fake.send(.bluetooth(.on))
+            fake.establish(radio)
+            fake.send(.disconnected(host))
+            expected += [.bluetooth(state), .dropped(host: host), .bluetooth(.on), connected, .dropped(host: host)]
+        }
+        #expect(events == expected)
+    }
+
+    @Test func bluetoothResetClearsCancellationsWithoutASelectedHost() async {
+        var expected: [ClientRadio.Event] = []
+        let events = await record { radio, fake in
+            let hosts = [fake.host, UUID()]
+            fake.send(.bluetooth(.on))
+            expected = [.bluetooth(.on)]
+            for host in hosts {
+                radio.connect(to: host)
+                radio.drop()
+                expected.append(.dropped(host: host))
+            }
+            fake.send(.bluetooth(.resetting))
+            fake.send(.bluetooth(.on))
+            expected += [.bluetooth(.resetting), .bluetooth(.on)]
+            for host in hosts {
+                radio.connect(to: host)
+                fake.send(.connected(host))
+                fake.send(.services(host, .success(true)))
+                fake.send(.characteristics(host, .success(Set(Characteristic.allCases))))
+                fake.send(.subscribed(host, .success(true)))
+                fake.send(.value(host, .session, .success([1, 2, 3])))
+                fake.send(.disconnected(host))
+                expected += [.connected(host: host, session: [1, 2, 3], largestWrite: 182), .dropped(host: host)]
+            }
+        }
+        #expect(events == expected)
+    }
+
     @Test func droppingCompletesPendingWritesBeforeReconnect() async {
         var expected: [ClientRadio.Event] = []
         let events = await record { radio, fake in
