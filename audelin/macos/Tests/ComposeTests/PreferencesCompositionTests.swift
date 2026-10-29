@@ -19,7 +19,7 @@ struct PreferencesCompositionTests {
                 try store.write(Preferences(automaticRecording: automatic, callsFolder: folder))
                 let (recording, conditions) = await composeRecordingWithPreferences(preferences: store, makePieces: { _ in
                     preconditionFailure("An idle recording must not build a session")
-                }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
+                }, makeConditions: testConditions, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
                 #expect(await recording.state() == RecordingState(automatic: automatic))
                 await conditions.refresh()
                 // A snapshot reads after every event already sent is reduced.
@@ -39,7 +39,7 @@ struct PreferencesCompositionTests {
                     try store.write(preferences)
                     let (recording, _) = await composeRecordingWithPreferences(
                         preferences: store, makePieces: { $0 == 1 ? first.pieces : second.pieces },
-                        panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession
+                        makeConditions: testConditions, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession
                     )
                     for condition in RecordingCondition.allCases {
                         await recording.send(.conditionChanged(condition, available: true))
@@ -75,4 +75,10 @@ private func waitForPhase(_ phase: RecordingState.Phase, in recording: Recording
         if state.phase == phase { return }
     }
     throw ScriptFailure.failed
+}
+
+private func testConditions(recording: RecordingInputs, callsURL: URL) -> RecordingConditions {
+    RecordingConditions(recording: recording, microphoneAccess: { true }, callAudioAccess: { true }, callsFolder: {
+        FileManager.default.fileExists(atPath: callsURL.path)
+    }, room: { true })
 }

@@ -1,4 +1,5 @@
 import AVFoundation
+import CallAudioAccess
 import CoreAudioProcesses
 import Foundation
 import Lifecycle
@@ -22,6 +23,7 @@ public final class AudelinRecording: Sendable {
 
     public convenience init(
         preferences: PreferencesStore,
+        access: AccessPolicy,
         makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
         makeRecording: @escaping MakeRecordingModel,
         makeSession: @escaping MakeSessionModel
@@ -34,7 +36,7 @@ public final class AudelinRecording: Sendable {
             now: { Date() }, timeZone: { .current },
             startMicrophone: startProductionMicrophone, startCall: startProductionCallAudio,
             recognizerSource: { try await ParakeetRecognizer() }, missingModels: productionMissingModels,
-            makeConditions: composeRecordingConditions,
+            makeConditions: { composeRecordingConditions(recording: $0, callsURL: $1, access: access) },
             startModel: { startLiveModelLoading() }, panel: AudelinPanel(makeReading: makeReading),
             makeRecording: makeRecording, makeSession: makeSession
         )
@@ -74,7 +76,7 @@ public final class AudelinRecording: Sendable {
         await conditions.refresh()
         let calls: CallRecordingSubscription
         do {
-            calls = try await composeCalls(processes, to: inputs, conditions: conditions, startedApp: { app.started($0) })
+            calls = try await composeCalls(processes, to: inputs, startedApp: { app.started($0) })
         } catch {
             await processes.stop()
             Task { await inputs.end() }

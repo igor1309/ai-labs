@@ -18,9 +18,9 @@ whether a recording runs; its Session brings the pieces up and down.
   A call that starts while the last Session ends is recorded once it has
   ended, if the call is still on.
 - **Idle only once the Session has ended,** so recordings never overlap.
-- **Audio's conditions come first:** microphone and call audio access,
-  a calls folder with room; room means at least 30 GB free on the calls
-  folder's volume (owner, 2026-10-26). No start begins without them. Once recording,
+- **Audio's conditions come first:** microphone access, call audio access
+  established by a muted own-process reception probe, and a calls folder
+  with room; room means at least 30 GB free on the calls folder's volume (owner, 2026-10-26). No start begins without them. Once recording,
   a lost access is a failing capture and the other side goes on (the
   Session, the design's mic lost); only a lost folder or room ends it, its
   audio kept (disk full). Setup reads the conditions' merge (LAB-406).

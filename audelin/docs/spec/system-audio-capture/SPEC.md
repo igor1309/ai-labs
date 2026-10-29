@@ -16,7 +16,9 @@ they play, through an interface it owns. An adapter over a Core Audio tap.
   the process is frozen and after it quits (measured on this Mac,
   [system-audio.md](../../research/system-audio.md#measured-on-this-mac)),
   so a piece needs no time of its own and a quiet tap is not a failure. A
-  denied permission gives silence.
+  denied permission gives silence. Permission evidence comes from a separate
+  muted own-process reception probe that plays its own stimulus before a
+  recording starts; this capture never judges access from quiet call audio.
 
 ```gherkin
 Feature: Hearing the processes a client names
@@ -96,5 +98,5 @@ S-3, S-4 and S-16 are retired: a tap leaves no gaps. Not capture's:
 choosing and listing processes (call app processes, Core Audio processes);
 naming again, retries after a failure or sleep, and a watchdog for audio
 that stops (the client and root decorators); echo cancellation, which kills
-a tap (MacParakeet); the permission (setup); telling the user (the panel);
+a tap (MacParakeet); permission evidence (the reception probe); telling the user (the panel);
 the file (a decorator). It knows nothing of recognition.

@@ -1,4 +1,6 @@
 import AppKit
+import CallAudioAccess
+import CallAudioProbe
 import Compose
 import IMRxObservation
 import Lifecycle
@@ -10,6 +12,7 @@ import Recording
 import Session
 import os
 import SwiftUI
+import Synchronization
 
 @main
 struct AudelinApp: App {
@@ -25,9 +28,11 @@ struct AudelinApp: App {
             TranscriptPanel(contentRect: $0, styleMask: $1, backing: .buffered, defer: false)
         }, screenFrame: { NSScreen.main?.visibleFrame })
         self.panel = panel
+        let access = await makeCallAudioAccess()
         let model = await AudelinMenu(
             preferences: PreferencesStore(fileURL: FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent(".audelin/preferences.json")),
+            access: access,
             openCallsFolder: { NSWorkspace.shared.open($0) },
             presentPanel: { [weak panel] in panel?.setVisible($0) },
             terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } },
@@ -104,13 +109,18 @@ func makeRecording(
 ) -> RecordingInputs {
 
     let model = RecordingModel(initial: initial, log: log)
-    let doer = RecordingDoer(session: session, send: { await model.send($0) })
+    let reports = Mutex<(@Sendable (RecordingEvent) async -> Void)?>(nil)
+    let doer = RecordingDoer(session: session, send: { event in
+        if let send = reports.withLock({ $0 }) { await send(event) }
+        else { await model.send(event) }
+    })
     let acting = Task { for await state in model.states() { doer.act(on: state) } }
     return RecordingInputs(
         send: { await model.send($0) },
         state: { await model.state },
         states: { await model.states() },
-        end: { acting.cancel(); await model.end() }
+        end: { acting.cancel(); reports.withLock { $0 = nil }; await model.end() },
+        connectReports: { send in reports.withLock { $0 = send } }
     )
 }
 

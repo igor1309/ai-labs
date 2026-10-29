@@ -124,4 +124,8 @@ each on a muted `afplay` child it starts itself:
   peak for 200 ms. The tap, muted, own process only, auto-start off, started
   by hand, reads 48 kHz stereo float. Silence gives exact zeros; the tone
   gives 19,386 nonzero samples of 49,152, peak 0.000999993, and nothing
-  reaches the speakers. With the permission denied: not yet measured.
+  reaches the speakers. With the permission denied (run from Ghostty, not
+  granted there, by the owner): every native call returns 0, the tap runs
+  with 48 callbacks over the tone, and all 49,152 samples are exact zeros,
+  peak 0.0. So the tone tells a granted tap from a denied one without any
+  private API; the call's own quiet cannot fool it, as the tone is ours.

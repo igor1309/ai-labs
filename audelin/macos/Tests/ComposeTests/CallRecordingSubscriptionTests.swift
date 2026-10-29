@@ -122,7 +122,7 @@ struct CallRecordingSubscriptionTests {
                 await release.wait()
                 await base.send(event)
             },
-            state: base.state, states: base.states, end: base.end
+            state: base.state, states: base.states, end: base.end, connectReports: base.connectReports
         )
         let forwarding = CallRecordingSubscription(calls: source.stream, recording: recording)
         source.continuation.yield(.started(app: "meeting"))

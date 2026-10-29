@@ -26,6 +26,7 @@ func composeRecording(
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
     liveText: @escaping @Sendable () -> Bool,
     sink: any LogSink,
+    decorate: @Sendable (RecordingInputs) -> RecordingInputs = { $0 },
     panel: AudelinPanel,
     makeModel: MakeRecordingModel,
     makeSession: @escaping MakeSessionModel
@@ -40,10 +41,11 @@ func composeRecording(
     let log = { @Sendable state in StateLog(sink: sink).recording(state) }
     log(initial)
     let model = await makeModel(initial, LoggingRecordingSession(base: sessions, sink: sink), log)
-    let recording = RecordingInputs(send: model.send, state: model.state, states: model.states, end: {
+    let recording = decorate(RecordingInputs(send: model.send, state: model.state, states: model.states, end: {
         destination.withLock { $0 = nil }
         await model.end()
-    })
+    }, connectReports: model.connectReports))
     destination.withLock { $0 = recording }
+    model.connectReports(recording.send)
     return recording
 }

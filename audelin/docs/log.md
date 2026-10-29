@@ -2,6 +2,8 @@
 
 ## 2026-10-29
 
+- A missing call-audio permission now shows as missing call audio and holds recording back, instead of recording a silent call side (LAB-604).
+
 - Recording, Session, Reading and Lifecycle keep only their domain: each app
   model comes from swift-imrx, and the hand-written Machine is gone (LAB-694).
 
