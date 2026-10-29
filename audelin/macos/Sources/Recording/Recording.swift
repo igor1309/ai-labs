@@ -18,6 +18,7 @@ public enum RecordingSessionReport: Equatable, Sendable {
     case ready
     case cannotRecord(String)
     case failed(RecordingFault)
+    case callSilent(Bool)
     case ended
 }
 
@@ -69,6 +70,7 @@ public struct RecordingState: Equatable, Sendable {
     public var lastSessionID: UInt64 = 0
     public var cannotRecord: String?
     public var faults: Set<RecordingFault> = []
+    public var callSilent = false
 
     /// Conditions start unknown, so a start waits for each to be reported available.
     public init(automatic: Bool = false, missing: Set<RecordingCondition> = Set(RecordingCondition.allCases)) {
@@ -148,6 +150,11 @@ public enum RecordingReducer {
                     state.faults.insert(fault)
                 }
                 return state
+            case let .callSilent(value):
+                if state.phase == .beginning || state.phase == .recording || state.phase == .ending {
+                    state.callSilent = value
+                }
+                return state
             case .ready:
                 if state.phase == .beginning { state.phase = .recording }
                 return state
@@ -156,6 +163,7 @@ public enum RecordingReducer {
                 return end(&state)
             case .ended:
                 state.phase = .idle
+                state.callSilent = false
                 state.session = nil
                 state.sessionBeganDuringCall = false
                 let resumeCall = state.pendingCall && state.callOn && state.automatic && !state.heldForCall
@@ -177,6 +185,7 @@ public enum RecordingReducer {
         state.phase = .beginning
         state.cannotRecord = nil
         state.faults = []
+        state.callSilent = false
         return state
     }
 

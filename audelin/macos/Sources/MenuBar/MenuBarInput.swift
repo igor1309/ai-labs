@@ -24,5 +24,5 @@ public struct MenuBarPreferences: Equatable, Sendable {
 
 public enum MenuBarFault: CaseIterable, Hashable, Sendable {
 
-    case microphone, callAudio, diskFull
+    case microphone, callAudio, diskFull, callSilent
 }

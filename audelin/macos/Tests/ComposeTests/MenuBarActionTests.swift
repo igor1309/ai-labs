@@ -12,7 +12,7 @@ struct MenuBarActionTests {
 
         for (faults, expected): (Set<RecordingFault>, Set<MenuBarFault>) in [
             ([.microphone], [.microphone]), ([.callAudio], [.callAudio]), ([.diskFull], [.diskFull]),
-            (Set(RecordingFault.allCases), Set(MenuBarFault.allCases)),
+            (Set(RecordingFault.allCases), [.microphone, .callAudio, .diskFull]),
         ] {
             for phase: RecordingState.Phase in [.beginning, .recording, .ending, .idle] {
                 for origin: RecordingState.Origin in [.hand, .call] {
@@ -31,6 +31,25 @@ struct MenuBarActionTests {
         }
     }
 
+
+    @Test func presentationMapsTheCurrentCallSilenceWarning() {
+
+        for phase: RecordingState.Phase in [.beginning, .recording, .ending, .idle] {
+            for callSilent in [false, true] {
+                var state = RecordingState(missing: [])
+                state.phase = phase
+                state.callSilent = callSilent
+                state.faults = [.microphone]
+                let faults: Set<MenuBarFault> = callSilent ? [.microphone, .callSilent] : [.microphone]
+                let expected: MenuBarRecording = switch phase {
+                case .idle: .idle(automatic: false, unavailable: [], failure: nil)
+                case .beginning, .recording: .recording(call: false, faults: faults)
+                case .ending: .ending(faults: faults)
+                }
+                #expect(menuBarRecording(state) == expected)
+            }
+        }
+    }
 
     @Test func actionsReachRecordingPreferencesFolderAndQuit() async {
 

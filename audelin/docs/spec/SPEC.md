@@ -93,3 +93,12 @@ Feature: Live text of calls
     When I change its title in the app
     Then the call's folder carries the new title, keeps its date and time in front, and the call is still the same call
 ```
+
+## Menu bar
+
+While recording or ending, the menu bar appends
+“Звук звонка не слышен — проверьте доступ к записи звука” after any recording
+faults when the call side stays exact zeros while the user talks. This
+usually means System Audio Recording permission has been revoked. The
+warning does not stop recording; it disappears when call audio returns or
+the recording ends, and does not return during that recording.
