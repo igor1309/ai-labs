@@ -14,6 +14,10 @@ extension PanelState {
         ("settling-4s", .settling4),
         ("settling-8s", .settling8),
         ("selection-held", .selectionHeld),
+        ("no-call-audio", .problem(.callAudio, gap: .init(speaker: .them, text: "— нет звука звонка с 12:45 —"))),
+        ("no-microphone", .problem(.microphone, gap: .init(speaker: .me, text: "— нет микрофона с 12:45 —"))),
+        ("disk-full", .problem(.diskFull(savedUntil: "12:45"), gap: .init(speaker: .them, text: "— диск заполнен с 12:45 —"))),
+        ("call-silent", .problem(.callSilent)),
     ]
 
     static let notRecording = PanelState(recording: .off, log: .empty)
@@ -77,6 +81,17 @@ extension PanelState {
         ))
     )
 
+    static func problem(_ banner: Banner, gap: Gap? = nil) -> PanelState {
+
+        var state = recording
+        state.banners = [banner]
+        if case var .lines(lines) = state.log, let gap {
+            lines.rows.insert(.gap(gap), at: 2)
+            state.log = .lines(lines)
+        }
+        return state
+    }
+
     private static func settling(settled: String, pending: String) -> PanelState {
 
         .init(
@@ -120,3 +135,22 @@ struct PanelPreview: View {
 #Preview("Selection held") { PanelPreview(state: .selectionHeld, scheme: .light) }
 #Preview("Recording, dark") { PanelPreview(state: .recording, scheme: .dark) }
 #Preview("Selection held, dark") { PanelPreview(state: .selectionHeld, scheme: .dark) }
+
+#Preview("Recording problems, light") {
+    ScrollView {
+        VStack {
+            ForEach(Array(PanelState.previews.suffix(4).enumerated()), id: \.offset) { _, preview in
+                PanelPreview(state: preview.state, scheme: .light)
+            }
+        }
+    }
+}
+#Preview("Recording problems, dark") {
+    ScrollView {
+        VStack {
+            ForEach(Array(PanelState.previews.suffix(4).enumerated()), id: \.offset) { _, preview in
+                PanelPreview(state: preview.state, scheme: .dark)
+            }
+        }
+    }
+}

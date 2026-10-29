@@ -7,6 +7,23 @@ import Testing
 @MainActor
 struct TranscriptLogTests {
 
+    @Test func gapUsesSmallMutedTextAndNamesItsMissingSide() throws {
+
+        for (speaker, label): (PanelState.Speaker, String) in [(.me, "я"), (.them, "они")] {
+            let gap = "— диск заполнен с 12:45 —"
+            let text = try #require(Offscreen.textView(in: hosted(.init(rows: [
+                .entry(.init(id: 1, time: "12:44", speaker: .me, settled: "kept words")),
+                .gap(.init(speaker: speaker, text: gap)),
+            ]))))
+            #expect(text.string.contains("\(label)  \(gap)"))
+            #expect(text.string.contains("kept words"))
+            let color = try #require(attribute(.foregroundColor, of: gap, in: text) as? NSColor)
+            let font = try #require(attribute(.font, of: gap, in: text) as? NSFont)
+            #expect(color == NSColor(GlassLedger.light.gutter))
+            #expect(font.pointSize == GlassLedger.light.typeCaption)
+        }
+    }
+
     @Test func placesALateGroupWhereItsMinutesWere() throws {
 
         let text = try #require(Offscreen.textView(in: hosted(lateLines)))

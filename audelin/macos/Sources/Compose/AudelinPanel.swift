@@ -3,6 +3,7 @@ import Foundation
 import Observation
 import PanelUI
 import Reading
+import Session
 
 /// One recording's reading model as the panel uses it; the app makes it on the main actor.
 public struct ReadingInputs: Sendable {
@@ -159,6 +160,12 @@ final class ReadingSubscription {
         time.recordingChanged(recording)
     }
 
+    func sessionChanged(_ state: SessionState) {
+
+        time.recordingChanged(readingRecording(state))
+        time.problemsChanged(readingFaultKinds(state), callSilent: state.audioWarning == .callSilent)
+    }
+
     func end() async {
 
         text.cancel()
@@ -213,6 +220,7 @@ private final class ReadingTime {
     private let reading: ReadingInputs
     private let now: @Sendable () -> Double
     private var origin: Double?
+    private var problems: [ReadingProblem] = []
 
     init(reading: ReadingInputs, now: @escaping @Sendable () -> Double) {
 
@@ -225,6 +233,7 @@ private final class ReadingTime {
         switch recording {
         case .off:
             origin = nil
+            problems = []
             reading.send(.recordingChanged(.off))
         case let .on(elapsed):
             let instant = now()
@@ -232,6 +241,18 @@ private final class ReadingTime {
             origin = beginning
             reading.send(.recordingChanged(.on(elapsed: instant - beginning)))
         }
+    }
+
+    func problemsChanged(_ kinds: [ReadingProblem.Kind], callSilent: Bool) {
+
+        guard let origin else { return }
+        problems.removeAll { $0.kind == .callSilent && !callSilent }
+        let active = kinds + (callSilent ? [.callSilent] : [])
+        let elapsed = now() - origin
+        for kind in active where !problems.contains(where: { $0.kind == kind }) {
+            problems.append(.init(kind, began: elapsed))
+        }
+        reading.send(.problemsChanged(problems))
     }
 
     func tick() {

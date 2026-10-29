@@ -28,6 +28,9 @@ public struct PanelView: View {
         VStack(spacing: 0) {
 
             header
+            ForEach(Array(state.banners.enumerated()), id: \.offset) { _, banner in
+                bannerView(banner)
+            }
             log
         }
         .frame(width: config.panelWidth)
@@ -275,5 +278,41 @@ private extension PanelView {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
+    }
+}
+
+private extension PanelView {
+
+    func bannerView(_ banner: PanelState.Banner) -> some View {
+
+        let ink: Color = switch banner {
+        case .callAudio, .microphone: tokens.warn
+        case .diskFull: tokens.rec
+        case .callSilent: tokens.me
+        }
+        let background: Color = switch banner {
+        case .callAudio, .microphone: tokens.warnBg
+        case .diskFull: tokens.errBg
+        case .callSilent: tokens.okBg
+        }
+        return VStack(alignment: .leading, spacing: tokens.space6) {
+            Text(banner.title)
+                .font(tokens.ui(tokens.typeSmall, .semibold))
+                .lineHeight(tokens.leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
+            Text(banner.line)
+                .foregroundStyle(tokens.sub)
+                .font(tokens.ui(tokens.typeSmall))
+                .lineHeight(tokens.leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
+            Button(banner.button) { event(banner.action) }
+                .font(tokens.ui(tokens.typeSmall, .semibold))
+                .lineHeight(tokens.leading(tokens.fontUi, tokens.typeSmall, config.lineHeight))
+                .buttonStyle(.plain)
+        }
+        .foregroundStyle(ink)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(tokens.space12)
+        .background(background, in: .rect(cornerRadius: tokens.radiusCard))
+        .padding(.horizontal, tokens.space16)
+        .padding(.bottom, tokens.space8)
     }
 }

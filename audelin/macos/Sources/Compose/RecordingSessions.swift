@@ -95,7 +95,7 @@ public actor RecordingSessions: RecordingSession {
                     let observed = ObservedSession(state)
                     guard observed != previous else { continue }
                     previous = observed
-                    await reading.recordingChanged(readingRecording(state))
+                    await reading.sessionChanged(state)
                     StateLog(sink: self.sink).session(state, id: id)
                     if self.receive(state, id: id) { return }
                 }
@@ -227,18 +227,4 @@ private struct ObservedSession: Equatable {
             audioWarning: state.audioWarning
         )
     }
-}
-
-private func recordingFaults(_ state: SessionState) -> Set<RecordingFault> {
-
-    Set(state.health.compactMap { piece, health in
-        switch (piece, health) {
-        case (.access(.microphone), .failed), (.access(.microphone), .accessLost),
-             (.capture(.microphone), .failed), (.capture(.microphone), .accessLost): .microphone
-        case (.access(.call), .failed), (.access(.call), .accessLost),
-             (.capture(.call), .failed), (.capture(.call), .accessLost): .callAudio
-        case (.track, .failed): .diskFull
-        default: nil
-        }
-    })
 }
