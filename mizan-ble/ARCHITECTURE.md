@@ -110,8 +110,8 @@ client radios. The rehearsal's `ScriptedSettings` and `ScriptedRadio`
 live there too, answering the same interfaces with a scripted other side;
 `ScriptedRadio` uses session crypto and the codec to play it, and only the
 `MizanBLE Rehearsal` app target links them. The app target is a thin
-shell over them, in an Xcode project generated from `project.yml` by XcodeGen. The app targets iOS 26,
-as the package does. The UI modules depend on `DesignSystem` only; that is the
+shell over them, in an Xcode project generated from `project.yml` by
+XcodeGen. The app targets iOS 26, as the package does. The UI modules depend on `DesignSystem` only; that is the
 one dependency between modules, since a design system is a library the
 screens are drawn in, not a collaborator. The root package alone depends on
 swift-imrx (`IMRxObservation`, `from: "1.0.0"`) for the loop; no module in
