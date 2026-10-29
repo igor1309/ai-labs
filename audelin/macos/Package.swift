@@ -5,6 +5,8 @@ let package = Package(
     name: "Audelin",
     platforms: [.macOS(.v26)],
     products: [
+        .library(name: "CallAudioProbe", targets: ["CallAudioProbe"]),
+        .library(name: "CallAudioAccess", targets: ["CallAudioAccess"]),
         .library(name: "CallAppProcesses", targets: ["CallAppProcesses"]),
         .library(name: "CallFolder", targets: ["CallFolder"]),
         .library(name: "CallText", targets: ["CallText"]),
@@ -37,10 +39,14 @@ let package = Package(
         .package(url: "https://github.com/igor1309/swift-imrx", from: "1.1.0"),
     ],
     targets: [
+        .target(name: "CallAudioProbe"),
+        .target(name: "CallAudioAccess"),
+        .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe"]),
+        .testTarget(name: "CallAudioAccessTests", dependencies: ["CallAudioAccess"]),
         .executableTarget(
             name: "Audelin",
             dependencies: [
-                "Compose", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading", "Recording", "Session",
+                "Compose", "CallAudioAccess", "CallAudioProbe", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading", "Recording", "Session",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
@@ -58,7 +64,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI"]
+            dependencies: ["CallAudioAccess", "MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -184,7 +190,7 @@ let package = Package(
         .testTarget(
             name: "ComposeTests",
             dependencies: [
-                "Compose", "Lifecycle", "Recording", "BlockingTestWork",
+                "Compose", "Audelin", "CallAudioAccess", "Lifecycle", "Recording", "BlockingTestWork",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),

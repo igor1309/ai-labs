@@ -1,4 +1,5 @@
 import AVFoundation
+import CallAudioAccess
 import CoreAudioProcesses
 import Foundation
 import Lifecycle
@@ -22,6 +23,7 @@ public final class AudelinRecording: Sendable {
 
     public convenience init(
         preferences: PreferencesStore,
+        access: AccessPolicy,
         makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
         makeRecording: @escaping MakeRecordingModel,
         makeSession: @escaping MakeSessionModel
@@ -29,12 +31,12 @@ public final class AudelinRecording: Sendable {
 
         await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
         try await self.init(
-            preferences: preferences,
+            preferences: preferences, access: access,
             processes: CoreAudioProcesses(binding: CoreAudioBinding(), clock: ContinuousCallClock()),
             now: { Date() }, timeZone: { .current },
             startMicrophone: startProductionMicrophone, startCall: startProductionCallAudio,
             recognizerSource: { try await ParakeetRecognizer() }, missingModels: productionMissingModels,
-            makeConditions: composeRecordingConditions,
+            makeConditions: { composeRecordingConditions(recording: $0, callsURL: $1, access: access) },
             startModel: { startLiveModelLoading() }, panel: AudelinPanel(makeReading: makeReading),
             makeRecording: makeRecording, makeSession: makeSession
         )
@@ -43,7 +45,7 @@ public final class AudelinRecording: Sendable {
     }
 
     init(
-        preferences: PreferencesStore, processes: CoreAudioProcesses,
+        preferences: PreferencesStore, access: AccessPolicy, processes: CoreAudioProcesses,
         now: @escaping @Sendable () -> Date, timeZone: @escaping @Sendable () -> TimeZone,
         startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
@@ -59,7 +61,7 @@ public final class AudelinRecording: Sendable {
         let app = RecordingCallApp()
         self.panel = panel
         let (recording, conditions) = await composeRecordingWithPreferences(
-            preferences: preferences,
+            preferences: preferences, access: access,
             makePieces: composeRecordingPieces(
                 preferences: preferences, callApp: app, processes: processes,
                 now: now, timeZone: timeZone, startMicrophone: startMicrophone,

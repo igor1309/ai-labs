@@ -1,9 +1,12 @@
 import Foundation
 import Preferences
 import Recording
+import CallAudioAccess
+import Synchronization
 
 public func composeRecordingWithPreferences(
     preferences: PreferencesStore,
+    access: AccessPolicy,
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
     panel: AudelinPanel,
     makeModel: MakeRecordingModel,
@@ -11,13 +14,14 @@ public func composeRecordingWithPreferences(
 ) async -> (recording: RecordingInputs, conditions: RecordingConditions) {
 
     await composeRecordingWithPreferences(
-        preferences: preferences, makePieces: makePieces, makeConditions: composeRecordingConditions, panel: panel,
+        preferences: preferences, access: access, makePieces: makePieces, makeConditions: { composeRecordingConditions(recording: $0, callsURL: $1, access: access) }, panel: panel,
         makeModel: makeModel, makeSession: makeSession
     )
 }
 
 func composeRecordingWithPreferences(
     preferences: PreferencesStore,
+    access: AccessPolicy,
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
     makeConditions: (RecordingInputs, URL) -> RecordingConditions,
     panel: AudelinPanel,
@@ -27,11 +31,9 @@ func composeRecordingWithPreferences(
 
     let stored = preferences.read()
     let recording = await composeRecording(
-        initial: RecordingState(automatic: stored.automaticRecording),
-        makePieces: makePieces,
-        liveText: { preferences.read().liveText }, sink: SystemLogSink(), panel: panel, makeModel: makeModel,
-        makeSession: makeSession
+        initial: RecordingState(automatic: stored.automaticRecording), access: access,
+        makePieces: makePieces, liveText: { preferences.read().liveText },
+        panel: panel, makeModel: makeModel, makeSession: makeSession
     )
-    let conditions = makeConditions(recording, stored.callsFolder)
-    return (recording, conditions)
+    return (recording, makeConditions(recording, stored.callsFolder))
 }

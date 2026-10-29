@@ -104,7 +104,7 @@ struct RecordingSessionsTests {
     @Test func recordingWiringForwardsLaterFailureAndEndsTheSession() async throws {
 
         try await withSessionRig(connect: disconnected) { rig, folder in
-            let recording = await composeRecording(initial: .init(missing: []), makePieces: { _ in rig.pieces }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
+            let recording = await composeRecording(initial: .init(missing: []), access: testAccessPolicy(), makePieces: { _ in rig.pieces }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
             await recording.send(.userStart)
             _ = try await recordingState(recording) { $0.phase == .recording }
             let text = try #require(await rig.pieces.text)

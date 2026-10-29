@@ -18,12 +18,20 @@ whether a recording runs; its Session brings the pieces up and down.
   A call that starts while the last Session ends is recorded once it has
   ended, if the call is still on.
 - **Idle only once the Session has ended,** so recordings never overlap.
-- **Audio's conditions come first:** microphone and call audio access,
-  a calls folder with room; room means at least 30 GB free on the calls
-  folder's volume (owner, 2026-10-26). No start begins without them. Once recording,
+- **Audio's conditions come first:** microphone access, call audio access
+  established by a muted own-process reception probe, and a calls folder
+  with room; room means at least 30 GB free on the calls folder's volume (owner, 2026-10-26). No start begins without them. Once recording,
   a lost access is a failing capture and the other side goes on (the
   Session, the design's mic lost); only a lost folder or room ends it, its
   audio kept (disk full). Setup reads the conditions' merge (LAB-406).
+- **Recording asks before Session begins.** Its doer awaits call-audio
+  readiness for a user start, a call start and a deferred automatic start.
+  The readiness port refreshes reception evidence and reserves the recording
+  interval. A false answer reports call audio as unavailable and begins no
+  Session. A previous missing-call-audio reading can be checked again by a
+  new start. The reservation is released after Session cleanup, or when a
+  pending start is stopped or refused. Compose subscribes to the published
+  access condition and maps it for the menu; it does not identify start events.
 - **A Session that cannot record is ended,** named until the next (LAB-510).
 
 ```gherkin

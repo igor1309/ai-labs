@@ -98,7 +98,11 @@ struct RecordingLifecycleTests {
             await rig.recording.send(.callStarted)
             await rig.recording.send(.conditionChanged(condition, available: false))
             #expect(await rig.recording.snapshot().pendingCall)
-            let idle = try await rig.finish()
+            await rig.session.finish(1)
+            if condition == .callAudioAccess {
+                await rig.recording.waitForDelivery(of: .sessionReported(id: 2, .ended))
+            }
+            let idle = try await rig.waitFor { $0.phase == .idle }
             #expect(idle.missing == [condition])
             #expect(await rig.session.values() == [.begin(1), .end(1)])
         }

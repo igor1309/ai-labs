@@ -1,13 +1,17 @@
 import Recording
+import CallAudioAccess
 import Synchronization
 
 /// Makes Recording's model from its initial state and Session; `log` receives every new state.
 public typealias MakeRecordingModel = @Sendable (
-    _ initial: RecordingState, _ session: any RecordingSession, _ log: @escaping @Sendable (RecordingState) -> Void
+    _ initial: RecordingState, _ session: any RecordingSession, _ log: @escaping @Sendable (RecordingState) -> Void,
+    _ callAudioReady: @escaping @Sendable () async -> Bool,
+    _ callAudioReleased: @escaping @Sendable () async -> Void
 ) async -> RecordingInputs
 
 public func composeRecording(
     initial: RecordingState = .init(),
+    access: AccessPolicy,
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
     liveText: @escaping @Sendable () -> Bool,
     panel: AudelinPanel,
@@ -16,13 +20,14 @@ public func composeRecording(
 ) async -> RecordingInputs {
 
     await composeRecording(
-        initial: initial, makePieces: makePieces, liveText: liveText, sink: SystemLogSink(), panel: panel, makeModel: makeModel,
+        initial: initial, access: access, makePieces: makePieces, liveText: liveText, sink: SystemLogSink(), panel: panel, makeModel: makeModel,
         makeSession: makeSession
     )
 }
 
 func composeRecording(
     initial: RecordingState = .init(),
+    access: AccessPolicy,
     makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
     liveText: @escaping @Sendable () -> Bool,
     sink: any LogSink,
@@ -39,7 +44,10 @@ func composeRecording(
     }, connect: subscribe, sink: sink, panel: panel, makeSession: makeSession)
     let log = { @Sendable state in StateLog(sink: sink).recording(state) }
     log(initial)
-    let model = await makeModel(initial, LoggingRecordingSession(base: sessions, sink: sink), log)
+    let model = await makeModel(initial, LoggingRecordingSession(base: sessions, sink: sink), log, {
+        guard await access.refresh() else { return false }
+        return await access.reserve()
+    }, { await access.release() })
     let recording = RecordingInputs(send: model.send, state: model.state, states: model.states, end: {
         destination.withLock { $0 = nil }
         await model.end()

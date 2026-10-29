@@ -1,4 +1,5 @@
 import Foundation
+import CallAudioAccess
 import Lifecycle
 import MenuBar
 import Observation
@@ -45,6 +46,7 @@ public final class AudelinMenu {
 
     public convenience init(
         preferences: PreferencesStore,
+        access: AccessPolicy,
         openCallsFolder: @escaping (URL) -> Void,
         presentPanel: @escaping (Bool) -> Void,
         terminate: @escaping @Sendable () async -> Void,
@@ -57,7 +59,7 @@ public final class AudelinMenu {
         await self.init(
             storage: preferences,
             makeApplication: {
-                let application = try await AudelinRecording(preferences: preferences, makeReading: makeReading, makeRecording: makeRecording, makeSession: makeSession)
+                let application = try await AudelinRecording(preferences: preferences, access: access, makeReading: makeReading, makeRecording: makeRecording, makeSession: makeSession)
                 return MenuApplication(
                     states: { await application.inputs.states() },
                     failures: application.detectionFailures,
