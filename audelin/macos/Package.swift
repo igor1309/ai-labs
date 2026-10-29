@@ -42,6 +42,7 @@ let package = Package(
         .package(url: "https://github.com/igor1309/swift-imrx", from: "1.1.0"),
     ],
     targets: [
+        .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
         .target(name: "Calls"),
         .target(name: "Recordings"),
         .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
