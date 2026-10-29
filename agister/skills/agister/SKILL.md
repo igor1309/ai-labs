@@ -66,8 +66,11 @@ home's `runs/<run-id>/`; use `agister runs export <run-id> --to
 
 ## After you launch
 
-Run `agister run` in the foreground, or in the background with a
-completion notice; never launch it and go quiet. Ask what a run is doing
+Run `agister run` in the background with a completion notice, never in
+the foreground: a run takes minutes and a foreground one blocks your
+session. Right after the launch, check once that it started: a refused
+input or a dirty worktree ends it within a second. Then act on the
+completion notice; never launch a run and go quiet. Ask what a run is doing
 with `agister status <run-id>` (or `--last`, `--json`); `agister runs
 list` shows recent runs, newest first. Each run gets one line:
 

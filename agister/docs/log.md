@@ -1,5 +1,8 @@
 # Changes
 
+- LAB-690: The skill tells callers to launch a run in the background with a
+  completion notice, not in the foreground, which blocks their session.
+
 - LAB-690: Status orders unstarted runs by their id's timestamp and preserves
   outcomes from runs recorded before the run log.
 
