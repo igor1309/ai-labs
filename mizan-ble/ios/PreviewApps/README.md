@@ -28,7 +28,8 @@ screen resets when you switch away and return.
 Export writes 16 PNGs: host/client chosen, each enabled/disabled, on both devices
 in light and dark. Files are named `<side>-<enabled|disabled>-<device>-<light|dark>.png`.
 The iPad images are 1194 × 834 pixels and the iPhone images 393 × 852 pixels,
-without preview controls or window chrome.
+without preview controls or window chrome. Each screen gets the safe area its
+design frame's status bar and home indicator take, as a device would give it.
 
 `HostPreview` shows every named `HostUI` preview at iPad size. Taps add to
 the event log; the picker alone changes the screen. Export writes 56 PNGs

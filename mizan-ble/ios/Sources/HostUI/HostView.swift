@@ -20,8 +20,7 @@ public struct HostView: View {
             IPhoneShell(
                 side: .host, eyebrow: state.eyebrow,
                 status: StatusPill(state.status, state: state.statusTone),
-                onSwitch: { modeSwitch?.onSelect($0) }, headerTopPadding: Tokens.space2,
-                contentBottomPadding: Tokens.space2
+                onSwitch: { modeSwitch?.onSelect($0) }
             ) {
                 CompactHostSteps(state.steps, isSettingsEnabled: state.isSettingsEnabled, onSettings: openSettings)
             } content: {
