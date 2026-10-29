@@ -32,7 +32,7 @@ import Settings
             if case .serve(let bytes, let session) = call { (bytes, session) } else { nil }
         }.first)
         let (descriptor, id) = served
-        #expect(h.host.calls == [.serve(descriptor, id), .advertise("MIZAN-7F3A", id)])
+        #expect(h.host.calls == [.serve(descriptor, id), .advertise(h.advertisedName, id)])
         #expect(host.screen.status == "Going on air")
         #expect(!root.isAtRest)
         let kept = root.radios.host
@@ -58,7 +58,7 @@ import Settings
             await until { host.screen.status == "Timed out" && host.amount?.state.amount == "" && root.isAtRest }
             await until { h.host.calls.contains(.retire(id)) }
             #expect(host.screen.amount == "0")
-            #expect(h.host.calls == [.serve(descriptor, id), .advertise("MIZAN-7F3A", id), .retire(id)])
+            #expect(h.host.calls == [.serve(descriptor, id), .advertise(h.advertisedName, id), .retire(id)])
             #expect(host.payment == nil)
             #expect(h.log.entries.contains(.init(category: .hostBroadcast, message: "timedOut")))
         } else {
@@ -77,7 +77,7 @@ import Settings
                 #expect(secure.session.id == client.descriptor.sessionID)
                 #expect(secure.session.publicKey == client.descriptor.publicKey)
             } else { Issue.record("Broadcast must wait with its secure session") }
-            #expect(h.host.calls.prefix(4) == [.serve(descriptor, id), .advertise("MIZAN-7F3A", id), .stop(id), .send(frame, id)])
+            #expect(h.host.calls.prefix(4) == [.serve(descriptor, id), .advertise(h.advertisedName, id), .stop(id), .send(frame, id)])
             h.clock.advance(600)
             // The outcome is observed after a real model event, without sleeping for a missing timeout.
             if transaction == .lost {

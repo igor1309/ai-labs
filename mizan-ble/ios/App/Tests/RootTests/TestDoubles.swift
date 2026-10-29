@@ -61,12 +61,14 @@ final class LogSpy: LogSink, @unchecked Sendable {
     let log = LogSpy()
     let clock = ClockSpy()
     let store = StoreSpy()
+    let advertisedName = "MIZAN-7F3A"
+    init() { store.set(.text(advertisedName), for: .advertisedName) }
     var pair: RadioPair { .init(host: host, client: client) }
     func finish() { host.continuation.finish(); client.continuation.finish(); clock.finish() }
 }
 
 final class StoreSpy: SettingsStore {
-    var values: [Settings.Key: Settings.Value] = [.advertisedName: .text("MIZAN-7F3A")]
+    var values: [Settings.Key: Settings.Value] = [:]
     func value(for key: Settings.Key) -> Settings.Value? { values[key] }
     func set(_ value: Settings.Value, for key: Settings.Key) { values[key] = value }
 }
