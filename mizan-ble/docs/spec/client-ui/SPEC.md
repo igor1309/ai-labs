@@ -13,8 +13,11 @@ and the user spec.
 - **Proposed, not decided:** hold closer reads "Hold closer" / "Hold the
   phone right next to the host iPad, so Mizan can tell which one is
   yours."; Bluetooth off shows its reason as the title, a slashed
-  Bluetooth icon, and "Turn on Bluetooth in Control Centre to find a
-  nearby host."; both with Start disabled. "Mizan till" for a host whose
+  Bluetooth icon, and a subtitle for that reason: off, "Turn on Bluetooth
+  in Control Centre to find a nearby host."; not allowed, "Allow Mizan to
+  use Bluetooth in Settings to find a nearby host."; unsupported, "This
+  iPhone cannot use Bluetooth, so it cannot find a host."; both with
+  Start disabled. "Mizan till" for a host whose
   name has not arrived. On an iPad the iPhone layout, centred, on every
   client screen.
 
