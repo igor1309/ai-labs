@@ -104,9 +104,9 @@ Feature: Live text of calls
     Then every call is in the new folder, still the same call, and new calls are recorded there
 
   Scenario: S-20 Opening Audelin again during a call shows the panel
-    Given Audelin is recording a call and I closed its panel
+    Given Audelin is recording a call
     When I open Audelin again from Finder, Spotlight or the Dock
-    Then the transcript panel shows
+    Then the transcript panel shows in front, also when I had closed it
 
   Scenario: S-21 Opening Audelin again between calls shows the calls
     Given Audelin is running and no call is recording

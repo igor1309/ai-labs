@@ -3,7 +3,7 @@ import Testing
 
 struct PanelPresenceTests {
 
-    @Test func appReopenShowsOnlyAHiddenRecordingPanelWithItsOwnReason() {
+    @Test func appReopenShowsTheRecordingPanelWithItsOwnReason() {
 
         let initial = PanelPresence()
         let (shown, _) = PanelPresence.reduce(initial, .recordingChanged(1))
@@ -11,9 +11,13 @@ struct PanelPresenceTests {
         let (reopened, _) = PanelPresence.reduce(hidden, .reopen)
         let (ending, _) = PanelPresence.reduce(shown, .recordingChanged(nil))
         let (ended, _) = PanelPresence.reduce(hidden, .recordingChanged(nil))
-        for state in [initial, shown, reopened, ending, ended] {
+        for state in [initial, ending, ended] {
             assert(state, .appReopen, reducedTo: state)
             assert(state, .appReopen, effects: [])
+        }
+        for state in [shown, reopened] {
+            assert(state, .appReopen, reducedTo: state)
+            assert(state, .appReopen, effects: [.show(.appReopen)])
         }
         assert(hidden, .appReopen, reducedTo: reopened)
         assert(hidden, .appReopen, effects: [.show(.appReopen)])

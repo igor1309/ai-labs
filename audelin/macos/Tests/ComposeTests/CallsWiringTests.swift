@@ -37,7 +37,7 @@ struct CallsWiringTests {
         #expect(spy.operations.withLock { $0 } == ["list", "list"])
     }
 
-    @Test func appReopenDuringARecordingShowsOnlyTheHiddenPanelAndLogsTheReason() async {
+    @Test func appReopenDuringARecordingBringsThePanelForwardAndLogsTheReason() async {
         for origin: RecordingState.Origin in [.call, .hand] {
             for phase: RecordingState.Phase in [.beginning, .recording, .ending] {
                 let spy = CallsStoreSpy()
@@ -57,16 +57,14 @@ struct CallsWiringTests {
                     sleep: { _ in Issue.record("Active recordings have no hide delay") }, calls: controller)
                 await menu.waitForObservers()
                 menu.appReopened()
-                #expect(visibility == [true])
+                #expect(visibility == [true, true])
                 menu.panelClosed()
                 menu.appReopened()
-                let reopened = menu.panelPresence
-                menu.appReopened()
-                #expect(menu.panelPresence == reopened)
                 #expect(menu.panelPresence.visible)
-                #expect(visibility == [true, false, true])
+                #expect(visibility == [true, true, false, true])
                 #expect(log.entries.all.filter { $0.category == .panel }.map(\.message) == [
-                    "shown reason=recordingBegan", "hidden reason=userClosed", "shown reason=appReopen",
+                    "shown reason=recordingBegan", "shown reason=appReopen", "hidden reason=userClosed",
+                    "shown reason=appReopen",
                 ])
                 #expect(spy.operations.withLock { $0.isEmpty })
             }

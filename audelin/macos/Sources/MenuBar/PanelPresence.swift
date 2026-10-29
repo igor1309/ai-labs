@@ -46,10 +46,15 @@ public struct PanelPresence: Equatable, Sendable {
             next.visible = false
             effects.append(.cancelDelay)
             if state.visible { effects.append(.hide(.userClosed)) }
-        case .reopen, .appReopen:
+        case .reopen:
             guard state.offersReopen else { return (state, []) }
             next.visible = true
-            effects.append(.show(event == .appReopen ? .appReopen : .menuReopen))
+            effects.append(.show(.menuReopen))
+        case .appReopen:
+            // Shown again even when visible, so the panel comes forward.
+            guard state.recordingID != nil else { return (state, []) }
+            next.visible = true
+            effects.append(.show(.appReopen))
         case let .delayElapsed(generation):
             guard generation == state.generation, state.recordingID == nil, state.visible else {
                 return (state, [])
