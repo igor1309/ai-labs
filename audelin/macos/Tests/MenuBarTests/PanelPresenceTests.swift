@@ -3,6 +3,22 @@ import Testing
 
 struct PanelPresenceTests {
 
+    @Test func appReopenShowsOnlyAHiddenRecordingPanelWithItsOwnReason() {
+
+        let initial = PanelPresence()
+        let (shown, _) = PanelPresence.reduce(initial, .recordingChanged(1))
+        let (hidden, _) = PanelPresence.reduce(shown, .userClosed)
+        let (reopened, _) = PanelPresence.reduce(hidden, .reopen)
+        let (ending, _) = PanelPresence.reduce(shown, .recordingChanged(nil))
+        let (ended, _) = PanelPresence.reduce(hidden, .recordingChanged(nil))
+        for state in [initial, shown, reopened, ending, ended] {
+            assert(state, .appReopen, reducedTo: state)
+            assert(state, .appReopen, effects: [])
+        }
+        assert(hidden, .appReopen, reducedTo: reopened)
+        assert(hidden, .appReopen, effects: [.show(.appReopen)])
+    }
+
     @Test func endingKeepsVisibleUntilThreeSecondDelayElapses() throws {
 
         let (shown, _) = PanelPresence.reduce(.init(), .recordingChanged(1))
@@ -86,4 +102,14 @@ struct PanelPresenceTests {
             }
         }
     }
+}
+
+private func assert(_ state: PanelPresence, _ event: PanelPresence.Event, reducedTo expected: PanelPresence,
+                    sourceLocation: SourceLocation = #_sourceLocation) {
+    #expect(PanelPresence.reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+}
+
+private func assert(_ state: PanelPresence, _ event: PanelPresence.Event, effects expected: [PanelPresence.Effect],
+                    sourceLocation: SourceLocation = #_sourceLocation) {
+    #expect(PanelPresence.reduce(state, event).1 == expected, sourceLocation: sourceLocation)
 }

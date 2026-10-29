@@ -11,7 +11,7 @@ public struct PanelPresence: Equatable, Sendable {
 
     public enum Event: Equatable, Sendable {
         case recordingChanged(UInt64?)
-        case userClosed, reopen
+        case userClosed, reopen, appReopen
         case delayElapsed(UInt64)
     }
 
@@ -22,7 +22,7 @@ public struct PanelPresence: Equatable, Sendable {
     }
 
     public enum Reason: String, Equatable, Sendable {
-        case recordingBegan, recordingEnded, userClosed, menuReopen
+        case recordingBegan, recordingEnded, userClosed, menuReopen, appReopen
     }
 
     public static func reduce(_ state: Self, _ event: Event) -> (Self, [Effect]) {
@@ -46,10 +46,10 @@ public struct PanelPresence: Equatable, Sendable {
             next.visible = false
             effects.append(.cancelDelay)
             if state.visible { effects.append(.hide(.userClosed)) }
-        case .reopen:
+        case .reopen, .appReopen:
             guard state.offersReopen else { return (state, []) }
             next.visible = true
-            effects.append(.show(.menuReopen))
+            effects.append(.show(event == .appReopen ? .appReopen : .menuReopen))
         case let .delayElapsed(generation):
             guard generation == state.generation, state.recordingID == nil, state.visible else {
                 return (state, [])

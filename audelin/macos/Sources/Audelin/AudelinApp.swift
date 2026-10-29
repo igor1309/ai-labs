@@ -19,6 +19,7 @@ import Synchronization
 @main
 struct AudelinApp: App {
 
+    @NSApplicationDelegateAdaptor(AudelinAppDelegate.self) private var appDelegate
     @State private var model: AudelinMenu?
     @State private var panel: FloatingPanel?
     @State private var callsWindow: CallsWindow?
@@ -60,6 +61,7 @@ struct AudelinApp: App {
         panel.install(content: NSHostingView(rootView: PanelContent(model: model)), onClose: { [weak model] in
             model?.panelClosed()
         })
+        appDelegate.reopen = { [weak model] in model?.appReopened() }
     }
 
     init() {
@@ -104,6 +106,27 @@ struct AudelinApp: App {
         // Template status images discard their palette in the menu bar.
         image.isTemplate = !item.isRed
         return image
+    }
+}
+
+@MainActor
+final class AudelinAppDelegate: NSObject, NSApplicationDelegate {
+
+    var reopen: (() -> Void)? {
+        didSet {
+            if pendingReopen, let reopen {
+                pendingReopen = false
+                reopen()
+            }
+        }
+    }
+    private var pendingReopen = false
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+
+        if let reopen { reopen() }
+        else { pendingReopen = true }
+        return true
     }
 }
 

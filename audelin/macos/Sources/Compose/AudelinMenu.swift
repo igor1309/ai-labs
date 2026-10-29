@@ -177,6 +177,16 @@ public final class AudelinMenu {
 
     public func panelClosed() { receivePanelPresence(.userClosed) }
 
+    public func appReopened() {
+
+        guard !quitting else { return }
+        if panelPresence.recordingID != nil {
+            receivePanelPresence(.appReopen)
+        } else {
+            calls?.show()
+        }
+    }
+
     public func sendPanel(_ event: PanelEvent) async {
 
         switch event {
