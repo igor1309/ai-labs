@@ -1,3 +1,4 @@
+import Dispatch
 import AudioConversion
 import LiveText
 
@@ -25,6 +26,10 @@ public struct WindowWord: Equatable, Sendable {
 /// Hears a track with Parakeet v3 in overlapping windows of its own: a 4 s
 /// chunk with 2 s of audio on each side.
 public actor ParakeetRecognizer: Recognizer {
+
+    // Conversion and inference block, so they run on this queue, not the cooperative pool.
+    nonisolated let queue = DispatchSerialQueue(label: "audelin.ParakeetRecognizer")
+    public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     private static let rate = 16_000.0
     private static let chunk = 4.0
@@ -78,7 +83,7 @@ public actor ParakeetRecognizer: Recognizer {
         let start = max(0, chunkStart - Self.context)
         let end = min(audio.end, chunkStart + Self.chunk + Self.context)
         let chunkEnd = chunkStart + Self.chunk
-        let read = try await reader.read(audio.samples(from: start, to: end))
+        let read = try await withTaskExecutorPreference(queue) { try await reader.read(audio.samples(from: start, to: end)) }
             .map { Word($0.text, start: $0.start + start, end: $0.end + start) }
 
         // A pending word that starts before the window can never be read
@@ -106,17 +111,22 @@ public actor ParakeetRecognizer: Recognizer {
     }
 
     /// Everything from the earliest word not final at the last report on,
-    /// final up to just before a pending word ends: Live text settles by
-    /// time, so a final word stretched past a pending one shows as final
-    /// only once that word is.
+    /// final up to just before a pending word ends, and no later than a
+    /// pending word's start: Live text settles by time and drops a word
+    /// starting before a settled one ends, so a final word overlapping a
+    /// pending one shows as final only once that word is.
     private func report() -> Hearing {
 
         let reported = Array(words[reportedCount...])
         let from = [pendingFrom, reported.first?.start].compactMap { $0 }.min()
-        let pendingEnd = words[finalCount...].map(\.end).min()
+        let pending = words[finalCount...]
+        var through = min(finalThrough, pending.map(\.end).min()?.nextDown ?? finalThrough)
+        while let start = pending.filter({ $0.end > through }).map(\.start).min(), start < through {
+            through = start
+        }
         reportedCount = finalCount
         pendingFrom = finalCount < words.count ? words[finalCount].start : nil
-        return Hearing(words: reported, from: from, finalThrough: min(finalThrough, pendingEnd?.nextDown ?? finalThrough))
+        return Hearing(words: reported, from: from, finalThrough: through)
     }
 
     private func middle(_ word: Word) -> Double {

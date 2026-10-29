@@ -9,7 +9,7 @@ struct AudioTests {
     @Test func writtenTrackMapsIntervalsAndPartialEnds() async throws {
 
         try await withComposeFolder { folder in
-            let track = try TrackFile(url: folder.appendingPathComponent("track.caf"))
+            let track = try await TrackFile(url: folder.appendingPathComponent("track.caf"))
             try await track.write([0.25, -0.5, 0.125, 0.5], sampleRate: 48_000)
             try await track.close()
             let adapter = Compose.WrittenTrack(track: track)
@@ -35,7 +35,7 @@ struct AudioTests {
 
         try await withComposeFolder { folder in
             let began = Signal()
-            let track = try TrackFile(
+            let track = try await TrackFile(
                 url: folder.appendingPathComponent("track.caf"),
                 makeBinding: DiskTrackBinding.init,
                 makeConversion: { _ in throw ScriptFailure.failed },

@@ -8,8 +8,8 @@ struct TrackFileExecutorTests {
     @Test func isolatedWorkRunsOnEachInstancesOwnQueue() async throws {
 
         try await withTrackFolder { folder in
-            let first = try TrackFile(url: folder.appendingPathComponent("first.caf"))
-            let second = try TrackFile(url: folder.appendingPathComponent("second.caf"))
+            let first = try await TrackFile(url: folder.appendingPathComponent("first.caf"))
+            let second = try await TrackFile(url: folder.appendingPathComponent("second.caf"))
             #expect(first.queue !== second.queue)
             await first.checkFileQueue()
             await second.checkFileQueue()

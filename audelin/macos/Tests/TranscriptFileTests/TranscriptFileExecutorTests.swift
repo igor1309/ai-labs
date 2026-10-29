@@ -8,8 +8,8 @@ struct TranscriptFileExecutorTests {
     @Test func isolatedWorkRunsOnEachInstancesOwnQueue() async throws {
 
         try await withTranscriptFolder { folder in
-            let first = try TranscriptFile(url: folder.appendingPathComponent("first.md"))
-            let second = try TranscriptFile(url: folder.appendingPathComponent("second.md"))
+            let first = try await TranscriptFile(url: folder.appendingPathComponent("first.md"))
+            let second = try await TranscriptFile(url: folder.appendingPathComponent("second.md"))
             #expect(first.queue !== second.queue)
             await first.checkFileQueue()
             await second.checkFileQueue()

@@ -7,21 +7,27 @@ import struct MicrophoneCapture.AudioPiece
 import ParakeetRecognizer
 import Preferences
 import Recording
+import Synchronization
 import struct SystemAudioCapture.AudioPiece
 import enum SystemAudioCapture.ProcessSelection
 
 /// Retains the application's connected recording, detector and model load.
 public final class AudelinRecording: Sendable {
 
-    public let recording: Recording
+    public let inputs: RecordingInputs
     public let panel: AudelinPanel
     public let detectionFailures: AsyncStream<any Error>
     private let conditions: RecordingConditions
     private let delivery: ApplicationDelivery
 
-    public convenience init(preferences: PreferencesStore) async throws {
+    public convenience init(
+        preferences: PreferencesStore,
+        makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
+        makeRecording: @escaping MakeRecordingModel,
+        makeSession: @escaping MakeSessionModel
+    ) async throws {
 
-        createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
+        await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
         try await self.init(
             preferences: preferences,
             processes: CoreAudioProcesses(binding: CoreAudioBinding(), clock: ContinuousCallClock()),
@@ -29,10 +35,11 @@ public final class AudelinRecording: Sendable {
             startMicrophone: startProductionMicrophone, startCall: startProductionCallAudio,
             recognizerSource: { try await ParakeetRecognizer() }, missingModels: productionMissingModels,
             makeConditions: composeRecordingConditions,
-            startModel: { startLiveModelLoading() }, panel: AudelinPanel()
+            startModel: { startLiveModelLoading() }, panel: AudelinPanel(makeReading: makeReading),
+            makeRecording: makeRecording, makeSession: makeSession
         )
         // Reading the status never asks; without this request macOS never prompts.
-        AVCaptureDevice.requestAccess(for: .audio) { [conditions] _ in conditions.refresh() }
+        AVCaptureDevice.requestAccess(for: .audio) { [conditions] _ in Task { await conditions.refresh() } }
     }
 
     init(
@@ -42,9 +49,11 @@ public final class AudelinRecording: Sendable {
         startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
         recognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         missingModels: @escaping @Sendable () -> [String],
-        makeConditions: (Recording, URL) -> RecordingConditions,
+        makeConditions: (RecordingInputs, URL) -> RecordingConditions,
         startModel: () -> Task<Void, any Error>,
-        panel: AudelinPanel
+        panel: AudelinPanel,
+        makeRecording: MakeRecordingModel,
+        makeSession: @escaping MakeSessionModel
     ) async throws {
 
         let app = RecordingCallApp()
@@ -56,26 +65,28 @@ public final class AudelinRecording: Sendable {
                 now: now, timeZone: timeZone, startMicrophone: startMicrophone,
                 startCall: startCall, recognizerSource: recognizerSource, missingModels: missingModels
             ),
-            makeConditions: makeConditions, panel: panel
+            makeConditions: makeConditions, panel: panel, makeModel: makeRecording,
+            makeSession: makeSession
         )
-        self.recording = recording
+        let inputs = recording
+        self.inputs = inputs
         self.conditions = conditions
-        conditions.refresh()
+        await conditions.refresh()
         let calls: CallRecordingSubscription
         do {
-            calls = try composeCalls(processes, to: recording, conditions: conditions, startedApp: { app.started($0) })
+            calls = try await composeCalls(processes, to: inputs, conditions: conditions, startedApp: { app.started($0) })
         } catch {
-            processes.stop()
-            Task { await recording.end() }
+            await processes.stop()
+            Task { await inputs.end() }
             throw error
         }
         detectionFailures = calls.failures
         delivery = ApplicationDelivery(processes: processes, calls: calls, model: startModel())
     }
 
-    public func quit(terminate: @escaping @Sendable () async -> Void) async {
+    public func lifecycle(terminate: @escaping @Sendable () async -> Void) -> LifecycleEffectHandler {
 
-        await Lifecycle(delivery: delivery, recording: ApplicationRecording(recording: recording), terminate: terminate).quit()
+        LifecycleEffectHandler(delivery: delivery, recording: ApplicationRecording(recording: inputs), terminate: terminate)
     }
 }
 
@@ -87,19 +98,39 @@ private struct ApplicationDelivery: LifecycleDelivery {
 
     func stop() async {
 
-        calls.cancel()
-        processes.stop()
-        await calls.wait()
+        await calls.cancel()
+        await processes.stop()
         model.cancel()
     }
 }
 
-struct ApplicationRecording: LifecycleRecording {
+final class ApplicationRecording: LifecycleRecording {
 
-    let recording: Recording
+    let recording: RecordingInputs
+    private let stopping = Mutex<Task<Void, Never>?>(nil)
 
-    func requestStop() { recording.send(.userStop) }
-    func drain() async { _ = await recording.snapshot() }
+    init(recording: RecordingInputs) {
+
+        self.recording = recording
+    }
+
+    // Lifecycle asks for a stop without waiting, so the drain that follows joins the send.
+    func requestStop() {
+
+        stopping.withLock { [recording] previous in
+            let earlier = previous
+            previous = Task {
+                await earlier?.value
+                await recording.send(.userStop)
+            }
+        }
+    }
+
+    func drain() async {
+
+        await stopping.withLock { $0 }?.value
+        _ = await recording.state()
+    }
     func end() async { await recording.end() }
 
     func states() async -> AsyncStream<LifecycleRecordingState> {
@@ -119,8 +150,14 @@ struct ApplicationRecording: LifecycleRecording {
 
 /// Creates the calls folder only when it is the default one: a folder the user
 /// chose and later lost stays unavailable rather than being made anew.
-func createDefaultCallsFolder(_ folder: URL, default defaultFolder: URL) {
+func createDefaultCallsFolder(_ folder: URL, default defaultFolder: URL) async {
 
     guard folder.standardizedFileURL == defaultFolder.standardizedFileURL else { return }
-    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    // Creating a folder blocks on the disk, so it runs outside the cooperative pool.
+    await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+        DispatchQueue(label: "audelin.CallsFolderCreation").async {
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            done.resume()
+        }
+    }
 }

@@ -14,7 +14,6 @@ let package = Package(
         .library(name: "GlassLedger", targets: ["GlassLedger"]),
         .library(name: "LiveAudio", targets: ["LiveAudio"]),
         .library(name: "LiveText", targets: ["LiveText"]),
-        .library(name: "Machine", targets: ["Machine"]),
         .library(name: "MenuBar", targets: ["MenuBar"]),
         .library(name: "MicrophoneCapture", targets: ["MicrophoneCapture"]),
         .library(name: "NemotronRecognizer", targets: ["NemotronRecognizer"]),
@@ -35,11 +34,15 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.17.7"),
+        .package(url: "https://github.com/igor1309/swift-imrx", from: "1.1.0"),
     ],
     targets: [
         .executableTarget(
             name: "Audelin",
-            dependencies: ["Compose", "MenuBar", "Preferences", "PanelUI"]
+            dependencies: [
+                "Compose", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading", "Recording", "Session",
+                .product(name: "IMRxObservation", package: "swift-imrx"),
+            ]
         ),
         .target(
             name: "AudioConversion"
@@ -55,7 +58,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI", "Machine"]
+            dependencies: ["MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -68,17 +71,13 @@ let package = Package(
             resources: [.copy("Resources/Fonts")]
         ),
         .target(
-            name: "Lifecycle",
-            dependencies: ["Machine"]
+            name: "Lifecycle"
         ),
         .target(
             name: "LiveAudio"
         ),
         .target(
             name: "LiveText"
-        ),
-        .target(
-            name: "Machine"
         ),
         .target(
             name: "MenuBar"
@@ -118,20 +117,17 @@ let package = Package(
             name: "RecordedCapture"
         ),
         .target(
-            name: "Reading",
-            dependencies: ["Machine"]
+            name: "Reading"
         ),
         .target(
-            name: "Recording",
-            dependencies: ["Machine"]
+            name: "Recording"
         ),
         .target(
             name: "SettingsUI",
             dependencies: ["GlassLedger"]
         ),
         .target(
-            name: "Session",
-            dependencies: ["Machine"]
+            name: "Session"
         ),
         .target(
             name: "SideText"
@@ -161,6 +157,10 @@ let package = Package(
             name: "TwoPassRecognizer",
             dependencies: ["LiveText"]
         ),
+        .target(
+            name: "BlockingTestWork",
+            path: "Tests/BlockingTestWork"
+        ),
         .testTarget(
             name: "AudelinTests",
             dependencies: ["Audelin", "Compose"]
@@ -171,7 +171,7 @@ let package = Package(
         ),
         .testTarget(
             name: "CallFolderTests",
-            dependencies: ["CallFolder", "TrackFile", "TranscriptFile"]
+            dependencies: ["CallFolder", "TrackFile", "TranscriptFile", "BlockingTestWork"]
         ),
         .testTarget(
             name: "CallTextTests",
@@ -179,11 +179,14 @@ let package = Package(
         ),
         .testTarget(
             name: "ComposeTests",
-            dependencies: ["Compose"]
+            dependencies: [
+                "Compose", "Lifecycle", "Recording", "BlockingTestWork",
+                .product(name: "IMRxObservation", package: "swift-imrx"),
+            ]
         ),
         .testTarget(
             name: "CoreAudioProcessesTests",
-            dependencies: ["CoreAudioProcesses"]
+            dependencies: ["CoreAudioProcesses", "BlockingTestWork"]
         ),
         .testTarget(
             name: "FillInTests",
@@ -191,7 +194,7 @@ let package = Package(
         ),
         .testTarget(
             name: "LifecycleTests",
-            dependencies: ["Lifecycle", "Recording", "Compose"]
+            dependencies: ["Lifecycle"]
         ),
         .testTarget(
             name: "LiveAudioTests",
@@ -200,10 +203,6 @@ let package = Package(
         .testTarget(
             name: "LiveTextTests",
             dependencies: ["LiveText"]
-        ),
-        .testTarget(
-            name: "MachineTests",
-            dependencies: ["Machine"]
         ),
         .testTarget(
             name: "MenuBarTests",
@@ -219,7 +218,7 @@ let package = Package(
         ),
         .testTarget(
             name: "NemotronRecognizerTests",
-            dependencies: ["NemotronRecognizer"]
+            dependencies: ["NemotronRecognizer", "BlockingTestWork"]
         ),
         .testTarget(
             name: "PanelUITests",
@@ -227,11 +226,11 @@ let package = Package(
         ),
         .testTarget(
             name: "ParakeetRecognizerTests",
-            dependencies: ["ParakeetRecognizer", .product(name: "FluidAudio", package: "FluidAudio")]
+            dependencies: ["ParakeetRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")]
         ),
         .testTarget(
             name: "PreferencesTests",
-            dependencies: ["Preferences"]
+            dependencies: ["Preferences", "BlockingTestWork"]
         ),
         .testTarget(
             name: "RecordedCaptureTests",
@@ -243,7 +242,10 @@ let package = Package(
         ),
         .testTarget(
             name: "RecordingTests",
-            dependencies: ["Recording", "Machine"]
+            dependencies: [
+                "Recording",
+                .product(name: "IMRxObservation", package: "swift-imrx"),
+            ]
         ),
         .testTarget(
             name: "SettingsUITests",
@@ -251,7 +253,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SessionTests",
-            dependencies: ["Session", "Machine"]
+            dependencies: ["Session", .product(name: "IMRxObservation", package: "swift-imrx")]
         ),
         .testTarget(
             name: "SideTextTests",
@@ -259,15 +261,15 @@ let package = Package(
         ),
         .testTarget(
             name: "SystemAudioCaptureTests",
-            dependencies: ["SystemAudioCapture"]
+            dependencies: ["SystemAudioCapture", "BlockingTestWork"]
         ),
         .testTarget(
             name: "TrackFileTests",
-            dependencies: ["TrackFile", "TrackFileCrashWriter", "AudioConversion"]
+            dependencies: ["TrackFile", "TrackFileCrashWriter", "AudioConversion", "BlockingTestWork"]
         ),
         .testTarget(
             name: "TranscriptFileTests",
-            dependencies: ["TranscriptFile", "TranscriptFileCrashWriter"]
+            dependencies: ["TranscriptFile", "TranscriptFileCrashWriter", "BlockingTestWork"]
         ),
         .testTarget(
             name: "TranscriptWritingTests",

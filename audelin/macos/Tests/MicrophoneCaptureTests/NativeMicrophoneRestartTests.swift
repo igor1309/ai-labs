@@ -12,7 +12,7 @@ struct NativeMicrophoneRestartTests {
 
         let engine = FakeMicrophoneEngine(formats: [48_000, 16_000])
         let clock = ManualMicrophoneClock()
-        let capture = try MicrophoneCapture(binding: SeamBinding(engine: engine, clock: clock))
+        let capture = try await MicrophoneCapture(binding: SeamBinding(engine: engine, clock: clock))
         defer { capture.stop() }
         var audio = capture.audio.makeAsyncIterator()
         try clock.deliver(through: engine, value: 1)
@@ -29,7 +29,7 @@ struct NativeMicrophoneRestartTests {
 
         let engine = FakeMicrophoneEngine(formats: [48_000, 16_000], refusals: 1)
         let clock = ManualMicrophoneClock()
-        let capture = try MicrophoneCapture(binding: SeamBinding(engine: engine, clock: clock))
+        let capture = try await MicrophoneCapture(binding: SeamBinding(engine: engine, clock: clock))
         defer { capture.stop() }
         var audio = capture.audio.makeAsyncIterator()
         #expect(engine.starts == 1)
@@ -44,7 +44,7 @@ struct NativeMicrophoneRestartTests {
     @Test func aSecondRefusalEndsTheCaptureWithTheError() async throws {
 
         let engine = FakeMicrophoneEngine(formats: [48_000, 16_000, 8_000], refusals: 2)
-        let capture = try MicrophoneCapture(binding: SeamBinding(engine: engine, clock: ManualMicrophoneClock()))
+        let capture = try await MicrophoneCapture(binding: SeamBinding(engine: engine, clock: ManualMicrophoneClock()))
         defer { capture.stop() }
         engine.changeConfiguration()
         engine.changeConfiguration()
@@ -59,7 +59,7 @@ struct NativeMicrophoneRestartTests {
 
         let engine = FakeMicrophoneEngine(formats: [48_000, 16_000], refusedStarts: [2])
         let clock = ManualMicrophoneClock()
-        let capture = try MicrophoneCapture(binding: SeamBinding(engine: engine, clock: clock))
+        let capture = try await MicrophoneCapture(binding: SeamBinding(engine: engine, clock: clock))
         defer { capture.stop() }
         var audio = capture.audio.makeAsyncIterator()
         try clock.deliver(through: engine, value: 1)

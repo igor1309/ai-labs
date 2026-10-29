@@ -18,7 +18,7 @@ struct RecordingTests {
     @Test func automaticOffDoesNotBeginRecording() async throws {
 
         try await withRecording(automatic: false) { rig in
-            rig.recording.send(.callStarted)
+            await rig.recording.send(.callStarted)
             let state = await rig.recording.snapshot()
             #expect(state.phase == .idle)
             #expect(state.callOn)
@@ -53,7 +53,7 @@ struct RecordingTests {
     func callEndEndsRecordingBegunDuringCall(_ origin: RecordingState.Origin, _ ready: Bool) async throws {
 
         try await withRecording(automatic: origin == .call) { rig in
-            if origin == .hand { rig.recording.send(.callStarted) }
+            if origin == .hand { await rig.recording.send(.callStarted) }
             try await rig.start(origin, ready: ready)
             let begun = await rig.recording.snapshot()
             #expect(begun.callOn)
@@ -72,14 +72,14 @@ struct RecordingTests {
             try await rig.start(.call)
             try await rig.stop()
             _ = try await rig.finish()
-            rig.recording.send(.callStarted)
-            rig.recording.send(.automaticChanged(false))
-            rig.recording.send(.automaticChanged(true))
+            await rig.recording.send(.callStarted)
+            await rig.recording.send(.automaticChanged(false))
+            await rig.recording.send(.automaticChanged(true))
             let held = await rig.recording.snapshot()
             #expect(held.phase == .idle)
             #expect(held.heldForCall)
             #expect(await rig.session.values() == [.begin(1), .end(1)])
-            rig.recording.send(.callEnded)
+            await rig.recording.send(.callEnded)
             try await rig.start(.call, id: 2)
             #expect(await rig.session.values() == [.begin(1), .end(1), .begin(2)])
         }
@@ -91,7 +91,7 @@ struct RecordingTests {
         try await withRecording { rig in
             try await rig.start(.call, ready: ready)
             let before = await rig.recording.snapshot()
-            rig.recording.send(callStart ? .callStarted : .userStart)
+            await rig.recording.send(callStart ? .callStarted : .userStart)
             #expect(await rig.recording.snapshot() == before)
             #expect(await rig.session.values() == [.begin(1)])
         }
@@ -102,7 +102,7 @@ struct RecordingTests {
         try await withRecording { rig in
             try await rig.start(.hand)
             try await rig.stop()
-            rig.recording.send(.callStarted)
+            await rig.recording.send(.callStarted)
             #expect(await rig.recording.snapshot().phase == .ending)
             #expect(await rig.session.values() == [.begin(1), .end(1)])
             await rig.session.finish(1)
@@ -118,7 +118,7 @@ struct RecordingTests {
     func missingConditionHoldsStartBack(_ condition: RecordingCondition, _ callStart: Bool) async throws {
 
         try await withRecording(missing: [condition]) { rig in
-            rig.recording.send(callStart ? .callStarted : .userStart)
+            await rig.recording.send(callStart ? .callStarted : .userStart)
             let state = await rig.recording.snapshot()
             #expect(state.phase == .idle)
             #expect(state.missing == [condition])
@@ -137,11 +137,11 @@ struct RecordingTests {
             #expect(await rig.recording.snapshot().phase == .ending)
             let ended = try await rig.finish()
             #expect(ended.cannotRecord == "no audio can be kept")
-            rig.recording.send(.conditionChanged(.microphoneAccess, available: false))
-            rig.recording.send(.automaticChanged(false))
+            await rig.recording.send(.conditionChanged(.microphoneAccess, available: false))
+            await rig.recording.send(.automaticChanged(false))
             await rig.session.switchLiveText(true)
             #expect(await rig.recording.snapshot().cannotRecord == "no audio can be kept")
-            rig.recording.send(.conditionChanged(.microphoneAccess, available: true))
+            await rig.recording.send(.conditionChanged(.microphoneAccess, available: true))
             try await rig.start(.hand, id: 2)
             #expect(await rig.recording.snapshot().cannotRecord == nil)
             #expect(await rig.session.values() == [.begin(1), .end(1), .begin(2)])
@@ -165,8 +165,8 @@ struct RecordingTests {
         try await withRecording { rig in
             try await rig.start(.hand)
             try await rig.stop()
-            rig.recording.send(.callStarted)
-            rig.recording.send(.callEnded)
+            await rig.recording.send(.callStarted)
+            await rig.recording.send(.callEnded)
             #expect(await rig.recording.snapshot().phase == .ending)
             let state = try await rig.finish()
             #expect(!state.callOn)
@@ -179,7 +179,7 @@ struct RecordingTests {
 
         try await withRecording { rig in
             try await rig.start(.call)
-            rig.recording.send(.conditionChanged(condition, available: false))
+            await rig.recording.send(.conditionChanged(condition, available: false))
             let state = await rig.recording.snapshot()
             #expect(state.missing == [condition])
             if condition == .callsFolder || condition == .room {
@@ -199,7 +199,7 @@ struct RecordingTests {
     func restoredConditionAllowsManualAndAutomaticStarts(_ condition: RecordingCondition) async throws {
 
         try await withRecording(missing: [condition]) { rig in
-            rig.recording.send(.conditionChanged(condition, available: true))
+            await rig.recording.send(.conditionChanged(condition, available: true))
             try await rig.start(.hand)
             #expect(await rig.recording.snapshot().missing.isEmpty)
             try await rig.stop()

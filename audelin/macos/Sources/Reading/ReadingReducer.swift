@@ -1,5 +1,3 @@
-import Machine
-
 /// Decides what to read without starting work or changing the recording.
 public enum ReadingReducer {
 
@@ -44,12 +42,6 @@ public enum ReadingReducer {
             state.lines.newBelow = 0
         }
         return (state, nil)
-    }
-
-    /// The machine's effect type is uninhabited; it needs no handler.
-    public static func machine(initial: ReadingState = .init()) -> Machine<ReadingState, ReadingEvent, Never> {
-
-        Machine(initial: initial, reduce: reduce, handle: { $0 })
     }
 
     private static func rows(_ state: ReadingState) -> [ReadingState.Row] {

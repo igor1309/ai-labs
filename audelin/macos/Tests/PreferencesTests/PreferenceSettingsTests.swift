@@ -5,7 +5,7 @@ import Testing
 @MainActor
 struct PreferenceSettingsTests {
 
-    @Test func successfulChangesCommitFreshValuesBeforeNotifying() {
+    @Test func successfulChangesCommitFreshValuesBeforeNotifying() async {
 
         for enabled in [false, true] {
             let initial = Preferences(automaticRecording: !enabled, liveText: !enabled,
@@ -23,7 +23,7 @@ struct PreferenceSettingsTests {
 
             storage.stored.callsFolder = URL(fileURLWithPath: "/current-calls")
             storage.stored.liveText = enabled
-            settings.setAutomatic(enabled)
+            await settings.setAutomatic(enabled)
             #expect(settings.snapshot == Preferences(automaticRecording: enabled, liveText: enabled,
                                                      callsFolder: storage.stored.callsFolder))
             #expect(notices == [enabled])
@@ -42,7 +42,7 @@ struct PreferenceSettingsTests {
         }
     }
 
-    @Test func failedWritesRetainCheckedSnapshotAndSendNoNotice() {
+    @Test func failedWritesRetainCheckedSnapshotAndSendNoNotice() async {
 
         for enabled in [false, true] {
             let initial = Preferences(automaticRecording: enabled, liveText: enabled,
@@ -53,7 +53,7 @@ struct PreferenceSettingsTests {
                 Issue.record("A failed write must not change automatic recording")
             })
             storage.stored.callsFolder = URL(fileURLWithPath: "/current-calls")
-            settings.setAutomatic(!enabled)
+            await settings.setAutomatic(!enabled)
             #expect(settings.snapshot == initial)
             settings.setLiveText(!enabled)
             #expect(settings.snapshot == initial)

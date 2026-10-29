@@ -24,7 +24,7 @@ struct MicrophoneCaptureTests {
     @Test func allChannelsAreMixedAndReadLiveAtTheDeviceRate() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         var audio = capture.audio.makeAsyncIterator()
         for samples: [Float] in [[2, 4], [6, 8], [10, 12]] {
@@ -44,7 +44,7 @@ struct MicrophoneCaptureTests {
     func channelsSoundingTogetherAreMixedToTheirMean(channels: [[Float]], expected: [Float]) async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.send(channels)
         capture.stop()
@@ -55,7 +55,7 @@ struct MicrophoneCaptureTests {
     func theMeanIncludesEveryChannel(channelCount: Int) async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         for soundingChannel in 0..<channelCount {
             var channels = Array(repeating: [Float(0), 0], count: channelCount)
@@ -71,7 +71,7 @@ struct MicrophoneCaptureTests {
     @Test func aHeldDefaultInputRebuildsOnlyAfterSettling() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.send([[1, 2]])
         binding.changeDefault(to: 2)
@@ -104,7 +104,7 @@ struct MicrophoneCaptureTests {
     func aConfigurationGapIsPaddedWholeAtTheNewRate(gap: Double) async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.send([[1, 2]])
         let rate = gap == 2 ? 24_000.0 : 4.0
@@ -127,7 +127,7 @@ struct MicrophoneCaptureTests {
     func aConfigurationRebuildPreservesThePendingDefaultSettle(reverts: Bool) async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.changeDefault(to: 2)
         await capture.synchronize()
@@ -157,7 +157,7 @@ struct MicrophoneCaptureTests {
     @Test func aSettledRebuildUsesThatInputWhenTheDefaultChangesDuringStop() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.changeDefault(to: 2)
         await capture.synchronize()
@@ -187,7 +187,7 @@ struct MicrophoneCaptureTests {
     @Test func aConfigurationChangeRecoversOntoTheDefaultWhileItSettles() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.send([[1, 2]])
         binding.changeDefault(to: 2)
@@ -209,7 +209,7 @@ struct MicrophoneCaptureTests {
     func aGapWithoutARebuildIsPaddedWhole(gap: Double) async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.send([[1, 2]])
         binding.advance(gap)
@@ -228,7 +228,7 @@ struct MicrophoneCaptureTests {
 
         let binding = FakeMicrophoneBinding()
         binding.state.withLock { $0.time = origin }
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.advance(0.5)
         binding.state.withLock { $0.unavailableInputs = [1] }
@@ -247,7 +247,7 @@ struct MicrophoneCaptureTests {
     func aGapOverTenMinutesFailsWithoutPaddingAfterEarlierAudio(rebuild: Bool) async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.send([[1, 2]])
         binding.send([[3, 4]])
@@ -265,14 +265,14 @@ struct MicrophoneCaptureTests {
     }
 
     @Test(arguments: [false, true])
-    func aRefusedStartCleansEveryInstalledResource(refuseWatch: Bool) throws {
+    func aRefusedStartCleansEveryInstalledResource(refuseWatch: Bool) async throws {
 
         let binding = FakeMicrophoneBinding()
         binding.state.withLock {
             $0.refuseWatch = refuseWatch
             $0.refuseStart = !refuseWatch
         }
-        #expect(throws: Refusal.self) { try MicrophoneCapture(binding: binding) }
+        await #expect(throws: Refusal.self) { try await MicrophoneCapture(binding: binding) }
         #expect(binding.state.withLock { $0.receive == nil && $0.changed == nil && $0.defaultChanged == nil })
     }
 
@@ -280,7 +280,7 @@ struct MicrophoneCaptureTests {
     func aRefusedRebuildFailsAfterEveryEarlierPiece(defaultChange: Bool) async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         for value: Float in [1, 2, 3] { binding.send([[value]]) }
         binding.state.withLock { $0.refuseStart = true }
@@ -300,7 +300,7 @@ struct MicrophoneCaptureTests {
     @Test func stoppingReadsABufferDeliveredDuringStopAndIsIdempotent() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         binding.send([[1]])
         binding.state.withLock { $0.onStop = { binding.send([[2]]) } }
         capture.stop()
@@ -313,10 +313,10 @@ struct MicrophoneCaptureTests {
     @Test func anotherCaptureCanFollowAStoppedOne() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let first = try MicrophoneCapture(binding: binding)
+        let first = try await MicrophoneCapture(binding: binding)
         first.stop()
         #expect(try await drain(first).isEmpty)
-        let second = try MicrophoneCapture(binding: binding)
+        let second = try await MicrophoneCapture(binding: binding)
         defer { second.stop() }
         binding.send([[7, 8]])
         var audio = second.audio.makeAsyncIterator()
@@ -329,7 +329,7 @@ struct MicrophoneCaptureTests {
     @Test func stoppingBeforeAnyBufferEndsCleanly() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         capture.stop()
         #expect(try await drain(capture).isEmpty)
     }
@@ -337,7 +337,7 @@ struct MicrophoneCaptureTests {
     @Test func aRevertedDefaultInputKeepsTheWholeRampWithoutPadding() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.send([[1, 2]])
         binding.changeDefault(to: 2)
@@ -361,7 +361,7 @@ struct MicrophoneCaptureTests {
     @Test func aDifferentCandidateMustSettleForItsOwnFullInterval() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.changeDefault(to: 2)
         await capture.synchronize()
@@ -385,7 +385,7 @@ struct MicrophoneCaptureTests {
     @Test func aCancelledSettleCallbackCannotRebuildAfterReversionOrStop() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         binding.changeDefault(to: 2)
         await capture.synchronize()
         let callback = try #require(binding.state.withLock { $0.timers.values.first?.1 })
@@ -405,7 +405,7 @@ struct MicrophoneCaptureTests {
     func aMissingDefaultFor110MillisecondsDuringSettlingKeepsCapturing(notifies: Bool) async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.changeDefault(to: 2)
         await capture.synchronize()
@@ -430,7 +430,7 @@ struct MicrophoneCaptureTests {
     @Test func aHeldMissingDefaultFailsOnlyAfterSettling() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.send([[1, 2]])
         binding.changeDefault(to: 0)
@@ -448,7 +448,7 @@ struct MicrophoneCaptureTests {
     @Test func aGoneInputWithNoDefaultFailsOnConfigurationChange() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.send([[1, 2]])
         binding.state.withLock { $0.unavailableInputs = [1] }
@@ -463,7 +463,7 @@ struct MicrophoneCaptureTests {
     @Test func aReturningCandidateCannotUseItsOldSettleCallback() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         binding.changeDefault(to: 2)
         await capture.synchronize()
@@ -490,7 +490,7 @@ struct MicrophoneCaptureTests {
     @Test func anOldEngineNotificationCannotRebuildItsReplacement() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         let oldConfiguration = try #require(binding.state.withLock { $0.changed })
         binding.configure()
@@ -503,7 +503,7 @@ struct MicrophoneCaptureTests {
     @Test func cancellingAReaderReleasesTheTapAndPendingTimer() async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         binding.changeDefault(to: 2)
         await capture.synchronize()
         let reader = Task { try await drain(capture) }
@@ -516,7 +516,7 @@ struct MicrophoneCaptureTests {
     @Test func releasingTheCaptureFinishesItsAudioAndResources() async throws {
 
         let binding = FakeMicrophoneBinding()
-        var capture: MicrophoneCapture? = try MicrophoneCapture(binding: binding)
+        var capture: MicrophoneCapture? = try await MicrophoneCapture(binding: binding)
         let audio = try #require(capture?.audio)
         binding.send([[1, 2]])
         capture = nil

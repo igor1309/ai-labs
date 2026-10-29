@@ -12,9 +12,9 @@ public final class PreferenceSettings {
 
     public private(set) var snapshot: Preferences
     private let storage: any PreferenceSettingsStorage
-    private let automaticChanged: (Bool) -> Void
+    private let automaticChanged: (Bool) async -> Void
 
-    public init(storage: any PreferenceSettingsStorage, automaticChanged: @escaping (Bool) -> Void) {
+    public init(storage: any PreferenceSettingsStorage, automaticChanged: @escaping (Bool) async -> Void) {
 
         self.storage = storage
         self.automaticChanged = automaticChanged
@@ -23,10 +23,10 @@ public final class PreferenceSettings {
 
     public var callsFolder: URL { storage.read().callsFolder }
 
-    public func setAutomatic(_ enabled: Bool) {
+    public func setAutomatic(_ enabled: Bool) async {
 
         if update({ $0.automaticRecording = enabled }) {
-            automaticChanged(enabled)
+            await automaticChanged(enabled)
         }
     }
 

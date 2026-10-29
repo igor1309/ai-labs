@@ -8,7 +8,7 @@ public final class SystemAudioCapture: Sendable {
 
     private let lifetime: CaptureLifetime
 
-    public init(binding: any CaptureBinding, processes: ProcessSelection) throws {
+    public init(binding: any CaptureBinding, processes: ProcessSelection) async throws {
 
         let stream = AsyncThrowingStream<AudioPiece, any Error>.makeStream()
         audio = stream.stream
@@ -18,17 +18,17 @@ public final class SystemAudioCapture: Sendable {
             if case .cancelled = termination { lifetime?.end(nil) }
         }
         do {
-            try lifetime.start(processes)
+            try await lifetime.start(processes)
         } catch {
             lifetime.end(error)
-            lifetime.drainCleanup()
+            await lifetime.drainCleanup()
             throw error
         }
     }
 
-    public func name(_ processes: ProcessSelection) throws {
+    public func name(_ processes: ProcessSelection) async throws {
 
-        try lifetime.name(processes)
+        try await lifetime.name(processes)
     }
 
     public func stop() {
@@ -43,11 +43,13 @@ public final class SystemAudioCapture: Sendable {
 }
 
 /// Callbacks and cleanup outlive the capture without retaining its owner.
+/// Native setup, naming and removal can block, so they run in order on the
+/// capture's own queue and callers await them, never holding a pool thread.
 private final class CaptureLifetime: Sendable {
 
     private let binding: any CaptureBinding
     private let state: CaptureState
-    private let cleanupQueue = DispatchQueue(label: "audelin.system-audio-cleanup")
+    private let queue = DispatchQueue(label: "audelin.system-audio-capture")
 
     init(binding: any CaptureBinding, continuation: AsyncThrowingStream<AudioPiece, any Error>.Continuation) {
 
@@ -55,10 +57,13 @@ private final class CaptureLifetime: Sendable {
         state = CaptureState(continuation: continuation)
     }
 
-    func start(_ processes: ProcessSelection) throws {
+    func start(_ processes: ProcessSelection) async throws {
 
-        state.lifecycle.lock()
-        defer { state.lifecycle.unlock() }
+        try await onQueue { [self] in try startOnQueue(processes) }
+    }
+
+    private func startOnQueue(_ processes: ProcessSelection) throws {
+
         let tap = try binding.createTap(Self.request(processes))
         state.resources.withLock { $0.tap = tap }
         let device = try binding.createDevice(DeviceRequest(tap: tap, isPrivate: true, autoStart: false))
@@ -72,10 +77,13 @@ private final class CaptureLifetime: Sendable {
         state.resources.withLock { $0.started = true }
     }
 
-    func name(_ processes: ProcessSelection) throws {
+    func name(_ processes: ProcessSelection) async throws {
 
-        state.lifecycle.lock()
-        defer { state.lifecycle.unlock() }
+        try await onQueue { [self] in try nameOnQueue(processes) }
+    }
+
+    private func nameOnQueue(_ processes: ProcessSelection) throws {
+
         guard !state.delivery.withLock({ $0.ending }), let tap = state.resources.withLock({ $0.tap }) else {
             throw CaptureError.stopped
         }
@@ -93,14 +101,12 @@ private final class CaptureLifetime: Sendable {
         guard first else { return }
         // Detach behind construction and naming; native removal can wait for IO.
         // The job owns only cleanup state, never the capture being released.
-        cleanupQueue.async { [binding, state] in
-            state.lifecycle.lock()
+        queue.async { [binding, state] in
             let made = state.resources.withLock {
                 let made = $0
                 $0 = Resources()
                 return made
             }
-            state.lifecycle.unlock()
             if let device = made.device {
                 if made.started, let io = made.io { binding.stopDevice(device, io) }
                 if let watch = made.watch { binding.unwatchDevice(device, watch) }
@@ -115,9 +121,16 @@ private final class CaptureLifetime: Sendable {
         }
     }
 
-    func drainCleanup() {
+    func drainCleanup() async {
 
-        cleanupQueue.sync {}
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in queue.async { done.resume() } }
+    }
+
+    private func onQueue(_ work: @escaping @Sendable () throws -> Void) async throws {
+
+        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
+            queue.async { done.resume(with: Result { try work() }) }
+        }
     }
 
     private static func request(_ processes: ProcessSelection) -> TapRequest {
@@ -142,7 +155,6 @@ private final class CaptureLifetime: Sendable {
 
 private final class CaptureState: Sendable {
 
-    let lifecycle = NSRecursiveLock()
     let delivery: Mutex<Delivery>
     let resources = Mutex(Resources())
 

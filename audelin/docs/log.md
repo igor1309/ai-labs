@@ -1,5 +1,10 @@
 # Log
 
+## 2026-10-29
+
+- Recording, Session, Reading and Lifecycle keep only their domain: each app
+  model comes from swift-imrx, and the hand-written Machine is gone (LAB-694).
+
 ## 2026-10-28
 
 - A call's folder is named after the call app, taken from the list that

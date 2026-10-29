@@ -88,7 +88,7 @@ actor SessionRecognizer: Recognizer {
 struct SessionRig: Sendable {
 
     let pieces: SessionPieces
-    let session: Session
+    let session: SessionInputs
     let subscription: Task<Void, Never>
     let microphone: CaptureScript<MicrophoneCapture.AudioPiece>
     let call: CaptureScript<SystemAudioCapture.AudioPiece>
@@ -100,10 +100,10 @@ struct SessionRig: Sendable {
         root: URL, microphoneFails: Bool, processesFail: Bool, construction: SessionConstruction,
         stopFailure: SessionSide?, stopEndsStream: Bool, streamFailure: SessionSide?, rates: [Double]?,
         recognizers: (any Recognizer, any Recognizer)?,
-        connect: (@Sendable (SessionPieces, Session) -> Task<Void, Never>)? = nil,
+        connect: (@Sendable (SessionPieces, SessionInputs) -> Task<Void, Never>)? = nil,
         beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in },
         beforeMicrophoneStartReturns: @escaping @Sendable () async -> Void = {}
-    ) {
+    ) async {
 
         let firstSamples = rates.map { Array(repeating: Float(0), count: Int($0[0] / 100)) }
         let lastSamples = rates.map { Array(repeating: Float(0), count: Int($0[1] / 100)) }
@@ -143,7 +143,7 @@ struct SessionRig: Sendable {
             closeTrack: construction.closeTrack, makeCaptureAudio: construction.makeCaptureAudio,
             openTranscript: construction.openTranscript, makeCallText: construction.makeCallText
         )
-        session = Session(handler: pieces.handler())
+        session = await makeSession(pieces.handler())
         subscription = connect?(pieces, session) ?? subscribe(pieces, to: session, beforeForward: beforeForward)
     }
 
@@ -158,7 +158,7 @@ struct SessionRig: Sendable {
 
     func finish() async {
 
-        session.send(.end)
+        await session.send(.end)
         _ = try? await state { $0.phase == .ended }
         await session.end()
         subscription.cancel()
@@ -172,14 +172,14 @@ func withSessionRig(
     microphoneFails: Bool = false, processesFail: Bool = false, construction: SessionConstruction = .init(),
     stopFailure: SessionSide? = nil, stopEndsStream: Bool = true, streamFailure: SessionSide? = nil, rates: [Double]? = nil,
     recognizers: (any Recognizer, any Recognizer)? = nil,
-    connect: (@Sendable (SessionPieces, Session) -> Task<Void, Never>)? = nil,
+    connect: (@Sendable (SessionPieces, SessionInputs) -> Task<Void, Never>)? = nil,
     beforeForward: @escaping @Sendable (SessionEvent) async -> Void = { _ in },
     beforeMicrophoneStartReturns: @escaping @Sendable () async -> Void = {},
     _ body: (SessionRig, URL) async throws -> Void
 ) async throws {
 
     try await withComposeFolder { root in
-        let rig = SessionRig(
+        let rig = await SessionRig(
             root: root, microphoneFails: microphoneFails, processesFail: processesFail, construction: construction,
             stopFailure: stopFailure, stopEndsStream: stopEndsStream, streamFailure: streamFailure, rates: rates, recognizers: recognizers,
             connect: connect, beforeForward: beforeForward, beforeMicrophoneStartReturns: beforeMicrophoneStartReturns

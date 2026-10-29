@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Preferences
 import Recording
@@ -14,15 +15,15 @@ struct PreferencesCompositionTests {
             for automatic in [false, true] {
                 let folder = root.appendingPathComponent("calls-\(automatic)")
                 // Only the stored folder of the second pass exists.
-                if automatic { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+                if automatic { try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) } }
                 try store.write(Preferences(automaticRecording: automatic, callsFolder: folder))
                 let (recording, conditions) = await composeRecordingWithPreferences(preferences: store, makePieces: { _ in
                     preconditionFailure("An idle recording must not build a session")
-                }, panel: ReadingClockSpy().panel())
-                #expect(await recording.snapshot() == RecordingState(automatic: automatic))
-                conditions.refresh()
+                }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
+                #expect(await recording.state() == RecordingState(automatic: automatic))
+                await conditions.refresh()
                 // A snapshot reads after every event already sent is reduced.
-                #expect(await recording.snapshot().missing.contains(.callsFolder) != automatic)
+                #expect(await recording.state().missing.contains(.callsFolder) != automatic)
                 await recording.end()
             }
         }
@@ -38,25 +39,25 @@ struct PreferencesCompositionTests {
                     try store.write(preferences)
                     let (recording, _) = await composeRecordingWithPreferences(
                         preferences: store, makePieces: { $0 == 1 ? first.pieces : second.pieces },
-                        panel: ReadingClockSpy().panel()
+                        panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession
                     )
                     for condition in RecordingCondition.allCases {
-                        recording.send(.conditionChanged(condition, available: true))
+                        await recording.send(.conditionChanged(condition, available: true))
                     }
                     do {
                         for (rig, enabled) in [(first, false), (second, true)] {
                             preferences.liveText = enabled
                             try store.write(preferences)
-                            recording.send(.userStart)
+                            await recording.send(.userStart)
                             try await waitForPhase(.recording, in: recording)
                             let text = try #require(await rig.pieces.text)
                             #expect(await (text.state.status != .off) == enabled)
-                            recording.send(.userStop)
+                            await recording.send(.userStop)
                             try await waitForPhase(.idle, in: recording)
                         }
                         await recording.end()
                     } catch {
-                        recording.send(.userStop)
+                        await recording.send(.userStop)
                         try? await waitForPhase(.idle, in: recording)
                         await recording.end()
                         throw error
@@ -67,7 +68,7 @@ struct PreferencesCompositionTests {
     }
 }
 
-private func waitForPhase(_ phase: RecordingState.Phase, in recording: Recording) async throws {
+private func waitForPhase(_ phase: RecordingState.Phase, in recording: RecordingInputs) async throws {
 
     for await state in await recording.states() {
         try Task.checkCancellation()

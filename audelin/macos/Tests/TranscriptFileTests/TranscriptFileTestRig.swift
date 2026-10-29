@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Synchronization
 import Testing
@@ -8,19 +9,22 @@ let noTextTranscript = "# Transcript\n\nNo text was heard.\n"
 func withTranscriptFolder(_ body: (URL) async throws -> Void) async throws {
 
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("TranscriptFileTests-\(UUID())", isDirectory: true)
-    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
-    defer { try? FileManager.default.removeItem(at: folder) }
-    try await body(folder)
+    try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false) }
+    do { try await body(folder) } catch {
+        await offPool { try? FileManager.default.removeItem(at: folder) }
+        throw error
+    }
+    await offPool { try? FileManager.default.removeItem(at: folder) }
 }
 
-func transcriptText(_ url: URL) throws -> String {
+func transcriptText(_ url: URL) async throws -> String {
 
-    try String(contentsOf: url, encoding: .utf8)
+    try await offPool { try String(contentsOf: url, encoding: .utf8) }
 }
 
-func folderNames(_ folder: URL) throws -> [String] {
+func folderNames(_ folder: URL) async throws -> [String] {
 
-    try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
+    try await offPool { try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted() }
 }
 
 func numberedSegments(_ number: Int) -> [TranscriptFile.Segment] {
