@@ -20,6 +20,18 @@ class LaneRunTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             runner.select_runtime([])
 
+    def test_selects_newest_device_type_the_runtime_supports(self):
+        types = [{'identifier': 'old-phone', 'name': 'iPhone 6s Plus', 'productFamily': 'iPhone', 'minRuntimeVersion': 9},
+                 {'identifier': 'new-phone', 'name': 'iPhone 17', 'productFamily': 'iPhone', 'minRuntimeVersion': 26},
+                 {'identifier': 'mid-phone', 'name': 'iPhone 15', 'productFamily': 'iPhone', 'minRuntimeVersion': 17},
+                 {'identifier': 'pod', 'name': 'iPod touch', 'productFamily': 'iPhone', 'minRuntimeVersion': 12},
+                 {'identifier': 'pad', 'name': 'iPad Air', 'productFamily': 'iPad', 'minRuntimeVersion': 14}]
+        runtime = {'supportedDeviceTypes': [{'identifier': i} for i in ('mid-phone', 'new-phone', 'pod', 'pad')]}
+        self.assertEqual(runner.select_device_type(types, runtime, 'iPhone')['identifier'], 'new-phone')
+        self.assertEqual(runner.select_device_type(types, runtime, 'iPad')['identifier'], 'pad')
+        with self.assertRaises(ValueError):
+            runner.select_device_type(types, {'supportedDeviceTypes': [{'identifier': 'old-phone'}]}, 'iPad')
+
     def test_rejects_unknown_lanes_and_unsafe_manifests(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -79,6 +91,47 @@ class LaneRunTests(unittest.TestCase):
                 self.assertTrue(any(c[:3] == ['maestro', '--device', 'own-clone'] for c in spy.calls))
                 self.assertFalse(any('Rehearsal iPhone' in ' '.join(c) for c in spy.calls))
 
+    def test_a_failing_part_skips_its_lane_and_the_next_lane_still_runs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'maestro'
+            lanes = []
+            for name, flows in (('S-1-first', ('bad.yaml', 'skipped.yaml')), ('S-2-second', ('good.yaml',))):
+                path = root / 'lanes' / name
+                path.mkdir(parents=True)
+                (path / 'host.json').write_text('{}')
+                parts = []
+                for flow in flows:
+                    (path / flow).write_text('flow')
+                    parts.append({'name': flow.removesuffix('.yaml'), 'flow': flow, 'settings': 'host.json',
+                                  'device': 'iPad', 'expected': [{'category': 'hostPayment', 'phase': 'paid'}]})
+                lanes.append({'id': name, 'path': path, 'parts': parts})
+            spy = Commands(Path(directory), False)
+            spy.fail_flows = {'bad.yaml'}
+            result = runner.Runner(root, spy, '2026-10-29-1203', lambda: 1).run(lanes)
+            self.assertEqual(result, 1)
+            flows = [Path(c[-1]).name for c in spy.calls if c[0] == 'maestro' and 'test' in c]
+            self.assertEqual(flows, ['bad.yaml', 'good.yaml'])
+            report = (root / 'runs' / '2026-10-29-1203.md').read_text()
+            self.assertIn('## S-2-second', report)
+            self.assertIn('| good | PASS |', report)
+
+    def test_a_failed_screenshot_keeps_the_error_that_ended_the_part(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'maestro'
+            lane = root / 'lanes' / 'S-1-test'
+            lane.mkdir(parents=True)
+            (lane / 'host.json').write_text('{}')
+            (lane / 'host.yaml').write_text('flow')
+            part = {'name': 'host', 'flow': 'host.yaml', 'settings': 'host.json', 'device': 'iPad', 'expected': []}
+            spy = Commands(Path(directory), False)
+            spy.fail_commands = {'install', 'screenshot'}
+            result = runner.Runner(root, spy, '2026-10-29-1204', lambda: 1).run([
+                {'id': 'S-1-test', 'path': lane, 'parts': [part]}])
+            self.assertEqual(result, 1)
+            report = (root / 'runs' / '2026-10-29-1204.md').read_text()
+            self.assertIn('install', report)
+            self.assertIn('screenshot failed', report)
+
     def test_cleanup_failure_makes_the_run_fail(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / 'maestro'
@@ -114,11 +167,15 @@ class Commands:
         self.fail_flow = fail_flow
         self.fail_setup = False
         self.fail_delete = False
+        self.fail_flows = set()
+        self.fail_commands = set()
 
     def __call__(self, args, **kwargs):
         args = list(map(str, args))
         self.calls.append(args)
         output, code = '', 0
+        if args[:2] == ['xcrun', 'simctl'] and (set(args[2:5]) & self.fail_commands):
+            return subprocess.CompletedProcess(args, 1, '', args[2] + ' failed')
         if args[:3] == ['xcrun', 'simctl', 'list']:
             if self.fail_setup:
                 raise RuntimeError('CoreSimulator connection refused')
@@ -137,7 +194,7 @@ class Commands:
         elif args[:3] == ['xcrun', 'simctl', 'spawn']:
             output = '[mizan-ble:hostPayment] phase=paid'
         elif args[0] == 'maestro' and 'test' in args:
-            code = int(self.fail_flow)
+            code = int(self.fail_flow or Path(args[-1]).name in self.fail_flows)
             output = 'flow assertion failed' if code else 'flow passed'
         elif args[0] == 'git':
             output = 'abc123' if 'rev-parse' in args else ' M lane.json'

@@ -28,9 +28,21 @@ private struct HostScreen: View {
     @Bindable var host: HostMode
     var body: some View {
         HostView(state: host.screen, event: host.event)
-            .sheet(isPresented: $host.settingsPresented) {
+            .settingsCover(isPresented: $host.settingsPresented) {
                 SettingsView(state: host.settingsScreen, event: host.event)
             }
+    }
+}
+
+private extension View {
+    /// Settings is a full screen in the design, rail and all. macOS, where
+    /// only the tests build this, has no full-screen cover.
+    func settingsCover(isPresented: Binding<Bool>, content: @escaping () -> some View) -> some View {
+        #if os(iOS)
+        fullScreenCover(isPresented: isPresented, content: content)
+        #else
+        sheet(isPresented: isPresented, content: content)
+        #endif
     }
 }
 

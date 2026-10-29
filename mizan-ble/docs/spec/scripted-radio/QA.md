@@ -30,7 +30,7 @@ One case per row: at that point the row's event (for the host before the key, no
 
 ## S-7 Bluetooth's state from the settings
 
-For each row: that side's radio, given the settings, reads the row's state. Evidence: ScriptedRadioTests.bluetoothStates.
+For each row: the host radio and the client radio, given the settings, each read the row's state. Evidence: ScriptedRadioTests.bluetoothStates.
 
 ## S-8 A message the scripted side cannot open
 

@@ -32,8 +32,8 @@ status, Xcode, runtime, Maestro and app build pins. Part rows give overall,
 flow and log-check results, duration and an end-screen screenshot. The sibling
 folder holds screenshots, build output, flow output, logs, checker output and
 any air capture; it is ignored by git. The Markdown report is kept. A setup
-failure leaves a blocked report. A failed part stops the run, preserving the
-first failing flow step in its Maestro output. Exit codes: 0 pass, 1 failure,
+failure leaves a blocked report. A failed part skips the rest of its lane; the
+other lanes still run, and its Maestro output keeps the failing step. Exit codes: 0 pass, 1 failure,
 64 usage. `--keep` reports the failed clone's identity; otherwise all clones
 are removed on success, failure or interruption. A minute's report is never
 overwritten; start a later run in a new minute.

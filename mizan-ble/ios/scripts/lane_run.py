@@ -25,6 +25,15 @@ def select_runtime(runtimes):
     return max(available, key=lambda r: tuple(int(n) for n in r['version'].split('.')))
 
 
+def select_device_type(types, runtime, kind):
+    supported = {t['identifier'] for t in runtime.get('supportedDeviceTypes', [])}
+    suitable = [t for t in types if t['identifier'] in supported
+                and t.get('productFamily') == kind and t['name'].startswith(kind)]
+    if not suitable:
+        raise ValueError('no device type: ' + kind)
+    return max(suitable, key=lambda t: t.get('minRuntimeVersion', 0))
+
+
 def load_lanes(root, names):
     directories = sorted((root / 'lanes').glob('S-*'), key=lambda p: int(p.name.split('-')[1]))
     chosen = []
@@ -113,10 +122,8 @@ class Runner:
             if base:
                 self.bases[kind] = base['udid']
             else:
-                suitable = [t for t in types if t['name'].startswith(kind)]
-                if not suitable:
-                    raise ValueError('no device type: ' + kind)
-                self.bases[kind] = self.output(['xcrun', 'simctl', 'create', name, suitable[-1]['identifier'], runtime['identifier']])
+                kind_type = select_device_type(types, runtime, kind)
+                self.bases[kind] = self.output(['xcrun', 'simctl', 'create', name, kind_type['identifier'], runtime['identifier']])
 
     def run(self, lanes):
         self.artifacts.mkdir(parents=True, exist_ok=True)
@@ -134,11 +141,8 @@ class Runner:
                 for part in lane['parts']:
                     if not self.part(lane, part):
                         failed = True
-                        # A flow assertion may expose an app/spec disagreement. Preserve
-                        # its first evidence and stop; later runs must not obscure it.
+                        # A lane's later parts build on its earlier ones; other lanes do not.
                         break
-                if failed:
-                    break
         except (OSError, ValueError, RuntimeError, KeyError) as error:
             self.append('\nBLOCKED: ' + str(error).replace('\n', ' ') + '\n')
             failed = True
@@ -203,7 +207,7 @@ class Runner:
             if clone:
                 shot = self.call(['xcrun', 'simctl', 'io', clone, 'screenshot', screenshot], required=False)
                 if shot.returncode:
-                    error = 'screenshot failed'
+                    error = '; '.join(e for e in (error, 'screenshot failed') if e)
             passed = error is None and flow_result == log_result == 'PASS'
             if clone and (passed or not self.keep):
                 passed = self.cleanup(clone) and passed

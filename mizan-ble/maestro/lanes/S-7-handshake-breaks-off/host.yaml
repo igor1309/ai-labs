@@ -5,12 +5,18 @@ appId: dev.igor1309.mizan-ble.rehearsal
 - extendedWaitUntil:
     visible: "Lock & broadcast"
     timeout: 15000
-- tapOn: "1"
-- tapOn: "2"
-- tapOn: "3"
-- tapOn: "\\."
-- tapOn: "4"
-- tapOn: "5"
+- tapOn:
+    id: "key 1"
+- tapOn:
+    id: "key 2"
+- tapOn:
+    id: "key 3"
+- tapOn:
+    id: "key \\."
+- tapOn:
+    id: "key 4"
+- tapOn:
+    id: "key 5"
 - tapOn: "Lock & broadcast"
 - extendedWaitUntil:
     visible: "Handshake failed"

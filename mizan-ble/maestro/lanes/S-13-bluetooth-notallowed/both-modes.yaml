@@ -5,7 +5,8 @@ appId: dev.igor1309.mizan-ble.rehearsal
 - extendedWaitUntil:
     visible: "Bluetooth not allowed"
     timeout: 15000
-- tapOn: "1"
+- tapOn:
+    id: "key 1"
 - assertVisible:
     text: "Lock & broadcast"
     enabled: false
