@@ -12,15 +12,18 @@ import (
 
 	"github.com/igor1309/ai-labs/agister/cli"
 	"github.com/igor1309/ai-labs/agister/core/admit"
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/core/inputs"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runstore"
 )
 
-// recordStore is what a run's record asks of runstore: the record written
-// whole, in place of the one before, and an event appended, by the run's
-// id.
+const persistenceFailure workflow.Class = "persistence"
+
+// recordStore accepts the run's initial record, subsequent facts and final
+// result, and keeps the artifacts those facts name.
 type recordStore interface {
+	Begin(record runstore.Record) error
 	Write(record runstore.Record) error
 	Append(id string, event runstore.Event) error
 	WritePatch(id, step string, patch []byte) (string, error)
@@ -36,6 +39,7 @@ type runStoreAt func(folder string) (homeRuns, error)
 type homeRuns interface {
 	runStore
 	cli.Runs
+	Snapshot(id string) (runstore.Snapshot, error)
 }
 
 // runIDOf is the id of a run started at started: its UTC time to the
@@ -93,14 +97,8 @@ type endedPrimary struct {
 	costSource  string
 }
 
-// runRecord keeps a run's record as the run goes (docs/run-implementation.md,
-// "Records" and "Runs"; ADR-001, invariants 6 and 7): written lost before
-// anything runs, then again as each call ends, holding the workflow's
-// inputs once resolved and every call ended so far, each with its inputs,
-// and at the run's end as the run ended; each step's start, tool call, stale
-// turn and end appended as an event, at the clock's time. The record is written one
-// write at a time. A write after the first, or an append, that fails is a
-// warning in the run's result, each once.
+// runRecord translates run facts for persistence and remembers the first
+// persistence failure so later producers cannot append beyond a damaged line.
 type runRecord struct {
 	store recordStore
 	clock clock
@@ -109,6 +107,7 @@ type runRecord struct {
 	mu                 sync.Mutex
 	record             runstore.Record
 	warnings           []string
+	failure            error
 	definitionBytes    map[string][]byte
 	definitionAttempts map[string]bool
 	childInputs        map[string]func() []runstore.Input
@@ -137,27 +136,29 @@ func newRunRecord(store recordStore, clock clock, id string, started time.Time, 
 		ID:      id,
 		Request: asked,
 		Started: started,
-		Status:  string(cli.RunLost),
+		Status:  "running",
 	}}, nil
 }
 
-// begin writes the record, lost, before anything runs; its error refuses
-// the run.
+// begin claims the run log before anything runs.
 func (r *runRecord) begin() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.keepDefinitions(r.record.Request.Definitions, r.definitionBytes)
-	return r.store.Write(r.written())
+	return r.store.Begin(r.written())
 }
 
-// Resolved records given as the workflow's inputs, in every write after.
+// Resolved records each of the workflow's resolved inputs.
 func (r *runRecord) Resolved(given []givenInput) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.record.Inputs = recordInputs(given)
+	for _, input := range r.record.Inputs {
+		r.appendLocked(runstore.Event{At: r.clock.Now(), Kind: runstore.InputResolved, InputFact: &input})
+	}
 }
 
-// Called records ended among the run's calls, and writes the record again.
+// Called records the call that ended.
 func (r *runRecord) Called(ended endedCall) {
 	call := runstore.Call{
 		Definitions: slices.Clone(ended.definitions),
@@ -227,9 +228,7 @@ func (r *runRecord) Called(ended endedCall) {
 		r.warn(fmt.Sprintf("the patch of %q could not be kept: %s", ended.step, patchError))
 	}
 	r.record.Calls = append(r.record.Calls, call)
-	if err := r.store.Write(r.written()); err != nil {
-		r.warn("the run's record could not be written: " + err.Error())
-	}
+	r.appendLocked(runstore.Event{At: r.clock.Now(), Kind: runstore.CallEnded, Step: ended.step, CallFact: &call})
 }
 
 // end records result as how the run ended, and gives it as cli prints it,
@@ -244,8 +243,9 @@ func (r *runRecord) end(result workflow.Result) cli.Result {
 	sessions := map[string]string{}
 	maps.Copy(sessions, result.Sessions)
 	r.record.Result = &runstore.Result{Outcome: outcomeOf(result), Sessions: sessions, RunID: r.record.ID}
-	if err := r.store.Write(r.written()); err != nil {
-		result.Warnings = append(result.Warnings, "the run's record could not be written: "+err.Error())
+	r.persist()
+	if r.failure != nil {
+		result.Status, result.Class, result.Reason = workflow.Failed, persistenceFailure, r.failure.Error()
 	}
 	printed := cliResult(result)
 	printed.RunID = r.record.ID
@@ -279,18 +279,26 @@ func (r *runRecord) Tool(step string, tool workflow.Tool) {
 }
 
 func (r *runRecord) Stale(step string, stale workflow.Stale) {
-	r.append(runstore.Event{Step: step, Kind: runstore.Stale, What: stale.What, Recovering: stale.Recovering})
+	var waiting *runstore.Waiting
+	if stale.Recovering {
+		waiting = &runstore.Waiting{On: "recovery", Since: r.clock.Now()}
+	}
+	r.append(runstore.Event{Step: step, Kind: runstore.Stale, What: stale.What, Recovering: stale.Recovering, Waiting: waiting})
 }
 
-// Capacity keeps whether the turn is made again, not its wait: the wait
-// is the policy's, by the turn's place, and the next event's time shows
-// it.
+// Capacity records the policy's wait with an explicit deadline.
 func (r *runRecord) Capacity(step string, capacity workflow.Capacity) {
-	r.append(runstore.Event{Step: step, Kind: runstore.Capacity, Reason: capacity.Reason, Retrying: capacity.Retry > 0})
+	var waiting *runstore.Waiting
+	if capacity.Retry > 0 {
+		now := r.clock.Now()
+		until := now.Add(capacity.Retry)
+		waiting = &runstore.Waiting{On: "capacity", Since: now, Until: &until}
+	}
+	r.append(runstore.Event{Step: step, Kind: runstore.Capacity, Reason: capacity.Reason, Retrying: capacity.Retry > 0, Waiting: waiting})
 }
 
 func (r *runRecord) Fallback(step, agent string) {
-	r.append(runstore.Event{Step: step, Kind: runstore.Fallback, Agent: agent})
+	r.append(runstore.Event{Step: step, Kind: runstore.Fallback, Agent: agent, Waiting: &runstore.Waiting{On: "fallback", Since: r.clock.Now()}})
 }
 
 func (r *runRecord) Reused(step, call string) {
@@ -321,14 +329,9 @@ func (r *runRecord) ChildStarted(step, workflowName string, params map[string]st
 	}
 	r.record.Children = append(r.record.Children, runstore.Child{
 		ID: callID(r.record.ID, step), Workflow: workflowName, Parent: r.record.ID,
-		Params: maps.Clone(params), Inputs: keptInputs, Status: "lost",
+		Params: maps.Clone(params), Inputs: keptInputs, Status: "running",
 	})
-	if err := r.store.Append(r.record.ID, runstore.Event{At: r.clock.Now(), Step: step, Kind: runstore.ChildStarted, Workflow: workflowName, Params: maps.Clone(params), Inputs: keptInputs}); err != nil {
-		r.warn("an event of the run could not be recorded: " + err.Error())
-	}
-	if err := r.store.Write(r.written()); err != nil {
-		r.warn("the run's record could not be written: " + err.Error())
-	}
+	r.appendLocked(runstore.Event{At: r.clock.Now(), Step: step, Kind: runstore.ChildStarted, Workflow: workflowName, Params: maps.Clone(params), Inputs: keptInputs})
 }
 
 func (r *runRecord) ChildEnded(step string, ended workflow.ChildEnd) {
@@ -348,20 +351,26 @@ func (r *runRecord) ChildEnded(step string, ended workflow.ChildEnd) {
 		}
 		break
 	}
-	if err := r.store.Append(r.record.ID, runstore.Event{At: r.clock.Now(), Step: step, Kind: runstore.ChildEnded, Status: string(ended.Status), Class: string(ended.Class), Output: ended.Output}); err != nil {
-		r.warn("an event of the run could not be recorded: " + err.Error())
-	}
-	if err := r.store.Write(r.written()); err != nil {
-		r.warn("the run's record could not be written: " + err.Error())
-	}
+	r.appendLocked(runstore.Event{At: r.clock.Now(), Step: step, Kind: runstore.ChildEnded, Status: string(ended.Status), Class: string(ended.Class), Output: ended.Output})
 }
 
 func (r *runRecord) append(event runstore.Event) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	event.At = r.clock.Now()
-	if err := r.store.Append(r.record.ID, event); err != nil {
-		r.mu.Lock()
-		defer r.mu.Unlock()
-		r.warn("an event of the run could not be recorded: " + err.Error())
+	r.appendLocked(event)
+}
+
+func (r *runRecord) appendLocked(event runstore.Event) error {
+	if r.failure == nil {
+		r.failure = r.store.Append(r.record.ID, event)
+	}
+	return r.failure
+}
+
+func (r *runRecord) persist() {
+	if r.failure == nil {
+		r.failure = r.store.Write(r.written())
 	}
 }
 
@@ -505,5 +514,26 @@ func (b bothEvents) Pass(step string, pass int, state map[string]any) {
 func (b bothEvents) Stopped(step, why string, passes int) {
 	for _, events := range b {
 		events.Stopped(step, why, passes)
+	}
+}
+
+// Prepared keeps what was admitted before the runtime can act.
+func (r *runRecord) Prepared(ended endedCall) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.keepDefinitions(ended.definitions, ended.definitionBytes)
+	c := runstore.Call{ID: callID(r.record.ID, ended.step), Step: ended.step, Process: ended.process, Agent: ended.agent,
+		Root: r.root, Permissions: ended.permissions, Environment: slices.Clone(ended.environment),
+		Definitions: slices.Clone(ended.definitions), Inputs: recordInputs(ended.inputs),
+		Result: runstore.CallResult{Outcome: runstore.Outcome{Status: "running", Timing: runstore.Timing{Started: r.clock.Now()}}}}
+	r.appendLocked(runstore.Event{At: r.clock.Now(), Kind: runstore.Prepared, Step: ended.step, CallFact: &c})
+}
+
+func (r *runRecord) Observed(step string, report call.Report) {
+	if report.Running {
+		r.append(runstore.Event{Step: step, Kind: runstore.Resumed})
+	}
+	if report.Session != "" || report.Cost != nil {
+		r.append(runstore.Event{Step: step, Kind: runstore.Progress, Session: report.Session, Cost: report.Cost})
 	}
 }

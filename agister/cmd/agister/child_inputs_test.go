@@ -61,6 +61,9 @@ func TestChildResolversCaptureIdentitiesForTheirOwnRecordedStarts(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := record.begin(); err != nil {
+		t.Fatal(err)
+	}
 	w := workflow.Workflow{Steps: []workflow.Step{
 		{Name: "reviews", Parallel: []workflow.Step{
 			{Name: "tests", Workflow: &workflow.Workflow{}},

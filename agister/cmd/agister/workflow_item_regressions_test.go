@@ -61,7 +61,7 @@ func TestQualifiedChildNamesCannotOverwriteDeclaredStepPlans(t *testing.T) {
 }
 
 // Contract test: the runtime settings shipped in home.
-func TestAnUnfinishedChildIsRecordedLostThenRewrittenWhenItEnds(t *testing.T) {
+func TestAnUnfinishedChildIsRecordedRunningThenCompleted(t *testing.T) {
 	t.Parallel()
 	f := newRunFixture(t, runSettings(t, map[string]string{
 		"/r/.agister/workflows/parent.yaml": "schema: agister.workflow/v1alpha1\nsteps: [{name: tests, workflow: child}]\n",
@@ -82,8 +82,8 @@ func TestAnUnfinishedChildIsRecordedLostThenRewrittenWhenItEnds(t *testing.T) {
 	t.Cleanup(func() { unblock.Do(func() { close(release) }); <-finished })
 	<-started
 	unfinished := f.store.last(t)
-	want := []runstore.Child{{ID: unfinished.ID + "/tests", Parent: unfinished.ID, Workflow: "child", Params: map[string]string{}, Inputs: []runstore.Input{}, Status: "lost"}}
-	if unfinished.Status != "lost" || !reflect.DeepEqual(unfinished.Children, want) {
+	want := []runstore.Child{{ID: unfinished.ID + "/tests", Parent: unfinished.ID, Workflow: "child", Params: map[string]string{}, Inputs: []runstore.Input{}, Status: "running"}}
+	if unfinished.Status != "running" || !reflect.DeepEqual(unfinished.Children, want) {
 		t.Fatalf("unfinished root %s, children %+v, want %+v", unfinished.Status, unfinished.Children, want)
 	}
 	unblock.Do(func() { close(release) })
@@ -96,7 +96,7 @@ func TestAnUnfinishedChildIsRecordedLostThenRewrittenWhenItEnds(t *testing.T) {
 	if ended.Status != "completed" || !reflect.DeepEqual(ended.Children, want) {
 		t.Fatalf("ended root %s, children %+v, want %+v", ended.Status, ended.Children, want)
 	}
-	if unfinished.Children[0].Status != "lost" {
+	if unfinished.Children[0].Status != "running" {
 		t.Fatal("rewriting the child changed the unfinished snapshot")
 	}
 }

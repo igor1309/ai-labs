@@ -96,7 +96,7 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			spy := &claudeCodeRunSpy{result: c.result, err: c.err, reports: []claudecode.Report{
-				{Tool: &claudecode.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Tool: &claudecode.Tool{Name: "Read", Input: "a.go"}}}}
+				{Session: "live-session", Tool: &claudecode.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Tool: &claudecode.Tool{Name: "Read", Input: "a.go"}}}}
 			turns, err := newClaudeCodeTurns(spy)
 			if err != nil {
 				t.Fatal(err)
@@ -105,7 +105,7 @@ func TestATurnOnClaudeCodeRunsItsPromptAsTheMessage(t *testing.T) {
 			given := modelTurn
 			given.SessionCostBefore, given.Budget = usd(1), usd(0.75)
 			got, err := turns.Turn(endedContext(), given, func(r call.Report) { reported = append(reported, r) })
-			if want := []call.Report{{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Tool: &call.Tool{Name: "Read", Input: "a.go"}}}; !reflect.DeepEqual(reported, want) {
+			if want := []call.Report{{Session: "live-session", Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Tool: &call.Tool{Name: "Read", Input: "a.go"}}}; !reflect.DeepEqual(reported, want) {
 				t.Errorf("reported %+v, want %+v", reported, want)
 			}
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {
@@ -163,14 +163,14 @@ func TestATurnOnCodexRunsItsPromptAsTheMessage(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			spy := &codexRunSpy{result: c.result, err: c.err, reports: []codex.Report{
-				{Tool: &codex.Tool{Name: "command", Input: "go test"}}, {Result: true}, {}, {Tool: &codex.Tool{Name: "web_search", Input: "q"}}}}
+				{Session: "live-codex-session", Tool: &codex.Tool{Name: "command", Input: "go test"}}, {Result: true}, {}, {Tool: &codex.Tool{Name: "web_search", Input: "q"}}}}
 			turns, err := newCodexTurns(spy)
 			if err != nil {
 				t.Fatal(err)
 			}
 			var reported []call.Report
 			got, err := turns.Turn(endedContext(), modelTurn, func(r call.Report) { reported = append(reported, r) })
-			if want := []call.Report{{Tool: &call.Tool{Name: "command", Input: "go test"}}, {Result: true}, {}, {Tool: &call.Tool{Name: "web_search", Input: "q"}}}; !reflect.DeepEqual(reported, want) {
+			if want := []call.Report{{Session: "live-codex-session", Tool: &call.Tool{Name: "command", Input: "go test"}}, {Result: true}, {}, {Tool: &call.Tool{Name: "web_search", Input: "q"}}}; !reflect.DeepEqual(reported, want) {
 				t.Errorf("reported %+v, want %+v", reported, want)
 			}
 			if !reflect.DeepEqual(got, c.want) || !errors.Is(err, c.wantErr) || errors.Is(err, call.ErrNotStarted) != c.notStarted {

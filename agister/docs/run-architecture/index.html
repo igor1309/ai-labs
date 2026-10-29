@@ -247,19 +247,14 @@ a revision, its changes as a patch.</p>
 <p>Each run is a folder under <code>~/.agister/runs</code>, named by its id:
 its start's UTC time and six random hex characters.</p>
 <div class="files">
-  <div><b>record.json</b><span>The request, status and result. Every call
-  ended, as <code>&lt;run id&gt;/&lt;step&gt;</code>, with its process, agent,
-  inputs, permission plan, environment, definition files by digest, HEAD and
-  content, cost and result. Under <code>children</code>, each child run, as
-  <code>&lt;run id&gt;/&lt;item&gt;</code>, with its workflow, params, inputs
-  and their identities, status and output. Written whole as each call ends;
-  <code>lost</code> until the run ends.</span></div>
-  <div><b>events.jsonl</b><span>A line per event as it happens: a step
-  started, reused, a tool call, a stale turn, a turn at capacity, a fallback, a
-  step ended; a branch's arm with each condition read, its values and whether
-  it held; a repeat's pass with its state, and why it stopped; a child run
-  started, with its params and inputs, and ended, with its status and
-  output.</span></div>
+  <div><b>run.jsonl</b><span>One append-only log owned by one writer. Every
+  versioned line has a sequence, status, active calls and their waits, plus
+  one Agister event: starts, admissions, sessions, results, costs, branch
+  choices and repeat state. Tool calls keep their name and a short input
+  digest. The terminal line holds the full run result. Readers fold the
+  committed lines and ignore an unfinished tail; a complete corrupt line is
+  an error. A failed write stops appends and fails the run. Older
+  <code>record.json</code> and <code>events.jsonl</code> runs remain readable.</span></div>
   <div><b>definitions/</b><span>The bytes of every settings file a call was
   made from, by digest.</span></div>
   <div><b>patches/</b><span>Each pinned call's changes, by its name.</span></div>
