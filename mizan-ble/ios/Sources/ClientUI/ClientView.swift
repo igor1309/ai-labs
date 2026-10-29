@@ -31,16 +31,22 @@ public struct ClientView: View {
                     client: DeviceChip(.client, code: state.exchange.clientCode, state: state.exchange.clientDetail)
                 )
                 Spacer(minLength: Tokens.space1)
+                // Every state keeps one slot, one title line and two detail lines, so a change moves nothing.
                 VStack(spacing: Tokens.space6) {
                     illustration
+                        .frame(width: Tokens.space20 * 3, height: Tokens.space20 * 3)
                     VStack(spacing: Tokens.space3) {
                         Text(state.title).typeRole(.title)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(1)
                         Text(state.detail).typeRole(.body)
                             .lineSpacing(Tokens.space1)
-                            .fixedSize(horizontal: false, vertical: true)
+                            .lineLimit(2, reservesSpace: true)
                     }
                     .multilineTextAlignment(.center)
+                    // The spacers give way first, never the two detail lines.
+                    .fixedSize(horizontal: false, vertical: true)
+                    .animation(Motion.standard(reduced: reduceMotion).animation, value: state.title)
+                    .animation(Motion.standard(reduced: reduceMotion).animation, value: state.detail)
                 }
                 Spacer(minLength: Tokens.space1)
                 ForEach(state.actions, id: \.id) { action in

@@ -62,7 +62,7 @@ public extension ClientState {
                 tone: .idle, direction: .toHost, symbol: "antenna.radiowaves.left.and.right"
             ),
             title: "Hold closer",
-            detail: "Hold your phone closer to the till",
+            detail: "Hold the phone right next to the host iPad, so Mizan can tell which one is yours.",
             content: .discovery(icon: .bluetooth(isSlashed: false), isInRange: false),
             actions: [.init(
                 "Start handshake", event: .startHandshake, icon: .bluetooth(isSlashed: false),
@@ -150,7 +150,7 @@ public extension ClientState {
                 tone: .idle, direction: .toHost, symbol: "antenna.radiowaves.left.and.right"
             ),
             title: "Bluetooth is off",
-            detail: "Turn on Bluetooth to find a nearby host.",
+            detail: "Turn on Bluetooth in Control Centre to find a nearby host.",
             content: .discovery(icon: .bluetooth(isSlashed: true), isInRange: false),
             actions: [.init(
                 "Start handshake", event: .startHandshake, icon: .bluetooth(isSlashed: false),

@@ -8597,8 +8597,9 @@
                                   "id": "porN9",
                                   "name": "Sub",
                                   "fill": "$mz-text-2",
-                                  "textGrowth": "fixed-width",
+                                  "textGrowth": "fixed-width-height",
                                   "width": "fill_container",
+                                  "height": 48,
                                   "content": "Hold the phone near the host iPad. It appears once the host locks an amount.",
                                   "lineHeight": 1.5,
                                   "textAlign": "center",
@@ -9282,8 +9283,9 @@
                                   "id": "A75wD",
                                   "name": "Sub",
                                   "fill": "$mz-text-2",
-                                  "textGrowth": "fixed-width",
+                                  "textGrowth": "fixed-width-height",
                                   "width": "fill_container",
+                                  "height": 48,
                                   "content": "MIZAN-7F3A is in range. Start the handshake to see the amount.",
                                   "lineHeight": 1.5,
                                   "textAlign": "center",
@@ -9970,8 +9972,9 @@
                                   "id": "lTLYp",
                                   "name": "Sub",
                                   "fill": "$mz-text-2",
-                                  "textGrowth": "fixed-width",
+                                  "textGrowth": "fixed-width-height",
                                   "width": "fill_container",
+                                  "height": 48,
                                   "content": "Keep the phone near the iPad until the amount appears.",
                                   "lineHeight": 1.5,
                                   "textAlign": "center",
@@ -10566,10 +10569,21 @@
                           "alignItems": "center",
                           "children": [
                             {
-                              "id": "J3GM8g",
-                              "type": "ref",
-                              "ref": "ENX8J",
-                              "name": "Mark"
+                              "type": "frame",
+                              "id": "O0M2a8",
+                              "name": "Slot",
+                              "width": 240,
+                              "height": 240,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "id": "IJ7km",
+                                  "type": "ref",
+                                  "ref": "ENX8J",
+                                  "name": "Mark"
+                                }
+                              ]
                             },
                             {
                               "type": "frame",
@@ -10597,8 +10611,9 @@
                                   "id": "JbxSC",
                                   "name": "Sub",
                                   "fill": "$mz-text-2",
-                                  "textGrowth": "fixed-width",
+                                  "textGrowth": "fixed-width-height",
                                   "width": "fill_container",
+                                  "height": 48,
                                   "content": "The link to MIZAN-7F3A dropped. You were not charged.",
                                   "lineHeight": 1.5,
                                   "textAlign": "center",
@@ -14749,8 +14764,9 @@
                                   "id": "okMfq",
                                   "name": "Sub",
                                   "fill": "$mz-text-2",
-                                  "textGrowth": "fixed-width",
+                                  "textGrowth": "fixed-width-height",
                                   "width": "fill_container",
+                                  "height": 48,
                                   "content": "MIZAN-7F3A stopped advertising before you connected. Nothing was sent.",
                                   "lineHeight": 1.5,
                                   "textAlign": "center",
@@ -56570,8 +56586,9 @@
                                   "id": "Gzdfl",
                                   "name": "Sub",
                                   "fill": "$mz-text-2",
-                                  "textGrowth": "fixed-width",
+                                  "textGrowth": "fixed-width-height",
                                   "width": "fill_container",
+                                  "height": 48,
                                   "content": "Hold the phone near the host iPad. It appears once the host locks an amount.",
                                   "lineHeight": 1.5,
                                   "textAlign": "center",
@@ -57259,8 +57276,9 @@
                                   "id": "HrEt2",
                                   "name": "Sub",
                                   "fill": "$mz-text-2",
-                                  "textGrowth": "fixed-width",
+                                  "textGrowth": "fixed-width-height",
                                   "width": "fill_container",
+                                  "height": 48,
                                   "content": "Keep the phone near the iPad until the amount appears.",
                                   "lineHeight": 1.5,
                                   "textAlign": "center",
@@ -60620,6 +60638,2690 @@
               "fontFamily": "$mz-font-text",
               "fontSize": "$mz-size-body",
               "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "ta0QK",
+      "x": 2800,
+      "y": 16623.031485103405,
+      "name": "Mizan · Client Find States",
+      "theme": {
+        "mode": "dark"
+      },
+      "fill": "$mz-ground",
+      "layout": "vertical",
+      "gap": "$mz-space-14",
+      "padding": "$mz-space-14",
+      "children": [
+        {
+          "type": "frame",
+          "id": "S8GVh",
+          "name": "Title Block",
+          "layout": "vertical",
+          "gap": "$mz-space-3",
+          "children": [
+            {
+              "type": "text",
+              "id": "Ji5Zt",
+              "name": "Eyebrow",
+              "fill": "$mz-text-2",
+              "content": "MIZAN BLE · CLIENT · FIND AND CONNECT",
+              "fontFamily": "$mz-font-mono",
+              "fontSize": "$mz-size-eyebrow",
+              "fontWeight": "normal",
+              "letterSpacing": 1.5
+            },
+            {
+              "type": "text",
+              "id": "w1v8zU",
+              "name": "Title",
+              "fill": "$mz-text",
+              "content": "One layout for every state before the amount",
+              "fontFamily": "$mz-font-display",
+              "fontSize": "$mz-size-display",
+              "fontWeight": "700",
+              "letterSpacing": -1.5
+            },
+            {
+              "type": "text",
+              "id": "Q2eOa",
+              "name": "Lede",
+              "fill": "$mz-text-2",
+              "textGrowth": "fixed-width",
+              "width": 1400,
+              "content": "The rings or mark keep one 240 pt slot, the title one line and the subtitle two lines, and the button one place, so a change of state changes words and colours but moves nothing. Proposed, not decided: the copy for hold closer and Bluetooth off.",
+              "lineHeight": 1.5,
+              "fontFamily": "$mz-font-text",
+              "fontSize": "$mz-size-lead",
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "GtTmQ",
+          "name": "States",
+          "gap": "$mz-space-10",
+          "children": [
+            {
+              "type": "frame",
+              "id": "Mpwwi",
+              "name": "S-1 No host nearby",
+              "layout": "vertical",
+              "gap": "$mz-space-4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "xqOUl",
+                  "name": "Header",
+                  "gap": "$mz-space-3",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "F6o7r5",
+                      "name": "Code",
+                      "cornerRadius": "$mz-radius-md",
+                      "stroke": "$mz-line-strong",
+                      "strokeWidth": 1,
+                      "padding": [
+                        "$mz-space-1",
+                        "$mz-space-2"
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "yNXNp",
+                          "name": "Code",
+                          "fill": "$mz-text",
+                          "content": "S-1",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "VOOYT",
+                      "name": "Label",
+                      "fill": "$mz-text",
+                      "content": "No host nearby",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-lead",
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "id": "YPIn5",
+                  "type": "ref",
+                  "ref": "EH3tD",
+                  "name": "Client · iPhone",
+                  "descendants": {
+                    "t8XRn": {
+                      "type": "frame",
+                      "id": "eq1h3",
+                      "name": "Stepper",
+                      "width": "fill_container",
+                      "gap": "$mz-space-2",
+                      "children": [
+                        {
+                          "id": "S54jm1",
+                          "type": "ref",
+                          "ref": "Fbnuz",
+                          "name": "Step 1",
+                          "width": "fill_container",
+                          "descendants": {
+                            "k6B2i": {
+                              "content": "Find"
+                            },
+                            "Uee98": {
+                              "content": "Searching"
+                            }
+                          }
+                        },
+                        {
+                          "id": "SUaIa",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 2",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "2"
+                            },
+                            "mf7Cg": {
+                              "content": "Connect"
+                            },
+                            "Dwy5j": {
+                              "content": "Secure link"
+                            }
+                          }
+                        },
+                        {
+                          "id": "EwdBq",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 3",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "3"
+                            },
+                            "mf7Cg": {
+                              "content": "Review"
+                            },
+                            "Dwy5j": {
+                              "content": "Your call"
+                            }
+                          }
+                        },
+                        {
+                          "id": "e9eiZM",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 4",
+                          "width": 64,
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "4"
+                            },
+                            "ZN4vs": {
+                              "enabled": false
+                            },
+                            "mf7Cg": {
+                              "content": "Result"
+                            },
+                            "Dwy5j": {
+                              "content": "From host"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "ri6Dn": {
+                      "content": "STEP 1 OF 4 · FIND"
+                    },
+                    "Ze4RO": {
+                      "stroke": "$mz-line-strong"
+                    },
+                    "Ze4RO/P18AW": {
+                      "fill": "$mz-text-2"
+                    },
+                    "Ze4RO/IMlHD": {
+                      "content": "Idle",
+                      "fill": "$mz-text-2"
+                    },
+                    "ablzd": {
+                      "children": [
+                        {
+                          "id": "vSHdU",
+                          "type": "ref",
+                          "ref": "EbZyY",
+                          "name": "Exchange Strip",
+                          "width": "fill_container",
+                          "descendants": {
+                            "M8mXI/IgUjN": {
+                              "content": "H1"
+                            },
+                            "M8mXI/C5cuH": {
+                              "content": "Enter amount"
+                            },
+                            "XAVy0": {
+                              "id": "PMT2L",
+                              "type": "ref",
+                              "ref": "OQxVh",
+                              "name": "Message",
+                              "width": "fill_container",
+                              "descendants": {
+                                "qDVbf": {
+                                  "icon": "radio",
+                                  "fill": "$mz-text-2"
+                                },
+                                "P7A9VA": {
+                                  "content": "no host",
+                                  "fill": "$mz-text-2"
+                                },
+                                "iyhUy": {
+                                  "fill": "$mz-line-strong"
+                                },
+                                "wbIoH": {
+                                  "fill": "$mz-line-strong"
+                                }
+                              }
+                            },
+                            "WgtOu/a6PbG": {
+                              "content": "C1"
+                            },
+                            "WgtOu/SstTT": {
+                              "content": "Ready"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Qqk8B",
+                          "name": "Hero",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$mz-space-5",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "GhYYR",
+                              "name": "Radar",
+                              "width": 240,
+                              "height": 240,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "nDcAH",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Ring 1",
+                                  "width": 240,
+                                  "height": 240,
+                                  "stroke": "$mz-line",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "HiPKQ",
+                                  "x": 30,
+                                  "y": 30,
+                                  "name": "Ring 2",
+                                  "width": 180,
+                                  "height": 180,
+                                  "stroke": "$mz-line",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "D9EDh",
+                                  "x": 60,
+                                  "y": 60,
+                                  "name": "Glow",
+                                  "fill": "$mz-overlay",
+                                  "width": 120,
+                                  "height": 120
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "IO9wW",
+                                  "x": 78,
+                                  "y": 78,
+                                  "name": "Core",
+                                  "width": 84,
+                                  "height": 84,
+                                  "fill": "$mz-raised-2",
+                                  "cornerRadius": "$mz-radius-pill",
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "ZckcU",
+                                      "name": "Icon",
+                                      "width": 34,
+                                      "height": 34,
+                                      "icon": "bluetooth",
+                                      "library": "lucide",
+                                      "fill": "$mz-text-2"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "I8rtj7",
+                              "name": "Text",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": "$mz-space-2",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "bTelK",
+                                  "name": "Title",
+                                  "fill": "$mz-text",
+                                  "content": "No host nearby",
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-display",
+                                  "fontSize": "$mz-size-title",
+                                  "fontWeight": "600",
+                                  "letterSpacing": -0.5
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "TcZmh",
+                                  "name": "Sub",
+                                  "fill": "$mz-text-2",
+                                  "textGrowth": "fixed-width-height",
+                                  "width": "fill_container",
+                                  "height": 48,
+                                  "content": "Hold the phone near the host iPad. It appears once the host locks an amount.",
+                                  "lineHeight": 1.5,
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-text",
+                                  "fontSize": "$mz-size-body",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "prcyj",
+                          "type": "ref",
+                          "ref": "OOTU5",
+                          "name": "Start handshake Button",
+                          "width": "fill_container",
+                          "opacity": 0.4,
+                          "descendants": {
+                            "kYSoi": {
+                              "icon": "bluetooth"
+                            },
+                            "UDOqH": {
+                              "content": "Start handshake"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UwhqN",
+              "name": "S-2 A host in range",
+              "layout": "vertical",
+              "gap": "$mz-space-4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "lXeOm",
+                  "name": "Header",
+                  "gap": "$mz-space-3",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "WJizu",
+                      "name": "Code",
+                      "cornerRadius": "$mz-radius-md",
+                      "stroke": "$mz-line-strong",
+                      "strokeWidth": 1,
+                      "padding": [
+                        "$mz-space-1",
+                        "$mz-space-2"
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "bB04c",
+                          "name": "Code",
+                          "fill": "$mz-text",
+                          "content": "S-2",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "X6512",
+                      "name": "Label",
+                      "fill": "$mz-text",
+                      "content": "A host in range",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-lead",
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "id": "J1ed1",
+                  "type": "ref",
+                  "ref": "EH3tD",
+                  "name": "Client · iPhone",
+                  "descendants": {
+                    "t8XRn": {
+                      "type": "frame",
+                      "id": "iB0fK",
+                      "name": "Stepper",
+                      "width": "fill_container",
+                      "gap": "$mz-space-2",
+                      "children": [
+                        {
+                          "id": "E3FHh",
+                          "type": "ref",
+                          "ref": "Fbnuz",
+                          "name": "Step 1",
+                          "width": "fill_container",
+                          "descendants": {
+                            "k6B2i": {
+                              "content": "Find"
+                            },
+                            "Uee98": {
+                              "content": "Host in range"
+                            }
+                          }
+                        },
+                        {
+                          "id": "nSKA7",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 2",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "2"
+                            },
+                            "mf7Cg": {
+                              "content": "Connect"
+                            },
+                            "Dwy5j": {
+                              "content": "Secure link"
+                            }
+                          }
+                        },
+                        {
+                          "id": "a5aON",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 3",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "3"
+                            },
+                            "mf7Cg": {
+                              "content": "Review"
+                            },
+                            "Dwy5j": {
+                              "content": "Your call"
+                            }
+                          }
+                        },
+                        {
+                          "id": "rzb5r",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 4",
+                          "width": 64,
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "4"
+                            },
+                            "ZN4vs": {
+                              "enabled": false
+                            },
+                            "mf7Cg": {
+                              "content": "Result"
+                            },
+                            "Dwy5j": {
+                              "content": "From host"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "ri6Dn": {
+                      "content": "STEP 1 OF 4 · FIND"
+                    },
+                    "Ze4RO": {
+                      "stroke": "$mz-client"
+                    },
+                    "Ze4RO/P18AW": {
+                      "fill": "$mz-client"
+                    },
+                    "Ze4RO/IMlHD": {
+                      "content": "In range",
+                      "fill": "$mz-client"
+                    },
+                    "ablzd": {
+                      "children": [
+                        {
+                          "id": "t4X1aH",
+                          "type": "ref",
+                          "ref": "EbZyY",
+                          "name": "Exchange Strip",
+                          "width": "fill_container",
+                          "descendants": {
+                            "M8mXI/IgUjN": {
+                              "content": "H2"
+                            },
+                            "M8mXI/C5cuH": {
+                              "content": "Advertising"
+                            },
+                            "XAVy0/iVNXy": {
+                              "icon": "radio",
+                              "fill": "$mz-host"
+                            },
+                            "XAVy0/eGKkj": {
+                              "content": "in range",
+                              "fill": "$mz-text-body"
+                            },
+                            "XAVy0/m0pRL": {
+                              "fill": "$mz-host"
+                            },
+                            "XAVy0/lOllJ": {
+                              "fill": "$mz-host"
+                            },
+                            "WgtOu/a6PbG": {
+                              "content": "C1"
+                            },
+                            "WgtOu/SstTT": {
+                              "content": "Ready"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "YXWii",
+                          "name": "Hero",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$mz-space-5",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "gVlyB",
+                              "name": "Radar",
+                              "width": 240,
+                              "height": 240,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "bdXMS",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Ring 1",
+                                  "width": 240,
+                                  "height": 240,
+                                  "stroke": "$mz-client-tint",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "fQS6N",
+                                  "x": 30,
+                                  "y": 30,
+                                  "name": "Ring 2",
+                                  "width": 180,
+                                  "height": 180,
+                                  "stroke": "$mz-client-tint",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "SHYlv",
+                                  "x": 60,
+                                  "y": 60,
+                                  "name": "Glow",
+                                  "fill": "$mz-client-tint",
+                                  "width": 120,
+                                  "height": 120
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "HnsLn",
+                                  "x": 78,
+                                  "y": 78,
+                                  "name": "Core",
+                                  "width": 84,
+                                  "height": 84,
+                                  "fill": "$mz-client",
+                                  "cornerRadius": "$mz-radius-pill",
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "YZ6xt",
+                                      "name": "Icon",
+                                      "width": 34,
+                                      "height": 34,
+                                      "icon": "bluetooth",
+                                      "library": "lucide",
+                                      "fill": "$mz-on-accent"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "yIlL6",
+                              "name": "Text",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": "$mz-space-2",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "YpRTJ",
+                                  "name": "Title",
+                                  "fill": "$mz-text",
+                                  "content": "Pay a nearby host",
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-display",
+                                  "fontSize": "$mz-size-title",
+                                  "fontWeight": "600",
+                                  "letterSpacing": -0.5
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Mwrd5",
+                                  "name": "Sub",
+                                  "fill": "$mz-text-2",
+                                  "textGrowth": "fixed-width-height",
+                                  "width": "fill_container",
+                                  "height": 48,
+                                  "content": "MIZAN-7F3A is in range. Start the handshake to see the amount.",
+                                  "lineHeight": 1.5,
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-text",
+                                  "fontSize": "$mz-size-body",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "s9zAqs",
+                          "type": "ref",
+                          "ref": "OOTU5",
+                          "name": "Start handshake Button",
+                          "width": "fill_container",
+                          "descendants": {
+                            "kYSoi": {
+                              "icon": "bluetooth"
+                            },
+                            "UDOqH": {
+                              "content": "Start handshake"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "iSqkq",
+              "name": "S-3 Hold closer",
+              "layout": "vertical",
+              "gap": "$mz-space-4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "QbBnw",
+                  "name": "Header",
+                  "gap": "$mz-space-3",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "SG6sB",
+                      "name": "Code",
+                      "cornerRadius": "$mz-radius-md",
+                      "stroke": "$mz-line-strong",
+                      "strokeWidth": 1,
+                      "padding": [
+                        "$mz-space-1",
+                        "$mz-space-2"
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "QZhob",
+                          "name": "Code",
+                          "fill": "$mz-text",
+                          "content": "S-3",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "BJZrR",
+                      "name": "Label",
+                      "fill": "$mz-text",
+                      "content": "Hold closer",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-lead",
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "id": "ZOSfq",
+                  "type": "ref",
+                  "ref": "EH3tD",
+                  "name": "Client · iPhone",
+                  "descendants": {
+                    "t8XRn": {
+                      "type": "frame",
+                      "id": "e6MpY",
+                      "name": "Stepper",
+                      "width": "fill_container",
+                      "gap": "$mz-space-2",
+                      "children": [
+                        {
+                          "id": "WjQZx",
+                          "type": "ref",
+                          "ref": "Fbnuz",
+                          "name": "Step 1",
+                          "width": "fill_container",
+                          "descendants": {
+                            "k6B2i": {
+                              "content": "Find"
+                            },
+                            "Uee98": {
+                              "content": "Searching"
+                            }
+                          }
+                        },
+                        {
+                          "id": "c17CG",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 2",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "2"
+                            },
+                            "mf7Cg": {
+                              "content": "Connect"
+                            },
+                            "Dwy5j": {
+                              "content": "Secure link"
+                            }
+                          }
+                        },
+                        {
+                          "id": "uFfwl",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 3",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "3"
+                            },
+                            "mf7Cg": {
+                              "content": "Review"
+                            },
+                            "Dwy5j": {
+                              "content": "Your call"
+                            }
+                          }
+                        },
+                        {
+                          "id": "VkDsV",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 4",
+                          "width": 64,
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "4"
+                            },
+                            "ZN4vs": {
+                              "enabled": false
+                            },
+                            "mf7Cg": {
+                              "content": "Result"
+                            },
+                            "Dwy5j": {
+                              "content": "From host"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "ri6Dn": {
+                      "content": "STEP 1 OF 4 · FIND"
+                    },
+                    "Ze4RO": {
+                      "stroke": "$mz-line-strong"
+                    },
+                    "Ze4RO/P18AW": {
+                      "fill": "$mz-text-2"
+                    },
+                    "Ze4RO/IMlHD": {
+                      "content": "Idle",
+                      "fill": "$mz-text-2"
+                    },
+                    "ablzd": {
+                      "children": [
+                        {
+                          "id": "fJ5Np",
+                          "type": "ref",
+                          "ref": "EbZyY",
+                          "name": "Exchange Strip",
+                          "width": "fill_container",
+                          "descendants": {
+                            "M8mXI/IgUjN": {
+                              "content": "H1"
+                            },
+                            "M8mXI/C5cuH": {
+                              "content": "Enter amount"
+                            },
+                            "XAVy0": {
+                              "id": "jhfF9",
+                              "type": "ref",
+                              "ref": "OQxVh",
+                              "name": "Message",
+                              "width": "fill_container",
+                              "descendants": {
+                                "qDVbf": {
+                                  "icon": "radio",
+                                  "fill": "$mz-text-2"
+                                },
+                                "P7A9VA": {
+                                  "content": "no host",
+                                  "fill": "$mz-text-2"
+                                },
+                                "iyhUy": {
+                                  "fill": "$mz-line-strong"
+                                },
+                                "wbIoH": {
+                                  "fill": "$mz-line-strong"
+                                }
+                              }
+                            },
+                            "WgtOu/a6PbG": {
+                              "content": "C1"
+                            },
+                            "WgtOu/SstTT": {
+                              "content": "Ready"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "o6wkwD",
+                          "name": "Hero",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$mz-space-5",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "S8tFaj",
+                              "name": "Radar",
+                              "width": 240,
+                              "height": 240,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "HQDUC",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Ring 1",
+                                  "width": 240,
+                                  "height": 240,
+                                  "stroke": "$mz-line",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "g4ncJ",
+                                  "x": 30,
+                                  "y": 30,
+                                  "name": "Ring 2",
+                                  "width": 180,
+                                  "height": 180,
+                                  "stroke": "$mz-line",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "i2EIre",
+                                  "x": 60,
+                                  "y": 60,
+                                  "name": "Glow",
+                                  "fill": "$mz-overlay",
+                                  "width": 120,
+                                  "height": 120
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "Kz9CY",
+                                  "x": 78,
+                                  "y": 78,
+                                  "name": "Core",
+                                  "width": 84,
+                                  "height": 84,
+                                  "fill": "$mz-raised-2",
+                                  "cornerRadius": "$mz-radius-pill",
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "j0tcY",
+                                      "name": "Icon",
+                                      "width": 34,
+                                      "height": 34,
+                                      "icon": "bluetooth",
+                                      "library": "lucide",
+                                      "fill": "$mz-text-2"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "VZamL",
+                              "name": "Text",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": "$mz-space-2",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "mToFS",
+                                  "name": "Title",
+                                  "fill": "$mz-text",
+                                  "content": "Hold closer",
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-display",
+                                  "fontSize": "$mz-size-title",
+                                  "fontWeight": "600",
+                                  "letterSpacing": -0.5
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "oqIar",
+                                  "name": "Sub",
+                                  "fill": "$mz-text-2",
+                                  "textGrowth": "fixed-width-height",
+                                  "width": "fill_container",
+                                  "height": 48,
+                                  "content": "Hold the phone right next to the host iPad, so Mizan can tell which one is yours.",
+                                  "lineHeight": 1.5,
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-text",
+                                  "fontSize": "$mz-size-body",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "koisE",
+                          "type": "ref",
+                          "ref": "OOTU5",
+                          "name": "Start handshake Button",
+                          "width": "fill_container",
+                          "opacity": 0.4,
+                          "descendants": {
+                            "kYSoi": {
+                              "icon": "bluetooth"
+                            },
+                            "UDOqH": {
+                              "content": "Start handshake"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ZvDlQ",
+              "name": "S-4 Host went quiet",
+              "layout": "vertical",
+              "gap": "$mz-space-4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "RC7iR",
+                  "name": "Header",
+                  "gap": "$mz-space-3",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "q62vy",
+                      "name": "Code",
+                      "cornerRadius": "$mz-radius-md",
+                      "stroke": "$mz-line-strong",
+                      "strokeWidth": 1,
+                      "padding": [
+                        "$mz-space-1",
+                        "$mz-space-2"
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "HFWRX",
+                          "name": "Code",
+                          "fill": "$mz-text",
+                          "content": "S-4",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "wN1SC",
+                      "name": "Label",
+                      "fill": "$mz-text",
+                      "content": "Host went quiet",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-lead",
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "id": "F1rzUa",
+                  "type": "ref",
+                  "ref": "EH3tD",
+                  "name": "Client · iPhone",
+                  "descendants": {
+                    "t8XRn": {
+                      "type": "frame",
+                      "id": "zZsDO",
+                      "name": "Stepper",
+                      "width": "fill_container",
+                      "gap": "$mz-space-2",
+                      "children": [
+                        {
+                          "id": "i3BWkS",
+                          "type": "ref",
+                          "ref": "Fbnuz",
+                          "name": "Step 1",
+                          "width": "fill_container",
+                          "descendants": {
+                            "k6B2i": {
+                              "content": "Find"
+                            },
+                            "Uee98": {
+                              "content": "Searching"
+                            }
+                          }
+                        },
+                        {
+                          "id": "baWGJ",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 2",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "2"
+                            },
+                            "mf7Cg": {
+                              "content": "Connect"
+                            },
+                            "Dwy5j": {
+                              "content": "Secure link"
+                            }
+                          }
+                        },
+                        {
+                          "id": "cYQaM",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 3",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "3"
+                            },
+                            "mf7Cg": {
+                              "content": "Review"
+                            },
+                            "Dwy5j": {
+                              "content": "Your call"
+                            }
+                          }
+                        },
+                        {
+                          "id": "OPP5M",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 4",
+                          "width": 64,
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "4"
+                            },
+                            "ZN4vs": {
+                              "enabled": false
+                            },
+                            "mf7Cg": {
+                              "content": "Result"
+                            },
+                            "Dwy5j": {
+                              "content": "From host"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "ri6Dn": {
+                      "content": "STEP 1 OF 4 · FIND"
+                    },
+                    "Ze4RO": {
+                      "stroke": "$mz-line-strong"
+                    },
+                    "Ze4RO/P18AW": {
+                      "fill": "$mz-text-2"
+                    },
+                    "Ze4RO/IMlHD": {
+                      "content": "Idle",
+                      "fill": "$mz-text-2"
+                    },
+                    "ablzd": {
+                      "children": [
+                        {
+                          "id": "giyBc",
+                          "type": "ref",
+                          "ref": "EbZyY",
+                          "name": "Exchange Strip",
+                          "width": "fill_container",
+                          "descendants": {
+                            "M8mXI/IgUjN": {
+                              "content": "H1"
+                            },
+                            "M8mXI/C5cuH": {
+                              "content": "Enter amount"
+                            },
+                            "XAVy0": {
+                              "id": "DDqwI",
+                              "type": "ref",
+                              "ref": "OQxVh",
+                              "name": "Message",
+                              "width": "fill_container",
+                              "descendants": {
+                                "qDVbf": {
+                                  "icon": "radio",
+                                  "fill": "$mz-text-2"
+                                },
+                                "P7A9VA": {
+                                  "content": "host gone",
+                                  "fill": "$mz-text-2"
+                                },
+                                "iyhUy": {
+                                  "fill": "$mz-line-strong"
+                                },
+                                "wbIoH": {
+                                  "fill": "$mz-line-strong"
+                                }
+                              }
+                            },
+                            "WgtOu/a6PbG": {
+                              "content": "C1"
+                            },
+                            "WgtOu/SstTT": {
+                              "content": "Ready"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "YG8py",
+                          "name": "Hero",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$mz-space-5",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "IPxQ7",
+                              "name": "Radar",
+                              "width": 240,
+                              "height": 240,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "ym7jO",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Ring 1",
+                                  "width": 240,
+                                  "height": 240,
+                                  "stroke": "$mz-line",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "E4gl8I",
+                                  "x": 30,
+                                  "y": 30,
+                                  "name": "Ring 2",
+                                  "width": 180,
+                                  "height": 180,
+                                  "stroke": "$mz-line",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "o7qHx",
+                                  "x": 60,
+                                  "y": 60,
+                                  "name": "Glow",
+                                  "fill": "$mz-overlay",
+                                  "width": 120,
+                                  "height": 120
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "j2Aqi9",
+                                  "x": 78,
+                                  "y": 78,
+                                  "name": "Core",
+                                  "width": 84,
+                                  "height": 84,
+                                  "fill": "$mz-raised-2",
+                                  "cornerRadius": "$mz-radius-pill",
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "PeTBZ",
+                                      "name": "Icon",
+                                      "width": 34,
+                                      "height": 34,
+                                      "icon": "bluetooth-off",
+                                      "library": "lucide",
+                                      "fill": "$mz-text-2"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "a1y3qT",
+                              "name": "Text",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": "$mz-space-2",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "Jm431",
+                                  "name": "Title",
+                                  "fill": "$mz-text",
+                                  "content": "Host went quiet",
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-display",
+                                  "fontSize": "$mz-size-title",
+                                  "fontWeight": "600",
+                                  "letterSpacing": -0.5
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "k2k93",
+                                  "name": "Sub",
+                                  "fill": "$mz-text-2",
+                                  "textGrowth": "fixed-width-height",
+                                  "width": "fill_container",
+                                  "height": 48,
+                                  "content": "MIZAN-7F3A stopped advertising before you connected. Nothing was sent.",
+                                  "lineHeight": 1.5,
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-text",
+                                  "fontSize": "$mz-size-body",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "e5Iwl",
+                          "type": "ref",
+                          "ref": "OOTU5",
+                          "name": "Start handshake Button",
+                          "width": "fill_container",
+                          "opacity": 0.4,
+                          "descendants": {
+                            "kYSoi": {
+                              "icon": "bluetooth"
+                            },
+                            "UDOqH": {
+                              "content": "Start handshake"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "AlKqQ",
+              "name": "S-5 Connecting",
+              "layout": "vertical",
+              "gap": "$mz-space-4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Kdjum",
+                  "name": "Header",
+                  "gap": "$mz-space-3",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "tiFdh",
+                      "name": "Code",
+                      "cornerRadius": "$mz-radius-md",
+                      "stroke": "$mz-line-strong",
+                      "strokeWidth": 1,
+                      "padding": [
+                        "$mz-space-1",
+                        "$mz-space-2"
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "apsV2",
+                          "name": "Code",
+                          "fill": "$mz-text",
+                          "content": "S-5",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "LOr4A",
+                      "name": "Label",
+                      "fill": "$mz-text",
+                      "content": "Connecting",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-lead",
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "id": "wpkMY",
+                  "type": "ref",
+                  "ref": "EH3tD",
+                  "name": "Client · iPhone",
+                  "descendants": {
+                    "t8XRn": {
+                      "type": "frame",
+                      "id": "tfRlG",
+                      "name": "Stepper",
+                      "width": "fill_container",
+                      "gap": "$mz-space-2",
+                      "children": [
+                        {
+                          "id": "t0c27",
+                          "type": "ref",
+                          "ref": "tTbmh",
+                          "name": "Step 1",
+                          "width": "fill_container",
+                          "descendants": {
+                            "DhIRm": {
+                              "content": "Find"
+                            },
+                            "IDvuw": {
+                              "content": "Host found"
+                            }
+                          }
+                        },
+                        {
+                          "id": "vCeRz",
+                          "type": "ref",
+                          "ref": "Fbnuz",
+                          "name": "Step 2",
+                          "width": "fill_container",
+                          "descendants": {
+                            "k6B2i": {
+                              "content": "Connect"
+                            },
+                            "Uee98": {
+                              "content": "Exchanging keys"
+                            }
+                          }
+                        },
+                        {
+                          "id": "e4aOg",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 3",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "3"
+                            },
+                            "mf7Cg": {
+                              "content": "Review"
+                            },
+                            "Dwy5j": {
+                              "content": "Your call"
+                            }
+                          }
+                        },
+                        {
+                          "id": "E5Nwxv",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 4",
+                          "width": 64,
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "4"
+                            },
+                            "ZN4vs": {
+                              "enabled": false
+                            },
+                            "mf7Cg": {
+                              "content": "Result"
+                            },
+                            "Dwy5j": {
+                              "content": "From host"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "ri6Dn": {
+                      "content": "STEP 2 OF 4 · CONNECT"
+                    },
+                    "Ze4RO": {
+                      "stroke": "$mz-client"
+                    },
+                    "Ze4RO/P18AW": {
+                      "fill": "$mz-client"
+                    },
+                    "Ze4RO/IMlHD": {
+                      "content": "Connecting",
+                      "fill": "$mz-client"
+                    },
+                    "ablzd": {
+                      "children": [
+                        {
+                          "id": "FtEO5",
+                          "type": "ref",
+                          "ref": "EbZyY",
+                          "name": "Exchange Strip",
+                          "width": "fill_container",
+                          "descendants": {
+                            "M8mXI/IgUjN": {
+                              "content": "H3"
+                            },
+                            "M8mXI/C5cuH": {
+                              "content": "Handshake"
+                            },
+                            "XAVy0": {
+                              "id": "C7UaW",
+                              "type": "ref",
+                              "ref": "OQxVh",
+                              "name": "Message",
+                              "width": "fill_container",
+                              "descendants": {
+                                "qDVbf": {
+                                  "icon": "key-round",
+                                  "fill": "$mz-client"
+                                },
+                                "P7A9VA": {
+                                  "content": "handshake",
+                                  "fill": "$mz-text-body"
+                                },
+                                "iyhUy": {
+                                  "fill": "$mz-client"
+                                },
+                                "wbIoH": {
+                                  "fill": "$mz-client"
+                                }
+                              }
+                            },
+                            "WgtOu/a6PbG": {
+                              "content": "C2"
+                            },
+                            "WgtOu/SstTT": {
+                              "content": "Connecting"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "NSdGx",
+                          "name": "Hero",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$mz-space-5",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "jlZVH",
+                              "name": "Radar",
+                              "width": 240,
+                              "height": 240,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "bEzPW",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Ring 1",
+                                  "width": 240,
+                                  "height": 240,
+                                  "stroke": "$mz-client-tint",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "eepby",
+                                  "x": 30,
+                                  "y": 30,
+                                  "name": "Ring 2",
+                                  "width": 180,
+                                  "height": 180,
+                                  "stroke": "$mz-client-tint",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "q9zEwZ",
+                                  "x": 60,
+                                  "y": 60,
+                                  "name": "Glow",
+                                  "fill": "$mz-client-tint",
+                                  "width": 120,
+                                  "height": 120
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "DpI8S",
+                                  "x": 78,
+                                  "y": 78,
+                                  "name": "Core",
+                                  "width": 84,
+                                  "height": 84,
+                                  "fill": "$mz-client",
+                                  "cornerRadius": "$mz-radius-pill",
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "V4XHGb",
+                                      "name": "Icon",
+                                      "width": 34,
+                                      "height": 34,
+                                      "icon": "key-round",
+                                      "library": "lucide",
+                                      "fill": "$mz-on-accent"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "rVHDq",
+                              "name": "Text",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": "$mz-space-2",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "lB6c3",
+                                  "name": "Title",
+                                  "fill": "$mz-text",
+                                  "content": "Connecting…",
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-display",
+                                  "fontSize": "$mz-size-title",
+                                  "fontWeight": "600",
+                                  "letterSpacing": -0.5
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "TElLj",
+                                  "name": "Sub",
+                                  "fill": "$mz-text-2",
+                                  "textGrowth": "fixed-width-height",
+                                  "width": "fill_container",
+                                  "height": 48,
+                                  "content": "Keep the phone near the iPad until the amount appears.",
+                                  "lineHeight": 1.5,
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-text",
+                                  "fontSize": "$mz-size-body",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "g9bjK",
+                          "type": "ref",
+                          "ref": "Ux6Yl",
+                          "name": "Cancel Button",
+                          "width": "fill_container",
+                          "descendants": {
+                            "QpXVW": {
+                              "icon": "x"
+                            },
+                            "UZOG2": {
+                              "content": "Cancel"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fvWS4",
+              "name": "S-6 Couldn’t connect",
+              "layout": "vertical",
+              "gap": "$mz-space-4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "u1oJ0",
+                  "name": "Header",
+                  "gap": "$mz-space-3",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "zgnQb",
+                      "name": "Code",
+                      "cornerRadius": "$mz-radius-md",
+                      "stroke": "$mz-line-strong",
+                      "strokeWidth": 1,
+                      "padding": [
+                        "$mz-space-1",
+                        "$mz-space-2"
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "BpOBL",
+                          "name": "Code",
+                          "fill": "$mz-text",
+                          "content": "S-6",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "E9i1E",
+                      "name": "Label",
+                      "fill": "$mz-text",
+                      "content": "Couldn’t connect",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-lead",
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "id": "KjByi",
+                  "type": "ref",
+                  "ref": "EH3tD",
+                  "name": "Client · iPhone",
+                  "descendants": {
+                    "t8XRn": {
+                      "type": "frame",
+                      "id": "b36MMu",
+                      "name": "Stepper",
+                      "width": "fill_container",
+                      "gap": "$mz-space-2",
+                      "children": [
+                        {
+                          "id": "n0X9A",
+                          "type": "ref",
+                          "ref": "tTbmh",
+                          "name": "Step 1",
+                          "width": "fill_container",
+                          "descendants": {
+                            "DhIRm": {
+                              "content": "Find"
+                            },
+                            "IDvuw": {
+                              "content": "Host found"
+                            }
+                          }
+                        },
+                        {
+                          "id": "SQMYY",
+                          "type": "ref",
+                          "ref": "rkiZ1",
+                          "name": "Step 2",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Geqqe": {
+                              "content": "Connect"
+                            },
+                            "h0kUIH": {
+                              "content": "Link lost"
+                            }
+                          }
+                        },
+                        {
+                          "id": "ppEbf",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 3",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "3"
+                            },
+                            "mf7Cg": {
+                              "content": "Review"
+                            },
+                            "Dwy5j": {
+                              "content": "Your call"
+                            }
+                          }
+                        },
+                        {
+                          "id": "S6KYq",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 4",
+                          "width": 64,
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "4"
+                            },
+                            "ZN4vs": {
+                              "enabled": false
+                            },
+                            "mf7Cg": {
+                              "content": "Result"
+                            },
+                            "Dwy5j": {
+                              "content": "From host"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "ri6Dn": {
+                      "content": "STEP 2 OF 4 · CONNECT"
+                    },
+                    "Ze4RO": {
+                      "stroke": "$mz-bad"
+                    },
+                    "Ze4RO/P18AW": {
+                      "fill": "$mz-bad"
+                    },
+                    "Ze4RO/IMlHD": {
+                      "content": "Failed",
+                      "fill": "$mz-bad"
+                    },
+                    "ablzd": {
+                      "children": [
+                        {
+                          "id": "M8Cv4g",
+                          "type": "ref",
+                          "ref": "EbZyY",
+                          "name": "Exchange Strip",
+                          "width": "fill_container",
+                          "descendants": {
+                            "M8mXI/IgUjN": {
+                              "content": "H3"
+                            },
+                            "M8mXI/C5cuH": {
+                              "content": "Handshake"
+                            },
+                            "XAVy0": {
+                              "id": "dfEDx",
+                              "type": "ref",
+                              "ref": "OQxVh",
+                              "name": "Message",
+                              "width": "fill_container",
+                              "descendants": {
+                                "qDVbf": {
+                                  "icon": "unplug",
+                                  "fill": "$mz-bad"
+                                },
+                                "P7A9VA": {
+                                  "content": "link lost",
+                                  "fill": "$mz-text-body"
+                                },
+                                "iyhUy": {
+                                  "fill": "$mz-bad"
+                                },
+                                "wbIoH": {
+                                  "fill": "$mz-bad"
+                                }
+                              }
+                            },
+                            "WgtOu/a6PbG": {
+                              "content": "C2"
+                            },
+                            "WgtOu/SstTT": {
+                              "content": "Failed"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "FBGqe",
+                          "name": "Hero",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$mz-space-5",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "cuqXA",
+                              "name": "Slot",
+                              "width": 240,
+                              "height": 240,
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "id": "q60A6",
+                                  "type": "ref",
+                                  "ref": "ENX8J",
+                                  "name": "Mark"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "eh6to",
+                              "name": "Text",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": "$mz-space-2",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "qgCNM",
+                                  "name": "Title",
+                                  "fill": "$mz-text",
+                                  "content": "Couldn’t connect",
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-display",
+                                  "fontSize": "$mz-size-title",
+                                  "fontWeight": "600",
+                                  "letterSpacing": -0.5
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "pVfHv",
+                                  "name": "Sub",
+                                  "fill": "$mz-text-2",
+                                  "textGrowth": "fixed-width-height",
+                                  "width": "fill_container",
+                                  "height": 48,
+                                  "content": "The link to MIZAN-7F3A dropped. You were not charged.",
+                                  "lineHeight": 1.5,
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-text",
+                                  "fontSize": "$mz-size-body",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "YVxOd",
+                          "type": "ref",
+                          "ref": "OOTU5",
+                          "name": "Try again Button",
+                          "width": "fill_container",
+                          "descendants": {
+                            "kYSoi": {
+                              "icon": "rotate-ccw"
+                            },
+                            "UDOqH": {
+                              "content": "Try again"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "xGQxV",
+              "name": "S-7 Bluetooth off",
+              "layout": "vertical",
+              "gap": "$mz-space-4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "ypX7C",
+                  "name": "Header",
+                  "gap": "$mz-space-3",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "P9rse",
+                      "name": "Code",
+                      "cornerRadius": "$mz-radius-md",
+                      "stroke": "$mz-line-strong",
+                      "strokeWidth": 1,
+                      "padding": [
+                        "$mz-space-1",
+                        "$mz-space-2"
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "koWLa",
+                          "name": "Code",
+                          "fill": "$mz-text",
+                          "content": "S-7",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "TX22i",
+                      "name": "Label",
+                      "fill": "$mz-text",
+                      "content": "Bluetooth off",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-lead",
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "id": "k8yhht",
+                  "type": "ref",
+                  "ref": "EH3tD",
+                  "name": "Client · iPhone",
+                  "descendants": {
+                    "jWUjj/yjwCB": {
+                      "icon": "tablet"
+                    },
+                    "jWUjj/F2BA3z": {
+                      "icon": "smartphone"
+                    },
+                    "t8XRn": {
+                      "type": "frame",
+                      "id": "IQelS",
+                      "name": "Stepper",
+                      "width": "fill_container",
+                      "gap": "$mz-space-2",
+                      "children": [
+                        {
+                          "id": "nGnSn",
+                          "type": "ref",
+                          "ref": "Fbnuz",
+                          "name": "Step 1",
+                          "width": "fill_container",
+                          "descendants": {
+                            "k6B2i": {
+                              "content": "Find"
+                            },
+                            "Uee98": {
+                              "content": "Searching"
+                            }
+                          }
+                        },
+                        {
+                          "id": "qceFu",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 2",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "2"
+                            },
+                            "mf7Cg": {
+                              "content": "Connect"
+                            },
+                            "Dwy5j": {
+                              "content": "Secure link"
+                            }
+                          }
+                        },
+                        {
+                          "id": "VWQvE",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 3",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "3"
+                            },
+                            "mf7Cg": {
+                              "content": "Review"
+                            },
+                            "Dwy5j": {
+                              "content": "Your call"
+                            }
+                          }
+                        },
+                        {
+                          "id": "jAVmL",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 4",
+                          "width": 64,
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "4"
+                            },
+                            "ZN4vs": {
+                              "enabled": false
+                            },
+                            "mf7Cg": {
+                              "content": "Result"
+                            },
+                            "Dwy5j": {
+                              "content": "From host"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "ri6Dn": {
+                      "content": "STEP 1 OF 4 · FIND"
+                    },
+                    "Ze4RO": {
+                      "stroke": "$mz-line-strong"
+                    },
+                    "Ze4RO/P18AW": {
+                      "fill": "$mz-text-2"
+                    },
+                    "Ze4RO/IMlHD": {
+                      "content": "Idle",
+                      "fill": "$mz-text-2"
+                    },
+                    "ablzd": {
+                      "children": [
+                        {
+                          "id": "YM462",
+                          "type": "ref",
+                          "ref": "EbZyY",
+                          "name": "Exchange Strip",
+                          "width": "fill_container",
+                          "descendants": {
+                            "M8mXI/IgUjN": {
+                              "content": "H1"
+                            },
+                            "M8mXI/C5cuH": {
+                              "content": "Enter amount"
+                            },
+                            "XAVy0": {
+                              "id": "TKS6i",
+                              "type": "ref",
+                              "ref": "OQxVh",
+                              "name": "Message",
+                              "width": "fill_container",
+                              "descendants": {
+                                "qDVbf": {
+                                  "icon": "radio",
+                                  "fill": "$mz-text-2"
+                                },
+                                "P7A9VA": {
+                                  "content": "no host",
+                                  "fill": "$mz-text-2"
+                                },
+                                "iyhUy": {
+                                  "fill": "$mz-line-strong"
+                                },
+                                "wbIoH": {
+                                  "fill": "$mz-line-strong"
+                                }
+                              }
+                            },
+                            "WgtOu/a6PbG": {
+                              "content": "C1"
+                            },
+                            "WgtOu/SstTT": {
+                              "content": "Ready"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "n0mPaG",
+                          "name": "Hero",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$mz-space-5",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "zdkGW",
+                              "name": "Radar",
+                              "width": 240,
+                              "height": 240,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "tBdZq",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Ring 1",
+                                  "width": 240,
+                                  "height": 240,
+                                  "stroke": "$mz-line",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "i7utGX",
+                                  "x": 30,
+                                  "y": 30,
+                                  "name": "Ring 2",
+                                  "width": 180,
+                                  "height": 180,
+                                  "stroke": "$mz-line",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "C3k5g3",
+                                  "x": 60,
+                                  "y": 60,
+                                  "name": "Glow",
+                                  "fill": "$mz-overlay",
+                                  "width": 120,
+                                  "height": 120
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "S9YJh",
+                                  "x": 78,
+                                  "y": 78,
+                                  "name": "Core",
+                                  "width": 84,
+                                  "height": 84,
+                                  "fill": "$mz-raised-2",
+                                  "cornerRadius": "$mz-radius-pill",
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "EITFk",
+                                      "name": "Icon",
+                                      "width": 34,
+                                      "height": 34,
+                                      "icon": "bluetooth-off",
+                                      "library": "lucide",
+                                      "fill": "$mz-text-2"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "j4ey0",
+                              "name": "Text",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": "$mz-space-2",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "X9gAX2",
+                                  "name": "Title",
+                                  "fill": "$mz-text",
+                                  "content": "Bluetooth is off",
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-display",
+                                  "fontSize": "$mz-size-title",
+                                  "fontWeight": "600",
+                                  "letterSpacing": -0.5
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "N1jCQ",
+                                  "name": "Sub",
+                                  "fill": "$mz-text-2",
+                                  "textGrowth": "fixed-width-height",
+                                  "width": "fill_container",
+                                  "height": 48,
+                                  "content": "Turn on Bluetooth in Control Centre to find a nearby host.",
+                                  "lineHeight": 1.5,
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-text",
+                                  "fontSize": "$mz-size-body",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "F7wjX",
+                          "type": "ref",
+                          "ref": "OOTU5",
+                          "name": "Start handshake Button",
+                          "width": "fill_container",
+                          "opacity": 0.4,
+                          "descendants": {
+                            "kYSoi": {
+                              "icon": "bluetooth"
+                            },
+                            "UDOqH": {
+                              "content": "Start handshake"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "jFekw",
+              "name": "S-8 A host with no name yet",
+              "layout": "vertical",
+              "gap": "$mz-space-4",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "i1lMXl",
+                  "name": "Header",
+                  "gap": "$mz-space-3",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "JJTnW",
+                      "name": "Code",
+                      "cornerRadius": "$mz-radius-md",
+                      "stroke": "$mz-line-strong",
+                      "strokeWidth": 1,
+                      "padding": [
+                        "$mz-space-1",
+                        "$mz-space-2"
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "ChebZ",
+                          "name": "Code",
+                          "fill": "$mz-text",
+                          "content": "S-8",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "700"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "JM10z",
+                      "name": "Label",
+                      "fill": "$mz-text",
+                      "content": "A host with no name yet",
+                      "fontFamily": "$mz-font-display",
+                      "fontSize": "$mz-size-lead",
+                      "fontWeight": "600"
+                    }
+                  ]
+                },
+                {
+                  "id": "By4jp",
+                  "type": "ref",
+                  "ref": "EH3tD",
+                  "name": "Client · iPhone",
+                  "descendants": {
+                    "t8XRn": {
+                      "type": "frame",
+                      "id": "UDP7q",
+                      "name": "Stepper",
+                      "width": "fill_container",
+                      "gap": "$mz-space-2",
+                      "children": [
+                        {
+                          "id": "z0aGI4",
+                          "type": "ref",
+                          "ref": "Fbnuz",
+                          "name": "Step 1",
+                          "width": "fill_container",
+                          "descendants": {
+                            "k6B2i": {
+                              "content": "Find"
+                            },
+                            "Uee98": {
+                              "content": "Host in range"
+                            }
+                          }
+                        },
+                        {
+                          "id": "sydwD",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 2",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "2"
+                            },
+                            "mf7Cg": {
+                              "content": "Connect"
+                            },
+                            "Dwy5j": {
+                              "content": "Secure link"
+                            }
+                          }
+                        },
+                        {
+                          "id": "KtTX8",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 3",
+                          "width": "fill_container",
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "3"
+                            },
+                            "mf7Cg": {
+                              "content": "Review"
+                            },
+                            "Dwy5j": {
+                              "content": "Your call"
+                            }
+                          }
+                        },
+                        {
+                          "id": "c71Eml",
+                          "type": "ref",
+                          "ref": "p7MzmO",
+                          "name": "Step 4",
+                          "width": 64,
+                          "descendants": {
+                            "Ml9VF": {
+                              "content": "4"
+                            },
+                            "ZN4vs": {
+                              "enabled": false
+                            },
+                            "mf7Cg": {
+                              "content": "Result"
+                            },
+                            "Dwy5j": {
+                              "content": "From host"
+                            }
+                          }
+                        }
+                      ]
+                    },
+                    "ri6Dn": {
+                      "content": "STEP 1 OF 4 · FIND"
+                    },
+                    "Ze4RO": {
+                      "stroke": "$mz-client"
+                    },
+                    "Ze4RO/P18AW": {
+                      "fill": "$mz-client"
+                    },
+                    "Ze4RO/IMlHD": {
+                      "content": "In range",
+                      "fill": "$mz-client"
+                    },
+                    "ablzd": {
+                      "children": [
+                        {
+                          "id": "MxLvK",
+                          "type": "ref",
+                          "ref": "EbZyY",
+                          "name": "Exchange Strip",
+                          "width": "fill_container",
+                          "descendants": {
+                            "M8mXI/IgUjN": {
+                              "content": "H2"
+                            },
+                            "M8mXI/C5cuH": {
+                              "content": "Advertising"
+                            },
+                            "XAVy0/iVNXy": {
+                              "icon": "radio",
+                              "fill": "$mz-host"
+                            },
+                            "XAVy0/eGKkj": {
+                              "content": "in range",
+                              "fill": "$mz-text-body"
+                            },
+                            "XAVy0/m0pRL": {
+                              "fill": "$mz-host"
+                            },
+                            "XAVy0/lOllJ": {
+                              "fill": "$mz-host"
+                            },
+                            "WgtOu/a6PbG": {
+                              "content": "C1"
+                            },
+                            "WgtOu/SstTT": {
+                              "content": "Ready"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Q2fj5t",
+                          "name": "Hero",
+                          "width": "fill_container",
+                          "height": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$mz-space-5",
+                          "justifyContent": "center",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "YDxAD",
+                              "name": "Radar",
+                              "width": 240,
+                              "height": 240,
+                              "layout": "none",
+                              "children": [
+                                {
+                                  "type": "ellipse",
+                                  "id": "b1rXty",
+                                  "x": 0,
+                                  "y": 0,
+                                  "name": "Ring 1",
+                                  "width": 240,
+                                  "height": 240,
+                                  "stroke": "$mz-client-tint",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "o0CPg0",
+                                  "x": 30,
+                                  "y": 30,
+                                  "name": "Ring 2",
+                                  "width": 180,
+                                  "height": 180,
+                                  "stroke": "$mz-client-tint",
+                                  "strokeWidth": 1.5
+                                },
+                                {
+                                  "type": "ellipse",
+                                  "id": "SqaIi",
+                                  "x": 60,
+                                  "y": 60,
+                                  "name": "Glow",
+                                  "fill": "$mz-client-tint",
+                                  "width": 120,
+                                  "height": 120
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "h8Wp1g",
+                                  "x": 78,
+                                  "y": 78,
+                                  "name": "Core",
+                                  "width": 84,
+                                  "height": 84,
+                                  "fill": "$mz-client",
+                                  "cornerRadius": "$mz-radius-pill",
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon",
+                                      "id": "gNrhH",
+                                      "name": "Icon",
+                                      "width": 34,
+                                      "height": 34,
+                                      "icon": "bluetooth",
+                                      "library": "lucide",
+                                      "fill": "$mz-on-accent"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "Vo4wJ",
+                              "name": "Text",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "gap": "$mz-space-2",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "HKN94",
+                                  "name": "Title",
+                                  "fill": "$mz-text",
+                                  "content": "Pay a nearby host",
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-display",
+                                  "fontSize": "$mz-size-title",
+                                  "fontWeight": "600",
+                                  "letterSpacing": -0.5
+                                },
+                                {
+                                  "type": "text",
+                                  "id": "Q6Qze4",
+                                  "name": "Sub",
+                                  "fill": "$mz-text-2",
+                                  "textGrowth": "fixed-width-height",
+                                  "width": "fill_container",
+                                  "height": 48,
+                                  "content": "Mizan till is in range. Start the handshake to see the amount.",
+                                  "lineHeight": 1.5,
+                                  "textAlign": "center",
+                                  "fontFamily": "$mz-font-text",
+                                  "fontSize": "$mz-size-body",
+                                  "fontWeight": "normal"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "id": "AHCcs",
+                          "type": "ref",
+                          "ref": "OOTU5",
+                          "name": "Start handshake Button",
+                          "width": "fill_container",
+                          "descendants": {
+                            "kYSoi": {
+                              "icon": "bluetooth"
+                            },
+                            "UDOqH": {
+                              "content": "Start handshake"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              ]
             }
           ]
         }

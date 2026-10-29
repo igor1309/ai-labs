@@ -75,7 +75,7 @@ enum ClientMapping {
         }
         if case .unavailable(let reason) = find.bluetooth {
             screen.title = reason
-            screen.detail = "Turn on Bluetooth to find a nearby host."
+            screen.detail = BluetoothReason(rawValue: reason)?.detail ?? BluetoothReason.off.detail
             screen.content = .discovery(icon: .bluetooth(isSlashed: true), isInRange: false)
             return screen
         }
@@ -92,7 +92,7 @@ enum ClientMapping {
             screen.content = .discovery(icon: .bluetooth(isSlashed: false), isInRange: true)
         case .holdCloser:
             screen.title = "Hold closer"
-            screen.detail = "Hold your phone closer to the till"
+            screen.detail = "Hold the phone right next to the host iPad, so Mizan can tell which one is yours."
         case .gone:
             screen.title = "Host went quiet"
             screen.detail = "The host stopped advertising before you connected. Nothing was sent."
@@ -204,5 +204,20 @@ enum ClientMapping {
     private static func formatted(_ units: UInt64) -> String {
         let fraction = String(units % 100)
         return "\(units / 100)." + (fraction.count == 1 ? "0" : "") + fraction
+    }
+}
+
+/// Why the client cannot use Bluetooth: the screen's title, and what to do about it.
+enum BluetoothReason: String {
+    case off = "Bluetooth is off"
+    case notAllowed = "Bluetooth not allowed"
+    case unsupported = "Bluetooth unsupported"
+
+    var detail: String {
+        switch self {
+        case .off: "Turn on Bluetooth in Control Centre to find a nearby host."
+        case .notAllowed: "Allow Mizan to use Bluetooth in Settings to find a nearby host."
+        case .unsupported: "This iPhone cannot use Bluetooth, so it cannot find a host."
+        }
     }
 }

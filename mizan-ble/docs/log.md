@@ -3,11 +3,15 @@
 ## 2026-10-30
 
 - v0.0.1 is built: payments confirm, fail and decline on a real iPad and iPhone, with the signal values measured there and no secret in the log (LAB-728).
+- On an iPhone the host's header clears the status bar, and both sides keep clear of the status bar and home indicator; the client's detail keeps its two lines (LAB-728).
 
 ## 2026-10-29
 
-- The host's screens now fit an iPhone, so a phone switched to Host can switch back (LAB-728).
+- The host's screens now fit an iPhone, edge to edge like the client's, so a phone switched to Host can switch back (LAB-728).
 - The client log now says that the picker chose a host or asked to hold closer, with the signal it saw (LAB-728).
+- The client's screens before the amount keep one layout, so a change of state no longer moves the rings or text; hold closer and Bluetooth off use the design's copy, one line per Bluetooth reason (LAB-766).
+- The design gives the client's screens before the amount one layout, so a change of state moves nothing, and draws hold closer and Bluetooth off (LAB-765).
+- On a device the screens fill the display to its edges, with no inset rounded outline or black margins.
 - Every payment scenario has a simulator rehearsal lane, with screen, log and encrypted-air checks (LAB-726).
 - On an iPad in portrait, settings opens full screen and its countdown can be chosen again, and the host's amount shows whole (LAB-726).
 
