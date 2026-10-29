@@ -15,7 +15,11 @@ them. Keep each issue's briefs and logs in thread storage, in `lab-<n>/`.
    `issue status LAB-<n> in_progress`. Add a worktree on a new branch
    `lab-<n>-<name>` off `origin/trunk`, or off the unmerged branch it needs.
 2. **Brief.** Write `goal.md` from `templates/goal.md` and `step.md` from
-   `templates/step.md`. The goal fixes the API: it is a technical choice
+   `templates/step.md`. Take the component's kind from the table in
+   `ARCHITECTURE.md` first. The root rule on state machines applies to
+   machines only; an adapter with state of its own is still an adapter. A
+   choice that departs from `ARCHITECTURE.md` goes to the owner before any
+   run starts. The goal fixes the API: it is a technical choice
    and yours. Read the interface of every module the root will connect
    it to (an adapter often answers several) and pick a shape each can be
    translated to in a line or two.
@@ -25,6 +29,15 @@ them. Keep each issue's briefs and logs in thread storage, in `lab-<n>/`.
      asserts lower bounds and a stream's end, never how late something
      may be, with steps long enough that a stall on a loaded runner does
      not skip one.
+   - An adapter that keeps bookkeeping (which session or connection a
+     callback belongs to) keeps all of it on its side of the seam. The
+     real binding only maps system objects to identifiers and passes
+     callbacks through as they come; anything it decides is untested.
+   - A machine (root `AGENTS.md`, "State machines"): its goal asks for the
+     paired reducer tests and the handler's spy tests.
+   - Two components built at once: each goal names the other as out of
+     scope, and the second to merge resolves the shared rows (see
+     "Stacked branches").
    - A UI module's "Done when" is its state shape, events, view,
      previews, package target, README and log line; its sources name the
      frames by node id with their dark and light PNGs and the frames' copy
@@ -33,8 +46,9 @@ them. Keep each issue's briefs and logs in thread storage, in `lab-<n>/`.
 
    Read the brief once for contradictions between "Done when" and "Out of
    scope" before the run; Codex resolves one silently, its own way.
-3. **Implement**, in the background (3 to 12 min, about $0.30–0.40 for an
-   adapter):
+3. **Implement**, in the background (3 to 12 min, about $0.30–0.40 for a
+   small adapter; 11 to 16 min, about $0.90–1.20 for a radio; a fix step
+   2 to 4 min, $0.30):
 
    ```sh
    agister run --process implement --agent codex-sol-61 \
@@ -45,7 +59,8 @@ them. Keep each issue's briefs and logs in thread storage, in `lab-<n>/`.
    0 when a run fails, so the status line comes first:
    - `rate_limited`: send the Codex quota push (root `AGENTS.md`). A fix of
      a line and a test you make by hand, red then green; anything bigger
-     waits for the reset time the reason gives.
+     waits for the reset time the reason gives. A review stopped this way
+     is rerun whole after the reset, and reviews run one at a time.
    - `completed`: each test has a failing check before its passing one.
      Missing red lines are a claim, not evidence; ask for them in the
      next step.
@@ -60,11 +75,13 @@ them. Keep each issue's briefs and logs in thread storage, in `lab-<n>/`.
    pass before the review starts. A review of a branch behind trunk
    spends its words on other issues' changes showing as reverted.
 7. **Review** cores and adapters (UI modules and preview apps get none),
-   in the background (4 to 8 min, $1.50–3.50; it grows with the tests):
+   in the background (4 to 10 min, $1.50–4; it grows with the tests),
+   against the merge-base with trunk, after step 6:
 
    ```sh
    agister run code_review --param goal=<lab-n>/goal.md \
-       --param base=origin/trunk --dir <worktree> < /dev/null > <lab-n>/review.log 2>&1
+       --param base=$(git -C <worktree> merge-base HEAD origin/trunk) \
+       --dir <worktree> < /dev/null > <lab-n>/review.log 2>&1
    ```
 
    The candidate is the `--dir` checkout's HEAD; it refuses any other
@@ -76,7 +93,10 @@ them. Keep each issue's briefs and logs in thread storage, in `lab-<n>/`.
    `reject`; minor findings are rejected by rule. For a `fix`, write
    `step<k>.md` from `templates/fix-step.md`, quoting the item under
    "Acts on", run implement again, commit, and review again until the
-   judge has no fix. A fix that only pins behaviour already there (a
+   judge has no fix. When the judge says several findings share one
+   mechanism, write the rule that mechanism must keep into the fix step,
+   not only the case: a patch per case finds the next case one review
+   later. A fix that only pins behaviour already there (a
    default value) cannot be shown red without changing the code; make it
    by hand, green only. Take a rejected minor point by hand when it is
    cheap and real, such as a comment that says why.
