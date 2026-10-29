@@ -1,10 +1,8 @@
 # Host picker
 
 Observer: the root, which feeds the picker the client radio's timestamped
-readings and the clock's ticks, and turns each answer into client find's
-event. Client find keeps its scenarios only if the picker names the
-nearest host when there is a clear one, and asks to hold closer when there
-is not.
+readings and clock ticks, and maps answers to client find events. It names
+a clear nearest host or asks to hold closer.
 
 The picker is a pure type: readings and the time in, an answer out. Its
 answer is one of a host, "hold closer" or "none". It reads its α, window,
@@ -12,6 +10,8 @@ floor, margin and fade from the settings it is given; every scenario
 below uses the defaults unless it says otherwise.
 
 ## Decided
+
+- **Read-only view at a given time:** the live candidate count and leader’s smoothed average in dBm, absent when empty; inspecting it changes nothing.
 
 - **Smoothing:** an exponential moving average per host,
   `ema = α·rssi + (1 − α)·ema`, the first reading as the start, as

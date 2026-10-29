@@ -59,6 +59,15 @@ class LaneCheckTests(unittest.TestCase):
                 '[mizan-ble:clientPayment] phase=paid'), [])
         self.assertEqual(checker.check_log({}, [], 'value=9123456'), [])
 
+    def test_picker_signal_and_host_count_are_public_metadata(self):
+        for amount in (1, 34, 71):
+            settings = {'hosts': [{'amount': amount}]}
+            for signal in (-amount, amount, 0):
+                with self.subTest(amount=amount, signal=signal):
+                    text = f'[mizan-ble:clientFind] phase=picker holdCloser rssi={signal} hosts={amount}'
+                    self.assertEqual(checker.check_log(settings, [], text), [])
+                    self.assertTrue(checker.check_log(settings, [], text + f' value={amount}'))
+
     def test_air_rejects_amounts_in_text_and_binary(self):
         for payload in (b'12345', b'123.45', b'123,45', b'3039', b'0000000000003039',
                         (12345).to_bytes(8, 'big'), (12345).to_bytes(8, 'little')):

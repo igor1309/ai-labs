@@ -1,0 +1,120 @@
+import Foundation
+import Testing
+import ClientFind
+import Settings
+@testable import Root
+
+@Suite @MainActor struct PickerLoggingTests {
+    @Test func scanningLogNamesOnlyTheSelection() {
+        let secret = SecretsGate()
+        let host = ClientFind.Host(id: secret.peer.uuidString, name: secret.amount)
+        var state = ClientFind.State()
+        state = ClientFind.reduce(state, .bluetoothChanged(.available)).0
+        #expect(state.logDescription == "startingScan")
+        state = ClientFind.reduce(state, .scanningStarted).0
+        #expect(state.logDescription == "scanning none")
+        var entries: [LogEntry] = []
+        for (answer, description): (ClientFind.Answer, String) in [
+            (.holdCloser, "holdCloser"), (.host(host), "host"), (.none, "gone"),
+        ] {
+            state = ClientFind.reduce(state, .pickerAnswered(answer)).0
+            #expect(state.logDescription == "scanning \(description)")
+            entries.append(.init(category: .clientFind, message: state.logDescription))
+        }
+        secret.assertAbsent(from: entries)
+    }
+
+    @Test func pickerLogsStartOnceAndStartsFreshAfterStop() {
+        let h = Harness()
+        defer { h.finish() }
+        let discovery = makeDiscovery(h)
+        defer { discovery.stop() }
+        discovery.start()
+        discovery.start()
+        #expect(messages(h) == ["picker none hosts=0"])
+        discovery.reading(host: SecretsGate().peer, name: "private", rssi: -71, time: 0)
+        discovery.stop()
+        discovery.stop()
+        discovery.start()
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-71 hosts=1", "picker none hosts=0"])
+    }
+
+    @Test func pickerLogsAnswerChangesOnReadingsAndTicks() async {
+        let h = Harness()
+        defer { h.finish() }
+        h.store.set(.number(1), for: .pickerWindowReadings)
+        let discovery = makeDiscovery(h)
+        defer { discovery.stop() }
+        let (events, sink) = AsyncStream<ClientFind.Event>.makeStream()
+        defer { sink.finish() }
+        discovery.send = { sink.yield($0) }
+        var answers = events.makeAsyncIterator()
+        discovery.start()
+        let secret = SecretsGate()
+        discovery.reading(host: secret.peer, name: secret.amount, rssi: -50, time: 0)
+        #expect(await answers.next() == .pickerAnswered(.holdCloser))
+        h.clock.advance(1)
+        #expect(await answers.next() == .pickerAnswered(.host(.init(id: secret.peer.uuidString, name: secret.amount))))
+        h.clock.advance(1)
+        #expect(await answers.next() == .pickerAnswered(.none))
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-50 hosts=1", "picker host rssi=-50 hosts=1", "picker none hosts=0"])
+        secret.assertAbsent(from: h.log.entries)
+    }
+
+    @Test func pickerLogsOnlyThreeDBMovesFromLastWrittenRoundedAverage() {
+        for (readings, expected): ([Int], [String]) in [
+            ([-70, -66, -66, -69, -74, -75, -75], ["-70", "-67", "-71", "-74"]),
+            ([-70, -65, -66], ["-70", "-67"]),
+        ] {
+            let h = Harness()
+            defer { h.finish() }
+            h.store.set(.number(0.5), for: .pickerAlpha)
+            let discovery = makeDiscovery(h)
+            defer { discovery.stop() }
+            discovery.start()
+            for reading in readings {
+                discovery.reading(host: SecretsGate().peer, name: "private", rssi: reading, time: 0)
+            }
+            discovery.reading(host: SecretsGate().session, name: "other private", rssi: -90, time: 0)
+            #expect(messages(h) == ["picker none hosts=0"] + expected.map { "picker holdCloser rssi=\($0) hosts=1" })
+        }
+    }
+
+    @Test func pickerLogsChangedHostBelowTheSignalThreshold() {
+        let h = Harness()
+        defer { h.finish() }
+        h.store.set(.number(1), for: .pickerWindowReadings)
+        h.store.set(.number(1), for: .pickerAlpha)
+        h.store.set(.number(0), for: .pickerMargin)
+        let discovery = makeDiscovery(h)
+        defer { discovery.stop() }
+        let secret = SecretsGate()
+        discovery.start()
+        discovery.reading(host: secret.peer, name: secret.amount, rssi: -50, time: 0)
+        discovery.reading(host: secret.session, name: secret.amountMinorUnits, rssi: -51, time: 0)
+        discovery.reading(host: secret.peer, name: nil, rssi: -50, time: 1)
+        discovery.reading(host: secret.session, name: nil, rssi: -49, time: 1)
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-50 hosts=1", "picker host rssi=-50 hosts=2", "picker host rssi=-49 hosts=2"])
+        secret.assertAbsent(from: h.log.entries)
+    }
+
+    @Test func stoppedPickerLogsNoReadings() {
+        let h = Harness()
+        defer { h.finish() }
+        let discovery = makeDiscovery(h)
+        discovery.start()
+        discovery.reading(host: SecretsGate().peer, name: "private", rssi: -71, time: 0)
+        discovery.stop()
+        discovery.reading(host: SecretsGate().peer, name: "private", rssi: -40, time: 3)
+        h.clock.advance(3)
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-71 hosts=1"])
+    }
+}
+
+@MainActor private func makeDiscovery(_ h: Harness) -> ClientDiscovery {
+    ClientDiscovery(radio: h.client, clock: h.clock, settings: Settings(store: h.store), log: h.log)
+}
+
+@MainActor private func messages(_ h: Harness) -> [String] {
+    h.log.entries.filter { $0.category == .clientFind }.map(\.message)
+}
