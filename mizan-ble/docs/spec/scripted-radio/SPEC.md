@@ -18,7 +18,8 @@ crypto and codec run on a simulator with no Bluetooth.
   readings.
 - **The settings set** the scripted client's coming, decision and drop
   point; each scripted host's name, timed readings, amount, cancel,
-  outcome and drop point. A scripted host acknowledges either decision;
+  outcome and drop point. A host on air is heard again at its last
+  strength every 0.2 s until the scan stops, unless it goes quiet. A scripted host acknowledges either decision;
   a decline has no outcome. Its keys are fresh per session.
 - **The scripted side opens what it gets;** a message it cannot open drops
   the link at once, so a link that holds means it opened.
@@ -59,7 +60,7 @@ Feature: Playing the other side from settings
   Scenario: S-5 Readings as the settings give them
     Given settings with two hosts and their timed readings
     When I scan
-    Then I can read each host's signal at the settings' times
+    Then I can read each host's signal at the settings' times, then the last again every 0.2 s unless it goes quiet
 
   Scenario Outline: S-6 A drop at a named point
     Given settings that drop the <side> link <point>

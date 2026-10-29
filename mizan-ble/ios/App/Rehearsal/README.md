@@ -3,8 +3,7 @@
 Build and run the `MizanBLE Rehearsal` scheme on an iPhone or iPad simulator.
 Pass `-scriptedRadio /absolute/path/to/settings.json` in the scheme's launch
 arguments. Without it the app reads `Documents/scripted-radio.json` inside
-its container. The shell displays the mode switch; transaction screens
-will use these radios when their flows are wired.
+its container. Both modes run their flows against the scripted other side.
 
 The file is JSON. Omit any field to use its default; `{}` enables Bluetooth,
 a confirming client, and one successful host offering 12345 minor units.
@@ -32,6 +31,7 @@ Every field is illustrated here, with its default value:
   "hosts": [{
     "name": "MIZAN-CAFE",
     "readings": [{"time": 0, "rssi": -40}],
+    "goesQuiet": false,
     "amount": 12345,
     "cancelsAfterAmount": false,
     "outcome": "success",
@@ -46,7 +46,9 @@ Every field is illustrated here, with its default value:
 
 `bluetooth` is `on`, `off`, or `notAllowed`; `decision` is `confirm` or
 `decline`; `outcome` is `success` or `failure`. An empty `hosts` array gives
-no readings. Each host has a stable identity during that scan. Settings
+no readings. After its last reading a host stays on air, heard at that RSSI
+every 0.2 s until the scan stops; `"goesQuiet": true` takes it off air
+instead. Each host has a stable identity during that scan. Settings
 make fresh keys for every transaction.
 
 The scripted client uses `connect` plus `key` before its key, `decision`

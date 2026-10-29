@@ -23,6 +23,9 @@ import MessageCodec
     private var catalog: [UUID: Settings.Host] = [:]
     private var scanning = false
     private let readings = PendingSteps()
+    /// A host still on air is heard again at its last strength.
+    private var repeats: [UUID: any ScheduledStep] = [:]
+    static let repeatInterval = 0.2
     private var transaction: Transaction?
 
     init(source: any SettingsSource, clock: any RadioClock,
@@ -49,14 +52,29 @@ import MessageCodec
             let id = UUID()
             catalog[id] = host
             for reading in host.readings {
+                let isLast = reading == host.readings.max { $0.time < $1.time }
                 readings.add(clock.schedule(after: reading.time) { [weak self] in
                     guard let self, scanning else { return }
                     continuation.yield(.reading(host: id, name: host.name, rssi: reading.rssi, time: clock.now))
+                    if isLast, !host.goesQuiet { keepHearing(id, host: host, rssi: reading.rssi) }
                 })
             }
         }
     }
-    func stopScanning() { scanning = false; readings.cancel() }
+    private func keepHearing(_ id: UUID, host: Settings.Host, rssi: Int) {
+        repeats[id]?.cancel()
+        repeats[id] = clock.schedule(after: Self.repeatInterval) { [weak self] in
+            guard let self, scanning else { return }
+            continuation.yield(.reading(host: id, name: host.name, rssi: rssi, time: clock.now))
+            keepHearing(id, host: host, rssi: rssi)
+        }
+    }
+    func stopScanning() {
+        scanning = false
+        readings.cancel()
+        repeats.values.forEach { $0.cancel() }
+        repeats.removeAll()
+    }
 
     func connect(to host: UUID) {
         drop()
