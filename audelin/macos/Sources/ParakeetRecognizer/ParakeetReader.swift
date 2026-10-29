@@ -31,7 +31,7 @@ extension ParakeetRecognizer {
 
 /// Parakeet v3 through FluidAudio, reading each window from a fresh decoder
 /// state.
-private final class ParakeetReader: WindowReader, @unchecked Sendable {
+private final class ParakeetReader: WindowReader {
 
     private let manager: AsrManager
 

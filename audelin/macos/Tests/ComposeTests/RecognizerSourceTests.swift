@@ -134,8 +134,8 @@ struct RecognizerSourceTests {
                 try await pieces.microphoneTrack.close()
                 try await pieces.callTrack.close()
                 let folder = root.appendingPathComponent("1970.01.01-0000")
-                #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.125])
-                #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
+                #expect(try await recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.125])
+                #expect(try await recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
                 #expect(await text.state.status == .gettingReady)
 
                 release.release()

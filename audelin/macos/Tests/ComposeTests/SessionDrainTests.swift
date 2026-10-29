@@ -81,8 +81,8 @@ struct SessionDrainTests {
             #expect(ended.callTrack == .closed)
             #expect(ended.callText == .closed)
             #expect(ended.transcript == .closed)
-            #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.125])
-            #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
+            #expect(try await recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.125])
+            #expect(try await recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
         }
     }
 

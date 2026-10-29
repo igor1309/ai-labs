@@ -34,20 +34,18 @@ func expectSamples(_ actual: [Float], _ expected: [Float], sourceLocation: Sourc
     #expect(error <= 1 / 32_768, "largest sample error: \(error)", sourceLocation: sourceLocation)
 }
 
-func externalSamples(_ url: URL) throws -> [Float] {
+func externalSamples(_ url: URL) async throws -> [Float] {
 
-    let file = try AVAudioFile(forReading: url)
-    #expect(file.fileFormat.sampleRate == 48_000)
-    #expect(file.fileFormat.channelCount == 1)
-    #expect(file.fileFormat.settings[AVLinearPCMBitDepthKey] as? Int == 16)
-    let buffer = try #require(AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)))
-    try file.read(into: buffer)
-    return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
+    let audio = try await audioFile(url)
+    #expect(audio.sampleRate == 48_000)
+    #expect(audio.channelCount == 1)
+    #expect(audio.bitDepth == 16)
+    return audio.samples
 }
 
 func expectPlayable(_ url: URL, tones: Int) async throws {
 
-    let samples = try externalSamples(url)
+    let samples = try await externalSamples(url)
     #expect(samples.count == tones * 48_000)
     for number in 1...tones {
         let start = (number - 1) * 48_000

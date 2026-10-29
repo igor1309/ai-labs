@@ -119,21 +119,24 @@ struct CoreAudioBindingTests {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
-        defer { afterwards { try? FileManager.default.removeItem(at: directory) } }
-        let sound = directory.appendingPathComponent("tone.wav")
-        try await writeTone(to: sound)
-        let player = Process()
-        player.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
-        // A tap hears the process after its own volume, so the tone plays faintly, not at 0.
-        player.arguments = ["-v", "0.02", sound.path]
-        try await offPool { try player.run() }
-        do {
-            try await body(player.processIdentifier)
-        } catch {
+        try await withCleanup {
+            let sound = directory.appendingPathComponent("tone.wav")
+            try await writeTone(to: sound)
+            let player = Process()
+            player.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
+            // A tap hears the process after its own volume, so the tone plays faintly, not at 0.
+            player.arguments = ["-v", "0.02", sound.path]
+            try await offPool { try player.run() }
+            do {
+                try await body(player.processIdentifier)
+            } catch {
+                await Self.end(player)
+                throw error
+            }
             await Self.end(player)
-            throw error
+        } cleanup: {
+            try FileManager.default.removeItem(at: directory)
         }
-        await Self.end(player)
     }
 
     /// Never blocks on waitUntilExit: a lost termination notice hung a runner for good.

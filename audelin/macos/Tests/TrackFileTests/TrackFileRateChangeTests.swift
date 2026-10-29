@@ -31,7 +31,7 @@ struct TrackFileRateChangeTests {
                 let endpoint = Int((duration * 48_000).rounded())
                 let appendedCount = endpoint - acknowledged.count
                 try await rig.track.write(samples, sampleRate: rate)
-                let disk = try externalSamples(url)
+                let disk = try await externalSamples(url)
                 try #require(disk.count == endpoint)
                 expectSamples(Array(disk.prefix(acknowledged.count)), acknowledged)
                 let appended = Array(disk.dropFirst(acknowledged.count))
@@ -64,7 +64,7 @@ struct TrackFileRateChangeTests {
             try await rig.track.close()
             #expect(try await dataChunkLength(url) == 4 + Int64(acknowledged.count) * 2)
             expectSamples(try await rig.track.read(from: 0, to: end), acknowledged)
-            expectSamples(try externalSamples(url), acknowledged)
+            expectSamples(try await externalSamples(url), acknowledged)
         }
     }
 }

@@ -114,8 +114,8 @@ struct RecordingSessionsTests {
             let ended = try await recordingState(recording) { $0.phase == .idle }
             #expect(ended.cannotRecord == "no track can record")
             #expect(ended.session == nil)
-            #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5])
-            #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5])
+            #expect(try await recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5])
+            #expect(try await recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5])
             await recording.end()
         }
     }

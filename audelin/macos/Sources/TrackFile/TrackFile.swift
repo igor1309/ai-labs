@@ -64,12 +64,9 @@ public actor TrackFile {
         self.readWaiting = readWaiting
     }
 
-    // The binding closes its descriptor when released, so release it on the file's queue.
-    deinit {
-
-        let binding = binding
-        queue.async { _ = binding }
-    }
+    // The binding closes its descriptor when released; an isolated deinit
+    // destroys the stored binding on the file's queue.
+    isolated deinit {}
 
     /// Appends mono floating point audio. A failed write ends writing permanently.
     public func write(_ samples: [Float], sampleRate: Double) throws {
