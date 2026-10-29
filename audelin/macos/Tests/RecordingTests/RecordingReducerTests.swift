@@ -48,10 +48,10 @@ struct RecordingReducerTests {
 
     @Test func readyReportWhileIdleChangesNothing() { assert(idle, .sessionReported(id: 1, .ready), reducedTo: idle) }
 
-    @Test(arguments: RecordingCondition.allCases)
+    @Test(arguments: RecordingCondition.allCases.filter { $0 != .callAudioAccess })
     func userStartWhileBlockedChangesNothing(_ c: RecordingCondition) { assert(blocked(c), .userStart, reducedTo: blocked(c)) }
 
-    @Test(arguments: RecordingCondition.allCases)
+    @Test(arguments: RecordingCondition.allCases.filter { $0 != .callAudioAccess })
     func callStartedWhileBlockedOnlyNotesTheCall(_ c: RecordingCondition) { assert(blocked(c), .callStarted, reducedTo: changed(blocked(c)) { $0.callOn = true }) }
 
     @Test(arguments: RecordingCondition.allCases)
@@ -63,6 +63,12 @@ struct RecordingReducerTests {
     @Test(arguments: RecordingCondition.allCases)
     func lostConditionWhileRecordingIsKeptAndEndsOnlyWithoutStorage(_ c: RecordingCondition) {
         assert(runningSeven, .conditionChanged(c, available: false), reducedTo: changed(runningSeven) { $0.missing = [c]; if losesStorage(c) { $0.phase = .ending } })
+    }
+
+    // A prior call-audio reading cannot prevent the doer from refreshing readiness.
+    @Test func missingCallAudioIsRecheckedBeforeSessionBegins() {
+        assert(blocked(.callAudioAccess), .userStart, reducedTo: changed(beginning) { $0.missing = [.callAudioAccess] })
+        assert(blocked(.callAudioAccess), .callStarted, reducedTo: changed(call) { $0.missing = [.callAudioAccess] })
     }
 
     @Test func freshStateMissesEveryCondition() { #expect(RecordingState().missing == Set(RecordingCondition.allCases)) }

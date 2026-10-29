@@ -101,7 +101,7 @@ public final class CallRecordingSubscription: Sendable {
 /// The caller owns the detector's lifetime and stops it when detection is no longer needed.
 public func composeCalls(
     _ processes: CoreAudioProcesses, to recording: RecordingInputs,
-    conditions: RecordingConditions? = nil,
+    conditions: RecordingConditions?,
     startedApp: (@Sendable (String) -> Void)? = nil
 ) async throws -> CallRecordingSubscription {
 

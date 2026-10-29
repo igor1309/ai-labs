@@ -63,6 +63,9 @@
 
 ## Fixing a problem
 
+- Before choosing how to do something the platform makes hard, read how
+  several open-source apps do it and compare them, preferring the ones
+  that measured; one app is an example. Do not use private Apple APIs.
 - Fix the root cause in the issue's own PR. No stopgap with a follow-up
   issue where the cause can be fixed now.
 - A PR closes the issue it names, whole.

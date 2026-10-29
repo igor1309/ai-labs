@@ -164,7 +164,7 @@ struct CallRecordingSubscriptionTests {
         let recording = await composedRecording(session: session, initial: .init(automatic: true, missing: []))
         let binding = CallBinding(fails: false)
         let processes = CoreAudioProcesses(binding: binding, clock: UnusedCallClock())
-        let forwarding = try await composeCalls(processes, to: recording)
+        let forwarding = try await composeCalls(processes, to: recording, conditions: nil)
         for await state in await recording.states() {
             if state.phase == .recording { break }
         }
@@ -181,7 +181,7 @@ struct CallRecordingSubscriptionTests {
         }
         #expect(session.effects.all == [.beginSession(id: 1), .endSession(id: 1)])
         let refused = CoreAudioProcesses(binding: CallBinding(fails: true), clock: UnusedCallClock())
-        await #expect(throws: ScriptFailure.failed) { try await composeCalls(refused, to: recording) }
+        await #expect(throws: ScriptFailure.failed) { try await composeCalls(refused, to: recording, conditions: nil) }
         await recording.end()
     }
 }

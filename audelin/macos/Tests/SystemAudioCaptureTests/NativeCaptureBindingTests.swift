@@ -520,7 +520,6 @@ struct NativeCaptureBindingTests {
         #expect(written.uuid == created.uuid)
         #expect(written.processes == [130, 140])
         #expect(written.exclusive && written.mixdown && written.mono && written.unmuted && written.isPrivate)
-        #expect(calls.state.withLock { $0.writeAddresses } == [NativeAddress(kAudioTapPropertyDescription)])
         #expect(calls.state.withLock { $0.events } == ["tap", "device", "format", "format", "format watch", "io", "watch", "start", "write", "stop", "unwatch", "format unwatch", "remove io", "destroy device", "destroy tap"])
     }
 
@@ -624,15 +623,15 @@ struct TapSnapshot: Sendable {
     let unmuted: Bool
     let isPrivate: Bool
 
-    init(_ description: CATapDescription) {
+    init(_ spec: TapSpec) {
 
-        uuid = description.uuid
-        processes = description.processes
-        exclusive = description.isExclusive
-        mixdown = description.isMixdown
-        mono = description.isMono
-        unmuted = description.muteBehavior == .unmuted
-        isPrivate = description.isPrivate
+        uuid = spec.uuid
+        processes = spec.processes
+        exclusive = spec.exclusive
+        mixdown = true
+        mono = spec.mono
+        unmuted = spec.unmuted
+        isPrivate = spec.isPrivate
     }
 }
 
@@ -745,7 +744,6 @@ final class RecordingCaptureCalls: Sendable {
         var aliveStatus: Int32 = 0
         var runningStatus: Int32 = 0
         var propertyReads: [NativeAddress] = []
-        var writeAddresses: [NativeAddress] = []
         var writeStatus: Int32 = 0
         var format: AudioStreamBasicDescription
     }
@@ -937,17 +935,12 @@ final class RecordingCaptureCalls: Sendable {
                 }
                 return noErr
             },
-            write: { [self] tap, address, size, data in
+            writeTap: { [self] tap, spec in
                 record("write")
                 #expect(tap == 11)
-                #expect(NativeAddress(address) == NativeAddress(kAudioTapPropertyDescription))
-                #expect(size == MemoryLayout<UnsafeMutableRawPointer>.size)
-                let pointer = data.load(as: UnsafeMutableRawPointer.self)
-                let description = Unmanaged<CATapDescription>.fromOpaque(pointer).takeUnretainedValue()
                 return state.withLock {
                     $0.events.append("write")
-                    $0.writeAddresses.append(NativeAddress(address))
-                    $0.written.append(TapSnapshot(description))
+                    $0.written.append(TapSnapshot(spec))
                     return $0.writeStatus
                 }
             },

@@ -3,6 +3,7 @@ import AVFoundation
 import Foundation
 import Recording
 import Synchronization
+import CallAudioAccess
 
 public final class RecordingConditions: Sendable {
 
@@ -10,21 +11,23 @@ public final class RecordingConditions: Sendable {
     private let send: @Sendable (RecordingEvent) async -> Void
     private let lastSent = Mutex<[RecordingCondition: Bool]>([:])
     private let turn = Turn()
+    private let access: AccessPolicy
+    private let observation = Mutex<Task<Void, Never>?>(nil)
     // The checks read the disk and access status, which block, so they run here.
     private let checking = DispatchQueue(label: "audelin.RecordingConditions")
 
     public convenience init(
         recording: RecordingInputs,
         microphoneAccess: @escaping @Sendable () -> Bool,
-        callAudioAccess: @escaping @Sendable () -> Bool,
         callsFolder: @escaping @Sendable () -> Bool,
-        room: @escaping @Sendable () -> Bool
+        room: @escaping @Sendable () -> Bool,
+        access: AccessPolicy
     ) {
 
         self.init(
             send: recording.send,
-            microphoneAccess: microphoneAccess, callAudioAccess: callAudioAccess,
-            callsFolder: callsFolder, room: room, sink: SystemLogSink()
+            microphoneAccess: microphoneAccess,
+            callsFolder: callsFolder, room: room, sink: SystemLogSink(), access: access
         )
     }
 
@@ -32,40 +35,63 @@ public final class RecordingConditions: Sendable {
     init(
         send: @escaping @Sendable (RecordingEvent) async -> Void,
         microphoneAccess: @escaping @Sendable () -> Bool,
-        callAudioAccess: @escaping @Sendable () -> Bool,
         callsFolder: @escaping @Sendable () -> Bool,
         room: @escaping @Sendable () -> Bool,
-        sink: any LogSink
+        sink: any LogSink,
+        access: AccessPolicy
     ) {
 
+        self.access = access
         self.send = { event in
             logCondition(event, sink: sink)
             await send(event)
         }
         checks = [
-            (.microphoneAccess, microphoneAccess), (.callAudioAccess, callAudioAccess),
+            (.microphoneAccess, microphoneAccess),
             (.callsFolder, callsFolder), (.room, room),
         ]
+        observation.withLock { $0 = Task { [weak self] in
+            for await _ in await access.states() {
+                await self?.publishAccess()
+            }
+        } }
     }
 
-    /// Refreshes run one at a time, so their sends reach Recording in the order they were read.
     public func refresh() async {
-
+        _ = await access.refresh()
         await turn.take()
         let checks = checks
-        let readings = await withCheckedContinuation { (done: CheckedContinuation<[(RecordingCondition, Bool)], Never>) in
+        var readings = await withCheckedContinuation { (done: CheckedContinuation<[(RecordingCondition, Bool)], Never>) in
             checking.async { done.resume(returning: checks.map { ($0.0, $0.1()) }) }
         }
-        let changes = lastSent.withLock { previous in
-            readings.compactMap { condition, available -> RecordingEvent? in
-                guard previous[condition] != available else { return nil }
-                previous[condition] = available
-                return .conditionChanged(condition, available: available)
-            }
+        for await state in await access.states() {
+            readings.insert((.callAudioAccess, state.published), at: 1)
+            break
         }
-        for change in changes { await send(change) }
+        for (condition, available) in readings { await publish(condition, available: available) }
         turn.give()
     }
+
+    func publishAccess() async {
+        await turn.take()
+        // A queued publication must not overwrite a newer condition snapshot.
+        for await state in await access.states() {
+            await publish(.callAudioAccess, available: state.published)
+            break
+        }
+        turn.give()
+    }
+
+    private func publish(_ condition: RecordingCondition, available: Bool) async {
+        let changed = lastSent.withLock { values in
+            let changed = values[condition] != available
+            values[condition] = available
+            return changed
+        }
+        if changed { await send(.conditionChanged(condition, available: available)) }
+    }
+
+    deinit { observation.withLock { $0 }?.cancel() }
 }
 
 /// A first-come lock that an async holder keeps across its awaits.
@@ -106,13 +132,11 @@ private final class Turn: Sendable {
     }
 }
 
-public func composeRecordingConditions(recording: RecordingInputs, callsURL: URL) -> RecordingConditions {
+public func composeRecordingConditions(recording: RecordingInputs, callsURL: URL, access: AccessPolicy) -> RecordingConditions {
 
     RecordingConditions(
         recording: recording,
         microphoneAccess: { AVCaptureDevice.authorizationStatus(for: .audio) == .authorized },
-        // Process taps have no access status, and a denied tap gives silence (LAB-604).
-        callAudioAccess: { true },
         callsFolder: {
             isCallsDirectory(callsURL) && FileManager.default.isWritableFile(atPath: callsURL.path)
         },
@@ -121,7 +145,7 @@ public func composeRecordingConditions(recording: RecordingInputs, callsURL: URL
                 try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
                     .volumeAvailableCapacityForImportantUsage
             })
-        }
+        }, access: access
     )
 }
 

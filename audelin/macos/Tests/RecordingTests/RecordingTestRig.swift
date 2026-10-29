@@ -80,7 +80,7 @@ final class TestRecording {
     init(initial: RecordingState, session: any RecordingSession) {
 
         model = SyncModel(initialState: initial, reduce: { RecordingReducer.reduce($0, $1) })
-        let doer = RecordingDoer(session: session, send: { [weak self] in await self?.deliver($0) })
+        let doer = RecordingDoer(session: session, callAudioReady: { [weak self] in await self?.snapshot().missing.contains(.callAudioAccess) == false }, callAudioReleased: {}, send: { [weak self] in await self?.deliver($0) })
         self.doer = doer
         let states = states()
         acting = Task { for await state in states { doer.act(on: state) } }

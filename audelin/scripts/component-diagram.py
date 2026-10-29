@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes docs/live-text.drawio from the package's targets and their dependencies.
 
-Run from audelin/: python3 scripts/component-diagram.py
+Run from audelin/: python3 scripts/component-diagram.py [SwiftPM flags]
 Arrows come from `swift package dump-package`; each target's lane and line come
 from TARGETS below. A target missing there, or listed there but gone from the
 package, stops the script, so a new target cannot slip past the diagram.
@@ -17,15 +17,16 @@ from pathlib import Path
 LANES = {
     "compose": ("Composition", "#60a5fa", 560, 110, 1240, 130, 5),
     "ui": ("UI", "#7dd3fc", 40, 280, 460, 210, 2),
-    "machines": ("State machines", "#fbbf24", 560, 280, 1000, 130, 4),
+    "machines": ("State machines", "#fbbf24", 560, 280, 1240, 130, 5),
     "text": ("Live text", "#bef264", 40, 530, 820, 300, 3),
-    "capture": ("Capture and processes", "#fb923c", 900, 530, 440, 210, 2),
+    "capture": ("Capture and processes", "#fb923c", 900, 530, 440, 300, 2),
     "storage": ("Storage", "#a78bfa", 1380, 530, 460, 390, 2),
     "external": ("Platform and packages", "#94a3b8", 40, 960, 1800, 120, 4),
 }
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
+    "BlockingTestWork": ("external", "test helper: dispatches blocking work", 3),
     "Audelin": ("compose", "launches recording, menu and panel", 0),
     "RecordedCapture": ("compose", "records one capture to its track", 3),
     "LiveAudio": ("compose", "hears and reads one capture,\nkeeps its time", 4),
@@ -36,6 +37,7 @@ TARGETS = {
     "GlassLedger": ("ui", "design tokens for both views", 2),
     "MenuBar": ("ui", "menu entries and panel presence", 3),
     "Lifecycle": ("machines", "drains recording before termination", 3),
+    "CallAudioAccess": ("machines", "keeps reception evidence fresh", 4),
     "Recording": ("machines", "decides whether a recording runs", 2),
     "Session": ("machines", "brings one recording's\npieces up and down", 0),
     "CallFolder": ("storage", "one folder per call", 0),
@@ -55,6 +57,7 @@ TARGETS = {
     "ModelLoading": ("text", "shares one model load", 7),
     "AudioConversion": ("text", "sample-rate conversion\nkeeping filter state", 6),
     "MicrophoneCapture": ("capture", "AVAudioEngine input", 0),
+    "CallAudioProbe": ("capture", "hears a muted own-process stimulus", 4),
     "SystemAudioCapture": ("capture", "Core Audio process tap", 1),
     "CoreAudioProcesses": ("capture", "processes with audio open,\ncall events", 3),
     "CallAppProcesses": ("capture", "which processes to hear\nfor the call app", 2),
@@ -69,7 +72,7 @@ BOX_W, BOX_H = 200, 64
 
 def package(macos):
     out = subprocess.run(
-        ["swift", "package", "dump-package"], cwd=macos, check=True, capture_output=True, text=True
+        ["swift", "package", *sys.argv[1:], "dump-package"], cwd=macos, check=True, capture_output=True, text=True
     ).stdout
     targets, externals = {}, set()
     for t in json.loads(out)["targets"]:
