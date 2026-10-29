@@ -188,7 +188,7 @@ struct RecordingPiecesTests {
             preconditionFailure("Automatic recording is off")
         }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
         let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
-        let subscription = try await composeCalls(processes, to: detectorRecording, startedApp: {
+        let subscription = try await composeCalls(processes, to: detectorRecording, conditions: nil, startedApp: {
             detectedApp.started($0)
             detected.append($0)
         })

@@ -109,7 +109,7 @@ struct MenuBarTests {
                 }
                 #expect(selections.all == [.only([42])])
                 // Starts consult the call-audio port; microphone status is read at launch.
-                #expect(checks.all == ["microphone"])
+                #expect(checks.all == ["microphone", "microphone"])
                 binding.setInput(false)
                 #expect(clock.active)
                 let lateNotifications = binding.queuedNotifications()

@@ -76,7 +76,7 @@ public final class AudelinRecording: Sendable {
         await conditions.refresh()
         let calls: CallRecordingSubscription
         do {
-            calls = try await composeCalls(processes, to: inputs, startedApp: { app.started($0) })
+            calls = try await composeCalls(processes, to: inputs, conditions: conditions, startedApp: { app.started($0) })
         } catch {
             await processes.stop()
             Task { await inputs.end() }
