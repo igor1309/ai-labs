@@ -9,13 +9,19 @@
 /* Begin PBXBuildFile section */
 		0E25540BDD41676300105F3D /* Root in Frameworks */ = {isa = PBXBuildFile; productRef = 7AB2CB1B61A66C96662B740D /* Root */; };
 		1255DB58FC0E7CD56E0BD758 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EFD5CE07C67A09EF80AA8887 /* Assets.xcassets */; };
+		411931CAC51B4D04D27C962A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EFD5CE07C67A09EF80AA8887 /* Assets.xcassets */; };
 		873530F894419C611283CB00 /* DeviceRadios in Frameworks */ = {isa = PBXBuildFile; productRef = CCE0FD4DBD2F9DDD53395A2F /* DeviceRadios */; };
+		8D9F402FD2995D03AABCD764 /* Root in Frameworks */ = {isa = PBXBuildFile; productRef = D51E20BBDC1E44A88019170E /* Root */; };
+		BA1A1297CB7E787E60288EE3 /* MizanBLERehearsalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001D546591B7B3AFD581890B /* MizanBLERehearsalApp.swift */; };
+		EF99C6ED2E85805F877E2F09 /* ScriptedRadio in Frameworks */ = {isa = PBXBuildFile; productRef = 249260E92B1810004E86A433 /* ScriptedRadio */; };
 		FCC17215D697151716DD8A27 /* MizanBLEApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD6E8D0AC5FA9839396A1A32 /* MizanBLEApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		001D546591B7B3AFD581890B /* MizanBLERehearsalApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MizanBLERehearsalApp.swift; sourceTree = "<group>"; };
 		386DDE1BDD1239EA92EBC715 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		66EE18FDEFEA08EFA4BFE4DC /* MizanBLE.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MizanBLE.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C0ACAFF566C7A4D6A206C105 /* MizanBLE Rehearsal.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "MizanBLE Rehearsal.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DCA2959248989DCB0BBFDB67 /* App */ = {isa = PBXFileReference; lastKnownFileType = folder; name = App; path = .; sourceTree = SOURCE_ROOT; };
 		EFD5CE07C67A09EF80AA8887 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FD6E8D0AC5FA9839396A1A32 /* MizanBLEApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MizanBLEApp.swift; sourceTree = "<group>"; };
@@ -31,6 +37,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		B54CB0AEB9D9EBDF0ACAE5AB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D9F402FD2995D03AABCD764 /* Root in Frameworks */,
+				EF99C6ED2E85805F877E2F09 /* ScriptedRadio in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -38,6 +53,7 @@
 			isa = PBXGroup;
 			children = (
 				31B1834340500A664A1F8B98 /* MizanBLE */,
+				30233B866DD90E15B8019F1C /* MizanBLERehearsal */,
 				2EB4977493F8192D7A44B95B /* Packages */,
 				6B235C07D503581CCCA9ECEC /* Products */,
 			);
@@ -49,6 +65,14 @@
 				DCA2959248989DCB0BBFDB67 /* App */,
 			);
 			name = Packages;
+			sourceTree = "<group>";
+		};
+		30233B866DD90E15B8019F1C /* MizanBLERehearsal */ = {
+			isa = PBXGroup;
+			children = (
+				001D546591B7B3AFD581890B /* MizanBLERehearsalApp.swift */,
+			);
+			path = MizanBLERehearsal;
 			sourceTree = "<group>";
 		};
 		31B1834340500A664A1F8B98 /* MizanBLE */ = {
@@ -64,6 +88,7 @@
 		6B235C07D503581CCCA9ECEC /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				C0ACAFF566C7A4D6A206C105 /* MizanBLE Rehearsal.app */,
 				66EE18FDEFEA08EFA4BFE4DC /* MizanBLE.app */,
 			);
 			name = Products;
@@ -72,6 +97,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		758EB14C5A2787733E15C772 /* MizanBLE Rehearsal */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 537D1D1AF1305771A9FCCBB4 /* Build configuration list for PBXNativeTarget "MizanBLE Rehearsal" */;
+			buildPhases = (
+				AA9A942F410D54A30C7BE4DE /* Sources */,
+				C31044270AB89BE28857A29C /* Resources */,
+				B54CB0AEB9D9EBDF0ACAE5AB /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "MizanBLE Rehearsal";
+			packageProductDependencies = (
+				D51E20BBDC1E44A88019170E /* Root */,
+				249260E92B1810004E86A433 /* ScriptedRadio */,
+			);
+			productName = "MizanBLE Rehearsal";
+			productReference = C0ACAFF566C7A4D6A206C105 /* MizanBLE Rehearsal.app */;
+			productType = "com.apple.product-type.application";
+		};
 		9F0331B7093211B26EBEBD04 /* MizanBLE */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = DCC0BCFC63E8907A18D190DE /* Build configuration list for PBXNativeTarget "MizanBLE" */;
@@ -122,6 +168,7 @@
 			projectRoot = "";
 			targets = (
 				9F0331B7093211B26EBEBD04 /* MizanBLE */,
+				758EB14C5A2787733E15C772 /* MizanBLE Rehearsal */,
 			);
 		};
 /* End PBXProject section */
@@ -135,9 +182,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C31044270AB89BE28857A29C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				411931CAC51B4D04D27C962A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		AA9A942F410D54A30C7BE4DE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA1A1297CB7E787E60288EE3 /* MizanBLERehearsalApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D3995757EF501163B8801DE6 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -149,9 +212,28 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		0A68CCB7D2F648B81F50B757 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APP_DISPLAY_NAME = "Mizan Rehearsal";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = MizanBLE/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "dev.igor1309.mizan-ble.rehearsal";
+				PRODUCT_NAME = "MizanBLE Rehearsal";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		71CB8A2E0F4AAE3FAA74153D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APP_DISPLAY_NAME = "Mizan BLE";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = MizanBLE/Info.plist;
@@ -165,9 +247,28 @@
 			};
 			name = Debug;
 		};
+		94E9F86DFD86AE4671D9189B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APP_DISPLAY_NAME = "Mizan Rehearsal";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = MizanBLE/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "dev.igor1309.mizan-ble.rehearsal";
+				PRODUCT_NAME = "MizanBLE Rehearsal";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		D1938FDCE8341D5A4838D3EA /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APP_DISPLAY_NAME = "Mizan BLE";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = MizanBLE/Info.plist;
@@ -314,6 +415,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		537D1D1AF1305771A9FCCBB4 /* Build configuration list for PBXNativeTarget "MizanBLE Rehearsal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94E9F86DFD86AE4671D9189B /* Debug */,
+				0A68CCB7D2F648B81F50B757 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		DCC0BCFC63E8907A18D190DE /* Build configuration list for PBXNativeTarget "MizanBLE" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -333,6 +443,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		249260E92B1810004E86A433 /* ScriptedRadio */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ScriptedRadio;
+		};
 		7AB2CB1B61A66C96662B740D /* Root */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Root;
@@ -340,6 +454,10 @@
 		CCE0FD4DBD2F9DDD53395A2F /* DeviceRadios */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = DeviceRadios;
+		};
+		D51E20BBDC1E44A88019170E /* Root */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Root;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

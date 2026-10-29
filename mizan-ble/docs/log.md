@@ -2,6 +2,8 @@
 
 ## 2026-10-29
 
+- The rehearsal app plays the other side from a settings file (LAB-723).
+
 - The app launches with the mode switch and logs (LAB-722).
 
 ## 2026-10-28
