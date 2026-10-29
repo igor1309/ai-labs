@@ -11226,6 +11226,18 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   min-height: 670px;
   padding: calc(24px + env(safe-area-inset-top)) calc(24px + var(--screen-right)) calc(24px + env(safe-area-inset-bottom)) calc(24px + var(--screen-left));
   animation: rise-in var(--motion-screen) var(--ease-out) both;
+  /* A child's double tap or long press never selects, zooms or opens a
+     menu: the board would stop taking taps (LAB-763). */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.labyrinth-maze,
+.labyrinth-maze * {
+  touch-action: none;
 }
 
 .labyrinth-bar {

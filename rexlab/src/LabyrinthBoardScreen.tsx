@@ -46,7 +46,7 @@ export function LabyrinthBoardScreen({ language, level, columns, rows, cells, ba
   };
 
   return (
-    <main className="labyrinth-board-screen" data-compact={compact || undefined}>
+    <main className="labyrinth-board-screen" data-compact={compact || undefined} onContextMenu={(event) => event.preventDefault()}>
       <header className="labyrinth-bar">
         <Button className="home-button" onClick={onHome}><House size={26} aria-hidden="true" />{text.home}</Button>
         <h1>{compact ? <><span aria-hidden="true">{AGE_LEVEL_PICTURES[level]}</span>{text.ageLevels[level].name}</> : <><Route size={30} aria-hidden="true" />{words.title}</>}</h1>
