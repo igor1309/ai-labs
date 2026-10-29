@@ -24,9 +24,9 @@ struct MicrophoneEnduranceTests {
         let engine = EnduranceEngine(rate: rate)
         let clock = EnduranceClock()
         let capture = try await MicrophoneCapture(binding: EnduranceBinding(engine: engine, clock: clock))
-        let received = SampleCount()
+        let received = Received()
         let consumer = Task {
-            for try await piece in capture.audio { received.add(piece.samples.count) }
+            for try await piece in capture.audio { received.add(piece.samples) }
         }
 
         let started = ContinuousClock.now
@@ -37,13 +37,110 @@ struct MicrophoneEnduranceTests {
         try await consumer.value
         log("stopped; received \(received.value) samples, footprint \(footprintMiB()) MiB")
         #expect(received.value == buffers * frames)
+        #expect(received.broken == 0, "\(received.broken) pieces did not follow the one before")
+    }
+
+    /// The crash was the delivery growing a level deeper with every buffer, so
+    /// a buffer late in the call reaches the capture as deep in the audio
+    /// thread's stack as the first did.
+    @Test
+    func aLateBufferReachesTheCaptureNoDeeperThanTheFirst() async throws {
+
+        let rate = 48_000.0
+        let frames = 1024
+        let buffers = 200
+        let engine = EnduranceEngine(rate: rate)
+        let clock = EnduranceClock()
+        let depths = Depths()
+        let capture = try await MicrophoneCapture(binding: EnduranceBinding(engine: engine, clock: clock, receiving: depths.record))
+        let received = Received()
+        let consumer = Task {
+            for try await piece in capture.audio { received.add(piece.samples) }
+        }
+
+        await onAudioThread {
+            let buffer = indexedBuffer(rate: rate, frames: frames)
+            for index in 0..<buffers {
+                fill(buffer, from: index * frames)
+                clock.advance(by: Double(frames) / rate)
+                engine.deliver(buffer, time: AVAudioTime(sampleTime: 0, atRate: rate))
+            }
+        }
+        capture.stop()
+        try await consumer.value
+
+        // Past the first few buffers, which may take paths a warm capture
+        // does not; 256 bytes allows a late branch, far below the 90 bytes a
+        // buffer the delivery grew by before the fix.
+        let all = depths.all
+        try #require(all.count == buffers)
+        let warm = all[10..<20].max()!
+        let late = all.suffix(10).max()!
+        #expect(late <= warm + 256, "buffers 10 to 20 arrived \(warm) bytes deep, the last \(late)")
+        #expect(received.value == buffers * frames)
+        #expect(received.broken == 0, "\(received.broken) pieces did not follow the one before")
+    }
+
+    /// A day of calls starts and stops the microphone many times; once a call
+    /// is stopped and its reader is done, nothing of it stays alive.
+    @Test
+    func callsStartedAndStoppedLeaveNothingBehind() async throws {
+
+        var left: [Weak] = []
+        for _ in 0..<20 {
+            left.append(try await oneShortCall())
+        }
+        // A stopped capture lets go on its own queue, which a busy machine
+        // may take a while to run.
+        let deadline = ContinuousClock.now + .seconds(10)
+        while left.contains(where: { $0.capture != nil || $0.engine != nil }), ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(left.filter { $0.capture != nil }.count == 0, "captures still alive after their calls")
+        // The engine holds the tap, and the tap the delivery path.
+        #expect(left.filter { $0.engine != nil }.count == 0, "engines still alive after their calls")
+    }
+
+    private struct Weak {
+        weak var capture: MicrophoneCapture?
+        weak var engine: EnduranceEngine?
+    }
+
+    private func oneShortCall() async throws -> Weak {
+
+        let rate = 48_000.0
+        let frames = 1024
+        let buffers = 50
+        let engine = EnduranceEngine(rate: rate)
+        let clock = EnduranceClock()
+        var capture: MicrophoneCapture? = try await MicrophoneCapture(binding: EnduranceBinding(engine: engine, clock: clock))
+        let audio = capture!.audio
+        let received = Received()
+        let consumer = Task {
+            for try await piece in audio { received.add(piece.samples) }
+        }
+        await onAudioThread {
+            let buffer = indexedBuffer(rate: rate, frames: frames)
+            for index in 0..<buffers {
+                fill(buffer, from: index * frames)
+                clock.advance(by: Double(frames) / rate)
+                engine.deliver(buffer, time: AVAudioTime(sampleTime: 0, atRate: rate))
+            }
+        }
+        try await waitUntil("the reader receives \(buffers * frames) samples") { received.value >= buffers * frames }
+        capture!.stop()
+        try await consumer.value
+        #expect(received.broken == 0)
+        let weak = Weak(capture: capture, engine: engine)
+        capture = nil
+        return weak
     }
 
     /// Delivers on its own thread, as the engine does, and lets the reader
     /// catch up between batches so the stream holds no more than a batch.
     private func deliver(
         _ buffers: Int, frames: Int, rate: Double,
-        through engine: EnduranceEngine, clock: EnduranceClock, received: SampleCount
+        through engine: EnduranceEngine, clock: EnduranceClock, received: Received
     ) async throws {
 
         let batch = 1_000
@@ -51,17 +148,18 @@ struct MicrophoneEnduranceTests {
         var sent = 0
         while sent < buffers {
             let count = min(batch, buffers - sent)
+            let first = sent
             await onAudioThread {
-                let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)!
-                let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames))!
-                buffer.frameLength = AVAudioFrameCount(frames)
-                for _ in 0..<count {
+                let buffer = indexedBuffer(rate: rate, frames: frames)
+                for index in first..<first + count {
+                    fill(buffer, from: index * frames)
                     clock.advance(by: Double(frames) / rate)
                     engine.deliver(buffer, time: AVAudioTime(sampleTime: 0, atRate: rate))
                 }
             }
             sent += count
-            while received.value < sent * frames { await Task.yield() }
+            let expected = sent * frames
+            try await waitUntil("the reader receives \(expected) samples") { received.value >= expected }
             if sent % checkpoint < batch {
                 log("\(minutesText(sent, frames, rate)): \(sent) buffers, footprint \(footprintMiB()) MiB")
             }
@@ -69,12 +167,58 @@ struct MicrophoneEnduranceTests {
     }
 }
 
-private final class SampleCount: Sendable {
+/// Each sample carries its own index, wrapping where a float stops counting
+/// exactly, so a lost, repeated, reordered or replaced piece shows.
+private let wrap = 1 << 24
 
-    private let count = Mutex(0)
+private func indexedBuffer(rate: Double, frames: Int) -> AVAudioPCMBuffer {
 
-    var value: Int { count.withLock { $0 } }
-    func add(_ samples: Int) { count.withLock { $0 += samples } }
+    let format = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1)!
+    let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames))!
+    buffer.frameLength = AVAudioFrameCount(frames)
+    return buffer
+}
+
+private func fill(_ buffer: AVAudioPCMBuffer, from first: Int) {
+
+    let samples = buffer.floatChannelData![0]
+    for frame in 0..<Int(buffer.frameLength) {
+        samples[frame] = Float((first + frame) % wrap)
+    }
+}
+
+/// Counts the samples the reader received and the pieces that did not
+/// carry on from the one before.
+private final class Received: Sendable {
+
+    private let state = Mutex((count: 0, broken: 0))
+
+    var value: Int { state.withLock { $0.count } }
+    var broken: Int { state.withLock { $0.broken } }
+
+    func add(_ samples: [Float]) {
+
+        state.withLock { state in
+            let first = Float(state.count % wrap), last = Float((state.count + samples.count - 1) % wrap)
+            if samples.first != first || samples.last != last { state.broken += 1 }
+            state.count += samples.count
+        }
+    }
+}
+
+/// Waits for a condition, failing with what it waited for once a slow
+/// machine would long have met it, so a lost buffer fails here, not at the
+/// package's time limit.
+private func waitUntil(_ what: String, seconds: Double = 20, _ condition: () -> Bool) async throws {
+
+    let deadline = ContinuousClock.now + .seconds(seconds)
+    while !condition() {
+        guard ContinuousClock.now < deadline else {
+            Issue.record("waited \(Int(seconds)) s for \(what)")
+            throw CancellationError()
+        }
+        await Task.yield()
+    }
 }
 
 /// The crash report's audio thread had a 544 KB stack.
@@ -112,13 +256,32 @@ private func footprintMiB() -> Int {
     return result == KERN_SUCCESS ? Int(info.phys_footprint) / 1_048_576 : -1
 }
 
+/// How deep in its thread's stack each buffer reached the capture.
+private final class Depths: Sendable {
+
+    private let depths = Mutex<[Int]>([])
+
+    var all: [Int] { depths.withLock { $0 } }
+
+    @inline(never)
+    func record() {
+
+        let top = UInt(bitPattern: pthread_get_stackaddr_np(pthread_self()))
+        var here = 0
+        let depth = withUnsafeMutablePointer(to: &here) { Int(top - UInt(bitPattern: $0)) }
+        depths.withLock { $0.append(depth) }
+    }
+}
+
 private final class EnduranceBinding: MicrophoneBinding, Sendable {
 
     private let native: NativeMicrophoneBinding
+    private let receiving: @Sendable () -> Void
 
-    init(engine: EnduranceEngine, clock: EnduranceClock) {
+    init(engine: EnduranceEngine, clock: EnduranceClock, receiving: @escaping @Sendable () -> Void = {}) {
 
         native = NativeMicrophoneBinding(makeEngine: { engine }, readClock: { clock.reading })
+        self.receiving = receiving
     }
 
     var now: Double { 0 }
@@ -133,7 +296,8 @@ private final class EnduranceBinding: MicrophoneBinding, Sendable {
         configurationChanged: @escaping @Sendable () -> Void
     ) throws {
 
-        try native.start(input: input, receive: receive, configurationChanged: configurationChanged)
+        let receiving = receiving
+        try native.start(input: input, receive: { receiving(); receive($0) }, configurationChanged: configurationChanged)
     }
 
     func stop() { native.stop() }
