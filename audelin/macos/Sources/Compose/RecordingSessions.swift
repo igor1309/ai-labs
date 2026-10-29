@@ -18,6 +18,8 @@ public actor RecordingSessions: RecordingSession {
         var started = false
         var endRequested = false
         var reportedFailure = false
+        var faults: Set<RecordingFault> = []
+        var reportedFaults: Set<RecordingFault> = []
     }
 
     public nonisolated let panel: AudelinPanel
@@ -154,6 +156,12 @@ public actor RecordingSessions: RecordingSession {
         if state.phase == .recording, entry.first == nil {
             deliver(.ready, id: id, entry: &entry)
         }
+        entry.faults.formUnion(recordingFaults(state))
+        if entry.first == .ready {
+            for fault in RecordingFault.allCases where entry.faults.contains(fault) && entry.reportedFaults.insert(fault).inserted {
+                deliver(.failed(fault), id: id, entry: &entry)
+            }
+        }
         if state.phase == .ended {
             if entry.first == nil || !entry.endRequested {
                 deliver(.ended, id: id, entry: &entry)
@@ -213,4 +221,18 @@ private struct ObservedSession: Equatable {
             audioWarning: state.audioWarning
         )
     }
+}
+
+private func recordingFaults(_ state: SessionState) -> Set<RecordingFault> {
+
+    Set(state.health.compactMap { piece, health in
+        switch (piece, health) {
+        case (.access(.microphone), .failed), (.access(.microphone), .accessLost),
+             (.capture(.microphone), .failed), (.capture(.microphone), .accessLost): .microphone
+        case (.access(.call), .failed), (.access(.call), .accessLost),
+             (.capture(.call), .failed), (.capture(.call), .accessLost): .callAudio
+        case (.track, .failed): .diskFull
+        default: nil
+        }
+    })
 }

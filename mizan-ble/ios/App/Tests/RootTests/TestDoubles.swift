@@ -40,7 +40,7 @@ final class LogSpy: LogSink, @unchecked Sendable {
     }
 }
 
-@MainActor final class ClientSpy: ClientRadioPort {
+@MainActor @Observable final class ClientSpy: ClientRadioPort {
     enum Call: Equatable { case start, stop, connect(UUID), key([UInt8]), write([UInt8]), drop }
     let events: AsyncStream<ClientRadioEvent>
     let continuation: AsyncStream<ClientRadioEvent>.Continuation
@@ -78,6 +78,7 @@ final class StoreSpy: SettingsStore {
     private var remaining = 0
     private var continuation: AsyncStream<Int>.Continuation?
     private var time = 0.0
+    private var tickContinuation: AsyncStream<Double>.Continuation?
     var starts: [Int] { lock.withLock { started } }
     private var started: [Int] = []
     func now() -> Double { lock.withLock { time } }
@@ -86,14 +87,19 @@ final class StoreSpy: SettingsStore {
         lock.withLock { remaining = count; continuation = sink; started.append(count) }
         return stream
     }
-    func ticks(every interval: Duration) -> AsyncStream<Double> { AsyncStream { $0.finish() } }
+    func ticks(every interval: Duration) -> AsyncStream<Double> {
+        let (stream, sink) = AsyncStream<Double>.makeStream()
+        lock.withLock { tickContinuation = sink }
+        return stream
+    }
     func advance(_ seconds: Int) {
         lock.withLock {
             time += Double(seconds)
+            tickContinuation?.yield(time)
             remaining = max(0, remaining - seconds)
             continuation?.yield(remaining)
             if remaining == 0 { continuation?.finish() }
         }
     }
-    func finish() { lock.withLock { continuation?.finish() } }
+    func finish() { lock.withLock { continuation?.finish(); tickContinuation?.finish() } }
 }

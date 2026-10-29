@@ -171,6 +171,30 @@ import MessageCodec
         #expect(try f.messages(app) == [.amount(12345), .end])
     }
 
+    @Test func anOnAirHostKeepsBeingHeardUntilTheScanStops() async throws {
+        var settings = Settings()
+        settings.hosts[0].readings = [.init(time: 1, rssi: -40), .init(time: 0, rssi: -50)]
+        var quiet = Settings.Host()
+        quiet.name = "Quiet"
+        quiet.readings = [.init(time: 0, rssi: -60)]
+        quiet.goesQuiet = true
+        settings.hosts.append(quiet)
+        let f = await Fixture(settings)
+        f.client.startScanning()
+        f.clock.advance(2.05)
+        await f.collect()
+        let heard = f.ce.compactMap { event -> (String?, Int)? in
+            if case .reading(_, let name, let rssi, _) = event { (name, rssi) } else { nil }
+        }
+        #expect(heard.filter { $0.0 == "Quiet" }.map(\.1) == [-60])
+        #expect(heard.filter { $0.0 == "MIZAN-CAFE" }.map(\.1) == [-50, -40, -40, -40, -40, -40, -40])
+        f.ce.removeAll()
+        f.client.stopScanning()
+        f.clock.advance(10)
+        await f.collect()
+        #expect(f.ce.isEmpty)
+    }
+
     @Test func timedReadings() async throws {
         var settings = Settings()
         settings.hosts[0].readings = [.init(time: 1, rssi: -40), .init(time: 3, rssi: -44)]

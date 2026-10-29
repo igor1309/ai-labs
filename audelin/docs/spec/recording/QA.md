@@ -111,3 +111,27 @@ For every pair of missing conditions, recovering one leaves the other
 named and blocks both manual and automatic starts. Recovering the last
 condition allows either start.
 Evidence: `partialRecoveryKeepsOtherConditionsBlockingStarts(_:)`.
+
+## S-15 A side failing while recording is named
+
+From S-1, for each fault in turn and then two together: the Session's
+report keeps the phase recording and names each fault reported, once.
+Evidence: `RecordingTests.sessionFaultsStayNamedUntilTheNextRecording(_:)`.
+
+Compose maps the Session's failures to faults: microphone access or
+capture to no microphone, call access or capture to no call audio, a
+track on either side to disk full; a transcript or call text failure to
+none.
+Evidence: `RecordingSessionsTests.sessionHealthMapsToFaultsOnce()`, `RecordingSessionsTests.faultsBeforeReadyAreDeliveredAfterReady()`, `RecordingSessionsTests.faultsAreDeduplicatedPerSession()`.
+
+## S-16 Faults are named until the next recording
+
+From S-15's fault, the Session ends: idle, the fault still named; a new
+start begins with no fault.
+Evidence: `RecordingTests.sessionFaultsStayNamedUntilTheNextRecording(_:)`.
+
+## S-17 A fault from an earlier Session changes nothing
+
+A fault reported with an id other than the running Session's leaves the
+state as it was.
+Evidence: `RecordingReducerTests.faultsFollowTheCurrentSession(_:)`.

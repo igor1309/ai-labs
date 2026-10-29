@@ -146,20 +146,3 @@ func minorUnits(_ amount: String) -> UInt64 {
     let fraction = parts.count > 1 ? String(parts[1]) : ""
     return whole * 100 + (UInt64((fraction + "00").prefix(2)) ?? 0)
 }
-
-private func logMessage(_ bytes: [UInt8], direction: String, category: LogEntry.Category, log: any LogSink) {
-    guard let frame = try? MessageCodec.decodeFrame(bytes) else { return }
-    log.write(.init(category: category, message: "message \(direction) kind=\(frame.kind.logName) counter=\(frame.counter) length=\(bytes.count)"))
-}
-
-private extension MessageCodec.Kind {
-    var logName: String {
-        switch self {
-        case .amount: "amount"
-        case .decision: "decision"
-        case .acknowledgement: "acknowledgement"
-        case .result: "result"
-        case .end: "end"
-        }
-    }
-}

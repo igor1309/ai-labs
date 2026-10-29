@@ -12,14 +12,15 @@ struct SecretsGate {
     var amountMinorUnits = "98765432123"
     var extraBytes: [[UInt8]] = []
     var extraStrings: [String] = []
+    var extraIDs: [UUID] = []
 
     private func uuidBytes(_ id: UUID) -> [UInt8] { withUnsafeBytes(of: id.uuid) { Array($0) } }
 
     func assertAbsent(from entries: [LogEntry], sourceLocation: SourceLocation = #_sourceLocation) {
         let text = entries.map { "\($0.category.rawValue) \($0.message) \($0.error ?? "")" }.joined(separator: "\n")
         // The amount also as the minor units the flows carry.
-        let strings = [amount, amountMinorUnits, session.uuidString, peer.uuidString] + extraStrings
-        let bytes = [key, nonce, frame, uuidBytes(session), uuidBytes(peer)] + extraBytes + strings.map { Array($0.utf8) }
+        let strings = [amount, amountMinorUnits, session.uuidString, peer.uuidString] + extraStrings + extraIDs.map(\.uuidString)
+        let bytes = [key, nonce, frame, uuidBytes(session), uuidBytes(peer)] + extraIDs.map(uuidBytes) + extraBytes + strings.map { Array($0.utf8) }
         var forbidden = strings.flatMap { [$0, $0.lowercased(), $0.uppercased()] }
         for value in bytes {
             forbidden += [

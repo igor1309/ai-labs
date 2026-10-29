@@ -47,6 +47,5 @@ scripted other side. Add `-scriptedRadio /absolute/path/to/settings.json`
 to the scheme's launch arguments, or put `scripted-radio.json` in the
 app container's Documents directory. The JSON format and scenario examples
 are in [Rehearsal](ios/App/Rehearsal/README.md). File changes take effect
-without relaunching; each transaction keeps its starting settings. The
-host side runs its flows; the client side shows its placeholder until
-it is wired.
+without relaunching; each transaction keeps its starting settings. Both
+sides run their flows against the scripted other side.
