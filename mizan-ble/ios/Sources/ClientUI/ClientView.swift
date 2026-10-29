@@ -43,6 +43,8 @@ public struct ClientView: View {
                             .lineLimit(2, reservesSpace: true)
                     }
                     .multilineTextAlignment(.center)
+                    // The spacers give way first, never the two detail lines.
+                    .fixedSize(horizontal: false, vertical: true)
                     .animation(Motion.standard(reduced: reduceMotion).animation, value: state.title)
                     .animation(Motion.standard(reduced: reduceMotion).animation, value: state.detail)
                 }

@@ -35,8 +35,9 @@ public struct IPadShell<Steps: View, Content: View>: View {
     }
 
     public var body: some View {
-        GeometryReader { proxy in layout(proxy.safeAreaInsets) }
-            .ignoresSafeArea(.container)
+        // The reader keeps the safe area so it can report it; only the
+        // layout inside reaches past it to the screen's edges.
+        GeometryReader { proxy in layout(proxy.safeAreaInsets).ignoresSafeArea(.container) }
     }
 
     private func layout(_ safe: EdgeInsets) -> some View {
@@ -146,8 +147,9 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
     }
 
     public var body: some View {
-        GeometryReader { proxy in layout(proxy.safeAreaInsets) }
-            .ignoresSafeArea(.container)
+        // The reader keeps the safe area so it can report it; only the
+        // layout inside reaches past it to the screen's edges.
+        GeometryReader { proxy in layout(proxy.safeAreaInsets).ignoresSafeArea(.container) }
     }
 
     private func layout(_ safe: EdgeInsets) -> some View {
