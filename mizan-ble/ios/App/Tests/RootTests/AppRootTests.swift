@@ -16,7 +16,7 @@ import HostUI
             .init(category: .hostRadio, message: "built"),
             .init(category: .clientRadio, message: "built"),
             .init(category: .mode, message: "\(side == .host ? "host" : "client") built"),
-        ] + (side == .host ? initialHostLogs : []))
+        ] + (side == .host ? initialHostLogs : initialClientLogs))
     }
 
     @Test(arguments: Side.allCases) func switchAtRest(_ side: Side) {
@@ -64,6 +64,7 @@ import HostUI
         #expect(Array(h.log.entries.dropFirst(5)) == [
             .init(category: .mode, message: "host tornDown"),
             .init(category: .mode, message: "client built"),
+            .init(category: .clientFind, message: "idle"),
             .init(category: .mode, message: "client tornDown"),
             .init(category: .mode, message: "host built"),
         ] + initialHostLogs)
@@ -83,13 +84,15 @@ import HostUI
         #expect(h.log.entries.filter { $0.category != .mode } == [
             .init(category: .hostRadio, message: "built"),
             .init(category: .clientRadio, message: "built"),
-        ] + initialHostLogs + initialHostLogs)
+        ] + initialHostLogs + initialClientLogs + initialHostLogs)
         let session = UUID()
         host.finish(session)
         client.drop()
         #expect(h.host.calls == [.finish(session)])
         #expect(h.client.calls == [.drop])
     }
+
+    private var initialClientLogs: [LogEntry] { [.init(category: .clientFind, message: "idle")] }
 
     private var initialHostLogs: [LogEntry] {
         [.init(category: .amountEntry, message: "typing digits=0"), .init(category: .hostBroadcast, message: "ready")]

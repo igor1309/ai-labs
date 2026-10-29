@@ -2,6 +2,7 @@
 
 ## 2026-10-29
 
+- The client side pays end to end in the app (LAB-725).
 - The host side takes a payment end to end in the app (LAB-724).
 - The app launches with the mode switch and logs (LAB-722).
 
