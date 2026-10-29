@@ -133,6 +133,13 @@ struct LiveTextTests {
         #expect(updates.dropFirst().first?.all == [segment(0, start: 0, pending: "по запуску кто")])
     }
 
+    @Test func aGapShorterThanAPauseKeepsThreeWordsTogether() async {
+
+        let updates = await run([.init(words: [a, b, word("кто", 1, 1.5), word("там", 3.49, 4)])])
+
+        #expect(updates[0].all == [segment(0, start: 0, pending: "по запуску кто там")])
+    }
+
     @Test(arguments: [".", "?", "!", "…"])
     func aLongSegmentEndsAtASentenceEnd(ending: String) async {
 
@@ -255,6 +262,27 @@ struct LiveTextTests {
         ]
 
         #expect(updates[1].all == expected)
+    }
+
+    @Test func aShortFragmentJoinsTheNextWordsAfterALongSilence() async {
+
+        let updates = await run([
+            .init(words: [word("ээ", 0, 0.5), word("продолжение.", 31, 31.5)], finalThrough: 31.5),
+        ])
+
+        #expect(updates[0].all == [segment(0, start: 0, settled: "ээ продолжение.")])
+    }
+
+    @Test func aShortFragmentAfterASentenceJoinsTheNextWords() async {
+
+        let updates = await run([
+            .init(words: [word("Да.", 0, 0.5), word("фрагмент", 3, 3.5), word("дальше", 6, 6.5)]),
+        ])
+
+        #expect(updates[0].all == [
+            segment(0, start: 0, pending: "Да."),
+            segment(1, start: 3, pending: "фрагмент дальше"),
+        ])
     }
 
     @Test(arguments: [".", "?", "!", "…"])

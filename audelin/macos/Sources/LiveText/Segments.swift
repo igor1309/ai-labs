@@ -88,9 +88,11 @@ public struct Segments: Equatable, Sendable {
         for index in words.indices.dropFirst() {
             let previous = words[index - 1]
             let current = words[index]
-            let pauseCut = current.start - previous.end >= pause
-                && (index - lower >= 3 || containsSentenceEnd)
-            let lengthCut = index < settledCount && (
+            let afterPause = current.start - previous.end >= pause
+            let pauseCut = afterPause && (index - lower >= 3 || containsSentenceEnd)
+            // A pause decides alone, so a fragment it keeps never stands
+            // alone however long the silence after it.
+            let lengthCut = !afterPause && index < settledCount && (
                 (previous.end - words[lower].start >= sentenceLength && endsSentence(previous))
                     || current.start - words[lower].start >= maximumLength
             )
