@@ -7,6 +7,22 @@ struct RecordingReducerTests {
     @Test(arguments: faultTransitions)
     func faultsFollowTheCurrentSession(_ c: FaultTransition) { assert(c.state, c.event, reducedTo: c.expected) }
 
+    @Test(arguments: [RecordingState.Phase.beginning, .recording, .ending], [false, true])
+    func callSilenceFollowsTheCurrentSession(_ phase: RecordingState.Phase, _ value: Bool) { assert(changed(running) { $0.phase = phase; $0.callSilent = !value; $0.faults = [.microphone] }, .sessionReported(id: 1, .callSilent(value)), reducedTo: changed(running) { $0.phase = phase; $0.callSilent = value; $0.faults = [.microphone] }) }
+
+    @Test func endingTheSessionClearsCallSilence() { assert(changed(ending) { $0.callSilent = true }, .sessionReported(id: 1, .ended), reducedTo: changed(idle) { $0.lastSessionID = 1 }) }
+
+    @Test func aNewBeginClearsCallSilence() { assert(changed(idle) { $0.callSilent = true }, .userStart, reducedTo: beginning) }
+
+    @Test(arguments: [false, true])
+    func staleCallSilenceAfterEndIsIgnored(_ value: Bool) { assert(idleAfter(1), .sessionReported(id: 1, .callSilent(value)), reducedTo: idleAfter(1)) }
+
+    @Test func callSilenceWhileIdleIsIgnored() { assert(changed(idleAfter(1)) { $0.session = .init(id: 1, origin: .hand) }, .sessionReported(id: 1, .callSilent(true)), reducedTo: changed(idleAfter(1)) { $0.session = .init(id: 1, origin: .hand) }) }
+
+    @Test func anotherSessionsCallSilenceIsIgnored() { assert(running, .sessionReported(id: 99, .callSilent(true)), reducedTo: running) }
+
+    @Test func endingKeepsCallSilence() { assert(changed(running) { $0.callSilent = true }, .userStop, reducedTo: changed(ending) { $0.callSilent = true }) }
+
     @Test func userStartBeginsAHandSession() { assert(idle, .userStart, reducedTo: beginning) }
 
     @Test func callStartedBeginsACallSession() { assert(idle, .callStarted, reducedTo: call) }

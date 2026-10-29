@@ -20,6 +20,7 @@ public actor RecordingSessions: RecordingSession {
         var reportedFailure = false
         var faults: Set<RecordingFault> = []
         var reportedFaults: Set<RecordingFault> = []
+        var callSilent = false
     }
 
     public nonisolated let panel: AudelinPanel
@@ -158,6 +159,11 @@ public actor RecordingSessions: RecordingSession {
         }
         entry.faults.formUnion(recordingFaults(state))
         if entry.first == .ready {
+            let callSilent = state.audioWarning == .callSilent
+            if callSilent != entry.callSilent {
+                entry.callSilent = callSilent
+                deliver(.callSilent(callSilent), id: id, entry: &entry)
+            }
             for fault in RecordingFault.allCases where entry.faults.contains(fault) && entry.reportedFaults.insert(fault).inserted {
                 deliver(.failed(fault), id: id, entry: &entry)
             }

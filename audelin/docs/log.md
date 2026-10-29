@@ -2,6 +2,10 @@
 
 ## 2026-10-29
 
+- While recording, the menu bar warns when the call side has been silent for
+  five minutes while you talk, usually a revoked System Audio Recording
+  permission; the warning goes when call audio returns (LAB-733).
+
 - The menu bar names microphone, call-audio and track-write faults while recording
   and ending, keeping each fault until the next recording begins (LAB-510).
 

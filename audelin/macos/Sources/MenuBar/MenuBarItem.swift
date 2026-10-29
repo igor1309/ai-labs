@@ -39,6 +39,7 @@ public struct MenuBarItem: Equatable, Sendable {
             (.microphone, "Микрофон не пишется"),
             (.callAudio, "Звук звонка не пишется"),
             (.diskFull, "Диск заполнен, дорожка остановлена"),
+            (.callSilent, "Звук звонка не слышен — проверьте доступ к записи звука"),
         ]
         return labels.filter { faults.contains($0.0) }.map { "; " + $0.1 }.joined()
     }

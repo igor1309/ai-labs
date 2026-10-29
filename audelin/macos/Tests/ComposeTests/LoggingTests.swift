@@ -251,7 +251,7 @@ struct LoggingTests {
     }
 
     @Test func recordingSessionLogsReportsAndEndAndSessionStateOmitsOpaqueIDs() async throws {
-        for report: RecordingSessionReport in [.ready, .cannotRecord("no track"), .ended] {
+        for report: RecordingSessionReport in [.ready, .cannotRecord("no track"), .ended, .callSilent(true), .callSilent(false)] {
             let sink = LogSpy(), calls = Values<String>()
             let session = LoggingRecordingSession(base: RecordingSpy(report: report, calls: calls), sink: sink)
             #expect(await session.begin(id: 8) == report)
