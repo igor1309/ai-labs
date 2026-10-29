@@ -26,7 +26,7 @@ import MessageCodec
     private var transaction: Transaction?
 
     init(source: any SettingsSource, clock: any RadioClock,
-         sealMessage: @escaping @MainActor (MessageCodec.Message, SessionCrypto) throws -> [UInt8] = { try Wire.seal($0, with: $1) }) {
+         sealMessage: @escaping @MainActor (MessageCodec.Message, SessionCrypto) throws -> [UInt8]) {
         self.sealMessage = sealMessage
         self.source = source; self.clock = clock
         (events, continuation) = AsyncStream.makeStream()

@@ -9,7 +9,9 @@ import ScriptedSettings
 
 @MainActor func scriptedRadios(source: any SettingsSource, clock: any RadioClock, log: any LogSink) -> RadioPair {
     let settings = SettingsRelay(source: source, log: log)
-    return RadioPair(host: ScriptedHost(source: settings, clock: clock), client: ScriptedClient(source: settings, clock: clock))
+    return RadioPair(host: ScriptedHost(source: settings, clock: clock), client: ScriptedClient(
+        source: settings, clock: clock, sealMessage: { try Wire.seal($0, with: $1) }
+    ))
 }
 
 /// One file subscription fans out to both ports and owns per-change diagnostics.

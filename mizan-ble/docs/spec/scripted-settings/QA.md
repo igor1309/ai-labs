@@ -1,6 +1,6 @@
 # Scripted settings — QA
 
-Driven in `ScriptedSettingsTests` with files in a temporary directory and an injected file-change seam that the real watcher also drives.
+Driven in `ScriptedSettingsTests` with files in a temporary directory and an injected file-change seam that the real watcher also drives. `DirectoryChangesTests` holds the real watcher to that seam's contract: it sees a file created, replaced and appended to.
 
 ## S-1 A valid file
 
