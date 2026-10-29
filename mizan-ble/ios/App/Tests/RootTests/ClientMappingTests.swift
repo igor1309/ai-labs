@@ -24,10 +24,16 @@ import ClientPaymentUI
             if index == 3 { expected.detail = "The host stopped advertising before you connected. Nothing was sent." }
             #expect(ClientMapping.screen(find: state, connect: nil) == expected)
         }
-        for reason in ["Bluetooth not allowed", "Bluetooth unsupported", "Bluetooth unavailable"] {
+        let reasons = [
+            ("Bluetooth not allowed", "Allow Mizan to use Bluetooth in Settings to find a nearby host."),
+            ("Bluetooth unsupported", "This iPhone cannot use Bluetooth, so it cannot find a host."),
+            ("Bluetooth unavailable", "Turn on Bluetooth in Control Centre to find a nearby host."),
+        ]
+        for (reason, detail) in reasons {
             let state = findState([.bluetoothChanged(.unavailable(reason: reason))])
             let screen = ClientMapping.screen(find: state, connect: nil)
             #expect(screen.title == reason)
+            #expect(screen.detail == detail)
             #expect(screen.actions.allSatisfy { !$0.isEnabled })
         }
     }
