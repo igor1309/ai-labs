@@ -181,13 +181,16 @@ public struct HostView: View {
                         .accessibilityHidden(true)
                     Text(title).typeRole(.lead).foregroundStyle(Tokens.text)
                     Text(detail).typeRole(.eyebrow).multilineTextAlignment(.center)
+                    if horizontalSizeClass == .compact, let secondsRemaining {
+                        Text(secondsRemaining).typeRole(.code).foregroundStyle(Tokens.hostHi)
+                    }
                     buttons
                 }
                 .padding(horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space7)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .transition(Motion.panelTransition(reduced: reduceMotion))
                 .overlay(alignment: .bottom) {
-                    if let secondsRemaining {
+                    if horizontalSizeClass != .compact, let secondsRemaining {
                         Text(secondsRemaining).typeRole(.code).foregroundStyle(Tokens.hostHi)
                             .padding(Tokens.space7)
                     }
