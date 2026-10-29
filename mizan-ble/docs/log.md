@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-29
+
+- The app launches with the mode switch and logs (LAB-722).
+
 ## 2026-10-28
 
 - ClientRadio supplies nearby host readings, connects through the GATT setup, writes keys and messages with responses, and reports host messages and lost links (LAB-661).

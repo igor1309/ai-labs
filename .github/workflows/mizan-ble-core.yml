@@ -48,6 +48,14 @@ jobs:
         timeout-minutes: 5
         run: swift test
 
+      - name: Test app root
+        working-directory: mizan-ble/ios/App
+        timeout-minutes: 5
+        run: swift test
+
+      - name: Build app for iOS Simulator
+        run: xcodebuild -project mizan-ble/ios/App/MizanBLE.xcodeproj -scheme MizanBLE -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+
       # The app runs on iOS; the tests run on macOS. The aggregate package
       # scheme builds every library when the package has several products.
       - name: Build for iOS
