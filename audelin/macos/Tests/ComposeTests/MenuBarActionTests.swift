@@ -1,12 +1,44 @@
 @testable import Compose
 import Foundation
 import MenuBar
+import PanelUI
 import Preferences
 import Recording
 import Testing
 
 @MainActor
 struct MenuBarActionTests {
+
+    @Test func panelBannerButtonsOpenTheirPrivacyPanesOrTheCurrentCallsFolder() async {
+
+        var stored = Preferences(callsFolder: URL(fileURLWithPath: "/calls"))
+        var urls: [URL] = []
+        var folders: [URL] = []
+        let menu = await AudelinMenu(
+            storage: MenuPreferenceStorage(readValue: { stored }, writeValue: { stored = $0 }),
+            makeApplication: {
+                MenuApplication(states: { AsyncStream { $0.finish() } }, failures: AsyncStream { $0.finish() },
+                    send: { _ in Issue.record("Unexpected recording action") }, quit: {},
+                    panelStates: { AsyncStream { $0.finish() } },
+                    sendPanel: { _ in Issue.record("Banner action was not handled") })
+            },
+            openFolder: { folders.append($0) }, openURL: { urls.append($0) },
+            terminate: {}, didDeliver: {}, sink: SystemLogSink(),
+            presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
+        )
+        for (banner, pane): (PanelState.Banner, String) in [
+            (.callAudio, "Privacy_ScreenCapture"), (.microphone, "Privacy_Microphone"),
+            (.callSilent, "Privacy_ScreenCapture"),
+        ] {
+            await menu.sendPanel(banner.action)
+            #expect(urls.last?.absoluteString == "x-apple.systempreferences:com.apple.preference.security?\(pane)")
+        }
+        #expect(urls.count == 3)
+        stored.callsFolder = URL(fileURLWithPath: "/current-calls")
+        await menu.sendPanel(PanelState.Banner.diskFull(savedUntil: "01:05").action)
+        #expect(folders == [stored.callsFolder])
+        await menu.waitForObservers()
+    }
 
     @Test func presentationMapsEveryRecordingFault() {
 
@@ -81,7 +113,7 @@ struct MenuBarActionTests {
                     panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in }
                 )
             },
-            openFolder: { folders.append($0) }, terminate: { terminations += 1 },
+            openFolder: { folders.append($0) }, openURL: { _ in Issue.record("Unexpected URL open") }, terminate: { terminations += 1 },
             didDeliver: { Issue.record("No updates were sent") }, sink: SystemLogSink(),
             presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
         )
@@ -117,7 +149,7 @@ struct MenuBarActionTests {
         let unavailable = await AudelinMenu(
             storage: MenuPreferenceStorage(readValue: { stored }, writeValue: { stored = $0 }),
             makeApplication: { factoryCalls += 1; throw ScriptFailure.failed },
-            openFolder: { folders.append($0) }, terminate: { terminations += 1 },
+            openFolder: { folders.append($0) }, openURL: { _ in Issue.record("Unexpected URL open") }, terminate: { terminations += 1 },
             didDeliver: { Issue.record("A failed application has no streams") }, sink: SystemLogSink(),
             presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
         )
@@ -179,7 +211,7 @@ struct MenuBarActionTests {
                             quit: { Issue.record("Presentation does not quit") },
                             panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in })
                     },
-                    openFolder: { _ in Issue.record("Presentation does not open folders") },
+                    openFolder: { _ in Issue.record("Presentation does not open folders") }, openURL: { _ in Issue.record("Unexpected URL open") },
                     terminate: { Issue.record("Presentation does not terminate") }, didDeliver: { delivered.send() }, sink: SystemLogSink(),
                     presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
                 )

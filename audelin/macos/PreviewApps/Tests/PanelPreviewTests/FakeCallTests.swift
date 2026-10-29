@@ -121,6 +121,7 @@ private extension PanelState.Row {
         switch self {
         case let .entry(entry): [entry.id]
         case let .late(late): late.entries.map(\.id)
+        case .gap: []
         }
     }
 

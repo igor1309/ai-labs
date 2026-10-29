@@ -1,4 +1,5 @@
 import MenuBar
+import PanelUI
 import Recording
 import Session
 import Testing
@@ -6,6 +7,32 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct SessionAudioWarningTests {
+
+    @Test func sessionObservationFeedsFaultsAndWarningToTheLivePanel() async throws {
+
+        try await withSessionRig(connect: { _, _ in Task {} }) { rig, _ in
+            let session = WarningSession(statesOnBegin: [SessionState(
+                health: [.access(.microphone): .accessLost], phase: .recording, audioWarning: .callSilent
+            )])
+            let panel = ReadingClockSpy().panel()
+            let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
+                report: { _, _ in }, connect: { _, _ in Task {} }, sink: SystemLogSink(), panel: panel,
+                makeSession: { _ in await session.inputs() })
+            #expect(await sessions.begin(id: 1) == .ready)
+            var states = await panel.states().makeAsyncIterator()
+            while let shown = await states.next() {
+                guard shown.banners.count == 2 else { continue }
+                #expect(shown.banners == [.callSilent, .microphone])
+                #expect(shown.log == .liveTextOff(kept: .init(rows: [
+                    .gap(.init(speaker: .me, text: "— нет микрофона с 00:00 —")),
+                ])))
+                break
+            }
+            await sessions.end(id: 1)
+            var ended = await panel.states().makeAsyncIterator()
+            #expect(await ended.next() == .init(recording: .off, log: .empty))
+        }
+    }
 
     @Test func sessionAudioWarningIsVisibleWhileRecording() async throws {
 

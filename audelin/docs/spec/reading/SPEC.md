@@ -4,9 +4,6 @@ Observer: compose, which feeds one recording's text, recording state and
 reader actions into the reducer, and translates its state for the panel.
 Reading owns no recording, recognition, window or other effects.
 
-User scenarios covered: S-3, S-4, S-5, S-8, S-9, S-11, S-12, S-13, S-14,
-S-15 and S-16.
-
 ## Decided
 
 - Entries are ordered by their first reported start time. Each speaker's
@@ -34,8 +31,21 @@ S-15 and S-16.
   update. Holds and following survive every status change.
 - An inactive, unread recording shows an empty log. Recording with text
   off offers live text, keeping prior lines above it. Getting ready shows
+  preparing; active problems keep the available lines visible even while
   preparing. Listening, failure and completion show the available lines;
   recognition failure never changes the recording indicator.
+
+- Problems arrive stamped on the recording's elapsed clock. A fault keeps its
+  first time and remains until recording switches off. Banners run newest
+  first; equal times put the last newly supplied problem first.
+- Missing call audio, a missing microphone and a failed disk track each add a
+  small muted gap on the missing side at that time. Gaps sit among entries
+  by elapsed time and split written-later groups. Repeated snapshots never
+  duplicate or move a gap. Gap times use the same minute format as entries.
+- Call silence adds an informational banner, with no gap because audio is
+  still being written. Clearing the warning removes only that banner.
+  Recording off resets all problems and gaps, retaining transcript text.
+- Recording faults change neither the recording indicator nor captured text.
 
 ```gherkin
 Feature: Reading one recording
@@ -50,6 +60,18 @@ Feature: Reading one recording
     Given text includes consecutive entries written later
     When the log is read
     Then those entries form a group with their elapsed span at their call position
+
+  Scenario: A failed side leaves a visible gap
+    Given entries before and after a track fault, including recovered speech
+    When the fault arrives with its elapsed start time
+    Then its gap sits between those entries on the failed side
+    And its banner stays until recording ends without hiding any text
+
+  Scenario: Silence clears without leaving a gap
+    Given the call-silence banner and a microphone fault
+    When the silence warning clears
+    Then only the microphone banner remains
+    And there is no silence gap in the log
 
   Scenario: Held selections remain independent of recognition
     Given several selections have been held

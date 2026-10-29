@@ -28,7 +28,7 @@ struct PanelWindowWiringTests {
                 MenuApplication(states: { recording.stream }, failures: failures.stream,
                     send: { events.append($0) }, quit: {}, panelStates: { panel.stream },
                     sendPanel: { panelEvents.append($0) })
-            }, openFolder: { _ in }, terminate: {}, didDeliver: { delivered.send() }, sink: sink,
+            }, openFolder: { _ in }, openURL: { _ in Issue.record("Unexpected URL open") }, terminate: {}, didDeliver: { delivered.send() }, sink: sink,
                 presentPanel: { visibility.append($0); visibilityDelivered.send() }, sleep: { duration in
                     waits.append(duration)
                     timerStarted.send()

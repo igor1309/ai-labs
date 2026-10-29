@@ -36954,7 +36954,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "Errors appear inside the panel, under the header, and never hide the text already captured. One missing track: recording goes on with the other, the banner names the missing side and links to the permission, and the gutter marks the gap. Disk full: recording stops, everything before the stop is kept, the banner says when it stopped, and Начать is disabled so a new call cannot start into the same error.",
+              "content": "Errors appear inside the panel, under the header, and never hide the text already captured. One missing track: recording goes on with the other, the banner names the missing side and links to the permission, and the gutter marks the gap. Disk full: recording stops, everything before the stop is kept, the banner says when it stopped, and Начать is disabled so a new call cannot start into the same error. A call side that is written but silent for five minutes while the user talks gets a softer info banner and no gap: the audio is there, it is only zeros.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -37823,6 +37823,302 @@
                       ]
                     }
                   ]
+                },
+                {
+                  "type": "frame",
+                  "id": "yAj21",
+                  "name": "Call silent",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "N6MTb",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Call silent",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "Ghvce",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Call audio is written but has been exact zeros for 5 minutes while the user talks; recording goes on, no gap is marked. Goes away when call audio returns.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "kkREa",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "g5wFee",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "bTR4d",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "c3tQ6q",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:12:47"
+                                    }
+                                  }
+                                },
+                                {
+                                  "id": "DP4zw",
+                                  "type": "ref",
+                                  "ref": "jjhu5",
+                                  "name": "Banner",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "XbvpQ": {
+                                      "content": "Звонок не слышен"
+                                    },
+                                    "P4t1H": {
+                                      "content": "5 минут тишины со стороны «они», пока вы говорите. Проверьте разрешение «Звук звонка»."
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "UrV7c",
+                                  "name": "Actions",
+                                  "gap": "$space-8",
+                                  "padding": [
+                                    0,
+                                    12
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "cyEc2",
+                                      "name": "Button Открыть настройки macOS",
+                                      "fill": "$btn",
+                                      "cornerRadius": "$radius-control",
+                                      "padding": [
+                                        "$space-2",
+                                        "$space-8"
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "n35ufn",
+                                          "name": "L",
+                                          "fill": "$text",
+                                          "content": "Открыть настройки macOS",
+                                          "lineHeight": 1.45,
+                                          "fontFamily": "$font-ui",
+                                          "fontSize": "$type-small",
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "B6sgB",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "RrxUN",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "gap": "$space-8",
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "l2xq0",
+                                          "name": "Gutter",
+                                          "width": 80,
+                                          "gap": "$space-8",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "EGhbW",
+                                              "name": "Time",
+                                              "fill": "$gutter",
+                                              "content": "12:42",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "O5mFUA",
+                                              "name": "Who",
+                                              "fill": "$me",
+                                              "content": "я",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "s6gdG",
+                                          "name": "text",
+                                          "fill": "$text",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Accountable — я. По SLA отвечает команда Ильи.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "$font-data",
+                                          "fontSize": "$type-body",
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "XaDTi",
+                                      "name": "Entry 12:43",
+                                      "width": "fill_container",
+                                      "gap": "$space-8",
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "oWnS6",
+                                          "name": "Gutter",
+                                          "width": 80,
+                                          "gap": "$space-8",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "J02nD",
+                                              "name": "Time",
+                                              "fill": "$gutter",
+                                              "content": "12:43",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "ALBD2",
+                                              "name": "Who",
+                                              "fill": "$me",
+                                              "content": "я",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "EJVOq",
+                                          "name": "text",
+                                          "fill": "$text",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Значит, договорились — пятница.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "$font-data",
+                                          "fontSize": "$type-body",
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "MFznQ",
+                                      "name": "Entry 12:44",
+                                      "width": "fill_container",
+                                      "gap": "$space-8",
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "T1qnB",
+                                          "name": "Gutter",
+                                          "width": 80,
+                                          "gap": "$space-8",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "HLleg",
+                                              "name": "Time",
+                                              "fill": "$gutter",
+                                              "content": "12:44",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "bkKlK",
+                                              "name": "Who",
+                                              "fill": "$me",
+                                              "content": "я",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "a4BDj",
+                                          "name": "text",
+                                          "fill": "$text",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Отправлю резюме после звонка.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "$font-data",
+                                          "fontSize": "$type-body",
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
                 }
               ]
             }
@@ -38660,6 +38956,302 @@
                                           "textGrowth": "fixed-width",
                                           "width": "fill_container",
                                           "content": "И ещё по NPS — дашборд кто-то уже собирал?",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "$font-data",
+                                          "fontSize": "$type-body",
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "isb4w",
+                  "name": "Call silent",
+                  "layout": "vertical",
+                  "gap": "$space-8",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "uTrwh",
+                      "name": "State",
+                      "fill": "#333333",
+                      "content": "Call silent",
+                      "fontFamily": "Inter",
+                      "fontSize": 13,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "text",
+                      "id": "nEacR",
+                      "name": "Note",
+                      "fill": "#777777",
+                      "textGrowth": "fixed-width",
+                      "width": 444,
+                      "content": "Call audio is written but has been exact zeros for 5 minutes while the user talks; recording goes on, no gap is marked. Goes away when call audio returns.",
+                      "lineHeight": 1.45,
+                      "fontFamily": "Inter",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "X9N0K",
+                      "name": "Desktop",
+                      "fill": "$back",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "padding": "$space-24",
+                      "children": [
+                        {
+                          "id": "oc13w",
+                          "type": "ref",
+                          "ref": "c0qJn",
+                          "name": "Panel",
+                          "descendants": {
+                            "n5rfxu": {
+                              "type": "frame",
+                              "id": "RWOPR",
+                              "name": "Body",
+                              "width": "fill_container",
+                              "layout": "vertical",
+                              "children": [
+                                {
+                                  "id": "XRxh8",
+                                  "type": "ref",
+                                  "ref": "rVa43",
+                                  "name": "Header",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "N7wi8l": {
+                                      "content": "REC 00:12:47"
+                                    }
+                                  }
+                                },
+                                {
+                                  "id": "seWkW",
+                                  "type": "ref",
+                                  "ref": "jjhu5",
+                                  "name": "Banner",
+                                  "width": "fill_container",
+                                  "descendants": {
+                                    "XbvpQ": {
+                                      "content": "Звонок не слышен"
+                                    },
+                                    "P4t1H": {
+                                      "content": "5 минут тишины со стороны «они», пока вы говорите. Проверьте разрешение «Звук звонка»."
+                                    }
+                                  }
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "iLYzf",
+                                  "name": "Actions",
+                                  "gap": "$space-8",
+                                  "padding": [
+                                    0,
+                                    12
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "jRjae",
+                                      "name": "Button Открыть настройки macOS",
+                                      "fill": "$rule",
+                                      "cornerRadius": "$radius-control",
+                                      "padding": [
+                                        "$space-2",
+                                        "$space-8"
+                                      ],
+                                      "children": [
+                                        {
+                                          "type": "text",
+                                          "id": "vQihm",
+                                          "name": "L",
+                                          "fill": "$text",
+                                          "content": "Открыть настройки macOS",
+                                          "lineHeight": 1.45,
+                                          "fontFamily": "$font-ui",
+                                          "fontSize": "$type-small",
+                                          "fontWeight": "600"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "gm13d",
+                                  "name": "Log",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": "$space-12",
+                                  "padding": [
+                                    "$space-12",
+                                    "$space-16"
+                                  ],
+                                  "children": [
+                                    {
+                                      "type": "frame",
+                                      "id": "tdSch",
+                                      "name": "Entry 12:42",
+                                      "width": "fill_container",
+                                      "gap": "$space-8",
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "tUrVg",
+                                          "name": "Gutter",
+                                          "width": 80,
+                                          "gap": "$space-8",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "WouWR",
+                                              "name": "Time",
+                                              "fill": "$gutter",
+                                              "content": "12:42",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "v7kodg",
+                                              "name": "Who",
+                                              "fill": "$me",
+                                              "content": "я",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "vpGhI",
+                                          "name": "text",
+                                          "fill": "$text",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Accountable — я. По SLA отвечает команда Ильи.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "$font-data",
+                                          "fontSize": "$type-body",
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "vF6oq",
+                                      "name": "Entry 12:43",
+                                      "width": "fill_container",
+                                      "gap": "$space-8",
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "pO9Wr",
+                                          "name": "Gutter",
+                                          "width": 80,
+                                          "gap": "$space-8",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "yuOGS",
+                                              "name": "Time",
+                                              "fill": "$gutter",
+                                              "content": "12:43",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "ugSKv",
+                                              "name": "Who",
+                                              "fill": "$me",
+                                              "content": "я",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "V9f0nw",
+                                          "name": "text",
+                                          "fill": "$text",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Значит, договорились — пятница.",
+                                          "lineHeight": 1.55,
+                                          "fontFamily": "$font-data",
+                                          "fontSize": "$type-body",
+                                          "fontWeight": "normal"
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "frame",
+                                      "id": "OcTWh",
+                                      "name": "Entry 12:44",
+                                      "width": "fill_container",
+                                      "gap": "$space-8",
+                                      "children": [
+                                        {
+                                          "type": "frame",
+                                          "id": "EbzZJ",
+                                          "name": "Gutter",
+                                          "width": 80,
+                                          "gap": "$space-8",
+                                          "children": [
+                                            {
+                                              "type": "text",
+                                              "id": "ELoY3",
+                                              "name": "Time",
+                                              "fill": "$gutter",
+                                              "content": "12:44",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "normal"
+                                            },
+                                            {
+                                              "type": "text",
+                                              "id": "sRcQ0",
+                                              "name": "Who",
+                                              "fill": "$me",
+                                              "content": "я",
+                                              "lineHeight": 1.55,
+                                              "fontFamily": "$font-data",
+                                              "fontSize": "$type-body",
+                                              "fontWeight": "600"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "text",
+                                          "id": "QXXfH",
+                                          "name": "text",
+                                          "fill": "$text",
+                                          "textGrowth": "fixed-width",
+                                          "width": "fill_container",
+                                          "content": "Отправлю резюме после звонка.",
                                           "lineHeight": 1.55,
                                           "fontFamily": "$font-data",
                                           "fontSize": "$type-body",

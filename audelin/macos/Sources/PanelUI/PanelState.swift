@@ -5,11 +5,13 @@ public struct PanelState: Equatable, Sendable {
 
     public var recording: Recording
     public var log: Log
+    public var banners: [Banner]
 
-    public init(recording: Recording, log: Log) {
+    public init(recording: Recording, log: Log, banners: [Banner] = []) {
 
         self.recording = recording
         self.log = log
+        self.banners = banners
     }
 }
 
@@ -78,6 +80,7 @@ public extension PanelState {
                 switch row {
                 case let .entry(entry): [entry]
                 case let .late(late): late.entries
+                case .gap: []
                 }
             }
         }
@@ -88,6 +91,57 @@ public extension PanelState {
         case entry(Entry)
         /// Minutes transcribed after live text was switched on mid-call.
         case late(Late)
+        case gap(Gap)
+    }
+
+    struct Gap: Equatable, Sendable {
+
+        public var speaker: Speaker
+        public var text: String
+
+        public init(speaker: Speaker, text: String) {
+
+            self.speaker = speaker
+            self.text = text
+        }
+    }
+
+    enum Banner: Equatable, Sendable {
+
+        case callAudio, microphone, diskFull(savedUntil: String), callSilent
+
+        public var title: String {
+            switch self {
+            case .callAudio: "Нет звука звонка"
+            case .microphone: "Нет микрофона"
+            case .diskFull: "Диск заполнен — дорожка остановлена"
+            case .callSilent: "Звонок не слышен"
+            }
+        }
+
+        public var line: String {
+            switch self {
+            case .callAudio: "Пишется только «я». Проверьте разрешение «Звук звонка»."
+            case .microphone: "Пишутся только «они». Проверьте устройство ввода и разрешение «Микрофон»."
+            case let .diskFull(time): "Всё до \(time) сохранено. Освободите место, чтобы продолжить."
+            case .callSilent: "5 минут тишины со стороны «они», пока вы говорите. Проверьте разрешение «Звук звонка»."
+            }
+        }
+
+        public var button: String {
+            switch self {
+            case .diskFull: "Открыть папку"
+            default: "Открыть настройки macOS"
+            }
+        }
+
+        public var action: PanelEvent {
+            switch self {
+            case .microphone: .openSettings(.microphone)
+            case .callAudio, .callSilent: .openSettings(.systemAudioRecording)
+            case .diskFull: .openCallsFolder
+            }
+        }
     }
 
     struct Late: Equatable, Sendable {

@@ -1,6 +1,13 @@
 /// What the user can do in the live panel.
 public enum PanelEvent: Equatable, Sendable {
 
+    public enum SettingsPane: Equatable, Sendable {
+
+        case microphone, systemAudioRecording
+    }
+
+    case openSettings(SettingsPane)
+    case openCallsFolder
     case start
     case stop
     case switchLiveTextOn

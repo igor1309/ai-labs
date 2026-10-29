@@ -138,6 +138,7 @@ final class LiveCall {
         switch event {
         case .start: Task { await start() }
         case .stop: stop()
+        case .openSettings, .openCallsFolder: break
         case .switchLiveTextOn: break
         case let .hold(held): holds.append(held)
         case let .letGo(held): holds.removeAll { $0 == held }
