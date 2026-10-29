@@ -116,26 +116,31 @@ struct SettingsGear: View {
     }
 }
 
-/// The client session header above the current stage. Its parent supplies the size.
-/// It fills the screen to its edges; the header and the stage keep the design's
+/// The session header above the current stage. Its parent supplies the size.
+/// It fills the screen to its edges; the header and the stage keep their
 /// insets, or clear the status bar and home indicator where those are larger.
 public struct IPhoneShell<Steps: View, Content: View>: View {
     let side: Side
     let eyebrow: String
     let status: StatusPill
     let onSwitch: (Side) -> Void
+    let headerTopPadding: CGFloat
+    let contentBottomPadding: CGFloat
     let steps: Steps
     let content: Content
 
     public init(
         side: Side = .client, eyebrow: String, status: StatusPill,
-        onSwitch: @escaping (Side) -> Void,
+        onSwitch: @escaping (Side) -> Void, headerTopPadding: CGFloat = Tokens.space14,
+        contentBottomPadding: CGFloat = Tokens.space8,
         @ViewBuilder steps: () -> Steps, @ViewBuilder content: () -> Content
     ) {
         self.side = side
         self.eyebrow = eyebrow
         self.status = status
         self.onSwitch = onSwitch
+        self.headerTopPadding = headerTopPadding
+        self.contentBottomPadding = contentBottomPadding
         self.steps = steps()
         self.content = content()
     }
@@ -151,7 +156,7 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
                 ModeHeader(side: side, layout: .bar, onSwitch: onSwitch)
                 steps
             }
-            .padding(.top, clear(Tokens.space14, safe.top))
+            .padding(.top, clear(headerTopPadding, safe.top))
             .padding(.leading, clear(Tokens.space5, safe.leading))
             .padding(.trailing, clear(Tokens.space5, safe.trailing))
             .padding(.bottom, Tokens.space5)
@@ -171,7 +176,7 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
             .padding(.top, Tokens.space5)
             .padding(.leading, clear(Tokens.space5, safe.leading))
             .padding(.trailing, clear(Tokens.space5, safe.trailing))
-            .padding(.bottom, clear(Tokens.space8, safe.bottom))
+            .padding(.bottom, clear(contentBottomPadding, safe.bottom))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

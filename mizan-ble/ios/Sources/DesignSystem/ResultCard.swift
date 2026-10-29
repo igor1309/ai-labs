@@ -80,17 +80,19 @@ public struct ResultCard<Actions: View>: View {
     let outcome: Outcome
     let title: String
     let actions: Actions
+    let isCompact: Bool
 
-    public init(_ outcome: Outcome, title: String, @ViewBuilder actions: () -> Actions) {
+    public init(_ outcome: Outcome, title: String, isCompact: Bool = false, @ViewBuilder actions: () -> Actions) {
 
         self.outcome = outcome
         self.title = title
         self.actions = actions()
+        self.isCompact = isCompact
     }
 
     public var body: some View {
 
-        VStack(spacing: Tokens.space5) {
+        VStack(spacing: isCompact ? Tokens.space2 : Tokens.space5) {
             ResultMark(outcome)
             Text(title)
                 .font(Tokens.text(Tokens.sizeLead, .semibold))
@@ -98,7 +100,7 @@ public struct ResultCard<Actions: View>: View {
                 .multilineTextAlignment(.center)
             actions
         }
-        .padding(Tokens.space7)
+        .padding(isCompact ? Tokens.space4 : Tokens.space7)
         .frame(maxWidth: .infinity)
         .background(Tokens.raised, in: RoundedRectangle(cornerRadius: Tokens.radiusXl))
         .animation(Motion.fast(reduced: reduceMotion).animation, value: title)

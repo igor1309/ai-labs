@@ -31,14 +31,15 @@ The iPad images are 1194 × 834 pixels and the iPhone images 393 × 852 pixels,
 without preview controls or window chrome.
 
 `HostPreview` shows every named `HostUI` preview at iPad size. Taps add to
-the event log; the picker alone changes the screen. Export writes 28 PNGs
-(14 states in both appearances), named `<preview-name>-iPad-<light|dark>.png`,
-at 1194 × 834 pixels.
+the event log; the picker alone changes the screen. Export writes 56 PNGs
+(14 states on both devices in both appearances), named
+`<preview-name>-<iPad|iPhone>-<light|dark>.png`; the iPhone images use the
+compact layout.
 
 `SettingsPreview` shows every entry of `SettingsUI`'s preview list at iPad
 size. Countdown taps and Done add to the event log; the picker alone changes
-the screen. Export writes 10 PNGs, one per state in each appearance, named
-`s1-settings-<seconds>s-iPad-<light|dark>.png`, at 1194 × 834 pixels.
+the screen. Export writes 20 PNGs, one per state on each device in each
+appearance, named `s1-settings-<seconds>s-<iPad|iPhone>-<light|dark>.png`.
 
 `ClientPreview` shows every named `ClientUI` preview at iPhone size. Start,
 Cancel and Try again add to the event log; the picker alone changes the

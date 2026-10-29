@@ -124,20 +124,35 @@ public struct ExchangeStrip: View {
     let host: DeviceChip
     let message: Message
     let client: DeviceChip
+    let isCompact: Bool
 
-    public init(host: DeviceChip, message: Message, client: DeviceChip) {
+    public init(host: DeviceChip, message: Message, client: DeviceChip, isCompact: Bool = false) {
         self.host = host
         self.message = message
         self.client = client
+        self.isCompact = isCompact
     }
 
     public var body: some View {
-        HStack(spacing: Tokens.space2) {
-            host
-            message.contents.frame(maxWidth: .infinity)
-            client
+        Group {
+            if isCompact {
+                VStack(spacing: Tokens.space1) {
+                    HStack(spacing: Tokens.space2) {
+                        host
+                        Spacer(minLength: .zero)
+                        client
+                    }
+                    message.contents
+                }
+            } else {
+                HStack(spacing: Tokens.space2) {
+                    host
+                    message.contents.frame(maxWidth: .infinity)
+                    client
+                }
+            }
         }
-        .padding(.vertical, Tokens.space3)
+        .padding(.vertical, isCompact ? Tokens.space1 : Tokens.space3)
         .overlay(alignment: .top) { Rectangle().fill(Tokens.lineSoft).frame(height: 1) }
         .overlay(alignment: .bottom) { Rectangle().fill(Tokens.lineSoft).frame(height: 1) }
         .animation(Motion.fast(reduced: reduceMotion).animation, value: host.code)
