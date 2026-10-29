@@ -166,8 +166,13 @@ private final class AccessProbeSpy: Sendable {
     let answer = Mutex<CheckedContinuation<AccessEvidence, Never>?>(nil)
     init(events: Values<String>) { self.events = events }
     func measure() async -> AccessEvidence {
-        await withCheckedContinuation { done in
-            answer.withLock { $0 = done }; calls.withLock { $0 += 1 }; started.send()
+        // A cancelled test ends at its own expectations rather than hanging here.
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { done in
+                answer.withLock { $0 = done }; calls.withLock { $0 += 1 }; started.send()
+            }
+        } onCancel: {
+            answer.withLock { let done = $0; $0 = nil; return done }?.resume(returning: .refused)
         }
     }
     func complete(_ evidence: AccessEvidence) {

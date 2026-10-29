@@ -242,15 +242,18 @@ private final class Measurement: @unchecked Sendable {
     }
 
     func observe() {
+        // Only our own process is tapped and it plays digital silence apart from the tone,
+        // so a finite nonzero sample in the stimulus window is proof without full coverage.
+        if reception.invalid.load(ordering: .acquiring) { finish(.refused("nonfinite or malformed samples")); return }
+        if reception.heard.load(ordering: .acquiring) { finish(.heard); return }
         let callbacks = reception.callbacks.load(ordering: .acquiring)
-        guard rendered, atRenderEnd - beforeTone >= 2, callbacks > atRenderEnd,
-              reception.continuous.load(ordering: .acquiring),
+        guard rendered else { finish(.refused("stimulus not rendered")); return }
+        guard atRenderEnd - beforeTone >= 2, callbacks > atRenderEnd,
               reception.frames.load(ordering: .acquiring) - beforeFrames >= Int(rate * 0.2) else {
             finish(.refused("incomplete stimulus coverage")); return
         }
-        if reception.heard.load(ordering: .acquiring) { finish(.heard) }
-        else if reception.invalid.load(ordering: .acquiring) { finish(.refused("nonfinite or malformed samples")) }
-        else { finish(.silent) }
+        guard reception.continuous.load(ordering: .acquiring) else { finish(.refused("discontinuous capture")); return }
+        finish(.silent)
     }
 
     func finish(_ answer: ProbeResult) {

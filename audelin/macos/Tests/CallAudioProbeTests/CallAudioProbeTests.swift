@@ -33,6 +33,12 @@ struct CallAudioProbeTests {
         #expect(isRefused(await ProbeRig().measure(samples: [0], gap: true)))
     }
 
+    @Test func stimulusHeardUnderLoadNeedsNoCompleteCoverage() async {
+        #expect(await ProbeRig().measure(samples: [0.001], coverage: 1) == .heard)
+        #expect(await ProbeRig().measure(samples: [0.001], render: false) == .heard)
+        #expect(await ProbeRig().measure(samples: [0.001], gap: true) == .heard)
+    }
+
     @Test func renderAndEachNativeFailureAreRefused() async {
         for failure in ["output read", "prime", "process", "create tap", "format", "create aggregate", "create IO", "start", "tone",
                         "stop", "destroy IO", "destroy aggregate", "destroy tap"] {
@@ -53,7 +59,7 @@ struct CallAudioProbeTests {
             }
         }
         let notRendered = ProbeRig()
-        #expect(isRefused(await notRendered.measure(samples: [0.001], render: false)))
+        #expect(isRefused(await notRendered.measure(samples: [0], render: false)))
         for invalidFormat in 0...8 {
             let rig = ProbeRig(formatVariant: invalidFormat)
             let task = Task { await rig.probe.measure() }
