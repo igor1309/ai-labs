@@ -12,6 +12,14 @@ public enum PreviewDeviceSize: String, CaseIterable, Sendable {
         }
     }
 
+    /// The status bar and home indicator the design frames draw.
+    public var safeArea: EdgeInsets {
+        switch self {
+        case .iPad: .iPadScreen
+        case .iPhone: .iPhoneScreen
+        }
+    }
+
     /// The corner radius of the screen the design frames draw.
     public var cornerRadius: CGFloat {
         switch self {
