@@ -4,6 +4,8 @@ import SwiftUI
 /// top in the side's colour.
 public struct CountdownRing: View {
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     let secondsText: String
     let caption: String
     let accessibilityText: String
@@ -48,6 +50,8 @@ public struct CountdownRing: View {
                     .tracking(-2)
                     .foregroundStyle(Tokens.text)
                     .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .animation(Motion.fast(reduced: reduceMotion).animation, value: secondsText)
                 Text(caption)
                     .font(Tokens.mono(Tokens.sizeEyebrow, .regular))
                     .tracking(1.5)
@@ -55,6 +59,7 @@ public struct CountdownRing: View {
             }
         }
         .frame(width: Self.diameter, height: Self.diameter)
+        .animation(Motion.tick(reduced: reduceMotion)?.animation, value: fraction)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityText)
     }

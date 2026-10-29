@@ -35,6 +35,7 @@ public final class AudelinMenu {
     private let settings: PreferenceSettings
     private let send: (RecordingEvent) async -> Void
     private let openFolder: (URL) -> Void
+    private let openURL: (URL) -> Void
     private let quit: () async -> Void
     private var observation: Task<Void, Never>?
     private var detectionObservation: Task<Void, Never>?
@@ -48,6 +49,7 @@ public final class AudelinMenu {
         preferences: PreferencesStore,
         access: AccessPolicy,
         openCallsFolder: @escaping (URL) -> Void,
+        openURL: @escaping (URL) -> Void,
         presentPanel: @escaping (Bool) -> Void,
         terminate: @escaping @Sendable () async -> Void,
         quit: @escaping (LifecycleEffectHandler) async -> Void,
@@ -69,7 +71,7 @@ public final class AudelinMenu {
                     sendPanel: { await application.panel.send($0) }
                 )
             },
-            openFolder: openCallsFolder, terminate: { await terminate() }, didDeliver: {}, sink: SystemLogSink(),
+            openFolder: openCallsFolder, openURL: openURL, terminate: { await terminate() }, didDeliver: {}, sink: SystemLogSink(),
             presentPanel: presentPanel, sleep: { try await ContinuousClock().sleep(for: $0) }
         )
     }
@@ -79,6 +81,7 @@ public final class AudelinMenu {
         storage: any PreferenceSettingsStorage,
         makeApplication: () async throws -> MenuApplication,
         openFolder: @escaping (URL) -> Void,
+        openURL: @escaping (URL) -> Void,
         terminate: @escaping () async -> Void,
         didDeliver: @escaping () -> Void,
         sink: any LogSink,
@@ -101,6 +104,7 @@ public final class AudelinMenu {
         settings = PreferenceSettings(storage: storage, automaticChanged: { await send(.automaticChanged($0)) })
         self.send = send
         self.openFolder = openFolder
+        self.openURL = openURL
         self.quit = application?.quit ?? terminate
         self.sendPanelEvent = application?.sendPanel ?? { _ in }
         if let application {
@@ -164,6 +168,10 @@ public final class AudelinMenu {
         switch event {
         case .start: await perform(.start)
         case .stop: await perform(.stop)
+        case .openCallsFolder: await perform(.openCallsFolder)
+        case let .openSettings(pane):
+            let name = pane == .microphone ? "Privacy_Microphone" : "Privacy_ScreenCapture"
+            openURL(URL(string: "x-apple.systempreferences:com.apple.preference.security?\(name)")!)
         default: await sendPanelEvent(event)
         }
     }

@@ -7,9 +7,22 @@ public enum ReadingReducer {
         switch event {
         case let .recordingChanged(recording):
             switch recording {
-            case .off: state.recording = .off
+            case .off:
+                state.recording = .off
+                state.problems = []
+                state.banners = []
+                state.lines.rows = rows(state)
             case let .on(elapsed): state.recording = .on(elapsed: recordingTime(elapsed))
             }
+        case let .problemsChanged(problems):
+            state.problems.removeAll { $0.kind == .callSilent && !problems.contains(where: { $0.kind == .callSilent }) }
+            for problem in problems where !state.problems.contains(where: { $0.kind == problem.kind }) {
+                state.problems.append(problem)
+            }
+            state.banners = state.problems.enumerated().sorted {
+                $0.element.began == $1.element.began ? $0.offset > $1.offset : $0.element.began > $1.element.began
+            }.map { .init(kind: $0.element.kind, time: lineTime($0.element.began)) }
+            state.lines.rows = rows(state)
         case let .textUpdated(update):
             state.status = update.status
             // Only listening replaces the log; a status transition cannot
@@ -61,8 +74,26 @@ public enum ReadingReducer {
             result.append(.late(.init(span: "\(lineTime(lateStart))–\(lineTime(lateEnd))", entries: late)))
             late = []
         }
+        let gaps = state.problems.enumerated().filter { $0.element.kind != .callSilent }.sorted {
+            $0.element.began == $1.element.began ? $0.offset < $1.offset : $0.element.began < $1.element.began
+        }.map(\.element)
+        var gapIndex = 0
+        func appendGap(_ problem: ReadingProblem) {
+
+            flushLate()
+            let speaker: ReadingState.Speaker = switch problem.kind {
+            case .callAudio, .callSilent: .theirs
+            case .microphone: .mine
+            case let .diskFull(side): side
+            }
+            result.append(.gap(.init(speaker: speaker, time: lineTime(problem.began), kind: problem.kind)))
+        }
         for text in ordered {
             let anchor = state.anchors[text.id]!
+            while gapIndex < gaps.count, gaps[gapIndex].began <= anchor.start {
+                appendGap(gaps[gapIndex])
+                gapIndex += 1
+            }
             let entry = ReadingState.Entry(
                 id: anchor.id, time: lineTime(anchor.start), speaker: text.id.speaker,
                 settled: text.settled, pending: text.pending
@@ -77,6 +108,7 @@ public enum ReadingReducer {
             }
         }
         flushLate()
+        for problem in gaps.dropFirst(gapIndex) { appendGap(problem) }
         return result
     }
 

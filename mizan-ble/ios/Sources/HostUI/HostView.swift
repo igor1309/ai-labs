@@ -7,6 +7,7 @@ public struct HostView: View {
 
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.modeSwitch) private var modeSwitch
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(state: HostState, event: @escaping (HostEvent) -> Void) {
         self.state = state
@@ -36,7 +37,7 @@ public struct HostView: View {
 
     private var amount: some View {
         VStack(alignment: .leading, spacing: Tokens.space5) {
-            if let notice = state.notice { note(notice) }
+            if let notice = state.notice { note(notice).transition(Motion.itemTransition(reduced: reduceMotion, from: .top)) }
             Text(state.amountTitle).typeRole(.lead)
             AmountView(state.amount, size: .xl, digitsColor: state.isAmountMuted ? Tokens.text2 : Tokens.text)
                 .lineLimit(1)
@@ -47,6 +48,7 @@ public struct HostView: View {
                 Text(state.explanation).typeRole(.body)
                     .lineSpacing(Tokens.space1)
                     .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
             }
             ExchangeStrip(
                 host: DeviceChip(.host, code: state.exchange.hostCode, state: state.exchange.hostDetail),
@@ -61,6 +63,8 @@ public struct HostView: View {
             )
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: state.noticeProjection)
+        .animation(Motion.fast(reduced: reduceMotion).animation, value: state.toneProjection)
     }
 
     private func note(_ notice: HostState.Notice) -> some View {
@@ -90,8 +94,8 @@ public struct HostView: View {
                     Grid(horizontalSpacing: .zero, verticalSpacing: Tokens.space1) {
                         ForEach(rows.indices, id: \.self) { row in
                             GridRow {
-                                ForEach(rows[row].indices, id: \.self) { column in
-                                    key(rows[row][column]).frame(maxHeight: .infinity)
+                                ForEach(rows[row]) { action in
+                                    key(action).frame(maxHeight: .infinity)
                                 }
                             }
                         }
@@ -99,6 +103,7 @@ public struct HostView: View {
                     buttons
                 }
                 .padding(Tokens.space4)
+                .transition(Motion.panelTransition(reduced: reduceMotion))
             case let .countdown(countdown, title, detail):
                 VStack(spacing: Tokens.space5) {
                     CountdownRing(
@@ -110,6 +115,7 @@ public struct HostView: View {
                     buttons
                 }
                 .padding(Tokens.space7)
+                .transition(Motion.panelTransition(reduced: reduceMotion))
             case let .connection(title, detail, secondsRemaining):
                 VStack(spacing: Tokens.space5) {
                     BluetoothSymbol().foregroundStyle(Tokens.clientHi)
@@ -123,6 +129,7 @@ public struct HostView: View {
                 }
                 .padding(Tokens.space7)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(Motion.panelTransition(reduced: reduceMotion))
                 .overlay(alignment: .bottom) {
                     if let secondsRemaining {
                         Text(secondsRemaining).typeRole(.code).foregroundStyle(Tokens.hostHi)
@@ -131,6 +138,7 @@ public struct HostView: View {
                 }
             case let .result(outcome, title):
                 ResultCard(outcome, title: title) { buttons }
+                    .transition(Motion.panelTransition(reduced: reduceMotion))
             case let .processor(eyebrow, title):
                 VStack(spacing: Tokens.space6) {
                     Text(eyebrow).typeRole(.eyebrow).foregroundStyle(Tokens.hostHi)
@@ -138,10 +146,12 @@ public struct HostView: View {
                     buttons
                 }
                 .padding(Tokens.space7)
+                .transition(Motion.panelTransition(reduced: reduceMotion))
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Tokens.raised, in: RoundedRectangle(cornerRadius: Tokens.radiusXl))
+        .animation(Motion.panel(reduced: reduceMotion).animation, value: state.panelProjection)
     }
 
     @ViewBuilder
@@ -162,8 +172,7 @@ public struct HostView: View {
     private var buttons: some View {
         if !state.buttons.isEmpty {
             VStack(spacing: Tokens.space5) {
-                ForEach(state.buttons.indices, id: \.self) { index in
-                    let action = state.buttons[index]
+                ForEach(state.buttons) { action in
                     Button { send(action) } label: {
                         Label(action.title, systemImage: action.symbol)
                     }
@@ -171,8 +180,10 @@ public struct HostView: View {
                     .disabled(!action.isEnabled)
                     .allowsHitTesting(action.isEnabled && isEnabled)
                     .opacity(action.isEnabled ? 1 : 0.5)
+                    .transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
                 }
             }
+            .animation(Motion.standard(reduced: reduceMotion).animation, value: state.buttonsProjection)
         }
     }
 

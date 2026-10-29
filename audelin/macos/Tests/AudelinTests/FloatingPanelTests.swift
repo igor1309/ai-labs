@@ -21,6 +21,7 @@ struct FloatingPanelTests {
                 quit: { Issue.record("Content binding does not quit") },
                 panelStates: { states.stream }, sendPanel: { events.append($0) })
         }, openFolder: { _ in Issue.record("Content binding does not open folders") },
+            openURL: { _ in Issue.record("Content binding does not open URLs") },
             terminate: { Issue.record("Content binding does not terminate") }, didDeliver: {},
             sink: WindowLogSpy(), presentPanel: { _ in Issue.record("Content binding does not change visibility") },
             sleep: { _ in Issue.record("Content binding does not start a hide delay") })

@@ -33,6 +33,20 @@ public struct ReadingState: Equatable, Sendable {
 
         case entry(Entry)
         case late(Late)
+        case gap(Gap)
+    }
+
+    public struct Gap: Equatable, Sendable {
+
+        public let speaker: Speaker
+        public let time: String
+        public let kind: ReadingProblem.Kind
+    }
+
+    public struct Banner: Equatable, Sendable {
+
+        public let kind: ReadingProblem.Kind
+        public let time: String
     }
 
     public struct Late: Equatable, Sendable {
@@ -62,14 +76,17 @@ public struct ReadingState: Equatable, Sendable {
 
         public var entries: [Entry] {
 
-            rows.flatMap { row in
+            rows.flatMap { row -> [Entry] in
                 switch row {
                 case let .entry(entry): [entry]
                 case let .late(group): group.entries
+                case .gap: []
                 }
             }
         }
     }
+
+    public internal(set) var banners: [Banner] = []
 
     public internal(set) var recording: Recording = .off
 
@@ -80,6 +97,7 @@ public struct ReadingState: Equatable, Sendable {
             let kept = lines.rows.isEmpty && lines.holds.isEmpty ? nil : lines
             return recording == .off ? kept.map(Log.lines) ?? .empty : .liveTextOff(kept: kept)
         case .gettingReady:
+            if !banners.isEmpty { return .lines(lines) }
             return .preparing(holds: lines.holds)
         case .listening, .failed, .finished:
             return .lines(lines)
@@ -94,6 +112,7 @@ public struct ReadingState: Equatable, Sendable {
         let start: Double
     }
 
+    var problems: [ReadingProblem] = []
     var status: ReadingTextUpdate.Status = .off
     var anchors: [ReadingTextUpdate.Entry.ID: Anchor] = [:]
     var nextDisplayID = 0

@@ -231,7 +231,7 @@ struct LoggingTests {
                 MenuApplication(states: { await recording.states() }, failures: failures.stream,
                     send: recording.send, quit: {},
                     panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in })
-            }, openFolder: { _ in }, terminate: {}, didDeliver: {}, sink: sink,
+            }, openFolder: { _ in }, openURL: { _ in Issue.record("Unexpected URL open") }, terminate: {}, didDeliver: {}, sink: sink,
                 presentPanel: { _ in }, sleep: { _ in throw CancellationError() })
             failures.continuation.finish()
             await menu.waitForObservers()
