@@ -36,11 +36,15 @@ private struct HostScreen: View {
 
 private struct ClientScreen: View {
     let client: ClientMode
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        if let state = client.paymentScreen {
-            ClientPaymentView(state: state, event: client.event)
-        } else {
-            ClientView(state: client.screen, event: client.event)
+        Group {
+            if let state = client.paymentScreen {
+                ClientPaymentView(state: state, event: client.event).transition(Motion.panelTransition(reduced: reduceMotion))
+            } else {
+                ClientView(state: client.screen, event: client.event).transition(Motion.panelTransition(reduced: reduceMotion))
+            }
         }
+        .animation(Motion.panel(reduced: reduceMotion).animation, value: client.paymentScreen != nil)
     }
 }
