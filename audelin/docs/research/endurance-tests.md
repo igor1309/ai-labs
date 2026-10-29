@@ -175,10 +175,9 @@ marked a known issue until its fix lands:
 
 Guards, passing on trunk:
 
-- A recogniser failing mid-call ends Live text for both sides, by design
-  (`CallText` abandons the other side); the panel shows the failure, the
-  recording goes on whole, and the transcript keeps every word until then.
-  Whether one side's failure should stop the other's text is open.
+- A recogniser failing mid-call ended Live text for both sides
+  (`CallText` abandoned the other side); the panel showed the failure, the
+  recording went on whole, and the transcript kept every word until then.
 - Both capture paths deliver every sample in order (each carries its
   index), so lost, repeated or replaced buffers fail, not only short ones.
 
@@ -190,6 +189,20 @@ Guards, passing on trunk:
   microphone, their engines.
 - Only the microphone binding and the transcript's failure report differ
   between the tag and trunk, so every text finding above holds on the tag.
+
+## Fixed since
+
+- Text flood: the last entry now ends where its last word ends, and the
+  session drops a side's state, and the panel's, when it equals the one
+  before. The endurance test reads about 800 states with no repeats over
+  the same audio, from 140 a second; its two checks now pass. A stalled
+  panel still finds the states it missed waiting, about 130 after 20 s and
+  400 after 60 s, until the panel keeps identities without every state.
+- One side's text failing leaves the other side's going: the panel shows
+  the failure, and the other side's words reach the panel and transcript
+  to the end of the call.
+- A transcript that keeps failing is reported once, and again only after a
+  write has succeeded.
 
 ## Candidates already in the code
 

@@ -42,9 +42,7 @@ struct LongCallFaultTests {
             let tried = attempts.count
             #expect(tried > 10, "the transcript was written only \(tried) times")
             #expect(during.phase == .recording, "the call stopped recording when the transcript failed")
-            withKnownIssue("every failed write of the transcript adds a failure") {
-                #expect(reports == 1, "\(reports) transcript failures reported for \(tried) writes")
-            }
+            #expect(reports == 1, "\(reports) transcript failures reported for \(tried) writes")
             // The rig's scripted captures add one piece at start and one at stop.
             #expect(try await recordedFrames(folder.appendingPathComponent("microphone.caf")) == micSent + 3)
             #expect(try await recordedFrames(folder.appendingPathComponent("call.caf")) == callSent + 3)

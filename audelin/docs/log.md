@@ -2,6 +2,10 @@
 
 ## 2026-10-29
 
+- Live text sends the panel a new state only when the words change, not on
+  every audio piece; one side's text failing leaves the other side's going;
+  a transcript that keeps failing is reported once (LAB-753).
+
 - Live text breaks long monologues into bounded paragraphs and joins short
   fragments before a pause to the following words (LAB-749).
 

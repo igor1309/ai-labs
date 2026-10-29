@@ -3,40 +3,34 @@ import TranscriptWriting
 
 extension TranscriptWritingTests {
 
-    @Test func eachFailedWriteIsToldAndWritingGoesOn() async {
+    @Test func aTranscriptThatKeepsFailingIsToldOnceUntilAWriteSucceeds() async {
 
         let executor = TestExecutor()
-        let second = WriteFailure(message: "second write denied")
-        let third = WriteFailure(message: "third write out of space")
-        let texts = ["first", "first revised\nsecond", "first revised again\nsecond\nthird"]
+        let denied = WriteFailure(message: "write denied")
+        let full = WriteFailure(message: "out of space")
+        let later = WriteFailure(message: "out of space again")
+        let texts = ["first", "first\nsecond", "first\nsecond\nthird", "first\nsecond\nthird\nfourth", "fifth"]
         let run = Run(
             executor: executor, enabled: true, holds: [:],
-            failures: [texts[1]: second, texts[2]: third]
+            failures: [texts[1]: denied, texts[2]: full, texts[4]: later]
         )
         defer { run.requestStop(); executor.run() }
         await executor.run(until: { run.observed.started })
+        // Reports told after each text, and the text the file keeps.
+        let expected: [(reports: Int, kept: String)] = [(0, texts[0]), (1, texts[0]), (1, texts[0]), (1, texts[3]), (2, texts[3])]
         for (index, text) in texts.enumerated() {
             run.call.send(text)
             await executor.run(until: {
-                run.observed.texts.count == index + 1
-                    && (index == 0 ? run.transcript.kept == text : run.report.recorded.count == index)
+                run.transcript.writes.count == index + 1 && run.report.recorded.count == expected[index].reports
+                    && run.transcript.kept == expected[index].kept
             })
-            #expect(run.transcript.kept == texts[0])
         }
-        #expect(run.report.recorded == [second, third])
-        #expect(!run.observed.stopped)
-        run.setEnabled(false)
-        await executor.run(until: {
-            run.transcript.kept == "live text off" && run.observed.texts.count == 4
-        })
-        #expect(run.call.recorded == [.subscribe, .start(true), .switchTo(false)])
         run.requestStop()
         await executor.finish()
         await run.task.value
-        #expect(run.transcript.writes == texts + ["live text off"])
-        #expect(run.transcript.kept == "live text off")
-        #expect(run.observed.texts == texts + ["live text off"])
-        #expect(run.report.recorded == [second, third])
+        #expect(run.transcript.writes == texts)
+        #expect(run.observed.texts == texts)
+        #expect(run.report.recorded == [denied, later])
     }
 
     @Test func aWriteAfterAFailedOneKeepsTheNewerText() async {

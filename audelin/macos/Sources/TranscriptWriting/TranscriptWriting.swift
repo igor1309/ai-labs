@@ -29,11 +29,15 @@ public actor TranscriptWriting<Text: Sendable> {
         let incoming = callText.updates
         let pending = AsyncStream<Text>.makeStream(bufferingPolicy: .bufferingNewest(1))
         writer = Task { [transcript, failureReport] in
+            // A transcript that keeps failing is reported once, until a write succeeds.
+            var failing = false
             for await text in pending.stream {
                 do {
                     try await transcript?.write(text)
+                    failing = false
                 } catch {
-                    await failureReport.transcriptFailed(error)
+                    if !failing { await failureReport.transcriptFailed(error) }
+                    failing = true
                 }
             }
         }
