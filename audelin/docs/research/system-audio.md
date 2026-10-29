@@ -118,3 +118,10 @@ each on a muted `afplay` child it starts itself:
   list. Voice Memos' flag flickered on, off and on within 70 ms of its
   start. One change went untold: Siri's always-on listener
   (`com.apple.CoreSpeech`) stopping, seen only by sampling every 0.5 s.
+- **A muted tap on our own process hears a quiet tone** (`call-audio-access.swift`,
+  2026-10-29, run from a terminal with the permission granted, system output
+  muted). The process plays digital silence, then a 1 kHz tone at -60 dBFS
+  peak for 200 ms. The tap, muted, own process only, auto-start off, started
+  by hand, reads 48 kHz stereo float. Silence gives exact zeros; the tone
+  gives 19,386 nonzero samples of 49,152, peak 0.000999993, and nothing
+  reaches the speakers. With the permission denied: not yet measured.
