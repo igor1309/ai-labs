@@ -1,25 +1,25 @@
 # Host UI
 
-Observer: the operator at the iPad. The host UI draws host broadcast's and
+Observer: the operator. The host UI draws host broadcast's and
 host payment's state and sends the operator's taps; it decides nothing.
 Oracle: the paired flow's host side, M1 to M10, and the user spec.
 
 Every host screen has the mode switch in its header (`../mode-switch/`),
-the session rail of five steps (amount, advertise, handshake, client
-approval, process), the step pill, the large amount, and the exchange strip
-with the host's step, the last message and the client's last known step.
+the session rail of five steps, the step pill, the large amount, and the
+exchange strip with both sides' steps and the last message.
 
 ## Decided
 
 - **Steps are named as in the design:** H1 enter amount, H2 advertising,
   H3 handshake, H4 awaiting client, H5 processing, H6 ended.
 - **The rail shows each step done, active, failed or to do;** no tapping.
+- **On a compact screen** the switch is in the bar, the current step and
+  the gear share a line, and the amount sits above the panel.
 - **Proposed, not decided by the design** (no frame draws them): Bluetooth
   off or a failure to go on air shows the reason in a failure-tinted note
   on the amount screen, Lock disabled only while Bluetooth is unavailable;
   a lost link uses the link-lost mark and "New amount", laid out as M6;
-  going on the air is H2 with the ring full and still; on an iPhone the
-  rail folds into the step pill.
+  going on the air is H2 with the ring full and still.
 - **"The result was sent"** on both outcomes (M8): no read receipt exists.
 
 ```gherkin
