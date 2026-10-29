@@ -7,10 +7,16 @@ and the user spec.
 
 ## Decided
 
-- **Proposed, not decided by the design:** "Hold your phone closer to the
-  till" and Bluetooth off in M1's no-host layout, Start disabled; "Mizan
-  till" for a host whose name has not arrived; on an
-  iPad the iPhone layout, centred, on every client screen.
+- Every state below keeps one layout: the rings or the failure mark in
+  one 240 pt slot, a one-line title, a subtitle held at two lines, and the
+  button in one place. A change of state moves nothing.
+- **Proposed, not decided:** hold closer reads "Hold closer" / "Hold the
+  phone right next to the host iPad, so Mizan can tell which one is
+  yours."; Bluetooth off shows its reason as the title, a slashed
+  Bluetooth icon, and "Turn on Bluetooth in Control Centre to find a
+  nearby host."; both with Start disabled. "Mizan till" for a host whose
+  name has not arrived. On an iPad the iPhone layout, centred, on every
+  client screen.
 
 ```gherkin
 Feature: The payer's screens before the amount
