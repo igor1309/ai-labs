@@ -101,8 +101,30 @@ Feature: Give five jaws back to their dinosaurs
     And synthesized snap, crunch and step sounds accompany the feedback
     And one socket fills with a white tooth
     And the tooth shines if there were no wrong tries on this jaw
-    And the next jaw enters before input unlocks
-    And after the fifth jaw all teeth shine and the result destination opens
+    And a button with a right arrow and the capitalized localized Next label appears in the tray
+    And Next stays disabled until the animation settles
+    And jaw placement stays locked while I read
+    When I press Next
+    Then the next jaw enters before input unlocks
+    And after Next on the fifth jaw all teeth shine and the result destination opens
+
+  Scenario: Correct feedback waits for the child
+    Given I have placed a jaw correctly at Paleontologist
+    When the snap, bites and walk away settle
+    And I spend several minutes reading
+    Then the same jaw fact remains visible
+    And the fact is not spoken again merely because the animation settled
+    And no new jaw or result appears until I press Next
+    When I rapidly press Next more than once
+    Then exactly one jaw is completed
+    And no extra jaw is answered or skipped
+
+  Scenario: Next supports keyboard and reduced motion
+    Given correct feedback is ready to read
+    Then Next can be activated with Space or Enter
+    And held keys cannot repeat Next
+    And reduced motion still waits for Next after its short fades
+    And Next remains disabled while the orientation gate covers play
 
   Scenario Outline: Wrong placement is playful and repeatable
     When I give <jaw> to <dinosaur>

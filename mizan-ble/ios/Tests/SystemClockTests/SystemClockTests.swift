@@ -29,7 +29,9 @@ struct SystemClockTests {
         }
     }
 
-    @Test func countdownRunsOut() async {
+    @Test func countdownRunsOutAgainstTheRealClock() async {
+        // Wall-clock wakes may be late on a loaded runner, and a late wake skips
+        // expired steps by contract, so exact values are pinned through a binding.
         let clock = SystemClock()
         let started = ContinuousClock.now
         var values: [Int] = []
@@ -38,8 +40,45 @@ struct SystemClockTests {
             values.append(value)
         }
 
-        #expect(values == [2, 1, 0])
+        #expect(values.last == 0)
+        #expect(values == values.sorted(by: >))
+        #expect(Set(values).count == values.count)
+        #expect(values.allSatisfy { (0..<3).contains($0) })
         #expect(started.duration(to: .now) >= .milliseconds(750))
+    }
+
+    @Test(arguments: RunOutCase.allCases)
+    func countdownRunsOut(wake: RunOutCase) async {
+        let binding = ManualClock()
+        let clock = SystemClock(now: { binding.now }, sleep: { try await binding.sleep(until: $0) })
+        let start = binding.now
+        let (acknowledgements, acknowledged) = AsyncStream<Void>.makeStream()
+        let driver = Task {
+            var requests: [Duration] = []
+            var acknowledgements = acknowledgements.makeAsyncIterator()
+            for await deadline in binding.requests {
+                requests.append(start.duration(to: deadline))
+                guard requests.count <= wake.times.count else {
+                    await binding.cancelSleep()
+                    break
+                }
+                await binding.advance(to: start.advanced(by: wake.times[requests.count - 1]))
+                guard await acknowledgements.next() != nil else { break }
+            }
+            return requests
+        }
+        var values: [Int] = []
+        for await value in clock.countdown(from: 3, every: .milliseconds(250)) {
+            values.append(value)
+            acknowledged.yield(())
+        }
+        binding.requestsContinuation.finish()
+        acknowledged.finish()
+        let requests = await driver.value
+
+        #expect(values == wake.values)
+        #expect(requests == wake.deadlines)
+        #expect(await binding.pendingSleeps == 0)
     }
 
     @Test func countdownStopsWhenReaderIsCancelled() async {
@@ -224,6 +263,32 @@ struct SystemClockTests {
             case .onTime, .fractionalStepLate: [.seconds(2), .seconds(4), .seconds(6), .seconds(8)]
             case .multipleStepsLate: [.seconds(2), .seconds(8)]
             case .pastDeadline: [.seconds(2)]
+            }
+        }
+    }
+
+    enum RunOutCase: CaseIterable, Sendable {
+        // `stepLate` is the CI run where the second wake landed at 750 ms or later.
+        case onTime, stepLate
+
+        var times: [Duration] {
+            switch self {
+            case .onTime: [.milliseconds(250), .milliseconds(500), .milliseconds(750)]
+            case .stepLate: [.milliseconds(250), .milliseconds(760)]
+            }
+        }
+
+        var values: [Int] {
+            switch self {
+            case .onTime: [2, 1, 0]
+            case .stepLate: [2, 0]
+            }
+        }
+
+        var deadlines: [Duration] {
+            switch self {
+            case .onTime: [.milliseconds(250), .milliseconds(500), .milliseconds(750)]
+            case .stepLate: [.milliseconds(250), .milliseconds(500)]
             }
         }
     }

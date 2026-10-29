@@ -4,6 +4,7 @@ import { HOME_GAMES } from "../src/HomePage.tsx";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
+import { JAW_AUDIO_KEY } from "../src/localJawAudio.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
 import { TURN_TIMING, appProps, drawnOpacity, extendPart, filterDoubleTaps, pageAnimations, turnFrame } from "../src/root.ts";
 import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser, quizSaved, rootInsets } from "./support.ts";
@@ -81,6 +82,12 @@ describe("the app in a browser", () => {
     const local = memoryStorage({ [PROGRESS_KEY]: record(6, 3) });
     const given = browser({ local });
     const game = appProps(given).whoseJaw!;
+    expect(game.audioStore.load()).toBeUndefined();
+    game.audioStore.save(true);
+    expect(local.items.get(JAW_AUDIO_KEY)).toBe("true");
+    expect(appProps(given).whoseJaw!.audioStore.load()).toBe(true);
+    game.audioStore.save(false);
+    expect(appProps(given).whoseJaw!.audioStore.load()).toBe(false);
     expect(game.total).toBe(16);
     expect(game.jaws).toHaveLength(16);
     for (const jaw of game.jaws) {
