@@ -20,7 +20,9 @@ section that binds it. Say what it does not know or do.>
    happened. A core: fakes of its interfaces and a fake clock. An
    adapter: the QA rows on the real binding, and its own logic through a
    fake of the binding passed to an internal init. A real-time test
-   asserts lower bounds and stream ends only.>
+   asserts lower bounds and stream ends only. A machine: reducer tests in
+   pairs, state and effect, through one-line `assert` helpers; handler
+   tests through spies.>
 5. `swift build` and `swift test` pass in `mizan-ble/ios`;
    `node --test scripts/tests/ci-workflow-paths.test.js` passes from the
    repo root. `mizan-ble/docs/log.md` gains this component's line only,
