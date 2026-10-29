@@ -5,6 +5,17 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct SessionTests {
 
+    @Test func successfulFolderResultKeepsItsIdentityInState() {
+        let folder = SessionCallFolder(id: "/calls/2026.10.24-1405 Zoom")
+        let state = SessionState(phase: .bringingUp, folder: .starting)
+        let (next, effect) = SessionReducer.reduce(state, .folderFinished(error: nil, folder: folder))
+        #expect(next.recordedFolder == folder)
+        #expect(next.folder == .up)
+        #expect(effect == .selectProcesses)
+        let (failed, _) = SessionReducer.reduce(state, .folderFinished(error: "denied"))
+        #expect(failed.recordedFolder == nil)
+    }
+
     @Test func reducerOrdersBringUpAndBringDown() {
 
         var state = SessionState()
