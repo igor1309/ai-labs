@@ -1,0 +1,22 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- assertVisible: "No host nearby"
+- tapOn: "Host"
+- extendedWaitUntil:
+    visible: "Lock & broadcast"
+    timeout: 15000
+- assertVisible: "Lock & broadcast"
+- tapOn:
+    id: "key 3"
+- tapOn:
+    id: "key 6"
+- tapOn:
+    id: "key 9"
+- assertVisible: "369 Mizan"
+- tapOn: "Client"
+- extendedWaitUntil:
+    visible: "No host nearby"
+    timeout: 15000
+- assertVisible: "No host nearby"

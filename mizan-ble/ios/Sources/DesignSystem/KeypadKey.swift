@@ -2,6 +2,10 @@ import SwiftUI
 
 /// A keypad digit or SF Symbol with the design's touch target.
 public struct KeypadKey: View {
+    public enum Size: CaseIterable, Sendable {
+        case regular, compact
+    }
+
     private enum Content {
         case digit(String)
         case icon(String, label: String)
@@ -9,14 +13,17 @@ public struct KeypadKey: View {
 
     private let content: Content
     private let action: () -> Void
+    private let size: Size
 
-    public init(_ digit: String, action: @escaping () -> Void) {
+    public init(_ digit: String, size: Size = .regular, action: @escaping () -> Void) {
         self.content = .digit(digit)
+        self.size = size
         self.action = action
     }
 
-    public init(systemImage: String, accessibilityLabel: String, action: @escaping () -> Void) {
+    public init(systemImage: String, accessibilityLabel: String, size: Size = .regular, action: @escaping () -> Void) {
         self.content = .icon(systemImage, label: accessibilityLabel)
+        self.size = size
         self.action = action
     }
 
@@ -31,7 +38,8 @@ public struct KeypadKey: View {
                         .frame(width: 34, height: 34).accessibilityLabel(label)
                 }
             }
-            .frame(width: 96, height: 88)
+            .frame(width: size == .regular ? 96 : nil, height: size == .regular ? 88 : Tokens.space12)
+            .frame(maxWidth: size == .compact ? .infinity : nil)
             .contentShape(RoundedRectangle(cornerRadius: Tokens.radiusMd))
         }
         .buttonStyle(KeyStyle())
