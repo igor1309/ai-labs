@@ -1,10 +1,19 @@
 import AVFoundation
 import Dispatch
 import Foundation
+import Synchronization
 
 // Test fixtures read and write files and launch processes, which block; the
-// cooperative pool must not run them, so tests await them on this serial queue.
-private let blockingWork = DispatchQueue(label: "audelin.tests.blocking")
+// cooperative pool must not run them, so tests await them on a few serial
+// queues taken in turn, which bounds the threads without queueing every test
+// behind one.
+private let blockingQueues = (0..<4).map { DispatchQueue(label: "audelin.tests.blocking.\($0)") }
+private let nextQueue = Atomic<UInt>(0)
+
+private var blockingWork: DispatchQueue {
+
+    blockingQueues[Int(nextQueue.wrappingAdd(1, ordering: .relaxed).oldValue % UInt(blockingQueues.count))]
+}
 
 /// Runs blocking test work outside the cooperative pool and awaits its result.
 public func offPool<Value: Sendable>(_ work: @escaping @Sendable () throws -> Value) async throws -> Value {
@@ -39,7 +48,8 @@ public func withCleanup<Value>(
 }
 
 /// Runs a child to its exit and returns its status. Cancellation stops the child
-/// and still awaits its exit, so no caller reads status or removes files under a live child.
+/// and still returns only its real status once it has exited, so no caller reads
+/// status or removes files under a live child.
 public func exitStatus(of process: Process) async throws -> Int32 {
 
     try await exitStatus(
@@ -69,9 +79,7 @@ public func exitStatus(
         var iterator = ended.stream.makeAsyncIterator()
         return await iterator.next() ?? -1
     }
-    let status = await withTaskCancellationHandler { await reaped.value } onCancel: { stop() }
-    try Task.checkCancellation()
-    return status
+    return await withTaskCancellationHandler { await reaped.value } onCancel: { stop() }
 }
 
 /// An audio file's format and its first channel.
