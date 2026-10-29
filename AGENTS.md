@@ -71,11 +71,12 @@
   count.
 - A check that fails or is slow (`-race`, a timeout, a required test) is
   kept: cut the work it checks, do not loosen the check.
-- Swift: never wait on future work from the cooperative pool (no semaphore,
-  `NSCondition`, group wait or queue `sync` on async work; no lock held across
-  `await`). Project policy goes further: blocking I/O, `Process` launches and
-  Core Audio HAL calls run on a dedicated serial queue or executor and are
-  awaited, however short; a slow CI runner is no excuse.
+- Swift: never synchronously block a cooperative-pool thread waiting for
+  future work (no semaphore, `NSCondition`, group wait or queue `sync` on
+  async work; no lock held across `await`). Project policy goes further:
+  blocking I/O, `Process` launches and Core Audio HAL calls run on an executor
+  backed by a dedicated serial queue or thread and are awaited, however short;
+  a slow CI runner is no excuse.
 
 ## State machines
 
