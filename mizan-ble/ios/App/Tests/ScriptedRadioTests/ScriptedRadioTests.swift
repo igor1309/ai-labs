@@ -7,6 +7,30 @@ import MessageCodec
 @testable import ScriptedRadio
 
 @MainActor @Suite struct ScriptedRadioTests {
+    @Test func factoryStampsReadingsFromGivenTimeSource() async {
+        var settings = Settings()
+        settings.hosts[0].readings = [.init(time: 1, rssi: -70)]
+        let scheduler = ManualClock()
+        let time = TimeSource()
+        let pair = scriptedRadios(source: Source(settings), clock: time,
+                                  schedule: scheduler.schedule, log: LogSpy(),
+                                  recorder: AirRecorder(append: { _ in }))
+        defer { pair.client.stopScanning() }
+        var events = pair.client.events.makeAsyncIterator()
+        #expect(await events.next() == .bluetooth(.on))
+        pair.client.startScanning()
+        for stamp in [42.0, 43.5] {
+            time.setTime(stamp)
+            scheduler.advance(stamp == 42 ? 1 : ScriptedClient.repeatInterval)
+            guard case .reading(_, _, let rssi, let timestamp) = await events.next() else {
+                Issue.record("Expected a scripted reading")
+                return
+            }
+            #expect(rssi == -70)
+            #expect(timestamp == stamp)
+        }
+    }
+
     @Test func amountIsSealedBeforeDeliveryLoss() async throws {
         var settings = Settings()
         settings.hosts[0].drop = .beforeAmountArrives

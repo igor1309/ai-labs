@@ -6,6 +6,19 @@ import SessionCrypto
 import Testing
 @testable import ScriptedRadio
 
+final class TimeSource: ClockPort, @unchecked Sendable {
+    private let lock = NSLock()
+    private var time = 0.0
+    func now() -> Double { lock.withLock { time } }
+    func setTime(_ value: Double) { lock.withLock { time = value } }
+    func countdown(from count: Int, every interval: Duration) -> AsyncStream<Int> {
+        AsyncStream { $0.finish() }
+    }
+    func ticks(every interval: Duration) -> AsyncStream<Double> {
+        AsyncStream { $0.finish() }
+    }
+}
+
 @MainActor final class Source: SettingsSource {
     var result: SettingsResult
     private var outputs: [AsyncStream<SettingsResult>.Continuation] = []

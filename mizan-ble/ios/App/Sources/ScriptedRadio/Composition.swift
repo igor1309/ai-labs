@@ -3,10 +3,20 @@ import Dispatch
 import Root
 import ScriptedSettings
 
-@MainActor public func scriptedRadios(settingsPath: String, log: any LogSink) -> RadioPair {
+@MainActor public func scriptedRadios(settingsPath: String, clock: any ClockPort, log: any LogSink) -> RadioPair {
     let file = AirFile(path: URL.documentsDirectory.appending(path: "air-recording.jsonl"))
     return scriptedRadios(source: SettingsLoader(path: settingsPath, changes: DirectoryChanges()),
-                          clock: RealtimeClock(), log: log, recorder: AirRecorder(append: file.append))
+                          clock: clock, schedule: { TimerStep(seconds: $0, action: $1) },
+                          log: log, recorder: AirRecorder(append: file.append))
+}
+
+@MainActor func scriptedRadios(
+    source: any SettingsSource, clock: any ClockPort,
+    schedule: @escaping (Double, @escaping @MainActor () -> Void) -> any ScheduledStep,
+    log: any LogSink, recorder: AirRecorder
+) -> RadioPair {
+    scriptedRadios(source: source, clock: RealtimeClock(now: { clock.now() }, schedule: schedule),
+                   log: log, recorder: recorder)
 }
 
 @MainActor func scriptedRadios(source: any SettingsSource, clock: any RadioClock, log: any LogSink, recorder: AirRecorder) -> RadioPair {
@@ -56,13 +66,16 @@ import ScriptedSettings
 }
 
 @MainActor private final class RealtimeClock: RadioClock {
-    private let origin = ContinuousClock.now
-    var now: Double {
-        let elapsed = origin.duration(to: ContinuousClock.now).components
-        return Double(elapsed.seconds) + Double(elapsed.attoseconds) / 1e18
+    private let readNow: () -> Double
+    private let scheduleStep: (Double, @escaping @MainActor () -> Void) -> any ScheduledStep
+    init(now: @escaping () -> Double,
+         schedule: @escaping (Double, @escaping @MainActor () -> Void) -> any ScheduledStep) {
+        readNow = now
+        scheduleStep = schedule
     }
+    var now: Double { readNow() }
     func schedule(after seconds: Double, _ action: @escaping @MainActor () -> Void) -> any ScheduledStep {
-        TimerStep(seconds: seconds, action: action)
+        scheduleStep(seconds, action)
     }
 }
 
