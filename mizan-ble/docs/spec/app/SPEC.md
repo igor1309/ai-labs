@@ -18,8 +18,13 @@ the user spec (`../SPEC.md`).
   transaction waits and gets the transaction's end; a flow in the middle
   is ended.
 - **Logging is `os.Logger`,** subsystem `mizan-ble`, one category per
-  decorated interface; amounts, keys and plaintext are never logged, only
-  kinds, counters, lengths and states.
+  decorated interface, written through a sink the tests can read. A line
+  holds kinds, counters, lengths, phases and case names only: never an
+  amount, a key, a nonce, a message's plaintext or ciphertext, or a peer
+  or device identifier, in any form, and any value put into a line is
+  `.private` unless it is one of those. Each state type gives its own
+  redacted description, so a field added later is not silently dropped
+  or leaked.
 - **Bluetooth permission text** names payments to a nearby till:
   `NSBluetoothAlwaysUsageDescription` is "Mizan BLE uses Bluetooth to pay
   a nearby till, or to be the till."
