@@ -180,11 +180,7 @@ public final class AudelinMenu {
     public func appReopened() {
 
         guard !quitting else { return }
-        if panelPresence.recordingID != nil {
-            receivePanelPresence(.appReopen)
-        } else {
-            calls?.show()
-        }
+        receivePanelPresence(.appReopen)
     }
 
     public func sendPanel(_ event: PanelEvent) async {
@@ -212,6 +208,8 @@ public final class AudelinMenu {
             case let .hide(reason):
                 presentPanel(false)
                 sink.write(.init(category: .panel, message: "hidden reason=\(reason.rawValue)"))
+            case .showCalls:
+                calls?.show()
             case .cancelDelay:
                 hideDelay?.cancel()
                 hideDelay = nil

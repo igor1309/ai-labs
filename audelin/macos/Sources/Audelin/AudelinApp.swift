@@ -112,20 +112,13 @@ struct AudelinApp: App {
 @MainActor
 final class AudelinAppDelegate: NSObject, NSApplicationDelegate {
 
-    var reopen: (() -> Void)? {
-        didSet {
-            if pendingReopen, let reopen {
-                pendingReopen = false
-                reopen()
-            }
-        }
-    }
-    private var pendingReopen = false
+    /// Unset while the app starts: a reopen then is the launch itself, and
+    /// recording's state is not known yet to choose a window.
+    var reopen: (() -> Void)?
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
 
-        if let reopen { reopen() }
-        else { pendingReopen = true }
+        reopen?()
         return true
     }
 }

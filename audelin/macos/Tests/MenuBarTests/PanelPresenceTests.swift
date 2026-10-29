@@ -13,7 +13,7 @@ struct PanelPresenceTests {
         let (ended, _) = PanelPresence.reduce(hidden, .recordingChanged(nil))
         for state in [initial, ending, ended] {
             assert(state, .appReopen, reducedTo: state)
-            assert(state, .appReopen, effects: [])
+            assert(state, .appReopen, effects: [.showCalls])
         }
         for state in [shown, reopened] {
             assert(state, .appReopen, reducedTo: state)

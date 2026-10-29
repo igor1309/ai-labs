@@ -19,6 +19,8 @@ public struct PanelPresence: Equatable, Sendable {
         case show(Reason), hide(Reason)
         case hideAfter(seconds: Int, generation: UInt64)
         case cancelDelay
+        /// Opening the app again between calls shows the calls list.
+        case showCalls
     }
 
     public enum Reason: String, Equatable, Sendable {
@@ -52,7 +54,7 @@ public struct PanelPresence: Equatable, Sendable {
             effects.append(.show(.menuReopen))
         case .appReopen:
             // Shown again even when visible, so the panel comes forward.
-            guard state.recordingID != nil else { return (state, []) }
+            guard state.recordingID != nil else { return (state, [.showCalls]) }
             next.visible = true
             effects.append(.show(.appReopen))
         case let .delayElapsed(generation):
