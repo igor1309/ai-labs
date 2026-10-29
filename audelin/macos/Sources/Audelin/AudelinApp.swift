@@ -61,7 +61,7 @@ struct AudelinApp: App {
         panel.install(content: NSHostingView(rootView: PanelContent(model: model)), onClose: { [weak model] in
             model?.panelClosed()
         })
-        appDelegate.reopen = { [weak model] in model?.appReopened() }
+        appDelegate.connect(model)
     }
 
     init() {
@@ -115,6 +115,11 @@ final class AudelinAppDelegate: NSObject, NSApplicationDelegate {
     /// Unset while the app starts: a reopen then is the launch itself, and
     /// recording's state is not known yet to choose a window.
     var reopen: (() -> Void)?
+
+    func connect(_ menu: AudelinMenu) {
+
+        reopen = { [weak menu] in menu?.appReopened() }
+    }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
 

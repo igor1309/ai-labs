@@ -28,7 +28,9 @@ struct CallsWiringTests {
             didDeliver: {}, sink: CallsLog(), presentPanel: { _ in Issue.record("No recording panel between calls") },
             sleep: { _ in Issue.record("No hide delay between calls") }, calls: controller)
         await menu.waitForObservers()
-        menu.appReopened()
+        let delegate = AudelinAppDelegate()
+        delegate.connect(menu)
+        #expect(delegate.applicationShouldHandleReopen(.shared, hasVisibleWindows: false))
         await wait(controller) { !$0.busy && $0.rows.map(\.id) == ["A"] }
         spy.calls.withLock { $0 = [call("B")] }
         menu.appReopened()
