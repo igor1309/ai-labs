@@ -97,7 +97,8 @@ class Runner:
 
     def setup(self):
         self.pins['Commit'] = self.output(['git', '-C', self.root, 'rev-parse', 'HEAD'])
-        self.pins['Dirty'] = str(bool(self.output(['git', '-C', self.root, 'status', '--porcelain'])))
+        # The run's own report is not a change to what it runs.
+        self.pins['Dirty'] = str(bool(self.output(['git', '-C', self.root, 'status', '--porcelain', '--', ':(top)', ':(exclude)runs'])))
         self.pins['Xcode'] = self.output(['xcodebuild', '-version']).replace('\n', ' ')
         self.pins['Maestro'] = self.output(['maestro', '--version']).replace('\n', ' ')
         env = dict(os.environ, CLANG_MODULE_CACHE_PATH=str(self.build / 'module-cache'),

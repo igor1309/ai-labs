@@ -132,6 +132,16 @@ class LaneRunTests(unittest.TestCase):
             self.assertIn('install', report)
             self.assertIn('screenshot failed', report)
 
+    def test_dirty_pin_leaves_out_the_runs_own_reports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / 'maestro'
+            spy = Commands(Path(directory), False)
+            runner.Runner(root, spy, '2026-10-29-1205', lambda: 1).run([])
+            status = [c for c in spy.calls if c[0] == 'git' and 'status' in c]
+            self.assertEqual(len(status), 1)
+            self.assertIn(':(top)', status[0])
+            self.assertIn(':(exclude)runs', status[0])
+
     def test_cleanup_failure_makes_the_run_fail(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / 'maestro'
