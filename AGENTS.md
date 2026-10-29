@@ -66,6 +66,9 @@
 - Fix the root cause in the issue's own PR. No stopgap with a follow-up
   issue where the cause can be fixed now.
 - A PR closes the issue it names, whole.
+- Fix review findings in code and flaky tests at their cause before a PR is
+  marked ready. "It flaked before this branch" and doc-only rewording do not
+  count.
 - A check that fails or is slow (`-race`, a timeout, a required test) is
   kept: cut the work it checks, do not loosen the check.
 
