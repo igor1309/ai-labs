@@ -109,5 +109,4 @@ private struct SwitchObservedSide: Side {
         await side.setEnabled(enabled)
     }
     func stop() async { await side.stop() }
-    func abandon() async { await side.abandon() }
 }

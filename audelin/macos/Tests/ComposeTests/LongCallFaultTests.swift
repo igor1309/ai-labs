@@ -51,10 +51,10 @@ struct LongCallFaultTests {
         }
     }
 
-    /// When either side's text fails, Live text ends for the call; the panel
-    /// says so, the recording goes on whole, and the transcript keeps every
-    /// word heard until then.
-    @Test func aRecogniserFailingMidCallShowsInThePanelAndTheRecordingGoesOn() async throws {
+    /// When one side's text fails, the panel says so, the recording goes on
+    /// whole, the transcript keeps that side's words heard until then, and
+    /// the other side's text goes on to the end of the call.
+    @Test func aRecogniserFailingMidCallShowsInThePanelAndTheOtherSideGoesOn() async throws {
 
         let speaking = SpeakingRecognizer(name: "mine", sentence: 8, pause: 4, offset: 0)
         let mine = FailingRecognizer(speaking, afterSamples: Int(30 * 48_000.0))
@@ -69,7 +69,9 @@ struct LongCallFaultTests {
             await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
 
-            let (micSent, callSent) = try await feed(seconds: 60, to: rig) { _, _ in }
+            let (micSent, callSent) = try await feed(seconds: 60, to: rig) { _, call in
+                try await waitUntil("their recogniser hears \(call) samples") { await theirs.heardSamples >= call }
+            }
             let during = try await rig.state { _ in true }
 
             await rig.session.send(.end)
@@ -82,11 +84,14 @@ struct LongCallFaultTests {
             #expect(try await recordedFrames(folder.appendingPathComponent("microphone.caf")) == micSent + 3)
             #expect(try await recordedFrames(folder.appendingPathComponent("call.caf")) == callSent + 3)
             let transcript = try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
-            for side in ["mine", "theirs"] {
-                let heard = tokens(transcript).filter { $0.hasPrefix(side) && $0.dropFirst(side.count).allSatisfy(\.isNumber) }
-                #expect(!heard.isEmpty, "the transcript kept none of \(side)")
-                #expect(heard == (0..<heard.count).map { "\(side)\($0 + 1)" }, "the transcript lost or repeated \(side) before the failure")
+            let words = { (side: String) in
+                tokens(transcript).filter { $0.hasPrefix(side) && $0.dropFirst(side.count).allSatisfy(\.isNumber) }
             }
+            let mineHeard = words("mine")
+            #expect(!mineHeard.isEmpty, "the transcript kept none of mine")
+            #expect(mineHeard == (0..<mineHeard.count).map { "mine\($0 + 1)" }, "the transcript lost or repeated mine before the failure")
+            // Their side goes on after mine fails.
+            #expect(words("theirs") == (1...(await theirs.words)).map { "theirs\($0)" }, "the transcript lost or repeated theirs")
         }
     }
 }

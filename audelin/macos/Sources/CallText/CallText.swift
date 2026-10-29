@@ -1,4 +1,5 @@
 /// Combines two sides' text, marking whose it is and switching them together.
+/// A side whose text fails leaves the other side going.
 public actor CallText {
 
     public nonisolated let updates: AsyncStream<State>
@@ -9,7 +10,6 @@ public actor CallText {
     private var snapshots = [SideState](repeating: .init(status: .off, entries: []), count: 2)
     private var listeners: [Task<Void, Never>] = []
     private var endedSides = [false, false]
-    private var abandoning: Task<Void, Never>?
     private var stopping: Task<Void, Never>?
     private var switching: Task<Void, Never>?
     private var started = false
@@ -48,13 +48,13 @@ public actor CallText {
         guard started, !ended, stopping == nil, self.enabled != enabled else { return }
         self.enabled = enabled
         snapshots = snapshots.map { snapshot in
-            .init(status: snapshot.status == .finished ? .finished : (enabled ? .gettingReady : .off), entries: snapshot.entries)
+            .init(status: snapshot.ended ? snapshot.status : (enabled ? .gettingReady : .off), entries: snapshot.entries)
         }
         publish()
         // Side calls suspend, so each switch must wait for earlier propagation.
         let operation = Task { [sides, previous = switching] in
             await previous?.value
-            for (index, side) in sides.enumerated() where self.snapshots[index].status != .finished {
+            for (index, side) in sides.enumerated() where !self.snapshots[index].ended {
                 await side.setEnabled(enabled)
             }
         }
@@ -71,7 +71,6 @@ public actor CallText {
             await withTaskGroup(of: Void.self) { group in
                 for side in sides { group.addTask { await side.stop() } }
             }
-            await self.abandoning?.value
             for listener in self.listeners { await listener.value }
             self.finish()
         }
@@ -84,19 +83,6 @@ public actor CallText {
         guard !ended else { return }
         snapshots[index] = snapshot
         publish()
-        if case .failed = snapshot.status, abandoning == nil {
-            // The other side's audio may remain open after text fails.
-            let other = sides[1 - index]
-            let abandonment = Task { await other.abandon() }
-            abandoning = abandonment
-            if stopping == nil {
-                stopping = Task {
-                    await abandonment.value
-                    for listener in self.listeners { await listener.value }
-                    self.finish()
-                }
-            }
-        }
     }
 
     private func sideEnded(on index: Int) {
@@ -144,5 +130,16 @@ public actor CallText {
 
         for listener in listeners { listener.cancel() }
         continuation.finish()
+    }
+}
+
+private extension SideState {
+
+    /// A side that finished or failed takes no more switches.
+    var ended: Bool {
+        switch status {
+        case .finished, .failed: true
+        case .off, .gettingReady, .listening: false
+        }
     }
 }

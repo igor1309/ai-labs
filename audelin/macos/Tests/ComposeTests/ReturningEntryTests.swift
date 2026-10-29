@@ -106,7 +106,6 @@ private final class StallingSide: Side, Sendable {
     func start(enabled: Bool) async { await side.start(enabled: enabled) }
     func setEnabled(_ enabled: Bool) async { await side.setEnabled(enabled) }
     func stop() async { await side.stop() }
-    func abandon() async { await side.abandon() }
 }
 
 /// Answers each hearing with the next scripted text, then keeps the last.

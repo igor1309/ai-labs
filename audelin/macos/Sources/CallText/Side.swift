@@ -7,7 +7,6 @@ public protocol Side: Sendable {
     func start(enabled: Bool) async
     func setEnabled(_ enabled: Bool) async
     func stop() async
-    func abandon() async
 }
 
 public struct SideState: Equatable, Sendable {

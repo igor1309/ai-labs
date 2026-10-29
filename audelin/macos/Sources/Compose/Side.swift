@@ -45,7 +45,6 @@ struct CallSide: CallText.Side {
     func setEnabled(_ enabled: Bool) async { await side.setEnabled(enabled) }
 
     func stop() async { await side.stop() }
-    func abandon() async { await side.abandon() }
 
     func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async {
 
