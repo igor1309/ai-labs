@@ -35,21 +35,17 @@ struct NemotronRecognizerTests {
                 ScriptedDecoder([[DecodedToken("▁\(model)", start: 0.1, end: 0.4)]])
             }
         )
-        let original = NemotronRecognizer.decoders.withLock { $0 }
-        defer { NemotronRecognizer.decoders.withLock { $0 = original } }
         let (building, arrivals) = AsyncStream<Void>.makeStream()
         defer { arrivals.finish() }
-        NemotronRecognizer.decoders.withLock {
-            $0 = {
-                arrivals.yield(())
-                return try await makeDecoder()
-            }
+        let build: @Sendable () async throws -> NemotronRecognizer = {
+            arrivals.yield(())
+            return NemotronRecognizer(decoder: try await makeDecoder())
         }
         let recognizers = 4
 
         let built = try await withThrowingTaskGroup(of: NemotronRecognizer.self) { group in
             for _ in 0..<recognizers {
-                group.addTask { try await NemotronRecognizer() }
+                group.addTask { try await build() }
             }
             var entries = building.makeAsyncIterator()
             for _ in 0..<recognizers { await entries.next() }
