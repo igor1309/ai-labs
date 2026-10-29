@@ -6,7 +6,7 @@ let package = Package(
     platforms: [.macOS(.v26)],
     dependencies: [.package(path: "..")],
     targets: [
-        .target(name: "PreviewKit"),
+        .target(name: "PreviewKit", dependencies: [.product(name: "DesignSystem", package: "ios")]),
         .executableTarget(
             name: "ClientPaymentPreview",
             dependencies: [
