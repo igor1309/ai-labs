@@ -97,6 +97,13 @@ private extension Transcript {
         var ranges: [EntryRange] = []
 
         private var tokens: GlassLedger { style.tokens }
+        /// A long log asks for the same few fonts and paragraph styles on
+        /// every update; making each anew was most of an update's cost (LAB-759).
+        private var fonts: [FontKey: NSFont] = [:]
+        private var paragraphs: [ParagraphKey: NSParagraphStyle] = [:]
+
+        private struct FontKey: Hashable { let size: CGFloat; let weight: CGFloat }
+        private struct ParagraphKey: Hashable { let size: CGFloat; let indent: CGFloat; let spacing: CGFloat }
 
         init(style: Style) {
 
@@ -188,9 +195,13 @@ private extension Transcript {
 
         private func font(_ size: CGFloat, _ weight: NSFont.Weight = .regular) -> NSFont {
 
+            let key = FontKey(size: size, weight: weight.rawValue)
+            if let font = fonts[key] { return font }
             let descriptor = NSFontDescriptor(fontAttributes: [.family: tokens.fontData])
                 .addingAttributes([.traits: [NSFontDescriptor.TraitKey.weight: weight]])
-            return NSFont(descriptor: descriptor, size: size) ?? .monospacedSystemFont(ofSize: size, weight: weight)
+            let font = NSFont(descriptor: descriptor, size: size) ?? .monospacedSystemFont(ofSize: size, weight: weight)
+            fonts[key] = font
+            return font
         }
 
         /// Fixed-height lines put their extra space above the glyphs; lifting
@@ -204,6 +215,8 @@ private extension Transcript {
         /// below the glyphs as the SwiftUI log does.
         private func paragraph(size: CGFloat, indent: CGFloat, spacing: CGFloat) -> NSParagraphStyle {
 
+            let key = ParagraphKey(size: size, indent: indent, spacing: spacing)
+            if let style = paragraphs[key] { return style }
             let style = NSMutableParagraphStyle()
             let height = (size * self.style.config.lineHeight).rounded()
             style.minimumLineHeight = height
@@ -216,6 +229,7 @@ private extension Transcript {
                 NSTextTab(textAlignment: .left, location: time + tokens.space8),
                 NSTextTab(textAlignment: .left, location: indent),
             ]
+            paragraphs[key] = style
             return style
         }
     }
