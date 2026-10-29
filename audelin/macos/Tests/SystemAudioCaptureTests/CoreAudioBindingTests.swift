@@ -1,3 +1,4 @@
+import BlockingTestWork
 import AVFAudio
 import CoreAudio
 import Foundation
@@ -56,7 +57,7 @@ struct CoreAudioBindingTests {
         let deadline = now() + .seconds(30)
         var object: UInt32?
         repeat {
-            object = try? binding.processObject(pid)
+            object = try? await offPool { try binding.processObject(pid) }
             if object != nil { break }
             try await pause()
         } while now() < deadline
@@ -102,7 +103,7 @@ struct CoreAudioBindingTests {
         let player = Process()
         player.executableURL = URL(fileURLWithPath: "/bin/sh")
         player.arguments = ["-c", "trap '' TERM; sleep 60"]
-        try player.run()
+        try await offPool { try player.run() }
         try await Task.sleep(for: .milliseconds(200))
         let started = ContinuousClock.now
         await Self.end(player)
@@ -117,15 +118,15 @@ struct CoreAudioBindingTests {
     private func withPlayer(_ body: (Int32) async throws -> Void) async throws {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
+        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        defer { afterwards { try? FileManager.default.removeItem(at: directory) } }
         let sound = directory.appendingPathComponent("tone.wav")
-        try writeTone(to: sound)
+        try await writeTone(to: sound)
         let player = Process()
         player.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
         // A tap hears the process after its own volume, so the tone plays faintly, not at 0.
         player.arguments = ["-v", "0.02", sound.path]
-        try player.run()
+        try await offPool { try player.run() }
         do {
             try await body(player.processIdentifier)
         } catch {
@@ -148,18 +149,23 @@ struct CoreAudioBindingTests {
         if player.isRunning, kill(pid, 0) == 0 { kill(pid, SIGKILL) }
     }
 
-    private func writeTone(to sound: URL) throws {
+    private func writeTone(to sound: URL) async throws {
 
-        let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 1))
-        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 48_000 * 40))
-        buffer.frameLength = buffer.frameCapacity
-        let data = try #require(buffer.floatChannelData?[0])
-        for index in 0..<Int(buffer.frameLength) {
-            data[index] = Float(0.25 * sin(2 * .pi * 440 * Double(index) / 48_000))
+        try await offPool {
+            guard let format = AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 1),
+                  let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 48_000 * 40),
+                  let data = buffer.floatChannelData?[0]
+            else { throw ToneUnavailable() }
+            buffer.frameLength = buffer.frameCapacity
+            for index in 0..<Int(buffer.frameLength) {
+                data[index] = Float(0.25 * sin(2 * .pi * 440 * Double(index) / 48_000))
+            }
+            let file = try AVAudioFile(forWriting: sound, settings: format.settings)
+            try file.write(from: buffer)
         }
-        let file = try AVAudioFile(forWriting: sound, settings: format.settings)
-        try file.write(from: buffer)
     }
 }
 
 private struct ToneTimedOut: Error {}
+
+private struct ToneUnavailable: Error {}

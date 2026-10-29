@@ -13,7 +13,7 @@ struct TranscriptFileCrashTests {
             let url = folder.appendingPathComponent("transcript.md")
             let executable = Bundle(for: TranscriptFileTestBundle.self).bundleURL
                 .deletingLastPathComponent().appendingPathComponent("TranscriptFileCrashWriter")
-            let command = try TranscriptCommand(executable, [url.path, point])
+            let command = try await TranscriptCommand(executable, [url.path, point])
             do {
                 try await withTaskCancellationHandler {
                     var pending = Data()
@@ -32,15 +32,15 @@ struct TranscriptFileCrashTests {
                     command.kill()
                     #expect(await command.finish() == SIGKILL)
                     #expect(command.process.terminationReason == .uncaughtSignal)
-                    #expect(try transcriptText(url) == numberedTranscript(point == "before" ? 2 : 3))
-                    let leftovers = try folderNames(folder).filter { $0 != "transcript.md" }
+                    #expect(try await transcriptText(url) == numberedTranscript(point == "before" ? 2 : 3))
+                    let leftovers = try await folderNames(folder).filter { $0 != "transcript.md" }
                     #expect(leftovers.count == (point == "before" ? 1 : 0))
                     let other = folder.appendingPathComponent("another.md")
                     let file = try await TranscriptFile(url: other)
                     try await file.write(numberedSegments(4))
                     await file.close()
-                    #expect(try transcriptText(other) == numberedTranscript(4))
-                    #expect(try transcriptText(url) == numberedTranscript(point == "before" ? 2 : 3))
+                    #expect(try await transcriptText(other) == numberedTranscript(4))
+                    #expect(try await transcriptText(url) == numberedTranscript(point == "before" ? 2 : 3))
                 } onCancel: {
                     command.kill()
                 }

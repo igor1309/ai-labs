@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Session
 import Testing
@@ -26,7 +27,7 @@ struct SessionFailureTests {
                     guard let effect else { break }
                     event = await handler.handle(effect)
                     if case .createFolder = effect {
-                        try Data("existing track".utf8).write(to: blocked)
+                        try await offPool { try Data("existing track".utf8).write(to: blocked) }
                     }
                 }
                 #expect(state.phase == (command == .end ? .ended : .recording))
@@ -48,7 +49,7 @@ struct SessionFailureTests {
             }
             #expect(rig.microphone.starts.all == (side == .microphone ? [] : [true]))
             #expect(rig.call.starts.all == (side == .call ? [] : [true]))
-            #expect(try String(contentsOf: blocked, encoding: .utf8) == "existing track")
+            #expect(try await offPool { try String(contentsOf: blocked, encoding: .utf8) } == "existing track")
             let otherName = side == .microphone ? "call.caf" : "microphone.caf"
             #expect(try recordedSamples(folder.appendingPathComponent(otherName))
                 == (side == .microphone ? [-0.25, 0.5, -0.125] : [0.25, -0.5, 0.125]))

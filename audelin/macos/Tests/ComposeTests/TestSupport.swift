@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import LiveText
 import Synchronization
@@ -6,12 +7,12 @@ import Testing
 func withComposeFolder(_ body: (URL) async throws -> Void) async throws {
 
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("compose-test-\(UUID())")
-    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
-    defer {
-        do { try FileManager.default.removeItem(at: folder) }
-        catch { Issue.record(error) }
-    }
-    try await body(folder)
+    try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false) }
+    let outcome: Result<Void, any Error>
+    do { outcome = .success(try await body(folder)) } catch { outcome = .failure(error) }
+    do { try await offPool { try FileManager.default.removeItem(at: folder) } }
+    catch { Issue.record(error) }
+    try outcome.get()
 }
 
 final class Values<Value: Sendable>: Sendable {
@@ -90,4 +91,11 @@ actor ScriptRecognizer: Recognizer {
         guard !endings.isEmpty else { throw ScriptFailure.failed }
         return try endings.removeFirst().get()
     }
+}
+
+/// Whether a directory exists at the path; blocking, so callers run it off the pool.
+@Sendable func isFolder(_ path: String) -> Bool {
+
+    var directory: ObjCBool = false
+    return FileManager.default.fileExists(atPath: path, isDirectory: &directory) && directory.boolValue
 }

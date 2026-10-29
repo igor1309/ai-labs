@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Session
 import Testing
@@ -109,9 +110,9 @@ struct SessionDrainTests {
                 stopped.append(true)
                 let url = folder.appendingPathComponent("transcript.md")
                 let expected = "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n"
-                #expect(try String(contentsOf: url, encoding: .utf8) == expected)
+                #expect(try await offPool { try String(contentsOf: url, encoding: .utf8) } == expected)
                 try await rig.pieces.transcript.close()
-                #expect(try String(contentsOf: url, encoding: .utf8) == expected)
+                #expect(try await offPool { try String(contentsOf: url, encoding: .utf8) } == expected)
             }
         }
         defer { snapshot.release(); executor.run() }

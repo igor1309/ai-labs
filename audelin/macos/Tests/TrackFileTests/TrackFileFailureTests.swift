@@ -13,7 +13,7 @@ struct TrackFileFailureTests {
             let url = folder.appendingPathComponent("track.caf")
             let executable = Bundle(for: TrackFileTestBundle.self).bundleURL
                 .deletingLastPathComponent().appendingPathComponent("TrackFileCrashWriter")
-            let command = try TrackCommand(executable.path, [url.path, String(rate), String(chunkSize)])
+            let command = try await TrackCommand(executable.path, [url.path, String(rate), String(chunkSize)])
             do {
                 try await withTaskCancellationHandler {
                     var text = ""
@@ -45,7 +45,7 @@ struct TrackFileFailureTests {
                     try #require(samples.count >= acknowledgedCount)
                     try #require(samples.count <= expected.count)
                     expectSamples(samples, Array(expected.prefix(samples.count)))
-                    #expect(try dataChunkLength(url) == -1)
+                    #expect(try await dataChunkLength(url) == -1)
                     try await expectAfinfo(url, frames: samples.count)
                 } onCancel: {
                     command.kill()

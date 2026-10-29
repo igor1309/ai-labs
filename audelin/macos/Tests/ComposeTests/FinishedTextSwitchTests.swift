@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Testing
 import TranscriptFile
@@ -79,11 +80,11 @@ struct FinishedTextSwitchTests {
                 if finishedTextSeen { #expect(entries == retained) }
                 try await transcript.write(Transcript.segments(from: state))
                 if finishedTextSeen {
-                    #expect(try String(contentsOf: url, encoding: .utf8).contains("first last"))
+                    #expect(try await offPool { try String(contentsOf: url, encoding: .utf8) }.contains("first last"))
                 }
             }
             #expect(finishedTextSeen)
-            #expect(try String(contentsOf: url, encoding: .utf8).contains("continuing"))
+            #expect(try await offPool { try String(contentsOf: url, encoding: .utf8) }.contains("continuing"))
             await transcript.close()
         }
     }

@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Testing
 @testable import TrackFile
@@ -73,7 +74,7 @@ struct TrackFileTests {
             for number in 1...3 { try await track.write(tone(number), sampleRate: 48_000) }
             try await track.close()
             try await expectPlayable(url, tones: 3)
-            #expect(try dataChunkLength(url) == 4 + 3 * 48_000 * 2)
+            #expect(try await dataChunkLength(url) == 4 + 3 * 48_000 * 2)
             await #expect(throws: TrackFile.Failure.writingEnded) {
                 try await track.write(tone(4), sampleRate: 48_000)
             }
@@ -100,14 +101,14 @@ struct TrackFileTests {
         try await withTrackFolder { folder in
             let missing = folder.appendingPathComponent("missing/track.caf")
             await #expect(throws: (any Error).self) { try await TrackFile(url: missing) }
-            #expect(!FileManager.default.fileExists(atPath: missing.path))
+            #expect(await offPool { !FileManager.default.fileExists(atPath: missing.path) })
             let locked = folder.appendingPathComponent("locked", isDirectory: true)
-            try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false)
-            try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
-            defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
+            try await offPool { try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false) }
+            try await offPool { try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path) }
+            defer { afterwards { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) } }
             let url = locked.appendingPathComponent("track.caf")
             await #expect(throws: (any Error).self) { try await TrackFile(url: url) }
-            #expect(!FileManager.default.fileExists(atPath: url.path))
+            #expect(await offPool { !FileManager.default.fileExists(atPath: url.path) })
         }
     }
 
@@ -123,7 +124,7 @@ struct TrackFileTests {
                     makeConversion: { try CompleteConversion(inputRate: $0) }
                 )
             }
-            #expect(!FileManager.default.fileExists(atPath: url.path))
+            #expect(await offPool { !FileManager.default.fileExists(atPath: url.path) })
             let track = try await TrackFile(url: url)
             try await track.write(tone(1), sampleRate: 48_000)
             try await track.close()
@@ -136,12 +137,12 @@ struct TrackFileTests {
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("kept.caf")
             let bytes = Data("a kept recording".utf8)
-            try bytes.write(to: url)
+            try await offPool { try bytes.write(to: url) }
             let link = folder.appendingPathComponent("link.caf")
-            try FileManager.default.createSymbolicLink(at: link, withDestinationURL: url)
+            try await offPool { try FileManager.default.createSymbolicLink(at: link, withDestinationURL: url) }
             for path in [url, link] {
                 await #expect(throws: (any Error).self) { try await TrackFile(url: path) }
-                #expect(try Data(contentsOf: url) == bytes)
+                #expect(try await offPool { try Data(contentsOf: url) } == bytes)
             }
         }
     }
@@ -181,7 +182,7 @@ struct TrackFileTests {
             await #expect(throws: TrackFile.Failure.writingEnded) {
                 try await rig.track.write(tone(4), sampleRate: 48_000)
             }
-            #expect(try dataChunkLength(url) == -1)
+            #expect(try await dataChunkLength(url) == -1)
             try await expectPlayable(url, tones: 3)
         }
     }

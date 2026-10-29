@@ -1,3 +1,4 @@
+import BlockingTestWork
 import AVFoundation
 import CoreAudioProcesses
 import Darwin
@@ -32,10 +33,10 @@ struct RealRecordingTranscriptTests {
     @Test func spokenCallAudioReachesTheTranscript() async throws {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
+        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        defer { afterwards { try? FileManager.default.removeItem(at: directory) } }
         let calls = directory.appendingPathComponent("Calls", isDirectory: true)
-        try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: true)
+        try await offPool { try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: true) }
         let preferences = PreferencesStore(fileURL: directory.appendingPathComponent("preferences.json"))
         try preferences.write(Preferences(automaticRecording: false, liveText: true, callsFolder: calls))
         let speech = try await synthesize(Self.spoken, in: directory)
@@ -56,7 +57,7 @@ struct RealRecordingTranscriptTests {
         #expect(await sessions.begin(id: 1) == .ready)
         // The call speaks only once its audio is being recorded; with no process of
         // the call app's, the session hears every app but Audelin, afplay included.
-        let player = try play(speech)
+        let player = try await play(speech)
         defer { _ = kill(player, SIGKILL) }
         // Stop waiting once afplay has finished and the recognizer had time to
         // catch up, so a miss fails on the transcript instead of the time limit.
@@ -71,9 +72,9 @@ struct RealRecordingTranscriptTests {
         }
         await sessions.end(id: 1)
 
-        let folders = try FileManager.default.contentsOfDirectory(at: calls, includingPropertiesForKeys: nil)
+        let folders = try await offPool { try FileManager.default.contentsOfDirectory(at: calls, includingPropertiesForKeys: nil) }
         let folder = try #require(folders.first)
-        let transcript = try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+        let transcript = try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
         #expect(!transcript.contains("No text was heard."), "transcript.md: \(transcript)")
         #expect(Self.containsSpokenWord(transcript), "transcript.md: \(transcript)")
         #expect(transcript.lowercased().contains("weather"), "The first words must be heard: \(transcript)")
@@ -104,21 +105,21 @@ struct RealRecordingTranscriptTests {
         say.arguments = ["-o", speech.path, text]
         let exited = AsyncStream<Void>.makeStream()
         say.terminationHandler = { _ in exited.continuation.finish() }
-        try say.run()
+        try await offPool { try say.run() }
         for await _ in exited.stream {}
         try #require(say.terminationStatus == 0, "say must synthesize the speech")
-        let size = try FileManager.default.attributesOfItem(atPath: speech.path)[.size] as? NSNumber
-        try #require((size?.intValue ?? 0) > 0, "The speech file must contain audio")
+        let size = try await offPool { (try FileManager.default.attributesOfItem(atPath: speech.path)[.size] as? NSNumber)?.intValue }
+        try #require((size ?? 0) > 0, "The speech file must contain audio")
         return speech
     }
 
     /// Starts afplay and returns its pid.
-    private func play(_ sound: URL) throws -> Int32 {
+    private func play(_ sound: URL) async throws -> Int32 {
 
         let player = Process()
         player.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
         player.arguments = [sound.path]
-        try player.run()
+        try await offPool { try player.run() }
         return player.processIdentifier
     }
 }

@@ -1,3 +1,4 @@
+import BlockingTestWork
 @testable import CallText
 import CallAppProcesses
 import CallFolder
@@ -122,7 +123,7 @@ struct LoggingTests {
                 .init(category: .model, message: "recording refused", error: "\(names) not on disk"),
             ])
             #expect(sink.entries.all.filter { $0.category == .session }.isEmpty)
-            let made = try FileManager.default.contentsOfDirectory(atPath: root.path)
+            let made = try await offPool { try FileManager.default.contentsOfDirectory(atPath: root.path) }
             #expect(made.isEmpty)
         }
     }
@@ -461,7 +462,7 @@ private struct LogPieces: Sendable {
         pieces = SessionPieces(
             folder: CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: 0) }, timeZone: TimeZone(secondsFromGMT: 0)!),
             processes: CallAppProcesses(app: "meeting", list: SessionProcessList(answer: .success([]))),
-            startMicrophone: { try await microphone.start() }, startCall: { _ in try await call.start() },
+            startMicrophone: { try microphone.start() }, startCall: { _ in try call.start() },
             microphoneRecognizerSource: { preconditionFailure("Live text is disabled") },
             callRecognizerSource: { preconditionFailure("Live text is disabled") },
             missingModels: { missingModels }, captureLogSink: sink)

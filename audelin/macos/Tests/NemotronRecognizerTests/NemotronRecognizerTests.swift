@@ -1,3 +1,4 @@
+import BlockingTestWork
 import AVFoundation
 import Dispatch
 import Foundation
@@ -336,20 +337,16 @@ struct NemotronRecognizerTests {
     private func spoken(_ text: String) async throws -> [Float] {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
+        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        defer { afterwards { try? FileManager.default.removeItem(at: directory) } }
         let url = directory.appendingPathComponent("spoken.wav")
         let say = Process()
         say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
         say.arguments = ["-v", "Milena", "--file-format=WAVE", "--data-format=LEF32@48000", "-o", url.path, text]
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
-            say.terminationHandler = { _ in continuation.resume() }
-            do { try say.run() }
-            catch {
-                say.terminationHandler = nil
-                continuation.resume(throwing: error)
-            }
-        }
+        let exited = AsyncStream<Void>.makeStream()
+        say.terminationHandler = { _ in exited.continuation.finish() }
+        try await offPool { try say.run() }
+        for await _ in exited.stream {}
         try #require(say.terminationStatus == 0)
 
         let file = try AVAudioFile(forReading: url)

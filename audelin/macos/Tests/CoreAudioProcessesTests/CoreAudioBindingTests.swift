@@ -1,3 +1,4 @@
+import BlockingTestWork
 import AVFAudio
 import CoreAudioProcesses
 import Darwin
@@ -27,13 +28,13 @@ struct CoreAudioBindingTests {
     private func playingProcess() async throws -> AudioProcess {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: directory) }
+        try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
+        defer { afterwards { try? FileManager.default.removeItem(at: directory) } }
         // Process discovery needs an open audio file, independent of speech synthesis.
         let sound = directory.appendingPathComponent("tone.wav")
-        try writeTone(to: sound)
-        let size = try FileManager.default.attributesOfItem(atPath: sound.path)[.size] as? NSNumber
-        try #require((size?.intValue ?? 0) > 0, "The fixture must contain audio before afplay can open it")
+        try await writeTone(to: sound)
+        let size = try await offPool { (try FileManager.default.attributesOfItem(atPath: sound.path)[.size] as? NSNumber)?.intValue }
+        try #require((size ?? 0) > 0, "The fixture must contain audio before afplay can open it")
 
         let binding = CoreAudioBinding()
         let adapter = CoreAudioProcesses(binding: binding, clock: FakeClock())
@@ -41,13 +42,13 @@ struct CoreAudioBindingTests {
         let changed = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
         defer { changed.continuation.finish() }
         let inspect: @Sendable () -> Void = { changed.continuation.yield(()) }
-        let listener = try binding.onProcessListChange(inspect)
+        let listener = try await offPool { try binding.onProcessListChange(inspect) }
         defer { listener.cancel() }
 
         let player = Process()
         player.executableURL = URL(fileURLWithPath: "/usr/bin/afplay")
         player.arguments = ["-v", "0", sound.path]
-        try player.run()
+        try await offPool { try player.run() }
         let childPID = player.processIdentifier
         inspect()
         let result = await withTaskGroup(of: AudioProcess?.self) { group in
@@ -75,16 +76,21 @@ struct CoreAudioBindingTests {
         return try #require(result, "Core Audio must report the afplay child")
     }
 
-    private func writeTone(to sound: URL) throws {
+    private func writeTone(to sound: URL) async throws {
 
-        let format = try #require(AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 1))
-        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 48_000 * 40))
-        buffer.frameLength = buffer.frameCapacity
-        let samples = try #require(buffer.floatChannelData?[0])
-        for index in 0..<Int(buffer.frameLength) {
-            samples[index] = Float(0.25 * sin(2 * .pi * 440 * Double(index) / 48_000))
+        try await offPool {
+            guard let format = AVAudioFormat(standardFormatWithSampleRate: 48_000, channels: 1),
+                  let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 48_000 * 40),
+                  let samples = buffer.floatChannelData?[0]
+            else { throw ToneUnavailable() }
+            buffer.frameLength = buffer.frameCapacity
+            for index in 0..<Int(buffer.frameLength) {
+                samples[index] = Float(0.25 * sin(2 * .pi * 440 * Double(index) / 48_000))
+            }
+            let file = try AVAudioFile(forWriting: sound, settings: format.settings)
+            try file.write(from: buffer)
         }
-        let file = try AVAudioFile(forWriting: sound, settings: format.settings)
-        try file.write(from: buffer)
     }
 }
+
+private struct ToneUnavailable: Error {}

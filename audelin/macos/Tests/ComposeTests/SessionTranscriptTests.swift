@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Session
 import Synchronization
@@ -50,7 +51,7 @@ struct SessionTranscriptTests {
             #expect(news.all.isEmpty)
             #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.625, 0.125])
             #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.625, -0.125])
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
                 == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
         }
     }
@@ -142,7 +143,7 @@ struct SessionTranscriptTests {
 
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            try Data("existing transcript".utf8).write(to: url)
+            try await offPool { try Data("existing transcript".utf8).write(to: url) }
             return try await WritingTranscript(file: TranscriptFile(url: url))
         }
         try await withSessionRig(construction: construction) { rig, folder in
@@ -161,7 +162,7 @@ struct SessionTranscriptTests {
             #expect(ended.failures == recording.failures)
             #expect(ended.callText == .closed)
             #expect(await text.state.status == .finished)
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "existing transcript")
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) } == "existing transcript")
             #expect(rig.microphone.stops.all == [true])
             #expect(rig.call.stops.all == [true])
         }

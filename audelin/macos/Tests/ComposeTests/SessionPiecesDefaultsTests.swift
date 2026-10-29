@@ -1,3 +1,4 @@
+import BlockingTestWork
 import CallAppProcesses
 import CallFolder
 import Foundation
@@ -68,7 +69,7 @@ struct SessionPiecesDefaultsTests {
                 let destination = URL(fileURLWithPath: folder.id)
                 #expect(try recordedSamples(destination.appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.125])
                 #expect(try recordedSamples(destination.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
-                #expect(try String(contentsOf: destination.appendingPathComponent("transcript.md"), encoding: .utf8)
+                #expect(try await offPool { try String(contentsOf: destination.appendingPathComponent("transcript.md"), encoding: .utf8) }
                     == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
             } catch {
                 microphone.end()
