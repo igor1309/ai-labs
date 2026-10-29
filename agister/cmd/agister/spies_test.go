@@ -376,7 +376,7 @@ func (s *runtimesSpy) runtimes() runtimes {
 // watches its signals or draws randomness fails the test.
 func idleHost(t *testing.T) host {
 	clock := clocktest.NewClock(time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC))
-	return host{ctx: context.Background(), clock: clock, timer: clock.Timer,
+	return host{probe: unexpectedProbe(t), ctx: context.Background(), clock: clock, timer: clock.Timer,
 		signals: func() (<-chan os.Signal, func()) {
 			t.Error("a run watched the signals, want none run")
 			return nil, func() {}
@@ -855,3 +855,15 @@ func noDailyBudget() (*call.DailyBudget, []string) { return nil, nil }
 
 func (s *callsSpy) Prepared(ended endedCall)                 {}
 func (s *callsSpy) Observed(step string, report call.Report) {}
+
+func (s *storeSpy) Snapshot(id string) (runstore.Snapshot, error) {
+	r, err := s.Record(id)
+	return runstore.Snapshot{Record: r}, err
+}
+
+func unexpectedProbe(t *testing.T) func(int) (string, bool, error) {
+	return func(pid int) (string, bool, error) {
+		t.Errorf("unexpected process probe for %d", pid)
+		return "", false, errors.New("unexpected probe")
+	}
+}

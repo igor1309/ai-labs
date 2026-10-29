@@ -15,6 +15,9 @@ import (
 
 const LogSchema = "agister.run/v1"
 
+// ErrNotStarted means the log has no committed start yet.
+var ErrNotStarted = errors.New("runstore: log has no committed start")
+
 // Waiting describes an Agister wait independently of process liveness.
 type Waiting struct {
 	On    string     `json:"on"`
@@ -46,6 +49,9 @@ type LogWriter struct {
 	line       Line
 	failed     error
 	terminal   bool
+	pendingMu  sync.Mutex
+	now        func() time.Time
+	pending    map[*byte]time.Time
 }
 
 func NewLogWriter(appendLine func([]byte, bool) error) (*LogWriter, error) {
@@ -55,7 +61,41 @@ func NewLogWriter(appendLine func([]byte, bool) error) (*LogWriter, error) {
 	return &LogWriter{appendLine: appendLine, line: Line{Schema: LogSchema, Active: []ActiveCall{}}}, nil
 }
 
+// NewTimedLogWriter also tracks writes waiting for serialization or storage.
+func NewTimedLogWriter(appendLine func([]byte, bool) error, now func() time.Time) (*LogWriter, error) {
+	if now == nil {
+		return nil, errors.New("runstore: no writer clock")
+	}
+	w, err := NewLogWriter(appendLine)
+	if err != nil {
+		return nil, err
+	}
+	w.now, w.pending = now, make(map[*byte]time.Time)
+	return w, nil
+}
+
+// PendingSince is independent of the append lock, including during blocked I/O.
+func (w *LogWriter) PendingSince() *time.Time {
+	w.pendingMu.Lock()
+	defer w.pendingMu.Unlock()
+	var oldest *time.Time
+	for _, at := range w.pending {
+		if oldest == nil || at.Before(*oldest) {
+			v := at
+			oldest = &v
+		}
+	}
+	return oldest
+}
+
 func (w *LogWriter) Append(e Event) error {
+	if w.now != nil {
+		key := new(byte)
+		w.pendingMu.Lock()
+		w.pending[key] = w.now()
+		w.pendingMu.Unlock()
+		defer func() { w.pendingMu.Lock(); delete(w.pending, key); w.pendingMu.Unlock() }()
+	}
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	if w.failed != nil {
@@ -154,6 +194,12 @@ func advance(line *Line, e Event) error {
 // Fold ignores only an unterminated tail. ReadBytes has no scanner token
 // limit: resolved inputs and full terminal results may exceed 64 KiB.
 func Fold(reader io.Reader) (Record, error) {
+	record, _, err := FoldState(reader)
+	return record, err
+}
+
+// FoldState returns the validated last committed header along with its record.
+func FoldState(reader io.Reader) (Record, Line, error) {
 	var record Record
 	state := Line{Active: []ActiveCall{}}
 	r := bufio.NewReader(reader)
@@ -163,29 +209,29 @@ func Fold(reader io.Reader) (Record, error) {
 			break
 		}
 		if err != nil {
-			return Record{}, err
+			return Record{}, Line{}, err
 		}
 		var line Line
 		if err := json.Unmarshal(data, &line); err != nil {
-			return Record{}, fmt.Errorf("runstore: corrupt log line: %w", err)
+			return Record{}, Line{}, fmt.Errorf("runstore: corrupt log line: %w", err)
 		}
 		if line.Schema != LogSchema || line.Seq != state.Seq+1 {
-			return Record{}, errors.New("runstore: invalid log version or sequence")
+			return Record{}, Line{}, errors.New("runstore: invalid log version or sequence")
 		}
 		state.Seq++
 		if err := advance(&state, line.Event); err != nil {
-			return Record{}, err
+			return Record{}, Line{}, err
 		}
 		want, _ := json.Marshal(state.Active)
 		got, _ := json.Marshal(line.Active)
 		if state.Status != line.Status || !bytes.Equal(want, got) {
-			return Record{}, errors.New("runstore: inconsistent log header")
+			return Record{}, Line{}, errors.New("runstore: inconsistent log header")
 		}
 		e := line.Event
 		switch e.Kind {
 		case RunStarted, RunEnded:
 			if e.Kind == RunEnded && e.Record.ID != record.ID {
-				return Record{}, errors.New("runstore: terminal run id disagrees")
+				return Record{}, Line{}, errors.New("runstore: terminal run id disagrees")
 			}
 			record = *e.Record
 		case ChildStarted:
@@ -203,7 +249,7 @@ func Fold(reader io.Reader) (Record, error) {
 			}
 		case InputResolved:
 			if e.InputFact == nil {
-				return Record{}, errors.New("runstore: missing resolved input")
+				return Record{}, Line{}, errors.New("runstore: missing resolved input")
 			}
 			i := slices.IndexFunc(record.Inputs, func(input Input) bool { return input.Name == e.InputFact.Name })
 			if i < 0 {
@@ -213,12 +259,12 @@ func Fold(reader io.Reader) (Record, error) {
 			}
 		case CallEnded:
 			if e.CallFact == nil {
-				return Record{}, errors.New("runstore: missing ended call")
+				return Record{}, Line{}, errors.New("runstore: missing ended call")
 			}
 			upsertCall(&record, *e.CallFact)
 		case Prepared:
 			if e.CallFact == nil {
-				return Record{}, errors.New("runstore: missing prepared call")
+				return Record{}, Line{}, errors.New("runstore: missing prepared call")
 			}
 			prepared := *e.CallFact
 			for _, previous := range record.Calls {
@@ -252,9 +298,9 @@ func Fold(reader io.Reader) (Record, error) {
 		record.Status = line.Status
 	}
 	if state.Seq == 0 {
-		return Record{}, errors.New("runstore: log has no committed start")
+		return Record{}, Line{}, ErrNotStarted
 	}
-	return record, nil
+	return record, state, nil
 }
 
 func upsertCall(record *Record, call Call) {

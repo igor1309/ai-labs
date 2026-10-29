@@ -52,6 +52,7 @@ type host struct {
 	timer   call.Timer
 	signals signals
 	random  io.Reader
+	probe   func(int) (string, bool, error)
 }
 
 // turn is a runtime a step takes its turn on: the contract of its wrapper,

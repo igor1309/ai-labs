@@ -33,18 +33,34 @@ func (s *Store) Begin(record Record) error {
 	if s.writers[record.ID] != nil {
 		return errors.New("runstore: run already has a writer")
 	}
-	w, err := NewLogWriter(fileAppender(func(first bool) (logFile, error) {
+	appender := fileAppender(func(first bool) (logFile, error) {
 		flags := os.O_WRONLY | os.O_APPEND
 		if first {
 			flags |= os.O_CREATE | os.O_EXCL
 		}
 		return os.OpenFile(filepath.Join(folder, "run.jsonl"), flags, 0600)
-	}))
+	})
+	var w *LogWriter
+	if s.live == nil {
+		w, err = NewLogWriter(appender)
+	} else {
+		w, err = NewTimedLogWriter(appender, s.live.Now)
+	}
 	if err != nil {
 		return err
 	}
 	s.writers[record.ID] = w
-	return w.Append(Event{At: record.Started, Kind: RunStarted, Record: &record})
+	if err := w.Append(Event{At: record.Started, Kind: RunStarted, Record: &record}); err != nil {
+		return err
+	}
+	if s.live != nil {
+		pulse, err := s.startPulse(record.ID, w)
+		if err != nil {
+			return err
+		}
+		s.pulses[record.ID] = pulse
+	}
+	return nil
 }
 
 // logFile is the opened destination of one append, kept below short-write,
@@ -79,6 +95,9 @@ func fileAppender(open func(first bool) (logFile, error)) func([]byte, bool) err
 				n, err = f.Write(data[len(data)-1:])
 				if n != 1 {
 					err = errors.Join(err, io.ErrShortWrite)
+				}
+				if err == nil {
+					err = f.Sync()
 				}
 			}
 		}

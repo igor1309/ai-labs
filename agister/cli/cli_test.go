@@ -31,6 +31,7 @@ type portSpy struct {
 	shown    cli.Shown
 	result   cli.Result
 	err      error
+	states   []cli.RunState
 }
 
 func (s *portSpy) Check(launch string) (cli.Report, error) {
@@ -68,7 +69,7 @@ type ran struct {
 func run(t *testing.T, spy *portSpy, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	c, err := cli.New(spy, spy, spy, &stdout, &stderr)
+	c, err := cli.New(spy, spy, spy, spy, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,7 +260,7 @@ func TestOutputThatCannotBeWrittenIsAnError(t *testing.T) {
 			}
 			stdout := &failingWriter{err: errors.New("write /dev/stdout: broken pipe")}
 			var stderr strings.Builder
-			c, err := cli.New(spy, spy, spy, stdout, &stderr)
+			c, err := cli.New(spy, spy, spy, spy, stdout, &stderr)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -391,20 +392,31 @@ func TestNewFailsWithoutACollaborator(t *testing.T) {
 		settings       cli.Settings
 		runner         cli.Runner
 		runs           cli.Runs
+		states         cli.RunStates
 		stdout, stderr io.Writer
 	}{
-		{"no settings", nil, &portSpy{}, &portSpy{}, &out, &out},
-		{"no runner", &portSpy{}, nil, &portSpy{}, &out, &out},
-		{"no runs", &portSpy{}, &portSpy{}, nil, &out, &out},
-		{"no stdout", &portSpy{}, &portSpy{}, &portSpy{}, nil, &out},
-		{"no stderr", &portSpy{}, &portSpy{}, &portSpy{}, &out, nil},
+		{"no settings", nil, &portSpy{}, &portSpy{}, &portSpy{}, &out, &out},
+		{"no runner", &portSpy{}, nil, &portSpy{}, &portSpy{}, &out, &out},
+		{"no runs", &portSpy{}, &portSpy{}, nil, &portSpy{}, &out, &out},
+		{"no states", &portSpy{}, &portSpy{}, &portSpy{}, nil, &out, &out},
+		{"no stdout", &portSpy{}, &portSpy{}, &portSpy{}, &portSpy{}, nil, &out},
+		{"no stderr", &portSpy{}, &portSpy{}, &portSpy{}, &portSpy{}, &out, nil},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
-			if _, err := cli.New(c.settings, c.runner, c.runs, c.stdout, c.stderr); err == nil {
+			if _, err := cli.New(c.settings, c.runner, c.runs, c.states, c.stdout, c.stderr); err == nil {
 				t.Error("built, want an error")
 			}
 		})
 	}
+}
+
+func (s *portSpy) States(id string, last bool) ([]cli.RunState, error) {
+	op := "states"
+	if last {
+		op = "last"
+	}
+	s.requests = append(s.requests, request{op: op, id: id})
+	return s.states, s.err
 }

@@ -1,5 +1,11 @@
 # Changes
 
+- LAB-690: Status orders unstarted runs by their id's timestamp and preserves
+  outcomes from runs recorded before the run log.
+
+- LAB-690: Runs report live steps, waits, stalled writers and lost processes
+  through `status`; `runs list` shows the newest runs first.
+
 - LAB-690: New runs keep one ordered log with active calls and waits; readers
   include unfinished spend and retain access to older records.
 

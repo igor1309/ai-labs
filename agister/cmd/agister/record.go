@@ -39,6 +39,7 @@ type runStoreAt func(folder string) (homeRuns, error)
 type homeRuns interface {
 	runStore
 	cli.Runs
+	Snapshot(id string) (runstore.Snapshot, error)
 }
 
 // runIDOf is the id of a run started at started: its UTC time to the

@@ -38,3 +38,11 @@ capacity, fallback and recovery waits. Tool events keep the name and a short
 input digest. The terminal line carries the full result. Readers fold the
 log, ignore an unfinished last line and still read older `record.json` runs.
 A failed log write fails the run and stops further appends.
+
+`agister status [<run-id>|--last] [--json]` reports active steps, wait reasons
+and deadlines, terminal outcomes, or lost and unknown runs. `agister runs list`
+lists runs newest first. Each live run keeps a disposable `<run-id>.heartbeat`
+in its run folder, updated every second with its process identity and pending
+log-write age. A pending write of ten seconds reports a stalled writer; a beat
+older than ten seconds reports unknown while its owner is still alive.
+Finishing fsyncs the terminal line, stops the ticker and deletes the heartbeat.

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 )
@@ -15,6 +16,7 @@ type logFileSpy struct {
 	short                       bool
 	writeErr, syncErr, closeErr error
 	synced, closed              int
+	syncData                    []string
 }
 
 func (f *logFileSpy) Write(b []byte) (int, error) {
@@ -24,7 +26,11 @@ func (f *logFileSpy) Write(b []byte) (int, error) {
 	n, _ := f.data.Write(b)
 	return n, f.writeErr
 }
-func (f *logFileSpy) Sync() error  { f.synced++; return f.syncErr }
+func (f *logFileSpy) Sync() error {
+	f.synced++
+	f.syncData = append(f.syncData, f.data.String())
+	return f.syncErr
+}
 func (f *logFileSpy) Close() error { f.closed++; return f.closeErr }
 
 func TestPersistenceFailuresPoisonTheWriterBelowIOPolicy(t *testing.T) {
@@ -145,5 +151,17 @@ func TestSyncFailureLeavesTheTerminalUncommitted(t *testing.T) {
 				t.Fatalf("terminal not committed: %+v", got)
 			}
 		})
+	}
+}
+
+func TestTerminalSyncsItsPublishedNewlineBeforeClosing(t *testing.T) {
+	t.Parallel()
+	f := &logFileSpy{}
+	appendLine := fileAppender(func(bool) (logFile, error) { return f, nil })
+	if err := appendLine([]byte("terminal\n"), true); err != nil {
+		t.Fatal(err)
+	}
+	if f.data.String() != "terminal\n" || f.synced != 2 || f.closed != 1 || !slices.Equal(f.syncData, []string{"terminal", "terminal\n"}) {
+		t.Fatalf("bytes %q, syncs %d, closes %d", f.data.String(), f.synced, f.closed)
 	}
 }

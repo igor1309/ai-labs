@@ -418,6 +418,8 @@ type Store struct {
 	// side are one whole line each.
 	appending sync.Mutex
 	writers   map[string]*LogWriter
+	pulses    map[string]*Pulse
+	live      *Liveness
 }
 
 // New gives a store that keeps runs under folder.
@@ -425,7 +427,7 @@ func New(folder string) (*Store, error) {
 	if folder == "" {
 		return nil, errors.New("runstore: no folder")
 	}
-	return &Store{folder: folder, writers: map[string]*LogWriter{}}, nil
+	return &Store{folder: folder, writers: map[string]*LogWriter{}, pulses: map[string]*Pulse{}}, nil
 }
 
 // Write commits a terminal record to its claimed log. Mid-run updates
@@ -436,7 +438,8 @@ func (s *Store) Write(record Record) error {
 		if record.Ended == nil {
 			return errors.New("runstore: missing terminal result")
 		}
-		return w.Append(Event{At: *record.Ended, Kind: RunEnded, Record: &record})
+		err := w.Append(Event{At: *record.Ended, Kind: RunEnded, Record: &record})
+		return errors.Join(err, s.stopPulse(record.ID))
 	}
 
 	folder, err := s.run(record.ID)
@@ -699,7 +702,11 @@ func (s *Store) Export(id, folder string) error {
 // legacy event appends; an existing log always requires its owning writer.
 func (s *Store) Append(id string, event Event) error {
 	if w := s.writer(id); w != nil {
-		return w.Append(event)
+		err := w.Append(event)
+		if err != nil || event.Kind == RunEnded {
+			return errors.Join(err, s.stopPulse(id))
+		}
+		return nil
 	}
 
 	folder, err := s.run(id)

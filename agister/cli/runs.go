@@ -22,8 +22,14 @@ func (c *CLI) export(id, folder, dir string) (int, error) {
 }
 
 // parseRuns is the command of "runs" with the words after it and the
-// flags given: "export <run id> --to <directory>", and no flag but --to.
+// flags given: listing recent states or exporting a run to a directory.
 func parseRuns(words []string, f flags) (command, error) {
+	if len(words) == 1 && words[0] == "list" {
+		if err := f.only("json"); err != nil {
+			return command{}, err
+		}
+		return command{run: func(c *CLI, out io.Writer, _ string) (int, error) { return c.status(out, "", false, f.json) }}, nil
+	}
 	if err := f.only("to"); err != nil {
 		return command{}, err
 	}
