@@ -5,7 +5,7 @@ import Foundation
 public actor TranscriptFile {
 
     // Blocking file operations must not occupy the cooperative thread pool.
-    nonisolated let queue = DispatchSerialQueue(label: "audelin.TranscriptFile")
+    nonisolated let queue: DispatchSerialQueue
     public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     public enum Failure: Error, Equatable {
@@ -45,21 +45,30 @@ public actor TranscriptFile {
     private static let noText = "# Transcript\n\nNo text was heard.\n"
 
     /// Creates a new file exclusively; an existing path is always an error.
-    public init(url: URL) throws {
+    public init(url: URL) async throws {
 
-        try self.init(url: url, binding: DiskTranscriptBinding())
+        try await self.init(url: url, binding: DiskTranscriptBinding())
     }
 
-    package init(url: URL, binding: any TranscriptFileBinding) throws {
+    package init(url: URL, binding: any TranscriptFileBinding) async throws {
 
-        let file = try binding.create(at: url)
-        do {
-            try file.write(Data(Self.noText.utf8))
-            try file.flush()
-        } catch {
-            binding.remove(at: url)
-            throw error
+        let queue = DispatchSerialQueue(label: "audelin.TranscriptFile")
+        // The first write happens on the file's queue, not on the caller's thread.
+        try await withCheckedThrowingContinuation { (done: CheckedContinuation<Void, any Error>) in
+            queue.async {
+                done.resume(with: Result {
+                    let file = try binding.create(at: url)
+                    do {
+                        try file.write(Data(Self.noText.utf8))
+                        try file.flush()
+                    } catch {
+                        binding.remove(at: url)
+                        throw error
+                    }
+                })
+            }
         }
+        self.queue = queue
         self.url = url
         self.binding = binding
     }

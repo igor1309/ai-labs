@@ -1,3 +1,4 @@
+import BlockingTestWork
 @testable import CallText
 import CallAppProcesses
 import CallFolder
@@ -122,7 +123,7 @@ struct LoggingTests {
                 .init(category: .model, message: "recording refused", error: "\(names) not on disk"),
             ])
             #expect(sink.entries.all.filter { $0.category == .session }.isEmpty)
-            let made = try FileManager.default.contentsOfDirectory(atPath: root.path)
+            let made = try await offPool { try FileManager.default.contentsOfDirectory(atPath: root.path) }
             #expect(made.isEmpty)
         }
     }
@@ -215,15 +216,14 @@ struct LoggingTests {
                 callAudioAccess: { true }, callsFolder: { true }, room: { true })
             await conditions.refresh()
             let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
-            let calls = try composeCalls(processes, to: recording, conditions: conditions)
-            defer { processes.stop() }
+            let calls = try await composeCalls(processes, to: recording, conditions: conditions)
             for await state in await recording.states() {
                 if state.phase == .recording { break }
             }
             await recording.send(.sessionReported(id: 1, .cannotRecord("disk unavailable")))
             await sink.wait { $0.category == .recording && $0.message.contains("phase=idle") && $0.error == "disk unavailable" }
             await calls.cancel()
-            processes.stop()
+            await processes.stop()
             await recording.end()
 
             let failures = AsyncStream<any Error>.makeStream()

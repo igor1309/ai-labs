@@ -8,19 +8,19 @@ struct CallAppProcessesTests {
         ("us.zoom", "us.zoom.xos", "zoom"),
         ("Zoom", "us.zoom.xos", "Zoom"),
     ])
-    func theCallAppsOwnProcessIsChosen(app: String, bundleID: String, name: String) throws {
+    func theCallAppsOwnProcessIsChosen(app: String, bundleID: String, name: String) async throws {
 
         let list = FakeProcessList([[process(41, bundleID, name)]])
         let processes = CallAppProcesses(app: app, list: list)
 
-        #expect(try processes.processes() == .only([41]))
+        #expect(try await processes.processes() == .only([41]))
     }
 
     @Test(arguments: [
         ("com.google.Chrome", "com.google.Chrome.helper.Renderer", "Chrome Helper (Renderer)"),
         ("Comet", "ai.perplexity.comet.helper.renderer", "Comet Helper (Renderer)"),
     ])
-    func theCallAppsHelpersAreChosen(app: String, bundleID: String, name: String) throws {
+    func theCallAppsHelpersAreChosen(app: String, bundleID: String, name: String) async throws {
 
         let list = FakeProcessList([[
             process(82, bundleID, name),
@@ -28,10 +28,10 @@ struct CallAppProcessesTests {
         ]])
         let processes = CallAppProcesses(app: app, list: list)
 
-        #expect(try processes.processes() == .only([82, 19]))
+        #expect(try await processes.processes() == .only([82, 19]))
     }
 
-    @Test func anotherAppIsLeftOut() throws {
+    @Test func anotherAppIsLeftOut() async throws {
 
         let list = FakeProcessList([[
             process(12, "com.apple.Music", "Music"),
@@ -40,7 +40,7 @@ struct CallAppProcessesTests {
         ]])
         let processes = CallAppProcesses(app: "us.zoom", list: list)
 
-        #expect(try processes.processes() == .only([41]))
+        #expect(try await processes.processes() == .only([41]))
     }
 
     @Test(arguments: [
@@ -51,7 +51,7 @@ struct CallAppProcessesTests {
         ("ai.perplexity.comet.helper", "CometHelper"),
         ("ai.perplexity.comet.helper", "comet Helper"),
     ])
-    func anAppWithASimilarNameIsLeftOut(bundleID: String?, name: String) throws {
+    func anAppWithASimilarNameIsLeftOut(bundleID: String?, name: String) async throws {
 
         let list = FakeProcessList([[
             process(12, bundleID, name),
@@ -59,11 +59,11 @@ struct CallAppProcessesTests {
         ]])
         let processes = CallAppProcesses(app: "Comet", list: list)
 
-        #expect(try processes.processes() == .only([41]))
+        #expect(try await processes.processes() == .only([41]))
     }
 
     @Test(arguments: [nil, ""] as [String?])
-    func aProcessWithNoBundleIDIsFoundByName(bundleID: String?) throws {
+    func aProcessWithNoBundleIDIsFoundByName(bundleID: String?) async throws {
 
         let list = FakeProcessList([[
             process(12, bundleID, "zoom-cli-helper"),
@@ -71,10 +71,10 @@ struct CallAppProcessesTests {
         ]])
         let processes = CallAppProcesses(app: "zoom-cli", list: list)
 
-        #expect(try processes.processes() == .only([41]))
+        #expect(try await processes.processes() == .only([41]))
     }
 
-    @Test func withTheCallAppNotRunningAllButAudelinIsChosen() throws {
+    @Test func withTheCallAppNotRunningAllButAudelinIsChosen() async throws {
 
         let list = FakeProcessList([[
             process(12, "com.apple.Music", "Music"),
@@ -84,23 +84,23 @@ struct CallAppProcessesTests {
         ]])
         let processes = CallAppProcesses(app: "us.zoom", list: list)
 
-        #expect(try processes.processes() == .allExcept([90, 17]))
+        #expect(try await processes.processes() == .allExcept([90, 17]))
     }
 
-    @Test func aHelperOpenedLaterIsChosen() throws {
+    @Test func aHelperOpenedLaterIsChosen() async throws {
 
         let chrome = process(41, "com.google.Chrome", "Chrome")
         let helper = process(19, "com.google.Chrome.helper.Renderer", "Chrome Helper (Renderer)")
         let list = FakeProcessList([[chrome], [helper, chrome], [helper]])
         let processes = CallAppProcesses(app: "com.google.Chrome", list: list)
 
-        #expect(try processes.processes() == .only([41]))
-        #expect(try processes.processes() == .only([19, 41]))
-        #expect(try processes.processes() == .only([19]))
+        #expect(try await processes.processes() == .only([41]))
+        #expect(try await processes.processes() == .only([19, 41]))
+        #expect(try await processes.processes() == .only([19]))
     }
 
     @Test(arguments: [true, false])
-    func aCallAppThatLeavesKeepsItsAnswer(started: Bool) throws {
+    func aCallAppThatLeavesKeepsItsAnswer(started: Bool) async throws {
 
         let first = started
             ? process(41, "us.zoom.xos", "Zoom")
@@ -111,27 +111,27 @@ struct CallAppProcessesTests {
         let processes = CallAppProcesses(app: "us.zoom", list: list)
         let expected: ProcessSelection = started ? .only([41]) : .allExcept([90])
 
-        #expect(try processes.processes() == expected)
-        #expect(try processes.processes() == expected)
-        #expect(try processes.processes() == expected)
+        #expect(try await processes.processes() == expected)
+        #expect(try await processes.processes() == expected)
+        #expect(try await processes.processes() == expected)
     }
 
     @Test(arguments: [
         ([process(41, "com.google.Chrome", "Chrome")], ProcessSelection.only([41])),
         ([process(90, "com.example.Audelin", "Audelin", isAudelin: true)], ProcessSelection.allExcept([90])),
     ])
-    func aCallAppThatLeavesKeepsItsLatestAnswer(first: [AudioProcess], firstAnswer: ProcessSelection) throws {
+    func aCallAppThatLeavesKeepsItsLatestAnswer(first: [AudioProcess], firstAnswer: ProcessSelection) async throws {
 
         let helper = process(19, "com.google.Chrome.helper.Renderer", "Chrome Helper (Renderer)")
         let list = FakeProcessList([first, [helper], []])
         let processes = CallAppProcesses(app: "com.google.Chrome", list: list)
 
-        #expect(try processes.processes() == firstAnswer)
-        #expect(try processes.processes() == .only([19]))
-        #expect(try processes.processes() == .only([19]))
+        #expect(try await processes.processes() == firstAnswer)
+        #expect(try await processes.processes() == .only([19]))
+        #expect(try await processes.processes() == .only([19]))
     }
 
-    @Test func aCallAppThatStartsAfterIsChosen() throws {
+    @Test func aCallAppThatStartsAfterIsChosen() async throws {
 
         let audelin = process(90, "com.example.Audelin", "Audelin", isAudelin: true)
         let list = FakeProcessList([
@@ -140,12 +140,12 @@ struct CallAppProcessesTests {
         ])
         let processes = CallAppProcesses(app: "us.zoom", list: list)
 
-        #expect(try processes.processes() == .allExcept([90]))
-        #expect(try processes.processes() == .only([41]))
+        #expect(try await processes.processes() == .allExcept([90]))
+        #expect(try await processes.processes() == .only([41]))
     }
 
     @Test(arguments: [0, 1, 2])
-    func aListThatFailsIsTold(previous: Int) throws {
+    func aListThatFailsIsTold(previous: Int) async throws {
 
         let failure = ListFailure()
         var answers: [Result<[AudioProcess], any Error>] = []
@@ -163,18 +163,18 @@ struct CallAppProcessesTests {
         answers += [.failure(failure), .success([]), .success([process(23, "us.zoom.xos", "Zoom")])]
         let processes = CallAppProcesses(app: "us.zoom", list: FakeProcessList(answers: answers))
         if previous != 0 {
-            #expect(try processes.processes() == expected)
+            #expect(try await processes.processes() == expected)
         }
 
         do {
-            _ = try processes.processes()
+            _ = try await processes.processes()
             Issue.record("A refused process list must throw")
         } catch {
             #expect((error as? ListFailure) === failure)
         }
 
-        #expect(try processes.processes() == expected)
-        #expect(try processes.processes() == .only([23]))
+        #expect(try await processes.processes() == expected)
+        #expect(try await processes.processes() == .only([23]))
     }
 }
 

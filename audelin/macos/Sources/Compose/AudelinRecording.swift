@@ -27,7 +27,7 @@ public final class AudelinRecording: Sendable {
         makeSession: @escaping MakeSessionModel
     ) async throws {
 
-        createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
+        await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
         try await self.init(
             preferences: preferences,
             processes: CoreAudioProcesses(binding: CoreAudioBinding(), clock: ContinuousCallClock()),
@@ -74,9 +74,9 @@ public final class AudelinRecording: Sendable {
         await conditions.refresh()
         let calls: CallRecordingSubscription
         do {
-            calls = try composeCalls(processes, to: inputs, conditions: conditions, startedApp: { app.started($0) })
+            calls = try await composeCalls(processes, to: inputs, conditions: conditions, startedApp: { app.started($0) })
         } catch {
-            processes.stop()
+            await processes.stop()
             Task { await inputs.end() }
             throw error
         }
@@ -99,7 +99,7 @@ private struct ApplicationDelivery: LifecycleDelivery {
     func stop() async {
 
         await calls.cancel()
-        processes.stop()
+        await processes.stop()
         model.cancel()
     }
 }
@@ -150,8 +150,14 @@ final class ApplicationRecording: LifecycleRecording {
 
 /// Creates the calls folder only when it is the default one: a folder the user
 /// chose and later lost stays unavailable rather than being made anew.
-func createDefaultCallsFolder(_ folder: URL, default defaultFolder: URL) {
+func createDefaultCallsFolder(_ folder: URL, default defaultFolder: URL) async {
 
     guard folder.standardizedFileURL == defaultFolder.standardizedFileURL else { return }
-    try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    // Creating a folder blocks on the disk, so it runs outside the cooperative pool.
+    await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+        DispatchQueue(label: "audelin.CallsFolderCreation").async {
+            try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            done.resume()
+        }
+    }
 }

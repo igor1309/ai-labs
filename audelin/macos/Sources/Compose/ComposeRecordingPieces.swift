@@ -76,11 +76,11 @@ private struct RecordingProcessList: ProcessList {
     let source: CoreAudioProcesses
     let appKnown: Bool
 
-    func processes() throws -> [AudioProcess] {
+    func processes() async throws -> [AudioProcess] {
 
         // An empty app would match every bundle prefix; fail selection so Session chooses its fallback.
         guard appKnown else { throw Failure.noCallApp }
-        return try source.processes().map { process in
+        return try await source.processes().map { process in
             return AudioProcess(
                 pid: process.pid, bundleID: process.bundleID, name: process.name, isAudelin: process.isAudelin
             )

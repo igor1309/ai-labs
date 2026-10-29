@@ -145,17 +145,17 @@ struct CallRecordingSubscriptionTests {
         await base.end()
     }
 
-    @Test func endedRecordingReleasesItsSession() async throws {
+    @Test(.timeLimit(.minutes(1))) func endedRecordingReleasesItsSession() async throws {
 
-        var session: CallSession? = CallSession()
-        weak let released = session
+        // The doer's task lets go of the Session once its states stream has
+        // finished, at a time of its own, so the test awaits the release itself.
+        let released = AsyncStream<Void>.makeStream()
+        var session: CallSession? = CallSession(released: released.continuation)
         var recording: RecordingInputs? = await composedRecording(session: try #require(session))
         session = nil
         await recording?.end()
         recording = nil
-        // The doer's task lets go of the Session once its states stream has finished.
-        for _ in 0..<1_000 where released != nil { await Task.yield() }
-        #expect(released == nil)
+        for await _ in released.stream {}
     }
 
     @Test func compositionReportsStartupAndRuntimeFailure() async throws {
@@ -164,8 +164,7 @@ struct CallRecordingSubscriptionTests {
         let recording = await composedRecording(session: session, initial: .init(automatic: true, missing: []))
         let binding = CallBinding(fails: false)
         let processes = CoreAudioProcesses(binding: binding, clock: UnusedCallClock())
-        let forwarding = try composeCalls(processes, to: recording)
-        defer { processes.stop() }
+        let forwarding = try await composeCalls(processes, to: recording)
         for await state in await recording.states() {
             if state.phase == .recording { break }
         }
@@ -182,8 +181,7 @@ struct CallRecordingSubscriptionTests {
         }
         #expect(session.effects.all == [.beginSession(id: 1), .endSession(id: 1)])
         let refused = CoreAudioProcesses(binding: CallBinding(fails: true), clock: UnusedCallClock())
-        defer { refused.stop() }
-        #expect(throws: ScriptFailure.failed) { try composeCalls(refused, to: recording) }
+        await #expect(throws: ScriptFailure.failed) { try await composeCalls(refused, to: recording) }
         await recording.end()
     }
 }
@@ -256,6 +254,11 @@ private final class CallSession: RecordingSession {
     enum Call: Equatable { case beginSession(id: UInt64), endSession(id: UInt64) }
 
     let effects = Values<Call>()
+    private let released: AsyncStream<Void>.Continuation?
+
+    init(released: AsyncStream<Void>.Continuation? = nil) { self.released = released }
+
+    deinit { released?.finish() }
 
     func begin(id: UInt64) async -> RecordingSessionReport {
 

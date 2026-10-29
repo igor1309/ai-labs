@@ -29,7 +29,7 @@ struct MenuBarTests {
                 let stopping = Signal(), release = Signal()
                 let model = Task<Void, any Error> {}
                 defer {
-                    processes.stop(); model.cancel(); stopping.end(); release.end()
+                    model.cancel(); stopping.end(); release.end()
                     microphone.continuation.finish(); call.continuation.finish()
                 }
                 let panelClock = ReadingClockSpy()

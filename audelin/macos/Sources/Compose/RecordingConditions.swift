@@ -1,3 +1,4 @@
+import Dispatch
 import AVFoundation
 import Foundation
 import Recording
@@ -9,6 +10,8 @@ public final class RecordingConditions: Sendable {
     private let send: @Sendable (RecordingEvent) async -> Void
     private let lastSent = Mutex<[RecordingCondition: Bool]>([:])
     private let turn = Turn()
+    // The checks read the disk and access status, which block, so they run here.
+    private let checking = DispatchQueue(label: "audelin.RecordingConditions")
 
     public convenience init(
         recording: RecordingInputs,
@@ -49,9 +52,12 @@ public final class RecordingConditions: Sendable {
     public func refresh() async {
 
         await turn.take()
+        let checks = checks
+        let readings = await withCheckedContinuation { (done: CheckedContinuation<[(RecordingCondition, Bool)], Never>) in
+            checking.async { done.resume(returning: checks.map { ($0.0, $0.1()) }) }
+        }
         let changes = lastSent.withLock { previous in
-            checks.compactMap { condition, read -> RecordingEvent? in
-                let available = read()
+            readings.compactMap { condition, available -> RecordingEvent? in
                 guard previous[condition] != available else { return nil }
                 previous[condition] = available
                 return .conditionChanged(condition, available: available)

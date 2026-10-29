@@ -105,8 +105,7 @@ struct RecordingConditionsTests {
         // A new detector starts with the last unavailable value still in Recording.
         allowed.withLock { $0 = true }
         let processes = CoreAudioProcesses(binding: ConditionsCallBinding(), clock: ConditionsCallClock())
-        let composed = try composeCalls(processes, to: recording, conditions: checker)
-        defer { processes.stop() }
+        let composed = try await composeCalls(processes, to: recording, conditions: checker)
         for await state in await recording.states() {
             if state.callOn {
                 #expect(state.missing.isEmpty)
@@ -114,7 +113,7 @@ struct RecordingConditionsTests {
                 break
             }
         }
-        processes.stop()
+        await processes.stop()
         await composed.wait()
         for await state in await recording.states() {
             if state.phase == .idle && !state.callOn { break }

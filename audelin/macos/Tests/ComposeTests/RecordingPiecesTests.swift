@@ -1,3 +1,4 @@
+import BlockingTestWork
 import CoreAudioProcesses
 import Darwin
 import Foundation
@@ -18,22 +19,20 @@ struct RecordingPiecesTests {
     @Test func folderUsesStoredSnapshotAndSessionTimeZone() async throws {
 
         try await withComposeFolder { root in
-            let rig = try RecordingPiecesRig(root: root)
+            let rig = try await RecordingPiecesRig(root: root)
             defer { rig.finish() }
             try rig.preferences.write(Preferences(callsFolder: root.appendingPathComponent("another")))
             rig.timeZone.value.withLock { $0 = TimeZone(secondsFromGMT: 3600)! }
             let folder = try await rig.makePieces(1).create()
             #expect(folder.id == rig.callsURL.appendingPathComponent("1970.01.01-0100").path)
-            var directory: ObjCBool = false
-            #expect(FileManager.default.fileExists(atPath: folder.id, isDirectory: &directory))
-            #expect(directory.boolValue)
+            #expect(await offPool { isFolder(folder.id) })
         }
     }
 
     @Test func callFolderIsNamedWithTheCallAppAndAManualOneIsNot() async throws {
 
         try await withComposeFolder { root in
-            let rig = try RecordingPiecesRig(root: root)
+            let rig = try await RecordingPiecesRig(root: root)
             defer { rig.finish() }
             let manual = try await rig.makePieces(1).create()
             rig.callApp.started("us.zoom.xos")
@@ -47,7 +46,7 @@ struct RecordingPiecesTests {
     @Test func lastAppIsReadAtBuildAndKeptByThatSession() async throws {
 
         try await withComposeFolder { root in
-            let rig = try RecordingPiecesRig(root: root)
+            let rig = try await RecordingPiecesRig(root: root)
             defer { rig.finish() }
             rig.callApp.started("meeting")
             let first = rig.makePieces(1)
@@ -69,7 +68,7 @@ struct RecordingPiecesTests {
     @Test func manualSessionWithoutAnAppFallsBackToEveryAppButAudelin() async throws {
 
         try await withComposeFolder { root in
-            let rig = try RecordingPiecesRig(root: root)
+            let rig = try await RecordingPiecesRig(root: root)
             defer { rig.finish() }
             let pieces = rig.makePieces(1)
             let state = await drive(.begin(liveText: false), pieces: pieces, state: SessionState())
@@ -90,7 +89,7 @@ struct RecordingPiecesTests {
     @Test func missingKnownAppUsesTheCoreAudioListToExcludeAudelin() async throws {
 
         try await withComposeFolder { root in
-            let rig = try RecordingPiecesRig(root: root)
+            let rig = try await RecordingPiecesRig(root: root)
             defer { rig.finish() }
             rig.callApp.started("unavailable")
             let pieces = rig.makePieces(1)
@@ -108,7 +107,7 @@ struct RecordingPiecesTests {
     @Test func twoIDsHaveIndependentFoldersSelectionsAndCaptures() async throws {
 
         try await withComposeFolder { root in
-            let rig = try RecordingPiecesRig(root: root)
+            let rig = try await RecordingPiecesRig(root: root)
             defer { rig.finish() }
             rig.callApp.started("meeting")
             let first = rig.makePieces(1), second = rig.makePieces(2)
@@ -142,7 +141,7 @@ struct RecordingPiecesTests {
     @Test func sourcesAreLazyAndGiveEachSideItsOwnRecognizer() async throws {
 
         try await withComposeFolder { root in
-            let rig = try RecordingPiecesRig(root: root)
+            let rig = try await RecordingPiecesRig(root: root)
             defer { rig.finish() }
             let first = rig.makePieces(1), second = rig.makePieces(2)
             #expect(rig.microphones.all.isEmpty)
@@ -189,12 +188,11 @@ struct RecordingPiecesTests {
             preconditionFailure("Automatic recording is off")
         }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
         let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
-        defer { processes.stop() }
-        let subscription = try composeCalls(processes, to: detectorRecording, startedApp: {
+        let subscription = try await composeCalls(processes, to: detectorRecording, startedApp: {
             detectedApp.started($0)
             detected.append($0)
         })
-        processes.stop()
+        await processes.stop()
         await subscription.wait()
         await detectorRecording.end()
         #expect(detected.all == ["us.zoom.xos"])
@@ -226,10 +224,11 @@ private struct RecordingPiecesRig: Sendable {
     let recognizers = Values<SessionRecognizer>()
     let makePieces: @Sendable (UInt64) -> SessionPieces
 
-    init(root: URL) throws {
+    init(root: URL) async throws {
 
-        callsURL = root.appendingPathComponent("stored-calls", isDirectory: true)
-        try FileManager.default.createDirectory(at: callsURL, withIntermediateDirectories: false)
+        let callsURL = root.appendingPathComponent("stored-calls", isDirectory: true)
+        try await offPool { try FileManager.default.createDirectory(at: callsURL, withIntermediateDirectories: false) }
+        self.callsURL = callsURL
         preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
         try preferences.write(Preferences(callsFolder: callsURL))
         let microphones = microphones, calls = calls, selections = selections, recognizers = recognizers, timeZone = timeZone

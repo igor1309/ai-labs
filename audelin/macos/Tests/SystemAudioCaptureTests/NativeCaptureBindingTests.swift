@@ -95,7 +95,7 @@ struct NativeCaptureBindingTests {
         let deliveries = Mutex(0)
         let install = {
             let io = try binding.installIO(device) { _ in deliveries.withLock { $0 += 1 } }
-            defer { binding.removeIO(device, io) }
+            binding.removeIO(device, io)
         }
         if readRefused {
             #expect(throws: NSError(domain: NSOSStatusErrorDomain, code: -50), performing: install)

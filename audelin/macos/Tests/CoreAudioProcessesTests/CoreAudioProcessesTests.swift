@@ -5,14 +5,14 @@ import CoreAudioProcesses
 
 struct CoreAudioProcessesTests {
 
-    @Test func audelinIsMarkedAsItself() throws {
+    @Test func audelinIsMarkedAsItself() async throws {
 
         let binding = FakeBinding()
         binding.add(1, pid: 300, bundleID: "com.apple.Music", name: "Music")
         binding.add(2, pid: getpid(), bundleID: "com.example.Audelin", name: "Audelin")
         binding.add(3, pid: 301, bundleID: nil, name: "afplay")
 
-        let processes = try CoreAudioProcesses(binding: binding, clock: FakeClock()).processes()
+        let processes = try await CoreAudioProcesses(binding: binding, clock: FakeClock()).processes()
 
         #expect(processes == [
             AudioProcess(pid: 300, bundleID: "com.apple.Music", name: "Music", isAudelin: false),
@@ -21,32 +21,32 @@ struct CoreAudioProcessesTests {
         ])
     }
 
-    @Test func aProcessGoneWhileListedIsLeftOut() throws {
+    @Test func aProcessGoneWhileListedIsLeftOut() async throws {
 
         let binding = FakeBinding()
         binding.add(1, pid: 300, bundleID: "com.apple.Music", name: "Music")
         binding.add(2, pid: nil, bundleID: nil, name: "")
 
-        let processes = try CoreAudioProcesses(binding: binding, clock: FakeClock()).processes()
+        let processes = try await CoreAudioProcesses(binding: binding, clock: FakeClock()).processes()
 
         #expect(processes == [AudioProcess(pid: 300, bundleID: "com.apple.Music", name: "Music", isAudelin: false)])
     }
 
-    @Test func aListTheSystemRefusesFails() {
+    @Test func aListTheSystemRefusesFails() async {
 
         let binding = FakeBinding()
         binding.refuse(Refusal())
         let processes = CoreAudioProcesses(binding: binding, clock: FakeClock())
 
-        #expect(throws: Refusal.self) { try processes.processes() }
-        #expect(throws: Refusal.self) { try processes.start() }
+        await #expect(throws: Refusal.self) { try await processes.processes() }
+        await #expect(throws: Refusal.self) { try await processes.start() }
     }
 
     @Test func zoomOnTheMicrophoneStartsACall() async throws {
 
         let binding = FakeBinding()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, FakeClock())
+        let processes = try await watch(binding, FakeClock())
 
         binding.record(1)
 
@@ -59,14 +59,14 @@ struct CoreAudioProcessesTests {
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "com.apple.VoiceMemos")
         binding.add(2, pid: 402, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
 
         binding.record(1)
         clock.advance(by: .seconds(60))
 
         #expect(try await told(processes) == [])
 
-        let zoom = try watch(binding, clock)
+        let zoom = try await watch(binding, clock)
         binding.record(2)
         #expect(try await told(zoom) == [.started(app: "us.zoom.xos")])
     }
@@ -77,7 +77,7 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         binding.record(1)
 
         binding.stopRecording(1)
@@ -91,7 +91,7 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         binding.record(1)
 
         binding.stopRecording(1)
@@ -108,7 +108,7 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         binding.record(1)
 
         binding.stopRecording(1)
@@ -127,7 +127,7 @@ struct CoreAudioProcessesTests {
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
         binding.add(2, pid: 402, bundleID: "com.google.Chrome.helper")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         binding.record(1)
 
         binding.record(2)
@@ -143,7 +143,7 @@ struct CoreAudioProcessesTests {
         let clock = FakeClock()
         binding.add(1, pid: 400, bundleID: "com.google.Chrome.helper")
         binding.add(2, pid: 401, bundleID: "com.google.Chrome.helper")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         binding.record(1)
         binding.record(2)
 
@@ -157,7 +157,7 @@ struct CoreAudioProcessesTests {
 
         let binding = FakeBinding()
         binding.add(1, pid: 401, bundleID: "ru.yandex.desktop.telemost")
-        let processes = try watch(binding, FakeClock())
+        let processes = try await watch(binding, FakeClock())
 
         binding.setInput(1, true)
         binding.fireProcess(1, property: .devices)
@@ -189,7 +189,7 @@ struct CoreAudioProcessesTests {
 
         let binding = FakeBinding()
         binding.add(1, pid: 401, bundleID: helper)
-        let processes = try watch(binding, FakeClock())
+        let processes = try await watch(binding, FakeClock())
 
         binding.record(1)
 
@@ -203,7 +203,7 @@ struct CoreAudioProcessesTests {
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
         binding.add(2, pid: 402, bundleID: "com.google.Chrome.helper")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         binding.record(1)
         binding.record(2)
 
@@ -220,7 +220,7 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos", input: true)
 
-        let processes = try watch(binding, FakeClock())
+        let processes = try await watch(binding, FakeClock())
 
         #expect(try await told(processes) == [.started(app: "us.zoom.xos")])
     }
@@ -230,10 +230,10 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
 
         binding.setInput(1, true)
-        _ = try processes.processes()
+        _ = try await processes.processes()
         clock.advance(by: .seconds(60))
         #expect(binding.inputReads == 1)
 
@@ -245,7 +245,7 @@ struct CoreAudioProcessesTests {
     @Test func aCallAppJoiningTheListOnTheMicrophoneStartsACall() async throws {
 
         let binding = FakeBinding()
-        let processes = try watch(binding, FakeClock())
+        let processes = try await watch(binding, FakeClock())
 
         binding.add(1, pid: 401, bundleID: "us.zoom.xos", input: true)
         binding.fireList()
@@ -259,7 +259,7 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         binding.record(1)
 
         binding.remove(1)
@@ -270,12 +270,12 @@ struct CoreAudioProcessesTests {
         #expect(try await told(processes) == [.started(app: "us.zoom.xos"), .ended(app: "us.zoom.xos")])
     }
 
-    @Test func eachProcessIsListenedToWhileListed() throws {
+    @Test func eachProcessIsListenedToWhileListed() async throws {
 
         let binding = FakeBinding()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
         binding.add(2, pid: 402, bundleID: nil)
-        let processes = try watch(binding, FakeClock())
+        let processes = try await watch(binding, FakeClock())
         #expect(binding.listenedProcesses == [1, 2])
         #expect(binding.listensToList)
 
@@ -284,7 +284,7 @@ struct CoreAudioProcessesTests {
         binding.fireList()
         #expect(binding.listenedProcesses == [2, 3])
 
-        processes.stop()
+        await processes.stop()
         #expect(binding.listenedProcesses == [])
         #expect(!binding.listensToList)
     }
@@ -293,7 +293,7 @@ struct CoreAudioProcessesTests {
 
         let binding = FakeBinding()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, FakeClock())
+        let processes = try await watch(binding, FakeClock())
         binding.refuse(Refusal())
 
         binding.fireList()
@@ -308,16 +308,16 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         binding.record(1)
         binding.stopRecording(1)
         let queued = binding.queuedNotifications()
 
-        processes.stop()
+        await processes.stop()
         clock.advance(by: .seconds(60))
         binding.setInput(1, true)
         queued.forEach { $0() }
-        try processes.start()
+        try await processes.start()
 
         #expect(clock.pendingWaits == 0)
         #expect(!binding.listensToList)
@@ -331,7 +331,7 @@ struct CoreAudioProcessesTests {
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
         binding.add(2, pid: 402, bundleID: "ru.yandex.desktop.telemost.helper")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         binding.record(1)
         binding.stopRecording(1)
         clock.advance(by: .seconds(30))
@@ -348,7 +348,7 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         let clock = FakeClock()
         binding.add(1, pid: 401, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         binding.record(1)
         binding.stopRecording(1)
         clock.advance(by: .seconds(20))
@@ -363,7 +363,7 @@ struct CoreAudioProcessesTests {
 
         let binding = FakeBinding()
         binding.add(1, pid: 400, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, FakeClock())
+        let processes = try await watch(binding, FakeClock())
 
         binding.remove(1)
         binding.add(1, pid: 401, bundleID: "com.google.Chrome.helper", input: true)
@@ -377,7 +377,7 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         let clock = FakeClock()
         binding.add(1, pid: 400, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, clock)
+        let processes = try await watch(binding, clock)
         let queued = binding.queuedProcessNotifications()
 
         binding.remove(1)
@@ -396,7 +396,7 @@ struct CoreAudioProcessesTests {
 
         let binding = FakeBinding()
         binding.add(1, pid: 400, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, FakeClock())
+        let processes = try await watch(binding, FakeClock())
         let queued = binding.queuedProcessNotifications()
 
         binding.remove(1)
@@ -411,7 +411,7 @@ struct CoreAudioProcessesTests {
 
         let binding = FakeBinding()
         binding.add(1, pid: 400, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, FakeClock())
+        let processes = try await watch(binding, FakeClock())
         binding.beforeInputRead { [weak binding] object in
             binding?.remove(object)
             binding?.add(object, pid: 401, bundleID: "com.apple.VoiceMemos", input: true)
@@ -428,13 +428,13 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         binding.add(1, pid: 400, bundleID: "us.zoom.xos")
         let processes = CoreAudioProcesses(binding: binding, clock: FakeClock())
-        if alreadyWatched { try processes.start() }
+        if alreadyWatched { try await processes.start() }
         binding.beforeInputRead { [weak binding] object in
             binding?.remove(object)
             binding?.add(object, pid: 401, bundleID: "com.apple.VoiceMemos", input: true)
         }
 
-        if alreadyWatched { binding.fireList() } else { try processes.start() }
+        if alreadyWatched { binding.fireList() } else { try await processes.start() }
 
         #expect(try await told(processes) == [])
     }
@@ -444,8 +444,7 @@ struct CoreAudioProcessesTests {
         let binding = FakeBinding()
         let clock = FakeClock()
         binding.add(1, pid: 400, bundleID: "us.zoom.xos")
-        let processes = try watch(binding, clock)
-        defer { processes.stop() }
+        let processes = try await watch(binding, clock)
         binding.record(1)
         let received = Mutex<[CallEvent]>([])
         let executor = StreamTestExecutor()
@@ -462,23 +461,23 @@ struct CoreAudioProcessesTests {
         #expect(binding.listensToList)
         #expect(binding.listenedProcesses == [1])
 
-        processes.stop()
+        await processes.stop()
         reader.cancel()
         executor.runQueuedJobs()
         try await reader.value
     }
 
-    private func watch(_ binding: FakeBinding, _ clock: FakeClock) throws -> CoreAudioProcesses {
+    private func watch(_ binding: FakeBinding, _ clock: FakeClock) async throws -> CoreAudioProcesses {
 
         let processes = CoreAudioProcesses(binding: binding, clock: clock)
-        try processes.start()
+        try await processes.start()
         return processes
     }
 
     /// Everything told so far: stopping ends the stream after what it holds.
     private func told(_ processes: CoreAudioProcesses) async throws -> [CallEvent] {
 
-        processes.stop()
+        await processes.stop()
         var events: [CallEvent] = []
         for try await event in processes.calls { events.append(event) }
         return events

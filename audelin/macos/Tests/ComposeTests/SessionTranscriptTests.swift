@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Session
 import Synchronization
@@ -17,7 +18,7 @@ struct SessionTranscriptTests {
         let news = Values<String>()
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
                 if state.entries.count == 2, !failed.withLock({ value in
                     let previous = value
                     value = true
@@ -50,7 +51,7 @@ struct SessionTranscriptTests {
             #expect(news.all.isEmpty)
             #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.625, 0.125])
             #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.625, -0.125])
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
                 == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
         }
     }
@@ -64,7 +65,7 @@ struct SessionTranscriptTests {
         defer { forwarding.end(); release.release() }
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
                 if state.status == .finished { binding.arm(operation) }
             })
         }
@@ -104,7 +105,7 @@ struct SessionTranscriptTests {
         defer { reported.end(); release.release() }
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
                 if state.status == .finished { binding.arm(operation) }
             })
         }
@@ -142,8 +143,8 @@ struct SessionTranscriptTests {
 
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            try Data("existing transcript".utf8).write(to: url)
-            return try WritingTranscript(file: TranscriptFile(url: url))
+            try await offPool { try Data("existing transcript".utf8).write(to: url) }
+            return try await WritingTranscript(file: TranscriptFile(url: url))
         }
         try await withSessionRig(construction: construction) { rig, folder in
             await rig.session.send(.begin(liveText: enabled))
@@ -161,7 +162,7 @@ struct SessionTranscriptTests {
             #expect(ended.failures == recording.failures)
             #expect(ended.callText == .closed)
             #expect(await text.state.status == .finished)
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "existing transcript")
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) } == "existing transcript")
             #expect(rig.microphone.stops.all == [true])
             #expect(rig.call.stops.all == [true])
         }

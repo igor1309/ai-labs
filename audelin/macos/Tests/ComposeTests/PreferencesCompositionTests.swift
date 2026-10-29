@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import Preferences
 import Recording
@@ -14,7 +15,7 @@ struct PreferencesCompositionTests {
             for automatic in [false, true] {
                 let folder = root.appendingPathComponent("calls-\(automatic)")
                 // Only the stored folder of the second pass exists.
-                if automatic { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+                if automatic { try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) } }
                 try store.write(Preferences(automaticRecording: automatic, callsFolder: folder))
                 let (recording, conditions) = await composeRecordingWithPreferences(preferences: store, makePieces: { _ in
                     preconditionFailure("An idle recording must not build a session")

@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Darwin
 import Foundation
 import Synchronization
@@ -29,7 +30,7 @@ struct TrackFilePositionedWriteTests {
             let url = folder.appendingPathComponent("track.caf")
             let fault = PositionedWriteFault()
             let binding = try DiskTrackBinding(url: url, positionedWrite: { try fault.write($0, $1, $2) })
-            let rig = try TrackRig(folder, binding: binding)
+            let rig = try await TrackRig(folder, binding: binding)
             var preceding: [Float] = []
             var expected: [Float] = []
             for number in 1...2 {
@@ -38,9 +39,9 @@ struct TrackFilePositionedWriteTests {
                 try await rig.track.write(input, sampleRate: Double(rate))
                 expectSamples(try await rig.track.read(from: 0, to: Double(expected.count) / 48_000), expected)
                 preceding += input
-                fault.acknowledge(try Data(contentsOf: url).count)
+                fault.acknowledge(try await offPool { try Data(contentsOf: url).count })
             }
-            let acknowledged = try Data(contentsOf: url)
+            let acknowledged = try await offPool { try Data(contentsOf: url) }
             try await withPendingRead(rig, from: 0, to: 60) { read in
                 fault.arm(after: prefix, persistent: persistent)
                 await #expect(throws: BindingFailure.self) {
@@ -48,7 +49,7 @@ struct TrackFilePositionedWriteTests {
                 }
                 expectSamples(try await read.value, expected)
             }
-            #expect(try Data(contentsOf: url) == acknowledged)
+            #expect(try await offPool { try Data(contentsOf: url) } == acknowledged)
             expectSamples(try externalSamples(url), expected)
             await #expect(throws: TrackFile.Failure.writingEnded) {
                 try await rig.track.write([0.5], sampleRate: Double(rate))

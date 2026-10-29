@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Darwin
 import Foundation
 import Session
@@ -25,7 +26,7 @@ struct SessionRecordingTests {
             #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf")) == (microphoneFails ? [] : [0.25, -0.5, 0.125]))
             #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
             let mine = microphoneFails ? "" : "**Me** 00:00:00\nmine final\n\n"
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
                 == "# Transcript\n\n" + mine + "**Them** 00:00:00\ntheirs final\n")
             #expect(await rig.mine.chunks.flatMap(\.samples) == (microphoneFails ? [] : [0.25, -0.5, 0.125]))
             #expect(await rig.theirs.chunks.flatMap(\.samples) == [-0.25, 0.5, -0.125])
@@ -75,7 +76,7 @@ struct SessionRecordingTests {
             #expect(try recordedSamples(folder.appendingPathComponent("microphone.caf"))
                 == (microphoneStarted ? [0.25, -0.5, 0.125] : []))
             #expect(try recordedSamples(folder.appendingPathComponent("call.caf")) == [])
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
                 == "# Transcript\n\n" + (microphoneStarted ? "**Me** 00:00:00\nmine final\n" : "No text was heard.\n"))
         }
     }

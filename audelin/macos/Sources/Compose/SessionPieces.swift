@@ -63,11 +63,11 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     let missingModels: @Sendable () -> [String]
     let captureLogSink: any LogSink
     let executor: (any TaskExecutor)?
-    let openTrackFile: @Sendable (URL) throws -> TrackFile
+    let openTrackFile: @Sendable (URL) async throws -> TrackFile
     let recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track
     let closeTrackFile: @Sendable (SessionSide, TrackFile) async throws -> Void
     let makeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio
-    let openTranscriptFile: @Sendable (URL) throws -> any SessionTranscriptFile
+    let openTranscriptFile: @Sendable (URL) async throws -> any SessionTranscriptFile
     let makeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State>
     var made: CallFolder.Made?
     var selections: [String: SystemAudioCapture.ProcessSelection] = [:]
@@ -94,7 +94,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     @usableFromInline
     static let defaultMakeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = { _, capture in LiveCaptureAudio(capture: capture) }
     @usableFromInline
-    static let defaultOpenTranscript: @Sendable (URL) throws -> any SessionTranscriptFile = { try WritingTranscript(file: TranscriptFile(url: $0)) }
+    static let defaultOpenTranscript: @Sendable (URL) async throws -> any SessionTranscriptFile = { try await WritingTranscript(file: TranscriptFile(url: $0)) }
     @usableFromInline
     static let defaultMakeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = { WritingCallText(text: $0) }
 
@@ -108,11 +108,11 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         callRecognizer: any Recognizer,
         missingModels: @escaping @Sendable () -> [String],
         executor: (any TaskExecutor)? = nil,
-        openTrack: @escaping @Sendable (URL) throws -> TrackFile = { try TrackFile(url: $0) },
+        openTrack: @escaping @Sendable (URL) async throws -> TrackFile = { try await TrackFile(url: $0) },
         recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
         closeTrack: @escaping @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack,
         makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
-        openTranscript: @escaping @Sendable (URL) throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
+        openTranscript: @escaping @Sendable (URL) async throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
         makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
     ) {
 
@@ -136,11 +136,11 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         missingModels: @escaping @Sendable () -> [String],
         executor: (any TaskExecutor)? = nil,
-        openTrack: @escaping @Sendable (URL) throws -> TrackFile = { try TrackFile(url: $0) },
+        openTrack: @escaping @Sendable (URL) async throws -> TrackFile = { try await TrackFile(url: $0) },
         recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
         closeTrack: @escaping @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack,
         makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
-        openTranscript: @escaping @Sendable (URL) throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
+        openTranscript: @escaping @Sendable (URL) async throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
         makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
     ) {
 
@@ -163,11 +163,11 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
         missingModels: @escaping @Sendable () -> [String],
         executor: (any TaskExecutor)? = nil,
-        openTrack: @escaping @Sendable (URL) throws -> TrackFile = { try TrackFile(url: $0) },
+        openTrack: @escaping @Sendable (URL) async throws -> TrackFile = { try await TrackFile(url: $0) },
         recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
         closeTrack: @escaping @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack,
         makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
-        openTranscript: @escaping @Sendable (URL) throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
+        openTranscript: @escaping @Sendable (URL) async throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
         makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText,
         captureLogSink: any LogSink
     ) {
@@ -195,7 +195,8 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         })
     }
 
-    public nonisolated func missing() -> [String] {
+    // Checking the model files reads the disk, so it runs on this actor's queue.
+    public func missing() -> [String] {
 
         missingModels()
     }
@@ -207,9 +208,9 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         return SessionCallFolder(id: made.url.path)
     }
 
-    public func select() throws -> SessionProcessSelection {
+    public func select() async throws -> SessionProcessSelection {
 
-        let selection = try processes.processes()
+        let selection = try await processes.processes()
         let id = UUID().uuidString
         selections[id] = switch selection {
         case let .only(pids): .only(pids)
@@ -224,10 +225,10 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         return made
     }
 
-    func openTrack(_ side: SessionSide, in folder: SessionCallFolder) throws {
+    func openTrack(_ side: SessionSide, in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        sides[side]?.track = try openTrackFile(side == .microphone ? made.microphoneURL : made.callURL)
+        sides[side]?.track = try await openTrackFile(side == .microphone ? made.microphoneURL : made.callURL)
     }
 
     func closeTrack(_ side: SessionSide) async throws {
@@ -238,10 +239,10 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         if let track = destination.track { try await closeTrackFile(side, track) }
     }
 
-    func openTranscript(in folder: SessionCallFolder) throws {
+    func openTranscript(in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        transcriptFile = try openTranscriptFile(made.transcriptURL)
+        transcriptFile = try await openTranscriptFile(made.transcriptURL)
     }
 
     func closeTranscript() async throws {

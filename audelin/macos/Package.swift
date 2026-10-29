@@ -157,6 +157,10 @@ let package = Package(
             name: "TwoPassRecognizer",
             dependencies: ["LiveText"]
         ),
+        .target(
+            name: "BlockingTestWork",
+            path: "Tests/BlockingTestWork"
+        ),
         .testTarget(
             name: "AudelinTests",
             dependencies: ["Audelin", "Compose"]
@@ -167,7 +171,7 @@ let package = Package(
         ),
         .testTarget(
             name: "CallFolderTests",
-            dependencies: ["CallFolder", "TrackFile", "TranscriptFile"]
+            dependencies: ["CallFolder", "TrackFile", "TranscriptFile", "BlockingTestWork"]
         ),
         .testTarget(
             name: "CallTextTests",
@@ -176,13 +180,13 @@ let package = Package(
         .testTarget(
             name: "ComposeTests",
             dependencies: [
-                "Compose", "Lifecycle", "Recording",
+                "Compose", "Lifecycle", "Recording", "BlockingTestWork",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
         .testTarget(
             name: "CoreAudioProcessesTests",
-            dependencies: ["CoreAudioProcesses"]
+            dependencies: ["CoreAudioProcesses", "BlockingTestWork"]
         ),
         .testTarget(
             name: "FillInTests",
@@ -214,7 +218,7 @@ let package = Package(
         ),
         .testTarget(
             name: "NemotronRecognizerTests",
-            dependencies: ["NemotronRecognizer"]
+            dependencies: ["NemotronRecognizer", "BlockingTestWork"]
         ),
         .testTarget(
             name: "PanelUITests",
@@ -222,11 +226,11 @@ let package = Package(
         ),
         .testTarget(
             name: "ParakeetRecognizerTests",
-            dependencies: ["ParakeetRecognizer", .product(name: "FluidAudio", package: "FluidAudio")]
+            dependencies: ["ParakeetRecognizer", "BlockingTestWork", .product(name: "FluidAudio", package: "FluidAudio")]
         ),
         .testTarget(
             name: "PreferencesTests",
-            dependencies: ["Preferences"]
+            dependencies: ["Preferences", "BlockingTestWork"]
         ),
         .testTarget(
             name: "RecordedCaptureTests",
@@ -257,15 +261,15 @@ let package = Package(
         ),
         .testTarget(
             name: "SystemAudioCaptureTests",
-            dependencies: ["SystemAudioCapture"]
+            dependencies: ["SystemAudioCapture", "BlockingTestWork"]
         ),
         .testTarget(
             name: "TrackFileTests",
-            dependencies: ["TrackFile", "TrackFileCrashWriter", "AudioConversion"]
+            dependencies: ["TrackFile", "TrackFileCrashWriter", "AudioConversion", "BlockingTestWork"]
         ),
         .testTarget(
             name: "TranscriptFileTests",
-            dependencies: ["TranscriptFile", "TranscriptFileCrashWriter"]
+            dependencies: ["TranscriptFile", "TranscriptFileCrashWriter", "BlockingTestWork"]
         ),
         .testTarget(
             name: "TranscriptWritingTests",

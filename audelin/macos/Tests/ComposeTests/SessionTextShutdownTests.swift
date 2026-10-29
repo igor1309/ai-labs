@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Foundation
 import LiveText
 import Session
@@ -74,7 +75,7 @@ struct SessionTextShutdownTests {
                 #expect(await theirs.finalized)
                 #expect(await text.state.entries == frozen)
                 try await rig.pieces.transcript.close()
-                #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+                #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
                     == "# Transcript\n\n**Me** 00:00:00\nkept\n\n**Them** 00:00:00\nkept\n")
             }
         }
@@ -117,7 +118,7 @@ struct SessionTextShutdownTests {
             #expect(await mine.finishes == 1)
             #expect(await theirs.finishes == 1)
             #expect(await text.state.entries == frozen)
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(try await offPool { try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) }
                 == "# Transcript\n\n**Me** 00:00:00\nkept\n\n**Them** 00:00:00\nkept\n")
         }
     }

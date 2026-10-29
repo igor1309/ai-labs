@@ -4,9 +4,9 @@ import Foundation
 extension TrackFile {
 
     /// Creates a new file exclusively; an existing path is always an error.
-    public init(url: URL) throws {
+    public init(url: URL) async throws {
 
-        try self.init(
+        try await self.init(
             url: url, makeBinding: DiskTrackBinding.init,
             makeConversion: { try CompleteConversion(inputRate: $0) }
         )
