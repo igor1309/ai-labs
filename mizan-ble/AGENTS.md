@@ -148,16 +148,19 @@ driven by Maestro on simulators. It proves the wiring before any device.
 - `ScriptedRadio` is a spy that reads its settings from disk, as a fake
   in a test does from its setup. A JSON file says which hosts the client
   sees and at what signal, what the other side answers at each step, where
-  it fails and how long it waits. Its path comes in as a launch argument,
-  and the file is read again at each transaction's start and whenever it
-  changes, so a lane changes behaviour by changing the file, never by a
-  rebuild.
+  it fails and how long it waits. It lives at `Documents/scripted-radio.json`
+  in the app's container, or at `-scriptedRadio <path>`. It is read at
+  launch and on each change, and each serve or scan keeps the settings it
+  started with, so a lane changes behaviour by changing the file, never by
+  a rebuild.
 - Each side runs on its own simulator against a scripted other side: the
   host on an iPad, the client on an iPhone. Nothing connects the two
   simulators. Two real parties meet only on devices.
-- A lane is a Maestro flow and a settings file, one per user-spec
-  scenario, under `maestro/`. It checks what the person sees through
-  Maestro, and what the app did through its own log:
+- A lane is a folder under `maestro/lanes/`, one per user-spec scenario.
+  Its `lane.json` lists parts, one per side or Examples row: a flow, a
+  settings file, the device kind and the log lines the part must leave.
+  It checks what the person sees through Maestro, and what the app did
+  through its own log:
   `xcrun simctl spawn <udid> log show --predicate 'subsystem == "mizan-ble"'`.
   There is no other record.
 - The log never holds an amount, a key, a nonce, a message's plaintext or
@@ -167,6 +170,33 @@ driven by Maestro on simulators. It proves the wiring before any device.
 - Every wiring change is proven in the rehearsal app before a device. The
   device check is left with what a script cannot show: real Bluetooth,
   signal strength and range, and two real parties paying each other.
+
+### Running and adding a lane
+
+- `maestro/run.sh [S-n ...]` builds once, clones a fresh simulator per
+  part, puts the settings into its container and writes
+  `maestro/runs/<stamp>.md`. Commit the passing report with the change;
+  its sibling folder of screenshots and logs stays out of git. A full run
+  takes about half an hour; while fixing, run only the failing lanes.
+  CI does not run the lanes, so a change to the wiring or a screen runs
+  them before its PR.
+- Run lanes yourself. Codex's sandbox cannot reach CoreSimulator, so an
+  implement run can write lanes and the runner but cannot prove them.
+- To add a lane, copy the nearest one, rename its folder `S-<n>-<name>`
+  after the scenario, write its settings and flow, and list the log lines
+  that prove the app did the work. Then add the scenario, and its part
+  count, to the set `ios/scripts/tests/test_lane_run.py` checks every
+  lane against.
+- Tap a keypad key by its id (`id: "key 4"`, `id: "key \\."`), never by
+  its text: a text selector is a regex over every element, hidden ones
+  too, and a digit also matches the rail's step numbers.
+- Every screen must fit an iPad in portrait. iPadOS 26 ignores the app's
+  orientation limits on iPad, so a sheet or column that fits landscape
+  can squeeze to nothing there; a lane on the iPad catches it, a preview
+  does not.
+- A failure's first error and end-screen screenshot are in the report;
+  the part's Maestro output in the sibling folder names the failing step.
+  `--keep` leaves the failed clone booted to look at.
 
 ## Design
 
