@@ -57,8 +57,8 @@ struct CallRecordingSubscriptionTests {
         try await withCallForwarding { rig in
             rig.calls.yield(.started(app: "meeting"))
             let before = try await rig.state(in: .recording)
-            rig.forwarding.cancel()
-            rig.forwarding.cancel()
+            await rig.forwarding.cancel()
+            await rig.forwarding.cancel()
             rig.calls.yield(.ended(app: "meeting"))
             rig.calls.yield(.started(app: "another meeting"))
             rig.calls.finish(throwing: ScriptFailure.failed)
@@ -82,9 +82,8 @@ struct CallRecordingSubscriptionTests {
             if state.callOn { break }
         }
         #expect(await recording.state().callOn)
-        forwarding.cancel()
+        await forwarding.cancel()
         source.continuation.finish()
-        await forwarding.wait()
         await recording.end()
         #expect(session.effects.all.isEmpty)
     }
@@ -98,17 +97,52 @@ struct CallRecordingSubscriptionTests {
         defer { refreshing.end(); release.release() }
         let forwarding = CallRecordingSubscription(calls: source.stream, recording: recording, beforeCallStarted: {
             refreshing.send()
-            await release.wait()
+            // The refresh ends when cancelled, as the conditions' refresh does.
+            await withTaskCancellationHandler { await release.wait() } onCancel: { release.release() }
         })
         source.continuation.yield(.started(app: "meeting"))
         await refreshing.next()
-        forwarding.cancel()
-        release.release()
-        await forwarding.wait()
+        await forwarding.cancel()
         #expect(await recording.state().callOn == false)
         source.continuation.finish()
         await recording.end()
         #expect(session.effects.all.isEmpty)
+    }
+
+    @Test func cancelReturnsOnlyAfterTheSendInFlight() async throws {
+
+        let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
+        let session = CallSession()
+        let base = await composedRecording(session: session, initial: .init(missing: []))
+        let sending = Signal(), release = DrainGate()
+        defer { sending.end(); release.release() }
+        let recording = RecordingInputs(
+            send: { event in
+                sending.send()
+                await release.wait()
+                await base.send(event)
+            },
+            state: base.state, states: base.states, end: base.end
+        )
+        let forwarding = CallRecordingSubscription(calls: source.stream, recording: recording)
+        source.continuation.yield(.started(app: "meeting"))
+        await sending.next()
+        let returned = Mutex(false)
+        let cancelling = Task {
+            await forwarding.cancel()
+            returned.withLock { $0 = true }
+        }
+        for _ in 0..<100 { await Task.yield() }
+        #expect(returned.withLock { $0 } == false)
+        release.release()
+        await cancelling.value
+        // The admitted start is delivered before cancel returns, and nothing after it.
+        #expect(await base.state().callOn)
+        source.continuation.yield(.ended(app: "meeting"))
+        source.continuation.finish()
+        await forwarding.wait()
+        #expect(await base.state().callOn)
+        await base.end()
     }
 
     @Test func endedRecordingReleasesItsSession() async throws {
@@ -131,7 +165,7 @@ struct CallRecordingSubscriptionTests {
         let binding = CallBinding(fails: false)
         let processes = CoreAudioProcesses(binding: binding, clock: UnusedCallClock())
         let forwarding = try composeCalls(processes, to: recording)
-        defer { forwarding.cancel(); processes.stop() }
+        defer { processes.stop() }
         for await state in await recording.states() {
             if state.phase == .recording { break }
         }
@@ -190,9 +224,8 @@ private struct CallForwardingRig: Sendable {
 
     func end() async {
 
-        forwarding.cancel()
+        await forwarding.cancel()
         calls.finish()
-        await forwarding.wait()
         await recording.end()
     }
 }

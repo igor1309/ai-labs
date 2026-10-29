@@ -82,12 +82,13 @@ public final class CallRecordingSubscription: Sendable {
 
     deinit { stop() }
 
-    /// On return, no further event is admitted, including a synthetic call end; one already
-    /// admitted may still be sent until `wait()` returns.
-    public func cancel() { stop() }
+    /// On return, no event is being sent and none will be, including a synthetic call end.
+    public func cancel() async {
+        stop()
+        await task.value
+    }
 
-    /// Joins consumption after stream termination or cancellation, including a send in flight:
-    /// after `cancel()`, its return is the delivery boundary.
+    /// Joins consumption after stream termination or cancellation, including a send in flight.
     public func wait() async { await task.value }
 
     private struct Destination: Sendable {

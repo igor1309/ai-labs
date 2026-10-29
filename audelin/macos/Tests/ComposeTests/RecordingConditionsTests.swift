@@ -73,7 +73,7 @@ struct RecordingConditionsTests {
             refreshes.append(true)
             await checker.refresh()
         })
-        defer { forwarding.cancel(); source.continuation.finish() }
+        defer { source.continuation.finish() }
         source.continuation.yield(.started(app: "meeting"))
         for await state in await recording.states() {
             if state.callOn {
@@ -106,7 +106,7 @@ struct RecordingConditionsTests {
         allowed.withLock { $0 = true }
         let processes = CoreAudioProcesses(binding: ConditionsCallBinding(), clock: ConditionsCallClock())
         let composed = try composeCalls(processes, to: recording, conditions: checker)
-        defer { composed.cancel(); processes.stop() }
+        defer { processes.stop() }
         for await state in await recording.states() {
             if state.callOn {
                 #expect(state.missing.isEmpty)

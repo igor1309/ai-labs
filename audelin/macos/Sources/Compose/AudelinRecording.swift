@@ -98,9 +98,8 @@ private struct ApplicationDelivery: LifecycleDelivery {
 
     func stop() async {
 
-        calls.cancel()
+        await calls.cancel()
         processes.stop()
-        await calls.wait()
         model.cancel()
     }
 }

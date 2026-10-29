@@ -216,15 +216,14 @@ struct LoggingTests {
             await conditions.refresh()
             let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
             let calls = try composeCalls(processes, to: recording, conditions: conditions)
-            defer { calls.cancel(); processes.stop() }
+            defer { processes.stop() }
             for await state in await recording.states() {
                 if state.phase == .recording { break }
             }
             await recording.send(.sessionReported(id: 1, .cannotRecord("disk unavailable")))
             await sink.wait { $0.category == .recording && $0.message.contains("phase=idle") && $0.error == "disk unavailable" }
-            calls.cancel()
+            await calls.cancel()
             processes.stop()
-            await calls.wait()
             await recording.end()
 
             let failures = AsyncStream<any Error>.makeStream()
