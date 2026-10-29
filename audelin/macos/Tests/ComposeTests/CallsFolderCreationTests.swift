@@ -10,14 +10,17 @@ struct CallsFolderCreationTests {
 
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent("calls-folder-\(UUID().uuidString)", isDirectory: true)
-        defer { afterwards { try? FileManager.default.removeItem(at: root) } }
         let defaultFolder = root.appendingPathComponent("Recordings/Audelin", isDirectory: true)
         let chosen = root.appendingPathComponent("Chosen", isDirectory: true)
 
-        await createDefaultCallsFolder(chosen, default: defaultFolder)
-        await createDefaultCallsFolder(defaultFolder, default: defaultFolder)
+        try await withCleanup {
+            await createDefaultCallsFolder(chosen, default: defaultFolder)
+            await createDefaultCallsFolder(defaultFolder, default: defaultFolder)
 
-        #expect(await offPool { !FileManager.default.fileExists(atPath: chosen.path) })
-        #expect(await offPool { isFolder(defaultFolder.path) })
+            #expect(await offPool { !FileManager.default.fileExists(atPath: chosen.path) })
+            #expect(await offPool { isFolder(defaultFolder.path) })
+        } cleanup: {
+            try FileManager.default.removeItem(at: root)
+        }
     }
 }

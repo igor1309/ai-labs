@@ -172,6 +172,10 @@ let package = Package(
             dependencies: ["Audelin", "Compose"]
         ),
         .testTarget(
+            name: "BlockingTestWorkTests",
+            dependencies: ["BlockingTestWork"]
+        ),
+        .testTarget(
             name: "CallAppProcessesTests",
             dependencies: ["CallAppProcesses"]
         ),

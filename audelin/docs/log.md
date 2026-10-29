@@ -2,9 +2,13 @@
 
 ## 2026-10-29
 
-- Recording rechecks call-audio readiness before each Session; heard access stays available in the menu after its reuse interval expires (LAB-604).
+- A missing call-audio permission now shows as missing call audio and holds
+  recording back, instead of recording a silent call side (LAB-604).
 
-- A missing call-audio permission now shows as missing call audio and holds recording back, instead of recording a silent call side (LAB-604).
+- Capture setup, track and transcript files, recognizer inference, process
+  discovery and test fixtures run their blocking work off the cooperative
+  pool (LAB-694, #1400); test cleanup, child reaping and audio reads are
+  awaited, and TrackFile releases its file on its queue (LAB-734).
 
 - Recording, Session, Reading and Lifecycle keep only their domain: each app
   model comes from swift-imrx, and the hand-written Machine is gone (LAB-694).

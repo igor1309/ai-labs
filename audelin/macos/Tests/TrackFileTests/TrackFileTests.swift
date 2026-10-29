@@ -61,7 +61,7 @@ struct TrackFileTests {
             let expected = try referenceWrite(tone(1, rate: 24_000), preceding: [], rate: 24_000)
                 + referenceWrite(tone(2, rate: 44_100), preceding: [], rate: 44_100)
             expectSamples(try await track.read(from: 0, to: 2), expected)
-            expectSamples(try externalSamples(url), expected)
+            expectSamples(try await externalSamples(url), expected)
             try await expectAfinfo(url, frames: expected.count)
         }
     }
@@ -105,10 +105,13 @@ struct TrackFileTests {
             let locked = folder.appendingPathComponent("locked", isDirectory: true)
             try await offPool { try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false) }
             try await offPool { try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path) }
-            defer { afterwards { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) } }
-            let url = locked.appendingPathComponent("track.caf")
-            await #expect(throws: (any Error).self) { try await TrackFile(url: url) }
-            #expect(await offPool { !FileManager.default.fileExists(atPath: url.path) })
+            try await withCleanup {
+                let url = locked.appendingPathComponent("track.caf")
+                await #expect(throws: (any Error).self) { try await TrackFile(url: url) }
+                #expect(await offPool { !FileManager.default.fileExists(atPath: url.path) })
+            } cleanup: {
+                try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path)
+            }
         }
     }
 

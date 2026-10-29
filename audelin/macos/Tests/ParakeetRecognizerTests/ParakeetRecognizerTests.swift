@@ -269,6 +269,19 @@ struct ParakeetRecognizerTests {
         }
     }
 
+    @Test func readingStaysOnTheRecognizersQueueAcrossSuspension() async throws {
+
+        let reader = QueueCheckingReader()
+        let recognizer = ParakeetRecognizer(reader: reader)
+        recognizer.queue.setSpecific(key: recognizerQueue, value: ())
+
+        _ = try await recognizer.hear(silence(6))
+
+        let checks = await reader.onQueue
+        #expect(!checks.isEmpty)
+        #expect(checks.allSatisfy { $0 })
+    }
+
     // MARK: - Helpers
 
     private func word(_ text: String, _ start: Double, _ end: Double) -> WindowWord {
@@ -309,22 +322,18 @@ struct ParakeetRecognizerTests {
 
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try await offPool { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true) }
-        defer { afterwards { try? FileManager.default.removeItem(at: directory) } }
-        let url = directory.appendingPathComponent("spoken.wav")
+        return try await withCleanup {
+            let url = directory.appendingPathComponent("spoken.wav")
 
-        let say = Process()
-        say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
-        say.arguments = ["-v", "Milena", "--file-format=WAVE", "--data-format=LEF32@\(sampleRate)", "-o", url.path, text]
-        let exited = AsyncStream<Void>.makeStream()
-        say.terminationHandler = { _ in exited.continuation.finish() }
-        try await offPool { try say.run() }
-        for await _ in exited.stream {}
-        try #require(say.terminationStatus == 0)
+            let say = Process()
+            say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
+            say.arguments = ["-v", "Milena", "--file-format=WAVE", "--data-format=LEF32@\(sampleRate)", "-o", url.path, text]
+            try #require(try await exitStatus(of: say) == 0)
 
-        let file = try AVAudioFile(forReading: url)
-        let buffer = try #require(AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)))
-        try file.read(into: buffer)
-        return Array(UnsafeBufferPointer(start: buffer.floatChannelData![0], count: Int(buffer.frameLength)))
+            return try await audioFile(url).samples
+        } cleanup: {
+            try FileManager.default.removeItem(at: directory)
+        }
     }
 }
 
@@ -369,6 +378,22 @@ private actor ControlledModelLoad {
 }
 
 /// Replies with the scripted windows in turn, then with none.
+private nonisolated(unsafe) let recognizerQueue = DispatchSpecificKey<Void>()
+
+/// Records whether each read runs on the recognizer's queue, before and after it suspends.
+private actor QueueCheckingReader: WindowReader {
+
+    private(set) var onQueue: [Bool] = []
+
+    func read(_ samples: [Float]) async throws -> [WindowWord] {
+
+        onQueue.append(DispatchQueue.getSpecific(key: recognizerQueue) != nil)
+        await Task.yield()
+        onQueue.append(DispatchQueue.getSpecific(key: recognizerQueue) != nil)
+        return []
+    }
+}
+
 private actor ScriptedReader: WindowReader {
 
     struct Failed: Error {}

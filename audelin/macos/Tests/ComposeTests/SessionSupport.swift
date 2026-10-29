@@ -1,3 +1,4 @@
+import BlockingTestWork
 import AVFAudio
 import CallAppProcesses
 import CallFolder
@@ -194,12 +195,7 @@ func withSessionRig(
     }
 }
 
-func recordedSamples(_ url: URL) throws -> [Float] {
+func recordedSamples(_ url: URL) async throws -> [Float] {
 
-    let file = try AVAudioFile(forReading: url)
-    guard file.length > 0 else { return [] }
-    let buffer = try #require(AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: AVAudioFrameCount(file.length)))
-    try file.read(into: buffer)
-    let samples = try #require(buffer.floatChannelData?[0])
-    return Array(UnsafeBufferPointer(start: samples, count: Int(buffer.frameLength)))
+    try await audioFile(url).samples
 }

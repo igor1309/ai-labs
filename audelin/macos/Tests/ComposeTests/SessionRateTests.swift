@@ -1,3 +1,4 @@
+import BlockingTestWork
 import AVFAudio
 import Foundation
 import LiveText
@@ -25,11 +26,10 @@ struct SessionRateTests {
             #expect(await rig.mine.chunks == expected)
             #expect(await rig.theirs.chunks == expected)
             for name in ["microphone.caf", "call.caf"] {
-                let track = try AVAudioFile(forReading: folder.appendingPathComponent(name))
-                #expect(track.fileFormat.sampleRate == 48_000)
-                #expect(track.length == 960)
-                #expect(Double(track.length) / track.fileFormat.sampleRate == 0.02)
-                #expect(try recordedSamples(folder.appendingPathComponent(name)) == Array(repeating: 0, count: 960))
+                let track = try await audioFile(folder.appendingPathComponent(name))
+                #expect(track.sampleRate == 48_000)
+                #expect(track.samples == Array(repeating: 0, count: 960))
+                #expect(Double(track.samples.count) / track.sampleRate == 0.02)
             }
         }
     }
