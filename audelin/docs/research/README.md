@@ -19,6 +19,7 @@ under the working name wisper.
 | [naming-prompt-round-3.md](naming-prompt-round-3.md) | Third round: Russian historical roles, GitHub search required |
 | [audelin-naming-brief.md](../audelin-naming-brief.md) | The chosen name: Audelin, CLI `audelin`, data in `~/.audelin` |
 | [audelin-availability-check.md](audelin-availability-check.md) | Collision search and score for Audelin; GitHub and App Store not yet confirmed directly |
+| [endurance-tests.md](endurance-tests.md) | How to test a 3-hour call and a loaded Mac without waiting 3 hours: growth per unit of work, test tiers, what others do |
 | [replay/](replay/) | `audelin-replay`: recorded call tracks through Audelin's recognisers and Live text, with word delays and how much live text changes |
 | [spike/](spike/) | CLIs that run a recording through Parakeet v3: the sliding window, and Audelin's own windows (`audelin-windows`, with the stabilizer's fixtures) |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
