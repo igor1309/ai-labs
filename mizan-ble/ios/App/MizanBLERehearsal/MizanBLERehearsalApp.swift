@@ -1,7 +1,9 @@
 import Foundation
+import Preferences
 import Root
 import ScriptedRadio
 import SwiftUI
+import SystemClock
 import UIKit
 
 @main struct MizanBLERehearsalApp: App {
@@ -17,7 +19,10 @@ import UIKit
         }
         let side: Side = UIDevice.current.userInterfaceIdiom == .pad ? .host : .client
         let log = SystemLogSink()
-        _root = State(initialValue: AppRoot(radios: scriptedRadios(settingsPath: path, log: log), launchSide: side, log: log))
+        _root = State(initialValue: AppRoot(
+            radios: scriptedRadios(settingsPath: path, log: log), launchSide: side, clock: SystemClock(),
+            store: Preferences(suiteName: "dev.igor1309.mizan-ble.rehearsal"), log: log
+        ))
     }
 
     var body: some Scene {

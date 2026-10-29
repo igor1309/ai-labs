@@ -48,4 +48,5 @@ to the scheme's launch arguments, or put `scripted-radio.json` in the
 app container's Documents directory. The JSON format and scenario examples
 are in [Rehearsal](ios/App/Rehearsal/README.md). File changes take effect
 without relaunching; each transaction keeps its starting settings. The
-rehearsal currently exposes the shell, with flow wiring still to come.
+host side runs its flows; the client side shows its placeholder until
+it is wired.
