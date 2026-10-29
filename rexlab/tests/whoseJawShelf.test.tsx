@@ -78,7 +78,7 @@ describe("Whose Jaw museum shelf", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(place(id));
     expect(parts.played).toEqual(["chomp"]);
-    expect(parts.spoken).toEqual([{ words: `${JAWS[0]!.name.en}. ${JAWS[0]!.fact.en}`.toUpperCase(), language: "en" }]);
+    expect(parts.spoken).toEqual([{ words: `${JAWS[0]!.name.en}. ${JAWS[0]!.fact.en}`, language: "en" }]);
     const animation = getComputedStyle(document.querySelector(".jaw-card-chomp")!).animation;
     expect(animation).toBe("jaw-chomp var(--motion-alive) var(--ease-out) 2");
   });
@@ -116,7 +116,7 @@ describe("Whose Jaw museum shelf", () => {
       expect(card.textContent).toContain(jaw.fact[language].toLocaleUpperCase(language));
       expect(card.textContent).toContain(TEXTS[language].jawFoods[jaw.diet]);
       expect(card.textContent).toContain(jaw.diet === "meat" ? "🥩" : "🌿");
-      expect(app.spoken.at(-1)).toEqual({ words: `${name}. ${jaw.fact[language].toLocaleUpperCase(language)}`, language });
+      expect(app.spoken.at(-1)).toEqual({ words: `${jaw.name[language]}. ${jaw.fact[language]}`, language });
       const close = within(card).getByRole("button");
       expect(document.activeElement).toBe(close);
       fireEvent.click(card);
@@ -178,7 +178,7 @@ describe("Whose Jaw museum shelf", () => {
     }
     if (state === "loading") act(() => pictures.finish(`gummy-${JAWS[0]!.id}.webp`));
     expect(card.querySelector(".jaw-card-chomp")!.hasAttribute("data-ready")).toBe(state === "loading");
-    expect(parts.spoken).toEqual([{ words: `${JAWS[0]!.name.en}. ${JAWS[0]!.fact.en}`.toUpperCase(), language: "en" }]);
+    expect(parts.spoken).toEqual([{ words: `${JAWS[0]!.name.en}. ${JAWS[0]!.fact.en}`, language: "en" }]);
     expect(parts.played).toEqual(["chomp"]);
     expect(within(card).getByRole("button")).toBeDefined();
     view.unmount();

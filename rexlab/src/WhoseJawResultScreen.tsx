@@ -1,5 +1,5 @@
 import { House, Landmark, RotateCcw, Sparkles, Star } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "./Button.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
@@ -19,6 +19,7 @@ export type JawResult = {
 };
 
 export type WhoseJawResultScreenProps = {
+  audioControl?: ReactNode;
   language: Language;
   result: JawResult;
   offer?: LevelOfferProps | undefined;
@@ -27,7 +28,7 @@ export type WhoseJawResultScreenProps = {
   onHome(): void;
 };
 
-export function WhoseJawResultScreen({ language, result, offer, onPlayAgain, onShelf, onHome }: WhoseJawResultScreenProps) {
+export function WhoseJawResultScreen({ audioControl, language, result, offer, onPlayAgain, onShelf, onHome }: WhoseJawResultScreenProps) {
   const text = TEXTS[language];
   const gate = useGateShown();
   const main = useRef<HTMLElement>(null);
@@ -48,6 +49,7 @@ export function WhoseJawResultScreen({ language, result, offer, onPlayAgain, onS
   return <>
     <main ref={main} className="whose-jaw-result" inert={blocked}>
       {(result.celebration || discoveries.length > 0) && <Festivity />}
+      {audioControl && <div className="jaw-result-audio" aria-hidden={blocked || undefined}>{audioControl}</div>}
       <h1><span aria-hidden="true">🦷</span> {text.wellDone}</h1>
       <p className="result-stars" role="img" aria-label={text.stars(result.stars, 3)}>
         {[0, 1, 2].map((index) => <span key={index} className={`star ${index < result.stars ? "star-won" : "star-empty"}`}
@@ -76,7 +78,7 @@ export function WhoseJawResultScreen({ language, result, offer, onPlayAgain, onS
         <Button disabled={blocked} onClick={onHome}><House aria-hidden="true" />{text.home}</Button>
       </nav>
     </main>
-    {shown && blocked && <LevelOfferDialog language={language} offer={shown} leaving={phase === "leaving"} onShown={shown.onShown}
+    {shown && blocked && <LevelOfferDialog controls={audioControl} language={language} offer={shown} leaving={phase === "leaving"} onShown={shown.onShown}
       onAnswer={(answer) => { setPhase("leaving"); if (answer === "yes") shown.onYes(); else shown.onNotNow(); }} onGone={() => setPhase("gone")} />}
   </>;
 }

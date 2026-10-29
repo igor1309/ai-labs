@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceJaw, currentJaw, placeJaw, startJawRound } from "../src/whoseJaw/index.ts";
+import { advanceJaw, currentJaw, nextJaw, placeJaw, startJawRound } from "../src/whoseJaw/index.ts";
 import { AGE_LEVELS } from "../src/ageLevel.ts";
 import { seededRandom } from "./support.ts";
 import { JAWS } from "./whoseJaw.ts";
@@ -53,6 +53,11 @@ describe("Whose Jaw round rules", () => {
       expect(round.phase).toBe("right");
       expect(placeJaw(round, owner.id)).toBe(round);
       round = advanceJaw(round);
+      expect(round.phase).toBe("reading");
+      expect(advanceJaw(round)).toBe(round);
+      expect(placeJaw(round, owner.id)).toBe(round);
+      round = nextJaw(round);
+      expect(nextJaw(round)).toBe(round);
       expect(round.placed.at(-1)).toEqual({ id: owner.id, firstTry: index !== 0 });
       expect(round.misses).toBe(0);
     }
@@ -66,5 +71,22 @@ describe("Whose Jaw round rules", () => {
     expect(() => startJawRound([...JAWS, JAWS[0]!], "hatchling", () => 0)).toThrow("five distinct");
     expect(() => startJawRound(JAWS.filter(({ diet }) => diet === "meat"), "explorer", () => 0)).toThrow("opposite-diet");
     expect(() => startJawRound(JAWS.slice(1), "paleontologist", () => 0)).toThrow("look-alike");
+  });
+
+  it.each(AGE_LEVELS)("requires a settled correct answer for Next at %s", (level) => {
+    const entering = startJawRound(JAWS, level, () => 0);
+    const waiting = advanceJaw(entering);
+    const { owner, choices } = currentJaw(waiting);
+    const wrong = placeJaw(waiting, choices.find(({ id }) => id !== owner.id)!.id);
+    const right = placeJaw(waiting, owner.id);
+    for (const round of [entering, waiting, wrong, right]) expect(nextJaw(round)).toBe(round);
+    const reading = advanceJaw(right);
+    expect(reading).toEqual({ ...right, phase: "reading" });
+    for (let at = 0; at < 100; at++) expect(advanceJaw(reading)).toBe(reading);
+    const next = nextJaw(reading);
+    expect([next.phase, next.placed, currentJaw(next)]).toEqual([
+      "entering", [{ id: owner.id, firstTry: true }], entering.questions[1]
+    ]);
+    expect(nextJaw(next)).toBe(next);
   });
 });

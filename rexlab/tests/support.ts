@@ -90,6 +90,8 @@ export type ManualPictures = PictureClock & {
   timers(): number[];
   // Fires every running timer of `ms`.
   fire(ms: number): void;
+  // Advances the injected clock, delivering timers in deadline order.
+  advance(ms: number): void;
   // Fires every timer of `ms` stopped before it fired, as one whose stop
   // came too late.
   deliverStopped(ms: number): void;
@@ -97,8 +99,9 @@ export type ManualPictures = PictureClock & {
 
 // Pictures that load and a timer that fires only when the test says.
 export function manualPictures(): ManualPictures {
+  let now = 0;
   const loading: Array<{ url: string; done: (outcome: "loaded" | "failed") => void }> = [];
-  const timers: Array<{ ms: number; fire: () => void }> = [];
+  const timers: Array<{ ms: number; due: number; fire: () => void }> = [];
   const stopped: Array<{ ms: number; fire: () => void }> = [];
   const drop = <T>(list: T[], item: T) => list.splice(list.indexOf(item), 1);
   const end = (url: string, outcome: "loaded" | "failed") => {
@@ -113,7 +116,7 @@ export function manualPictures(): ManualPictures {
         loading.push({ url, done });
       },
       (ms, fire) => {
-        const timer = { ms, fire };
+        const timer = { ms, due: now + ms, fire };
         timers.push(timer);
         return () => {
           if (!timers.includes(timer)) return;
@@ -134,6 +137,17 @@ export function manualPictures(): ManualPictures {
         drop(timers, timer);
         timer.fire();
       }
+    },
+    advance: (ms) => {
+      const end = now + ms;
+      for (;;) {
+        const timer = timers.filter(({ due }) => due <= end).sort((a, b) => a.due - b.due)[0];
+        if (!timer) break;
+        now = timer.due;
+        drop(timers, timer);
+        timer.fire();
+      }
+      now = end;
     },
     deliverStopped: (ms) => {
       for (const timer of stopped.filter((timer) => timer.ms === ms)) {
@@ -187,6 +201,7 @@ export type ManualTimers = PictureClock & {
   timers(): number[];
   // Fires every running timer of `ms`.
   fire(ms: number): void;
+  advance(ms: number): void;
   // Fires every timer of `ms` stopped before it fired, as one whose stop
   // came too late.
   deliverStopped(ms: number): void;
@@ -202,6 +217,7 @@ export function manualTimers(): ManualTimers {
     ...pictureClock((_url, done) => done("loaded"), pictures.startTimer),
     timers: pictures.timers,
     fire: pictures.fire,
+    advance: pictures.advance,
     deliverStopped: pictures.deliverStopped,
     settle: () => {
       for (let ms = pictures.timers()[0]; ms !== undefined; ms = pictures.timers()[0]) pictures.fire(ms);
