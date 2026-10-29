@@ -101,6 +101,15 @@ Feature: Bringing a recording up and down
 
 ## Silent call warning
 
+Compose subscribes to each live capture's statistics before starting it. It
+forwards every call piece and every microphone RMS window to Session, shifted
+by that capture's start relative to one monotonic origin for the session.
+Both starts are read immediately before starting the recording capture, before
+any piece can arrive. Stopping a capture joins its statistics forwarding.
+The state subscriber updates the panel, log and recording reports only when a
+field they read changes, including the audio warning; private rule tracking
+alone causes no update.
+
 While recording, Session accepts call-piece statistics (a `start..<end`
 interval and whether any sample was finite and nonzero) and microphone RMS
 for each 20 ms window. Both use seconds from one shared origin. Each stream
