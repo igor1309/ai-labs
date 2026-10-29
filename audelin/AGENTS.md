@@ -6,3 +6,6 @@ Issues are in the Multica project `Audelin`, in the `ai-labs` workspace (parent 
   from `macos/Package.swift`. Any step that adds a target or changes a dependency reruns it in
   the same commit; a new target needs its lane and line in the script's `TARGETS`, and the
   script stops until it has one.
+- Tests await blocking work per call with `offPool { }` from `Tests/BlockingTestWork`, never a
+  whole test body (`#expect` needs the task); cleanup in a `defer` uses `afterwards { }`. Core
+  Audio listener callbacks stay on Core Audio's threads; only caller entry points hop to the queue.

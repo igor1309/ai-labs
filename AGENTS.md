@@ -71,6 +71,10 @@
   count.
 - A check that fails or is slow (`-race`, a timeout, a required test) is
   kept: cut the work it checks, do not loosen the check.
+- Swift: nothing blocks the cooperative pool, in code or tests. Blocking
+  work (file I/O, `Process` launches, Core Audio HAL calls, closing a file
+  descriptor) runs on a dedicated `DispatchSerialQueue` and is awaited; a
+  slow CI runner does not excuse a blocking call.
 
 ## State machines
 

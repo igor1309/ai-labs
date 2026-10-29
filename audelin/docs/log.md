@@ -2,6 +2,9 @@
 
 ## 2026-10-29
 
+- Capture, files, recognizers, process discovery and the tests keep all
+  blocking work off the cooperative pool (LAB-694, #1400).
+
 - Recording, Session, Reading and Lifecycle keep only their domain: each app
   model comes from swift-imrx, and the hand-written Machine is gone (LAB-694).
 
