@@ -106,6 +106,17 @@ import Settings
         #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1"])
         discovery.reading(host: SecretsGate().peer, name: nil, rssi: -67, time: time)
         #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1", "picker holdCloser rssi=-67 hosts=1"])
+        var expected = ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1", "picker holdCloser rssi=-67 hosts=1"]
+        for (interval, rssi) in [-70, -67, -70].enumerated() {
+            let lastLineTime = time + Double(interval)
+            for offset in [0.1, 0.999] {
+                discovery.reading(host: SecretsGate().peer, name: nil, rssi: rssi, time: lastLineTime + offset)
+                #expect(messages(h) == expected)
+            }
+            discovery.reading(host: SecretsGate().peer, name: nil, rssi: rssi, time: lastLineTime + 1)
+            expected.append("picker holdCloser rssi=\(rssi) hosts=1")
+            #expect(messages(h) == expected)
+        }
     }
 
     @Test(arguments: [1, 2])
@@ -126,6 +137,19 @@ import Settings
         h.clock.advance(seconds)
         #expect(await answers.next() == .pickerAnswered(.holdCloser))
         #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1", "picker holdCloser rssi=-67 hosts=1"])
+        var expected = ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1", "picker holdCloser rssi=-67 hosts=1"]
+        for rssi in [-70, -67, -70] {
+            let lastLineTime = h.clock.now()
+            for offset in [0.1, 0.999] {
+                discovery.reading(host: SecretsGate().peer, name: nil, rssi: rssi, time: lastLineTime + offset)
+                #expect(await answers.next() == .pickerAnswered(.holdCloser))
+                #expect(messages(h) == expected)
+            }
+            h.clock.advance(1)
+            #expect(await answers.next() == .pickerAnswered(.holdCloser))
+            expected.append("picker holdCloser rssi=\(rssi) hosts=1")
+            #expect(messages(h) == expected)
+        }
     }
 
     @Test func pickerLogsAnswerAndHostChangesWithinOneSecond() {
