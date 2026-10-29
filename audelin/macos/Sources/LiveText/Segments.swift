@@ -1,4 +1,4 @@
-/// A track's text so far, cut into segments at pauses.
+/// A track's text so far, cut into bounded segments at pauses or settled words.
 public struct Segments: Equatable, Sendable {
 
     public struct Segment: Equatable, Identifiable, Sendable {
@@ -25,6 +25,10 @@ public struct Segments: Equatable, Sendable {
 
     /// The silence between two words that starts a new segment.
     let pause: Double
+    /// Prefer a sentence end once the segment has run this long.
+    let sentenceLength: Double = 15
+    /// Start a new segment at the first settled word at this offset.
+    let maximumLength: Double = 30
 
     private var words: [Word] = []
     private var settledCount = 0
@@ -72,14 +76,31 @@ public struct Segments: Equatable, Sendable {
         words = words[..<settledCount] + kept + reported
     }
 
-    /// Cuts where a pause starts a word. Only the recogniser settles words,
-    /// so a cut among settled words never changes, and a cut among pending
-    /// words goes with them.
+    /// Length cuts require settled words on both sides, so later revisions
+    /// cannot move them. Pause cuts may follow pending words and go with them.
     private mutating func cutIntoSegments() {
 
         guard !words.isEmpty else { return all = [] }
 
-        let cuts = words.indices.dropFirst().filter { words[$0].start - words[$0 - 1].end >= pause }
+        var cuts: [Int] = []
+        var lower = 0
+        var containsSentenceEnd = endsSentence(words[0])
+        for index in words.indices.dropFirst() {
+            let previous = words[index - 1]
+            let current = words[index]
+            let pauseCut = current.start - previous.end >= pause
+                && (index - lower >= 3 || containsSentenceEnd)
+            let lengthCut = index < settledCount && (
+                (previous.end - words[lower].start >= sentenceLength && endsSentence(previous))
+                    || current.start - words[lower].start >= maximumLength
+            )
+            if pauseCut || lengthCut {
+                cuts.append(index)
+                lower = index
+                containsSentenceEnd = false
+            }
+            containsSentenceEnd = containsSentenceEnd || endsSentence(current)
+        }
         let bounds = [0] + cuts + [words.count]
         all = zip(bounds, bounds.dropFirst()).enumerated().compactMap { id, bound in
             let (lower, upper) = bound
@@ -92,6 +113,12 @@ public struct Segments: Equatable, Sendable {
                 pending: text(words[settledUpper..<upper])
             )
         }
+    }
+
+    private func endsSentence(_ word: Word) -> Bool {
+
+        guard let last = word.text.last else { return false }
+        return ".?!…".contains(last)
     }
 
     private func text(_ words: ArraySlice<Word>) -> String {

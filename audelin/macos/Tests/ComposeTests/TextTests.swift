@@ -30,22 +30,22 @@ struct TextTests {
     @Test func hearsOneUpdatePerChunkAndFinishesWithTheLastRevision() async throws {
 
         let recognizer = ScriptRecognizer(hearings: [
-            .success(.init(words: [.init("one", start: 0.5, end: 1)])),
+            .success(.init(words: [.init("one.", start: 0.5, end: 1)])),
             .success(.init(words: [.init("two", start: 3.5, end: 4)], finalThrough: 1)),
         ], endings: [.success(.init(words: [.init("last", start: 3.5, end: 4)]))])
         let adapter = Compose.TrackText(recognizer: recognizer)
         try await adapter.prepare()
         try await adapter.prepare()
         #expect(try await adapter.hear(.init(start: 0, samples: [0.25, 0.5], sampleRate: 1)) == [
-            .init(id: 0, start: 0.5, end: 2, pending: "one"),
+            .init(id: 0, start: 0.5, end: 2, pending: "one."),
         ])
         try await adapter.prepare()
         #expect(try await adapter.hear(.init(start: 2, samples: [0.125, -0.5, 0.5, 0.25], sampleRate: 2)) == [
-            .init(id: 0, start: 0.5, end: 3.5, settled: "one"),
+            .init(id: 0, start: 0.5, end: 3.5, settled: "one."),
             .init(id: 1, start: 3.5, end: 4, pending: "two"),
         ])
         #expect(try await adapter.finish() == [
-            .init(id: 0, start: 0.5, end: 3.5, settled: "one"),
+            .init(id: 0, start: 0.5, end: 3.5, settled: "one."),
             .init(id: 1, start: 3.5, end: 4, settled: "last"),
         ])
         #expect(await recognizer.chunks == [
