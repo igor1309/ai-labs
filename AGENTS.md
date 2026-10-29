@@ -74,9 +74,10 @@
 - Swift: never synchronously block a cooperative-pool thread waiting for
   future work (no semaphore, `NSCondition`, group wait or queue `sync` on
   async work; no lock held across `await`). Project policy goes further:
-  blocking I/O, `Process` launches and Core Audio HAL calls run on an executor
-  backed by a dedicated serial queue or thread and are awaited, however short;
-  a slow CI runner is no excuse.
+  blocking I/O, `Process` launches and blocking framework calls (Core Audio
+  HAL, CoreBluetooth setup) run on an executor backed by a dedicated serial
+  queue or thread and are awaited, however short; a slow CI runner is no
+  excuse.
 
 ## State machines
 
