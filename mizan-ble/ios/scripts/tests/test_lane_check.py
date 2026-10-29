@@ -9,7 +9,7 @@ SPEC.loader.exec_module(checker)
 
 
 def encrypted_air():
-    records = [('hostToClient', b'\x01' + b'K' * 49), ('clientToHost', b'\x02' + b'K' * 32)]
+    records = [('hostToClient', b'\x01\x02' + b'K' * 48), ('clientToHost', b'\x03' + b'K' * 32)]
     for direction, kind in [('hostToClient', 1), ('clientToHost', 2), ('hostToClient', 3), ('hostToClient', 4)]:
         records.append((direction, bytes([kind]) + bytes(4) + b'\x01\x02' + b'Z' * (34 if kind == 1 else 27)))
     return '\n'.join(json.dumps({'direction': direction, 'hex': payload.hex()}) for direction, payload in records)
@@ -32,6 +32,20 @@ class LaneCheckTests(unittest.TestCase):
                          amount.to_bytes(8, 'big').hex(), amount.to_bytes(8, 'little').hex().upper()):
                 with self.subTest(form=form):
                     self.assertTrue(checker.check_log(settings, [], 'phase=leak value=' + form))
+
+    def test_an_amount_next_to_punctuation_is_rejected(self):
+        settings = {'hosts': [{'amount': 12345}]}
+        for text in ('amount 12345.', 'amount 123.45.', '(123,45)', 'amount=12345,', '"3039";', '[0x3039]'):
+            with self.subTest(text=text):
+                self.assertTrue(checker.check_log(settings, [], 'phase=leak ' + text))
+                self.assertTrue(checker.check_air(settings, encrypted_air() + '\n' + json.dumps(
+                    {'direction': 'hostToClient', 'hex': text.encode().hex()})))
+
+    def test_a_different_number_holding_the_amount_is_not_a_leak(self):
+        settings = {'hosts': [{'amount': 12345}]}
+        for text in ('value=1.12345', 'value=12345.6', 'value=9,12345', 'value=123.456', 'value=0.123.45'):
+            with self.subTest(text=text):
+                self.assertEqual(checker.check_log(settings, [], text), [])
 
     def test_secret_shapes_are_rejected(self):
         for secret in ('ab' * 16, 'AB' * 20, 'qwerty/+QWERTY123' * 3 + '='):
@@ -71,6 +85,12 @@ class LaneCheckTests(unittest.TestCase):
             records.append((direction, bytes([kind]) + bytes(4) + b'Z' * 29))
         text = '\n'.join(json.dumps({'direction': direction, 'hex': payload.hex()}) for direction, payload in records)
         self.assertTrue(checker.check_air({}, text))
+
+    def test_air_rejects_missing_handshake_records(self):
+        lines = encrypted_air().splitlines()
+        for index, name in ((0, 'session read'), (1, 'key write')):
+            with self.subTest(missing=name):
+                self.assertTrue(checker.check_air({}, '\n'.join(lines[:index] + lines[index + 1:])))
 
     def test_encrypted_air_and_keys_are_allowed(self):
         self.assertEqual(checker.check_air({}, encrypted_air()), [])

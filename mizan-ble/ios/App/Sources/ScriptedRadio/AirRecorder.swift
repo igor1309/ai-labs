@@ -41,7 +41,8 @@ import Dispatch
                     try file.seekToEnd()
                     try file.write(contentsOf: data)
                 } catch {
-                    // A missing or incomplete recording fails the independent checker.
+                    // A failed write loses its record, and the checker requires every
+                    // record of a successful payment, so the S-10 lane fails.
                     // Air bytes and file errors never enter the diagnostic log.
                 }
             }

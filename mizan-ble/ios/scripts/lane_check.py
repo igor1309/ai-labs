@@ -25,7 +25,9 @@ def amount_leaks(settings, text):
     failures = []
     for amount in amounts(settings):
         for form in amount_forms(amount):
-            if re.search(r'(?<![\w.,])(?:0x)?' + re.escape(form) + r'(?![\w.,])', text, re.I):
+            # A dot or comma ends an amount unless a digit carries on past it,
+            # which makes it part of a different number.
+            if re.search(r'(?<!\w)(?<!\w[.,])(?:0x)?' + re.escape(form) + r'(?!\w)(?![.,]\w)', text, re.I):
                 failures.append('amount exposed')
                 break
     return failures
@@ -75,7 +77,14 @@ def check_air(settings, text):
         sizes = {1: 41, 2: 34, 3: 34, 4: 34, 5: 33}
         if frame and len(frame) == sizes.get(frame[0]):
             seen.add((direction, frame[0]))
-    required = {('hostToClient', 1), ('clientToHost', 2), ('hostToClient', 3), ('hostToClient', 4)}
+        # The session read is 1, then a compressed public key and a 16-byte id;
+        # the key write is the payer's compressed public key alone.
+        if direction == 'hostToClient' and len(frame) == 50 and frame[0] == 1 and frame[1] in (2, 3):
+            seen.add((direction, 'session'))
+        if direction == 'clientToHost' and len(frame) == 33 and frame[0] in (2, 3):
+            seen.add((direction, 'key'))
+    required = {('hostToClient', 'session'), ('clientToHost', 'key'), ('hostToClient', 1),
+                ('clientToHost', 2), ('hostToClient', 3), ('hostToClient', 4)}
     if not count or not required <= seen:
         failures.append('incomplete payment recording')
     return failures
