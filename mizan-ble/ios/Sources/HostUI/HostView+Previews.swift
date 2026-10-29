@@ -1,6 +1,21 @@
 import DesignSystem
 import SwiftUI
 
+#Preview("iPhone · all states", traits: .sizeThatFitsLayout) {
+    ScrollView(.horizontal) {
+        HStack {
+            ForEach(HostState.previews.indices, id: \.self) { index in
+                HostView(state: HostState.previews[index].state, event: { _ in })
+                    .environment(\.horizontalSizeClass, .compact)
+                    .environment(\.modeSwitch, .init(
+                        side: .host, isEnabled: HostState.previews[index].state.isSettingsEnabled, onSelect: { _ in }
+                    ))
+                    .frame(width: 393, height: 852)
+            }
+        }
+    }
+}
+
 public extension HostState {
     /// One presentation value for each situation the operator can see.
     private static let framePreviews: [(name: String, state: HostState)] = [

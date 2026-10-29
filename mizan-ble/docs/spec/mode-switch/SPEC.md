@@ -53,6 +53,11 @@ Feature: Switching between host and client
     Given the client's payment has ended
     When I choose Host
     Then I see an empty amount to type
+
+  Scenario: S-7 Switching back on an iPhone
+    Given I chose Host on an iPhone and am typing an amount
+    When I choose Client
+    Then I see the client at its start, scanning for hosts
 ```
 
 Not the mode switch's: what each mode does (the flows, host UI and client
