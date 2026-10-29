@@ -26,7 +26,7 @@ struct CoreAudioBindingTests {
             let capture = try await start(pid)
             defer { capture.stop() }
             try await hearToneAndStop(capture)
-            #expect(throws: CaptureError.stopped) { try capture.name(.only([pid])) }
+            await #expect(throws: CaptureError.stopped) { try await capture.name(.only([pid])) }
         }
     }
 
@@ -64,7 +64,7 @@ struct CoreAudioBindingTests {
         // The child's audio object can exist before a tap can take it.
         while true {
             do {
-                return try SystemAudioCapture(binding: binding, processes: .only([pid]))
+                return try await SystemAudioCapture(binding: binding, processes: .only([pid]))
             } catch let error as NSError where error.domain == NSOSStatusErrorDomain
                 && error.code == Int(kAudioHardwareBadObjectError) {
                 guard now() < deadline else { throw error }

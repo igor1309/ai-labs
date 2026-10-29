@@ -38,7 +38,7 @@ struct RealRecordingTranscriptTests {
         try FileManager.default.createDirectory(at: calls, withIntermediateDirectories: true)
         let preferences = PreferencesStore(fileURL: directory.appendingPathComponent("preferences.json"))
         try preferences.write(Preferences(automaticRecording: false, liveText: true, callsFolder: calls))
-        let speech = try synthesize(Self.spoken, in: directory)
+        let speech = try await synthesize(Self.spoken, in: directory)
 
         let binding = CoreAudioBinding()
         let processes = CoreAudioProcesses(binding: binding, clock: ContinuousCallClock())
@@ -97,14 +97,16 @@ struct RealRecordingTranscriptTests {
         text.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init)
     }
 
-    private func synthesize(_ text: String, in directory: URL) throws -> URL {
+    private func synthesize(_ text: String, in directory: URL) async throws -> URL {
 
         let speech = directory.appendingPathComponent("speech.aiff")
         let say = Process()
         say.executableURL = URL(fileURLWithPath: "/usr/bin/say")
         say.arguments = ["-o", speech.path, text]
+        let exited = AsyncStream<Void>.makeStream()
+        say.terminationHandler = { _ in exited.continuation.finish() }
         try say.run()
-        say.waitUntilExit()
+        for await _ in exited.stream {}
         try #require(say.terminationStatus == 0, "say must synthesize the speech")
         let size = try FileManager.default.attributesOfItem(atPath: speech.path)[.size] as? NSNumber
         try #require((size?.intValue ?? 0) > 0, "The speech file must contain audio")

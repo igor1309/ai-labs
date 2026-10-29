@@ -11,7 +11,7 @@ struct NativeMicrophoneConversionTests {
     func nativeChannelLayoutsProduceTheExactMonoMean(interleaved: Bool, channelCount: Int) async throws {
 
         let binding = FakeMicrophoneBinding()
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         for soundingChannel in 0..<channelCount {
             var channels = Array(repeating: [Float(0), 0], count: channelCount)
@@ -65,7 +65,7 @@ struct NativeMicrophoneConversionTests {
 
         let binding = FakeMicrophoneBinding()
         binding.state.withLock { $0.time = 7_200 }
-        let capture = try MicrophoneCapture(binding: binding)
+        let capture = try await MicrophoneCapture(binding: binding)
         defer { capture.stop() }
         let clock = Mutex((host: 10.0, reads: 0))
         let tap = NativeTap(
