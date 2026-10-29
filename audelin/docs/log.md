@@ -2,6 +2,8 @@
 
 ## 2026-10-29
 
+- Recording rechecks call-audio readiness before each Session; heard access stays available in the menu after its reuse interval expires (LAB-604).
+
 - A missing call-audio permission now shows as missing call audio and holds recording back, instead of recording a silent call side (LAB-604).
 
 - Recording, Session, Reading and Lifecycle keep only their domain: each app

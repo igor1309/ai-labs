@@ -35,6 +35,7 @@ struct CallAudioAccessWiringTests {
                     let starting = Task { await recording.send(event) }
                     if let evidence { await rig.probe.started.next(); rig.probe.complete(evidence) }
                     await starting.value
+                    for await state in await recording.states() where state.phase == .idle { break }
                     let state = await recording.state()
                     #expect(state.phase == .idle)
                     #expect(state.missing == [.callAudioAccess])
@@ -81,16 +82,38 @@ struct CallAudioAccessWiringTests {
                 #expect(rig.events.all.last == "session cleanup")
                 rig.probe.complete(result)
                 for await state in await recording.states() {
-                    if result == .heard, state.lastSessionID == 2 { break }
+                    if result == .heard, state.lastSessionID == 2, state.phase == .recording { break }
                     if result == .silent, state.phase == .idle { break }
                 }
                 let state = await recording.state()
-                #expect(state.lastSessionID == (result == .heard ? 2 : 1))
+                #expect(state.lastSessionID == 2)
                 #expect(state.missing.contains(.callAudioAccess) == (result == .silent))
                 if result == .heard { await rig.session.began.next() }
                 rig.session.releaseEnd.send()
                 await rig.stop(recording)
             }
+        }
+    }
+
+    @Test func heardEvidenceStaysAvailableAfterExpiry() async throws {
+        try await withComposeFolder { root in
+            let rig = try await AccessCompositionRig(root: root)
+            let recording = await rig.recording()
+            let launch = Task { await rig.conditions.withLock { $0! }.refresh() }
+            await rig.probe.started.next()
+            rig.probe.complete(.heard)
+            await launch.value
+            await rig.timerStarted.next()
+            rig.readings.time.withLock { $0 = 130 }
+            rig.expiry.send()
+            for await state in await rig.policy.states() where !state.ready {
+                #expect(state.published)
+                break
+            }
+            await rig.conditions.withLock { $0! }.publishAccess()
+            #expect(menuBarRecording(await recording.state()) == .idle(automatic: true, unavailable: [], failure: nil))
+            #expect(rig.probe.calls.withLock { $0 } == 1)
+            await rig.stop(recording)
         }
     }
 
@@ -120,7 +143,9 @@ private final class AccessCompositionRig: Sendable {
     let readings = AccessReadings()
     let probe: AccessProbeSpy
     let session: AccessSessionSpy
-    let model = CallAudioAccessModel()
+    let timerStarted = Signal()
+    let expiry = Signal()
+    let model: CallAudioAccessModel
     let store: PreferencesStore
     let policy: AccessPolicy
     let conditions = Mutex<RecordingConditions?>(nil)
@@ -130,23 +155,32 @@ private final class AccessCompositionRig: Sendable {
         session = AccessSessionSpy(events: events, holdEnd: holdEnd)
         store = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
         try store.write(Preferences(automaticRecording: true, callsFolder: root))
-        let model = model, probe = probe, readings = readings
+        let probe = probe, readings = readings
         let readDevice: @Sendable () async -> UInt32? = { readings.device.withLock { $0 } }
         let now: @Sendable () -> Double = { readings.time.withLock { $0 } }
-        let handler = AccessEffectHandler(probe: { await probe.measure() }, device: readDevice, now: now, sleep: { _ in throw CancellationError() })
-        await model.start(handler: handler, changes: AsyncStream { $0.finish() })
-        policy = AccessPolicy(send: { await model.send($0) }, states: { await model.states() }, device: readDevice, now: now)
+        model = CallAudioAccessModel(device: readDevice, now: now)
+        let timerStarted = timerStarted, expiry = expiry
+        await model.start(probe: { await probe.measure() }, sleep: { _ in
+            timerStarted.send()
+            await expiry.next()
+            try Task.checkCancellation()
+        }, changes: AsyncStream { $0.finish() })
+        policy = await model.policy()
     }
 
     func recording() async -> RecordingInputs {
-        let (recording, conditions) = await composeRecordingWithPreferences(preferences: store, makePieces: { _ in
+        let (recording, conditions) = await composeRecordingWithPreferences(preferences: store, access: policy, makePieces: { _ in
             preconditionFailure("The injected Session spy owns captures")
         }, makeConditions: { [policy] recording, _ in
-            RecordingConditions(recording: recording, microphoneAccess: { true }, callAudioAccess: { false }, callsFolder: { true }, room: { true }, access: policy)
-        }, panel: ReadingClockSpy().panel(), makeModel: { [session] initial, _, log in
-            await Audelin.makeRecording(initial: initial, session: session, log: log)
+            RecordingConditions(recording: recording, microphoneAccess: { true }, callsFolder: { true }, room: { true }, access: policy)
+        }, panel: ReadingClockSpy().panel(), makeModel: { [session] initial, _, log, ready, released in
+            await Audelin.makeRecording(initial: initial, session: session, log: log,
+                                        callAudioReady: ready, callAudioReleased: released)
         }, makeSession: makeSession)
         self.conditions.withLock { $0 = conditions }
+        for condition in RecordingCondition.allCases {
+            await recording.send(.conditionChanged(condition, available: true))
+        }
         return recording
     }
 
@@ -163,21 +197,16 @@ private final class AccessProbeSpy: Sendable {
     let events: Values<String>
     let started = Signal()
     let calls = Mutex(0)
-    let answer = Mutex<CheckedContinuation<AccessEvidence, Never>?>(nil)
+    let results = AsyncStream<AccessEvidence>.makeStream()
     init(events: Values<String>) { self.events = events }
     func measure() async -> AccessEvidence {
-        // A cancelled test ends at its own expectations rather than hanging here.
-        await withTaskCancellationHandler {
-            await withCheckedContinuation { done in
-                answer.withLock { $0 = done }; calls.withLock { $0 += 1 }; started.send()
-            }
-        } onCancel: {
-            answer.withLock { let done = $0; $0 = nil; return done }?.resume(returning: .refused)
-        }
+        calls.withLock { $0 += 1 }; started.send()
+        for await evidence in results.stream { return evidence }
+        return .refused
     }
     func complete(_ evidence: AccessEvidence) {
         events.append("probe cleanup")
-        answer.withLock { let done = $0; $0 = nil; return done }?.resume(returning: evidence)
+        results.continuation.yield(evidence)
     }
 }
 

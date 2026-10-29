@@ -9,21 +9,17 @@ public struct RecordingInputs: Sendable {
     /// Starts with the current state and retains every subsequent change.
     public var states: @Sendable () async -> AsyncStream<RecordingState>
     public var end: @Sendable () async -> Void
-    /// Installs the application's delivery route for reports produced by Recording's doer.
-    public var connectReports: @Sendable (@escaping @Sendable (RecordingEvent) async -> Void) -> Void
 
     public init(
         send: @escaping @Sendable (RecordingEvent) async -> Void,
         state: @escaping @Sendable () async -> RecordingState,
         states: @escaping @Sendable () async -> AsyncStream<RecordingState>,
-        end: @escaping @Sendable () async -> Void,
-        connectReports: @escaping @Sendable (@escaping @Sendable (RecordingEvent) async -> Void) -> Void
+        end: @escaping @Sendable () async -> Void
     ) {
 
         self.send = send
         self.state = state
         self.states = states
         self.end = end
-        self.connectReports = connectReports
     }
 }

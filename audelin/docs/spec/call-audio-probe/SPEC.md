@@ -28,20 +28,35 @@ is fresh enough. Neither guesses permission from a quiet call.
   and Swift's cooperative pool. IO only scans samples and updates atomics;
   it does no allocation, waiting, property access or dispatch.
 - The first refresh at launch creates the tap and lets macOS request
-  System Audio Recording access. Before every manual or automatic start,
-  refresh awaits a measurement unless `heard` is less than 30 seconds old
-  for the same default output device. Concurrent requests share one
-  measurement. Only fresh `heard` is available; silent, refused, absent
-  and stale evidence fail closed.
-- Thirty seconds bounds reuse of positive reception evidence while avoiding
-  repeated stimulus and tap setup for starts near launch or a recent check.
-  It is a product freshness interval, not a macOS permission guarantee.
-  Device changes and sleep or wake invalidate it immediately, including
-  evidence from an in-flight measurement. Expiry removes availability too.
-- A running recording excludes probing. The recording interval is reserved
-  after refresh and before Session can capture. Session's final ended
-  report releases it only after capture cleanup; a deferred automatic start
-  refreshes again before that report can start its next Session.
+  System Audio Recording access. Recording asks for readiness before every
+  manual, automatic or deferred start. Concurrent requests share one probe;
+  its result is delivered only after measurement and cleanup return.
+- The start gate requires `heard` for the same nonzero default output,
+  a finite measurement time and an age from zero up to, but excluding,
+  30 seconds. A probe in progress cannot authorize a start. Missing output,
+  future times and nonfinite times fail the gate.
+- The displayed condition describes the latest reception evidence. A heard
+  result stays available when its reuse interval expires. Silence, refusal
+  or an environmental invalidation makes it unavailable until re-measured.
+  Thirty seconds bounds reuse before a start; it is not a permission timeout.
+- The access machine reduces events synchronously. Its state holds evidence,
+  measurement time, output, a monotonically increasing generation, the
+  recording reservation and an idle or probing phase. Its doer claims each
+  probe generation once, reads output before and after measurement, reads
+  the clock after cleanup and schedules one expiry for each heard result.
+- Output changes, sleep and wake invalidate evidence immediately and advance
+  the generation. An invalidation leaves a running probe in place until its
+  cleanup completes; its late result clears the phase without storing
+  evidence. An expiry from an older generation changes nothing.
+- The application owns the generic sync model on one actor. Each refresh or
+  reservation reduces and reads in one actor turn. A request waiting for a
+  probe follows only that generation; supersession, cancellation or model
+  shutdown answers false. Cancelling one request leaves the shared probe
+  running for its other callers. Completion needs no condition-delivery lock.
+- A running recording excludes probing. Recording refreshes and reserves the
+  interval before asking Session to capture. It releases after Session's
+  ended report and cleanup, or when the start does not happen. A deferred
+  automatic start waits for release and checks readiness again.
 - Recording uses its existing missing-call-audio condition and menu entry.
   There is no new interface, and no test of silence during an ongoing call.
 
@@ -55,7 +70,7 @@ Feature: Establishing call audio access by reception
     And finite nonzero tap input establishes access after cleanup
 
   Scenario: Missing reception holds both kinds of start back
-    Given silence, refusal, missing output or stale evidence
+    Given silence, refusal or missing output
     When a manual or automatic recording is requested
     Then call audio is shown as missing and no Session begins
 
@@ -63,6 +78,12 @@ Feature: Establishing call audio access by reception
     Given concurrent refreshes or fresh heard evidence on the same output
     When access is refreshed
     Then concurrent refreshes join one probe and fresh evidence is reused
+
+  Scenario: Expiry requests a new measurement without changing the menu
+    Given a heard result for the current output
+    When thirty seconds have passed
+    Then call audio remains shown as available
+    And the next start measures reception again before Session begins
 
   Scenario: Environmental changes discard evidence
     Given fresh evidence or an in-flight measurement

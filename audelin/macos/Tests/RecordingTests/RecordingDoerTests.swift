@@ -1,8 +1,80 @@
 import Recording
+import Synchronization
 import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingDoerTests {
+
+    @Test(arguments: ["user", "call", "deferred"])
+    func eachStartOriginAwaitsReadiness(_ origin: String) async {
+        let gate = AsyncStream<Bool>.makeStream()
+        let asked = AsyncStream<Void>.makeStream()
+        let (sut, session, sent) = makeSUT(callAudioReady: {
+            asked.continuation.yield(())
+            for await answer in gate.stream { return answer }
+            return false
+        })
+        var initial = RecordingState(automatic: true, missing: [])
+        let start: RecordingState
+        switch origin {
+        case "user": start = RecordingReducer.reduce(initial, .userStart)
+        case "call": start = RecordingReducer.reduce(initial, .callStarted)
+        default:
+            initial = state(.ending, id: 1)
+            initial.automatic = true; initial.callOn = true; initial.pendingCall = true
+            start = RecordingReducer.reduce(initial, .sessionReported(id: 1, .ended))
+        }
+        sut.act(on: start)
+        for await _ in asked.stream { break }
+        #expect(await session.beginIDs.isEmpty)
+        gate.continuation.yield(true)
+        await session.completeBegin(with: .ready)
+        #expect(await sent.next() == .sessionReported(id: start.lastSessionID, .ready))
+    }
+
+    @Test func falseReadinessBlocksSessionReportsConditionAndReleases() async {
+        let releases = AsyncStream<Void>.makeStream()
+        let (sut, session, sent) = makeSUT(callAudioReady: { false }, callAudioReleased: { releases.continuation.yield(()) })
+        sut.act(on: state(.beginning, id: 1))
+        #expect(await sent.next() == .conditionChanged(.callAudioAccess, available: false))
+        for await _ in releases.stream { break }
+        #expect(await sent.next() == .sessionReported(id: 1, .ended))
+        #expect(await session.beginIDs.isEmpty)
+        #expect(await session.endIDs.isEmpty)
+    }
+
+    @Test func releaseFollowsSessionCleanup() async {
+        let released = Mutex(false)
+        let (sut, session, sent) = makeSUT(callAudioReleased: { released.withLock { $0 = true } })
+        sut.act(on: state(.beginning, id: 1))
+        await session.completeBegin(with: .ready)
+        #expect(await sent.next() == .sessionReported(id: 1, .ready))
+        sut.act(on: state(.ending, id: 1))
+        await session.waitForEnd()
+        #expect(!released.withLock { $0 })
+        await session.completeEnd()
+        #expect(await sent.next() == .sessionReported(id: 1, .ended))
+        #expect(released.withLock { $0 })
+    }
+
+    @Test func stopWhileAwaitingReadinessReleasesWithoutBeginningSession() async {
+        let gate = AsyncStream<Bool>.makeStream()
+        let asked = AsyncStream<Void>.makeStream()
+        let released = Mutex(false)
+        let (sut, session, sent) = makeSUT(callAudioReady: {
+            asked.continuation.yield(())
+            for await answer in gate.stream { return answer }
+            return false
+        }, callAudioReleased: { released.withLock { $0 = true } })
+        sut.act(on: state(.beginning, id: 1))
+        for await _ in asked.stream { break }
+        sut.act(on: state(.ending, id: 1))
+        gate.continuation.yield(true)
+        #expect(await sent.next() == .sessionReported(id: 1, .ended))
+        #expect(released.withLock { $0 })
+        #expect(await session.beginIDs.isEmpty)
+        #expect(await session.endIDs.isEmpty)
+    }
 
     @Test func beginningStateBeginsThatSessionAndSendsItsReport() async {
 
@@ -96,11 +168,12 @@ struct RecordingDoerTests {
     }
 }
 
-private func makeSUT() -> (RecordingDoer, SessionSpy, SendSpy) {
+private func makeSUT(callAudioReady: @escaping @Sendable () async -> Bool = { true },
+                     callAudioReleased: @escaping @Sendable () async -> Void = {}) -> (RecordingDoer, SessionSpy, SendSpy) {
 
     let session = SessionSpy()
     let sent = SendSpy()
-    return (RecordingDoer(session: session, send: { await sent.send($0) }), session, sent)
+    return (RecordingDoer(session: session, callAudioReady: callAudioReady, callAudioReleased: callAudioReleased, send: { await sent.send($0) }), session, sent)
 }
 
 private func state(_ phase: RecordingState.Phase, id: UInt64) -> RecordingState {
@@ -116,20 +189,22 @@ private func state(_ phase: RecordingState.Phase, id: UInt64) -> RecordingState 
 private actor SendSpy {
 
     private var events: [RecordingEvent] = []
-    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private let changed = AsyncStream<Void>.makeStream()
 
     var count: Int { events.count }
 
     func send(_ event: RecordingEvent) {
 
         events.append(event)
-        for waiter in waiters { waiter.resume() }
-        waiters.removeAll()
+        changed.continuation.yield(())
     }
 
     func next() async -> RecordingEvent {
 
-        while events.isEmpty { await withCheckedContinuation { waiters.append($0) } }
+        while events.isEmpty {
+            var iterator = changed.stream.makeAsyncIterator()
+            guard await iterator.next() != nil else { return .sessionReported(id: 0, .ended) }
+        }
         return events.removeFirst()
     }
 }
@@ -140,49 +215,60 @@ private actor SessionSpy: RecordingSession {
     private(set) var beginIDs: [UInt64] = []
     private(set) var endIDs: [UInt64] = []
     private(set) var endReturned = false
-    private var pendingBegins: [CheckedContinuation<RecordingSessionReport, Never>] = []
-    private var pendingEnds: [CheckedContinuation<Void, Never>] = []
-    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var pendingBegins: [AsyncStream<RecordingSessionReport>.Continuation] = []
+    private var pendingEnds: [AsyncStream<Void>.Continuation] = []
+    private let changed = AsyncStream<Void>.makeStream()
 
     func begin(id: UInt64) async -> RecordingSessionReport {
 
         beginIDs.append(id)
-        return await withCheckedContinuation { continuation in
-            pendingBegins.append(continuation)
-            wakeWaiters()
-        }
+        let (stream, continuation) = AsyncStream<RecordingSessionReport>.makeStream()
+        pendingBegins.append(continuation)
+        wakeWaiters()
+        for await report in stream { return report }
+        return .ended
     }
 
     func end(id: UInt64) async {
 
         endIDs.append(id)
-        await withCheckedContinuation { continuation in
-            pendingEnds.append(continuation)
-            wakeWaiters()
-        }
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        pendingEnds.append(continuation)
+        wakeWaiters()
+        for await _ in stream { break }
         endReturned = true
     }
 
     func completeBegin(with report: RecordingSessionReport) async {
 
-        while pendingBegins.isEmpty { await withCheckedContinuation { waiters.append($0) } }
-        pendingBegins.removeFirst().resume(returning: report)
+        while pendingBegins.isEmpty {
+            var iterator = changed.stream.makeAsyncIterator()
+            guard await iterator.next() != nil else { return }
+        }
+        let continuation = pendingBegins.removeFirst()
+        continuation.yield(report)
+        continuation.finish()
     }
 
     func waitForEnd() async {
 
-        while pendingEnds.isEmpty { await withCheckedContinuation { waiters.append($0) } }
+        while pendingEnds.isEmpty {
+            var iterator = changed.stream.makeAsyncIterator()
+            guard await iterator.next() != nil else { return }
+        }
     }
 
     func completeEnd() async {
 
         await waitForEnd()
-        pendingEnds.removeFirst().resume()
+        guard !pendingEnds.isEmpty else { return }
+        let continuation = pendingEnds.removeFirst()
+        continuation.yield(())
+        continuation.finish()
     }
 
     private func wakeWaiters() {
 
-        for waiter in waiters { waiter.resume() }
-        waiters.removeAll()
+        changed.continuation.yield(())
     }
 }

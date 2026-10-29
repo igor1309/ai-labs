@@ -42,7 +42,7 @@ let package = Package(
         .target(name: "CallAudioProbe"),
         .target(name: "CallAudioAccess"),
         .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe"]),
-        .testTarget(name: "CallAudioAccessTests", dependencies: ["CallAudioAccess", .product(name: "IMRxObservation", package: "swift-imrx")]),
+        .testTarget(name: "CallAudioAccessTests", dependencies: ["CallAudioAccess"]),
         .executableTarget(
             name: "Audelin",
             dependencies: [

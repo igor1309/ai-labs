@@ -119,6 +119,9 @@ struct RecordingTests {
 
         try await withRecording(missing: [condition]) { rig in
             await rig.recording.send(callStart ? .callStarted : .userStart)
+            if condition == .callAudioAccess {
+                await rig.recording.waitForDelivery(of: .sessionReported(id: 1, .ended))
+            }
             let state = await rig.recording.snapshot()
             #expect(state.phase == .idle)
             #expect(state.missing == [condition])

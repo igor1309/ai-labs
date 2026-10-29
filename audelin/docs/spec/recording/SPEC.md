@@ -24,6 +24,14 @@ whether a recording runs; its Session brings the pieces up and down.
   a lost access is a failing capture and the other side goes on (the
   Session, the design's mic lost); only a lost folder or room ends it, its
   audio kept (disk full). Setup reads the conditions' merge (LAB-406).
+- **Recording asks before Session begins.** Its doer awaits call-audio
+  readiness for a user start, a call start and a deferred automatic start.
+  The readiness port refreshes reception evidence and reserves the recording
+  interval. A false answer reports call audio as unavailable and begins no
+  Session. A previous missing-call-audio reading can be checked again by a
+  new start. The reservation is released after Session cleanup, or when a
+  pending start is stopped or refused. Compose subscribes to the published
+  access condition and maps it for the menu; it does not identify start events.
 - **A Session that cannot record is ended,** named until the next (LAB-510).
 
 ```gherkin

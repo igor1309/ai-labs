@@ -17,10 +17,14 @@ struct PreferencesCompositionTests {
                 // Only the stored folder of the second pass exists.
                 if automatic { try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) } }
                 try store.write(Preferences(automaticRecording: automatic, callsFolder: folder))
-                let (recording, conditions) = await composeRecordingWithPreferences(preferences: store, makePieces: { _ in
+                let (recording, conditions) = await composeRecordingWithPreferences(preferences: store, access: testAccessPolicy(), makePieces: { _ in
                     preconditionFailure("An idle recording must not build a session")
                 }, makeConditions: testConditions, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
-                #expect(await recording.state() == RecordingState(automatic: automatic))
+                // Access can publish during construction; the stored automatic choice is already reduced.
+                let initial = await recording.state()
+                #expect(initial.automatic == automatic)
+                #expect(initial.phase == .idle)
+                #expect(initial.missing.subtracting([.callAudioAccess]) == Set(RecordingCondition.allCases).subtracting([.callAudioAccess]))
                 await conditions.refresh()
                 // A snapshot reads after every event already sent is reduced.
                 #expect(await recording.state().missing.contains(.callsFolder) != automatic)
@@ -38,7 +42,7 @@ struct PreferencesCompositionTests {
                     var preferences = Preferences(liveText: false, callsFolder: root)
                     try store.write(preferences)
                     let (recording, _) = await composeRecordingWithPreferences(
-                        preferences: store, makePieces: { $0 == 1 ? first.pieces : second.pieces },
+                        preferences: store, access: testAccessPolicy(), makePieces: { $0 == 1 ? first.pieces : second.pieces },
                         makeConditions: testConditions, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession
                     )
                     for condition in RecordingCondition.allCases {
@@ -78,7 +82,7 @@ private func waitForPhase(_ phase: RecordingState.Phase, in recording: Recording
 }
 
 private func testConditions(recording: RecordingInputs, callsURL: URL) -> RecordingConditions {
-    RecordingConditions(recording: recording, microphoneAccess: { true }, callAudioAccess: { true }, callsFolder: {
+    RecordingConditions(recording: recording, microphoneAccess: { true }, callsFolder: {
         FileManager.default.fileExists(atPath: callsURL.path)
-    }, room: { true })
+    }, room: { true }, access: testAccessPolicy())
 }
