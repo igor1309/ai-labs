@@ -215,15 +215,14 @@ struct LoggingTests {
                 callAudioAccess: { true }, callsFolder: { true }, room: { true })
             await conditions.refresh()
             let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
-            let calls = try composeCalls(processes, to: recording, conditions: conditions)
-            defer { processes.stop() }
+            let calls = try await composeCalls(processes, to: recording, conditions: conditions)
             for await state in await recording.states() {
                 if state.phase == .recording { break }
             }
             await recording.send(.sessionReported(id: 1, .cannotRecord("disk unavailable")))
             await sink.wait { $0.category == .recording && $0.message.contains("phase=idle") && $0.error == "disk unavailable" }
             await calls.cancel()
-            processes.stop()
+            await processes.stop()
             await recording.end()
 
             let failures = AsyncStream<any Error>.makeStream()
@@ -462,7 +461,7 @@ private struct LogPieces: Sendable {
         pieces = SessionPieces(
             folder: CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: 0) }, timeZone: TimeZone(secondsFromGMT: 0)!),
             processes: CallAppProcesses(app: "meeting", list: SessionProcessList(answer: .success([]))),
-            startMicrophone: { try microphone.start() }, startCall: { _ in try call.start() },
+            startMicrophone: { try await microphone.start() }, startCall: { _ in try await call.start() },
             microphoneRecognizerSource: { preconditionFailure("Live text is disabled") },
             callRecognizerSource: { preconditionFailure("Live text is disabled") },
             missingModels: { missingModels }, captureLogSink: sink)

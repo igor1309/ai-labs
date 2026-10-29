@@ -103,9 +103,9 @@ public func composeCalls(
     _ processes: CoreAudioProcesses, to recording: RecordingInputs,
     conditions: RecordingConditions? = nil,
     startedApp: (@Sendable (String) -> Void)? = nil
-) throws -> CallRecordingSubscription {
+) async throws -> CallRecordingSubscription {
 
-    try processes.start()
+    try await processes.start()
     return CallRecordingSubscription(
         calls: processes.calls, recording: recording,
         beforeCallStarted: { await conditions?.refresh() }, startedApp: startedApp

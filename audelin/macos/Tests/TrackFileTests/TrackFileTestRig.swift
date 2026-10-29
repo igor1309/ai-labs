@@ -77,11 +77,11 @@ struct TrackRig {
     let track: TrackFile
     let waiting: AsyncStream<Void>
 
-    init(_ folder: URL, binding: (any TrackFileBinding)? = nil) throws {
+    init(_ folder: URL, binding: (any TrackFileBinding)? = nil) async throws {
 
         let signal = AsyncStream<Void>.makeStream()
         waiting = signal.stream
-        track = try TrackFile(
+        track = try await TrackFile(
             url: folder.appendingPathComponent("track.caf"),
             makeBinding: { url in try binding ?? DiskTrackBinding(url: url) },
             makeConversion: { try CompleteConversion(inputRate: $0) },

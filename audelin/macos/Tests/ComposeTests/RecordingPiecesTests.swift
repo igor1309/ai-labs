@@ -189,12 +189,11 @@ struct RecordingPiecesTests {
             preconditionFailure("Automatic recording is off")
         }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
         let processes = CoreAudioProcesses(binding: CallBinding(fails: false), clock: UnusedCallClock())
-        defer { processes.stop() }
-        let subscription = try composeCalls(processes, to: detectorRecording, startedApp: {
+        let subscription = try await composeCalls(processes, to: detectorRecording, startedApp: {
             detectedApp.started($0)
             detected.append($0)
         })
-        processes.stop()
+        await processes.stop()
         await subscription.wait()
         await detectorRecording.end()
         #expect(detected.all == ["us.zoom.xos"])

@@ -29,7 +29,7 @@ struct TrackFilePositionedWriteTests {
             let url = folder.appendingPathComponent("track.caf")
             let fault = PositionedWriteFault()
             let binding = try DiskTrackBinding(url: url, positionedWrite: { try fault.write($0, $1, $2) })
-            let rig = try TrackRig(folder, binding: binding)
+            let rig = try await TrackRig(folder, binding: binding)
             var preceding: [Float] = []
             var expected: [Float] = []
             for number in 1...2 {

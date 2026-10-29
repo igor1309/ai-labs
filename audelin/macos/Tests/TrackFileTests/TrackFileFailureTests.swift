@@ -64,7 +64,7 @@ struct TrackFileFailureTests {
 
         try await withTrackFolder { folder in
             try await withDiskImage(in: folder) { volume in
-                let rig = try TrackRig(volume)
+                let rig = try await TrackRig(volume)
                 let url = volume.appendingPathComponent("track.caf")
                 try await rig.track.write(tone(1), sampleRate: 48_000)
                 try await withPendingRead(rig, from: 0.5, to: 1_000) { read in

@@ -42,7 +42,6 @@ struct RealRecordingTranscriptTests {
 
         let binding = CoreAudioBinding()
         let processes = CoreAudioProcesses(binding: binding, clock: ContinuousCallClock())
-        defer { processes.stop() }
         let callApp = RecordingCallApp()
         // A name no process has: other suites play their own afplay meanwhile, and
         // selecting one of them by name would leave this call's speech out.

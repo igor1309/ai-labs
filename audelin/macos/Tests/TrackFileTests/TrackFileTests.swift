@@ -9,7 +9,7 @@ struct TrackFileTests {
 
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
-            let track = try TrackFile(url: url)
+            let track = try await TrackFile(url: url)
             for number in 1...3 { try await track.write(tone(number), sampleRate: 48_000) }
             for number in 1...3 {
                 let samples = try await track.read(from: Double(number - 1), to: Double(number))
@@ -23,7 +23,7 @@ struct TrackFileTests {
     @Test func unwrittenStretchWaitsForItsTone() async throws {
 
         try await withTrackFolder { folder in
-            let rig = try TrackRig(folder)
+            let rig = try await TrackRig(folder)
             try await rig.track.write(tone(1), sampleRate: 48_000)
             try await withPendingRead(rig, from: 1, to: 2) { read in
                 try await rig.track.write(tone(2), sampleRate: 48_000)
@@ -37,7 +37,7 @@ struct TrackFileTests {
     @Test func cancelledReadEndsWithoutAudioAndDoesNotConsumeTheStretch() async throws {
 
         try await withTrackFolder { folder in
-            let rig = try TrackRig(folder)
+            let rig = try await TrackRig(folder)
             try await withPendingRead(rig, from: 0, to: 1) { read in
                 read.cancel()
                 await #expect(throws: CancellationError.self) { try await read.value }
@@ -53,7 +53,7 @@ struct TrackFileTests {
 
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
-            let track = try TrackFile(url: url)
+            let track = try await TrackFile(url: url)
             try await track.write(tone(1, rate: 24_000), sampleRate: 24_000)
             try await track.write(tone(2, rate: 44_100), sampleRate: 44_100)
             try await track.close()
@@ -69,7 +69,7 @@ struct TrackFileTests {
 
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
-            let track = try TrackFile(url: url)
+            let track = try await TrackFile(url: url)
             for number in 1...3 { try await track.write(tone(number), sampleRate: 48_000) }
             try await track.close()
             try await expectPlayable(url, tones: 3)
@@ -83,7 +83,7 @@ struct TrackFileTests {
     @Test func closingReleasesWaitingReadWithOnlyTheWrittenTail() async throws {
 
         try await withTrackFolder { folder in
-            let rig = try TrackRig(folder)
+            let rig = try await TrackRig(folder)
             try await rig.track.write(tone(1), sampleRate: 48_000)
             try await withPendingRead(rig, from: 0.5, to: 2) { read in
                 try await rig.track.close()
@@ -99,14 +99,14 @@ struct TrackFileTests {
 
         try await withTrackFolder { folder in
             let missing = folder.appendingPathComponent("missing/track.caf")
-            #expect(throws: (any Error).self) { try TrackFile(url: missing) }
+            await #expect(throws: (any Error).self) { try await TrackFile(url: missing) }
             #expect(!FileManager.default.fileExists(atPath: missing.path))
             let locked = folder.appendingPathComponent("locked", isDirectory: true)
             try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false)
             try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
             defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
             let url = locked.appendingPathComponent("track.caf")
-            #expect(throws: (any Error).self) { try TrackFile(url: url) }
+            await #expect(throws: (any Error).self) { try await TrackFile(url: url) }
             #expect(!FileManager.default.fileExists(atPath: url.path))
         }
     }
@@ -117,14 +117,14 @@ struct TrackFileTests {
             let url = folder.appendingPathComponent("track.caf")
             let binding = try FailingBinding(url: url)
             binding.fail(.header)
-            #expect(throws: BindingFailure.self) {
-                try TrackFile(
+            await #expect(throws: BindingFailure.self) {
+                try await TrackFile(
                     url: url, makeBinding: { _ in binding },
                     makeConversion: { try CompleteConversion(inputRate: $0) }
                 )
             }
             #expect(!FileManager.default.fileExists(atPath: url.path))
-            let track = try TrackFile(url: url)
+            let track = try await TrackFile(url: url)
             try await track.write(tone(1), sampleRate: 48_000)
             try await track.close()
             try await expectPlayable(url, tones: 1)
@@ -140,7 +140,7 @@ struct TrackFileTests {
             let link = folder.appendingPathComponent("link.caf")
             try FileManager.default.createSymbolicLink(at: link, withDestinationURL: url)
             for path in [url, link] {
-                #expect(throws: (any Error).self) { try TrackFile(url: path) }
+                await #expect(throws: (any Error).self) { try await TrackFile(url: path) }
                 #expect(try Data(contentsOf: url) == bytes)
             }
         }
@@ -151,7 +151,7 @@ struct TrackFileTests {
         try await withTrackFolder { folder in
             let url = folder.appendingPathComponent("track.caf")
             let binding = try FailingBinding(url: url)
-            let track = try TrackFile(
+            let track = try await TrackFile(
                 url: url, makeBinding: { _ in binding },
                 makeConversion: { try CompleteConversion(inputRate: $0) }
             )
@@ -171,7 +171,7 @@ struct TrackFileTests {
             let url = folder.appendingPathComponent("track.caf")
             let fault = PositionedWriteFault()
             let binding = try DiskTrackBinding(url: url, positionedWrite: { try fault.write($0, $1, $2) })
-            let rig = try TrackRig(folder, binding: binding)
+            let rig = try await TrackRig(folder, binding: binding)
             for number in 1...3 { try await rig.track.write(tone(number), sampleRate: 48_000) }
             try await withPendingRead(rig, from: 2, to: 4) { read in
                 fault.arm(after: prefix)
@@ -189,7 +189,7 @@ struct TrackFileTests {
     @Test func invalidRangesFailWithoutTrapping() async throws {
 
         try await withTrackFolder { folder in
-            let track = try TrackFile(url: folder.appendingPathComponent("track.caf"))
+            let track = try await TrackFile(url: folder.appendingPathComponent("track.caf"))
             for (start, end) in [(-1.0, 1.0), (2, 1), (0, .infinity), (.nan, 1), (0, 1e30)] {
                 await #expect(throws: TrackFile.Failure.invalidRange) { try await track.read(from: start, to: end) }
             }
@@ -208,7 +208,7 @@ struct TrackFileTests {
                 ([.nan], 48_000), ([.infinity], 48_000), ([-.infinity], 48_000),
             ]
             for (index, input) in inputs.enumerated() {
-                let track = try TrackFile(url: folder.appendingPathComponent("invalid-\(index).caf"))
+                let track = try await TrackFile(url: folder.appendingPathComponent("invalid-\(index).caf"))
                 await #expect(throws: TrackFile.Failure.invalidAudio) {
                     try await track.write(input.0, sampleRate: input.1)
                 }

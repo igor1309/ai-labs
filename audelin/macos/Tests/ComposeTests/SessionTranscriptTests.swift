@@ -17,7 +17,7 @@ struct SessionTranscriptTests {
         let news = Values<String>()
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
                 if state.entries.count == 2, !failed.withLock({ value in
                     let previous = value
                     value = true
@@ -64,7 +64,7 @@ struct SessionTranscriptTests {
         defer { forwarding.end(); release.release() }
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
                 if state.status == .finished { binding.arm(operation) }
             })
         }
@@ -104,7 +104,7 @@ struct SessionTranscriptTests {
         defer { reported.end(); release.release() }
         var construction = SessionConstruction()
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url, binding: binding)), beforeWrite: { state in
                 if state.status == .finished { binding.arm(operation) }
             })
         }
@@ -143,7 +143,7 @@ struct SessionTranscriptTests {
         var construction = SessionConstruction()
         construction.openTranscript = { url in
             try Data("existing transcript".utf8).write(to: url)
-            return try WritingTranscript(file: TranscriptFile(url: url))
+            return try await WritingTranscript(file: TranscriptFile(url: url))
         }
         try await withSessionRig(construction: construction) { rig, folder in
             await rig.session.send(.begin(liveText: enabled))

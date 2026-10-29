@@ -93,7 +93,7 @@ struct SessionDrainTests {
         var construction = SessionConstruction()
         construction.executor = executor
         construction.openTranscript = { url in
-            ControlledTranscript(base: try WritingTranscript(file: TranscriptFile(url: url)), beforeWrite: { state in
+            ControlledTranscript(base: try await WritingTranscript(file: TranscriptFile(url: url)), beforeWrite: { state in
                 if state.status == .finished { await snapshot.wait() }
             })
         }

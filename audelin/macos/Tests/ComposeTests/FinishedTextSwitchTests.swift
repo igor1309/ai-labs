@@ -71,7 +71,7 @@ struct FinishedTextSwitchTests {
 
         try await withComposeFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let transcript = try TranscriptFile(url: url)
+            let transcript = try await TranscriptFile(url: url)
             var finishedTextSeen = false
             for state in snapshots {
                 let entries = state.entries.filter { $0.speaker == speaker }

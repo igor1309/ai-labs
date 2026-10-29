@@ -9,7 +9,7 @@ struct TranscriptFileTests {
 
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let file = try TranscriptFile(url: url)
+            let file = try await TranscriptFile(url: url)
             try await file.write([
                 .init(side: .mine, start: 65.99, settled: "1 settled", pending: ""),
                 .init(side: .theirs, start: 3_669.9, settled: "", pending: "2 pending"),
@@ -41,7 +41,7 @@ struct TranscriptFileTests {
 
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let file = try TranscriptFile(url: url)
+            let file = try await TranscriptFile(url: url)
             try await file.write([
                 .init(side: .mine, start: 1, settled: "1 old", pending: "1 pending"),
                 .init(side: .theirs, start: 2, settled: "", pending: "2 pending"),
@@ -59,7 +59,7 @@ struct TranscriptFileTests {
 
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let file = try TranscriptFile(url: url)
+            let file = try await TranscriptFile(url: url)
             try await file.write([
                 .init(side: .mine, start: 1, settled: "1 live", pending: ""),
                 .init(side: .theirs, start: 2, settled: "2 later", pending: "", filledInLater: true),
@@ -89,7 +89,7 @@ struct TranscriptFileTests {
 
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let file = try TranscriptFile(url: url)
+            let file = try await TranscriptFile(url: url)
             for number in 1...3 { try await file.write(numberedSegments(number)) }
             await file.close()
             await file.close()
@@ -105,7 +105,7 @@ struct TranscriptFileTests {
 
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let file = try TranscriptFile(url: url)
+            let file = try await TranscriptFile(url: url)
             #expect(try transcriptText(url) == noTextTranscript)
             await file.close()
             #expect(try transcriptText(url) == noTextTranscript)
@@ -116,7 +116,7 @@ struct TranscriptFileTests {
 
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let file = try TranscriptFile(url: url)
+            let file = try await TranscriptFile(url: url)
             for _ in 0..<2 {
                 try await file.write([])
                 #expect(try transcriptText(url) == noTextTranscript)
@@ -136,7 +136,7 @@ struct TranscriptFileTests {
 
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let file = try TranscriptFile(url: url)
+            let file = try await TranscriptFile(url: url)
             try await file.write([
                 .init(side: .mine, start: 1, settled: "", pending: ""),
                 .init(side: .theirs, start: 2, settled: "Привет", pending: "世界"),
@@ -150,7 +150,7 @@ struct TranscriptFileTests {
 
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let file = try TranscriptFile(url: url)
+            let file = try await TranscriptFile(url: url)
             try await file.write([.init(side: .mine, start: 10_800_000_000_065.9, settled: "1", pending: "")])
             #expect(try transcriptText(url) == "# Transcript\n\n**Me** 3000000000:01:05\n1\n")
         }
@@ -160,14 +160,14 @@ struct TranscriptFileTests {
 
         try await withTranscriptFolder { folder in
             let missing = folder.appendingPathComponent("missing/transcript.md")
-            #expect(throws: (any Error).self) { try TranscriptFile(url: missing) }
+            await #expect(throws: (any Error).self) { try await TranscriptFile(url: missing) }
             #expect(!FileManager.default.fileExists(atPath: missing.path))
             let locked = folder.appendingPathComponent("locked", isDirectory: true)
             try FileManager.default.createDirectory(at: locked, withIntermediateDirectories: false)
             try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: locked.path)
             defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path) }
             let url = locked.appendingPathComponent("transcript.md")
-            #expect(throws: (any Error).self) { try TranscriptFile(url: url) }
+            await #expect(throws: (any Error).self) { try await TranscriptFile(url: url) }
             #expect(try folderNames(locked).isEmpty)
         }
     }
@@ -179,9 +179,9 @@ struct TranscriptFileTests {
             let url = folder.appendingPathComponent("transcript.md")
             let binding = FailingTranscriptBinding()
             binding.arm(fault)
-            #expect(throws: TranscriptBindingFailure.self) { try TranscriptFile(url: url, binding: binding) }
+            await #expect(throws: TranscriptBindingFailure.self) { try await TranscriptFile(url: url, binding: binding) }
             #expect(try folderNames(folder).isEmpty)
-            let file = try TranscriptFile(url: url, binding: binding)
+            let file = try await TranscriptFile(url: url, binding: binding)
             #expect(try transcriptText(url) == noTextTranscript)
             try await file.write(numberedSegments(1))
             #expect(try transcriptText(url) == numberedTranscript(1))
@@ -200,7 +200,7 @@ struct TranscriptFileTests {
             try FileManager.default.createSymbolicLink(at: link, withDestinationURL: url)
             try FileManager.default.createSymbolicLink(at: dangling, withDestinationURL: absent)
             for path in [url, link, dangling] {
-                #expect(throws: (any Error).self) { try TranscriptFile(url: path) }
+                await #expect(throws: (any Error).self) { try await TranscriptFile(url: path) }
                 #expect(try Data(contentsOf: url) == bytes)
                 #expect(try FileManager.default.destinationOfSymbolicLink(atPath: link.path) == url.path)
                 #expect(try FileManager.default.destinationOfSymbolicLink(atPath: dangling.path) == absent.path)
@@ -216,7 +216,7 @@ struct TranscriptFileTests {
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
             let binding = FailingTranscriptBinding()
-            let file = try TranscriptFile(url: url, binding: binding)
+            let file = try await TranscriptFile(url: url, binding: binding)
             try await file.write(numberedSegments(1))
             binding.arm(fault)
             await #expect(throws: TranscriptBindingFailure.self) { try await file.write(numberedSegments(2)) }
@@ -233,7 +233,7 @@ struct TranscriptFileTests {
 
         try await withTranscriptFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let file = try TranscriptFile(url: url)
+            let file = try await TranscriptFile(url: url)
             try await file.write(numberedSegments(1))
             await #expect(throws: TranscriptFile.Failure.invalidStart) {
                 try await file.write([.init(side: .mine, start: start, settled: "invalid", pending: "")])

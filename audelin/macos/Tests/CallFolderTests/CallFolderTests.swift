@@ -25,10 +25,10 @@ struct CallFolderTests {
             }
             #expect(try names(made.url).isEmpty)
             for place in [made.microphoneURL, made.callURL] {
-                let track = try TrackFile(url: place)
+                let track = try await TrackFile(url: place)
                 try await track.close()
             }
-            let transcript = try TranscriptFile(url: made.transcriptURL)
+            let transcript = try await TranscriptFile(url: made.transcriptURL)
             await transcript.close()
             #expect(try names(made.url) == ["call.caf", "microphone.caf", "transcript.md"])
             for place in places {

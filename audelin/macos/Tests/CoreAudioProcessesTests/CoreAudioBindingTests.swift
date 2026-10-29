@@ -37,16 +37,10 @@ struct CoreAudioBindingTests {
 
         let binding = CoreAudioBinding()
         let adapter = CoreAudioProcesses(binding: binding, clock: FakeClock())
-        defer { adapter.stop() }
-        let pid = Mutex<Int32?>(nil)
-        let arrived = AsyncStream<AudioProcess>.makeStream(bufferingPolicy: .bufferingNewest(1))
-        defer { arrived.continuation.finish() }
-        let inspect: @Sendable () -> Void = {
-
-            guard let target = pid.withLock({ $0 }),
-                  let process = try? adapter.processes().first(where: { $0.pid == target }) else { return }
-            arrived.continuation.yield(process)
-        }
+        // The native listener only signals a change; the list is read by the awaiting task.
+        let changed = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
+        defer { changed.continuation.finish() }
+        let inspect: @Sendable () -> Void = { changed.continuation.yield(()) }
         let listener = try binding.onProcessListChange(inspect)
         defer { listener.cancel() }
 
@@ -55,12 +49,13 @@ struct CoreAudioBindingTests {
         player.arguments = ["-v", "0", sound.path]
         try player.run()
         let childPID = player.processIdentifier
-        pid.withLock { $0 = childPID }
         inspect()
         let result = await withTaskGroup(of: AudioProcess?.self) { group in
             group.addTask {
-                var iterator = arrived.stream.makeAsyncIterator()
-                return await iterator.next()
+                for await _ in changed.stream {
+                    if let process = try? await adapter.processes().first(where: { $0.pid == childPID }) { return process }
+                }
+                return nil
             }
             group.addTask {
                 try? await Task.sleep(for: .seconds(18))

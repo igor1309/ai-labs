@@ -36,7 +36,7 @@ struct TranscriptFileCrashTests {
                     let leftovers = try folderNames(folder).filter { $0 != "transcript.md" }
                     #expect(leftovers.count == (point == "before" ? 1 : 0))
                     let other = folder.appendingPathComponent("another.md")
-                    let file = try TranscriptFile(url: other)
+                    let file = try await TranscriptFile(url: other)
                     try await file.write(numberedSegments(4))
                     await file.close()
                     #expect(try transcriptText(other) == numberedTranscript(4))
