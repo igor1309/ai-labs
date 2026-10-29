@@ -10,7 +10,7 @@ Issues are in the Multica workspace `ai-labs` (parent of v0.0.1: LAB-625).
 - A new component, module or dependency changes `ARCHITECTURE.md` and its
   diagram in the same commit, and gets its spec folder before its code.
 - No component imports another. Only the UI modules import `DesignSystem`.
-  Only the app target knows concrete types.
+  Only the root (`ios/App/`) knows concrete types.
 - Only the apps (main, preview, rehearsal) import `SystemClock`, and only it
   and its tests read or wait on real time; every other module and test takes
   time through an interface it owns. `scripts/tests/test_clock_boundary.py`
