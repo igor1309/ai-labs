@@ -39,8 +39,9 @@ Open `ios/App/MizanBLE.xcodeproj` in Xcode, select the MizanBLE scheme and
 an iPhone or iPad simulator, and run. iPad launches Host; iPhone launches
 Client. To run on a device, select your signing team and enable signing
 in the target settings. The shell keeps both radios idle until flows
-are wired. Test the root with `swift test` in `ios/App`; regenerate the
-icon from `DesignSystem` with `swift run RenderAppIcon` there.
+are wired. Test the root with `swift test` in `ios/App`. The app icon is the
+Icon Composer file `ios/App/MizanBLE/AppIcon.icon`; its layers are
+exported from the design's "Mizan · App icon" frame.
 
 Run the `MizanBLE Rehearsal` scheme on a simulator to play against a
 scripted other side. Add `-scriptedRadio /absolute/path/to/settings.json`

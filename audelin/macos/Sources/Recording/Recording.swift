@@ -16,6 +16,7 @@ public enum RecordingFault: CaseIterable, Hashable, Sendable {
 public enum RecordingSessionReport: Equatable, Sendable {
 
     case ready
+    case callCreated(id: String)
     case cannotRecord(String)
     case failed(RecordingFault)
     case callSilent(Bool)
@@ -70,6 +71,7 @@ public struct RecordingState: Equatable, Sendable {
     public var lastSessionID: UInt64 = 0
     public var cannotRecord: String?
     public var faults: Set<RecordingFault> = []
+    public var callID: String?
     public var callSilent = false
 
     /// Conditions start unknown, so a start waits for each to be reported available.
@@ -145,6 +147,9 @@ public enum RecordingReducer {
                 return state
             }
             switch report {
+            case let .callCreated(id):
+                state.callID = id
+                return state
             case let .failed(fault):
                 if state.phase == .beginning || state.phase == .recording || state.phase == .ending {
                     state.faults.insert(fault)
@@ -164,6 +169,7 @@ public enum RecordingReducer {
             case .ended:
                 state.phase = .idle
                 state.callSilent = false
+                state.callID = nil
                 state.session = nil
                 state.sessionBeganDuringCall = false
                 let resumeCall = state.pendingCall && state.callOn && state.automatic && !state.heldForCall
@@ -178,6 +184,7 @@ public enum RecordingReducer {
 
         // Call-audio evidence is refreshed by the doer, including when the last reading failed.
         guard state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
+        state.callID = nil
         state.lastSessionID += 1
         state.session = .init(id: state.lastSessionID, origin: origin)
         // A hand start during a call belongs to that call too: Audelin may have missed its start.

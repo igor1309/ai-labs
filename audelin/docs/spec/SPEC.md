@@ -92,6 +92,16 @@ Feature: Live text of calls
     Given a recorded call
     When I change its title in the app
     Then the call's folder carries the new title, keeps its date and time in front, and the call is still the same call
+
+  Scenario: S-18 Deleting a call
+    Given a recorded call
+    When I delete it in the app and confirm
+    Then its folder is gone, with its audio and transcript
+
+  Scenario: S-19 Changing the calls folder
+    Given recorded calls in the calls folder
+    When I pick another folder and confirm the move
+    Then every call is in the new folder, still the same call, and new calls are recorded there
 ```
 
 ## Menu bar

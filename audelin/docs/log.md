@@ -2,6 +2,12 @@
 
 ## 2026-10-29
 
+- Long calls no longer crash the app: the microphone's delivery no longer
+  grows with every buffer until it overflowed mid-call or at the call's end (LAB-751).
+
+- «Звонки…» opens the recorded calls list, with Finder opening, inline title
+  editing and confirmed permanent deletion; the active call stays protected (LAB-746).
+
 - The panel shows each recording problem the menu bar shows (no call audio,
   no microphone, disk full, call silent) as a banner, with a gap row in the
   transcript where a track stopped, and opens the matching macOS setting or

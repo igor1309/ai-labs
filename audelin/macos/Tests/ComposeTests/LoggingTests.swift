@@ -64,7 +64,7 @@ struct LoggingTests {
             let rig = LogPieces(root: root, sink: sink)
             defer { rig.finish() }
             let handler = rig.pieces.handler(sink: sink)
-            #expect(await handler.handle(.createFolder) == .folderFinished(error: nil))
+            #expect(await handler.handle(.createFolder) == .folderFinished(error: nil, folder: .init(id: root.appendingPathComponent("1970.01.01-0000").path)))
             guard case .processesFinished(_, error: nil) = await handler.handle(.selectProcesses) else {
                 Issue.record("composed process selection failed"); return
             }
@@ -238,7 +238,7 @@ struct LoggingTests {
             let entries = sink.entries.all.filter { $0.category == .recording && $0.message.hasPrefix("state ") }
             #expect(entries.map { $0.message.components(separatedBy: " ")[1] } == [
                 "phase=idle", "phase=idle", "phase=idle", "phase=idle", "phase=idle",
-                "phase=beginning", "phase=recording", "phase=ending", "phase=idle",
+                "phase=beginning", "phase=beginning", "phase=recording", "phase=ending", "phase=idle",
             ])
             #expect(entries[0].message.contains("missing=[callAudioAccess,callsFolder,microphoneAccess,room]"))
             #expect(entries[4].message.contains("missing=[]"))
@@ -275,11 +275,13 @@ struct LoggingTests {
             let delivered = LogSpy()
             let rig = LogPieces(root: root, sink: delivered)
             defer { rig.finish() }
+            let reports = Values<RecordingSessionReport>()
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                report: { _, _ in Issue.record("normal shutdown must not report an unexpected end") },
+                report: { id, report in #expect(id == 8); reports.append(report) },
                 connect: subscribe, sink: delivered, panel: ReadingClockSpy().panel(), makeSession: makeSession)
             #expect(await sessions.begin(id: 8) == .ready)
             await sessions.end(id: 8)
+            #expect(reports.all == [.callCreated(id: "1970.01.01-0000")])
             let states = delivered.entries.all.filter { $0.category == .session && $0.message.hasPrefix("state ") }
             let phases = states.map { $0.message.components(separatedBy: " ")[2] }
             #expect(phases.first == "phase=idle")

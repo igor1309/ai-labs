@@ -1,3 +1,5 @@
+import Calls
+import Foundation
 import Recording
 import Session
 
@@ -21,12 +23,14 @@ public actor RecordingSessions: RecordingSession {
         var faults: Set<RecordingFault> = []
         var reportedFaults: Set<RecordingFault> = []
         var callSilent = false
+        var reportedFolder = false
+        var reports: [RecordingSessionReport] = []
     }
 
     public nonisolated let panel: AudelinPanel
     private let makePieces: @Sendable (UInt64) -> SessionPieces
     private let liveText: @Sendable () -> Bool
-    private let report: @Sendable (UInt64, RecordingSessionReport) -> Void
+    private let report: @Sendable (UInt64, RecordingSessionReport) async -> Void
     private let connect: @Sendable (SessionPieces, SessionInputs) -> Task<Void, Never>
     private let makeSession: MakeSessionModel
     private let sink: any LogSink
@@ -37,7 +41,7 @@ public actor RecordingSessions: RecordingSession {
     public init(
         makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
         liveText: @escaping @Sendable () -> Bool,
-        report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void,
+        report: @escaping @Sendable (UInt64, RecordingSessionReport) async -> Void,
         panel: AudelinPanel,
         makeSession: @escaping MakeSessionModel
     ) {
@@ -51,7 +55,7 @@ public actor RecordingSessions: RecordingSession {
     init(
         makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
         liveText: @escaping @Sendable () -> Bool,
-        report: @escaping @Sendable (UInt64, RecordingSessionReport) -> Void,
+        report: @escaping @Sendable (UInt64, RecordingSessionReport) async -> Void,
         connect: @escaping @Sendable (SessionPieces, SessionInputs) -> Task<Void, Never>,
         sink: any LogSink,
         panel: AudelinPanel,
@@ -97,7 +101,7 @@ public actor RecordingSessions: RecordingSession {
                     previous = observed
                     await reading.sessionChanged(state)
                     StateLog(sink: self.sink).session(state, id: id)
-                    if self.receive(state, id: id) { return }
+                    if await self.receive(state, id: id) { return }
                 }
             }
         }
@@ -147,8 +151,13 @@ public actor RecordingSessions: RecordingSession {
         }
     }
 
-    private func receive(_ state: SessionState, id: UInt64) -> Bool {
+    private func receive(_ state: SessionState, id: UInt64) async -> Bool {
 
+        if let entry = running[id], !entry.reportedFolder, let folder = state.recordedFolder,
+           let callID = Calls.id(in: URL(fileURLWithPath: folder.id).lastPathComponent, timeZone: .current) {
+            running[id]?.reportedFolder = true
+            await report(id, .callCreated(id: callID))
+        }
         guard var entry = running[id] else { return true }
         if let reason = state.cannotRecord, !entry.reportedFailure {
             entry.reportedFailure = true
@@ -185,7 +194,10 @@ public actor RecordingSessions: RecordingSession {
                 self.forget(id: id)
             }
         }
+        let reports = entry.reports
+        entry.reports.removeAll()
         running[id] = entry
+        for value in reports { await report(id, value) }
         return state.phase == .ended
     }
 
@@ -196,7 +208,7 @@ public actor RecordingSessions: RecordingSession {
             for answer in entry.beginners { answer.resume(returning: value) }
             entry.beginners.removeAll()
         } else {
-            report(id, value)
+            entry.reports.append(value)
         }
     }
 
@@ -219,7 +231,7 @@ private struct ObservedSession: Equatable {
             health: state.health, wantedLiveText: state.wantedLiveText,
             liveTextRequestID: state.liveTextRequestID, pendingLiveText: state.pendingLiveText,
             phase: state.phase, liveText: state.liveText,
-            folder: state.folder, processes: state.processes,
+            folder: state.folder, recordedFolder: state.recordedFolder, processes: state.processes,
             microphoneTrack: state.microphoneTrack, callTrack: state.callTrack,
             microphoneCapture: state.microphoneCapture, callCapture: state.callCapture,
             transcript: state.transcript, callText: state.callText,

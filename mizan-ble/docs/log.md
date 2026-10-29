@@ -4,7 +4,12 @@
 
 - Every payment scenario has a simulator rehearsal lane, with screen, log and encrypted-air checks (LAB-726).
 - On an iPad in portrait, settings opens full screen and its countdown can be chosen again, and the host's amount shows whole (LAB-726).
+
+- The app has its designed icon, two beacons and the Mizan sign, with a
+  Liquid Glass edition (LAB-742).
+
 - Screens now animate between states (LAB-741).
+
 - The client side pays end to end in the app (LAB-725).
 
 - The rehearsal app plays the other side from a settings file (LAB-723).
