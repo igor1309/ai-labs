@@ -12,6 +12,7 @@ export function jawGameParts() {
   const spoken: Array<{ words: string; language: Language }> = [];
   const stopped = { sound: 0, voice: 0 };
   return {
+    audioStore: { load: () => undefined, save: (_muted: boolean) => {} },
     mouthFor: jawMouth, jaws: JAWS, jawFor: (id: string) => `jaw-${id}.webp`, gummyFor: (id: string) => `gummy-${id}.webp`, foodFor: (diet: string) => `${diet}.webp`,
     sounds: { play: (sound: JawSound, pitch?: number) => { played.push(sound); }, stop: () => { stopped.sound++; } },
     voice: { speak: (words: string, language: Language) => { spoken.push({ words, language }); }, stop: () => { stopped.voice++; } },

@@ -5,7 +5,7 @@ countdown's ticks are read from its stream.
 
 ## S-1 A countdown runs out
 
-A 3 s countdown: ticks 2, 1, 0, then the stream finishes. Evidence: `SystemClockTests.countdownRunsOut`.
+A 3 s countdown: ticks 2, 1, 0, then the stream finishes. Evidence: `SystemClockTests.countdownRunsOut(wake:)` (on time, and a late wake skipping the expired step) and `countdownRunsOutAgainstTheRealClock`.
 
 ## S-2 A countdown stopped
 

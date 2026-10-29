@@ -16,7 +16,7 @@ export type JawRound = {
   placed: readonly { id: string; firstTry: boolean }[];
   errors: number;
   misses: number;
-  phase: "entering" | "waiting" | "right" | "wrong" | "done";
+  phase: "entering" | "waiting" | "right" | "reading" | "wrong" | "done";
   target: string | undefined;
 };
 
@@ -62,7 +62,12 @@ export function placeJaw(round: JawRound, id: string): JawRound {
 
 export function advanceJaw(round: JawRound): JawRound {
   if (round.phase === "entering" || round.phase === "wrong") return { ...round, phase: "waiting", target: undefined };
-  if (round.phase !== "right") return round;
+  if (round.phase === "right") return { ...round, phase: "reading" };
+  return round;
+}
+
+export function nextJaw(round: JawRound): JawRound {
+  if (round.phase !== "reading") return round;
   const placed = [...round.placed, { id: currentJaw(round).owner.id, firstTry: round.misses === 0 }];
   return { ...round, placed, misses: 0, target: undefined, phase: placed.length === 5 ? "done" : "entering" };
 }

@@ -44,6 +44,7 @@ describe("Whose Jaw full visit", () => {
         act(() => { fireEvent.click(jaw); fireEvent.click(owner); fireEvent.click(owner); });
         expect(app.parts.played.filter((sound) => sound === "snap")).toHaveLength(at + 1);
         act(() => app.timers.fire(JAW_TIMING.right));
+        fireEvent.click(button(text.next));
       }
       act(() => app.timers.fire(JAW_TIMING.done));
       expect(new Set(ids).size).toBe(5);
@@ -58,13 +59,14 @@ describe("Whose Jaw full visit", () => {
         expect(button(text.home)).toBeDefined();
       }
       fireEvent.click(button(text.jawShelf));
-      const name = JAWS.find(({ id }) => id === ids[0])!.name[language].toLocaleUpperCase(language);
+      const collected = JAWS.find(({ id }) => id === ids[0])!;
+      const name = collected.name[language].toLocaleUpperCase(language);
       fireEvent.click(button(name));
       const card = screen.getByRole("dialog", { name });
-      const fact = JAWS.find(({ id }) => id === ids[0])!.fact[language].toLocaleUpperCase(language);
-      expect(app.parts.spoken.at(-1)).toEqual({ words: `${name}. ${fact}`, language });
+      expect(card.textContent).toContain(collected.fact[language].toLocaleUpperCase(language));
+      expect(app.parts.spoken.at(-1)).toEqual({ words: `${collected.name[language]}. ${collected.fact[language]}`, language });
       const stopped = { ...app.parts.stopped };
-      fireEvent.click(within(card).getByRole("button"));
+      fireEvent.click(within(card).getByRole("button", { name: text.back }));
       act(() => app.timers.settle());
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(app.parts.stopped).toEqual({ voice: stopped.voice + 1, sound: stopped.sound + 1 });

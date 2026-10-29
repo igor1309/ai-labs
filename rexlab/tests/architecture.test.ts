@@ -73,6 +73,7 @@ const PRESENTATION = [
   ...SCREENS,
   "ageLevelPictures.ts",
   "Button.tsx",
+  "GameAudioButton.tsx",
   "DietTag.tsx",
   "DigBar.tsx",
   "Festivity.tsx",
@@ -100,6 +101,7 @@ const ADAPTERS = [
   "jawSounds.ts",
   "localAgeLevel.ts",
   "localLanguage.ts",
+  "localJawAudio.ts",
   "localProgress.ts",
   "localTheme.ts",
   "mediaAppearance.ts",
@@ -143,6 +145,12 @@ const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps game audio independent of UI and storage, with browser persistence wired at the root", () => {
+    expect(GRAPH.get("gameAudio.ts")).toEqual(["language/language.ts"]);
+    expect(GRAPH.get("root.ts")).toContain("localJawAudio.ts");
+    expect(edges((file) => file !== "root.ts", (target) => target === "localJawAudio.ts")).toEqual([]);
+    expect(edges((file) => PRESENTATION.includes(file), (target) => target === "gameAudio.ts")).toEqual([]);
+  });
   it("keeps jaw rules pure, reached through their entrypoint and independent of presentation", () => {
     const inJaw = (file: string) => file.startsWith("whoseJaw/");
     expect(GRAPH.get("whoseJawGame.tsx")).toContain("whoseJaw/index.ts");

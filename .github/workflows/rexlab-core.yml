@@ -45,3 +45,13 @@ jobs:
       - name: Build
         working-directory: rexlab
         run: npm run build
+
+      - name: Install Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: npx playwright install --with-deps chromium
+
+      - name: Check board geometry in Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: npm run test:browser

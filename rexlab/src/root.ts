@@ -1,5 +1,6 @@
 import { jawMouth } from "./jawPresentation.ts";
 import { readJaws, jawPictures } from "./jawContent.ts";
+import { localJawAudio } from "./localJawAudio.ts";
 import { jawSounds, jawVoice } from "./jawSounds.ts";
 import jawRecords from "./data/jaws.json";
 import welcomeJaw from "./assets/jaws/tyrannosaurus.webp";
@@ -245,7 +246,7 @@ export function appProps(browser: Browser): AppProps {
     dinosaurs,
     catalogue: readCatalogue(records),
     bodyPicture,
-    whoseJaw: { mouthFor: jawMouth, progress: localWhoseJawProgress(storage, jawRecords.map(({ id }) => id)), total: jawRecords.length, jawPicture: welcomeJaw, gummyPicture: welcomeGummy,
+    whoseJaw: { audioStore: localJawAudio(storage), mouthFor: jawMouth, progress: localWhoseJawProgress(storage, jawRecords.map(({ id }) => id)), total: jawRecords.length, jawPicture: welcomeJaw, gummyPicture: welcomeGummy,
       jaws: readJaws(jawRecords, records), jawFor: jawPictures(JAW_PICTURES, jawRecords.map(({ id }) => id), "jaw"),
       gummyFor: jawPictures(GUMMY_PICTURES, jawRecords.map(({ id }) => id), "gummy"),
       foodFor: itemPictures(CARE_PICTURES, ["meat", "plants"]),

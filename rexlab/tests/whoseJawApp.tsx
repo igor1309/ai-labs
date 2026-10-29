@@ -1,3 +1,4 @@
+import { localJawAudio } from "../src/localJawAudio.ts";
 import { jawGameParts } from "./whoseJaw.ts";
 import { render } from "@testing-library/react";
 import { App, type AppProps } from "../src/App.tsx";
@@ -24,7 +25,7 @@ export function openWhoseJawApp({ storage = memoryStorage(), setting = { level: 
     dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture}
     random={() => 0} portraitLayouts={portraitLayouts ?? { home: ["tall"], "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-result": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"] }} viewport={viewport}
     progress={localProgress(local)} labyrinthProgress={localLabyrinthProgress(local)}
-    whoseJaw={{ ...parts, progress: localWhoseJawProgress(local, jaws.map(({ id }) => id)), total: jaws.length, jawPicture: "jaw.webp", gummyPicture: "gummy.webp" }}
+    whoseJaw={{ ...parts, audioStore: localJawAudio(local), progress: localWhoseJawProgress(local, jaws.map(({ id }) => id)), total: jaws.length, jawPicture: "jaw.webp", gummyPicture: "gummy.webp" }}
     deviceLanguage={language} languageStore={localLanguage(local)} appearance={manualAppearance("light")}
     themeStore={localTheme(local)} ageLevelStore={localAgeLevel(() => settings)} nameVersion={unreadVersion}
     {...emptyCare()} {...emptyPairs()} {...emptySkeletons()} {...emptySorting()} {...emptyDig()} {...pageAtRest()} {...timers} reducedMotion={() => reduced}
