@@ -63,7 +63,7 @@ import MessageCodec
         let source = Source(Settings())
         source.result = .unavailable(kind: .missing)
         let log = LogSpy()
-        let pair = scriptedRadios(source: source, clock: ManualClock(), log: log)
+        let pair = scriptedRadios(source: source, clock: ManualClock(), log: log, recorder: AirRecorder(append: { _ in }))
         var hi = pair.host.events.makeAsyncIterator()
         var ci = pair.client.events.makeAsyncIterator()
         #expect(await hi.next() == .bluetoothState(.unsupported))

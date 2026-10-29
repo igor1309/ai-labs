@@ -29,6 +29,17 @@ knows nothing of the model behind the recogniser, of speakers or of storage.
   owner's reading, Parakeet's word times showed gaps of 0 s at most
   sentence ends and up to 1.28 s inside a sentence, and Nemotron's text
   arrives in steps of about 1.1 s; 2 s is above both.
+- A segment is bounded so a long monologue reads as paragraphs and the
+  client can put the other track's words between them in time order. Once
+  a segment has run 15 s, it ends after the next word that ends a sentence
+  (`.`, `?`, `!` or `…`); with no sentence end it ends before the first
+  word that starts 30 s or more after it began. Live caption tools do the
+  same: they commit at completed sentences or at a length limit, never an
+  unbounded paragraph. These two cuts fall only between settled words, so
+  a paragraph break never moves once shown.
+- A pause after fewer than three words that end no sentence starts no
+  segment: those words join the next one, so a recogniser's stray word
+  never stands alone.
 - Stopping asks the recogniser to finish and settles what it returns: its
   finish includes words it never confirmed, and the text so far is kept.
 - A failed recogniser cannot finish, so its pending words settle as they
@@ -81,9 +92,29 @@ Feature: Live text for one track
     When the recogniser hears them again without the pause
     Then I read them in one segment
 
-  Scenario: S-6 Speech without a pause stays one segment
-    Given a segment has words
+  Scenario: S-6 Speech without a pause stays one segment while it is short
+    Given a segment has run less than 15 s
     When the next words come without a pause
+    Then I read them in the same segment
+
+  Scenario: S-13 A long segment ends at a sentence end
+    Given a segment has run 15 s
+    When a settled word ends a sentence and more words follow without a pause
+    Then I read the words after it in a new segment, with the time it started
+
+  Scenario: S-14 A segment with no sentence end ends at 30 s
+    Given a segment's words end no sentence
+    When a settled word starts 30 s or more after the segment began
+    Then I read it and the words after it in a new segment
+
+  Scenario: S-15 Length cuts wait for settled words
+    Given a segment has run 15 s
+    When a pending word ends a sentence
+    Then I read the words after it in the same segment until it settles
+
+  Scenario: S-16 A short fragment before a pause joins the next words
+    Given a segment has fewer than three words and none ends a sentence
+    When the next words come after a pause
     Then I read them in the same segment
 
   Scenario: S-7 Stopping keeps the text so far

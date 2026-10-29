@@ -19,19 +19,36 @@ public struct SettingsView: View {
         ) {
             HostRail(state.steps)
         } content: {
-            HStack(alignment: .top, spacing: Tokens.space12) {
-                VStack(alignment: .leading, spacing: Tokens.space6) {
-                    Text(state.title)
-                        .font(Tokens.display(Tokens.sizeTitle, .medium))
-                        .foregroundStyle(Tokens.text)
-                    countdownCard
-                    readOnlyCard
-                    Spacer(minLength: .zero)
+            // A window narrower than the design's, as an iPad in portrait,
+            // drops the preview ring rather than squeezing the settings.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: Tokens.space12) {
+                    column { EmptyView() }
+                    ringPanel
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                ringPanel
+                column { doneButton }
             }
         }
+    }
+
+    private func column(@ViewBuilder footer: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: Tokens.space6) {
+            Text(state.title)
+                .font(Tokens.display(Tokens.sizeTitle, .medium))
+                .foregroundStyle(Tokens.text)
+            countdownCard
+            readOnlyCard
+            footer()
+            Spacer(minLength: .zero)
+        }
+        .frame(minWidth: Tokens.space20 * 4, maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var doneButton: some View {
+        Button { event(.done) } label: {
+            Label(state.doneTitle, systemImage: "checkmark")
+        }
+        .buttonStyle(.action(.host))
     }
 
     private var countdownCard: some View {
@@ -118,10 +135,7 @@ public struct SettingsView: View {
                 .font(Tokens.mono(Tokens.sizeMicro, .regular))
                 .tracking(TypeRole.eyebrow.tracking)
                 .foregroundStyle(Tokens.text3)
-            Button { event(.done) } label: {
-                Label(state.doneTitle, systemImage: "checkmark")
-            }
-            .buttonStyle(.action(.host))
+            doneButton
             Spacer(minLength: .zero)
         }
         .padding(Tokens.space7)

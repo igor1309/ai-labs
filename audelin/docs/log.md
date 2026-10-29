@@ -2,6 +2,9 @@
 
 ## 2026-10-29
 
+- Live text breaks long monologues into bounded paragraphs and joins short
+  fragments before a pause to the following words (LAB-749).
+
 - The microphone's delivery no longer grows with every buffer until it
   overflowed mid-call or at the call's end, the crash seen on a real call (LAB-751).
 

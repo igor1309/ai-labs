@@ -58,6 +58,7 @@ import Testing
     let source: Source
     let clock = ManualClock()
     let protection = ProtectionSpy()
+    let recording = RecordingSpy()
     let host: any HostRadioPort
     let client: any ClientRadioPort
     private var hi: AsyncStream<HostRadioEvent>.Iterator
@@ -69,8 +70,8 @@ import Testing
 
     init(_ settings: Settings = Settings()) async {
         source = Source(settings)
-        host = ScriptedHost(source: source, clock: clock)
-        client = ScriptedClient(source: source, clock: clock, sealMessage: protection.seal)
+        host = ScriptedHost(source: source, clock: clock, recorder: recording.recorder)
+        client = ScriptedClient(source: source, clock: clock, recorder: recording.recorder, sealMessage: protection.seal)
         var hi = host.events.makeAsyncIterator()
         var ci = client.events.makeAsyncIterator()
         self.hi = hi; self.ci = ci

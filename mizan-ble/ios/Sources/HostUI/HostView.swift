@@ -39,9 +39,17 @@ public struct HostView: View {
         VStack(alignment: .leading, spacing: Tokens.space5) {
             if let notice = state.notice { note(notice).transition(Motion.itemTransition(reduced: reduceMotion, from: .top)) }
             Text(state.amountTitle).typeRole(.lead)
-            AmountView(state.amount, size: .xl, digitsColor: state.isAmountMuted ? Tokens.text2 : Tokens.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
+            // A narrow column, as on an iPad in portrait, takes the next
+            // size down whole, sign and digits, rather than cutting digits.
+            ViewThatFits(in: .horizontal) {
+                ForEach(AmountView.Size.allCases, id: \.self) { size in
+                    AmountView(state.amount, size: size, digitsColor: state.isAmountMuted ? Tokens.text2 : Tokens.text)
+                        .fixedSize()
+                }
+                AmountView(state.amount, size: .m, digitsColor: state.isAmountMuted ? Tokens.text2 : Tokens.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
             Rectangle().fill(state.accent == .idle ? Tokens.lineStrong : state.accent.color)
                 .frame(width: Tokens.space20 + Tokens.space10, height: Tokens.space1 / 2)
             if !state.explanation.isEmpty {

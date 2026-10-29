@@ -1,0 +1,27 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Lock & broadcast"
+    timeout: 15000
+- tapOn:
+    id: "key 1"
+- tapOn:
+    id: "key 2"
+- tapOn:
+    id: "key 3"
+- tapOn:
+    id: "key \\."
+- tapOn:
+    id: "key 4"
+- tapOn:
+    id: "key 5"
+- tapOn: "Lock & broadcast"
+- extendedWaitUntil:
+    visible: "Choose the outcome"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "Link lost"
+    timeout: 15000
+- assertVisible: "The link to the client was lost. No result was sent."
