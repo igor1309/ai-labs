@@ -22,7 +22,7 @@ Open the amount under a cancelling host: the next message opens as the host's en
 
 ## S-5 Readings as the settings give them
 
-Scan under two hosts with timed readings and advance the clock: each reading reads back with the settings' host, signal and time; after stopping the scan no reading arrives, and a connect to a chosen host still completes. Evidence: ScriptedRadioTests.timedReadings.
+Scan under two hosts with timed readings and advance the clock: each reading reads back with the settings' host, signal and time; after stopping the scan no reading arrives, and a connect to a chosen host still completes. A host on air is heard at its last signal every 0.2 s after its last timed reading; one that goes quiet is not, and stopping the scan stops both. Evidence: ScriptedRadioTests.timedReadings, ScriptedRadioTests.anOnAirHostKeepsBeingHeardUntilTheScanStops.
 
 ## S-6 A drop at a named point
 

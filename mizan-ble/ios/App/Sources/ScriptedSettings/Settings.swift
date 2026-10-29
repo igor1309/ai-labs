@@ -36,6 +36,8 @@ public struct Settings: Codable, Equatable, Sendable {
     public struct Host: Codable, Equatable, Sendable {
         public var name = "MIZAN-CAFE"
         public var readings: [Reading] = [.init()]
+        /// Off air after its last reading; otherwise heard at that strength until the scan stops.
+        public var goesQuiet = false
         public var amount: UInt64 = 12345
         public var cancelsAfterAmount = false
         public var outcome: Outcome = .success
@@ -100,12 +102,13 @@ extension Settings.Reading {
 }
 
 extension Settings.Host {
-    private enum CodingKeys: String, CodingKey { case name, readings, amount, cancelsAfterAmount, outcome, drop, delays }
+    private enum CodingKeys: String, CodingKey { case name, readings, goesQuiet, amount, cancelsAfterAmount, outcome, drop, delays }
     public init(from decoder: any Decoder) throws {
         self.init()
         let c = try decoder.container(keyedBy: CodingKeys.self)
         if c.contains(.name) { name = try c.decode(String.self, forKey: .name) }
         if c.contains(.readings) { readings = try c.decode([Settings.Reading].self, forKey: .readings) }
+        if c.contains(.goesQuiet) { goesQuiet = try c.decode(Bool.self, forKey: .goesQuiet) }
         if c.contains(.amount) { amount = try c.decode(UInt64.self, forKey: .amount) }
         if c.contains(.cancelsAfterAmount) { cancelsAfterAmount = try c.decode(Bool.self, forKey: .cancelsAfterAmount) }
         if c.contains(.outcome) { outcome = try c.decode(Settings.Outcome.self, forKey: .outcome) }
