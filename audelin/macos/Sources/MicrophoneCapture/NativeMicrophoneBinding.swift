@@ -279,22 +279,30 @@ private struct NativeMicrophoneError: Error {
 final class NativeTap: Sendable {
 
     private let readClock: @Sendable () throws -> MicrophoneClockReading
-    private let receive: Mutex<(@Sendable (Result<InputBuffer, any Error>) -> Void)?>
+    // A closure stored bare in a Mutex is rewrapped by every inout access,
+    // so a long call built a chain deep enough to overflow the stack; a
+    // struct keeps it in its own type.
+    private struct Receiver: Sendable {
+
+        let receive: @Sendable (Result<InputBuffer, any Error>) -> Void
+    }
+
+    private let receiver: Mutex<Receiver?>
 
     init(
         receive: @escaping @Sendable (Result<InputBuffer, any Error>) -> Void,
         readClock: @escaping @Sendable () throws -> MicrophoneClockReading
     ) {
 
-        self.receive = Mutex(receive)
+        receiver = Mutex(Receiver(receive: receive))
         self.readClock = readClock
     }
 
     func deliver(_ buffer: AVAudioPCMBuffer, time: AVAudioTime) {
 
-        receive.withLock { receive in
-            guard let receive else { return }
-            receive(Result {
+        receiver.withLock { receiver in
+            guard let receiver else { return }
+            receiver.receive(Result {
                 let clock = try readClock()
                 let rate = buffer.format.sampleRate
                 let firstSample = NativeMicrophoneBinding.timestamp(
@@ -312,12 +320,12 @@ final class NativeTap: Sendable {
 
     func fail(_ error: any Error) {
 
-        receive.withLock { $0?(.failure(error)) }
+        receiver.withLock { $0?.receive(.failure(error)) }
     }
 
     func close() {
 
-        receive.withLock { $0 = nil }
+        receiver.withLock { $0 = nil }
     }
 }
 
