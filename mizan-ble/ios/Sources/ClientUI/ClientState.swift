@@ -22,31 +22,7 @@ public struct ClientState: Equatable, Sendable {
         var sessionSteps: [SessionStep] { [find, connect, review, result] }
     }
 
-    public struct Exchange: Equatable, Sendable {
-        public var hostCode: String
-        public var hostDetail: String
-        public var message: String
-        public var clientCode: String
-        public var clientDetail: String
-        public var tone: Message.Tone
-        public var direction: Message.Direction
-        public var symbol: String
-
-        public init(
-            hostCode: String, hostDetail: String, message: String,
-            clientCode: String, clientDetail: String, tone: Message.Tone,
-            direction: Message.Direction, symbol: String
-        ) {
-            self.hostCode = hostCode
-            self.hostDetail = hostDetail
-            self.message = message
-            self.clientCode = clientCode
-            self.clientDetail = clientDetail
-            self.tone = tone
-            self.direction = direction
-            self.symbol = symbol
-        }
-    }
+    public typealias Exchange = ExchangeStrip.Model
 
     public enum Icon: Equatable, Sendable {
         case bluetooth(isSlashed: Bool)

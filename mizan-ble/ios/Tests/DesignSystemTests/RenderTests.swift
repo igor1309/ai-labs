@@ -155,6 +155,29 @@ struct RenderTests {
                 Button("New amount") {}.buttonStyle(.action(.host))
             }.frame(width: 353))))
         }
+        for tone in NoticeBanner.Tone.allCases {
+            views.append(("notice \(tone)", AnyView(
+                NoticeBanner("Title", detail: "Detail", systemImage: "info.circle", tone: tone).frame(width: 320)
+            )))
+        }
+        for size in IconBadge<TypeRoleView<Image>>.Size.allCases {
+            views.append(("badge \(size)", AnyView(
+                IconBadge(size, systemImage: "checkmark", color: Tokens.onAccent, tint: Tokens.ok)
+            )))
+        }
+        for level in [StatusPanel<EmptyView, EmptyView, EmptyView>.Level.panel, .screen] {
+            views.append(("status \(level)", AnyView(
+                StatusPanel("Title", detail: "Detail", level: level) { EmptyView() } value: { EmptyView() } footer: { EmptyView() }
+                    .frame(width: 320)
+            )))
+        }
+        views.append(("card", AnyView(Card(isCompact: true) { Text("Card").typeRole(.body) })))
+        views.append(("segmented picker", AnyView(
+            SegmentedPicker([.init(1, title: "One"), .init(2, title: "Two")], selection: 2) { _ in }.frame(width: 320)
+        )))
+        views.append(("divided list", AnyView(
+            DividedList(["A", "B"], id: \.self) { KeyValueRow($0, value: "1") }.frame(width: 320)
+        )))
         views.append(("compact countdown", AnyView(CountdownRing(secondsLeft: 47, total: 60, isCompact: true))))
         for role in TypeRole.allCases {
             views.append(("type \(role)", AnyView(Text("Mizan 47").typeRole(role))))
