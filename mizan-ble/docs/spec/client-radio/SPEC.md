@@ -92,5 +92,5 @@ Feature: The client's side of the air
     Then I can read each discovery once, from the one scan still running
 ```
 
-Not client radio's: choosing a host (host picker), when to connect or what
+Not client radio's: choosing a host (host picker, host choice), when to connect or what
 to write (client flows), bytes (codec, session crypto).
