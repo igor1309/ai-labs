@@ -1,6 +1,7 @@
 import DesignSystem
 import SwiftUI
 
+/// Find and connect screens with a signal row below the rings or failure mark.
 public struct ClientView: View {
     private let state: ClientState
     private let event: (ClientEvent) -> Void
@@ -24,8 +25,11 @@ public struct ClientView: View {
                 ExchangeStrip(state.exchange)
                 Spacer(minLength: Tokens.space1)
                 StatusPanel(state.title, detail: state.detail, level: .screen) {
-                    illustration
-                        .frame(width: Tokens.space20 * 3, height: Tokens.space20 * 3)
+                    VStack(spacing: Tokens.space5) {
+                        illustration
+                            .frame(width: Tokens.space20 * 3, height: Tokens.space20 * 3)
+                        SignalMeter(state.signal)
+                    }
                 } value: {
                     EmptyView()
                 } footer: {
