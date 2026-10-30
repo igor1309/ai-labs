@@ -9,6 +9,31 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct SideTests {
 
+    @Test(arguments: [0, 2, 3])
+    func hearingKeepsFinalTextAndTailSeparate(finalWordCount: Int) async throws {
+
+        let engine = SideEngine(silent: false, failWord: nil, finalWordCount: finalWordCount)
+        let hearing = SideHearing(text: engine)
+        let settled: [SideText.Text] = [
+            .init(id: 0, start: 0, end: 1, settled: "word0"),
+            .init(id: 1, start: 1, end: 2, settled: "word1"),
+            .init(id: 2, start: 2, end: 3, settled: "word2")
+        ]
+        let pending: [SideText.Text] = [
+            .init(id: 0, start: 0, end: 1, pending: "word0"),
+            .init(id: 1, start: 1, end: 2, pending: "word1"),
+            .init(id: 2, start: 2, end: 3, pending: "word2")
+        ]
+
+        let heard = try await hearing.hear(sideTones(0..<3, sampleRate: 1))
+        #expect(heard.final == Array(settled.prefix(finalWordCount)))
+        #expect(heard.tail == Array(pending.dropFirst(finalWordCount)))
+
+        let finished = try await hearing.finish()
+        #expect(finished.final == settled)
+        #expect(finished.tail.isEmpty)
+    }
+
     @Test(arguments: [2, 3])
     func fillingInKeepsFinalTextBeforeLiveHearing(finalWordCount: Int) async {
 

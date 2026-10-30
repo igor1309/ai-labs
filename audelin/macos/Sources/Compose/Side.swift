@@ -91,7 +91,7 @@ private final class SideAudio: SideText.LiveAudio, FillIn.LiveAudioPosition, Sen
     }
 }
 
-private actor SideHearing: SideText.LiveText {
+actor SideHearing: SideText.LiveText {
 
     let text: any TextEngine
     private var hearing: Task<TextUpdate, any Error>?
