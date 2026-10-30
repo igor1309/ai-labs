@@ -24,25 +24,25 @@ struct TranscriptLogLoadTests {
         }
         let line = "log load: \(early.line) early, \(late.line) late\n"
         FileHandle.standardError.write(Data(line.utf8))
-        withKnownIssue("every update rebuilds and lays out the whole transcript") {
-            #expect(late.update / early.update <= 3, "an update late in a long call costs the log \(late.update / early.update)x one early")
-        }
+        #expect(late.update / early.update <= 3, "an update late in a long call costs the log \(late.update / early.update)x one early")
     }
 
     /// Hosts the log with `count` entries, then changes the last entry's
     /// pending words a few times; the time per update, with the part spent
-    /// building the transcript.
+    /// building the rows that changed.
     private func cost(entries count: Int) -> Cost {
 
         let config = PanelConfig.glassLedger
         let size = CGSize(width: config.panelWidth, height: 400)
         let host = Offscreen.host(log(lines(count, step: 0), config: config, size: size), size: size)
         let style = Transcript.Style(tokens: .light, config: config)
+        let rows = Transcript.Rows()
+        _ = rows.update(lines(count, step: 0), style: style)
         var build = Duration.zero, update = Duration.zero
         let clock = ContinuousClock()
         for step in 1...Self.updates {
             let lines = lines(count, step: step)
-            build += clock.measure { _ = Transcript(lines: lines, style: style) }
+            build += clock.measure { _ = rows.update(lines, style: style) }
             update += clock.measure {
                 host.rootView = log(lines, config: config, size: size)
                 host.layoutSubtreeIfNeeded()
@@ -78,10 +78,10 @@ private struct Cost {
 
     /// Seconds per update, from the new lines to the log laid out.
     let update: Double
-    /// Seconds of it spent building the attributed transcript.
+    /// Seconds of it spent building the rows that changed.
     let build: Double
 
-    var line: String { String(format: "%.2f ms an update (%.2f ms building the transcript)", update * 1000, build * 1000) }
+    var line: String { String(format: "%.2f ms an update (%.2f ms building rows)", update * 1000, build * 1000) }
 
     func quicker(_ other: Cost) -> Cost { other.update < update ? other : self }
 }

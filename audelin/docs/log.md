@@ -1,5 +1,10 @@
 # Log
 
+## 2026-10-30
+
+- The live log redraws only the rows that changed, so an update late in a
+  long call costs it about what one early does (LAB-770, LAB-771).
+
 ## 2026-10-29
 
 - Live text sends the panel a new state only when the words change, not on

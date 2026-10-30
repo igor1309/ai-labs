@@ -7,7 +7,7 @@ import SwiftUI
 @MainActor
 struct Transcript {
 
-    struct Style {
+    struct Style: Equatable {
 
         let tokens: GlassLedger
         let config: PanelConfig
@@ -31,34 +31,9 @@ struct Transcript {
 
     init(lines: PanelState.Lines, style: Style) {
 
-        let builder = Builder(style: style)
-
-        let log = style.tokens.space12
-
-        for row in lines.rows {
-
-            switch row {
-            case let .entry(entry):
-                builder.entry(entry, alpha: 1, spacing: log)
-
-            case let .gap(gap):
-                builder.caption("\(gap.speaker == .me ? "я" : "они")  \(gap.text)", alpha: 1, spacing: log)
-
-            case let .late(late):
-                // The design dims the whole group, spaces it tighter than the
-                // log around it, and rules it off from what follows.
-                let group = style.tokens.space8
-                builder.caption("дописано позже · \(late.span)", alpha: 0.6, spacing: group)
-                for (index, entry) in late.entries.enumerated() {
-                    let isLast = index == late.entries.count - 1
-                    builder.entry(entry, alpha: 0.6, spacing: isLast ? log + Transcript.ruleWidth + log : group)
-                }
-                builder.ruleBelow(gap: log)
-            }
-        }
-
-        string = builder.result
-        entries = builder.ranges
+        let edit = Rows().update(lines, style: style)
+        string = edit.text
+        entries = edit.entries
     }
 
     /// The selection as the panel holds it: the text without gutters, and
@@ -87,18 +62,95 @@ struct Transcript {
     }
 }
 
+extension Transcript {
+
+    /// What changed in the transcript since the last update.
+    struct Edit {
+
+        /// The part of the previous transcript to replace.
+        let range: NSRange
+        let text: NSAttributedString
+        /// Every entry's place in the new transcript.
+        let entries: [EntryRange]
+    }
+
+    /// Keeps each row's text from one update to the next, so an update
+    /// builds only the rows from the first that changed.
+    @MainActor
+    final class Rows {
+
+        /// How many rows have been built: a count of the work, not its time.
+        private(set) var built = 0
+        private var builder: Builder?
+        private var pieces: [Piece] = []
+        /// Where each piece ends in the transcript.
+        private var ends: [Int] = []
+        private var entries: [EntryRange] = []
+
+        /// The transcript's length after the last update.
+        var length: Int { ends.last ?? 0 }
+
+        func update(_ lines: PanelState.Lines, style: Style) -> Edit {
+
+            if builder?.style != style {
+                builder = Builder(style: style)
+                pieces = []
+                ends = []
+                entries = []
+            }
+            let builder = builder!
+
+            let rows = lines.rows
+            var first = 0
+            while first < min(pieces.count, rows.count), pieces[first].row == rows[first] { first += 1 }
+
+            let start = first == 0 ? 0 : ends[first - 1]
+            let range = NSRange(location: start, length: length - start)
+            entries.removeLast(entries.count - pieces[..<first].reduce(0) { $0 + $1.entries.count })
+            pieces.removeLast(pieces.count - first)
+            ends.removeLast(ends.count - first)
+
+            let text = NSMutableAttributedString()
+            for row in rows[first...] {
+                if let last = pieces.last {
+                    text.append(.init(string: "\n", attributes: [.paragraphStyle: last.paragraph]))
+                }
+                let piece = builder.piece(row)
+                built += 1
+                let offset = start + text.length
+                entries += piece.entries.map { .init(id: $0.id, body: NSRange(location: $0.body.location + offset, length: $0.body.length)) }
+                text.append(piece.text)
+                pieces.append(piece)
+                ends.append(start + text.length)
+            }
+
+            return Edit(range: range, text: text, entries: entries)
+        }
+    }
+
+    /// One row's text, with its entries placed from its own start.
+    struct Piece {
+
+        let row: PanelState.Row
+        let text: NSAttributedString
+        let entries: [EntryRange]
+        /// The style of its last paragraph, which the newline after it takes.
+        let paragraph: NSParagraphStyle
+    }
+}
+
 private extension Transcript {
 
     @MainActor
     final class Builder {
 
         let style: Style
-        let result = NSMutableAttributedString()
-        var ranges: [EntryRange] = []
+        private var result = NSMutableAttributedString()
+        private var ranges: [EntryRange] = []
 
         private var tokens: GlassLedger { style.tokens }
 
-        // Built once a transcript: every row shares the same few.
+        // Built once a style: every row shares the same few.
         private var fonts: [FontKey: NSFont] = [:]
         private var paragraphs: [ParagraphKey: NSParagraphStyle] = [:]
         private var timeWidths: [CGFloat: CGFloat] = [:]
@@ -112,7 +164,36 @@ private extension Transcript {
             self.style = style
         }
 
-        func caption(_ string: String, alpha: CGFloat, spacing: CGFloat) {
+        func piece(_ row: PanelState.Row) -> Piece {
+
+            result = NSMutableAttributedString()
+            ranges = []
+            current = nil
+
+            let log = tokens.space12
+            switch row {
+            case let .entry(entry):
+                self.entry(entry, alpha: 1, spacing: log)
+
+            case let .gap(gap):
+                caption("\(gap.speaker == .me ? "я" : "они")  \(gap.text)", alpha: 1, spacing: log)
+
+            case let .late(late):
+                // The design dims the whole group, spaces it tighter than the
+                // log around it, and rules it off from what follows.
+                let group = tokens.space8
+                caption("дописано позже · \(late.span)", alpha: 0.6, spacing: group)
+                for (index, entry) in late.entries.enumerated() {
+                    let isLast = index == late.entries.count - 1
+                    self.entry(entry, alpha: 0.6, spacing: isLast ? log + Transcript.ruleWidth + log : group)
+                }
+                ruleBelow(gap: log)
+            }
+
+            return Piece(row: row, text: result, entries: ranges, paragraph: current!)
+        }
+
+        private func caption(_ string: String, alpha: CGFloat, spacing: CGFloat) {
 
             newParagraph()
             let paragraph = paragraph(size: tokens.typeCaption, indent: 0, spacing: spacing)
@@ -126,7 +207,7 @@ private extension Transcript {
             ]))
         }
 
-        func entry(_ entry: PanelState.Entry, alpha: CGFloat, spacing: CGFloat) {
+        private func entry(_ entry: PanelState.Entry, alpha: CGFloat, spacing: CGFloat) {
 
             newParagraph()
 
@@ -169,7 +250,7 @@ private extension Transcript {
         }
 
         /// Draws a line under the last paragraph, `gap` below its text.
-        func ruleBelow(gap: CGFloat) {
+        private func ruleBelow(gap: CGFloat) {
 
             guard let last = ranges.last else { return }
             result.addAttribute(Transcript.ruleBelow, value: gap, range: last.body)

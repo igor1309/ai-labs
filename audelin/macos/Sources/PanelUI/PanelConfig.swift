@@ -3,7 +3,7 @@ import SwiftUI
 
 /// The live panel's look: the design system's tokens for each appearance, and
 /// the panel's own sizes that the design draws without a token.
-public struct PanelConfig: Sendable {
+public struct PanelConfig: Equatable, Sendable {
 
     public var light: GlassLedger
     public var dark: GlassLedger

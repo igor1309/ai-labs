@@ -68,16 +68,19 @@ struct TranscriptLog: NSViewRepresentable {
 
         text.ruleColor = NSColor(tokens.rule)
 
-        let transcript = Transcript(lines: lines, style: .init(tokens: tokens, config: config))
-        coordinator.entries = transcript.entries
+        let storage = text.textStorage!
+        // Only this path edits the storage; anything else, and the rows start over.
+        if storage.length != coordinator.rows.length { coordinator.rows = Transcript.Rows() }
+        let edit = coordinator.rows.update(lines, style: .init(tokens: tokens, config: config))
+        coordinator.entries = edit.entries
 
         coordinator.quietly {
             // AppKit moves the selection to the end on any storage edit, even
             // one below it; the edit keeps the text above in place, so put it
             // back.
             let selection = text.selectedRange()
-            Self.apply(transcript.string, to: text.textStorage!)
-            let length = text.textStorage!.length
+            Self.apply(edit, to: storage)
+            let length = storage.length
             text.setSelectedRange(NSIntersectionRange(selection, NSRange(location: 0, length: length)))
 
             if lines.followsLive, !coordinator.isSelecting { text.scrollToEndOfDocument(nil) }
@@ -92,6 +95,16 @@ struct TranscriptLog: NSViewRepresentable {
         else { return nil }
 
         text.frame.size.width = width
+
+        // Text that reaches the room it is given fills it: laying out what
+        // fits shows that without laying out a long call's whole log.
+        if let limit = proposal.height {
+            layout.ensureLayout(for: CGRect(x: 0, y: 0, width: width, height: limit))
+            if let below = layout.textLayoutFragment(for: CGPoint(x: 0, y: limit)),
+               below.layoutFragmentFrame.maxY > limit {
+                return CGSize(width: width, height: limit)
+            }
+        }
         layout.ensureLayout(for: layout.documentRange)
         let height = ceil(layout.usageBoundsForTextContainer.height)
 
@@ -108,51 +121,12 @@ struct TranscriptLog: NSViewRepresentable {
 
 extension TranscriptLog {
 
-    /// Replaces only what changed after the common prefix, and restyles only
-    /// the runs above it whose style changed: characters above the change
+    /// Replaces the rows from the first that changed: characters above
     /// keep their position and layout, so the reader's selection and scroll
     /// position stay.
-    static func apply(_ new: NSAttributedString, to storage: NSTextStorage) {
+    static func apply(_ edit: Transcript.Edit, to storage: NSTextStorage) {
 
-        let prefix = commonPrefix(storage.string as NSString, new.string as NSString)
-
-        storage.beginEditing()
-        storage.replaceCharacters(
-            in: NSRange(location: prefix, length: storage.length - prefix),
-            with: new.attributedSubstring(from: NSRange(location: prefix, length: new.length - prefix))
-        )
-        new.enumerateAttributes(in: NSRange(location: 0, length: prefix)) { attributes, run, _ in
-            var location = run.location
-            while location < NSMaxRange(run) {
-                var old = NSRange()
-                let current = storage.attributes(at: location, longestEffectiveRange: &old, in: run)
-                if !(current as NSDictionary).isEqual(to: attributes) {
-                    storage.setAttributes(attributes, range: old)
-                }
-                location = NSMaxRange(old)
-            }
-        }
-        storage.endEditing()
-    }
-
-    /// How many UTF-16 units two strings share from the start, compared a
-    /// block at a time.
-    private static func commonPrefix(_ old: NSString, _ new: NSString) -> Int {
-
-        let limit = min(old.length, new.length)
-        let block = 4096
-        var a = [unichar](repeating: 0, count: block), b = a
-        var prefix = 0
-        while prefix < limit {
-            let range = NSRange(location: prefix, length: min(block, limit - prefix))
-            old.getCharacters(&a, range: range)
-            new.getCharacters(&b, range: range)
-            var index = 0
-            while index < range.length, a[index] == b[index] { index += 1 }
-            prefix += index
-            if index < range.length { break }
-        }
-        return prefix
+        storage.replaceCharacters(in: edit.range, with: edit.text)
     }
 }
 
@@ -165,6 +139,7 @@ extension TranscriptLog {
 
         var parent: TranscriptLog
         var entries: [Transcript.EntryRange] = []
+        var rows = Transcript.Rows()
         weak var scroll: NSScrollView?
         /// A drag is selecting text: the log holds still under it.
         var isSelecting = false

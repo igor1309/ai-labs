@@ -106,28 +106,45 @@ struct TranscriptLogTests {
         #expect(newlines >= 5)
     }
 
-    @Test func applyRestylesNothingAboveTheChangeWhenItsStyleHolds() {
+    @Test func anUpdateToTheNewestEntryBuildsOnlyItsRow() {
 
-        let style: [NSAttributedString.Key: Any] = [.foregroundColor: NSColor.red]
-        let storage = RecordingStorage(NSAttributedString(string: "above\nnewest", attributes: style))
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let first = rows.update(.init(entries: many(800) + [newest("по")]), style: style)
 
-        TranscriptLog.apply(NSAttributedString(string: "above\nnewest one", attributes: style), to: storage)
+        let edit = rows.update(.init(entries: many(800) + [newest("по слог")]), style: style)
 
-        #expect(storage.string == "above\nnewest one")
-        #expect(storage.styled.allSatisfy { $0.location >= 12 }, "styled \(storage.styled)")
+        #expect(rows.built == 802)
+        // From the newline that opens its paragraph.
+        let start = (first.text.string as NSString).range(of: "13:10").location - 1
+        #expect(edit.range == NSRange(location: start, length: first.text.length - start))
+        #expect(edit.entries.last?.body.location == start + ("\n13:10\tя\t" as NSString).length)
     }
 
-    @Test func applyRestylesARunAboveTheChangeWhoseStyleChanged() {
+    @Test func aNewAppearanceBuildsEveryRow() {
 
-        let plain: [NSAttributedString.Key: Any] = [.foregroundColor: NSColor.red]
-        let storage = RecordingStorage(NSAttributedString(string: "above\nnewest", attributes: plain))
-        let new = NSMutableAttributedString(string: "above\nnewest one", attributes: plain)
-        new.addAttribute(.foregroundColor, value: NSColor.blue, range: NSRange(location: 0, length: 5))
+        let rows = Transcript.Rows()
+        let entries = PanelState.Lines(entries: many(3))
+        _ = rows.update(entries, style: .init(tokens: .light, config: .glassLedger))
 
-        TranscriptLog.apply(new, to: storage)
+        let edit = rows.update(entries, style: .init(tokens: .dark, config: .glassLedger))
 
-        #expect(storage.styled.contains(NSRange(location: 0, length: 5)), "styled \(storage.styled)")
-        #expect(storage.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor == .blue)
+        #expect(rows.built == 6)
+        #expect(edit.range.location == 0)
+    }
+
+    @Test func applyEditsNothingAboveTheFirstChangedRow() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let storage = RecordingStorage(rows.update(.init(entries: many(5) + [newest("по")]), style: style).text)
+        let edit = rows.update(.init(entries: many(5) + [newest("по слог")]), style: style)
+
+        TranscriptLog.apply(edit, to: storage)
+
+        #expect(storage.string == Transcript(lines: .init(entries: many(5) + [newest("по слог")]), style: style).string.string)
+        #expect(!storage.styled.isEmpty)
+        #expect(storage.styled.allSatisfy { $0.location >= edit.range.location }, "styled \(storage.styled)")
     }
 
     @Test func holdsWhatADragSelectedAndIgnoresAClick() throws {
@@ -278,6 +295,11 @@ struct TranscriptLogTests {
             entries.append(.init(id: 4, time: "12:44", speaker: .me, settled: "Я.", pending: "по слог"))
         }
         return entries
+    }
+
+    private func newest(_ pending: String) -> PanelState.Entry {
+
+        .init(id: 1000, time: "13:10", speaker: .me, settled: "Последняя фраза.", pending: pending)
     }
 
     private func many(_ count: Int) -> [PanelState.Entry] {

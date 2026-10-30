@@ -221,14 +221,15 @@ Guards, passing on trunk:
   "По" in "Три. По SLA", which the expected reading had dropped too; the
   20-minute call now hears all 1,831 words once and in order.
 
-Still open (LAB-767): an update late in a 1,620-entry call costs the panel
-about 343 ms, against 5 ms with 20 entries. Of that, 237 ms goes to the
-view rebuilding the whole attributed transcript; the model, which
-`PanelLoadTests` measures, takes 2 to 8 ms. At 5 to 10 updates an audio
-second the main actor falls behind long before the call ends.
-`TranscriptLogLoadTests` times the log itself, 800 entries against 20,
-and `PanelLoadTests` prints the model's cost step by step; both are known
-issues until the cost stops growing.
+The log now builds only the rows from the first that changed, edits its
+text from there, and lays out only the height it shows when the text
+fills it. `TranscriptLogLoadTests` holds an update to the newest of 800
+entries within 3x one with 20, and a row count shows such an update
+builds one row (LAB-771).
+
+Still open (LAB-767): the panel's model cost per update still grows with
+the call; `PanelLoadTests` prints it step by step and stays a known issue
+until it stops growing.
 
 ## Candidates already in the code
 
