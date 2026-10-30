@@ -32,9 +32,15 @@ public struct ActionButton<Icon: View>: View {
             guard enabled else { return }
             action()
         } label: {
-            Label { Text(title) } icon: { icon }
-                // The button supplies disabled opacity; macOS must not dim the label again.
-                .environment(\.isEnabled, true)
+            // A new action in the same place crossfades its label instead of
+            // replacing the button.
+            ZStack {
+                Label { Text(title) } icon: { icon }
+                    .id(title)
+                    .transition(.opacity)
+            }
+            // The button supplies disabled opacity; macOS must not dim the label again.
+            .environment(\.isEnabled, true)
         }
         .buttonStyle(.action(kind))
         .disabled(!enabled)
