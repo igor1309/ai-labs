@@ -17,6 +17,7 @@ import Settings
     private var picker: HostPicker<UUID>
     private var choice: HostChoice<UUID>
     private var lastPickerLine: (answer: HostChoice<UUID>.Answer, rssi: Int?, time: Double)?
+    private var lastSignal: Int??
     private var hosts: [UUID: ClientFind.Host] = [:]
     private var ticks: Task<Void, Never>?
     private(set) var isScanning = false
@@ -43,6 +44,7 @@ import Settings
         choice = HostChoice(hold: settings.choiceHold)
         hosts.removeAll()
         lastPickerLine = nil
+        lastSignal = nil
         isScanning = true
         logPicker(.none, at: clock.now())
         radio.startScanning()
@@ -71,6 +73,11 @@ import Settings
         guard isScanning else { return }
         let answer = choice.receive(Self.signal(signal), at: signal.time)
         logPicker(answer, at: time)
+        let strongest = picker.view(at: time).strongestAverage.map { Int($0.rounded()) }
+        if lastSignal != .some(strongest) {
+            lastSignal = .some(strongest)
+            send(.signalRead(strongest))
+        }
         switch answer {
         case .none: send(.pickerAnswered(.none))
         case .holdCloser: send(.pickerAnswered(.holdCloser))

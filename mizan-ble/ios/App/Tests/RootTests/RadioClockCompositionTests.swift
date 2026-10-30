@@ -39,7 +39,7 @@ import Settings
         defer { discovery.stop() }
         let (events, sink) = AsyncStream<ClientFind.Event>.makeStream()
         defer { sink.finish() }
-        discovery.send = { sink.yield($0) }
+        discovery.send = { if case .pickerAnswered = $0 { sink.yield($0) } }
         var answers = events.makeAsyncIterator()
         let host = UUID()
         func read(_ rssi: Int) {

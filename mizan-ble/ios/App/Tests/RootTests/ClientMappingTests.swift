@@ -11,13 +11,15 @@ import ClientPaymentUI
     @Test func findScreens() {
         let base = findState([.bluetoothChanged(.available), .scanningStarted])
         let host = ClientFind.Host(id: "host", name: "MIZAN-7F3A")
-        let chosen = ClientFind.reduce(base, .pickerAnswered(.host(host))).0
+        let chosen = findState([.bluetoothChanged(.available), .scanningStarted, .signalRead(-52), .pickerAnswered(.host(host))])
         let cases: [(ClientFind.State, Int)] = [
             (base, 0), (chosen, 1),
-            (ClientFind.reduce(base, .pickerAnswered(.holdCloser)).0, 2),
-            (ClientFind.reduce(chosen, .pickerAnswered(.none)).0, 3),
+            (findState([.bluetoothChanged(.available), .scanningStarted, .signalRead(-67), .pickerAnswered(.holdCloser)]), 2),
+            (findState([.bluetoothChanged(.available), .scanningStarted, .signalRead(-52), .pickerAnswered(.host(host)),
+                        .signalRead(nil), .pickerAnswered(.none)]), 3),
             (findState([.bluetoothChanged(.unavailable(reason: "Bluetooth is off"))]), 6),
-            (ClientFind.reduce(base, .pickerAnswered(.host(.init(id: "unnamed", name: nil)))).0, 7),
+            (findState([.bluetoothChanged(.available), .scanningStarted, .signalRead(-52),
+                        .pickerAnswered(.host(.init(id: "unnamed", name: nil)))]), 7),
         ]
         for (state, index) in cases {
             var expected = ClientState.previews[index].state
@@ -42,8 +44,11 @@ import ClientPaymentUI
         let initial = ClientConnect.State(host: .init(id: "host", name: "MIZAN-7F3A"))
         let connecting = ClientConnect.reduce(initial, .start).0
         let failed = ClientConnect.reduce(connecting, .linkDropped).0
+        let started = findState([.bluetoothChanged(.available), .scanningStarted, .signalRead(-52),
+                                 .pickerAnswered(.host(.init(id: "host", name: "MIZAN-7F3A"))), .start])
+        #expect(started.signal == .atStart(dBm: -52))
         for (state, index) in [(connecting, 4), (failed, 5)] {
-            #expect(ClientMapping.screen(find: .init(), connect: state) == ClientState.previews[index].state)
+            #expect(ClientMapping.screen(find: started, connect: state) == ClientState.previews[index].state)
         }
         let cases: [(ClientEvent, ClientInput)] = [(.startHandshake, .find(.start)), (.cancel, .cancel), (.tryAgain, .retry)]
         for (input, expected) in cases { #expect(ClientMapping.event(input) == expected) }
