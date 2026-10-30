@@ -6,7 +6,8 @@ topics = ["swift", "swiftui", "ios", "core-bluetooth", "bluetooth-low-energy", "
 check = "cd ios && python3 -I -m unittest discover -s scripts/tests && swift build && swift test && cd App && swift test"
 
 # The app, its tests, the rehearsal app and its Maestro lanes. The token
-# generator reads the private design file, so it stays home with its test;
+# generator and the test that checks the tokens against it read the
+# private design file, so they stay home with the generator's test;
 # lane run reports name private commits.
 include = [
   "ios/Package.swift",
@@ -26,4 +27,4 @@ include = [
   "maestro/run.sh",
   "maestro/lanes/**",
 ]
-exclude = []
+exclude = ["ios/Tests/DesignSystemTests/TokensTests.swift"]

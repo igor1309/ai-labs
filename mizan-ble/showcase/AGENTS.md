@@ -10,7 +10,8 @@ The export is the app: the core package, the app and rehearsal packages
 with the Xcode project, the preview apps, the lane runner and its tests,
 and the Maestro lanes. Private: `docs/` (the plan, specs, design, research
 and log), `NOTES.md`, `ARCHITECTURE.md`, `AGENTS.md`, the landing page,
-`ios/scripts/generate-tokens.py` with its test, since it reads the private
+`ios/scripts/generate-tokens.py` with its test and
+`ios/Tests/DesignSystemTests/TokensTests.swift`, since they read the private
 design file, and `maestro/runs/`, whose reports name private commits.
 
 Screenshots come from real devices, since the simulator has no Bluetooth:
