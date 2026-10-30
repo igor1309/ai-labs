@@ -8,11 +8,12 @@ struct SegmentsScalingTests {
 
     @Test func aHearingLateInALongCallCostsAboutWhatAnEarlyOneDoes() {
 
-        // The quickest of three runs each, so a busy machine slows neither
-        // side alone. Work that does not grow with the call stays well within
-        // 3x: caches cold for a longer call cost a little.
-        let earlies = (0..<3).map { _ in secondsPerHearing(after: 300) }
-        let lates = (0..<3).map { _ in secondsPerHearing(after: 30_000) }
+        // The quickest of five runs each, taken in turn, so a busy spell
+        // slows both sides rather than one alone. Work that does not grow
+        // with the call stays well within 3x: caches cold for a longer call
+        // cost a little.
+        let runs = (0..<5).map { _ in (secondsPerHearing(after: 300), secondsPerHearing(after: 30_000)) }
+        let earlies = runs.map(\.0), lates = runs.map(\.1)
         let early = (seconds: earlies.map(\.seconds).min()!, lost: earlies.map(\.lost).max()!)
         let late = (seconds: lates.map(\.seconds).min()!, lost: lates.map(\.lost).max()!)
         #expect(early.lost == 0, "\(early.lost) words lost after 300")
