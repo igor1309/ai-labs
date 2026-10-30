@@ -67,7 +67,8 @@ Feature: Coloring full flow and durable progress
     And no unreadable history is presented as a new empty collection or first best
     And no existing stored work is automatically cleared or overwritten
     And readable works can still be viewed
-    And editing and completion remain unavailable until the affected work and reward history can be read safely
+    And all coloring editing, NEW WORK and completion remain unavailable until every work and the reward history can be read safely
+    And successful retry restores the saved collection without a first-best celebration
     And other games and the language, theme and age settings remain unchanged
 
     Examples:

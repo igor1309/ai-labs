@@ -4,6 +4,9 @@ Feature: Coloring result and reward
   separate nonempty work earns exactly one star on its first successfully
   saved completion. The collection best is its highest saved number of
   completed works at Explorer; it is not an average of artistic scores.
+  Without deletion the best equals the completed count: the first saved
+  completion celebrates FIRST BEST and every additional work NEW BEST.
+  Stars mark works in this game, not a new shared spendable currency.
 
   Scenario: Complete a nonempty work
     Given an uncompleted work contains one visible dot and the completed collection is 2

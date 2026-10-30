@@ -33,11 +33,24 @@ Feature: Coloring gallery
     Then the gallery offers CONTINUE for that draft with its thumbnail
     And I can instead open any other work or choose NEW WORK
     And opening an existing work does not count as a new game start
+    And if the most recent saved edit was to a completed work, CONTINUE opens that work instead
+    And with no saved works CONTINUE is absent
 
   Scenario: Gallery reflects durable changes only
     Given a work has a saved red thumbnail
     And saving its new blue paint fails
-    When I open GALLERY after choosing to keep editing in this session
-    Then the work visibly indicates unsaved changes and shows its current blue preview
-    And no preview or status claims the blue revision is saved
-    And retrying successfully updates the saved thumbnail and clears the warning
+    When I choose GALLERY
+    Then I stay in the workshop with the blue paint and a save-error warning
+    When I retry successfully and choose GALLERY
+    Then the gallery shows the saved blue thumbnail without an unsaved warning
+
+  Scenario: An untouched new work does not fill the gallery
+    Given I choose NEW WORK
+    When I leave without making a visible paint change
+    Then no empty work is saved or listed and CONTINUE still offers the previous saved work if any
+    And the game start already counted is retained
+    When I make the first visible paint change in a new work and saving succeeds
+    Then that work is saved as an independent draft and becomes the CONTINUE work
+    When I later undo all paint in that saved draft and saving succeeds
+    Then it remains an editable empty draft in the gallery under the same identity
+    And it cannot be completed until nonempty again
