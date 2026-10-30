@@ -5,7 +5,7 @@ Feature: Coloring result and reward
   saved completion. The collection best is its highest saved number of
   completed works at Explorer; it is not an average of artistic scores.
   The best is derived from the saved completed count, not stored separately.
-  Without deletion the best equals the completed count: the first saved
+  Within the current collection the best equals the completed count: the first saved
   completion celebrates FIRST BEST and every additional work NEW BEST.
   Stars mark works in this game, not a new shared spendable currency.
 
@@ -15,7 +15,7 @@ Feature: Coloring result and reward
     Then the result shows that Stegosaurus coming alive with its own paint
     And one earned star animates and the completed collection becomes 3
     And a new Explorer collection best of 3 celebrates
-    And the work, completion flag, reward flag and collection count are saved together
+    And the work including its undo history, completion flag, reward flag and collection count are saved together
     And EDIT, GALLERY, NEW WORK and HOME have symbols beside their words
     And no accuracy, coverage, speed or color-choice grade is shown
 

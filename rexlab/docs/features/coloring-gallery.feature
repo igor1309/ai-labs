@@ -1,10 +1,13 @@
 @next
 Feature: Coloring gallery
   The gallery belongs inside coloring. Each work has a stable independent
-  identity, editable paint, thumbnail, draft or completed status and a
+  identity, editable paint, ordered undo history, thumbnail, draft or
+  completed status and a
   remembered flag recording whether its one star has been awarded.
   Normal play offers no deletion or duplication of works; a parent can
-  explicitly reset unreadable coloring storage after a loss warning.
+  explicitly reset globally unreadable coloring history after a loss warning.
+  Undo history belongs to each work and survives switching works, reopening
+  completed works, app restarts and rotation; DONE does not clear it.
 
   Scenario: An empty collection offers a new work
     When I enter coloring with no works

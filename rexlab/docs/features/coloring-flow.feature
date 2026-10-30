@@ -71,8 +71,10 @@ Feature: Coloring full flow and durable progress
     And no unreadable history is presented as a new empty collection or first best
     And no existing stored work is automatically cleared or overwritten
     And readable works can still be viewed
-    And coloring stays read-only with HOME and a parent recovery action available until safe reading is restored or a reset is confirmed
-    And successful retry restores the saved collection without a first-best celebration
+    And unreadable works stay read-only with HOME available and are never mistaken for empty new works
+    And if reward history is unreadable all coloring editing and completion stay disabled with a parent recovery action available
+    And if reward history is readable, readable works remain editable and NEW WORK remains available with new unique identities
+    And successful retry restores existing flags and counts without awarding any star or best celebration merely for reading them
     And other games and the language, theme and age settings remain unchanged
 
     Examples:
@@ -95,8 +97,12 @@ Feature: Coloring full flow and durable progress
     Given <device> in portrait or landscape, using English or Russian and light or dark theme
     When I visit the gallery, workshop and result
     Then child-facing words are uppercase with symbols or pictures
-    And controls are at least 60 by 60 CSS pixels without overlapping the canvas
-    And the dinosaur, palette and navigation fit without clipping or page scrolling
+    And visible controls are at least 60 by 60 CSS pixels without overlapping the canvas
+    And the dinosaur and compact navigation fit without clipping or page scrolling
+    And on small screens color and brush-size buttons open a separate chooser sheet
+    And the sheet temporarily replaces the canvas area with a wrapping grid of the 12 colors or 3 sizes
+    And choosing an option or CLOSE returns to the unchanged canvas with that option selected
+    And the full palette need not be visible alongside the canvas
     And rotation keeps the work identity, committed paint, undo history and reward flag
     And screen, tool-selection and reward changes animate with shared quick motion tokens
     And reduced motion uses short fades and a still painted dinosaur instead of lively movement
@@ -109,7 +115,7 @@ Feature: Coloring full flow and durable progress
       | small iPhone at 320 by 568 |
 
   Scenario: A parent can recover permanently unreadable coloring storage
-    Given malformed coloring data or an unsupported version cannot be restored by RETRY
+    Given the shared coloring reward history is malformed or unsupported and cannot be restored by RETRY
     When a parent opens recovery
     Then a normal-case parent warning explains that resetting loses all coloring works and earned coloring stars on this device
     And CANCEL returns to the read-only gallery without changing any stored data
@@ -117,8 +123,18 @@ Feature: Coloring full flow and durable progress
     Then coloring starts with an empty collection and new work identities
     And other games, language, theme and age settings are retained
     And a reset creates no star or best celebration
-    And the first completion after reset establishes a new baseline without claiming a historical FIRST BEST
-    And subsequent new completed works can celebrate increases from that baseline
+    And the first saved nonempty completion in this explicitly reset collection shows FIRST BEST with a count of 1
+    And subsequent new completed works show NEW BEST with the current collection count
+    And no pre-reset best is retained or compared
     When the confirmed reset cannot be saved
     Then the original stored data remains intact and the recovery error is visible
     And coloring remains read-only with HOME available
+
+  Scenario: One damaged work does not erase healthy works
+    Given reward history and two works are readable but a third work is malformed
+    When I open GALLERY
+    Then the damaged work has an unavailable placeholder and RETRY instead of an editable thumbnail
+    And the two healthy works can be opened, edited and completed under their existing reward flags
+    And NEW WORK creates a new independent identity and never reuses the damaged one's identity
+    And the damaged work's recorded completion and star still count exactly once if reward history marks it completed
+    And no reset is required to continue coloring the healthy or new works

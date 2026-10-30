@@ -4,16 +4,16 @@ Feature: Coloring workshop
   copy, time limit, coverage target or judgement of artistic quality.
   An action means one accepted brush contact from press to release, or
   one fill. A work is nonempty when its current editable paint differs
-  visibly from the initial unpainted dinosaur; tool choices are not paint. Paint matching the initial base color alone
-  is empty; a contact that changes no visible paint adds no undo entry.
+  visibly from the initial unpainted dinosaur; tool choices are not paint. Paint matching the initial base color
+  alone is empty; a contact that changes no visible paint adds no undo entry.
 
   Scenario: Start a new work
     When I choose NEW WORK in coloring
     Then a new independent work opens with an unpainted Stegosaurus
     And I see 12 color swatches including the unpainted base color, a round brush with 3 sizes, FILL and UNDO
     And the selected color, tool and size are shown by shape as well as color
-    And HOME, GALLERY and DONE have symbols beside their uppercase words
-    And no eraser, color mixing, template tasks or other dinosaurs are offered
+    And HOME, GALLERY, NEW WORK and DONE have symbols beside their uppercase words
+    And no separate eraser, color mixing, template tasks or other dinosaurs are offered
 
   Scenario: A contact makes one editable stroke
     Given the brush is selected
@@ -72,11 +72,10 @@ Feature: Coloring workshop
 
   Scenario: Drawing respects shared double-tap safety
     When I tap twice inside the canvas 200 ms apart at the same point
-    Then the shared filter accepts only the first dot or fill
+    Then only the first dot or fill changes the canvas
     When I drag an accepted stroke and press again after its release
     Then the next contact paints another dot or stroke even within 200 ms at the same place
     And the earlier accepted drag did not open a double-tap window
-    And the same root filter used throughout the app handles all these contacts
 
   Scenario: Restore the editable work
     Given I have saved a stroke, a fill and an undo
@@ -89,3 +88,12 @@ Feature: Coloring workshop
     Given a new unpainted work and a palette color matching its base
     When I paint only with that color
     Then the work remains empty, UNDO and DONE are unavailable and no draft is saved
+
+  Scenario: The base color returns a work to empty
+    Given a work contains paint
+    When I cover all that paint with the base color until it matches the initial appearance
+    Then DONE is unavailable just as when all paint has been undone
+    And a previously saved work keeps its identity and undo history
+    And a completed work keeps its completed status and single star on its empty thumbnail
+    And a draft stays a draft with no star
+    And UNDO restores the paint before the last base-color action
