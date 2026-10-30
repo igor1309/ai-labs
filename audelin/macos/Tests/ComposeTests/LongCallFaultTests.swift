@@ -3,6 +3,7 @@ import struct CallText.State
 import Foundation
 import LiveText
 import Session
+import SessionRehearsal
 import Synchronization
 import Testing
 @testable import Compose

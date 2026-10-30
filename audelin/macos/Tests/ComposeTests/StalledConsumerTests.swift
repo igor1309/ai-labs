@@ -5,6 +5,7 @@ import LiveText
 import struct MicrophoneCapture.AudioPiece
 import Reading
 import Session
+import SessionRehearsal
 import Synchronization
 import struct SystemAudioCapture.AudioPiece
 import Testing

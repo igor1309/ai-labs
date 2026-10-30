@@ -7,6 +7,7 @@ import LiveText
 import struct MicrophoneCapture.AudioPiece
 import Reading
 import Session
+import SessionRehearsal
 import Synchronization
 import struct SystemAudioCapture.AudioPiece
 import Testing
@@ -114,56 +115,6 @@ struct SessionEnduranceTests {
                 }
             }
         }
-    }
-}
-
-/// Speaks a word every 0.4 s in sentences of `sentence` seconds with `pause`
-/// seconds of silence between them; words are final a second after they end.
-actor SpeakingRecognizer: Recognizer {
-
-    private let name: String
-    private let sentence: Double
-    private let pause: Double
-    private let offset: Double
-    private var heard = 0.0
-    private var rate = 48_000.0
-    private var nextWord = 0.0
-    private var pending: [Word] = []
-    private(set) var heardSamples = 0
-    private(set) var words = 0
-
-    init(name: String, sentence: Double, pause: Double, offset: Double) {
-
-        self.name = name
-        self.sentence = sentence
-        self.pause = pause
-        self.offset = offset
-        nextWord = offset
-    }
-
-    func hear(_ chunk: AudioChunk) -> Hearing {
-
-        rate = chunk.sampleRate
-        heardSamples += chunk.samples.count
-        heard = Double(heardSamples) / rate
-        while nextWord + 0.3 <= heard {
-            let inCycle = (nextWord - offset).truncatingRemainder(dividingBy: sentence + pause)
-            if inCycle < sentence {
-                words += 1
-                pending.append(Word("\(name)\(words)", start: nextWord, end: nextWord + 0.3))
-            }
-            nextWord += 0.4
-        }
-        return report(finalThrough: heard - 1)
-    }
-
-    func finish() -> Hearing { report(finalThrough: heard) }
-
-    private func report(finalThrough: Double) -> Hearing {
-
-        let hearing = Hearing(words: pending, from: pending.first?.start ?? heard, finalThrough: finalThrough)
-        pending.removeAll { $0.end <= finalThrough }
-        return hearing
     }
 }
 

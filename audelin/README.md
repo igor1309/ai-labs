@@ -11,6 +11,10 @@ The live panel and settings UI are not connected yet.
 Build: `cd audelin/macos && sh scripts/bundle.sh`.
 Run: `open .build/Audelin.app` from `audelin/macos`.
 Logs: `log stream --predicate 'subsystem == "dev.igor1309.audelin"'`.
+Profile a long call: `scripts/profile-rehearsal.sh --minutes 180 --speed 10`
+from `audelin/macos` runs a synthetic call through the real session and
+panel under Time Profiler and prints the heaviest frames, hangs and peak
+memory; traces stay in `macos/profiles/`.
 
 | Path | What it holds |
 |---|---|

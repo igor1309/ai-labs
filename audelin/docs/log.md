@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- A long synthetic call can be profiled with one command: the real session
+  and panel under Time Profiler, with a summary of the heaviest frames,
+  hangs and peak memory (LAB-772).
 - The live log redraws only the rows that changed, so an update late in a
   long call costs it about what one early does (LAB-770, LAB-771).
 

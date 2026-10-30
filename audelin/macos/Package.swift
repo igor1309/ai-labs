@@ -60,6 +60,19 @@ let package = Package(
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
+        // Not shipped: a long synthetic call through the real session and panel, to profile.
+        .executableTarget(
+            name: "AudelinRehearsal",
+            dependencies: [
+                "Compose", "PanelUI", "Reading", "Recording", "Session", "SessionRehearsal", "CallFolder", "CallAppProcesses",
+                "LiveText", "MicrophoneCapture", "SystemAudioCapture",
+                .product(name: "IMRxObservation", package: "swift-imrx"),
+            ]
+        ),
+        .target(
+            name: "SessionRehearsal",
+            dependencies: ["LiveText"]
+        ),
         .target(
             name: "AudioConversion"
         ),
@@ -200,7 +213,7 @@ let package = Package(
         .testTarget(
             name: "ComposeTests",
             dependencies: [
-                "Compose", "Audelin", "CallAudioAccess", "Lifecycle", "Recording", "BlockingTestWork",
+                "Compose", "Audelin", "CallAudioAccess", "Lifecycle", "Recording", "BlockingTestWork", "SessionRehearsal",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
