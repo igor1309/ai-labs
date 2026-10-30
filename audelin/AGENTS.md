@@ -11,3 +11,5 @@ Issues are in the Multica project `Audelin`, in the `ai-labs` workspace (parent 
   children run through `exitStatus(of:)`, and audio files are read with `audioFile(_:)`. A
   `deinit` that releases a blocking resource is `isolated`. Core Audio listener callbacks stay on
   Core Audio's threads; only caller entry points hop to the queue.
+- A change meant to make the text path faster is judged by `macos/Benchmarks` (its README):
+  median instructions per word against the saved `base`, not by unit or count tests.
