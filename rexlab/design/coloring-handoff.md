@@ -12,6 +12,10 @@ Workshop, gallery and result each have 1180×820, 744×1133, 393×852 and
 iPad and portrait iPhone; English on portrait iPad and landscape iPhone.
 The workshop keeps twelve colours, three round brush sizes, bucket, undo
 and completion visible. Landscape phones move tools beside the canvas.
+Their palette uses a compact four-column, three-row grid with 52-point
+colour targets and a 252-point tool column; reclaimed width goes to the
+drawing. Tablet palettes use centred 56-point targets instead of stretched
+colour pills. Both theme variants share these arrangements.
 The selected colour carries a check; selected brush size carries amber.
 Painting is clipped to the silhouette; outlines and eyes stay above paint.
 
@@ -45,14 +49,7 @@ Physical iPad touch testing remains deferred; no child usability or runtime
 performance test is claimed. The generated illustration still needs visual
 acceptance and production cleanup into fill regions and protected layers.
 
-## Persistence blocker
-
-The canvas changes could not be saved to `rexlab.pen`. Pen's accessibility
-tree reports zero windows; its focused-window attribute resolves to the
-application itself. Opening/focusing this checkout and enabling accessibility
-did not restore a document window. MCP reads confirm the correct file route,
-but the required native AXDocument check cannot pass. File → Save was not
-clicked without that check. The tracked `.pen` is therefore unchanged.
-The illustration PNG is durable; full screen PDF/HTML exports accompany
-the issue result. Do not start implementation or treat this stage as complete
-until the editable design is safely saved and committed.
+The editable design is saved in `rexlab.pen`. The native AXDocument check
+now resolves to this checkout's exact document URL and File → Save succeeds.
+This resolves the earlier accessibility blocker. Revised PDF/HTML exports
+include the compact palettes from the owner's visual review feedback.
