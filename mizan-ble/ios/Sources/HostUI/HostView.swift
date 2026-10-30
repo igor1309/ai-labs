@@ -210,11 +210,10 @@ public struct HostView: View {
     }
 
     private var actionButtons: some View {
-        ForEach(state.buttons) { action in
+        ActionSlots(state.buttons) { action in
             ActionButton(action.title, systemImage: action.symbol, kind: action.kind, isEnabled: action.isEnabled) {
                 send(action)
             }
-            .transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
         }
         .motion(.standard, value: state.buttonsProjection)
     }
