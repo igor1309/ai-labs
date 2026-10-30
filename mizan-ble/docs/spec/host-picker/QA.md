@@ -1,7 +1,7 @@
 # Host picker — QA
 
 Driven as a pure type with recorded reading sequences and a fake time. The
-settings are the defaults unless a row says otherwise. Rows read the answer.
+settings are the defaults. Rows read the answer.
 
 ## S-1 One host, near
 
@@ -49,11 +49,11 @@ Margin 0, A and B both at −50 over 1 s: no leader, hosts heard. Evidence: `Hos
 
 ## S-13 A leader between the lines
 
-A at −68 dBm, 5 readings over 1 s: A leading, between the lines; at exactly −65: between the lines. With α 0.1, A at −65 then one reading of −64, an average of −64.9: above the floor. Evidence: `HostPickerTests.leaderBetweenTheLinesAndAtTheFloor()`.
+A at −68 dBm, 5 readings over 1 s: A leading, between the lines; at exactly −65: between the lines; at −64.9: above the floor. Evidence: `HostPickerTests.leaderBetweenTheLinesAndAtTheFloor()`.
 
 ## S-14 Since when a leader is below the drop line
 
-With α 0.5, A leading at −60, then a reading of −82 at t, an average of exactly −71, then ticks to t + 0.5 s: A below the drop line since t. With α 0.1, A at −71 then one reading of −70, an average of −70.9: between the lines. Evidence: `HostPickerTests.belowDropSinceTheCrossingReadingThroughTicks()`.
+A leading at −60, averages driven to exactly −71 by a reading at t, then ticks to t + 0.5 s: A below the drop line since t; at −70.9 it is between the lines. Evidence: `HostPickerTests.belowDropSinceTheCrossingReadingThroughTicks()`.
 
 ## S-15 A leader back over the drop line
 
