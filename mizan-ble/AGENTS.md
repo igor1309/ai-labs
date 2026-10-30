@@ -119,6 +119,12 @@ agister runs, fix rounds and stacked merges.
   no-logic rule binds the UI
   module, not its preview app; the app copies no feature code and has no
   tests.
+- Screen snapshots in `ios/Tests/UISnapshotTests` render whole screens on
+  the devices they ship to, outside the UI modules. A change that moves a
+  pixel on a snapshotted screen fails them. When the change is intended,
+  rerun `ios/scripts/snapshot-tests.sh` with `SNAPSHOT_RECORD=1`, look at
+  each new image, and commit them in the same PR so its diff shows the
+  before and after. Never record to make an unintended change pass.
 
 ### Building the next UI module
 
