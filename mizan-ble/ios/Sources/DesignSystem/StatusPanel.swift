@@ -20,8 +20,6 @@ public struct StatusPanel<Visual: View, Value: View, Footer: View>: View {
     let value: Value
     let footer: Footer
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     public init(
         _ title: String, detail: String, level: Level, isCompact: Bool = true,
         @ViewBuilder visual: () -> Visual, @ViewBuilder value: () -> Value,
@@ -43,15 +41,14 @@ public struct StatusPanel<Visual: View, Value: View, Footer: View>: View {
             visual
             VStack(spacing: textSpacing) {
                 Text(title).typeRole(titleRole).foregroundStyle(Tokens.text).lineLimit(1)
+                    .fadesIn(on: title)
                 value
-                if !detail.isEmpty || level == .screen { detailText }
+                if !detail.isEmpty || level == .screen { detailText.fadesIn(on: detail) }
             }
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
             footer
         }
-        .animation(Motion.standard(reduced: reduceMotion).animation, value: title)
-        .animation(Motion.standard(reduced: reduceMotion).animation, value: detail)
     }
 
     @ViewBuilder
