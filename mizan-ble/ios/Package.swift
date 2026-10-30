@@ -28,6 +28,10 @@ let package = Package(
         .library(name: "SessionCrypto", targets: ["SessionCrypto"]),
         .library(name: "HostPicker", targets: ["HostPicker"]),
     ],
+    dependencies: [
+        // Test-only: the screen snapshots in UISnapshotTests.
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
+    ],
     targets: [
         .target(name: "HostRadio"),
         .testTarget(name: "HostRadioTests", dependencies: ["HostRadio"]),
@@ -67,6 +71,14 @@ let package = Package(
         .target(
             name: "DesignSystem",
             resources: [.copy("Resources/Fonts")]
+        ),
+        .testTarget(
+            name: "UISnapshotTests",
+            dependencies: [
+                "HostUI", "ClientUI", "DesignSystem",
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+            ],
+            exclude: ["__Snapshots__"]
         ),
         .testTarget(
             name: "DesignSystemTests",

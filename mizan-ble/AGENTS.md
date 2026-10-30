@@ -119,6 +119,12 @@ agister runs, fix rounds and stacked merges.
   no-logic rule binds the UI
   module, not its preview app; the app copies no feature code and has no
   tests.
+- Screen snapshots in `ios/Tests/UISnapshotTests` render whole screens on
+  the devices they ship to, outside the UI modules. A change that moves a
+  pixel on a snapshotted screen fails them. When the change is intended,
+  rerun `ios/scripts/snapshot-tests.sh` with `SNAPSHOT_RECORD=1`, look at
+  each new image, and commit them in the same PR so its diff shows the
+  before and after. Never record to make an unintended change pass.
 
 ### Building the next UI module
 
@@ -209,3 +215,22 @@ driven by Maestro on simulators. It proves the wiring before any device.
   commit; CI fails when they differ.
 - A screen built in code matches its frame; a screen with no frame says so
   in its spec's `## Decided` as proposed.
+
+## Installing on the owner's devices
+
+- The project turns signing off and names no team, so pass both on the
+  build. Run it from the repo root with the sandbox off:
+
+  ```sh
+  xcodebuild -project mizan-ble/ios/App/MizanBLE.xcodeproj -scheme MizanBLE \
+    -configuration Debug -destination 'generic/platform=iOS' \
+    -derivedDataPath /tmp/mizan-device-dd -allowProvisioningUpdates \
+    CODE_SIGNING_ALLOWED=YES CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=VRVJ9YNRQU build
+  ```
+
+- Install the app on each device with
+  `xcrun devicectl device install app --device <udid> /tmp/mizan-device-dd/Build/Products/Debug-iphoneos/MizanBLE.app`:
+  iPhone 15 Pro `00008130-000E60D411D8001C`, iPad Pro 11"
+  `00008103-0006285A3E07001E`. `xcrun devicectl list devices` shows
+  whether they are available.
+- "Integrity could not be verified" means the app was built unsigned.
