@@ -24,22 +24,16 @@ public struct HostView: View {
             ) {
                 CompactHostSteps(state.steps, isSettingsEnabled: state.isSettingsEnabled, onSettings: openSettings)
             } content: {
-                ViewThatFits(in: .vertical) {
-                    compactContent
-                    ScrollView { compactContent }
+                VStack(spacing: Tokens.space3) {
+                    amount
+                    panel
+                    // The action sits at the foot of the screen, where the client keeps its own.
+                    buttons
                 }
             }
         } else {
             regularShell
         }
-    }
-
-    private var compactContent: some View {
-        VStack(spacing: Tokens.space3) {
-            amount
-            panel
-        }
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var regularShell: some View {
@@ -154,7 +148,7 @@ public struct HostView: View {
                             }
                         }
                     }
-                    buttons
+                    panelButtons
                 }
                 .padding(horizontalSizeClass == .compact ? Tokens.space2 : Tokens.space4)
                 .transition(Motion.panelTransition(reduced: reduceMotion))
@@ -167,7 +161,7 @@ public struct HostView: View {
                     )
                     Text(title).font(Tokens.text(Tokens.sizeLead, .semibold)).foregroundStyle(Tokens.text)
                     Text(detail).typeRole(.eyebrow).multilineTextAlignment(.center)
-                    buttons
+                    panelButtons
                 }
                 .padding(horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space7)
                 .transition(Motion.panelTransition(reduced: reduceMotion))
@@ -183,7 +177,7 @@ public struct HostView: View {
                     if horizontalSizeClass == .compact, let secondsRemaining {
                         Text(secondsRemaining).typeRole(.code).foregroundStyle(Tokens.hostHi)
                     }
-                    buttons
+                    panelButtons
                 }
                 .padding(horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space7)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -195,13 +189,13 @@ public struct HostView: View {
                     }
                 }
             case let .result(outcome, title):
-                ResultCard(outcome, title: title, isCompact: horizontalSizeClass == .compact) { buttons }
+                ResultCard(outcome, title: title, isCompact: horizontalSizeClass == .compact) { panelButtons }
                     .transition(Motion.panelTransition(reduced: reduceMotion))
             case let .processor(eyebrow, title):
                 VStack(spacing: horizontalSizeClass == .compact ? Tokens.space2 : Tokens.space6) {
                     Text(eyebrow).typeRole(.eyebrow).foregroundStyle(Tokens.hostHi)
                     Text(title).typeRole(.lead).foregroundStyle(Tokens.text)
-                    buttons
+                    panelButtons
                 }
                 .padding(horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space7)
                 .transition(Motion.panelTransition(reduced: reduceMotion))
@@ -225,6 +219,12 @@ public struct HostView: View {
         .disabled(!action.isEnabled)
         .allowsHitTesting(action.isEnabled && isEnabled)
         .opacity(action.isEnabled ? 1 : 0.5)
+    }
+
+    /// On an iPhone the buttons leave the panel for the foot of the screen.
+    @ViewBuilder
+    private var panelButtons: some View {
+        if horizontalSizeClass != .compact { buttons }
     }
 
     @ViewBuilder

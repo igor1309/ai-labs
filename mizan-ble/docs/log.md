@@ -2,6 +2,7 @@
 
 ## 2026-10-30
 
+- On an iPhone the host's action button sits at the foot of the screen like the client's, and its screen no longer scrolls, so the header holds the same place on both sides (LAB-728).
 - v0.0.1 is built: payments confirm, fail and decline on a real iPad and iPhone, with the signal values measured there and no secret in the log (LAB-728).
 - Switching between host and client swaps the screen at once, instead of fading one full screen over the other (LAB-728).
 - The screens lay out inside the safe area on every device, with only their backgrounds reaching the screen's edges (LAB-728).
