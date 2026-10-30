@@ -55,3 +55,8 @@ jobs:
         if: matrix.shard == 1
         working-directory: rexlab
         run: npm run test:browser
+
+      - name: Check coloring technical probe in Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: node tests/coloringProbe.browser.cjs

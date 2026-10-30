@@ -110,6 +110,7 @@ const ADAPTERS = [
   "treasurePictures.ts"
 ];
 const COMPOSITION = [
+  "coloringProbe/main.ts",
   "App.tsx",
   "careGame.tsx",
   "digGame.tsx",
@@ -145,6 +146,13 @@ const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps the coloring technical probe isolated from game entry points", () => {
+    const probe = (file: string) => file.startsWith("coloringProbe/");
+    expect(edges((file) => !probe(file), probe)).toEqual([]);
+    expect(edges((file) => probe(file) && file !== "coloringProbe/main.ts", (target) => !probe(target))).toEqual([]);
+    expect(GRAPH.get("coloringProbe/main.ts")).toContain("root.ts");
+    expect(edges(probe, (target) => COMPOSITION.includes(target) && target !== "root.ts")).toEqual([]);
+  });
   it("keeps game audio independent of UI and storage, with browser persistence wired at the root", () => {
     expect(GRAPH.get("gameAudio.ts")).toEqual(["language/language.ts"]);
     expect(GRAPH.get("root.ts")).toContain("localJawAudio.ts");
