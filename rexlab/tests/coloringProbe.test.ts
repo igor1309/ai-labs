@@ -45,6 +45,17 @@ describe("editable coloring journal", () => {
   ])("rejects damaged or unsupported input %#", value => {
     expect(() => readWork(value)).toThrow();
   });
+  it.each([
+    new Array(1),
+    Object.assign(new Array(2), { 0: { x: 400, y: 400 } }),
+    Object.assign(new Array(2), { 1: { x: 400, y: 400 } })
+  ])("rejects missing point slots in stored records %#", points => {
+    const document = { ...newWork("damaged"), revision: 1, actions: [{ ...dot, points }] };
+    const record = structuredClone({ document, thumbnail: png() });
+    expect(() => readWork(record.document)).toThrow("Invalid stroke");
+    expect(() => readRecord(record, "damaged")).toThrow("Invalid stroke");
+    expect(readWork(append(newWork("healthy"), dot)).actions).toEqual([dot]);
+  });
   it("rejects mismatched identity and damaged thumbnail without accepting a replacement work", () => {
     const record = { document: newWork("a"), thumbnail: png() };
     expect(readRecord(record, "a").document.geometry).toBe(GEOMETRY);

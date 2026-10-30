@@ -9,6 +9,14 @@ export function newWork(id: string): Work {
 }
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 const coordinate = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 100000;
+function validPoints(value: unknown): boolean {
+  if (!Array.isArray(value) || !value.length) return false;
+  for (let index = 0; index < value.length; index++) {
+    const point: unknown = value[index];
+    if (!Object.hasOwn(value, index) || !object(point) || !coordinate(point.x) || !coordinate(point.y)) return false;
+  }
+  return true;
+}
 export function readWork(value: unknown): Work {
   if (!object(value) || value.schema !== 1 || value.geometry !== GEOMETRY || !validId(value.id) || !Number.isSafeInteger(value.revision) || (value.revision as number) < 0 || !Array.isArray(value.actions) || (value.revision as number) < value.actions.length) throw new Error("Unsupported or damaged work");
   for (const action of value.actions) {
@@ -16,7 +24,7 @@ export function readWork(value: unknown): Work {
     if (action.kind === "fill") {
       if (!REGIONS.some(region => region.id === action.region)) throw new Error("Unknown region");
     } else if (action.kind === "stroke") {
-      if (!SIZES.some(size => size === action.size) || !Array.isArray(action.points) || !action.points.length || !action.points.every(point => object(point) && coordinate(point.x) && coordinate(point.y))) throw new Error("Invalid stroke");
+      if (!SIZES.some(size => size === action.size) || !validPoints(action.points)) throw new Error("Invalid stroke");
     } else throw new Error("Unknown action");
   }
   // A validated copy cannot be mutated through the deserializer's input.
