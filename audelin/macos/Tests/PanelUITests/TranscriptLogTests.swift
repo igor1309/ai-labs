@@ -90,30 +90,44 @@ struct TranscriptLogTests {
         #expect((text.string as NSString).substring(with: text.selectedRange()) == "Accountable — я.")
     }
 
-    @Test func anUpdateToTheNewestEntryLeavesTheTextAboveAlone() throws {
+    @Test func eachNewlineCarriesItsParagraphsStyle() throws {
 
-        func entries(_ pending: String) -> [PanelState.Entry] {
-            many(30) + [.init(id: 30, time: "13:10", speaker: .me, settled: "Последняя фраза.", pending: pending)]
+        let lines = PanelState.Lines(entries: many(5) + [.init(id: 5, time: "13:10", speaker: .me, settled: "Последняя.", pending: "по")])
+        let string = Transcript(lines: lines, style: .init(tokens: .light, config: .glassLedger)).string
+        let text = string.string as NSString
+
+        var newlines = 0
+        for index in 1..<text.length where text.character(at: index) == 0x0A {
+            newlines += 1
+            let own = string.attribute(.paragraphStyle, at: index, effectiveRange: nil) as? NSParagraphStyle
+            let before = string.attribute(.paragraphStyle, at: index - 1, effectiveRange: nil) as? NSParagraphStyle
+            #expect(own != nil && own == before, "newline at \(index)")
         }
-        let host = hosted(.init(entries: entries("по")))
-        let text = try #require(Offscreen.textView(in: host))
-        let storage = try #require(text.textStorage)
-        let newest = (storage.string as NSString).range(of: "13:10").location
+        #expect(newlines >= 5)
+    }
 
-        var edited: [NSRange] = []
-        let observer = NotificationCenter.default.addObserver(
-            forName: NSTextStorage.didProcessEditingNotification, object: storage, queue: nil
-        ) { _ in
-            MainActor.assumeIsolated { edited.append(storage.editedRange) }
-        }
-        defer { NotificationCenter.default.removeObserver(observer) }
+    @Test func applyRestylesNothingAboveTheChangeWhenItsStyleHolds() {
 
-        host.rootView = log(.init(entries: entries("по слог")))
-        host.layoutSubtreeIfNeeded()
+        let style: [NSAttributedString.Key: Any] = [.foregroundColor: NSColor.red]
+        let storage = RecordingStorage(NSAttributedString(string: "above\nnewest", attributes: style))
 
-        // Restyling text above the change would lay all of it out again.
-        #expect(!edited.isEmpty)
-        #expect(edited.allSatisfy { $0.location >= newest }, "edited \(edited), the newest entry starts at \(newest)")
+        TranscriptLog.apply(NSAttributedString(string: "above\nnewest one", attributes: style), to: storage)
+
+        #expect(storage.string == "above\nnewest one")
+        #expect(storage.styled.allSatisfy { $0.location >= 12 }, "styled \(storage.styled)")
+    }
+
+    @Test func applyRestylesARunAboveTheChangeWhoseStyleChanged() {
+
+        let plain: [NSAttributedString.Key: Any] = [.foregroundColor: NSColor.red]
+        let storage = RecordingStorage(NSAttributedString(string: "above\nnewest", attributes: plain))
+        let new = NSMutableAttributedString(string: "above\nnewest one", attributes: plain)
+        new.addAttribute(.foregroundColor, value: NSColor.blue, range: NSRange(location: 0, length: 5))
+
+        TranscriptLog.apply(new, to: storage)
+
+        #expect(storage.styled.contains(NSRange(location: 0, length: 5)), "styled \(storage.styled)")
+        #expect(storage.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor == .blue)
     }
 
     @Test func holdsWhatADragSelectedAndIgnoresAClick() throws {
@@ -324,5 +338,37 @@ struct TranscriptLogTests {
 
         guard let document = scroll.documentView else { return false }
         return scroll.contentView.documentVisibleRect.maxY >= document.bounds.height - 1
+    }
+}
+
+/// A text storage that records every range it is asked to style.
+private final class RecordingStorage: NSTextStorage {
+
+    private let backing: NSMutableAttributedString
+    private(set) var styled: [NSRange] = []
+
+    init(_ string: NSAttributedString) {
+        backing = NSMutableAttributedString(attributedString: string)
+        super.init()
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+    required init?(pasteboardPropertyList propertyList: Any, ofType type: NSPasteboard.PasteboardType) { fatalError() }
+
+    override var string: String { backing.string }
+
+    override func attributes(at location: Int, effectiveRange range: NSRangePointer?) -> [NSAttributedString.Key: Any] {
+        backing.attributes(at: location, effectiveRange: range)
+    }
+
+    override func replaceCharacters(in range: NSRange, with str: String) {
+        backing.replaceCharacters(in: range, with: str)
+        edited(.editedCharacters, range: range, changeInLength: (str as NSString).length - range.length)
+    }
+
+    override func setAttributes(_ attrs: [NSAttributedString.Key: Any]?, range: NSRange) {
+        styled.append(range)
+        backing.setAttributes(attrs, range: range)
+        edited(.editedAttributes, range: range, changeInLength: 0)
     }
 }

@@ -76,7 +76,7 @@ struct TranscriptLog: NSViewRepresentable {
             // one below it; the edit keeps the text above in place, so put it
             // back.
             let selection = text.selectedRange()
-            apply(transcript.string, to: text.textStorage!)
+            Self.apply(transcript.string, to: text.textStorage!)
             let length = text.textStorage!.length
             text.setSelectedRange(NSIntersectionRange(selection, NSRange(location: 0, length: length)))
 
@@ -106,13 +106,13 @@ struct TranscriptLog: NSViewRepresentable {
 
 // MARK: - Updating in place
 
-private extension TranscriptLog {
+extension TranscriptLog {
 
     /// Replaces only what changed after the common prefix, and restyles only
     /// the runs above it whose style changed: characters above the change
     /// keep their position and layout, so the reader's selection and scroll
     /// position stay.
-    func apply(_ new: NSAttributedString, to storage: NSTextStorage) {
+    static func apply(_ new: NSAttributedString, to storage: NSTextStorage) {
 
         let prefix = commonPrefix(storage.string as NSString, new.string as NSString)
 
@@ -137,7 +137,7 @@ private extension TranscriptLog {
 
     /// How many UTF-16 units two strings share from the start, compared a
     /// block at a time.
-    func commonPrefix(_ old: NSString, _ new: NSString) -> Int {
+    private static func commonPrefix(_ old: NSString, _ new: NSString) -> Int {
 
         let limit = min(old.length, new.length)
         let block = 4096
