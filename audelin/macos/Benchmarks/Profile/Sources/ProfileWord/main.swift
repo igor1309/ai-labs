@@ -99,7 +99,10 @@ final class Call: @unchecked Sendable {
 
     let root: URL
     let mine = SpeakingRecognizer(name: "mine", sentence: 8, pause: 4, offset: 0)
-    let theirs = SpeakingRecognizer(name: "theirs", sentence: 10, pause: 5, offset: 6)
+    // `growth.sh` with SILENT=1: the other side says nothing the whole call.
+    let theirs = SpeakingRecognizer(
+        name: "theirs", sentence: 10, pause: 5, offset: CommandLine.arguments.contains("silent") ? 1e9 : 6
+    )
     let microphone = Feed<MicrophoneCapture.AudioPiece>()
     let call = Feed<SystemAudioCapture.AudioPiece>()
     let sessions: RecordingSessions
