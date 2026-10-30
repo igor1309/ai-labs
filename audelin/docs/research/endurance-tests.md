@@ -221,13 +221,11 @@ Guards, passing on trunk:
   "По" in "Три. По SLA", which the expected reading had dropped too; the
   20-minute call now hears all 1,831 words once and in order.
 
-Still open: a text state costs the panel 80 to 140× as much with 1,620
-entries as with 20 (11 to 22 ms against 0.15 ms over two runs), since every
-state still maps and reduces the whole call. At no more than 10 states an
-audio second that is 11 to 22% of the main actor late in a long call, from
-127%; making the
-panel's work follow only what changed is a larger change to the reducer
-and its mapping.
+Still open (LAB-767): an update late in a 1,620-entry call costs the panel
+about 343 ms, against 5 ms with 20 entries. Of that, 237 ms goes to the
+view rebuilding the whole attributed transcript; the model, which
+`PanelLoadTests` measures, takes 2 to 8 ms. At 5 to 10 updates an audio
+second the main actor falls behind long before the call ends.
 
 ## Candidates already in the code
 
