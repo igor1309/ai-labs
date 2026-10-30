@@ -92,6 +92,7 @@ const PRESENTATION = [
 // The catalogue's own model of a dinosaur, apart from the quiz's.
 const CATALOGUE = "catalogue.ts";
 const ADAPTERS = [
+  "indexedColoringWorks.ts",
   "decodedPictures.ts",
   "dinosaurPictures.ts",
   "dinosaurs.ts",
@@ -146,6 +147,14 @@ const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps production coloring pure and its storage adapter wired only by composition", () => {
+    const coloring = (file: string) => file.startsWith("coloring/");
+    expect(GRAPH.get("coloring/index.ts")).toEqual([]);
+    expect(edges(coloring, target => !coloring(target))).toEqual([]);
+    expect(edges(file => !coloring(file), target => coloring(target) && target !== "coloring/index.ts")).toEqual([]);
+    expect(GRAPH.get("indexedColoringWorks.ts")).toEqual(["coloring/index.ts"]);
+    expect(edges(file => !COMPOSITION.includes(file), target => target === "indexedColoringWorks.ts")).toEqual([]);
+  });
   it("keeps the coloring technical probe isolated from game entry points", () => {
     const probe = (file: string) => file.startsWith("coloringProbe/");
     expect(edges((file) => !probe(file), probe)).toEqual([]);

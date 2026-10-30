@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Coloring works now have an editable action history and atomic local storage that preserves unreadable records and earned status (LAB-803).
+
 - An isolated Stegosaurus coloring probe offers editable paint, persistent undo, independent works and animation; desktop browser checks and payload measurements are recorded; physical iPad acceptance remains pending (LAB-801).
 
 ## 2026-10-28
