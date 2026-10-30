@@ -64,3 +64,27 @@ jobs:
       - name: Build for iOS
         working-directory: mizan-ble/ios
         run: xcodebuild -scheme MizanBLE-Package -destination 'generic/platform=iOS' build
+
+  # The screen snapshots compare pixels, so they run where the references
+  # were recorded: this Mac's Xcode and its pinned iPhone 15 Pro simulator.
+  snapshots:
+    runs-on: [self-hosted, local-mac]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Compare screen snapshots
+        working-directory: mizan-ble/ios
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/mizan-snapshots.xcresult
+        run: ./scripts/snapshot-tests.sh
+
+      - name: Keep the failed comparisons
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mizan-ble-snapshots
+          path: ${{ runner.temp }}/mizan-snapshots.xcresult
