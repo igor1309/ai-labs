@@ -1,6 +1,7 @@
 import Foundation
 import ClientFind
 import HostPicker
+import HostChoice
 import ClientConnect
 import ClientReview
 import ClientPayment
@@ -14,7 +15,8 @@ import Settings
     private let settings: Settings
     private let log: any LogSink
     private var picker: HostPicker<UUID>
-    private var lastPickerLine: (answer: HostPicker<UUID>.Answer, rssi: Int?, time: Double)?
+    private var choice: HostChoice<UUID>
+    private var lastPickerLine: (answer: HostChoice<UUID>.Answer, rssi: Int?, time: Double)?
     private var hosts: [UUID: ClientFind.Host] = [:]
     private var ticks: Task<Void, Never>?
     private(set) var isScanning = false
@@ -26,16 +28,19 @@ import Settings
         self.settings = settings
         self.log = log
         picker = Self.picker(settings)
+        choice = HostChoice(hold: settings.choiceHold)
     }
     deinit { ticks?.cancel() }
     private static func picker(_ settings: Settings) -> HostPicker<UUID> {
         .init(alpha: settings.pickerAlpha, windowSeconds: settings.pickerWindowSeconds,
               windowReadings: settings.pickerWindowReadings, floor: settings.pickerFloor,
-              margin: settings.pickerMargin, fade: settings.pickerFade)
+              margin: settings.pickerMargin, fade: settings.pickerFade,
+              dropGap: settings.pickerDropGap)
     }
     func start() {
         guard !isScanning else { return }
         picker = Self.picker(settings)
+        choice = HostChoice(hold: settings.choiceHold)
         hosts.removeAll()
         lastPickerLine = nil
         isScanning = true
@@ -62,8 +67,9 @@ import Settings
         hosts[host] = .init(id: host.uuidString, name: name ?? hosts[host]?.name)
         answer(picker.receive(host: host, rssi: rssi, at: time), at: time)
     }
-    private func answer(_ answer: HostPicker<UUID>.Answer, at time: Double) {
+    private func answer(_ signal: HostPicker<UUID>.Answer, at time: Double) {
         guard isScanning else { return }
+        let answer = choice.receive(Self.signal(signal), at: signal.time)
         logPicker(answer, at: time)
         switch answer {
         case .none: send(.pickerAnswered(.none))
@@ -73,9 +79,18 @@ import Settings
         }
     }
 
-    private func logPicker(_ answer: HostPicker<UUID>.Answer, at time: Double) {
+    private static func signal(_ answer: HostPicker<UUID>.Answer) -> HostChoice<UUID>.Signal {
+        guard let leader = answer.leader else { return answer.hostHeard ? .noLeader : .noHost }
+        switch leader.band {
+        case .aboveFloor: return .leader(leader.host, .aboveFloor)
+        case .betweenLines: return .leader(leader.host, .betweenLines)
+        case .belowDrop(let since): return .leader(leader.host, .belowDrop(since: since))
+        }
+    }
+
+    private func logPicker(_ answer: HostChoice<UUID>.Answer, at time: Double) {
         let view = picker.view(at: time)
-        let rssi = view.leaderAverage.map { Int($0.rounded()) }
+        let rssi = view.strongestAverage.map { Int($0.rounded()) }
         let signalMoved: Bool
         if let previous = lastPickerLine, let previousRSSI = previous.rssi, let rssi {
             signalMoved = abs(rssi - previousRSSI) >= 3 && time - previous.time >= 1

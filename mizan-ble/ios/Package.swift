@@ -27,6 +27,7 @@ let package = Package(
         .library(name: "MessageCodec", targets: ["MessageCodec"]),
         .library(name: "SessionCrypto", targets: ["SessionCrypto"]),
         .library(name: "HostPicker", targets: ["HostPicker"]),
+        .library(name: "HostChoice", targets: ["HostChoice"]),
     ],
     dependencies: [
         // Test-only: the screen snapshots in UISnapshotTests.
@@ -68,6 +69,8 @@ let package = Package(
         .testTarget(name: "SessionCryptoTests", dependencies: ["SessionCrypto"]),
         .target(name: "HostPicker"),
         .testTarget(name: "HostPickerTests", dependencies: ["HostPicker"]),
+        .target(name: "HostChoice"),
+        .testTarget(name: "HostChoiceTests", dependencies: ["HostChoice"]),
         .target(
             name: "DesignSystem",
             resources: [.copy("Resources/Fonts")]

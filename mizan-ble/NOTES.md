@@ -38,7 +38,10 @@ door.
   leader, the client takes the host with the strongest average if it is
   above a floor and leads the runner-up by a margin. Starting values: floor
   −65 dBm, margin 6 dB. With no clear leader the client keeps scanning and
-  shows "Hold your phone closer to the till"; it never guesses.
+  shows "Hold your phone closer to the till"; it never guesses. Once
+  chosen, a host is kept while it still leads by the margin and its average
+  stays above a drop line 6 dB under the floor, or dips under it for less
+  than a 1 s hold; it drops at once on a rival or on its fade.
 - **Settings:** α, the window, the floor and the margin are settings, like
   the host's countdown. Starting values are guesses; the values measured
   between a real iPad and iPhone are recorded here.
