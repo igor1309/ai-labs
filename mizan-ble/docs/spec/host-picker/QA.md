@@ -49,24 +49,24 @@ Margin 0, A and B both at −50 over 1 s: no leader, hosts heard. Evidence: `Hos
 
 ## S-13 A leader between the lines
 
-A at −68 dBm, 5 readings over 1 s: A leading, between the lines; at exactly −65: between the lines; at −64.9: above the floor. Evidence: Missing.
+A at −68 dBm, 5 readings over 1 s: A leading, between the lines; at exactly −65: between the lines; at −64.9: above the floor. Evidence: `HostPickerTests.leaderBetweenTheLinesAndAtTheFloor()`.
 
 ## S-14 Since when a leader is below the drop line
 
-A leading at −60, averages driven to exactly −71 by a reading at t, then ticks to t + 0.5 s: A below the drop line since t; at −70.9 it is between the lines. Evidence: Missing.
+A leading at −60, averages driven to exactly −71 by a reading at t, then ticks to t + 0.5 s: A below the drop line since t; at −70.9 it is between the lines. Evidence: `HostPickerTests.belowDropSinceTheCrossingReadingThroughTicks()`.
 
 ## S-15 A leader back over the drop line
 
-A's average −72 since t; a raw −70 at t + 0.2 s gives −71.4: still since t; a raw −50 at t + 0.3 s gives −64.98, over the line; a raw −90 at t + 0.5 s gives −72.49: below the drop line since t + 0.5 s. Evidence: Missing.
+A's average −72 since t; a raw −70 at t + 0.2 s gives −71.4: still since t; a raw −50 at t + 0.3 s gives −64.98, over the line; a raw −90 at t + 0.5 s gives −72.49: below the drop line since t + 0.5 s. Evidence: `HostPickerTests.crossingBackOverTheDropLineStartsANewRun()`.
 
 ## S-16 A host heard again after the fade
 
-A leading, no reading or tick for 2.1 s, then one reading from A at −50: no leader, a host heard. Evidence: Missing.
+A leading, no reading or tick for 2.1 s, then one reading from A at −50: no leader, a host heard. Evidence: `HostPickerTests.heardAgainAfterTheFadeHasNoLeader()`.
 
 ## S-17 Below the drop line before it leads
 
-A's first readings at −75 from t, 5 readings over 1 s: at t + 1 s A leading, below the drop line since t. Evidence: Missing.
+A's first readings at −75 from t, 5 readings over 1 s: at t + 1 s A leading, below the drop line since t. Evidence: `HostPickerTests.belowDropBeforeTheWindowKeepsItsStartTime()`.
 
 ## S-18 A rival during a run below the drop line
 
-A leading, average −75 since t; B at −74 heard from t + 0.2 s (no leader), then silent for 2.1 s while A stays at −75: A leading, below the drop line since t. Evidence: Missing.
+A leading, average −75 since t; B at −74 heard from t + 0.2 s (no leader), then silent for 2.1 s while A stays at −75: A leading, below the drop line since t. Evidence: `HostPickerTests.rivalDoesNotResetTheRunBelowDrop()`.
