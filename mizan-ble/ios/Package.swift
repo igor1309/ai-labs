@@ -81,7 +81,7 @@ let package = Package(
         .testTarget(
             name: "UISnapshotTests",
             dependencies: [
-                "HostUI", "ClientUI", "DesignSystem",
+                "HostUI", "ClientUI", "ClientPaymentUI", "SettingsUI", "DesignSystem",
                 .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
             ],
             exclude: ["__Snapshots__"]

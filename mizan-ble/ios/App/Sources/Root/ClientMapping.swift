@@ -43,7 +43,33 @@ enum ClientMapping {
         default: return true
         }
     }
-    static func screen(find: ClientFind.State, connect: ClientConnect.State?) -> ClientState {
+    /// The picker's lines, for counting bars: four from 10 dB above the floor, three from the floor,
+    /// two above the drop line, one at or below it.
+    struct SignalLines: Equatable {
+        var floor: Double
+        var dropGap: Double
+        static let `default` = SignalLines(floor: -65, dropGap: 6)
+
+        func bars(_ dBm: Int) -> Int {
+            let value = Double(dBm)
+            if value >= floor + 10 { return 4 }
+            if value >= floor { return 3 }
+            if value > floor - dropGap { return 2 }
+            return 1
+        }
+    }
+
+    static func signal(_ signal: ClientFind.Signal, lines: SignalLines) -> SignalMeter.Model {
+        switch signal {
+        case .none: .noSignal
+        case .live(let dBm): .init(label: "\(decibels(dBm)) dBm", bars: lines.bars(dBm), tone: .live)
+        case .atStart(let dBm): .init(label: "\(decibels(dBm)) dBm at start", bars: lines.bars(dBm), tone: .atStart)
+        }
+    }
+
+    private static func decibels(_ value: Int) -> String { value < 0 ? "\u{2212}\(-value)" : "\(value)" }
+
+    static func screen(find: ClientFind.State, connect: ClientConnect.State?, lines: SignalLines = .default) -> ClientState {
         var screen = ClientState(
             eyebrow: "STEP 1 OF 4 · FIND", status: "Idle", statusTone: .idle,
             steps: .init(find: .init(.active, title: "Find", detail: "Searching"),
@@ -54,7 +80,8 @@ enum ClientMapping {
                             clientDetail: "Ready", tone: .idle, direction: .toHost, symbol: "antenna.radiowaves.left.and.right"),
             title: "No host nearby", detail: "Hold the phone near the host iPad. It appears once the host locks an amount.",
             content: .discovery(icon: .bluetooth(isSlashed: false), isInRange: false),
-            actions: [.init("Start handshake", event: .startHandshake, icon: .bluetooth(isSlashed: false), kind: .client, isEnabled: find.canStart)])
+            actions: [.init("Start handshake", event: .startHandshake, icon: .bluetooth(isSlashed: false), kind: .client, isEnabled: find.canStart)],
+            signal: signal(find.signal, lines: lines))
         if let connect {
             let failed = connect.canRetry
             screen.eyebrow = "STEP 2 OF 4 · CONNECT"

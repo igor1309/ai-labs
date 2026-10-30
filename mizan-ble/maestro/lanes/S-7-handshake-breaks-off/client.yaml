@@ -11,3 +11,4 @@ appId: dev.igor1309.mizan-ble.rehearsal
     timeout: 15000
 - assertVisible: "The link to MIZAN-CAFE dropped. You were not charged."
 - assertVisible: "Try again"
+- assertVisible: "−40 dBm at start"

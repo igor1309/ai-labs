@@ -63,11 +63,12 @@ public struct ClientState: Equatable, Sendable {
     public var detail: String
     public var content: Content
     public var actions: [Action]
+    public var signal: SignalMeter.Model
 
     public init(
         eyebrow: String, status: String, statusTone: StatusPill.State,
         steps: Steps, exchange: Exchange, title: String, detail: String,
-        content: Content, actions: [Action]
+        content: Content, actions: [Action], signal: SignalMeter.Model = .noSignal
     ) {
         self.eyebrow = eyebrow
         self.status = status
@@ -78,5 +79,6 @@ public struct ClientState: Equatable, Sendable {
         self.detail = detail
         self.content = content
         self.actions = actions
+        self.signal = signal
     }
 }

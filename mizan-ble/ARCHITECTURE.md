@@ -186,12 +186,12 @@ settings' store over preferences.
 | Host broadcast | Lock, cancel, retry, new amount, the advertiser's events and the transaction's end in; its state; a secure link handed over | A session, an advertiser, a sender, a countdown, the countdown setting |
 | Timeout notice | Host broadcast's timeouts, the operator's actions and its timer's end in; whether a notice shows, and for which timeout | A timer |
 | Host payment | The client's decision, a lost link, the outcome, cancel and new amount in; its state; the end | A session, a sender, a link |
-| Client find | Host choice's answer, Bluetooth's state, start and the transaction's end in; its state; a host, with its name or none, handed over | A scanner |
+| Client find | Host choice's answer, the picker's strongest signal, Bluetooth's state, start and the transaction's end in; its state; a host, with its name or none, handed over | A scanner |
 | Client connect | The link's steps, cancel, retry in; its state; a link, its session and the amount handed over | A link, a session, a deadline |
 | Client review | The payer's decision and done, the host's messages and a lost link in; its state; a confirm handed over | A session, a sender, a link |
 | Client payment | The host's result, a lost link and the payer's done in; its state; the end | A session, a link |
 | Session crypto | A session: a key pair, derive, seal, open, close | — (CryptoKit, used as a library) |
-| Host picker | Readings and the time in; the time, whether a host is heard, and the leader with its band out | Its settings, given as values |
+| Host picker | Readings and the time in; the time, whether a host is heard, and the leader with its band out; the strongest smoothed signal on view | Its settings, given as values |
 | Host choice | The picker's answer in, a host, "hold closer" or "none" out | Its hold, given as a value |
 | Message codec | Each message and the Session characteristic to bytes and back | — |
 | Settings | Each setting's value, and choosing one | A store |
@@ -235,7 +235,7 @@ or reads real time; only the apps wire it in (`ios/scripts/tests/test_clock_boun
   opened by session crypto and decoded by the codec on the way.
 - **Client:** the client radio's scan readings, with the clock's ticks, go
   through the host picker, whose answer goes through host choice; host
-  choice's answer (a host, hold closer, none) is the client find's event. Client connect's effects connect, read the
+  choice's answer (a host, hold closer, none) is the client find's event. The picker's strongest smoothed signal, in whole dBm or none, is another, which the client UI draws; nothing decides on it. Client connect's effects connect, read the
   session and write the key, client review's send the decision, and each
   end disconnects, through the client radio, with session crypto and the
   codec between them as on the host.

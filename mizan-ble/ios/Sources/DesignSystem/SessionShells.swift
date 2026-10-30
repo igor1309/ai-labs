@@ -137,7 +137,7 @@ public struct IPhoneShell<Steps: View, Content: View, Actions: View>: View {
     public var body: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: Tokens.space5) {
-                ModeHeader(side: side, layout: .bar, onSwitch: onSwitch)
+                ModeHeader(side: side, layout: .bar, onSwitch: onSwitch).shellFrame(.header)
                 steps
             }
             .padding(.top, Tokens.space2)
@@ -155,10 +155,11 @@ public struct IPhoneShell<Steps: View, Content: View, Actions: View>: View {
                     Spacer(minLength: Tokens.space2)
                     status
                 }
+                .shellFrame(.eyebrow)
                 // Content takes what is left and can never push the header or
                 // the actions, so every screen keeps them in the same place.
                 content.frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                ActionStack { actions }
+                ActionStack { actions }.shellFrame(.actions)
             }
             .padding([.top, .horizontal], Tokens.space5)
             .padding(.bottom, Tokens.space2)

@@ -47,7 +47,7 @@ import Settings
         defer { discovery.stop() }
         let (events, sink) = AsyncStream<ClientFind.Event>.makeStream()
         defer { sink.finish() }
-        discovery.send = { sink.yield($0) }
+        discovery.send = { if case .pickerAnswered = $0 { sink.yield($0) } }
         var answers = events.makeAsyncIterator()
         discovery.start()
         let secret = SecretsGate()
@@ -59,6 +59,32 @@ import Settings
         #expect(await answers.next() == .pickerAnswered(.none))
         #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-50 hosts=1", "picker host rssi=-50 hosts=1", "picker none hosts=0"])
         secret.assertAbsent(from: h.log.entries)
+    }
+
+    @Test func discoverySendsTheStrongestSignalOnlyWhenItMoves() async {
+        let h = Harness()
+        defer { h.finish() }
+        h.store.set(.number(1), for: .pickerAlpha)
+        h.store.set(.number(2), for: .pickerFade)
+        let discovery = makeDiscovery(h)
+        defer { discovery.stop() }
+        let (events, sink) = AsyncStream<ClientFind.Event>.makeStream()
+        defer { sink.finish() }
+        discovery.send = { if case .signalRead = $0 { sink.yield($0) } }
+        var signals = events.makeAsyncIterator()
+        discovery.start()
+        let near = SecretsGate().peer, far = SecretsGate().session
+        for (host, rssi, time): (UUID, Int, Double) in [(near, -50, 0), (near, -50, 0.1), (far, -80, 0.2), (near, -60, 0.3)] {
+            discovery.reading(host: host, name: nil, rssi: rssi, time: time)
+        }
+        #expect(await signals.next() == .signalRead(-50))
+        #expect(await signals.next() == .signalRead(-60))
+        h.clock.advance(3)
+        #expect(await signals.next() == .signalRead(nil))
+        discovery.stop()
+        discovery.start()
+        discovery.reading(host: near, name: nil, rssi: -60, time: h.clock.now())
+        #expect(await signals.next() == .signalRead(-60))
     }
 
     @Test func pickerLogsOnlyThreeDBMovesFromLastWrittenRoundedAverage() {
@@ -132,7 +158,7 @@ import Settings
         #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-70 hosts=1"])
         let (events, sink) = AsyncStream<ClientFind.Event>.makeStream()
         defer { sink.finish() }
-        discovery.send = { sink.yield($0) }
+        discovery.send = { if case .pickerAnswered = $0 { sink.yield($0) } }
         var answers = events.makeAsyncIterator()
         h.clock.advance(seconds)
         #expect(await answers.next() == .pickerAnswered(.holdCloser))

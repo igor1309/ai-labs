@@ -28,6 +28,12 @@ public enum ClientFind {
         case gone
     }
 
+    public enum Signal: Equatable, Sendable {
+        case none
+        case live(dBm: Int)
+        case atStart(dBm: Int)
+    }
+
     public enum Phase: Equatable, Sendable {
         case idle
         case startingScan
@@ -41,6 +47,7 @@ public enum ClientFind {
         public fileprivate(set) var bluetooth: Bluetooth = .unknown
         public fileprivate(set) var selection: Selection = .none
         public fileprivate(set) var phase: Phase = .idle
+        public fileprivate(set) var signal: Signal = .none
 
         /// Waits for the root's first Bluetooth event before requesting a scan.
         public init() {}
@@ -62,6 +69,7 @@ public enum ClientFind {
     public enum Event: Equatable, Sendable {
         case bluetoothChanged(Bluetooth)
         case pickerAnswered(Answer)
+        case signalRead(Int?)
         case start
         case transactionEnded
         case scanningStarted
@@ -105,6 +113,10 @@ public enum ClientFind {
     public static func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
         var next = state
         switch event {
+        case .signalRead(let dBm):
+            guard state.phase == .startingScan || state.phase == .scanning else { return (state, nil) }
+            next.signal = dBm.map { .live(dBm: $0) } ?? .none
+
         case .bluetoothChanged(let bluetooth):
             next.bluetooth = bluetooth
             switch state.phase {
@@ -114,6 +126,7 @@ public enum ClientFind {
                 return (next, .startScanning)
             case .scanning where bluetooth != .available:
                 next.selection = .none
+                next.signal = .none
                 next.phase = .stoppingScan(nil)
                 return (next, .stopScanning)
             default:
@@ -125,6 +138,7 @@ public enum ClientFind {
             if state.bluetooth == .available {
                 next.phase = .scanning
             } else {
+                next.signal = .none
                 next.phase = .stoppingScan(nil)
                 return (next, .stopScanning)
             }
@@ -156,12 +170,14 @@ public enum ClientFind {
 
         case .start:
             guard state.canStart, case .host(let host) = state.selection else { return (state, nil) }
+            if case .live(let dBm) = state.signal { next.signal = .atStart(dBm: dBm) }
             next.phase = .stoppingScan(host)
             return (next, .stopScanning)
 
         case .transactionEnded:
             guard case .handedOver = state.phase else { return (state, nil) }
             next.selection = .none
+            next.signal = .none
             if state.bluetooth == .available {
                 next.phase = .startingScan
                 return (next, .startScanning)

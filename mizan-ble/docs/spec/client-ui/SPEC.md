@@ -20,6 +20,14 @@ and the user spec.
   Start disabled. "Mizan till" for a host whose
   name has not arrived. On an iPad the iPhone layout, centred, on every
   client screen.
+- The signal sits under the rings on every find and connect screen, in
+  one row whatever it reads, as `DS / Signal` draws it. It is the
+  strongest smoothed signal heard, beside whatever the selection says,
+  gone included; what it reads after the start is client find's. Bars
+  and whole dBm live; dimmed with "at start" from the payer's tap; unlit bars and
+  "No signal" when no host is heard. The root counts the bars from the
+  picker's lines. **Proposed, not decided:** the copy "at start" and
+  "No signal".
 
 ```gherkin
 Feature: The payer's screens before the amount
@@ -63,6 +71,21 @@ Feature: The payer's screens before the amount
     Given a host was chosen and its name has not arrived
     When I look at the iPhone
     Then I see "Mizan till" in place of its name, and can start the handshake
+
+  Scenario: S-9 The signal while finding
+    Given the phone is finding a host and hears one
+    When I look at the iPhone
+    Then I see the strongest signal it hears now, as bars and in dBm
+
+  Scenario: S-10 The signal at the start
+    Given I started the handshake
+    When I look at the iPhone
+    Then I see the signal from when I started, marked as such
+
+  Scenario: S-11 No signal
+    Given the phone is finding a host and hears none
+    When I look at the iPhone
+    Then I see that there is no signal
 ```
 
 Not the client UI's: what a step means (client find, client connect), the
