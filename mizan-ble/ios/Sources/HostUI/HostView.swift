@@ -27,9 +27,9 @@ public struct HostView: View {
                 VStack(spacing: Tokens.space3) {
                     amount
                     panel
-                    // The action sits at the foot of the screen, where the client keeps its own.
-                    buttons
                 }
+            } actions: {
+                actionButtons
             }
         } else {
             regularShell
@@ -221,7 +221,7 @@ public struct HostView: View {
         .opacity(action.isEnabled ? 1 : 0.5)
     }
 
-    /// On an iPhone the buttons leave the panel for the foot of the screen.
+    /// On an iPhone the buttons sit in the shell's actions, at the foot of the screen.
     @ViewBuilder
     private var panelButtons: some View {
         if horizontalSizeClass != .compact { buttons }
@@ -231,19 +231,19 @@ public struct HostView: View {
     private var buttons: some View {
         if !state.buttons.isEmpty {
             VStack(spacing: horizontalSizeClass == .compact ? Tokens.space2 : Tokens.space5) {
-                ForEach(state.buttons) { action in
-                    Button { send(action) } label: {
-                        Label(action.title, systemImage: action.symbol)
-                    }
-                    .buttonStyle(.action(action.kind))
-                    .disabled(!action.isEnabled)
-                    .allowsHitTesting(action.isEnabled && isEnabled)
-                    .opacity(action.isEnabled ? 1 : 0.5)
-                    .transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
-                }
+                actionButtons
             }
-            .animation(Motion.standard(reduced: reduceMotion).animation, value: state.buttonsProjection)
         }
+    }
+
+    private var actionButtons: some View {
+        ForEach(state.buttons) { action in
+            ActionButton(action.title, systemImage: action.symbol, kind: action.kind, isEnabled: action.isEnabled) {
+                send(action)
+            }
+            .transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
+        }
+        .animation(Motion.standard(reduced: reduceMotion).animation, value: state.buttonsProjection)
     }
 
     private func send(_ action: HostAction) {

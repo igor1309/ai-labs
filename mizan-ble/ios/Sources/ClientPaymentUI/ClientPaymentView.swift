@@ -5,7 +5,6 @@ public struct ClientPaymentView: View {
     private let state: ClientPaymentState
     private let event: (ClientPaymentEvent) -> Void
 
-    @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(state: ClientPaymentState, event: @escaping (ClientPaymentEvent) -> Void) {
@@ -36,14 +35,15 @@ public struct ClientPaymentView: View {
                 Spacer(minLength: Tokens.space1)
                 content
                 Spacer(minLength: Tokens.space1)
-                if !state.actions.isEmpty {
-                    HStack(spacing: Tokens.space3) {
-                        ForEach(state.actions, id: \.id) { action in
-                            button(action).transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
-                        }
+            }
+        } actions: {
+            if !state.actions.isEmpty {
+                HStack(spacing: Tokens.space3) {
+                    ForEach(state.actions, id: \.id) { action in
+                        button(action).transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
                     }
-                    .animation(Motion.standard(reduced: reduceMotion).animation, value: state.actionsProjection)
                 }
+                .animation(Motion.standard(reduced: reduceMotion).animation, value: state.actionsProjection)
             }
         }
     }
@@ -134,14 +134,8 @@ public struct ClientPaymentView: View {
     }
 
     private func button(_ action: ClientPaymentState.Action) -> some View {
-        Button {
-            guard action.isEnabled && isEnabled else { return }
+        ActionButton(action.title, systemImage: action.symbol, kind: action.kind, isEnabled: action.isEnabled) {
             event(action.event)
-        } label: {
-            Label(action.title, systemImage: action.symbol)
         }
-        .buttonStyle(.action(action.kind))
-        .disabled(!action.isEnabled)
-        .opacity(action.isEnabled ? 1 : 0.4)
     }
 }

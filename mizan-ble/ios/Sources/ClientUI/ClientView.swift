@@ -5,7 +5,6 @@ public struct ClientView: View {
     private let state: ClientState
     private let event: (ClientEvent) -> Void
 
-    @Environment(\.isEnabled) private var environmentIsEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(state: ClientState, event: @escaping (ClientEvent) -> Void) {
@@ -49,11 +48,12 @@ public struct ClientView: View {
                     .animation(Motion.standard(reduced: reduceMotion).animation, value: state.detail)
                 }
                 Spacer(minLength: Tokens.space1)
-                ForEach(state.actions, id: \.id) { action in
-                    button(action).transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
-                }
-                .animation(Motion.standard(reduced: reduceMotion).animation, value: state.actionsProjection)
             }
+        } actions: {
+            ForEach(state.actions, id: \.id) { action in
+                button(action).transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
+            }
+            .animation(Motion.standard(reduced: reduceMotion).animation, value: state.actionsProjection)
         }
         .frame(maxWidth: Tokens.space20 * 5)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -103,29 +103,17 @@ public struct ClientView: View {
     }
 
     private func button(_ action: ClientState.Action) -> some View {
-        let enabled = action.isEnabled && environmentIsEnabled
-        return Button {
-            guard enabled else { return }
+        ActionButton(action.title, kind: action.kind, isEnabled: action.isEnabled) {
             event(action.event)
-        } label: {
-            Label {
-                Text(action.title)
-            } icon: {
-                switch action.icon {
-                case let .bluetooth(isSlashed):
-                    BluetoothSymbol(isSlashed: isSlashed)
-                        .frame(width: Tokens.space4, height: Tokens.space4)
-                case let .system(name, rotation):
-                    Image(systemName: name)
-                        .rotationEffect(.degrees(rotation))
-                }
+        } icon: {
+            switch action.icon {
+            case let .bluetooth(isSlashed):
+                BluetoothSymbol(isSlashed: isSlashed)
+                    .frame(width: Tokens.space4, height: Tokens.space4)
+            case let .system(name, rotation):
+                Image(systemName: name)
+                    .rotationEffect(.degrees(rotation))
             }
-            // The screen supplies disabled opacity; macOS must not dim the label again.
-            .environment(\.isEnabled, true)
         }
-        .buttonStyle(.action(action.kind))
-        .disabled(!enabled)
-        .allowsHitTesting(enabled)
-        .opacity(enabled ? 1 : 0.4)
     }
 }
