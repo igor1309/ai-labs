@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
-import { ArrowLeft, Check, Circle, Home, Images, Paintbrush, PaintBucket, Palette, Plus, RotateCcw, Save, TriangleAlert, Undo2, X } from "lucide-react";
+import { ArrowLeft, Check, Home, Images, Paintbrush, PaintBucket, Palette, Plus, RotateCcw, Save, TriangleAlert, Undo2, X } from "lucide-react";
 import { Button } from "./Button.tsx";
 import { BRUSH_SIZES, COLORS, type Action, type BrushSize, type Color, type Point } from "./coloring/index.ts";
 import type { ColoringWorkshopSession, WorkshopDestination } from "./coloringWorkshop.ts";
@@ -30,7 +30,9 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
   const [color, setColor] = useState<Color>(COLORS[1]);
   const [size, setSize] = useState<BrushSize>(BRUSH_SIZES[1]);
   const [tool, setTool] = useState<"brush" | "fill">("brush");
-  const [chooser, setChooser] = useState<"color" | "size" | null>(null);
+  const [chooser, setChooser] = useState<boolean>(false);
+  const paletteButton = useRef<HTMLButtonElement>(null);
+  const previousChooser = useRef(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const active = useRef<Contact | undefined>(undefined);
   const paintRef = useRef(state.work.actions);
@@ -49,9 +51,13 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
     }
   };
   useLayoutEffect(() => {
-    if (blocked) cancel();
+    if (blocked) { cancel(); setChooser(false); }
     if (canvas.current) painter.render(canvas.current, state.work.actions);
-  }, [painter, state.work, chooser, blocked]);
+  }, [painter, state.work, blocked]);
+  useLayoutEffect(() => {
+    if (!chooser && previousChooser.current) paletteButton.current?.focus();
+    previousChooser.current = chooser;
+  }, [chooser]);
   useEffect(() => {
     // Keep ignored contacts ignored through their release/click even if the
     // drawing finger has already lifted. Keyboard controls are blocked too.
@@ -71,7 +77,7 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
       }
       if (event.type === "click") ignoreMouseClick = false;
     };
-    const interrupted = () => cancel();
+    const interrupted = () => { cancel(); setChooser(false); };
     const hidden = () => { if (document.visibilityState !== "visible") cancel(); };
     const events = ["pointerdown", "pointermove", "pointerup", "pointercancel", "click"];
     events.forEach(type => document.addEventListener(type, guard, true));
@@ -111,32 +117,33 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
     if (contact.tool === "brush" && canvas.current) painter.preview(canvas.current, paintRef.current, contact.action);
   };
   const go = (destination: WorkshopDestination) => { if (canAct()) session.go(destination); };
-  const palette = <div className="coloring-palette" role="group" aria-label={text.color}>{COLORS.map((value, i) =>
-    <Button key={value} aria-label={text.colors[i]} aria-pressed={color === value} disabled={blocked} onClick={() => { if (canAct()) { setColor(value); setChooser(null); } }}>
+  const closeChooser = () => setChooser(false);
+  const palette = (popup = false) => <div className="coloring-palette" role="group" aria-label={text.color}>{COLORS.map((value, i) =>
+    <Button key={value} autoFocus={popup && color === value} aria-label={text.colors[i]} aria-pressed={color === value} disabled={blocked} onClick={() => { if (canAct()) { setColor(value); if (popup) closeChooser(); } }}>
       <span className="coloring-swatch" style={{ background: value }}>{color === value && <Check aria-hidden="true" size={22} />}</span>
     </Button>)}</div>;
   const sizes = <div className="coloring-sizes" role="group" aria-label={text.size}>{BRUSH_SIZES.map((value, i) =>
-    <Button key={value} aria-label={`${text.brush} ${text.sizes[i]}`} aria-pressed={size === value} disabled={blocked} onClick={() => { if (canAct()) { setSize(value); setTool("brush"); setChooser(null); } }}>
+    <Button key={value} aria-label={`${text.brush} ${text.sizes[i]}`} aria-pressed={tool === "brush" && size === value} disabled={blocked} onClick={() => { if (canAct()) { setSize(value); setTool("brush"); } }}>
       <span className="coloring-dot" style={{ "--dot": `${value / 2 + 4}px` } as CSSProperties} />
-      {size === value && <Check className="coloring-selection" aria-hidden="true" />}
+      {tool === "brush" && size === value && <Check className="coloring-selection" aria-hidden="true" />}
     </Button>)}</div>;
   return <section className="coloring-workshop" lang={language} aria-label={text.title}>
-    <header className="coloring-header" inert={state.errorOpen || state.confirmingLoss}>
+    <header className="coloring-header" inert={chooser || state.errorOpen || state.confirmingLoss}>
       <Button onClick={() => go("home")} disabled={blocked}><Home aria-hidden="true" /><span>{text.home}</span></Button>
       <h1><Paintbrush aria-hidden="true" />{text.title}</h1>
       <Button className="coloring-done" disabled={blocked || empty} onClick={() => go("result")}><Check aria-hidden="true" />{text.done}</Button>
     </header>
-    <nav className="coloring-navigation" aria-label={text.title} inert={state.errorOpen || state.confirmingLoss}>
+    <nav className="coloring-navigation" aria-label={text.title} inert={chooser || state.errorOpen || state.confirmingLoss}>
       <Button onClick={() => go("gallery")} disabled={blocked}><Images aria-hidden="true" />{text.gallery}</Button>
       <Button onClick={() => go("new")} disabled={blocked}><Plus aria-hidden="true" />{text.new}</Button>
     </nav>
     <div className="coloring-body" inert={state.errorOpen || state.confirmingLoss}>
       <div className="coloring-paper">
         <h2>{text.dinosaur}</h2>
-        {chooser === null ? <div className="coloring-canvas-space"><canvas ref={canvas} width={WIDTH} height={HEIGHT} role="img" aria-label={text.dinosaur}
+        <div className="coloring-canvas-space" inert={chooser}><canvas ref={canvas} width={WIDTH} height={HEIGHT} role="img" aria-label={text.dinosaur}
           onContextMenu={event => event.preventDefault()}
           onPointerDown={event => {
-            if (!canAct() || event.button !== 0) return;
+            if (chooser || !canAct() || event.button !== 0) return;
             event.preventDefault();
             active.current = { id: event.pointerId, tool, surface: event.currentTarget, action: { kind: "stroke", color, size, points: [point(event)] } };
             event.currentTarget.setPointerCapture(event.pointerId);
@@ -158,25 +165,31 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
           }}
           onPointerCancel={event => { if (active.current?.id === event.pointerId) cancel(); }}
           onLostPointerCapture={event => { if (active.current?.id === event.pointerId) cancel(); }}
-        /></div> : <div className="coloring-chooser" role="dialog" aria-label={chooser === "color" ? text.color : text.size}>
-          {chooser === "color" ? palette : sizes}
-          <Button onClick={() => setChooser(null)}><X aria-hidden="true" />{text.close}</Button>
-        </div>}
+        /></div>
       </div>
-      <aside className="coloring-tools" aria-label={text.brush}>
-        <div className="coloring-full-palette">{palette}</div>
-        <div className="coloring-compact-tools">
-          <Button disabled={blocked} onClick={() => { if (canAct()) setChooser("color"); }}><Palette aria-hidden="true" /><span className="coloring-swatch" style={{ background: color }} />{text.color}</Button>
-          <Button disabled={blocked} onClick={() => { if (canAct()) setChooser("size"); }}><Circle aria-hidden="true" />{text.size}</Button>
+      <div className="coloring-tools" role="group" aria-label={text.brush} inert={chooser}>
+        <div className="coloring-full-palette">{palette()}</div>
+        <Button ref={paletteButton} className="coloring-palette-button" aria-label={text.color} aria-haspopup="dialog" aria-expanded={chooser} disabled={blocked} onClick={() => { if (canAct()) setChooser(true); }}>
+          <span className="coloring-swatch" style={{ background: color }}><Palette aria-hidden="true" /></span>
+        </Button>
+        {sizes}
+        <Button aria-label={text.fill} aria-pressed={tool === "fill"} disabled={blocked} onClick={() => { if (canAct()) setTool("fill"); }}><PaintBucket aria-hidden="true" />{tool === "fill" && <Check className="coloring-selection" aria-hidden="true" />}</Button>
+        <Button aria-label={text.undo} disabled={blocked || !state.work.actions.length} onClick={() => { if (canAct()) session.undo(); }}><Undo2 aria-hidden="true" /></Button>
+      </div>
+      {chooser && <div className="coloring-picker-layer" onPointerDown={event => { if (event.target === event.currentTarget) event.preventDefault(); }} onClick={event => { if (event.target === event.currentTarget) closeChooser(); }}>
+        <div className="coloring-chooser" role="dialog" aria-modal="true" aria-label={text.color} onKeyDown={event => {
+          if (event.key === "Escape") { event.preventDefault(); closeChooser(); }
+          if (event.key !== "Tab") return;
+          const buttons = [...event.currentTarget.querySelectorAll("button")];
+          const edge = event.shiftKey ? buttons[0] : buttons.at(-1);
+          if (document.activeElement === edge) { event.preventDefault(); (event.shiftKey ? buttons.at(-1) : buttons[0])?.focus(); }
+        }}>
+          <div className="coloring-picker-header"><strong>{text.color}</strong><Button aria-label={text.close} onClick={closeChooser}><X aria-hidden="true" /></Button></div>
+          {palette(true)}
         </div>
-        <div className="coloring-tool-row"><div className="coloring-full-sizes">{sizes}</div>
-          <Button aria-label={text.brush} aria-pressed={tool === "brush"} disabled={blocked} onClick={() => { if (canAct()) setTool("brush"); }}><Paintbrush aria-hidden="true" />{tool === "brush" && <Check className="coloring-selection" aria-hidden="true" />}</Button>
-          <Button aria-label={text.fill} aria-pressed={tool === "fill"} disabled={blocked} onClick={() => { if (canAct()) setTool("fill"); }}><PaintBucket aria-hidden="true" /><span>{text.fill}</span>{tool === "fill" && <Check className="coloring-selection" aria-hidden="true" />}</Button>
-          <Button aria-label={text.undo} disabled={blocked || !state.work.actions.length} onClick={() => { if (canAct()) session.undo(); }}><Undo2 aria-hidden="true" /><span>{text.undo}</span></Button>
-        </div>
-      </aside>
+      </div>}
     </div>
-    <p className="coloring-save" role="status" aria-live="polite" inert={state.errorOpen || state.confirmingLoss}>
+    <p className="coloring-save" role="status" aria-live="polite" inert={chooser || state.errorOpen || state.confirmingLoss}>
       {state.save === "error" ? <TriangleAlert aria-hidden="true" /> : state.save === "saved" ? <Check aria-hidden="true" /> : <Save aria-hidden="true" />}
       {text[state.save === "error" ? "error" : state.save]}
       {state.saveError && state.save !== "error" && <><TriangleAlert aria-hidden="true" /><span>{text.error}</span></>}

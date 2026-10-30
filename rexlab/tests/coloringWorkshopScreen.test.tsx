@@ -3,7 +3,7 @@ import { expect, it, onTestFinished, vi } from "vitest";
 import { ColoringWorkshopScreen } from "../src/ColoringWorkshopScreen.tsx";
 import { coloringWorkshop } from "../src/coloringWorkshop.ts";
 import { coloringFixture } from "./coloringFixture.ts";
-import { filterTaps } from "./taps.ts";
+import { filterTaps, tapAt } from "./taps.ts";
 import type { Action } from "../src/coloring/index.ts";
 import type { Language } from "../src/language/language.ts";
 
@@ -131,21 +131,105 @@ it("fill uses the painter's region hit and undo restores paint; outside fill add
   expect(f.session.getSnapshot().work.revision).toBe(3);
 });
 
-it("chooser sheets replace the canvas and return with the chosen option without adding paint", async () => {
-  const f = open(); f.tap(); await f.settled();
+it.each(["en", "ru"] as Language[])("overlays the mounted canvas with a color picker in %s and paints with its selection", async language => {
+  const f = open(language); f.tap(); await f.settled();
   const work = f.session.getSnapshot().work;
-  fireEvent.click(screen.getByRole("button", { name: "COLOR" }));
-  expect(f.container.querySelector("canvas")).toBeNull();
+  const trigger = screen.getByRole("button", { name: language === "en" ? "COLOR" : "ЦВЕТ" });
+  fireEvent.click(trigger);
+  expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  expect(f.container.querySelector("canvas")).toBe(f.canvas);
   const dialog = screen.getByRole("dialog");
   expect(within(dialog).getAllByRole("button")).toHaveLength(13);
-  fireEvent.click(within(dialog).getByRole("button", { name: "BLUE" }));
-  f.surface();
+  const blue = within(dialog).getByRole("button", { name: language === "en" ? "BLUE" : "ГОЛУБОЙ" });
+  expect(dialog.contains(document.activeElement)).toBe(true);
+  f.tap(2, 0);
   expect(f.session.getSnapshot().work).toBe(work);
-  expect(f.painter.render).toHaveBeenLastCalledWith(f.surface(), work.actions);
-  fireEvent.click(screen.getByRole("button", { name: "SIZE" }));
-  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "BRUSH LARGE" }));
-  f.surface(); f.tap(2, 0); await f.settled();
-  expect(f.session.getSnapshot().work.actions.at(-1)).toMatchObject({ color: "#42a5f5", size: 40 });
+  fireEvent.click(blue);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  expect(document.activeElement).toBe(trigger);
+  expect(f.container.querySelector("canvas")).toBe(f.canvas);
+  expect(f.session.getSnapshot().work).toBe(work);
+  expect(f.write).toHaveBeenCalledTimes(1);
+  expect(trigger.querySelector(".coloring-swatch")?.getAttribute("style")).toContain("rgb(66, 165, 245)");
+  fireEvent.click(screen.getByRole("button", { name: language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ" }));
+  f.tap(2, 0); await f.settled();
+  expect(f.session.getSnapshot().work.actions.at(-1)).toMatchObject({ kind: "stroke", color: "#42a5f5", size: 40 });
+});
+
+it.each(["outside", "close", "Escape", "resize", "orientationchange"])("dismisses the picker by %s without changing paint or the selected color", async method => {
+  const f = open(); f.tap(); await f.settled();
+  const work = f.session.getSnapshot().work;
+  const trigger = screen.getByRole("button", { name: "COLOR" });
+  fireEvent.click(trigger);
+  const dialog = screen.getByRole("dialog");
+  if (method === "outside") {
+    const shield = f.container.querySelector(".coloring-picker-layer")!;
+    f.step("pointerdown", 2, 0, 1, 2000, shield);
+    f.step("pointerup", 2, 0, 1, 2030, shield);
+    fireEvent.click(shield);
+  } else if (method === "close") fireEvent.click(within(dialog).getByRole("button", { name: "CLOSE" }));
+  else if (method === "Escape") fireEvent.keyDown(dialog, { key: "Escape" });
+  else fireEvent(window, new Event(method));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(f.container.querySelector("canvas")).toBe(f.canvas);
+  expect(document.activeElement).toBe(trigger);
+  expect(f.session.getSnapshot().work).toBe(work);
+  expect(f.write).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("button", { name: "RED" }).getAttribute("aria-pressed")).toBe("true");
+});
+
+it.each(["outside", "selection"])("filters a second tap after picker %s dismissal before it can paint", async method => {
+  filterTaps(); const f = open();
+  fireEvent.click(screen.getByRole("button", { name: "COLOR" }));
+  const target = method === "outside" ? f.container.querySelector(".coloring-picker-layer")! : within(screen.getByRole("dialog")).getByRole("button", { name: "BLUE" });
+  tapAt(target, 1000, { x: 15, y: 17 });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  f.tap(2, 0, 1200); await f.settled();
+  expect(f.session.getSnapshot().work.revision).toBe(0);
+  expect(f.write).not.toHaveBeenCalled();
+  f.tap(2, 0, 2000); await f.settled();
+  expect(f.session.getSnapshot().work.actions).toEqual([{ ...f.dot, color: method === "outside" ? "#ef5350" : "#42a5f5", points: [{ x: 2, y: 0 }] }]);
+});
+
+it("keeps keyboard focus inside the temporary picker", () => {
+  open(); fireEvent.click(screen.getByRole("button", { name: "COLOR" }));
+  const dialog = screen.getByRole("dialog");
+  const buttons = within(dialog).getAllByRole("button");
+  buttons.at(-1)!.focus(); fireEvent.keyDown(document.activeElement!, { key: "Tab" });
+  expect(document.activeElement).toBe(buttons[0]);
+  fireEvent.keyDown(document.activeElement!, { key: "Tab", shiftKey: true });
+  expect(document.activeElement).toBe(buttons.at(-1));
+});
+
+it("keeps the palette closed when an extra finger touches it during painting", async () => {
+  const f = open();
+  const trigger = screen.getByRole("button", { name: "COLOR" });
+  f.step("pointerdown", 0, 0);
+  f.step("pointerdown", 100, 100, 2, 1010, trigger);
+  fireEvent.click(trigger);
+  f.step("pointerup", 1, 0);
+  f.step("pointerup", 100, 100, 2, 1050, trigger);
+  fireEvent(trigger, new PointerEvent("click", { pointerId: 2, bubbles: true, cancelable: true }));
+  await f.settled();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(f.session.getSnapshot().work.actions).toEqual([{ ...f.dot, points: [{ x: 0, y: 0 }, { x: 1, y: 0 }] }]);
+});
+
+it.each(["SMALL", "MEDIUM", "LARGE"] as const)("selects the %s brush directly from fill without adding a revision", async label => {
+  const f = open();
+  const fill = screen.getByRole("button", { name: "FILL" });
+  fireEvent.click(fill);
+  const sizes = within(screen.getByRole("group", { name: "SIZE" }));
+  for (const button of sizes.getAllByRole("button")) expect(button.getAttribute("aria-pressed")).toBe("false");
+  const brush = sizes.getByRole("button", { name: `BRUSH ${label}` });
+  fireEvent.click(brush);
+  expect(brush.getAttribute("aria-pressed")).toBe("true");
+  expect(brush.querySelector(".coloring-selection")).not.toBeNull();
+  expect(fill.getAttribute("aria-pressed")).toBe("false");
+  expect(f.write).not.toHaveBeenCalled();
+  f.tap(); await f.settled();
+  expect(f.session.getSnapshot().work.actions).toEqual([{ ...f.dot, size: { SMALL: 8, MEDIUM: 20, LARGE: 40 }[label] }]);
 });
 
 it("shows save failure while retaining paint, traps modal focus and requires confirmed loss", async () => {
