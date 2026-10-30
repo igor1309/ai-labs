@@ -160,6 +160,30 @@ it("fill uses the painter's region hit and undo restores paint; outside fill add
   expect(f.session.getSnapshot().work.revision).toBe(3);
 });
 
+it.each([
+  { name: "body", point: { x: 1, y: 0 }, region: "body" },
+  { name: "head", point: { x: 3, y: 0 }, region: "head" },
+  { name: "outside", point: { x: -1, y: 0 }, region: undefined },
+  { name: "protected", point: { x: 1, y: 1 }, region: undefined }
+].flatMap(hit => [
+  { layout: "native offset", left: 13, top: 17, width: 920, height: 620, scaleX: 1, scaleY: 1 },
+  { layout: "scaled offset", left: 101, top: 73, width: 460, height: 155, scaleX: 0.5, scaleY: 0.25 }
+].map(bounds => ({ ...hit, ...bounds }))))("forwards the logical $name fill point with $layout bounds and applies only a region hit", async ({ point, region, left, top, width, height, scaleX, scaleY }) => {
+  const f = open();
+  f.canvas.getBoundingClientRect = () => new DOMRect(left, top, width, height);
+  f.painter.regionAt.mockReturnValue(region);
+  fireEvent.click(screen.getByRole("button", { name: "FILL" }));
+  fireEvent.click(screen.getByRole("button", { name: "BLUE" }));
+  const contact = { clientX: left + point.x * scaleX, clientY: top + point.y * scaleY, pointerId: 1, button: 0 };
+  fireEvent.pointerDown(f.canvas, contact);
+  fireEvent.pointerUp(f.canvas, contact);
+  await f.settled();
+  expect(f.painter.regionAt).toHaveBeenCalledExactlyOnceWith(point);
+  const actions: Action[] = region ? [{ kind: "fill", color: "#42a5f5", region }] : [];
+  expect(f.session.getSnapshot().work).toMatchObject({ actions, revision: actions.length });
+  expect(f.write).toHaveBeenCalledTimes(actions.length);
+});
+
 it.each(["en", "ru"] as Language[])("overlays the mounted canvas with a color picker in %s and paints with its selection", async language => {
   const f = open(language); f.tap(); await f.settled();
   const work = f.session.getSnapshot().work;
