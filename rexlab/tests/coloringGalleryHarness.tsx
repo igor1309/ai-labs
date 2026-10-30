@@ -12,6 +12,13 @@ let resources: ReturnType<typeof coloringWorkshopRoot>;
 let starts = 0, identities = 0, homes = 0;
 let language: Language = "en";
 let denyReads = false, denyWrites = false;
+let abortCompletion = false;
+const put = IDBObjectStore.prototype.put;
+IDBObjectStore.prototype.put = function (...args: Parameters<IDBObjectStore["put"]>) {
+  const request = put.apply(this, args);
+  if (abortCompletion && this.transaction.db.name === "rexlab-coloring" && args[0]?.document?.completed) this.transaction.abort();
+  return request;
+};
 const transaction = IDBDatabase.prototype.transaction;
 IDBDatabase.prototype.transaction = function (...args: Parameters<IDBDatabase["transaction"]>) {
   if (this.name === "rexlab-coloring" && (denyReads || (denyWrites && args[1] === "readwrite"))) throw new Error("Storage denied");
@@ -20,12 +27,11 @@ IDBDatabase.prototype.transaction = function (...args: Parameters<IDBDatabase["t
 function show() {
   flushSync(() => root!.render(<ColoringGame source={resources} painter={resources.painter} language={language}
     identity={() => `gallery-${++identities}`} countStart={() => { starts++; }}
-    home={() => { homes++; flushSync(() => root!.render(<button onClick={show}>ENTER COLORING</button>)); }}
-    result={() => { root!.unmount(); root = createRoot(document.getElementById("root")!); show(); }} />));
+    home={() => { homes++; flushSync(() => root!.render(<button onClick={show}>ENTER COLORING</button>)); }} />));
 }
 export async function mount(options: { language?: Language; theme?: "light" | "dark"; seed?: boolean } = {}) {
   root?.unmount(); await resources?.close();
-  language = options.language ?? "en"; denyReads = false; denyWrites = false;
+  language = options.language ?? "en"; denyReads = false; denyWrites = false; abortCompletion = false;
   document.documentElement.dataset.theme = options.theme ?? "light";
   resources = coloringWorkshopRoot(indexedDB, document);
   if (options.seed && !(await resources.list()).works.length) {
@@ -41,6 +47,10 @@ export const counts = () => ({ starts, homes });
 export const list = () => resources.list();
 export const readFailure = (deny: boolean) => { denyReads = deny; };
 export const writeFailure = (deny: boolean) => { denyWrites = deny; };
+export const completionAbort = (abort: boolean) => { abortCompletion = abort; };
+export function appearance(next: Language, theme: "light" | "dark") {
+  language = next; document.documentElement.dataset.theme = theme; show();
+}
 export async function damage(id: string, part: "paint" | "history") {
   const db = await new Promise<IDBDatabase>((resolve, reject) => {
     const request = indexedDB.open("rexlab-coloring"); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);

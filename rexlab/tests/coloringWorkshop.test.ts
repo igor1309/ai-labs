@@ -16,9 +16,11 @@ function fixture(saved = false) {
   const writes: { record: ColoringRecord; expected: number | null; done: ReturnType<typeof deferred> }[] = [];
   const navigations: WorkshopNavigation[] = [];
   const image = vi.fn(async (_work: Work) => thumbnail());
+  const write = (record: ColoringRecord, expected: number | null) => { const done = deferred(); writes.push({ record, expected, done }); return done.promise; };
   const session = coloringWorkshop(initial, saved ? initial.revision : null, {
     model, thumbnail: image,
-    write(record, expected) { const done = deferred(); writes.push({ record, expected, done }); return done.promise; },
+    write,
+    complete: (record, expected) => write(record, expected).then(() => ({ completedCount: 3, earned: true })),
     navigate: navigation => { navigations.push(navigation); }
   });
   // Thumbnail delivery is a microtask, rather than a timer or a storage poll.
@@ -79,7 +81,7 @@ it.each(["home", "gallery", "new", "result"] as const)("waits for autosave befor
     f.writes[1]!.done.resolve();
   }
   await f.session.settled();
-  expect(f.navigations).toEqual([{ destination, work: f.writes.at(-1)!.record.document }]);
+  expect(f.navigations).toEqual([{ destination, work: f.writes.at(-1)!.record.document, ...(destination === "result" ? { completion: { completedCount: 3, earned: true } } : {}) }]);
 });
 
 it("stops at a failed revision, keeps the latest paint, and retries the entire remaining order", async () => {
@@ -159,4 +161,59 @@ it("thumbnail failure is a save failure and retry keeps the accepted paint", asy
   const retry = f.session.retry(); await f.started();
   f.writes[0]!.done.resolve(); await retry;
   expect(f.session.getSnapshot().save).toBe("saved");
+});
+
+it("freezes every accepted revision until ordered edits and their atomic completion have committed", async () => {
+  const f = fixture();
+  f.session.append(f.dot);
+  f.session.append({ kind: "fill", region: "head", color: "#42a5f5" });
+  const accepted = f.session.getSnapshot().work;
+  f.session.go("result"); f.session.go("result"); f.session.go("home");
+  f.session.undo(); f.session.append({ ...f.dot, color: "#9ccc65" });
+  expect(f.session.getSnapshot().work).toBe(accepted);
+  await f.started();
+  for (let i = 0; i < 2; i++) {
+    expect(f.writes[i]!.record.document).toMatchObject({ revision: i + 1, completed: false, rewarded: false });
+    expect(f.navigations).toEqual([]); f.writes[i]!.done.resolve(); await f.started();
+  }
+  expect(f.writes[2]!.record.document).toEqual(f.model.complete(accepted));
+  expect(f.navigations).toEqual([]); expect(f.session.getSnapshot().work.rewarded).toBe(false);
+  f.writes[2]!.done.resolve(); await f.session.settled();
+  expect(f.navigations).toEqual([{ destination: "result", work: f.model.complete(accepted), completion: { earned: true, completedCount: 3 } }]);
+});
+
+it.each(["queued edit", "completion"])("restores editing after a failed %s without claiming a reward", async failure => {
+  const f = fixture(true);
+  f.session.append({ kind: "fill", region: "head", color: "#42a5f5" });
+  const accepted = f.session.getSnapshot().work;
+  f.session.go("result"); await f.started();
+  if (failure === "completion") { f.writes[0]!.done.resolve(); await f.started(); }
+  f.writes.at(-1)!.done.reject(new Error("quota")); await f.session.settled();
+  expect(f.session.getSnapshot()).toMatchObject({ work: accepted, save: "error", frozen: false, errorOpen: true });
+  expect(f.navigations).toEqual([]); expect(f.session.getSnapshot().work.rewarded).toBe(false);
+  f.session.keepEditing(); f.session.undo();
+  expect(f.session.getSnapshot().work.actions).toEqual(f.initial.actions);
+});
+
+it("revalidates an already durable completion and never creates another earned receipt, including after reopening and undo to empty", async () => {
+  const { model, dot, thumbnail } = coloringFixture();
+  const original = model.complete(model.append(model.newWork("repeat"), dot));
+  let durable = original;
+  const completions: Work[] = [], navigations: WorkshopNavigation[] = [];
+  const dependencies = { model, thumbnail: async () => thumbnail(), navigate: (navigation: WorkshopNavigation) => { navigations.push(navigation); },
+    write: async (record: ColoringRecord) => { durable = record.document; },
+    complete: async (record: ColoringRecord) => { completions.push(record.document); durable = record.document; return { earned: false, completedCount: 2 }; }
+  };
+  const session = coloringWorkshop(original, original.revision, dependencies);
+  session.go("result"); await session.settled();
+  expect(completions).toEqual([original]);
+  expect(navigations).toEqual([{ destination: "result", work: original, completion: { earned: false, completedCount: 2 } }]);
+  const reopened = coloringWorkshop(durable, durable.revision, dependencies);
+  reopened.undo(); await reopened.settled(); reopened.go("result"); await reopened.settled();
+  expect(reopened.getSnapshot().work).toMatchObject({ actions: [], rewarded: true, completed: true });
+  expect(completions).toEqual([original]); expect(navigations).toHaveLength(1);
+  reopened.append({ ...dot, color: "#42a5f5" }); await reopened.settled();
+  reopened.go("result"); await reopened.settled();
+  expect(navigations.at(-1)).toEqual({ destination: "result", work: durable, completion: { earned: false, completedCount: 2 } });
+  expect(durable.actions).toEqual([{ ...dot, color: "#42a5f5" }]);
 });

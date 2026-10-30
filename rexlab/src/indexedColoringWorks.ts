@@ -97,6 +97,44 @@ export function indexedColoringWorks(factory: Pick<IDBFactory, "open">, name: st
       cursor.continue();
     };
   }
+  async function save(record: ColoringRecord, expected: number | null, completing: boolean) {
+    const safe = readRecord(record, record.document.id);
+    if (expected !== null && (!Number.isSafeInteger(expected) || expected < 0)) throw new Error("Invalid expected coloring revision");
+    if (completing && (!safe.document.completed || model.isEmpty(safe.document))) throw new Error("A completion requires nonempty completed paint");
+    const db = await open();
+    return new Promise<{ completedCount: number; earned: boolean }>((resolve, reject) => {
+      const tx = db.transaction("works", "readwrite");
+      const store = tx.objectStore("works");
+      let failure: unknown;
+      let receipt: { completedCount: number; earned: boolean };
+      // The count and earned status come from the same serialized transaction
+      // as the paint, never from an earlier read or a later collection scan.
+      scan(store, rows => {
+        try {
+          const collection = inspect(rows);
+          if (collection.completedCount === null) throw new Error("Coloring history unreadable");
+          const row = rows.find(row => row.key === safe.document.id);
+          const previous = row ? readRecord(row.value, row.key).document : null;
+          const repeated = completing && previous?.completed && JSON.stringify(previous) === JSON.stringify(safe.document);
+          if ((previous?.revision ?? null) !== expected || (previous && safe.document.revision <= previous.revision && !repeated)) {
+            throw new Error("Stored coloring work changed; reopen before saving");
+          }
+          if (previous?.completed && !safe.document.completed) throw new Error("A coloring reward cannot be removed");
+          if (!previous?.completed && safe.document.completed && model.isEmpty(safe.document)) throw new Error("Empty coloring work cannot complete");
+          if (!previous && model.isEmpty(safe.document)) throw new Error("An empty new work is not saved");
+          const earned = !previous?.rewarded && safe.document.rewarded;
+          receipt = { completedCount: collection.completedCount + Number(earned), earned };
+          if (repeated) return;
+          const sequence = [...collection.histories.values()].reduce((latest, entry) => Math.max(latest, entry.sequence), 0) + 1;
+          if (!Number.isSafeInteger(sequence)) throw new Error("Coloring edit order exhausted");
+          store.put({ ...safe, history: { schema: 1, sequence, rewarded: safe.document.rewarded } }, safe.document.id);
+        } catch (error) { failure = error; tx.abort(); }
+      });
+      tx.oncomplete = () => resolve(receipt);
+      tx.onabort = () => reject(failure ?? tx.error ?? new Error("Coloring save aborted"));
+      tx.onerror = () => {};
+    });
+  }
   return {
     async list(): Promise<ColoringCollection> {
       const db = await open();
@@ -113,37 +151,9 @@ export function indexedColoringWorks(factory: Pick<IDBFactory, "open">, name: st
       });
     },
     async write(record: ColoringRecord, expected: number | null): Promise<void> {
-      const safe = readRecord(record, record.document.id);
-      if (expected !== null && (!Number.isSafeInteger(expected) || expected < 0)) throw new Error("Invalid expected coloring revision");
-      const db = await open();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction("works", "readwrite");
-        const store = tx.objectStore("works");
-        let failure: unknown;
-        // The shared transaction orders edits across works, including windows.
-        // Reward receipts remain readable independently of paint and thumbnails.
-        scan(store, rows => {
-          try {
-            const collection = inspect(rows);
-            if (collection.completedCount === null) throw new Error("Coloring history unreadable");
-            const row = rows.find(row => row.key === safe.document.id);
-            const previous = row ? readRecord(row.value, row.key).document : null;
-            if ((previous?.revision ?? null) !== expected || (previous && safe.document.revision <= previous.revision)) {
-              throw new Error("Stored coloring work changed; reopen before saving");
-            }
-            if (previous?.completed && !safe.document.completed) throw new Error("A coloring reward cannot be removed");
-            if (!previous?.completed && safe.document.completed && model.isEmpty(safe.document)) throw new Error("Empty coloring work cannot complete");
-            if (!previous && model.isEmpty(safe.document)) throw new Error("An empty new work is not saved");
-            const sequence = [...collection.histories.values()].reduce((latest, entry) => Math.max(latest, entry.sequence), 0) + 1;
-            if (!Number.isSafeInteger(sequence)) throw new Error("Coloring edit order exhausted");
-            store.put({ ...safe, history: { schema: 1, sequence, rewarded: safe.document.rewarded } }, safe.document.id);
-          } catch (error) { failure = error; tx.abort(); }
-        });
-        tx.oncomplete = () => resolve();
-        tx.onabort = () => reject(failure ?? tx.error ?? new Error("Coloring save aborted"));
-        tx.onerror = () => {};
-      });
+      await save(record, expected, false);
     },
+    complete: (record: ColoringRecord, expected: number | null) => save(record, expected, true),
     async reset(): Promise<void> {
       const db = await open();
       return new Promise((resolve, reject) => {

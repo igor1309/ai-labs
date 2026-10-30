@@ -10,8 +10,9 @@ import type { Language } from "../src/language/language.ts";
 function open(language: Language = "en", failure = false) {
   const { model, dot, thumbnail } = coloringFixture();
   const write = vi.fn(async () => { if (failure) throw new Error("quota"); });
+  const complete = vi.fn(async () => ({ completedCount: 1, earned: true }));
   const navigate = vi.fn();
-  const session = coloringWorkshop(model.newWork("screen"), null, { model, write, thumbnail: async () => thumbnail(), navigate });
+  const session = coloringWorkshop(model.newWork("screen"), null, { model, write, complete, thumbnail: async () => thumbnail(), navigate });
   const painter = { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn((): string | undefined => "body") };
   const view = render(<ColoringWorkshopScreen session={session} painter={painter} language={language} />);
   let canvas = view.container.querySelector("canvas")!;
@@ -33,7 +34,7 @@ function open(language: Language = "en", failure = false) {
   };
   const tap = (x = 0, y = 0, time = 1000) => { step("pointerdown", x, y, 1, time); step("pointerup", x, y, 1, time + 30); };
   const settled = async () => { await act(async () => { await session.settled(); }); };
-  return { ...view, surface, canvas, captured, step, tap, settled, session, painter, write, navigate, dot };
+  return { ...view, surface, canvas, captured, step, tap, settled, session, painter, write, complete, navigate, dot };
 }
 
 it.each(["en", "ru"] as Language[])("offers 12 colors, 3 sizes and symbol controls in %s without saving tool choices", language => {
@@ -189,4 +190,21 @@ it("blocks a second finger's legacy mouse click after the painting contact ends"
   expect(fill.getAttribute("aria-pressed")).toBe("false");
   fireEvent.click(fill);
   expect(fill.getAttribute("aria-pressed")).toBe("true");
+});
+
+it("disables drawing, undo and tool controls until one pending completion commits", async () => {
+  const f = open(); f.tap(); await f.settled();
+  let commit!: (receipt: { completedCount: number; earned: boolean }) => void;
+  f.complete.mockImplementationOnce(() => new Promise(resolve => { commit = resolve; }));
+  const accepted = f.session.getSnapshot().work;
+  const done = screen.getByRole("button", { name: "DONE" });
+  await act(async () => { fireEvent.click(done); fireEvent.click(done); });
+  for (const button of f.container.querySelectorAll("button")) {
+    expect(button.disabled).toBe(true); fireEvent.click(button);
+  }
+  f.tap(2, 0);
+  expect(f.session.getSnapshot().work).toBe(accepted);
+  expect(f.complete).toHaveBeenCalledTimes(1); expect(f.navigate).not.toHaveBeenCalled();
+  commit({ completedCount: 1, earned: true }); await f.settled();
+  expect(f.navigate).toHaveBeenCalledExactlyOnceWith({ destination: "result", work: expect.objectContaining({ actions: accepted.actions, completed: true, rewarded: true }), completion: { completedCount: 1, earned: true } });
 });

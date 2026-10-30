@@ -1,7 +1,9 @@
 import type { Action, Work } from "./coloring/index.ts";
 
 export type WorkshopDestination = "home" | "gallery" | "new" | "result";
-export type WorkshopNavigation = { destination: WorkshopDestination; work: Work };
+export type Completion = Readonly<{ completedCount: number; earned: boolean }>;
+export type WorkshopNavigation = { destination: "result"; work: Work; completion: Completion } |
+  { destination: Exclude<WorkshopDestination, "result">; work: Work };
 type Model = {
   readWork(value: unknown): Work;
   append(work: Work, action: Action): Work;
@@ -12,6 +14,7 @@ type Model = {
 type Dependencies = {
   model: Model;
   write(record: { document: Work; thumbnail: Blob }, expected: number | null): Promise<void>;
+  complete(record: { document: Work; thumbnail: Blob }, expected: number | null): Promise<Completion>;
   thumbnail(work: Work): Promise<Blob>;
   navigate(navigation: WorkshopNavigation): void;
 };
@@ -27,8 +30,8 @@ export type WorkshopState = Readonly<{
 // The queue owns durable order; the screen always draws the latest accepted
 // work. A failed head stays queued so retry cannot skip an accepted revision.
 export function coloringWorkshop(initial: Work, durable: number | null, dependencies: Dependencies) {
-  const { model, write, thumbnail, navigate } = dependencies;
-  if (!model || !write || !thumbnail || !navigate) throw new Error("Workshop collaborators are required");
+  const { model, write, complete, thumbnail, navigate } = dependencies;
+  if (!model || !write || !complete || !thumbnail || !navigate) throw new Error("Workshop collaborators are required");
   let state: WorkshopState = { work: model.readWork(initial), save: durable === null ? "untouched" : "saved",
     saveError: false, frozen: false, errorOpen: false, confirmingLoss: false };
   if ((durable === null && initial.revision !== 0) || (durable !== null && durable !== initial.revision)) {
@@ -44,11 +47,11 @@ export function coloringWorkshop(initial: Work, durable: number | null, dependen
     state = { ...state, ...changes };
     listeners.forEach(listener => listener());
   };
-  const leave = (destination: WorkshopDestination, work = state.work) => {
+  const leave = (navigation: WorkshopNavigation) => {
     if (departed) return;
     departed = true;
     update({ frozen: true });
-    navigate({ destination, work });
+    navigate(navigation);
   };
   const pump = (): Promise<void> => {
     if (running) return running;
@@ -69,20 +72,20 @@ export function coloringWorkshop(initial: Work, durable: number | null, dependen
       if (pending === "result") {
         try {
           const completion = model.complete(state.work);
-          if (completion.revision !== durable) {
-            const image = await thumbnail(completion);
-            await write({ document: completion, thumbnail: image }, durable);
-            durable = completion.revision;
-            durableWork = completion;
-          }
-          update({ work: completion });
+          const image = await thumbnail(completion);
+          const receipt = await complete({ document: completion, thumbnail: image }, durable);
+          durable = completion.revision;
+          durableWork = completion;
+          update({ work: completion, save: "saved", saveError: false });
+          leave({ destination: "result", work: completion, completion: receipt });
+          return;
         } catch {
           update({ save: "error", saveError: true, frozen: false, errorOpen: true });
           return;
         }
       }
       update({ save: "saved", saveError: false });
-      if (pending) leave(pending);
+      if (pending) leave({ destination: pending, work: state.work });
     })().finally(() => { running = undefined; });
     return running;
   };
@@ -108,7 +111,7 @@ export function coloringWorkshop(initial: Work, durable: number | null, dependen
       pending = destination;
       update({ frozen: true, save: destination === "result" && state.save !== "error" ? "saving" : state.save });
       if (state.save === "error") { update({ frozen: false, errorOpen: true }); return; }
-      if (!queue.length && destination !== "result") leave(destination);
+      if (!queue.length && destination !== "result") leave({ destination, work: state.work });
       else void pump();
     },
     retry() {
@@ -119,7 +122,7 @@ export function coloringWorkshop(initial: Work, durable: number | null, dependen
     keepEditing() { pending = undefined; update({ errorOpen: false, frozen: false }); },
     askLoss() { if (state.save === "error") update({ confirmingLoss: true }); },
     cancelLoss() { update({ confirmingLoss: false }); },
-    confirmLoss() { if (state.confirmingLoss && !running) leave("home", durableWork); },
+    confirmLoss() { if (state.confirmingLoss && !running) leave({ destination: "home", work: durableWork }); },
     settled: () => running ?? Promise.resolve()
   };
 }

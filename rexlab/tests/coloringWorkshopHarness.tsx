@@ -44,6 +44,11 @@ export async function mount(options: { id: string; resume?: boolean; language?: 
         const target = painter.canvas(276, 186); painter.render(target, work.actions);
         return new Promise<Blob>((resolve, reject) => target.toBlob(blob => blob ? resolve(blob) : reject(new Error("thumbnail"))));
       },
+      async complete(record, expected) {
+        writes++;
+        if (gated) await new Promise<void>((resolve, reject) => { held = { resolve, reject }; });
+        return store.complete(record, expected);
+      },
       async write(record, expected) {
         writes++;
         if (gated) await new Promise<void>((resolve, reject) => { held = { resolve, reject }; });

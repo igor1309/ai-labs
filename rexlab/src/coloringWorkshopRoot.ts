@@ -5,7 +5,7 @@ import { indexedColoringWorks } from "./indexedColoringWorks.ts";
 import { coloringWorkshop, type WorkshopNavigation } from "./coloringWorkshop.ts";
 
 // One set of artwork paths/inspection surfaces serves the model, previews and
-// thumbnails. Callers supply identity and navigation, including future screens.
+// thumbnails. Callers supply identity and navigation.
 export function coloringWorkshopRoot(factory: Pick<IDBFactory, "open">, document: Pick<Document, "createElement">) {
   const painter = createPainter(() => document.createElement("canvas"));
   const model = coloringModel(ARTWORK, painter.inspection);
@@ -16,7 +16,7 @@ export function coloringWorkshopRoot(factory: Pick<IDBFactory, "open">, document
     return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Coloring thumbnail unavailable")), "image/png"));
   }
   const session = (work: Work, durable: number | null, navigate: (navigation: WorkshopNavigation) => void) =>
-    coloringWorkshop(work, durable, { model, write: store.write, thumbnail, navigate });
+    coloringWorkshop(work, durable, { model, write: store.write, complete: store.complete, thumbnail, navigate });
   return {
     painter,
     list: store.list,

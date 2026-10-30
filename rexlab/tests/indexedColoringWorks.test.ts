@@ -329,3 +329,69 @@ describe("production coloring durable revisions", () => {
     expect(() => indexedColoringWorks(spy.factory, "test", undefined!)).toThrow("requires");
   });
 });
+
+it("acknowledges the atomic completion and derived count only after commit, retaining damaged works' receipts", async () => {
+  const { model, dot, thumbnail } = coloringFixture();
+  const first = { document: model.complete(model.append(model.newWork("first"), dot)), thumbnail: thumbnail() };
+  const damaged = { ...stored(first, 1), document: { ...first.document, actions: [null] } };
+  const second = { document: model.complete(model.append(model.newWork("second"), dot)), thumbnail: thumbnail() };
+  const { repository, spy, start } = fixture([["first", damaged]]);
+  let acknowledged = false;
+  const saving = repository.complete(second, null).then(receipt => { acknowledged = true; return receipt; });
+  await start(); spy.readAll();
+  expect(spy.rows.has("second")).toBe(false); expect(acknowledged).toBe(false);
+  expect(spy.staged).toEqual({ key: "second", value: stored(second, 2) });
+  spy.complete(); expect(await saving).toEqual({ completedCount: 2, earned: true });
+  expect(spy.rows.get("second")).toEqual(stored(second, 2));
+  await repository.close();
+  const reopened = indexedColoringWorks(spy.factory, "production-coloring-test", model);
+  const repeated = reopened.complete(second, second.document.revision);
+  await Promise.resolve(); spy.openRequest.onsuccess!(); await spy.requested(); spy.readAll();
+  expect(spy.staged).toBeUndefined(); spy.complete();
+  expect(await repeated).toEqual({ completedCount: 2, earned: false });
+  expect(spy.rows.get("second")).toEqual(stored(second, 2));
+  const edited = { ...second, document: model.append(second.document, { ...dot, color: "#42a5f5" }) };
+  const finished = reopened.complete(edited, second.document.revision);
+  await spy.requested(); spy.readAll(); spy.complete();
+  expect(await finished).toEqual({ completedCount: 2, earned: false });
+  expect(spy.rows.get("second")).toEqual(stored(edited, 3));
+  await reopened.close();
+});
+
+it("returns no completion receipt on abort and rewards a successful retry exactly once", async () => {
+  const { model, dot, thumbnail } = coloringFixture();
+  const previous = { document: model.append(model.newWork("one"), dot), thumbnail: thumbnail() };
+  const candidate = { document: model.complete(previous.document), thumbnail: thumbnail() };
+  const { repository, spy, start } = fixture([["one", stored(previous, 1)]]);
+  const saving = repository.complete(candidate, previous.document.revision);
+  const rejected = expect(saving).rejects.toThrow("Quota");
+  await start(); spy.readAll(); spy.tx.error = new Error("Quota"); spy.tx.abort(); await rejected;
+  expect(spy.rows.get("one")).toEqual(stored(previous, 1));
+  const retry = repository.complete(candidate, previous.document.revision);
+  await spy.requested(); spy.readAll(); spy.complete();
+  expect(await retry).toEqual({ completedCount: 1, earned: true });
+  const stale = repository.complete(candidate, previous.document.revision);
+  const staleRejected = expect(stale).rejects.toThrow("changed");
+  await spy.requested(); spy.readAll(); await staleRejected;
+  expect(spy.rows.get("one")).toEqual(stored(candidate, 2));
+  await repository.close();
+});
+
+it.each(["draft", "empty", "changed same revision"])("refuses %s as a completion without replacing its durable revision", async scenario => {
+  const { model, dot, thumbnail } = coloringFixture();
+  const completed = model.complete(model.append(model.newWork("one"), dot));
+  const previous = { document: completed, thumbnail: thumbnail() };
+  const { repository, spy } = fixture([["one", stored(previous, 1)]]);
+  let document = completed;
+  if (scenario === "draft") document = model.append(model.newWork("one"), dot);
+  if (scenario === "empty") document = model.undo(completed);
+  if (scenario === "changed same revision") document = { ...completed, actions: [{ ...dot, color: "#42a5f5" }] };
+  const saving = repository.complete({ document, thumbnail: thumbnail() }, completed.revision);
+  const rejected = expect(saving).rejects.toThrow();
+  if (scenario === "changed same revision") {
+    await spy.opened.promise; spy.openRequest.onsuccess!(); await spy.requested(); spy.readAll();
+  }
+  await rejected;
+  expect(spy.rows.get("one")).toEqual(stored(previous, 1));
+  expect(spy.staged).toBeUndefined(); await repository.close();
+});
