@@ -96,11 +96,16 @@ public actor ParakeetRecognizer: Recognizer {
         }
 
         // Pending words whose middle lies before the chunk keep their
-        // reading; the window reads the rest.
+        // reading; the window reads the rest. Its reading of one of the rest
+        // may place it a little before the chunk, and still replaces it.
         let kept = words[finalCount...].filter { middle($0) < chunkStart }
+        let reread = words[finalCount...].filter { middle($0) >= chunkStart }
         let known = words[max(0, finalCount - 8)..<finalCount] + kept
         let new = read.filter { word in
-            middle(word) >= chunkStart && !known.contains { same($0, word) }
+            guard !known.contains(where: { same($0, word) }) else { return false }
+            if middle(word) >= chunkStart { return true }
+            let closest = reread.map { overlap($0, word) }.max() ?? 0
+            return closest > 0 && known.allSatisfy { overlap($0, word) < closest }
         }
         words = words[..<finalCount] + kept + new
 
@@ -135,6 +140,12 @@ public actor ParakeetRecognizer: Recognizer {
     private func middle(_ word: Word) -> Double {
 
         (word.start + word.end) / 2
+    }
+
+    /// Seconds two words share; negative when apart.
+    private func overlap(_ one: Word, _ other: Word) -> Double {
+
+        min(one.end, other.end) - max(one.start, other.start)
     }
 
     /// The same word read twice: the same letters at overlapping times.

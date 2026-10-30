@@ -30,9 +30,7 @@ struct ParakeetLongCallTests {
             guard case let .insert(_, word, _) = change else { return "" }
             return word
         }
-        withKnownIssue("a pending word that the next window places before its chunk is dropped") {
-            #expect(lost.isEmpty, "\(lost.count) of \(expected.count) words lost, such as \(lost.prefix(10))")
-        }
+        #expect(lost.isEmpty, "\(lost.count) of \(expected.count) words lost, such as \(lost.prefix(10))")
         #expect(added.isEmpty, "\(added.count) words heard twice, misheard or out of order, such as \(added.prefix(10))")
     }
 
@@ -48,9 +46,7 @@ struct ParakeetLongCallTests {
 
         let heard = await hear(ParakeetRecognizer(reader: reader), seconds: 10)
 
-        withKnownIssue("a pending word that the next window places before its chunk is dropped") {
-            #expect(heard.words == ["слово"])
-        }
+        #expect(heard.words == ["слово"])
     }
 }
 

@@ -208,6 +208,11 @@ Guards, passing on trunk:
   last such cut are kept as they are and only the words after it are cut
   again. Cutting words as they arrive, drafts revised, ends where cutting
   them all at once does.
+- A word crossing a chunk's edge that the next window places a little
+  before its chunk is kept: that window's reading replaces the pending one
+  when it overlaps it more than any word already kept. The recorded windows had one such word,
+  "По" in "Три. По SLA", which the expected reading had dropped too; the
+  20-minute call now hears all 1,831 words once and in order.
 
 ## Candidates already in the code
 

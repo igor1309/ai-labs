@@ -449,7 +449,9 @@ private actor RecordedReader: WindowReader {
     nonisolated let duration: Double
     nonisolated let windowSampleCounts: [Int]
     /// Each window's words whose middle its chunk holds, in order, with a
-    /// word read on both sides of a chunk's edge once.
+    /// word read on both sides of a chunk's edge once. A word in a window's
+    /// right context that the next window places just before its chunk is
+    /// counted too.
     nonisolated let chunkWords: [String]
 
     init() async throws {
@@ -471,6 +473,15 @@ private actor RecordedReader: WindowReader {
             for spoken in window.words where spoken.middle >= window.chunkStart
                 && (last || spoken.middle < window.rightContextFrom) {
                 if let previous = words.last, Self.letters(previous) == Self.letters(spoken.w) { continue }
+                words.append(spoken.w)
+            }
+            guard !last else { continue }
+            let following = windows[index + 1]
+            for spoken in window.words where spoken.middle >= window.rightContextFrom
+                && following.words.contains(where: { read in
+                    read.middle < following.chunkStart && Self.letters(read.w) == Self.letters(spoken.w)
+                        && min(read.e, spoken.e) > max(read.s, spoken.s)
+                }) {
                 words.append(spoken.w)
             }
         }
