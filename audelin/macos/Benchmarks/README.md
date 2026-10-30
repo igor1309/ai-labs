@@ -11,10 +11,15 @@ Run from this directory, outside the agent sandbox (SwiftPM cannot start its
 own sandbox inside it). All four loads take under a minute once built:
 
 ```sh
-swift package --disable-sandbox benchmark baseline compare base   # this code against the saved base
-swift package --disable-sandbox --allow-writing-to-package-directory \
-  benchmark baseline update base                                  # save a new base (commit it)
+./compare.sh                # this code against the saved base: a table of medians
+./save-base.sh              # save a new base (commit it)
+./test-optimized.sh         # the app's tests, optimized and bounded
+Profile/growth.sh TAG [OLD] # Time Profiler at 20 and 1,620 lines: CPU per word by step
+Profile/saves.sh [SECONDS]  # real speaking speed: saves per minute, app CPU, CPU per save
 ```
+
+Use these rather than typing the commands. `Profile/` is its own package, built
+against this checkout.
 
 Read the median instructions per word: they count all the process's work,
 the transcript writer's included. Runs of the same code differ by up to about
