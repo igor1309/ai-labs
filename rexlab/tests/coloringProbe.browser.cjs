@@ -194,18 +194,24 @@ async function ui(page, output) {
   assert.equal(await drawing.getAttribute("data-revision"), "2");
   await stroke(450, 420);
   await page.waitForFunction(() => document.querySelector("#status").textContent.includes("SAVED"));
+  const committedBeforeCancel = await drawing.evaluate(canvas => canvas.toDataURL());
   const rect = await drawing.boundingBox();
   await page.mouse.move(rect.x + rect.width * .4, rect.y + rect.height * .5); await page.mouse.down();
   await page.mouse.move(rect.x + rect.width * .45, rect.y + rect.height * .55);
+  assert.notEqual(await drawing.evaluate(canvas => canvas.toDataURL()), committedBeforeCancel, "gesture preview visibly changes canvas");
   const revision = await drawing.getAttribute("data-revision");
   await pointer("pointerdown", 2, 500, 450); await pointer("pointermove", 2, 700, 500); await pointer("pointerup", 2, 700, 500);
   await page.evaluate(() => document.querySelector("#language").click());
   assert.equal(await page.locator("html").getAttribute("lang"), "en", "controls ignored during stroke");
   await page.evaluate(() => window.dispatchEvent(new Event("resize"))); await page.mouse.up();
   assert.equal(await drawing.getAttribute("data-revision"), revision, "rotation discards uncommitted stroke");
+  assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), committedBeforeCancel, "rotation removes preview pixels");
   await page.mouse.move(rect.x + rect.width * .4, rect.y + rect.height * .5); await page.mouse.down();
+  await page.mouse.move(rect.x + rect.width * .46, rect.y + rect.height * .57);
+  assert.notEqual(await drawing.evaluate(canvas => canvas.toDataURL()), committedBeforeCancel, "second preview visibly changes canvas");
   await drawing.dispatchEvent("pointercancel", { pointerId: 1 }); await page.mouse.up();
   assert.equal(await drawing.getAttribute("data-revision"), revision, "pointercancel discards uncommitted stroke");
+  assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), committedBeforeCancel, "pointercancel removes preview pixels");
   await page.locator("#animate").focus(); await page.keyboard.press("Enter");
   assert.equal(await drawing.evaluate(canvas => getComputedStyle(canvas).animationName), "probe-fade");
   const paintedAnimated = await drawing.evaluate(canvas => canvas.toDataURL());
@@ -276,6 +282,7 @@ async function ui(page, output) {
     assert.deepEqual(await pixelAt(400, 400), [66, 165, 245, 255]);
     assert.deepEqual(await pixelAt(400, 400 - size / 2 - 2), [255, 240, 207, 255], "selected brush diameter");
     await press("#undo");
+    await page.waitForFunction(() => document.querySelector("#status").textContent.includes("SAVED"));
     assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), pristine, "undo restores chosen brush action");
   }
   await chooseColor(3); await press("#tool"); await dotAt(400, 400);
@@ -283,6 +290,7 @@ async function ui(page, output) {
   assert.deepEqual(await pixelAt(500, 420), [255, 147, 69, 255], "page fill paints distant body point");
   assert.deepEqual(await pixelAt(420, 180), [255, 240, 207, 255], "page fill leaves plate unchanged");
   await press("#undo");
+  await page.waitForFunction(() => document.querySelector("#status").textContent.includes("SAVED"));
   assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), pristine, "page fill is undoable");
   await press("#tool");
   // Per-work damage is visible and a healthy work remains editable after reload.
