@@ -133,7 +133,7 @@ import Testing
             radio.connect(to: second)
             #expect(fake.calls == [.disconnect(first), .connect(second)])
             for step in steps { fake.send(step) }
-            fake.send(.written(first, .key, nil))
+            fake.send(.written(first, .clientPublic, nil))
             fake.send(.written(first, .toHost, nil))
             fake.send(.disconnected(first))
             #expect(fake.calls == [.disconnect(first), .connect(second)])
@@ -145,7 +145,7 @@ import Testing
             let newWrite = Task.immediate { await radio.write([3]) }
             fake.send(.written(second, .toHost, .att(code: 7)))
             fake.send(.written(second, .toHost, nil))
-            fake.send(.written(second, .key, nil))
+            fake.send(.written(second, .clientPublic, nil))
             if let oldWrite {
                 #expect(await oldWrite.value.map { true } == .failure(.disconnected))
             }
@@ -258,8 +258,8 @@ import Testing
                 fake.establish(radio)
                 let key = [UInt8](repeating: 9, count: 33)
                 radio.writeKey(key)
-                #expect(Array(fake.calls.suffix(2)) == [.maximum(fake.host), .write(key, .key, fake.host)])
-                fake.send(.written(fake.host, .key, error))
+                #expect(Array(fake.calls.suffix(2)) == [.maximum(fake.host), .write(key, .clientPublic, fake.host)])
+                fake.send(.written(fake.host, .clientPublic, error))
                 let messages: [[UInt8]] = [
                     [0, 255, 4], [], [UInt8](repeating: 5, count: 182), [UInt8](repeating: 5, count: 181),
                 ]
@@ -290,7 +290,7 @@ import Testing
                 radio.writeKey(bytes)
                 let write = Task.immediate { await radio.write(bytes) }
                 #expect(fake.calls == [.maximum(fake.host), .maximum(fake.host)])
-                fake.send(.written(fake.host, .key, nil))
+                fake.send(.written(fake.host, .clientPublic, nil))
                 fake.send(.written(fake.host, .toHost, nil))
                 #expect(await write.value.map { true } == .failure(.tooLarge(maximum: 20)))
                 expected = [
@@ -368,7 +368,7 @@ import Testing
             #expect(fake.calls.isEmpty)
             for step in steps.dropFirst(stage) { fake.send(step) }
             radio.writeKey([7])
-            fake.send(.written(host, .key, nil))
+            fake.send(.written(host, .clientPublic, nil))
             fake.send(.value(host, .toClient, .success([8])))
             fake.send(.disconnected(host))
             radio.writeKey([9])
@@ -515,7 +515,7 @@ import Testing
             let newWrite = Task.immediate { await radio.write([3]) }
             fake.send(.written(fake.host, .toHost, nil))
             fake.send(.written(fake.host, .toHost, nil))
-            fake.send(.written(fake.host, .key, nil))
+            fake.send(.written(fake.host, .clientPublic, nil))
             #expect(await oldWrite.value.map { true } == .failure(.disconnected))
             #expect(await newWrite.value.map { true } == .success(true))
             expected = [

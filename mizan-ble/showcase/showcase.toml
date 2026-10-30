@@ -1,0 +1,30 @@
+repo = "igor1309/mizan-ble"
+description = "A proof of concept: an iPad host and an iPhone client agree a mocked payment over Bluetooth LE, built with SwiftUI and Core Bluetooth."
+# No page of its own yet; point this at the v0.0.1 blog post once it is out.
+homepage = "https://github.com/igor1309/mizan-ble"
+topics = ["swift", "swiftui", "ios", "core-bluetooth", "bluetooth-low-energy", "cryptokit", "payments", "ai-assisted"]
+check = "cd ios && python3 -I -m unittest discover -s scripts/tests && swift build && swift test && cd App && swift test"
+
+# The app, its tests, the rehearsal app and its Maestro lanes. The token
+# generator and the test that checks the tokens against it read the
+# private design file, so they stay home with the generator's test;
+# lane run reports name private commits.
+include = [
+  "ios/Package.swift",
+  "ios/Package.resolved",
+  "ios/Sources/**",
+  "ios/Tests/**",
+  "ios/App/**",
+  "ios/PreviewApps/**",
+  "ios/scripts/lane_check.py",
+  "ios/scripts/lane_run.py",
+  "ios/scripts/snapshot-tests.sh",
+  "ios/scripts/tests/test_clock_boundary.py",
+  "ios/scripts/tests/test_lane_check.py",
+  "ios/scripts/tests/test_lane_run.py",
+  "maestro/README.md",
+  "maestro/.gitignore",
+  "maestro/run.sh",
+  "maestro/lanes/**",
+]
+exclude = ["ios/Tests/DesignSystemTests/TokensTests.swift"]
