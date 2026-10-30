@@ -91,10 +91,10 @@ const { chromium } = require("playwright");
     await pointer("canvas", "pointerdown", 1, p.x, p.y, 31000);
     await pointer("canvas", "pointermove", 1, q.x, q.y, 31030);
     // Controls and extra fingers stay ignored even after the active finger ends.
-    await pointer('button[aria-label="FILL"]', "pointerdown", 2, q.x + 180, q.y, 31040);
+    await pointer('button[aria-label="FILL"]', "pointerdown", 2, q.x + 20, q.y, 31040);
     await page.getByRole("button", { name: "FILL", exact: true }).evaluate(el => el.click());
     await pointer("canvas", "pointerup", 1, q.x, q.y, 31060); await settle();
-    await pointer('button[aria-label="FILL"]', "pointerup", 2, q.x + 180, q.y, 31070);
+    await pointer('button[aria-label="FILL"]', "pointerup", 2, q.x + 20, q.y, 31070);
     await page.getByRole("button", { name: "FILL", exact: true }).evaluate(el => el.dispatchEvent(new PointerEvent("click", { pointerId: 2, bubbles: true, cancelable: true })));
     assert.equal(await page.getByRole("button", { name: "BRUSH MEDIUM", exact: true }).getAttribute("aria-pressed"), "true");
     await page.getByRole("button", { name: "RED", exact: true }).press("Enter");

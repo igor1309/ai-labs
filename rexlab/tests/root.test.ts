@@ -6,7 +6,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { JAW_AUDIO_KEY } from "../src/localJawAudio.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import { TURN_TIMING, appProps, drawnOpacity, extendPart, filterDoubleTaps, pageAnimations, turnFrame } from "../src/root.ts";
+import { TURN_TIMING, appProps, browserInput, drawnOpacity, extendPart, pageAnimations, turnFrame } from "../src/root.ts";
 import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser, quizSaved, rootInsets } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
@@ -556,14 +556,14 @@ describe("the double-tap filter in a browser", () => {
   // The window, with a handler of the app's registered after the filter.
   function page() {
     const target = new EventTarget();
-    const stop = filterDoubleTaps(target);
+    const { arbitrate, stop } = browserInput(target);
     const handled: string[] = [];
     for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "click"]) target.addEventListener(type, () => handled.push(type));
     const send = (event: Event) => {
       target.dispatchEvent(event);
       return event.defaultPrevented;
     };
-    return { stop, handled, send };
+    return { arbitrate, stop, handled, send };
   }
 
   it("reads each touch by its event's own time and place, and keeps what it swallows from every handler", () => {
@@ -585,10 +585,23 @@ describe("the double-tap filter in a browser", () => {
   });
 
   it("filters nothing once taken away", () => {
-    const { stop, handled, send } = page();
+    const { arbitrate, stop, handled, send } = page();
+    arbitrate(event => { event.preventDefault(); event.stopImmediatePropagation(); });
     stop();
     [touch("pointerdown", 0), touch("pointerup", 50), touch("pointerdown", 250)].forEach(send);
 
     expect(handled).toEqual(["pointerdown", "pointerup", "pointerdown"]);
+  });
+
+  it("removes a screen's contact rejection while keeping shared double-tap safety", () => {
+    const { arbitrate, handled, send } = page();
+    const leave = arbitrate(event => { event.preventDefault(); event.stopImmediatePropagation(); });
+    expect(send(touch("pointerdown", 0))).toBe(true);
+    expect(handled).toEqual([]);
+    leave();
+    const first = [touch("pointerdown", 1000), touch("pointerup", 1050), browserEvent("click", { detail: 1 })].map(send);
+    const second = [touch("pointerdown", 1200), touch("pointerup", 1250), browserEvent("click", { detail: 1 })].map(send);
+    expect([first, second]).toEqual([[false, false, false], [true, true, true]]);
+    expect(handled).toEqual(["pointerdown", "pointerup", "click"]);
   });
 });

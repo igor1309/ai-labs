@@ -7,11 +7,12 @@ import { coloringModel, type Work } from "../src/coloring/index.ts";
 import { ARTWORK } from "../src/coloring/geometry.ts";
 import { createPainter } from "../src/coloring/painter.ts";
 import { indexedColoringWorks } from "../src/indexedColoringWorks.ts";
-import { filterDoubleTaps } from "../src/root.ts";
+import { browserInput } from "../src/root.ts";
 import type { Language } from "../src/language/language.ts";
+import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import "../src/app.css";
 
-filterDoubleTaps(window);
+const input = browserInput(window);
 let reactRoot: Root | undefined;
 let resources: ReturnType<typeof coloringWorkshopRoot> | undefined;
 let session: ColoringWorkshopSession;
@@ -58,7 +59,7 @@ export async function mount(options: { id: string; resume?: boolean; language?: 
   }
   document.body.innerHTML = '<div id="root"></div>';
   reactRoot = createRoot(document.getElementById("root")!);
-  flushSync(() => reactRoot!.render(<ColoringWorkshopScreen session={session} painter={painter} language={options.language ?? "en"} />));
+  flushSync(() => reactRoot!.render(<InputArbitrationContext value={input.arbitrate}><ColoringWorkshopScreen session={session} painter={painter} language={options.language ?? "en"} /></InputArbitrationContext>));
 }
 export const snapshot = () => session.getSnapshot();
 export const departures = () => navigations;

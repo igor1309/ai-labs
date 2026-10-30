@@ -3,10 +3,11 @@ import { createRoot, type Root } from "react-dom/client";
 import { ColoringGame } from "../src/ColoringGame.tsx";
 import { coloringWorkshopRoot } from "../src/coloringWorkshopRoot.ts";
 import type { Language } from "../src/language/language.ts";
-import { filterDoubleTaps } from "../src/root.ts";
+import { browserInput } from "../src/root.ts";
+import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import "../src/app.css";
 
-filterDoubleTaps(window);
+const input = browserInput(window);
 let root: Root | undefined;
 let resources: ReturnType<typeof coloringWorkshopRoot>;
 let starts = 0, identities = 0, homes = 0;
@@ -25,9 +26,9 @@ IDBDatabase.prototype.transaction = function (...args: Parameters<IDBDatabase["t
   return transaction.apply(this, args);
 };
 function show() {
-  flushSync(() => root!.render(<ColoringGame source={resources} painter={resources.painter} language={language}
+  flushSync(() => root!.render(<InputArbitrationContext value={input.arbitrate}><ColoringGame source={resources} painter={resources.painter} language={language}
     identity={() => `gallery-${++identities}`} countStart={() => { starts++; }}
-    home={() => { homes++; flushSync(() => root!.render(<button onClick={show}>ENTER COLORING</button>)); }} />));
+    home={() => { homes++; flushSync(() => root!.render(<button onClick={show}>ENTER COLORING</button>)); }} /></InputArbitrationContext>));
 }
 export async function mount(options: { language?: Language; theme?: "light" | "dark"; seed?: boolean } = {}) {
   root?.unmount(); await resources?.close();

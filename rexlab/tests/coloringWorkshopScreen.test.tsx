@@ -3,18 +3,24 @@ import { expect, it, onTestFinished, vi } from "vitest";
 import { ColoringWorkshopScreen } from "../src/ColoringWorkshopScreen.tsx";
 import { coloringWorkshop } from "../src/coloringWorkshop.ts";
 import { coloringFixture } from "./coloringFixture.ts";
-import { filterTaps, tapAt } from "./taps.ts";
+import { tapAt } from "./taps.ts";
+import { browserInput } from "../src/root.ts";
+import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import type { Action } from "../src/coloring/index.ts";
 import type { Language } from "../src/language/language.ts";
 
-function open(language: Language = "en", failure = false) {
+function open(language: Language = "en", failure = false, sharedFilter = false) {
   const { model, dot, thumbnail } = coloringFixture();
   const write = vi.fn(async () => { if (failure) throw new Error("quota"); });
   const complete = vi.fn(async () => ({ completedCount: 1, earned: true }));
   const navigate = vi.fn();
   const session = coloringWorkshop(model.newWork("screen"), null, { model, write, complete, thumbnail: async () => thumbnail(), navigate });
   const painter = { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn((): string | undefined => "body") };
-  const view = render(<ColoringWorkshopScreen session={session} painter={painter} language={language} />);
+  const input = sharedFilter ? browserInput(window) : browserInput(window, () => true);
+  onTestFinished(input.stop);
+  const view = render(<ColoringWorkshopScreen session={session} painter={painter} language={language} />, {
+    wrapper: ({ children }) => <InputArbitrationContext value={input.arbitrate}>{children}</InputArbitrationContext>
+  });
   let canvas = view.container.querySelector("canvas")!;
   const captured = new Set<number>();
   const surface = () => {
@@ -106,7 +112,7 @@ it.each(["pointercancel", "lostpointercapture", "resize", "orientationchange", "
 });
 
 it("uses the shared tap filter: a second tap adds no action and an accepted drag leaves the next contact available", async () => {
-  filterTaps(); const f = open();
+  const f = open("en", false, true);
   f.tap(0, 0, 1000); await f.settled();
   fireEvent.click(screen.getByRole("button", { name: "BLUE" }));
   f.tap(0, 0, 1200); await f.settled();
@@ -117,6 +123,29 @@ it("uses the shared tap filter: a second tap adds no action and an accepted drag
   fireEvent.click(screen.getByRole("button", { name: "RED" }));
   f.tap(1, 0, 2100); await f.settled();
   expect(f.session.getSnapshot().work.actions).toHaveLength(3);
+});
+
+it.each(["canvas", "control"])("keeps the next stroke after a nearby ignored finger on %s outlives an accepted drag", async target => {
+  const f = open("en", false, true);
+  const fill = screen.getByRole("button", { name: "FILL" });
+  const ignoredTarget = target === "canvas" ? f.canvas : fill;
+  f.step("pointerdown", -20, 0, 1, 1000);
+  f.step("pointermove", 1, 0, 1, 1030);
+  f.step("pointerdown", 21, 0, 2, 1040, ignoredTarget);
+  fireEvent.click(fill);
+  f.step("pointerup", 1, 0, 1, 1060);
+  f.step("pointerup", 21, 0, 2, 1070, ignoredTarget);
+  fireEvent(ignoredTarget, new PointerEvent("click", { pointerId: 2, detail: 1, bubbles: true, cancelable: true }));
+  fireEvent.click(screen.getByRole("button", { name: "BLUE" }));
+  f.step("pointerdown", 1, 0, 1, 1100);
+  f.step("pointermove", 2, 0, 1, 1120);
+  f.step("pointerup", 3, 0, 1, 1140);
+  await f.settled();
+  expect(fill.getAttribute("aria-pressed")).toBe("false");
+  expect(f.session.getSnapshot().work.actions).toEqual([
+    { ...f.dot, points: [{ x: -20, y: 0 }, { x: 1, y: 0 }] },
+    { ...f.dot, color: "#42a5f5", points: [{ x: 1, y: 0 }, { x: 2, y: 0 }, { x: 3, y: 0 }] }
+  ]);
 });
 
 it("fill uses the painter's region hit and undo restores paint; outside fill adds no revision", async () => {
@@ -180,7 +209,7 @@ it.each(["outside", "close", "Escape", "resize", "orientationchange"])("dismisse
 });
 
 it.each(["outside", "selection"])("filters a second tap after picker %s dismissal before it can paint", async method => {
-  filterTaps(); const f = open();
+  const f = open("en", false, true);
   fireEvent.click(screen.getByRole("button", { name: "COLOR" }));
   const target = method === "outside" ? f.container.querySelector(".coloring-picker-layer")! : within(screen.getByRole("dialog")).getByRole("button", { name: "BLUE" });
   tapAt(target, 1000, { x: 15, y: 17 });
@@ -263,7 +292,7 @@ it("retains coalesced pen samples and the final endpoint as one stroke", async (
 });
 
 it("blocks a second finger's legacy mouse click after the painting contact ends", async () => {
-  const f = open();
+  const f = open("en", false, true);
   const fill = screen.getByRole("button", { name: "FILL" });
   f.step("pointerdown", 0, 0);
   f.step("pointerdown", 100, 100, 2, 1010, fill);

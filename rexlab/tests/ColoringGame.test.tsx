@@ -1,6 +1,8 @@
 import { StrictMode } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
+import { browserInput } from "../src/root.ts";
+import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import { ColoringGame } from "../src/ColoringGame.tsx";
 import type { GalleryCollection, GallerySource } from "../src/coloringGallery.ts";
 import { coloringWorkshop, type ColoringWorkshopSession, type WorkshopNavigation } from "../src/coloringWorkshop.ts";
@@ -34,7 +36,11 @@ function fixture(strict = false) {
     return active;
   }
   const props = { source, painter: { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn(() => "body") }, identity: () => `new-${++identity}`, countStart: vi.fn(), home: vi.fn(), language: "en" as const };
-  const view = render(strict ? <StrictMode><ColoringGame {...props} /></StrictMode> : <ColoringGame {...props} />);
+  const input = browserInput(window);
+  onTestFinished(input.stop);
+  const view = render(strict ? <StrictMode><ColoringGame {...props} /></StrictMode> : <ColoringGame {...props} />, {
+    wrapper: ({ children }) => <InputArbitrationContext value={input.arbitrate}>{children}</InputArbitrationContext>
+  });
   const click = async (name: string) => { await act(async () => fireEvent.click(screen.getByRole("button", { name }))); };
   const settle = async () => { await act(async () => { await active.settled(); }); };
   return { ...view, props, records, dot, red, blue, click, settle, active: () => active, fail: (value: boolean) => { failed = value; } };

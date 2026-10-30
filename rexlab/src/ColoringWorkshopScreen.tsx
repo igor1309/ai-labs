@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { ArrowLeft, Check, Home, Images, Paintbrush, PaintBucket, Palette, Plus, RotateCcw, Save, TriangleAlert, Undo2, X } from "lucide-react";
 import { Button } from "./Button.tsx";
 import { BRUSH_SIZES, COLORS, type Action, type BrushSize, type Color, type Point } from "./coloring/index.ts";
 import type { ColoringWorkshopSession, WorkshopDestination } from "./coloringWorkshop.ts";
 import type { Language } from "./language/language.ts";
+import { InputArbitrationContext } from "./inputArbitration.ts";
 import "./coloringWorkshop.css";
 
 const words = {
@@ -23,6 +24,8 @@ type WorkshopPainter = {
 export type ColoringWorkshopScreenProps = { session: ColoringWorkshopSession; painter: WorkshopPainter; language: Language };
 
 export function ColoringWorkshopScreen({ session, painter, language }: ColoringWorkshopScreenProps) {
+  const arbitrate = useContext(InputArbitrationContext);
+  if (!arbitrate) throw new Error("Coloring workshop requires input arbitration");
   const { width: WIDTH, height: HEIGHT } = painter;
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const empty = useMemo(() => session.isEmpty(), [session, state.work]);
@@ -79,21 +82,20 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
     };
     const interrupted = () => { cancel(); setChooser(false); };
     const hidden = () => { if (document.visibilityState !== "visible") cancel(); };
-    const events = ["pointerdown", "pointermove", "pointerup", "pointercancel", "click"];
-    events.forEach(type => document.addEventListener(type, guard, true));
+    const stopGuard = arbitrate(guard);
     window.addEventListener("resize", interrupted);
     window.addEventListener("orientationchange", interrupted);
     window.addEventListener("blur", interrupted);
     document.addEventListener("visibilitychange", hidden);
     return () => {
       cancel();
-      events.forEach(type => document.removeEventListener(type, guard, true));
+      stopGuard();
       window.removeEventListener("resize", interrupted);
       window.removeEventListener("orientationchange", interrupted);
       window.removeEventListener("blur", interrupted);
       document.removeEventListener("visibilitychange", hidden);
     };
-  }, [painter, session]);
+  }, [arbitrate, painter, session]);
   useEffect(() => {
     if (state.save !== "saving" && state.save !== "error") return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
