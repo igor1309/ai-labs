@@ -2,7 +2,7 @@
 
 Visual review proposal, not a shipped game or approved final illustration.
 
-The Pen document open in this task's checkout contains 30 new screen/state
+The Pen document open in this task's checkout contains 33 new screen/state
 frames and a reusable stegosaurus illustration. The frames use the existing
 Field Guide Midnight tokens and Nunito, uppercase child-facing labels,
 picture/symbol controls and a paper canvas that follows the selected theme.
@@ -11,11 +11,14 @@ Workshop, gallery and result each have 1180×820, 744×1133, 393×852 and
 852×393 layouts, with both theme variants. Russian is shown on landscape
 iPad and portrait iPhone; English on portrait iPad and landscape iPhone.
 The workshop keeps twelve colours, three round brush sizes, bucket, undo
-and completion visible. Landscape phones move tools beside the canvas.
-Their palette uses a compact four-column, three-row grid with 52-point
-colour targets and a 252-point tool column; reclaimed width goes to the
-drawing. Tablet palettes use centred 56-point targets instead of stretched
-colour pills. Both theme variants share these arrangements.
+and completion visible. Controls occupy one 52-point row below the canvas.
+Wide iPads show all twelve 48-point colour targets inline with the tools.
+Narrower devices show the current colour as a palette button; tapping it
+opens a temporary 4×3 picker over the canvas. Picking a colour dismisses it;
+tapping outside dismisses it without painting. The picker never reserves
+space in the drawing layout. There is no dedicated tool sidebar or multirow
+palette band. Open-picker examples cover portrait phone/tablet and landscape
+phone. Both theme variants share these arrangements.
 The selected colour carries a check; selected brush size carries amber.
 Painting is clipped to the silhouette; outlines and eyes stay above paint.
 
@@ -52,4 +55,5 @@ acceptance and production cleanup into fill regions and protected layers.
 The editable design is saved in `rexlab.pen`. The native AXDocument check
 now resolves to this checkout's exact document URL and File → Save succeeds.
 This resolves the earlier accessibility blocker. Revised PDF/HTML exports
-include the compact palettes from the owner's visual review feedback.
+include the single-row controls and temporary pickers from the owner's
+visual review feedback.
