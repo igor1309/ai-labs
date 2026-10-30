@@ -42,7 +42,7 @@ public struct ClientPaymentView: View {
 
     @ViewBuilder
     private var content: some View {
-        Group { switch state.content {
+        ZStack { switch state.content {
         case let .review(title, digits, detail):
             StatusPanel(title, detail: detail, level: .screen) {
                 EmptyView()

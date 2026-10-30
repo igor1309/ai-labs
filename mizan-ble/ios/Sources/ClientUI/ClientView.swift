@@ -46,7 +46,7 @@ public struct ClientView: View {
 
     @ViewBuilder
     private var illustration: some View {
-        Group { switch state.content {
+        ZStack { switch state.content {
         case let .discovery(icon, isInRange):
             iconView(icon, foreground: isInRange ? Tokens.onAccent : Tokens.text2)
                 .frame(width: Tokens.sizeRing, height: Tokens.sizeRing)

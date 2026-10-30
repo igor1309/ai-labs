@@ -67,8 +67,11 @@ public struct HostView: View {
                     Text(state.amountTitle).typeRole(.label)
                     amountValue
                 }
+                // The amount sits beside the title, so the row takes its new
+                // layout at once and fades in, rather than sliding under it.
+                .fadesIn(on: state.amountTitle)
             } else {
-                Text(state.amountTitle).typeRole(.lead)
+                Text(state.amountTitle).typeRole(.lead).fadesIn(on: state.amountTitle)
                 amountValue
             }
             Rectangle().fill(state.accent == .idle ? Tokens.lineStrong : state.accent.color)
@@ -77,6 +80,7 @@ public struct HostView: View {
                 Text(state.explanation).typeRole(horizontalSizeClass == .compact ? .small : .body)
                     .lineSpacing(Tokens.space1)
                     .fixedSize(horizontal: false, vertical: true)
+                    .fadesIn(on: state.explanation)
                     .transition(.opacity)
             }
             exchange
@@ -111,7 +115,9 @@ public struct HostView: View {
     }
     private var isCompact: Bool { horizontalSizeClass == .compact }
     private var panel: some View {
-        Group {
+        // One container for every panel: a Group would hand the animation to
+        // each case, and a case that comes in would then appear at once.
+        ZStack {
             switch state.panel {
             case let .keypad(rows):
                 Card(isCompact: isCompact, padding: .tight) {
@@ -159,6 +165,8 @@ public struct HostView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The card's surface stays while one panel fades through to the next.
+        .background(Tokens.raised, in: RoundedRectangle(cornerRadius: Tokens.radiusXl))
         .motion(.panel, value: state.panelProjection)
     }
     private func statusCard(
