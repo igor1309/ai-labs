@@ -4,12 +4,12 @@ A lane rehearses one user scenario against ScriptedRadio. Each `lane.json`
 names its parts: a flow, settings, device kind and category/phase log lines.
 Parts use independent fresh clones; the two sides play against scripts.
 
-From the repository root:
+From the project directory:
 
 ```sh
-mizan-ble/maestro/run.sh                 # all 15 lanes, in order
-mizan-ble/maestro/run.sh S-1 S-10         # ids or full directory names
-mizan-ble/maestro/run.sh --keep S-7       # retain failed clones for inspection
+maestro/run.sh                 # all 15 lanes, in order
+maestro/run.sh S-1 S-10         # ids or full directory names
+maestro/run.sh --keep S-7       # retain failed clones for inspection
 ```
 
 Requires Xcode with an iOS simulator runtime and Maestro 2.12.0 on PATH.
