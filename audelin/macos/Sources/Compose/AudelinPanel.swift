@@ -29,6 +29,7 @@ public actor AudelinPanel {
     private let sink: any LogSink
     private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
     private var state = PanelState(recording: .off, log: .empty)
+    private var mappedRows = MappedRows()
     private var subscribers: [UInt64: AsyncStream<PanelState>.Continuation] = [:]
     private var nextSubscriber: UInt64 = 0
 
@@ -79,6 +80,7 @@ public actor AudelinPanel {
 
         let reading = await makeReading()
         current = (id, reading, enableLiveText)
+        mappedRows = .init()
         let update = SignpostedPanelUpdate(receive: { [weak self] state in
             await self?.receive(state, id: id)
         }, intervals: intervals)
@@ -97,7 +99,7 @@ public actor AudelinPanel {
     private func receive(_ state: ReadingState, id: UInt64) {
 
         guard current?.id == id else { return }
-        publish(panelState(state))
+        publish(panelState(state, rows: &mappedRows))
     }
 
     private func publish(_ next: PanelState) {
@@ -148,9 +150,11 @@ final class ReadingSubscription {
             }
         }
         self.text = Task {
+            var mapped = 0
             for await state in text {
                 guard !Task.isCancelled else { return }
-                reading.send(.textUpdated(readingText(state)))
+                reading.send(.textUpdated(readingText(state, from: mapped)))
+                mapped = state.finalCount
             }
         }
         timer = Task {

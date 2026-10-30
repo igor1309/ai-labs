@@ -1,3 +1,5 @@
+import SplitRows
+
 /// What one recording's panel shows, with no view or session dependencies.
 public struct ReadingState: Equatable, Sendable {
 
@@ -69,10 +71,18 @@ public struct ReadingState: Equatable, Sendable {
 
     public struct Lines: Equatable, Sendable {
 
-        public internal(set) var rows: [Row] = []
+        public internal(set) var rows: SplitRows<Row> = []
+        /// Changes whenever `rows` is laid out again, so its sealed part may differ.
+        public internal(set) var layout = 0
         public internal(set) var holds: [Held] = []
         public internal(set) var newBelow = 0
         public internal(set) var followsLive = true
+
+        public static func == (lhs: Self, rhs: Self) -> Bool {
+
+            lhs.newBelow == rhs.newBelow && lhs.followsLive == rhs.followsLive
+                && lhs.holds == rhs.holds && lhs.rows == rhs.rows
+        }
 
         public var entries: [Entry] {
 
@@ -85,6 +95,9 @@ public struct ReadingState: Equatable, Sendable {
             }
         }
     }
+
+    /// How many entries the lines hold, without walking them.
+    public var entryCount: Int { text.count }
 
     public internal(set) var banners: [Banner] = []
 
@@ -114,9 +127,9 @@ public struct ReadingState: Equatable, Sendable {
 
     var problems: [ReadingProblem] = []
     var status: ReadingTextUpdate.Status = .off
-    var anchors: [ReadingTextUpdate.Entry.ID: Anchor] = [:]
+    var anchors: SplitDictionary<ReadingTextUpdate.Entry.ID, Anchor> = [:]
     var nextDisplayID = 0
-    var text: [ReadingTextUpdate.Entry.ID: ReadingTextUpdate.Entry] = [:]
+    var text: SplitDictionary<ReadingTextUpdate.Entry.ID, ReadingTextUpdate.Entry> = [:]
     var lines = Lines()
 
     struct Rendered: Sendable {
@@ -129,8 +142,8 @@ public struct ReadingState: Equatable, Sendable {
 
         var prepared = false
         var ordered: [ReadingTextUpdate.Entry.ID] = []
-        var entries: [ReadingTextUpdate.Entry.ID: Entry] = [:]
-        var locations: [ReadingTextUpdate.Entry.ID: Location] = [:]
+        var entries: SplitDictionary<ReadingTextUpdate.Entry.ID, Entry> = [:]
+        var locations: SplitDictionary<ReadingTextUpdate.Entry.ID, Location> = [:]
     }
 
     // Per-reduction work stays local to the value and does not affect what the panel observes.

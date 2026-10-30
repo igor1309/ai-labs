@@ -89,7 +89,7 @@ let package = Package(
         ),
         .target(
             name: "Compose",
-            dependencies: ["Calls", "Recordings", "CallsListUI", "CallAudioAccess", "MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI"]
+            dependencies: ["Calls", "Recordings", "CallsListUI", "CallAudioAccess", "MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI", "SplitRows"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -130,7 +130,7 @@ let package = Package(
         ),
         .target(
             name: "PanelUI",
-            dependencies: ["GlassLedger"]
+            dependencies: ["GlassLedger", "SplitRows"]
         ),
         .target(
             name: "ParakeetRecognizer",
@@ -148,7 +148,11 @@ let package = Package(
             name: "RecordedCapture"
         ),
         .target(
-            name: "Reading"
+            name: "Reading",
+            dependencies: ["SplitRows"]
+        ),
+        .target(
+            name: "SplitRows"
         ),
         .target(
             name: "Recording"

@@ -74,7 +74,7 @@ struct TranscriptLogLoadTests {
             .entry(.init(id: $0, time: "12:34", speaker: $0.isMultiple(of: 2) ? .me : .them, settled: words))
         }
         rows.append(.entry(.init(id: count, time: "12:35", speaker: .me, settled: "", pending: "w0")))
-        return .init(rows: rows, holds: [], newBelow: 0, followsLive: true)
+        return .init(rows: .init(tail: rows), holds: [], newBelow: 0, followsLive: true)
     }
 
     private func log(_ lines: PanelState.Lines, config: PanelConfig, size: CGSize) -> AnyView {

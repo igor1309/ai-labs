@@ -31,9 +31,7 @@ struct PanelLoadTests {
             + "at today's rate the model alone would keep the main actor \(busy)% busy late")
         FileHandle.standardError.write(Data(line.utf8))
         FileHandle.standardError.write(Data(report("late, per step: \(steps(entries: 1_620))").utf8))
-        withKnownIssue("every state maps and reduces the whole call's entries") {
-            #expect(late / early <= 3, "a state late in a long call costs the panel \(late / early)x one early")
-        }
+        #expect(late / early <= 3, "a state late in a long call costs the panel \(late / early)x one early")
     }
 
     @Test func loadReportNamesTheCompiledBuild() {
@@ -53,28 +51,34 @@ struct PanelLoadTests {
 
         let feed = feed(entries: count)
         var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
-        var shown = panelState(reading)
         var times = [Duration](repeating: .zero, count: 5)
         let clock = ContinuousClock()
-        for state in feed {
+        // The call is already there: only the states after it are the cost of a late state.
+        reading = ReadingReducer.reduce(reading, .textUpdated(readingText(feed[0]))).0
+        var rows = MappedRows()
+        var shown = panelState(reading, rows: &rows)
+        var mapped = feed[0].finalCount
+        for state in feed.dropFirst() {
             var update: ReadingTextUpdate?
-            times[0] += clock.measure { update = readingText(state) }
+            times[0] += clock.measure { update = readingText(state, from: mapped) }
+            mapped = state.finalCount
             let previous = reading
             times[1] += clock.measure { reading = ReadingReducer.reduce(reading, .textUpdated(update!)).0 }
             times[2] += clock.measure { _ = reading == previous }
             var next: PanelState?
-            times[3] += clock.measure { next = panelState(reading) }
+            times[3] += clock.measure { next = panelState(reading, rows: &rows) }
             times[4] += clock.measure { _ = next == shown }
             shown = next!
         }
         let names = ["mapping the text", "reducing", "comparing reading states", "mapping the panel", "comparing panel states"]
         return zip(names, times).map { name, time in
-            let ms = (Double(time.components.seconds) + Double(time.components.attoseconds) / 1e18) * 1000 / Double(feed.count)
+            let ms = (Double(time.components.seconds) + Double(time.components.attoseconds) / 1e18) * 1000 / Double(feed.count - 1)
             return "\(name) \(String(format: "%.2f", ms)) ms"
         }.joined(separator: ", ")
     }
 
-    /// States that each carry the whole call's `entries` with its last one growing.
+    /// States that each carry the whole call's `entries` with its last one
+    /// growing and all before it final, as both sides speaking gives.
     private func feed(entries count: Int) -> [State] {
 
         let words = String(repeating: "word ", count: 20)
@@ -88,7 +92,9 @@ struct PanelLoadTests {
         var feed: [State] = []
         for step in 0..<Self.states {
             let text = Text(id: count, start: start, end: start + Double(step) / Self.todaysRate, settled: "", pending: "w\(step)")
-            feed.append(State(status: .listening, entries: history + [State.Entry(speaker: .mine, text: text, writtenLater: false)]))
+            var state = State(status: .listening, entries: history + [State.Entry(speaker: .mine, text: text, writtenLater: false)])
+            state.finalCount = history.count
+            feed.append(state)
         }
         return feed
     }
@@ -106,17 +112,22 @@ struct PanelLoadTests {
         await subscription.recordingChanged(.on(elapsed: 0))
         var shown = await panel.states().makeAsyncIterator()
 
-        let began = ContinuousClock.now
-        for state in feed { input.continuation.yield(state) }
-        let last = "w\(states - 1)"
-        while let state = await shown.next() {
-            if case let .lines(lines) = state.log, case let .entry(entry) = lines.rows.last, entry.pending == last { break }
+        func waitFor(_ pending: String) async {
+            while let state = await shown.next() {
+                if case let .lines(lines) = state.log, case let .entry(entry) = lines.rows.last, entry.pending == pending { return }
+            }
         }
+        // The call is already there: only the states after it are the cost of a late state.
+        input.continuation.yield(feed[0])
+        await waitFor("w0")
+        let began = ContinuousClock.now
+        for state in feed.dropFirst() { input.continuation.yield(state) }
+        await waitFor("w\(states - 1)")
         let elapsed = ContinuousClock.now - began
 
         input.continuation.finish()
         await panel.end(id: 1)
         await subscription.end()
-        return (Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18) / Double(states)
+        return (Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18) / Double(states - 1)
     }
 }

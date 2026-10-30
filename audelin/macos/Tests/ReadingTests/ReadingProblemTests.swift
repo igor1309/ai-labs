@@ -46,7 +46,7 @@ private let lateFaulted = fixture(late: true, problems: [microphone], banners: [
 ])
 private let allLateFaulted: ReadingState = {
     var state = faulted
-    state.text = Dictionary(uniqueKeysWithValues: update(late: true).entries.map { ($0.id, $0) })
+    state.text = .init(uniqueKeysWithValues: update(late: true).entries.map { ($0.id, $0) })
     state.lines.rows = [
         .late(.init(span: "00:02–00:03", entries: [first])), gaps[0],
         .late(.init(span: "00:05–00:06", entries: [last])), gaps[1], gaps[2],
@@ -76,7 +76,7 @@ private func fixture(
     state.status = .listening
     state.problems = problems
     state.banners = banners
-    state.lines.rows = rows
+    state.lines.rows = .init(tail: rows)
     for (index, entry) in update(late: late).entries.enumerated() {
         state.anchors[entry.id] = .init(id: index, start: entry.start)
         state.text[entry.id] = entry

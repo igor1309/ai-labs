@@ -154,7 +154,7 @@ private func fixture(
         state.text[entry.id] = entry
     }
     state.nextDisplayID = next ?? entries.count
-    state.lines.rows = rows
+    state.lines.rows = .init(tail: rows)
     return state
 }
 
