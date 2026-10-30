@@ -2,6 +2,7 @@
 
 ## 2026-10-30
 
+- The client shows the host's signal as bars and dBm while it looks for a host, keeps the reading from the moment it starts the handshake marked "at start", and says "No signal" when it hears none; the host no longer shows a signal label it cannot know (LAB-784).
 - The client keeps the host it offered through short dips in signal, instead of flipping between the host and hold closer at arm's length (LAB-764).
 - Screen snapshots of the host on an 11-inch iPad and of host and client on an iPhone 15 Pro, light and dark, now fail CI when a screen moves (LAB-779).
 - On an iPhone, Lock & broadcast fades the keypad out before the countdown fades in, and the status pill, device chips, amount and explanation take their new text and place at once and fade in, so no two texts draw over each other and nothing slides (LAB-728).
