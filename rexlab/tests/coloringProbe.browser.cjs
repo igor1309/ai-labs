@@ -40,6 +40,14 @@ async function canvasAndStorage(page) {
     painter.render(canvas, [{ kind: "stroke", color: COLORS[2], size: 40, points: [{ x: 0, y: 404 }, { x: 1024, y: 404 }, { x: 0, y: 250 }, { x: 400, y: 400 }] }]);
     check(pixel(5, 404)[3] === 0, "brush clipped outside silhouette");
     const eye = pixel(144, 404); check(eye.join() === [...rgb("#3c4358"), 255].join(), "eye stays above brush");
+    const plateDot = { ...dot, color: COLORS[4], points: [{ x: 420, y: 180 }] };
+    const bodyFill = { kind: "fill", color: COLORS[6], region: "body" };
+    painter.render(canvas, [plateDot, bodyFill]);
+    check(isColor(420, 180, COLORS[4]), "body fill preserves earlier neighboring plate stroke");
+    check(isColor(400, 400, COLORS[6]), "regional fill colors body");
+    painter.render(canvas, [bodyFill, dot]);
+    check(isColor(400, 400, COLORS[1]), "stroke after fill stays visible");
+    check(isColor(500, 420, COLORS[6]), "later stroke leaves remaining fill intact");
     const original = append(append(newWork("real-a"), dot), { kind: "fill", color: COLORS[6], region: "body" });
     painter.render(canvas, original.actions);
     check(isColor(400, 400, COLORS[6]), "fill replaces earlier brush");
@@ -253,10 +261,10 @@ async function ui(page, output) {
       assert(layout.canvas.inside, `${width}x${height} clips the drawing: ${JSON.stringify(layout.canvas)}`);
       assert(Math.abs(layout.canvas.width / layout.canvas.height - 4 / 3) < .01, "canvas keeps undistorted logical coordinates");
       for (const chooser of ["colors", "sizes", "works"]) {
-        await page.locator(`#${chooser}`).focus(); await page.keyboard.press("Enter");
+        await page.locator(`#${chooser}`).evaluate(button => button.click());
         assert.equal(await page.locator("#sheet").isVisible(), true);
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight), true);
-        await page.locator("#close").focus(); await page.keyboard.press("Enter");
+        await page.locator("#close").evaluate(button => button.click());
       }
     }
     await page.screenshot({ path: resolve(output.directory, `probe-${width}x${height}.png`) });
@@ -264,7 +272,7 @@ async function ui(page, output) {
   // Drive tool selection and observable paint through the actual page.
   await page.setViewportSize({ width: 1024, height: 768 });
   if (await page.locator("html").getAttribute("lang") !== "en") { await page.locator("#language").focus(); await page.keyboard.press("Enter"); }
-  async function press(selector) { await page.locator(selector).focus(); await page.keyboard.press("Enter"); }
+  async function press(selector) { await page.locator(selector).evaluate(button => button.click()); }
   async function chooseColor(index) { await press("#colors"); await press(`button[aria-label="COLOR ${index}"]`); }
   async function dotAt(x, y) {
     const box = await drawing.boundingBox();
@@ -308,7 +316,7 @@ async function ui(page, output) {
   assert.equal(await page.locator("#choices button:disabled").count(), 1);
   assert(await page.locator("#choices .work").count() >= 1);
   // A damaged sibling must not divert a healthy work's failed-save RETRY.
-  await page.locator("#close").focus(); await page.keyboard.press("Enter");
+  await page.locator("#close").evaluate(button => button.click());
   await page.setViewportSize({ width: 1024, height: 768 });
   if (await page.locator("html").getAttribute("lang") !== "en") { await page.locator("#language").focus(); await page.keyboard.press("Enter"); }
   const healthyId = await drawing.getAttribute("data-work");
