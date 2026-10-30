@@ -2,6 +2,7 @@
 
 ## 2026-10-30
 
+- On a real iPad and iPhone a host left alone ends its broadcast when its countdown runs out and returns to amount entry (LAB-625).
 - The client shows the host's signal as bars and dBm while it looks for a host, keeps the reading from the moment it starts the handshake marked "at start", and says "No signal" when it hears none; the host no longer shows a signal label it cannot know (LAB-784).
 - The client keeps the host it offered through short dips in signal, instead of flipping between the host and hold closer at arm's length (LAB-764).
 - Screen snapshots of the host on an 11-inch iPad and of host and client on an iPhone 15 Pro, light and dark, now fail CI when a screen moves (LAB-779).

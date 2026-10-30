@@ -66,6 +66,10 @@ iOS 27 as the client, 2026-10-29, with the picker's starting values.
   with the iPhone as host after switching modes. From connecting to the
   opened amount took 1.1–1.3 s; the session read is 50 bytes and the
   largest write 512.
+- **A host left alone times out:** on 2026-10-30, with no client near,
+  the iPad and the iPhone as host each counted down 60 s, ended the
+  broadcast on the second, retired the service within 60 ms and
+  returned to amount entry.
 - **Smoothed RSSI (α 0.3):** −40 to −55 dBm with the phone beside the
   iPad, −60 to −66 at arm's length, −66 to −77 a few steps away. With the
   phone held still the average moves 5–13 dB within a second.
