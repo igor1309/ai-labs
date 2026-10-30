@@ -4,6 +4,33 @@ import Testing
 
 final class AgentLoopTests: TestContext {
 
+    @Test(arguments: [false, true])
+    func test_process_shouldReleaseProducerDependencies_beforeStreamCompletion(failing: Bool) async throws {
+        weak var loop: SUT?
+        weak var respondSpy: RespondSpy?
+        weak var executeSpy: ExecuteSpy?
+        let stream: SUT.EventStream
+        do {
+            let stub: RespondSpy.Stub = failing
+                ? .failure(makeSomeError())
+                : .success(.text(makeSomeString()))
+            let (sut, respond, execute) = makeSUT(respondStubs: [stub])
+            loop = sut
+            respondSpy = respond
+            executeSpy = execute
+            stream = await sut.process(makeSomeString())
+        }
+        do {
+            _ = try await collect(stream)
+            #expect(!failing)
+        } catch {
+            #expect(failing)
+        }
+        #expect(loop == nil)
+        #expect(respondSpy == nil)
+        #expect(executeSpy == nil)
+    }
+
     @Test func test_process_shouldPassUserMessageToRespond() async throws {
 
         let query = makeSomeString()
