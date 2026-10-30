@@ -30,6 +30,8 @@ let package = Package(
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Session", targets: ["Session"]),
+        // Not shipped: the rehearsal's fake call, for the benchmarks package.
+        .library(name: "SessionRehearsal", targets: ["SessionRehearsal"]),
         .library(name: "SideText", targets: ["SideText"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
@@ -71,7 +73,7 @@ let package = Package(
         ),
         .target(
             name: "SessionRehearsal",
-            dependencies: ["LiveText"]
+            dependencies: ["Compose", "LiveText", "Reading", "Session", .product(name: "IMRxObservation", package: "swift-imrx")]
         ),
         .target(
             name: "AudioConversion"
