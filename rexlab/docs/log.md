@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Coloring strokes update once per display frame without replaying saved brush history for every pen sample (LAB-803).
+
 - A saved coloring result brings the child's own dinosaur alive and awards one star per work, with a durable collection best and editable history (LAB-803).
 
 - Coloring gallery lists independent drafts and completed works, continues the latest saved edit and keeps unreadable history visible (LAB-803).

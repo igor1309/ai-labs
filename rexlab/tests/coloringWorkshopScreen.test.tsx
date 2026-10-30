@@ -43,6 +43,47 @@ function open(language: Language = "en", failure = false, sharedFilter = false) 
   return { ...view, surface, canvas, captured, step, tap, settled, session, painter, write, complete, navigate, dot };
 }
 
+function animationFrames() {
+  const pending = new Map<number, FrameRequestCallback>();
+  let id = 0;
+  const request = vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation(callback => { pending.set(++id, callback); return id; });
+  const cancel = vi.spyOn(globalThis, "cancelAnimationFrame").mockImplementation(id => { pending.delete(id); });
+  onTestFinished(() => { request.mockRestore(); cancel.mockRestore(); });
+  return { pending, flush() {
+    const callbacks = [...pending.values()]; pending.clear();
+    act(() => callbacks.forEach(callback => callback(0)));
+  } };
+}
+
+it("batches coalesced samples per frame in one contact buffer and commits the release before a pending frame", async () => {
+  const frames = animationFrames();
+  const f = open();
+  f.step("pointerdown", 0, 0);
+  const points = f.painter.preview.mock.calls[0]![2].points;
+  for (let i = 1; i <= 10; i++) f.step("pointermove", i, 0);
+  expect(f.painter.preview).toHaveBeenCalledTimes(1);
+  expect(frames.pending.size).toBe(1);
+  frames.flush();
+  expect(f.painter.preview).toHaveBeenCalledTimes(2);
+  expect(f.painter.preview.mock.lastCall![2].points).toBe(points);
+  expect(points).toEqual(Array.from({ length: 11 }, (_, x) => ({ x, y: 0 })));
+  const event = new PointerEvent("pointerup", { clientX: 26, clientY: 17, pointerId: 1, button: 0, bubbles: true, cancelable: true });
+  Object.defineProperty(event, "getCoalescedEvents", { value: () => [{ clientX: 24, clientY: 18 }, { clientX: 25, clientY: 17 }] });
+  f.step("pointermove", 10, 0);
+  fireEvent(f.canvas, event);
+  await f.settled();
+  expect(frames.pending.size).toBe(0);
+  frames.flush();
+  expect(f.painter.preview).toHaveBeenCalledTimes(2);
+  const accepted = f.session.getSnapshot().work.actions[0] as Extract<Action, { kind: "stroke" }>;
+  expect(accepted.points).toEqual([...points.slice(0, 11), { x: 11, y: 1 }, { x: 12, y: 0 }, { x: 13, y: 0 }]);
+  expect(accepted.points).not.toBe(points);
+  expect(Object.isFrozen(accepted.points)).toBe(true);
+  f.step("pointerdown", 14, 0);
+  f.step("pointermove", 15, 0);
+  expect(accepted.points.at(-1)).toEqual({ x: 13, y: 0 });
+});
+
 it.each(["en", "ru"] as Language[])("offers 12 colors, 3 sizes and symbol controls in %s without saving tool choices", language => {
   const f = open(language);
   const colors = screen.getAllByRole("group", { name: language === "en" ? "COLOR" : "ЦВЕТ" });
@@ -94,8 +135,10 @@ it("ignores another finger on canvas and controls through its release after the 
 });
 
 it.each(["pointercancel", "lostpointercapture", "resize", "orientationchange", "blur", "visibilitychange", "unmount"])("discards an interrupted preview on %s and keeps earlier saved paint", async reason => {
+  const frames = animationFrames();
   const f = open(); f.tap(); await f.settled();
   f.step("pointerdown", 2, 0, 1, 2000); f.step("pointermove", 3, 0);
+  expect(frames.pending.size).toBe(1);
   if (reason === "unmount") f.unmount();
   else if (reason === "pointercancel" || reason === "lostpointercapture") f.step(reason, 3, 0);
   else if (reason === "visibilitychange") {
@@ -103,6 +146,10 @@ it.each(["pointercancel", "lostpointercapture", "resize", "orientationchange", "
     onTestFinished(() => visibility.mockRestore());
     fireEvent(document, new Event(reason));
   } else fireEvent(window, new Event(reason));
+  expect(frames.pending.size).toBe(0);
+  const previews = f.painter.preview.mock.calls.length;
+  frames.flush();
+  expect(f.painter.preview).toHaveBeenCalledTimes(previews);
   f.step("pointerup", 3, 0);
   await f.settled();
   expect(f.session.getSnapshot().work).toMatchObject({ revision: 1, actions: [f.dot] });

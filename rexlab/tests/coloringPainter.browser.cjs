@@ -152,6 +152,41 @@ const { chromium } = require("playwright");
       check(equal(painter.pixels(canvas), preview), "preview exactly matches committed rendering with protected edges");
       painter.render(canvas, painted.actions);
       check(equal(painter.pixels(canvas), prior), "discarding preview restores committed pixels exactly");
+      // Live contacts cross region/fill boundaries and their own same-color
+      // antialiased edges; every intermediate frame has replay's exact pixels.
+      const history = [bent, fill("body", COLORS[6]), dot(288, 340), fill("plate-2", COLORS[4]), bent];
+      for (const [width, height] of [[WIDTH, HEIGHT], [276, 186], [WIDTH * 2, HEIGHT * 2]]) {
+        const live = painter.canvas(width, height), replay = painter.canvas(width, height);
+        for (const size of BRUSH_SIZES) {
+          const active = { kind: "stroke", color: COLORS[1], size, points: [] };
+          const samples = [
+            ...bent.points, { x: 380, y: 330 }, { x: 83, y: 280 }, { x: -30, y: 280 },
+            { x: 440.3, y: 42.7 }, { x: 310, y: 120 }, { x: 288, y: 340 },
+            { x: 476.2, y: 440.6 }, { x: 950, y: 580 }, { x: 575, y: 530 }
+          ];
+          for (const point of samples) {
+            active.points.push(point);
+            painter.preview(live, history, active);
+            painter.render(replay, [...history, active]);
+            check(equal(painter.pixels(live), painter.pixels(replay)), `incremental preview equals replay at ${width}x${height}, size ${size}, point ${active.points.length}`);
+            // Inspection and thumbnails share the painter but cannot invalidate
+            // another target's live geometry or cached fill layers.
+            painter.render(painter.canvas(92, 62), history);
+          }
+          painter.render(live, history);
+          painter.render(replay, history);
+          check(equal(painter.pixels(live), painter.pixels(replay)), "cancel drops every live capsule");
+          painter.preview(live, history.slice(0, -1), active);
+          painter.render(replay, [...history.slice(0, -1), active]);
+          check(equal(painter.pixels(live), painter.pixels(replay)), "changed history rebuilds cached layers after undo");
+          live.width = 460; live.height = 310;
+          painter.preview(live, history, active);
+          replay.width = 460; replay.height = 310;
+          painter.render(replay, [...history, active]);
+          check(equal(painter.pixels(live), painter.pixels(replay)), "resized preview uses its target's coordinate scale");
+          live.width = width; live.height = height; replay.width = width; replay.height = height;
+        }
+      }
       const large = painter.canvas(WIDTH * 2, HEIGHT * 2);
       painter.render(large, filled.actions);
       check(equal([...large.getContext("2d").getImageData(840, 660, 1, 1).data], rgb(COLORS[6])), "DPR rendering preserves artwork coordinates");
@@ -159,7 +194,7 @@ const { chromium } = require("playwright");
       check(painter.regionAt({ x: 420, y: 330 }) === "body", "hit testing stays in saved coordinates after DPR rendering");
       window.productionCanvas = canvas;
       document.body.append(canvas);
-      return "PASS production coloring: design geometry, hits, clipped round strokes, no-ops/base, protected details, fill/undo, replay, preview and DPR pixels";
+      return "PASS production coloring: design geometry, hits, clipped round strokes, no-ops/base, protected details, fill/undo, replay, incremental preview, interleaved thumbnails and DPR pixels";
     }));
     if (process.env.COLORING_SCREENSHOT) await page.screenshot({ path: process.env.COLORING_SCREENSHOT });
   } finally { if (browser) await browser.close(); }

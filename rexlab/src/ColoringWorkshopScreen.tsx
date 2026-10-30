@@ -12,7 +12,7 @@ const words = {
   ru: { title: "МАСТЕРСКАЯ", dinosaur: "СТЕГОЗАВР", home: "ДОМОЙ", gallery: "ГАЛЕРЕЯ", new: "НОВЫЙ РИСУНОК", done: "ГОТОВО", brush: "КИСТЬ", fill: "ЗАЛИВКА", undo: "ОТМЕНИТЬ", color: "ЦВЕТ", size: "РАЗМЕР", close: "ЗАКРЫТЬ", saving: "СОХРАНЯЕМ", saved: "СОХРАНЕНО", untouched: "ДАВАЙ РИСОВАТЬ!", error: "НЕ УДАЛОСЬ СОХРАНИТЬ", retry: "ПОВТОРИТЬ", edit: "РИСОВАТЬ ДАЛЬШЕ", leave: "ДОМОЙ БЕЗ СОХРАНЕНИЯ", loss: "УЙТИ И ПОТЕРЯТЬ ИЗМЕНЕНИЯ?", confirm: "УЙТИ", cancel: "ОСТАТЬСЯ", colors: ["ОСНОВА", "КРАСНЫЙ", "ОРАНЖЕВЫЙ", "ЖЁЛТЫЙ", "ЗЕЛЁНЫЙ", "БИРЮЗОВЫЙ", "ГОЛУБОЙ", "СИНИЙ", "ФИОЛЕТОВЫЙ", "РОЗОВЫЙ", "КОРИЧНЕВЫЙ", "УГОЛЬНЫЙ"], sizes: ["МАЛЕНЬКИЙ", "СРЕДНИЙ", "БОЛЬШОЙ"] }
 };
 type Stroke = Extract<Action, { kind: "stroke" }>;
-type Contact = { id: number; action: Stroke; tool: "brush" | "fill"; surface: HTMLCanvasElement };
+type Contact = { id: number; action: Omit<Stroke, "points"> & { points: Point[] }; tool: "brush" | "fill"; surface: HTMLCanvasElement };
 
 type WorkshopPainter = {
   width: number;
@@ -38,6 +38,7 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
   const previousChooser = useRef(false);
   const canvas = useRef<HTMLCanvasElement>(null);
   const active = useRef<Contact | undefined>(undefined);
+  const previewFrame = useRef<number | undefined>(undefined);
   const paintRef = useRef(state.work.actions);
   paintRef.current = state.work.actions;
   const blocked = state.frozen || state.errorOpen || state.confirmingLoss;
@@ -45,7 +46,12 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
     const latest = session.getSnapshot();
     return !active.current && !latest.frozen && !latest.errorOpen && !latest.confirmingLoss;
   };
+  const stopPreview = () => {
+    if (previewFrame.current !== undefined) cancelAnimationFrame(previewFrame.current);
+    previewFrame.current = undefined;
+  };
   const cancel = () => {
+    stopPreview();
     const contact = active.current;
     active.current = undefined;
     if (contact) {
@@ -110,13 +116,22 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
     const contact = active.current;
     if (!contact || contact.id !== event.pointerId) return;
     const samples = event.nativeEvent.getCoalescedEvents?.() ?? [];
-    for (const sample of [...samples, event.nativeEvent]) {
-      const box = event.currentTarget.getBoundingClientRect();
+    const box = event.currentTarget.getBoundingClientRect();
+    const append = (sample: Pick<PointerEvent, "clientX" | "clientY">) => {
       const next = { x: (sample.clientX - box.left) * WIDTH / box.width, y: (sample.clientY - box.top) * HEIGHT / box.height };
       const last = contact.action.points.at(-1)!;
-      if (next.x !== last.x || next.y !== last.y) contact.action = { ...contact.action, points: [...contact.action.points, next] };
+      // Only the live contact owns this buffer; the model copies and freezes it
+      // on acceptance, so sampling never copies a growing committed journal.
+      if (next.x !== last.x || next.y !== last.y) contact.action.points.push(next);
+    };
+    for (const sample of samples) append(sample);
+    append(event.nativeEvent);
+    if (contact.tool === "brush" && previewFrame.current === undefined) {
+      previewFrame.current = requestAnimationFrame(() => {
+        previewFrame.current = undefined;
+        if (active.current === contact) painter.preview(contact.surface, paintRef.current, contact.action);
+      });
     }
-    if (contact.tool === "brush" && canvas.current) painter.preview(canvas.current, paintRef.current, contact.action);
   };
   const go = (destination: WorkshopDestination) => { if (canAct()) session.go(destination); };
   const closeChooser = () => setChooser(false);
@@ -156,6 +171,7 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
             const contact = active.current;
             if (!contact || contact.id !== event.pointerId) return;
             move(event);
+            stopPreview();
             active.current = undefined;
             if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
             if (contact.tool === "brush") session.append(contact.action);

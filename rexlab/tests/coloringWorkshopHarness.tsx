@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import { ColoringWorkshopScreen } from "../src/ColoringWorkshopScreen.tsx";
 import { coloringWorkshopRoot } from "../src/coloringWorkshopRoot.ts";
 import { coloringWorkshop, type ColoringWorkshopSession, type WorkshopNavigation } from "../src/coloringWorkshop.ts";
-import { coloringModel, type Work } from "../src/coloring/index.ts";
+import { coloringModel, type Action, type Work } from "../src/coloring/index.ts";
 import { ARTWORK } from "../src/coloring/geometry.ts";
 import { createPainter } from "../src/coloring/painter.ts";
 import { indexedColoringWorks } from "../src/indexedColoringWorks.ts";
@@ -22,7 +22,9 @@ let writes = 0;
 let gated = false;
 let closeGate: (() => Promise<void>) | undefined;
 
-export async function mount(options: { id: string; resume?: boolean; language?: Language; theme?: "dark" | "light"; gate?: boolean }) {
+export { createPainter };
+
+export async function mount(options: { id: string; resume?: boolean; language?: Language; theme?: "dark" | "light"; gate?: boolean; history?: Action[] }) {
   reactRoot?.unmount();
   await closeGate?.();
   closeGate = undefined;
@@ -30,8 +32,19 @@ export async function mount(options: { id: string; resume?: boolean; language?: 
   navigations = []; writes = 0; gated = options.gate ?? false;
   document.documentElement.dataset.theme = options.theme ?? "light";
   resources = coloringWorkshopRoot(indexedDB, document);
+  if (options.history) {
+    const model = coloringModel(ARTWORK, resources.painter.inspection);
+    const store = indexedColoringWorks(indexedDB, "rexlab-coloring", model);
+    const work = model.readWork({ ...model.newWork(options.id), actions: options.history, revision: options.history.length });
+    const target = resources.painter.canvas(276, 186);
+    resources.painter.render(target, work.actions);
+    const thumbnail = await new Promise<Blob>((resolve, reject) => target.toBlob(blob => blob ? resolve(blob) : reject(new Error("thumbnail"))));
+    await store.write({ document: work, thumbnail }, null);
+    await store.close();
+  }
   const navigate = (navigation: WorkshopNavigation) => { navigations.push(navigation); };
-  session = options.resume ? await resources.open(options.id, navigate) : await resources.newWork(options.id, navigate);
+  const restoring = options.resume || options.history !== undefined;
+  session = restoring ? await resources.open(options.id, navigate) : await resources.newWork(options.id, navigate);
   let painter = resources.painter;
   if (options.gate) {
     painter = createPainter(() => document.createElement("canvas"));
@@ -39,7 +52,7 @@ export async function mount(options: { id: string; resume?: boolean; language?: 
     const store = indexedColoringWorks(indexedDB, "rexlab-coloring", model);
     closeGate = store.close;
     const work = session.getSnapshot().work;
-    session = coloringWorkshop(work, options.resume ? work.revision : null, {
+    session = coloringWorkshop(work, restoring ? work.revision : null, {
       model, navigate,
       async thumbnail(work: Work) {
         const target = painter.canvas(276, 186); painter.render(target, work.actions);
