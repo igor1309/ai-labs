@@ -195,6 +195,9 @@ public struct ExchangeStrip: View {
         .padding(.vertical, isCompact ? Tokens.space1 : Tokens.space3)
         .overlay(alignment: .top) { Rectangle().fill(Tokens.lineSoft).frame(height: 1) }
         .overlay(alignment: .bottom) { Rectangle().fill(Tokens.lineSoft).frame(height: 1) }
+        // Chips and message change together, so the whole strip takes its new
+        // layout at once and fades in.
+        .fadesIn(on: [host.code, host.state, message.title, client.code, client.state])
         .animation(Motion.fast(reduced: reduceMotion).animation, value: host.code)
         .animation(Motion.fast(reduced: reduceMotion).animation, value: host.state)
         .animation(Motion.fast(reduced: reduceMotion).animation, value: message.title)

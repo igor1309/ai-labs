@@ -2,6 +2,7 @@
 
 ## 2026-10-30
 
+- On an iPhone, Lock & broadcast fades the keypad out before the countdown fades in, and the status pill, device chips, amount and explanation take their new text and place at once and fade in, so no two texts draw over each other and nothing slides (LAB-728).
 - On an iPhone an action that turns into another, such as Lock & broadcast into Cancel, changes its label and colour in place instead of sliding off the bottom of the screen and back (LAB-728).
 - Cards, status panels, notices, icon badges, the exchange strip, the countdown picker and divided lists now come from the design system, so every screen uses the same card padding and title placement; Settings on iPhone keeps Done in the shared footer (LAB-728).
 - On an iPhone every screen's actions sit in one shared footer and use one shared action button, so a tall screen no longer moves its header or button; host and client line up to the pixel on a 6.1-inch iPhone (LAB-728).

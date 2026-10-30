@@ -50,7 +50,7 @@ private struct ClientScreen: View {
     let client: ClientMode
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
-        Group {
+        ZStack {
             if let state = client.paymentScreen {
                 ClientPaymentView(state: state, event: client.event).transition(Motion.panelTransition(reduced: reduceMotion))
             } else {
