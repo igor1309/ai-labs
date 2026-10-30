@@ -98,6 +98,15 @@ private extension Transcript {
 
         private var tokens: GlassLedger { style.tokens }
 
+        // Built once a transcript: every row shares the same few.
+        private var fonts: [FontKey: NSFont] = [:]
+        private var paragraphs: [ParagraphKey: NSParagraphStyle] = [:]
+        private var timeWidths: [CGFloat: CGFloat] = [:]
+        private var caretImage: NSImage?
+        /// The style of the paragraph being built, which the text system
+        /// gives its ending newline too.
+        private var current: NSParagraphStyle?
+
         init(style: Style) {
 
             self.style = style
@@ -106,11 +115,13 @@ private extension Transcript {
         func caption(_ string: String, alpha: CGFloat, spacing: CGFloat) {
 
             newParagraph()
+            let paragraph = paragraph(size: tokens.typeCaption, indent: 0, spacing: spacing)
+            current = paragraph
             result.append(.init(string: string, attributes: [
                 .font: font(tokens.typeCaption),
                 .baselineOffset: lift(tokens.typeCaption),
                 .foregroundColor: NSColor(tokens.gutter).withAlphaComponent(alpha),
-                .paragraphStyle: paragraph(size: tokens.typeCaption, indent: 0, spacing: spacing),
+                .paragraphStyle: paragraph,
                 Transcript.gutter: true,
             ]))
         }
@@ -121,6 +132,7 @@ private extension Transcript {
 
             let size = tokens.typeBody
             let paragraph = paragraph(size: size, indent: style.config.gutterWidth + tokens.space12, spacing: spacing)
+            current = paragraph
             func attributes(_ font: NSFont, _ color: Color) -> [NSAttributedString.Key: Any] {
                 [
                     .font: font,
@@ -165,14 +177,17 @@ private extension Transcript {
 
         private func caret(_ paragraph: NSParagraphStyle) -> NSAttributedString {
 
-            let color = NSColor(tokens.me)
-            let image = NSImage(size: NSSize(width: 2, height: 15), flipped: false) { rect in
-                color.setFill()
-                rect.fill()
-                return true
-            }
             let attachment = NSTextAttachment()
-            attachment.image = image
+            attachment.image = caretImage ?? {
+                let color = NSColor(tokens.me)
+                let image = NSImage(size: NSSize(width: 2, height: 15), flipped: false) { rect in
+                    color.setFill()
+                    rect.fill()
+                    return true
+                }
+                caretImage = image
+                return image
+            }()
             attachment.bounds = CGRect(x: 0, y: -3, width: 2, height: 15)
 
             let caret = NSMutableAttributedString(attachment: attachment)
@@ -182,15 +197,20 @@ private extension Transcript {
 
         private func newParagraph() {
 
-            guard result.length > 0 else { return }
-            result.append(.init(string: "\n", attributes: [.paragraphStyle: paragraph(size: tokens.typeBody, indent: 0, spacing: tokens.space12)]))
+            guard let current else { return }
+            result.append(.init(string: "\n", attributes: [.paragraphStyle: current]))
         }
 
         private func font(_ size: CGFloat, _ weight: NSFont.Weight = .regular) -> NSFont {
 
+            let key = FontKey(size: size, weight: weight)
+            if let font = fonts[key] { return font }
+
             let descriptor = NSFontDescriptor(fontAttributes: [.family: tokens.fontData])
                 .addingAttributes([.traits: [NSFontDescriptor.TraitKey.weight: weight]])
-            return NSFont(descriptor: descriptor, size: size) ?? .monospacedSystemFont(ofSize: size, weight: weight)
+            let font = NSFont(descriptor: descriptor, size: size) ?? .monospacedSystemFont(ofSize: size, weight: weight)
+            fonts[key] = font
+            return font
         }
 
         /// Fixed-height lines put their extra space above the glyphs; lifting
@@ -204,6 +224,9 @@ private extension Transcript {
         /// below the glyphs as the SwiftUI log does.
         private func paragraph(size: CGFloat, indent: CGFloat, spacing: CGFloat) -> NSParagraphStyle {
 
+            let key = ParagraphKey(size: size, indent: indent, spacing: spacing)
+            if let style = paragraphs[key] { return style }
+
             let style = NSMutableParagraphStyle()
             let height = (size * self.style.config.lineHeight).rounded()
             style.minimumLineHeight = height
@@ -211,12 +234,34 @@ private extension Transcript {
             style.paragraphSpacing = spacing
             style.headIndent = indent
 
-            let time = NSAttributedString(string: "00:00", attributes: [.font: font(size)]).size().width
             style.tabStops = [
-                NSTextTab(textAlignment: .left, location: time + tokens.space8),
+                NSTextTab(textAlignment: .left, location: timeWidth(size) + tokens.space8),
                 NSTextTab(textAlignment: .left, location: indent),
             ]
+            paragraphs[key] = style
             return style
         }
+
+        /// How wide the gutter's time is, so the speaker lines up after it.
+        private func timeWidth(_ size: CGFloat) -> CGFloat {
+
+            if let width = timeWidths[size] { return width }
+            let width = NSAttributedString(string: "00:00", attributes: [.font: font(size)]).size().width
+            timeWidths[size] = width
+            return width
+        }
+    }
+
+    struct FontKey: Hashable {
+
+        let size: CGFloat
+        let weight: NSFont.Weight
+    }
+
+    struct ParagraphKey: Hashable {
+
+        let size: CGFloat
+        let indent: CGFloat
+        let spacing: CGFloat
     }
 }

@@ -108,26 +108,51 @@ struct TranscriptLog: NSViewRepresentable {
 
 private extension TranscriptLog {
 
-    /// Replaces only what changed after the common prefix, and restyles the
-    /// prefix in place: characters above the change keep their position, so
-    /// the reader's selection and scroll position stay.
+    /// Replaces only what changed after the common prefix, and restyles only
+    /// the runs above it whose style changed: characters above the change
+    /// keep their position and layout, so the reader's selection and scroll
+    /// position stay.
     func apply(_ new: NSAttributedString, to storage: NSTextStorage) {
 
-        let old = storage.string as NSString
-        let next = new.string as NSString
-        var prefix = 0
-        let limit = min(old.length, next.length)
-        while prefix < limit, old.character(at: prefix) == next.character(at: prefix) { prefix += 1 }
+        let prefix = commonPrefix(storage.string as NSString, new.string as NSString)
 
         storage.beginEditing()
         storage.replaceCharacters(
-            in: NSRange(location: prefix, length: old.length - prefix),
-            with: new.attributedSubstring(from: NSRange(location: prefix, length: next.length - prefix))
+            in: NSRange(location: prefix, length: storage.length - prefix),
+            with: new.attributedSubstring(from: NSRange(location: prefix, length: new.length - prefix))
         )
-        new.enumerateAttributes(in: NSRange(location: 0, length: prefix)) { attributes, range, _ in
-            storage.setAttributes(attributes, range: range)
+        new.enumerateAttributes(in: NSRange(location: 0, length: prefix)) { attributes, run, _ in
+            var location = run.location
+            while location < NSMaxRange(run) {
+                var old = NSRange()
+                let current = storage.attributes(at: location, longestEffectiveRange: &old, in: run)
+                if !(current as NSDictionary).isEqual(to: attributes) {
+                    storage.setAttributes(attributes, range: old)
+                }
+                location = NSMaxRange(old)
+            }
         }
         storage.endEditing()
+    }
+
+    /// How many UTF-16 units two strings share from the start, compared a
+    /// block at a time.
+    func commonPrefix(_ old: NSString, _ new: NSString) -> Int {
+
+        let limit = min(old.length, new.length)
+        let block = 4096
+        var a = [unichar](repeating: 0, count: block), b = a
+        var prefix = 0
+        while prefix < limit {
+            let range = NSRange(location: prefix, length: min(block, limit - prefix))
+            old.getCharacters(&a, range: range)
+            new.getCharacters(&b, range: range)
+            var index = 0
+            while index < range.length, a[index] == b[index] { index += 1 }
+            prefix += index
+            if index < range.length { break }
+        }
+        return prefix
     }
 }
 

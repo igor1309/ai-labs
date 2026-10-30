@@ -90,6 +90,32 @@ struct TranscriptLogTests {
         #expect((text.string as NSString).substring(with: text.selectedRange()) == "Accountable — я.")
     }
 
+    @Test func anUpdateToTheNewestEntryLeavesTheTextAboveAlone() throws {
+
+        func entries(_ pending: String) -> [PanelState.Entry] {
+            many(30) + [.init(id: 30, time: "13:10", speaker: .me, settled: "Последняя фраза.", pending: pending)]
+        }
+        let host = hosted(.init(entries: entries("по")))
+        let text = try #require(Offscreen.textView(in: host))
+        let storage = try #require(text.textStorage)
+        let newest = (storage.string as NSString).range(of: "13:10").location
+
+        var edited: [NSRange] = []
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSTextStorage.didProcessEditingNotification, object: storage, queue: nil
+        ) { _ in
+            MainActor.assumeIsolated { edited.append(storage.editedRange) }
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        host.rootView = log(.init(entries: entries("по слог")))
+        host.layoutSubtreeIfNeeded()
+
+        // Restyling text above the change would lay all of it out again.
+        #expect(!edited.isEmpty)
+        #expect(edited.allSatisfy { $0.location >= newest }, "edited \(edited), the newest entry starts at \(newest)")
+    }
+
     @Test func holdsWhatADragSelectedAndIgnoresAClick() throws {
 
         var events: [PanelEvent] = []
