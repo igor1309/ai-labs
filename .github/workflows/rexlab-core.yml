@@ -60,3 +60,8 @@ jobs:
         if: matrix.shard == 1
         working-directory: rexlab
         run: node tests/coloringProbe.browser.cjs
+
+      - name: Check production coloring pixels in Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: node tests/coloringPainter.browser.cjs
