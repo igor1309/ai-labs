@@ -2,7 +2,7 @@
 
 ## 2026-10-30
 
-- Screen snapshots of the host on an 11-inch iPad and of host and client on an iPhone 15 Pro, light and dark, now fail CI when a screen moves (LAB-778).
+- Screen snapshots of the host on an 11-inch iPad and of host and client on an iPhone 15 Pro, light and dark, now fail CI when a screen moves (LAB-779).
 - Cards, status panels, notices, icon badges, the exchange strip, the countdown picker and divided lists now come from the design system, so every screen uses the same card padding and title placement; Settings on iPhone keeps Done in the shared footer (LAB-728).
 - On an iPhone every screen's actions sit in one shared footer and use one shared action button, so a tall screen no longer moves its header or button; host and client line up to the pixel on a 6.1-inch iPhone (LAB-728).
 - On an iPhone the host's action button sits at the foot of the screen like the client's, and its screen no longer scrolls, so the header holds the same place on both sides (LAB-728).
