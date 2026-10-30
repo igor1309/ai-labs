@@ -289,6 +289,21 @@ struct HostPickerTests {
         #expect(abs(try #require(aboveLine.view(at: 101.2).strongestAverage) - -70.9) < 0.000001)
     }
 
+    @Test func recoveryFromBelowTheDropLineEndsTheRunOnlyOverTheLine() {
+        let cases: [(rssi: Int, band: Picker.Band, laterSince: Double)] = [
+            (-71, .belowDrop(since: 101.2), 101.2),
+            (-68, .betweenLines, 101.5),
+            (-65, .betweenLines, 101.5),
+        ]
+        for (rssi, band, laterSince) in cases {
+            var picker = makePicker(alpha: 1)
+            window(&picker, ["A": -60], from: 100)
+            #expect(picker.receive(host: "A", rssi: -80, at: 101.2) == leading("A", .belowDrop(since: 101.2), at: 101.2))
+            #expect(picker.receive(host: "A", rssi: rssi, at: 101.3) == leading("A", band, at: 101.3))
+            #expect(picker.receive(host: "A", rssi: -80, at: 101.5) == leading("A", .belowDrop(since: laterSince), at: 101.5))
+        }
+    }
+
     @Test func crossingBackOverTheDropLineStartsANewRun() throws {
         var picker = makePicker()
         window(&picker, ["A": -60], from: 100)
