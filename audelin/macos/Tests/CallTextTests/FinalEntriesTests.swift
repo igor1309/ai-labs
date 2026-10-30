@@ -169,7 +169,7 @@ struct FinalEntriesTests {
             #expect(next.finalCount == count)
             #expect(Array(next.entries.prefix(count)) == Array(first.entries.prefix(count)))
             #expect(next.entries.last?.text == newest.text)
-            #expect(storage(next.entries) != storage(retained.last!.entries), "one array replacement copies the retained prefix per update")
+            #expect(storage(next.entries.sealed) == storage(retained.last!.entries.sealed), "an update shares the final entries with a held state")
             retained.append(next)
         }
         let final = word(count / 2, start: Double(count), end: Double(count + 2))

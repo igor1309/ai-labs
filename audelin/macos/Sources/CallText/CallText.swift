@@ -167,10 +167,9 @@ public actor CallText {
             }
         }
         for item in newlyFinal { committed[item.side] += 1 }
-        // One array mutation preserves the prefix in place when unshared,
-        // or copies it once when a buffered/retained state still owns it.
         state.entries.replaceSubrange(state.finalCount..., with: remaining.lazy.map(\.entry))
         state.finalCount += newlyFinal.count
+        state.entries.seal(upTo: state.finalCount)
     }
 
     private static func precedes(_ lhs: State.Entry, _ rhs: State.Entry) -> Bool {

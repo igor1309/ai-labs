@@ -43,10 +43,10 @@ struct FinishedTextSwitchTests {
         let retained: [State.Entry] = [
             .init(speaker: speaker, text: .init(id: 0, start: 0, end: 2, settled: "first last"), writtenLater: false),
         ]
-        #expect(await call.state == State(status: .listening, entries: retained))
+        #expect(await call.state == State(status: .listening, entries: .init(tail: retained)))
 
         await call.setEnabled(false)
-        #expect(await call.state == State(status: .off, entries: retained))
+        #expect(await call.state == State(status: .off, entries: .init(tail: retained)))
         while let state = await updates.next() {
             snapshots.append(state)
             if state.status == .off { break }
@@ -56,7 +56,7 @@ struct FinishedTextSwitchTests {
             snapshots.append(state)
             if state.status == .listening { break }
         }
-        #expect(await call.state == State(status: .listening, entries: retained))
+        #expect(await call.state == State(status: .listening, entries: .init(tail: retained)))
         #expect(finished.switches.all.isEmpty)
         #expect(open.switches.all == [false, true])
         await openAudio.send(.init(start: 0, samples: [0.75], sampleRate: 1))
@@ -75,7 +75,7 @@ struct FinishedTextSwitchTests {
             let transcript = try await TranscriptFile(url: url)
             var finishedTextSeen = false
             for state in snapshots {
-                let entries = state.entries.filter { $0.speaker == speaker }
+                let entries = Array(state.entries).filter { $0.speaker == speaker }
                 if entries == retained { finishedTextSeen = true }
                 if finishedTextSeen { #expect(entries == retained) }
                 try await transcript.write(Transcript.segments(from: state))

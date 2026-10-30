@@ -22,7 +22,7 @@ struct ReadingFinalCursorTests {
         func add(_ count: Int, final: Int, last: String = "") {
             var entries = (0..<count).map { entry($0, words: "words \($0)", later: later && $0 % 4 == 1) }
             if !last.isEmpty { entries[count - 1] = entry(count - 1, words: last) }
-            var state = State(status: .listening, entries: entries)
+            var state = State(status: .listening, entries: .init(tail: entries))
             state.finalCount = final
             states.append(state)
         }

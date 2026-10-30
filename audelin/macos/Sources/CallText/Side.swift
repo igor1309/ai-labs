@@ -1,3 +1,5 @@
+import SplitRows
+
 /// One side owns hearing, filling in, switching and releasing its live text.
 public protocol Side: Sendable {
 
@@ -94,7 +96,8 @@ public struct State: Equatable, Sendable {
     }
 
     public internal(set) var status: Status
-    public internal(set) var entries: [Entry]
+    /// The final entries stay sealed, so a new state shares them with earlier ones.
+    public internal(set) var entries: SplitRows<Entry>
     /// Leading entries whose text and position in the call will not change.
     public internal(set) var finalCount: Int = 0
 }

@@ -85,7 +85,8 @@ let package = Package(
             name: "CallFolder"
         ),
         .target(
-            name: "CallText"
+            name: "CallText",
+            dependencies: ["SplitRows"]
         ),
         .target(
             name: "Compose",
@@ -214,7 +215,7 @@ let package = Package(
         ),
         .testTarget(
             name: "CallTextTests",
-            dependencies: ["CallText"]
+            dependencies: ["CallText", "SplitRows"]
         ),
         .testTarget(
             name: "ComposeTests",
