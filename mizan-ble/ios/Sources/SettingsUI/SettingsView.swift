@@ -16,8 +16,7 @@ public struct SettingsView: View {
         if horizontalSizeClass == .compact {
             IPhoneShell(
                 side: .host, eyebrow: state.eyebrow, status: StatusPill(state.statusText),
-                onSwitch: { _ in }, headerTopPadding: Tokens.space2,
-                contentBottomPadding: Tokens.space4
+                onSwitch: { _ in }
             ) {
                 CompactHostSteps(state.steps, onSettings: {})
             } content: {

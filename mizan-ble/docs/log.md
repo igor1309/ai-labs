@@ -3,6 +3,8 @@
 ## 2026-10-30
 
 - v0.0.1 is built: payments confirm, fail and decline on a real iPad and iPhone, with the signal values measured there and no secret in the log (LAB-728).
+- Switching between host and client swaps the screen at once, instead of fading one full screen over the other (LAB-728).
+- The screens lay out inside the safe area on every device, with only their backgrounds reaching the screen's edges (LAB-728).
 - On an iPhone the host's header clears the status bar, and both sides keep clear of the status bar and home indicator; the client's detail keeps its two lines (LAB-728).
 
 ## 2026-10-29

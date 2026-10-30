@@ -211,7 +211,7 @@ struct RenderTests {
         for size in [(393.0, 852.0), (430.0, 932.0)] {
             views.append(("compact host shell \(size)", AnyView(IPhoneShell(
                 side: .host, eyebrow: "STEP 1 OF 5 · AMOUNT", status: StatusPill("Idle"),
-                onSwitch: { _ in }, headerTopPadding: Tokens.space2, contentBottomPadding: Tokens.space4
+                onSwitch: { _ in }
             ) { CompactHostSteps(steps, onSettings: {}) } content: { Text("Content").typeRole(.body) }
                 .frame(width: size.0, height: size.1))))
             views.append(("iPhone shell \(size)", AnyView(IPhoneShell(

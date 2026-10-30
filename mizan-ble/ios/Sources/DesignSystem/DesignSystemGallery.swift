@@ -147,8 +147,7 @@ public struct DesignSystemGallery: View {
                 } content: {
                     Text("Stage content").typeRole(.body)
                 }
-                .frame(width: 1194, height: 834)
-                .deviceOutline(Tokens.radiusIpad)
+                .deviceScreen(CGSize(width: 1194, height: 834), cornerRadius: Tokens.radiusIpad, safeArea: .iPadScreen)
                 IPhoneShell(
                     eyebrow: "STEP 1 OF 4 · FIND", status: StatusPill("Idle"), onSwitch: { _ in }
                 ) {
@@ -156,8 +155,7 @@ public struct DesignSystemGallery: View {
                 } content: {
                     Text("Stage content").typeRole(.body)
                 }
-                .frame(width: 393, height: 852)
-                .deviceOutline(Tokens.radiusIphone)
+                .deviceScreen(CGSize(width: 393, height: 852), cornerRadius: Tokens.radiusIphone, safeArea: .iPhoneScreen)
             }
         }
     }
