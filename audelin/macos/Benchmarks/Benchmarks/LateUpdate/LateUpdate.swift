@@ -9,32 +9,35 @@ import protocol RecordedCapture.Track
 import SessionRehearsal
 import struct SystemAudioCapture.AudioPiece
 
-// What one new word costs the app late in a 3-hour call: the real session and
+// What one new word costs the app as the call grows: the real session and
 // panel, both sides speaking through the rehearsal's fake recognisers, with
-// live text on and the transcript written. Setup plays the 3 hours in large
-// chunks; each iteration then feeds audio until the microphone side speaks
-// one more word, and waits until the panel shows it.
+// live text on and the transcript written. Setup plays the call in large
+// chunks until the panel holds the given lines (1,620 is a 3-hour call); each
+// iteration then feeds audio until the microphone side speaks one more word,
+// and waits until the panel shows it. A hundred words add about ten lines.
 //
 // Instructions and allocations count all the process's work for that word,
 // the transcript writer's included; wall clock is how long the panel took.
 
 let benchmarks: @Sendable () -> Void = {
 
-    Benchmark(
-        "One word late in a 3-hour call",
-        configuration: .init(
-            metrics: [.wallClock, .cpuTotal, .instructions, .mallocCountTotal],
-            timeUnits: .microseconds,
-            warmupIterations: 20,
-            maxDuration: .seconds(20),
-            maxIterations: 500
-        ),
-        closure: { benchmark, call in
-            for _ in benchmark.scaledIterations { await call.speakOneWord() }
-        },
-        setup: { try await Call.played(hours: 3) },
-        teardown: { await Call.current?.end() }
-    )
+    for lines in [20, 800, 1_620] {
+        Benchmark(
+            "One word with \(lines) lines in the panel",
+            configuration: .init(
+                metrics: [.wallClock, .cpuTotal, .instructions, .mallocCountTotal],
+                timeUnits: .microseconds,
+                warmupIterations: 10,
+                maxDuration: .seconds(20),
+                maxIterations: 100
+            ),
+            closure: { benchmark, call in
+                for _ in benchmark.scaledIterations { await call.speakOneWord() }
+            },
+            setup: { try await Call.played(lines: lines) },
+            teardown: { await Call.current?.end() }
+        )
+    }
 }
 
 /// One recorded call through the app's composition, fed by hand.
@@ -59,18 +62,20 @@ final class Call: @unchecked Sendable {
     /// Slots of audio fed to both sides.
     var slots = 0
 
-    static func played(hours: Double) async throws -> Call {
+    static func played(lines: Int) async throws -> Call {
 
         let call = try await Call()
         Call.current = call
         // A sentence and its pause at a time, so getting there is quick.
-        let target = Int(hours * 3600 / slot)
-        while call.slots < target { call.feed(slots: 30) }
-        await call.waitForWord(Self.spokenWords(through: call.slots))
-        let rows = if case let .lines(lines) = call.latest?.log { lines.rows.count } else { 0 }
-        FileHandle.standardError.write(Data("played \(hours) h: \(rows) rows in the panel\n".utf8))
+        while call.lines < lines {
+            call.feed(slots: 30)
+            await call.waitForWord(Self.spokenWords(through: call.slots))
+        }
+        FileHandle.standardError.write(Data("played \(call.slots * 4 / 600) min: \(call.lines) lines in the panel\n".utf8))
         return call
     }
+
+    var lines: Int { if case let .lines(lines) = latest?.log { lines.rows.count } else { 0 } }
 
     private init() async throws {
 
