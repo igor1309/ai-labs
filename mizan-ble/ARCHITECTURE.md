@@ -224,7 +224,8 @@ or reads real time; only the apps wire it in (`ios/scripts/tests/test_clock_boun
 
 - **Host:** the host UI sends key presses to amount entry, lock, cancel
   and broadcast again to host broadcast, and the mock outcome, cancel and
-  new amount to host payment. Their effects open and close a session
+  new amount to host payment. Each of the operator's actions, and host
+  broadcast's timeout, also go to timeout notice. Their effects open and close a session
   (session crypto); serve, advertise, stop advertising and retire the
   service, or finish it after what is queued (host radio; a serve waits
   for a finish); start and stop

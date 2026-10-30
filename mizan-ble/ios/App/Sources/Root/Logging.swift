@@ -8,7 +8,7 @@ public protocol LogDescribable {
 public struct LogEntry: Sendable, Equatable {
     public enum Category: String, Sendable {
         case mode, hostRadio, clientRadio, rehearsal
-        case amountEntry, hostBroadcast, hostPayment, clientFind, clientConnect, clientReview, clientPayment
+        case amountEntry, hostBroadcast, timeoutNotice, hostPayment, clientFind, clientConnect, clientReview, clientPayment
     }
 
     public let category: Category

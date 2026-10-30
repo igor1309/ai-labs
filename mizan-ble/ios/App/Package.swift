@@ -19,6 +19,7 @@ let package = Package(
             .product(name: "IMRxObservation", package: "swift-imrx"),
             .product(name: "AmountEntry", package: "ios"),
             .product(name: "HostBroadcast", package: "ios"),
+            .product(name: "TimeoutNotice", package: "ios"),
             .product(name: "HostPayment", package: "ios"),
             .product(name: "HostUI", package: "ios"),
             .product(name: "ClientFind", package: "ios"),

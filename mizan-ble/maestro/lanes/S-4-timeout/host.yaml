@@ -30,3 +30,4 @@ appId: dev.igor1309.mizan-ble.rehearsal
 - tapOn:
     id: "key 7"
 - assertVisible: "7 Mizan"
+- assertNotVisible: "No client in 15 s"
