@@ -203,6 +203,11 @@ Guards, passing on trunk:
   to the end of the call.
 - A transcript that keeps failing is reported once, and again only after a
   write has succeeded.
+- A hearing late in a long call costs about what an early one does: a cut
+  decided by settled words alone never moves, so the segments before the
+  last such cut are kept as they are and only the words after it are cut
+  again. Cutting words as they arrive, drafts revised, ends where cutting
+  them all at once does.
 
 ## Candidates already in the code
 

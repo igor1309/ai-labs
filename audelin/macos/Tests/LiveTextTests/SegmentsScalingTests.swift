@@ -17,9 +17,41 @@ struct SegmentsScalingTests {
         let late = (seconds: lates.map(\.seconds).min()!, lost: lates.map(\.lost).max()!)
         #expect(early.lost == 0, "\(early.lost) words lost after 300")
         #expect(late.lost == 0, "\(late.lost) words lost after 30,000")
-        withKnownIssue("every hearing copies and re-cuts the whole call") {
-            #expect(late.seconds / early.seconds <= 3, "a hearing after 30,000 words costs \(late.seconds / early.seconds)x one after 300")
+        #expect(late.seconds / early.seconds <= 3, "a hearing after 30,000 words costs \(late.seconds / early.seconds)x one after 300")
+    }
+
+    /// Segments already final are not cut again, so cutting words as they
+    /// arrive must end where cutting them all at once does: through pauses,
+    /// sentence ends and monologues long enough to cut by length.
+    @Test func cuttingWordsAsTheyArriveEndsAsCuttingThemAllAtOnce() {
+
+        var words: [Word] = []
+        var time = 0.0
+        for index in 0..<3_000 {
+            let monologue = (index / 200) % 2 == 1
+            let gap = !monologue && index % 23 == 0 ? 1.5 : 0.1
+            time += gap
+            let text = index % 11 == 0 ? "w\(index)." : "w\(index)"
+            words.append(Word(text, start: time, end: time + 0.3))
+            time += 0.3
         }
+
+        var arriving = Segments(pause: 1)
+        for index in words.indices {
+            // A word is a draft for two hearings, read right in the third,
+            // and final a word after that.
+            let first = max(0, index - 2)
+            let heard = words[first...index].enumerated().map { offset, word in
+                first + offset < index - 1 ? word : Word("~" + word.text, start: word.start, end: word.end)
+            }
+            arriving.hear(Hearing(words: heard, from: heard[0].start, finalThrough: index >= 3 ? words[index - 3].end : nil))
+        }
+        arriving.finish(Hearing(words: Array(words.suffix(2)), from: words[words.count - 2].start))
+        var atOnce = Segments(pause: 1)
+        atOnce.finish(Hearing(words: words))
+
+        #expect(arriving.all == atOnce.all)
+        #expect(arriving.all.count > 100, "only \(arriving.all.count) segments")
     }
 }
 
