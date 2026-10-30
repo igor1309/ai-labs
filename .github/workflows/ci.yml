@@ -148,6 +148,7 @@ jobs:
               - ".github/workflows/notio-frontend-deploy.yml"
             rexlab:
               - "rexlab/src/**"
+              - "rexlab/prototypes/coloring.html"
               - "rexlab/tests/**"
               - "rexlab/scripts/**"
               - "rexlab/index.html"
