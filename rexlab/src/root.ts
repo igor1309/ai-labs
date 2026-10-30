@@ -27,6 +27,7 @@ import { mediaViewport } from "./mediaViewport.ts";
 import { pictureStore } from "./Picture.tsx";
 import { skeletonSounds } from "./skeletonSounds.ts";
 import { tapFilter, type TapInput } from "./tapFilter.ts";
+import type { InputArbitration } from "./inputArbitration.ts";
 import { TURN_PART, type Box, type PageAnimation, type TurnFrame } from "./turnMotion.ts";
 
 // Every body picture, loaded through Vite so its URL carries a content
@@ -207,6 +208,33 @@ export function filterDoubleTaps(target: Pick<EventTarget, "addEventListener" | 
     listen("click", (event) => ({ kind: "tap", byKey: (event as MouseEvent).detail === 0 }))
   ];
   return () => stops.forEach((stop) => stop());
+}
+
+// Rejected contacts must reach neither the shared tap policy nor app handlers.
+// Register this once, before mounting screens, so capture order is stable.
+export function browserInput(target: Pick<EventTarget, "addEventListener" | "removeEventListener">, filter = tapFilter()) {
+  const guards = new Set<(event: Event) => void>();
+  const arbitrate: InputArbitration = guard => {
+    guards.add(guard);
+    return () => { guards.delete(guard); };
+  };
+  const reject = (event: Event) => {
+    for (const guard of guards) {
+      guard(event);
+      if (event.cancelBubble) break;
+    }
+  };
+  const events = ["pointerdown", "pointermove", "pointerup", "pointercancel", "click"];
+  events.forEach(type => target.addEventListener(type, reject, { capture: true }));
+  const stopFilter = filterDoubleTaps(target, filter);
+  return {
+    arbitrate,
+    stop() {
+      stopFilter();
+      events.forEach(type => target.removeEventListener(type, reject, { capture: true }));
+      guards.clear();
+    }
+  };
 }
 
 // Names index.html's version footer, which stands outside the app.

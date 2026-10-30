@@ -1,5 +1,19 @@
 # rexlab — Change Log
 
+## 2026-10-30
+
+- Coloring strokes update once per display frame without replaying saved brush history for every pen sample (LAB-803).
+
+- A saved coloring result brings the child's own dinosaur alive and awards one star per work, with a durable collection best and editable history (LAB-803).
+
+- Coloring gallery lists independent drafts and completed works, continues the latest saved edit and keeps unreadable history visible (LAB-803).
+
+- The coloring workshop offers clipped painting, compact tools and ordered autosave with retry and confirmed loss handling in English and Russian, both themes and orientations (LAB-803).
+
+- Coloring works now have an editable action history and atomic local storage that preserves unreadable records and earned status (LAB-803).
+
+- An isolated Stegosaurus coloring probe offers editable paint, persistent undo, independent works and animation; desktop browser checks and payload measurements are recorded; physical iPad acceptance remains pending (LAB-801).
+
 ## 2026-10-28
 
 - WHOSE JAW? groups landscape choices near the title and gives the jaw a larger, closely fitted tray; short landscape places it beside the choices (LAB-705).

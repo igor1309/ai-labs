@@ -55,3 +55,33 @@ jobs:
         if: matrix.shard == 1
         working-directory: rexlab
         run: npm run test:browser
+
+      - name: Check coloring technical probe in Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: node tests/coloringProbe.browser.cjs
+
+      - name: Check production coloring pixels in Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: node tests/coloringPainter.browser.cjs
+
+      - name: Check coloring workshop in Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: node tests/coloringWorkshop.browser.cjs
+
+      - name: Check long coloring contacts in Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: node tests/coloringDrawing.browser.cjs
+
+      - name: Check coloring gallery in Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: node tests/coloringGallery.browser.cjs
+
+      - name: Check coloring result in Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: node tests/coloringResult.browser.cjs
