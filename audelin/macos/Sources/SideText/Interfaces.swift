@@ -26,13 +26,26 @@ public protocol LiveAudio: Sendable {
 /// The same live text is retained across switches and shared with filling in.
 public protocol LiveText: Sendable {
 
-    /// Returns the complete text, including revisions of earlier segments.
-    func hear(_ audio: Audio) async throws -> [Text]
+    func hear(_ audio: Audio) async throws -> TextUpdate
     /// Cancels the waiting hearing, retaining live text for replay on switch on.
     func cancelHearing() async
-    func finish() async throws -> [Text]
+    func finish() async throws -> TextUpdate
     /// Releases live text, returning only once it has stopped.
     func stop() async
+}
+
+public struct TextUpdate: Equatable, Sendable {
+
+    /// The complete, immutable prefix. It only grows across updates.
+    public let final: [Text]
+    /// The current revisable suffix; omitted ids lose their identity.
+    public let tail: [Text]
+
+    public init(final: [Text], tail: [Text]) {
+
+        self.final = final
+        self.tail = tail
+    }
 }
 
 /// One filling-in run. The caller serializes it with all other live-text work.

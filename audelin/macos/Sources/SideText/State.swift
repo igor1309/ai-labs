@@ -24,5 +24,17 @@ public struct State: Equatable, Sendable {
     }
 
     public internal(set) var status: Status
-    public internal(set) var entries: [Entry]
+    public var finalCount: Int { finalEntries.count }
+    /// Whole-call compatibility view; forming it joins the retained prefix and tail.
+    public var entries: [Entry] { finalEntries + tailEntries }
+
+    /// Immutable leading entries, retained across tail revisions.
+    public internal(set) var finalEntries: [Entry] = []
+    public internal(set) var tailEntries: [Entry]
+
+    init(status: Status, entries: [Entry]) {
+
+        self.status = status
+        tailEntries = entries
+    }
 }

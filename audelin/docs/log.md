@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- Side text retains final entries and their recovered-audio marks, processing only
+  newly final entries and the live tail on each hearing (LAB-813).
+
 - Live text reports only newly final segments and its live tail; track text keeps
   final text without mapping it again as the call grows (LAB-815).
 

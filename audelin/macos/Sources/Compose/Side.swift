@@ -9,6 +9,7 @@ import protocol FillIn.LiveText
 import protocol FillIn.WrittenTrack
 import struct SideText.Audio
 import struct SideText.Text
+import struct SideText.TextUpdate
 import struct SideText.State
 import struct SideText.FilledText
 import protocol SideText.LiveAudio
@@ -93,14 +94,17 @@ private final class SideAudio: SideText.LiveAudio, FillIn.LiveAudioPosition, Sen
 private actor SideHearing: SideText.LiveText {
 
     let text: any TextEngine
-    private var hearing: Task<[SideText.Text], any Error>?
+    private var hearing: Task<TextUpdate, any Error>?
 
     init(text: any TextEngine) { self.text = text }
 
-    func hear(_ audio: SideText.Audio) async throws -> [SideText.Text] {
+    func hear(_ audio: SideText.Audio) async throws -> TextUpdate {
 
         let text = text
-        let operation = Task { try await text.hear(audio).all }
+        let operation = Task {
+            let update = try await text.hear(audio)
+            return TextUpdate(final: update.final, tail: update.tail)
+        }
         hearing = operation
         defer { hearing = nil }
         return try await withTaskCancellationHandler {
@@ -114,7 +118,11 @@ private actor SideHearing: SideText.LiveText {
         _ = await hearing?.result
     }
 
-    func finish() async throws -> [SideText.Text] { try await text.finish().all }
+    func finish() async throws -> TextUpdate {
+
+        let update = try await text.finish()
+        return TextUpdate(final: update.final, tail: update.tail)
+    }
     func stop() async { await text.shutdown() }
 }
 

@@ -35,9 +35,9 @@ private actor ScriptedText: LiveText {
 
     init(_ script: [[Text]]) { self.script = script }
 
-    func hear(_ audio: Audio) -> [Text] { script.isEmpty ? [] : script.removeFirst() }
+    func hear(_ audio: Audio) -> TextUpdate { TextUpdate(final: [], tail: script.isEmpty ? [] : script.removeFirst()) }
     func cancelHearing() {}
-    func finish() -> [Text] { [] }
+    func finish() -> TextUpdate { TextUpdate(final: [], tail: []) }
     func stop() {}
 }
 
