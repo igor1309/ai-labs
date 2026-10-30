@@ -2,14 +2,28 @@
 /// pending words.
 public actor LiveText {
 
-    /// The segments after each change, ending when Live text does.
-    public nonisolated let updates: AsyncStream<Segments>
+    public struct Update: Equatable, Sendable {
+
+        /// Replace the retained segments from this index onward.
+        public let from: Int
+        /// Segments before this count will never change again.
+        public let finalCount: Int
+        /// Newly final segments followed by the live tail. Owns its storage
+        /// so retaining an update does not copy the call on the next hearing.
+        public let segments: [Segments.Segment]
+        public let end: Double
+        public let ending: Segments.Ending?
+    }
+
+    /// Ordered, lossless updates starting at the previous final count.
+    public nonisolated let updates: AsyncStream<Update>
 
     private let recognizer: any Recognizer
-    private let continuation: AsyncStream<Segments>.Continuation
+    private let continuation: AsyncStream<Update>.Continuation
     private var segments: Segments
     private var feeding: Task<Void, any Error>?
     private var stopped = false
+    private var reportedFinalCount = 0
 
     /// A pause is 2 s: longer than the recogniser's word times leave between
     /// words of one sentence.
@@ -34,7 +48,7 @@ public actor LiveText {
         } catch {
             segments.fail()
         }
-        continuation.yield(segments)
+        publish()
         continuation.finish()
     }
 
@@ -45,11 +59,21 @@ public actor LiveText {
         feeding?.cancel()
     }
 
+    private func publish() {
+
+        continuation.yield(Update(
+            from: reportedFinalCount, finalCount: segments.finalCount,
+            segments: segments.all[reportedFinalCount...].map { $0 },
+            end: segments.end, ending: segments.ending
+        ))
+        reportedFinalCount = segments.finalCount
+    }
+
     private func feed(from source: any AudioSource) async throws {
 
         for await chunk in source.audio() {
             segments.hear(try await recognizer.hear(chunk))
-            continuation.yield(segments)
+            publish()
         }
     }
 }

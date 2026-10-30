@@ -198,7 +198,7 @@ private actor SideEngine: TextEngine {
         try Task.checkCancellation()
     }
 
-    func hear(_ audio: SideText.Audio) throws -> [SideText.Text] {
+    func hear(_ audio: SideText.Audio) throws -> TrackText.Update {
 
         if let failWord, audio.samples.contains(Float(failWord)) { throw Refusal() }
         samples += audio.samples
@@ -208,12 +208,12 @@ private actor SideEngine: TextEngine {
                 text.append(.init(id: text.count, start: start, end: start + 1 / audio.sampleRate, pending: "word\(Int(sample))"))
             }
         }
-        return text
+        return .init(final: [], tail: text)
     }
 
-    func finish() -> [SideText.Text] {
+    func finish() -> TrackText.Update {
 
-        text.map { .init(id: $0.id, start: $0.start, end: $0.end, settled: $0.pending) }
+        .init(final: text.map { .init(id: $0.id, start: $0.start, end: $0.end, settled: $0.pending) }, tail: [])
     }
 
     func shutdown() { stops += 1 }

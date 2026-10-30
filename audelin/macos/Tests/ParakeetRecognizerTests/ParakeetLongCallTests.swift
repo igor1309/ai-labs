@@ -161,12 +161,12 @@ private func hear(_ recognizer: ParakeetRecognizer, seconds: Double) async -> (w
 
     let live = LiveText(recognizer: recognizer)
     let last = Task {
-        var last: Segments?
-        for await update in live.updates { last = update }
-        return last
+        var all: [Segments.Segment] = []
+        for await update in live.updates { all.replaceSubrange(update.from..., with: update.segments) }
+        return all
     }
     await live.listen(to: ClockAudio(pieces: Int(seconds * 10)))
-    let segments = await last.value?.all ?? []
+    let segments = await last.value
     let words = { (text: String) in text.split(separator: " ").map(String.init) }
     return (segments.flatMap { words($0.settled) + words($0.pending) }, segments.flatMap { words($0.pending) })
 }

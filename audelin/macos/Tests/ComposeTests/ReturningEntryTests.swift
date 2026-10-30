@@ -115,13 +115,13 @@ actor ScriptedEngine: TextEngine {
 
     func prepare() {}
 
-    func hear(_ audio: SideText.Audio) -> [SideText.Text] {
+    func hear(_ audio: SideText.Audio) -> TrackText.Update {
 
         if !script.isEmpty { latest = script.removeFirst() }
-        return latest
+        return .init(final: [], tail: latest)
     }
 
-    func finish() -> [SideText.Text] { latest }
+    func finish() -> TrackText.Update { .init(final: [], tail: latest) }
 
     func shutdown() {}
 }

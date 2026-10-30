@@ -21,6 +21,9 @@ public struct Segments: Equatable, Sendable {
     }
 
     public private(set) var all: [Segment] = []
+    /// Segments before this count keep their id, text and end. On ending,
+    /// every segment is final; otherwise its end is the next segment's start.
+    public private(set) var finalCount = 0
     public private(set) var ending: Ending?
     /// Seconds into the track where the last word ends.
     public var end: Double { words.last?.end ?? finalEnd }
@@ -36,7 +39,6 @@ public struct Segments: Equatable, Sendable {
     /// are final and keep only their text.
     private var words: [Word] = []
     private var settledCount = 0
-    private var finalCount = 0
     private var finalEnd = 0.0
 
     public init(pause: Double) {
@@ -61,6 +63,7 @@ public struct Segments: Equatable, Sendable {
         settledCount = words.count
         ending = .finished
         cutIntoSegments()
+        finalCount = all.count
     }
 
     mutating func fail() {
@@ -68,6 +71,7 @@ public struct Segments: Equatable, Sendable {
         settledCount = words.count
         ending = .failed
         cutIntoSegments()
+        finalCount = all.count
     }
 
     /// Replaces pending words from where the report starts; reported words

@@ -19,8 +19,8 @@ import Synchronization
 protocol TextEngine: Sendable {
 
     func prepare() async throws
-    func hear(_ audio: SideText.Audio) async throws -> [SideText.Text]
-    func finish() async throws -> [SideText.Text]
+    func hear(_ audio: SideText.Audio) async throws -> TrackText.Update
+    func finish() async throws -> TrackText.Update
     func shutdown() async
 }
 
@@ -100,7 +100,7 @@ private actor SideHearing: SideText.LiveText {
     func hear(_ audio: SideText.Audio) async throws -> [SideText.Text] {
 
         let text = text
-        let operation = Task { try await text.hear(audio) }
+        let operation = Task { try await text.hear(audio).all }
         hearing = operation
         defer { hearing = nil }
         return try await withTaskCancellationHandler {
@@ -114,7 +114,7 @@ private actor SideHearing: SideText.LiveText {
         _ = await hearing?.result
     }
 
-    func finish() async throws -> [SideText.Text] { try await text.finish() }
+    func finish() async throws -> [SideText.Text] { try await text.finish().all }
     func stop() async { await text.shutdown() }
 }
 
@@ -126,7 +126,7 @@ private struct FillHearing: FillIn.LiveText {
 
     func hear(_ audio: FillIn.Audio) async throws -> [FillIn.Text] {
 
-        try await text.hear(.init(start: audio.start, samples: audio.samples, sampleRate: audio.sampleRate)).map {
+        try await text.hear(.init(start: audio.start, samples: audio.samples, sampleRate: audio.sampleRate)).all.map {
             .init(id: $0.id, start: $0.start, end: $0.end, settled: $0.settled, pending: $0.pending)
         }
     }

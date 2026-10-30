@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- Live text reports only newly final segments and its live tail; track text keeps
+  final text without mapping it again as the call grows (LAB-815).
+
 - Cancelling a capture stops its timer, recorder and rehearsal and removes the
   recorded media unless kept (LAB-793).
 

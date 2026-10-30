@@ -31,7 +31,7 @@ struct RecognizerSourceTests {
         }
         release.release()
         try await preparing.value
-        #expect(try await adapter.hear(.init(start: 0, samples: [0.25], sampleRate: 48_000)) == [
+        #expect(try await adapter.hear(.init(start: 0, samples: [0.25], sampleRate: 48_000)).all == [
             .init(id: 0, start: 0, end: 1.0 / 48_000, pending: "ready pending"),
         ])
         #expect(await recognizer.chunks == [.init(samples: [0.25], sampleRate: 48_000)])
@@ -67,7 +67,7 @@ struct RecognizerSourceTests {
         release.release()
         try await adapter.prepare()
         #expect(builds.all == [true])
-        #expect(try await adapter.hear(.init(start: 0, samples: [0.5], sampleRate: 48_000)).first?.pending == "ready pending")
+        #expect(try await adapter.hear(.init(start: 0, samples: [0.5], sampleRate: 48_000)).all.first?.pending == "ready pending")
         await adapter.shutdown()
     }
 
@@ -89,10 +89,10 @@ struct RecognizerSourceTests {
         try await first.value
         try await second.value
         _ = try await adapter.hear(.init(start: 0, samples: [0.25], sampleRate: 48_000))
-        #expect(try await adapter.finish().first?.settled == "once final")
+        #expect(try await adapter.finish().all.first?.settled == "once final")
         try await adapter.prepare()
         _ = try await adapter.hear(.init(start: 0, samples: [0.5], sampleRate: 48_000))
-        #expect(try await adapter.finish().first?.settled == "once final")
+        #expect(try await adapter.finish().all.first?.settled == "once final")
         #expect(builds.all == [true])
         #expect(await recognizer.chunks.map(\.samples) == [[0.25], [0.5]])
         #expect(await recognizer.finishes == 2)
