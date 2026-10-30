@@ -6,7 +6,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { JAW_AUDIO_KEY } from "../src/localJawAudio.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import { TURN_TIMING, appProps, browserInput, drawnOpacity, extendPart, pageAnimations, turnFrame } from "../src/root.ts";
+import { TURN_TIMING, appProps, browserColoring, browserInput, drawnOpacity, extendPart, pageAnimations, turnFrame } from "../src/root.ts";
 import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser, quizSaved, rootInsets } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
@@ -603,5 +603,17 @@ describe("the double-tap filter in a browser", () => {
     const second = [touch("pointerdown", 1200), touch("pointerup", 1250), browserEvent("click", { detail: 1 })].map(send);
     expect([first, second]).toEqual([[false, false, false], [true, true, true]]);
     expect(handled).toEqual(["pointerdown", "pointerup", "click"]);
+  });
+});
+
+describe("coloring identities on a local HTTP preview", () => {
+  it("creates distinct UUIDs when randomUUID is unavailable without opening storage", () => {
+    let seed = 0;
+    const crypto = {
+      getRandomValues: (bytes: Uint8Array) => { bytes.fill(++seed); return bytes; }
+    } as Crypto;
+    const coloring = browserColoring({ document, indexedDB: {} as IDBFactory, crypto });
+    expect(coloring.identity()).toBe("01010101-0101-4101-8101-010101010101");
+    expect(coloring.identity()).toBe("02020202-0202-4202-8202-020202020202");
   });
 });
