@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- Cancelling a capture stops its timer, recorder and rehearsal and removes the
+  recorded media unless kept; panel intervals include transcript layout (LAB-793).
+
 - Capture summaries show the recorded signpost intervals and keep machine data
   separately; terminating endurance also stops its rehearsal (LAB-793).
 

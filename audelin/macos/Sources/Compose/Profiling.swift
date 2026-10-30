@@ -1,7 +1,8 @@
 import struct CallText.State
 import LiveText
 import os
-import Reading
+import PanelUI
+import SwiftUI
 
 /// A fresh ID for each call keeps overlapping hearings and writes distinct.
 struct ProfileIntervals: Sendable {
@@ -18,16 +19,32 @@ struct ProfileIntervals: Sendable {
     }()
 }
 
-struct SignpostedPanelUpdate: Sendable {
+/// Measures a hosted panel update through the transcript's AppKit layout.
+@MainActor
+public struct SignpostedPanelUpdate<Content: View> {
 
-    let receive: @Sendable (ReadingState) async -> Void
-    let intervals: ProfileIntervals
+    private let host: NSHostingView<Content>
+    private let content: (PanelState) -> Content
+    private let intervals: ProfileIntervals
 
-    func callAsFunction(_ state: ReadingState) async {
+    public init(host: NSHostingView<Content>, content: @escaping (PanelState) -> Content) {
+
+        self.init(host: host, content: content, intervals: .system)
+    }
+
+    init(host: NSHostingView<Content>, content: @escaping (PanelState) -> Content, intervals: ProfileIntervals) {
+
+        self.host = host
+        self.content = content
+        self.intervals = intervals
+    }
+
+    public func callAsFunction(_ state: PanelState) {
 
         let end = intervals.begin("PanelUpdate")
         defer { end() }
-        await receive(state)
+        host.rootView = content(state)
+        host.layoutSubtreeIfNeeded()
     }
 }
 

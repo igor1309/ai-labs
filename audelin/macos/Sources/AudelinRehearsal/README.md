@@ -58,11 +58,20 @@ own report. Both modes need a logged-in GUI session for the panel.
 `--out DIR` picks a fresh folder instead of `profiles/<date>/`. Capture requires
 a positive integer `--capture-for` in seconds; `--capture-after` defaults to zero.
 The rehearsal continues to its own end after capture. Raw XML is removed on
-success and failure.
+success and failure. The script owns the rehearsal, offset timer and recorder
+as separate process groups, so cancellation interrupts the wait and stops and
+reaps the children. It checks the rehearsal is still alive after the offset
+before attaching Instruments. An early exit makes the capture fail.
+
+Both modes record into an invocation-owned temporary directory, passed with
+`--recordings-dir`. The script removes it after reaping the rehearsal, including
+on cancellation and failure; `--keep` preserves it. The report gives its path.
 
 The summary labels the main thread's share of sampled CPU and lists complete
 `PanelUpdate`, `TranscriptWrite` and `Hearing` intervals: count, total and longest.
-PanelUpdate measures reading-state mapping and delivery, before SwiftUI layout.
+PanelUpdate measures updating the hosted panel and laying out its transcript.
+The rehearsal decorates the host update and completes layout before ending the
+interval.
 Compare summaries from matching workloads, builds, machines and instrumentation:
 
     python3 -I scripts/summarize-trace.py --compare OLD/summary.json NEW/summary.json

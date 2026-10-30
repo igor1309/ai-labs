@@ -25,7 +25,6 @@ public actor AudelinPanel {
     private let makeReading: @MainActor @Sendable () -> ReadingInputs
     private let now: @Sendable () -> Double
     private let ticks: @Sendable () -> AsyncStream<Void>
-    private let intervals: ProfileIntervals
     private let sink: any LogSink
     private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
     private var state = PanelState(recording: .off, log: .empty)
@@ -45,15 +44,13 @@ public actor AudelinPanel {
 
     init(
         makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
-        now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink,
-        intervals: ProfileIntervals = .system
+        now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink
     ) {
 
         self.makeReading = makeReading
         self.now = now
         self.ticks = ticks
         self.sink = sink
-        self.intervals = intervals
     }
 
     /// Each subscriber immediately receives the current state.
@@ -79,11 +76,8 @@ public actor AudelinPanel {
 
         let reading = await makeReading()
         current = (id, reading, enableLiveText)
-        let update = SignpostedPanelUpdate(receive: { [weak self] state in
+        return await ReadingSubscription(reading: reading, text: text, now: now, ticks: ticks(), sink: sink) { [weak self] state in
             await self?.receive(state, id: id)
-        }, intervals: intervals)
-        return await ReadingSubscription(reading: reading, text: text, now: now, ticks: ticks(), sink: sink) { state in
-            await update(state)
         }
     }
 

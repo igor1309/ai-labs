@@ -5,7 +5,6 @@ import Compose
 import Foundation
 import LiveText
 import struct MicrophoneCapture.AudioPiece
-import Observation
 import PanelUI
 import SessionRehearsal
 import SwiftUI
@@ -23,45 +22,41 @@ do { options = try Options(Array(CommandLine.arguments.dropFirst())) } catch {
 
 let application = NSApplication.shared
 application.setActivationPolicy(.regular)
-let shown = Shown()
+let host = NSHostingView(rootView: ShownPanel(state: .init(recording: .off, log: .empty)))
+let updatePanel = SignpostedPanelUpdate(host: host, content: ShownPanel.init)
 let window = NSWindow(
     contentRect: NSRect(x: 0, y: 0, width: PanelConfig.glassLedger.panelWidth, height: 640),
     styleMask: [.titled, .resizable], backing: .buffered, defer: false
 )
 window.title = "Audelin rehearsal"
-window.contentView = NSHostingView(rootView: ShownPanel(shown: shown))
+window.contentView = host
 window.center()
 window.makeKeyAndOrderFront(nil)
 
 Task { @MainActor in
-    let code = await rehearse(options, shown: shown)
+    let code = await rehearse(options, updatePanel: { updatePanel($0) })
     exit(code)
 }
 application.run()
 
-/// The panel's latest state, for the window to draw.
-@MainActor @Observable
-final class Shown {
+struct ShownPanel: View {
 
-    var state = PanelState(recording: .off, log: .empty)
-}
-
-private struct ShownPanel: View {
-
-    let shown: Shown
+    let state: PanelState
 
     var body: some View {
 
-        PanelView(state: shown.state, event: { _ in })
+        PanelView(state: state, event: { _ in })
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
 @MainActor
-private func rehearse(_ options: Options, shown: Shown) async -> Int32 {
+private func rehearse(_ options: Options, updatePanel: @escaping @MainActor (PanelState) -> Void) async -> Int32 {
 
-    let root = FileManager.default.temporaryDirectory.appendingPathComponent("audelin-rehearsal-\(ProcessInfo.processInfo.processIdentifier)")
-    defer { if !options.keep { try? FileManager.default.removeItem(at: root) } }
+    let root = options.recordingsDirectory.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        ?? FileManager.default.temporaryDirectory.appendingPathComponent("audelin-rehearsal-\(ProcessInfo.processInfo.processIdentifier)")
+    // A supplied directory belongs to the caller, which can clean it even after SIGTERM.
+    defer { if options.recordingsDirectory == nil && !options.keep { try? FileManager.default.removeItem(at: root) } }
     do { try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true) } catch {
         report("cannot make \(root.path): \(error)")
         return 1
@@ -88,7 +83,7 @@ private func rehearse(_ options: Options, shown: Shown) async -> Int32 {
         makeSession: { await makeSession(handler: $0) }
     )
     let showing = Task { @MainActor in
-        for await state in await panel.states() { shown.state = state }
+        for await state in await panel.states() { updatePanel(state) }
     }
 
     report("recording into \(root.path)")

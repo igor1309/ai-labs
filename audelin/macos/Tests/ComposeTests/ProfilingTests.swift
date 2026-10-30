@@ -1,12 +1,72 @@
 @testable import CallText
 @testable import Compose
+import AppKit
 import LiveText
-import Reading
+import PanelUI
+import class SwiftUI.NSHostingView
 import Synchronization
 import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct ProfilingTests {
+
+    @MainActor @Test func panelIntervalEnclosesTranscriptReplacementAndLayout() throws {
+
+        let profiling = ProfileIntervalSpy()
+        let host = PanelLayoutProbe(rootView: PanelView(state: .init(recording: .off, log: .empty), event: { _ in }))
+        let window = NSWindow(contentRect: .init(x: 0, y: 0, width: 360, height: 640),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.contentView = host
+        defer {
+            host.didLayout = {}
+            window.contentView = nil
+        }
+        host.layoutSubtreeIfNeeded()
+        let laidOut = Values<String>()
+        host.didLayout = {
+            #expect(profiling.active("PanelUpdate") == 1)
+            if let text = panelText(in: host) {
+                #expect(text.frame.width > 0)
+                #expect(text.textLayoutManager?.usageBoundsForTextContainer.height ?? 0 > 0)
+                laidOut.append(text.string)
+            }
+        }
+        let boundaries = Values<String>()
+        let inspect: @MainActor @Sendable (String) -> Void = { prefix in
+            boundaries.append(prefix + (panelText(in: host)?.string ?? ""))
+        }
+        let intervals = ProfileIntervals { name in
+            let end = profiling.intervals.begin(name)
+            MainActor.assumeIsolated { inspect("begin: ") }
+            return {
+                MainActor.assumeIsolated { inspect("end: ") }
+                end()
+            }
+        }
+        let presented = Values<PanelState>()
+        let update = SignpostedPanelUpdate(host: host, content: {
+            #expect(profiling.active("PanelUpdate") == 1)
+            presented.append($0)
+            return PanelView(state: $0, event: { _ in })
+        }, intervals: intervals)
+        for (index, words) in ["first transcript", String(repeating: "updated transcript ", count: 40)].enumerated() {
+            let before = panelText(in: host)?.string ?? ""
+            let layoutsBefore = laidOut.all.count
+            let state = PanelState(recording: .on(elapsed: "00:01"), log: .lines(.init(entries: [
+                .init(id: 1, time: "00:00", speaker: .me, settled: words),
+            ])))
+            update(state)
+            #expect(presented.all.last == state)
+            let text = try #require(panelText(in: host))
+            #expect(text.string.contains(words))
+            #expect(laidOut.all.count > layoutsBefore)
+            #expect(laidOut.all.last == text.string)
+            #expect(Array(boundaries.all.suffix(2)) == ["begin: " + before, "end: " + text.string])
+            #expect(profiling.began.all == Array(repeating: "PanelUpdate", count: index + 1))
+            #expect(profiling.ended.all == profiling.began.all)
+            #expect(profiling.active("PanelUpdate") == 0)
+        }
+    }
 
     @Test func decoratorsPreserveArgumentsResultsAndErrorsAndEndEveryInterval() async throws {
         for fails in [false, true] {
@@ -20,7 +80,6 @@ struct ProfilingTests {
             let hearing = Hearing(words: [.init("word", start: 0, end: 1)])
             let chunk = AudioChunk(samples: [0.25], sampleRate: 48_000)
             let state = State(status: .listening, entries: [])
-            let reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 2))).0
             let recognizer = ProfileRecognizer(
                 onHear: { value in
                     #expect(value == chunk)
@@ -34,13 +93,8 @@ struct ProfilingTests {
                 calls.append("write")
                 if fails { throw failure }
             }, onClose: { calls.append("close") })
-            let panel = SignpostedPanelUpdate(receive: { value in
-                #expect(value == reading)
-                calls.append("panel")
-            }, intervals: intervals)
             let transcript = SignpostedTranscriptFile(base: file, intervals: intervals)
             let decorated = SignpostedRecognizer(base: recognizer, intervals: intervals)
-            await panel(reading)
             do {
                 try await transcript.write(state)
                 #expect(!fails)
@@ -53,7 +107,6 @@ struct ProfilingTests {
             #expect(try await decorated.finish() == hearing)
             await transcript.close()
             #expect(calls.all == [
-                "begin PanelUpdate", "panel", "end PanelUpdate",
                 "begin TranscriptWrite", "write", "end TranscriptWrite",
                 "begin Hearing", "hear", "end Hearing", "finish", "close",
             ])
@@ -96,4 +149,21 @@ final class ProfileIntervalSpy: Sendable {
     }
 
     func active(_ name: String) -> Int { running.withLock { $0[name, default: 0] } }
+}
+
+@MainActor
+private final class PanelLayoutProbe: NSHostingView<PanelView> {
+
+    var didLayout: () -> Void = {}
+
+    override func layout() {
+        super.layout()
+        didLayout()
+    }
+}
+
+@MainActor
+private func panelText(in view: NSView) -> NSTextView? {
+    if let text = view as? NSTextView { return text }
+    return view.subviews.lazy.compactMap(panelText(in:)).first
 }

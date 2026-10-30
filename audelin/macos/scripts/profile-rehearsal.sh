@@ -5,6 +5,8 @@
 #   scripts/profile-rehearsal.sh capture --capture-after 120 --capture-for 30 [--out DIR] [rehearsal options...]
 #   scripts/profile-rehearsal.sh endurance [--out DIR] [rehearsal options...]
 set -euo pipefail
+# Give each child its own process group, including any descendants it starts.
+set -m
 
 cd "$(dirname "$0")/.."
 out="profiles/$(date +%Y-%m-%d-%H%M%S)"
@@ -12,6 +14,7 @@ mode=capture
 after=0
 length=
 args=()
+keep=false
 die() { echo "$*" >&2; exit 64; }
 if [[ ${1-} == capture || ${1-} == endurance ]]; then mode="$1"; shift; fi
 while (($#)); do
@@ -29,7 +32,8 @@ while (($#)); do
       echo '       profile-rehearsal.sh endurance [--out DIR] [rehearsal options...]'
       echo '--capture-for requires a positive integer number of seconds.'
       exit 0 ;;
-    --report) die '--report is managed by this script; use --out DIR' ;;
+    --report|--recordings-dir) die "$1 is managed by this script; use --out DIR" ;;
+    --keep) keep=true; args+=("$1"); shift ;;
     *) args+=("$1"); shift ;;
   esac
 done
@@ -43,14 +47,18 @@ mkdir -p "$out"
 out="$(cd "$out" && pwd)"
 # Exporting a table is safe only because this trace contains just the window.
 [[ ! -e "$out/time.trace" ]] || die "trace already exists: $out/time.trace; choose a fresh --out"
-pid=
+media=
 cleanup() {
   local status=$?
   trap - EXIT
-  if [[ -n "$pid" ]]; then
-    kill "$pid" 2>/dev/null || true
-    wait "$pid" 2>/dev/null || true
-  fi
+  trap '' INT TERM
+  local child
+  # The job table includes a child even if a signal preceded its PID assignment.
+  for child in $(jobs -p); do
+    kill -- "-$child" 2>/dev/null || true
+  done
+  wait 2>/dev/null || true
+  if [[ -n "$media" && "$keep" == false ]]; then rm -rf "$media"; fi
   rm -f "$out/time-profile.xml" "$out/hangs.xml" "$out/signposts.xml"
   if [[ "$mode" == capture && "$status" != 0 ]]; then
     rm -f "$out/summary.json"
@@ -64,23 +72,29 @@ trap 'exit 143' TERM
 
 swift build -c release --product AudelinRehearsal
 app="$(swift build -c release --show-bin-path)/AudelinRehearsal"
+media="$(mktemp -d "${TMPDIR:-/tmp}/audelin-rehearsal.XXXXXX")"
+
+"$app" ${args[@]+"${args[@]}"} --recordings-dir "$media" --report "$out/rehearsal.log" &
+pid=$!
 
 if [[ "$mode" == endurance ]]; then
-  "$app" ${args[@]+"${args[@]}"} --report "$out/rehearsal.log" &
-  pid=$!
   wait "$pid"
-  pid=
   exit
 fi
 
-"$app" ${args[@]+"${args[@]}"} --report "$out/rehearsal.log" &
-pid=$!
-sleep "$after"
-kill -0 "$pid" 2>/dev/null || { wait "$pid"; pid=; die 'rehearsal ended before capture'; }
+# A wait builtin is interrupted by a trapped signal; a foreground sleep is not.
+sleep "$after" &
+offset_pid=$!
+wait "$offset_pid"
+if ! kill -0 "$pid" 2>/dev/null; then
+  wait "$pid" || true
+  die 'rehearsal ended before capture'
+fi
 xcrun xctrace record --template 'Time Profiler' --instrument 'Points of Interest' \
-  --output "$out/time.trace" --no-prompt --attach "$pid" --time-limit "${length}s"
+  --output "$out/time.trace" --no-prompt --attach "$pid" --time-limit "${length}s" &
+recorder_pid=$!
+wait "$recorder_pid"
 wait "$pid"
-pid=
 
 table() { xcrun xctrace export --input "$out/time.trace" --xpath "/trace-toc/run[@number=\"1\"]/data/table[@schema=\"$1\"]"; }
 table time-profile > "$out/time-profile.xml"

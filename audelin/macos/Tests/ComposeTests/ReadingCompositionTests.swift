@@ -54,9 +54,8 @@ struct ReadingCompositionTests {
 
     @Test func textUpdatesReachPanelAndLogsContainOnlyModesAndCounts() async throws {
 
-        let clock = ReadingClockSpy(), sink = ReadingLogSpy(), profiling = ProfileIntervalSpy()
-        let panel = AudelinPanel(makeReading: ReadingStub.inputs, now: clock.now, ticks: clock.ticks, sink: sink,
-                                 intervals: profiling.intervals)
+        let clock = ReadingClockSpy(), sink = ReadingLogSpy()
+        let panel = AudelinPanel(makeReading: ReadingStub.inputs, now: clock.now, ticks: clock.ticks, sink: sink)
         let input = AsyncStream<State>.makeStream()
         try await withReading(panel, id: 1, text: input.stream) {
             var states = await panel.states().makeAsyncIterator()
@@ -75,9 +74,6 @@ struct ReadingCompositionTests {
             #expect(sink.entries.all.contains(.init(category: .reading, message: "state recording=on log=lines rows=1 entries=1 holds=0 newBelow=0 followsLive=true")))
         }
         input.continuation.finish()
-        #expect(profiling.began.all.count >= 5)
-        #expect(profiling.began.all.allSatisfy { $0 == "PanelUpdate" })
-        #expect(profiling.ended.all == profiling.began.all)
         #expect(sink.entries.all.last == .init(category: .reading, message: "state recording=off log=lines rows=1 entries=1 holds=0 newBelow=0 followsLive=true"))
         #expect(sink.entries.all.allSatisfy {
             $0.category == .reading && !$0.message.contains("private") && $0.error == nil && $0.path == nil
