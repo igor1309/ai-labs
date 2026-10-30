@@ -74,14 +74,20 @@ final class StoreSpy: SettingsStore {
 }
 
 @Observable final class ClockSpy: ClockPort, @unchecked Sendable {
+    struct CountdownRequest: Equatable {
+        let count: Int
+        let interval: Duration
+    }
+
     private let lock = NSLock()
     /// Every running countdown, so the broadcast's and the notice's run side by side.
     private var countdowns: [(id: Int, remaining: Int, sink: AsyncStream<Int>.Continuation)] = []
     private var nextID = 0
     private var time = 0.0
     private var tickContinuation: AsyncStream<Double>.Continuation?
-    var starts: [Int] { lock.withLock { started } }
-    private var started: [Int] = []
+    var starts: [Int] { lock.withLock { started.map(\.count) } }
+    var countdownRequests: [CountdownRequest] { lock.withLock { started } }
+    private var started: [CountdownRequest] = []
     func now() -> Double { lock.withLock { time } }
     func setTime(_ value: Double) { lock.withLock { time = value } }
     func countdown(from count: Int, every interval: Duration) -> AsyncStream<Int> {
@@ -89,7 +95,7 @@ final class StoreSpy: SettingsStore {
         let id = lock.withLock {
             nextID += 1
             countdowns.append((nextID, count, sink))
-            started.append(count)
+            started.append(.init(count: count, interval: interval))
             return nextID
         }
         sink.onTermination = { [weak self] _ in self?.lock.withLock { self?.countdowns.removeAll { $0.id == id } } }

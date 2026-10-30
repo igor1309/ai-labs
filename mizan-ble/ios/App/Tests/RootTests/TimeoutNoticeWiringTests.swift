@@ -13,7 +13,10 @@ import TimeoutNotice
         let host = try #require(root.host)
         try await timeOut(h, host)
         #expect(host.notice?.state.showing == .init(number: 1))
-        #expect(h.clock.starts == [60, 30])
+        #expect(h.clock.countdownRequests == [
+            .init(count: 60, interval: .seconds(1)),
+            .init(count: 30, interval: .seconds(1)),
+        ])
         h.clock.advance(29)
         await until { host.screen.status == "Timed out" && h.clock.running == 1 }
         h.clock.advance(1)
@@ -63,7 +66,12 @@ import TimeoutNotice
         h.clock.advance(30)
         await until { host.notice?.state.showing == .init(number: 2) && host.screen.status == "Timed out" }
         await until { h.host.calls.contains(.retire(second)) }
-        #expect(h.clock.starts == [60, 30, 60, 30])
+        #expect(h.clock.countdownRequests == [
+            .init(count: 60, interval: .seconds(1)),
+            .init(count: 30, interval: .seconds(1)),
+            .init(count: 60, interval: .seconds(1)),
+            .init(count: 30, interval: .seconds(1)),
+        ])
         h.clock.advance(30)
         await until { host.notice?.state.showing == nil }
         #expect(host.screen.status == "Idle")
@@ -111,6 +119,10 @@ import TimeoutNotice
         let (older, newer) = (TimeoutNotice.Notice(number: 3), TimeoutNotice.Notice(number: 4))
         timer.start(seconds: 30, for: older)
         timer.start(seconds: 30, for: newer)
+        #expect(clock.countdownRequests == [
+            .init(count: 30, interval: .seconds(1)),
+            .init(count: 30, interval: .seconds(1)),
+        ])
         timer.stop(older)
         await until { clock.running == 1 }
         clock.advance(29)
@@ -119,10 +131,34 @@ import TimeoutNotice
         #expect(clock.running == 0)
 
         timer.start(seconds: 30, for: older)
+        #expect(clock.countdownRequests == Array(repeating: .init(count: 30, interval: .seconds(1)), count: 3))
         timer.stop(older)
         await until { clock.running == 0 }
         clock.advance(30)
         #expect(sent.values == [.elapsed(newer)])
+    }
+
+    @Test func aPositiveTickIsProcessedWithoutEndingTheNoticeBeforeZero() async {
+        let (events, sink) = AsyncStream<NoticeTimerEvent>.makeStream()
+        let clock = PositiveTickClock(events: sink)
+        let timer = NoticeTimer(clock: clock)
+        defer { timer.stop(); sink.finish() }
+        let sent = Recorded<TimeoutNotice.Event>()
+        timer.send = {
+            sent.values.append($0)
+            sink.yield(.sent($0))
+        }
+        let notice = TimeoutNotice.Notice(number: 3)
+        var iterator = events.makeAsyncIterator()
+
+        timer.start(seconds: 30, for: notice)
+        #expect(await iterator.next() == .requestedNext)
+        #expect(sent.values.isEmpty)
+
+        await clock.supplyZero()
+        #expect(await iterator.next() == .sent(.elapsed(notice)))
+        #expect(sent.values == [.elapsed(notice)])
+        await clock.finish()
     }
 
     @Test func stoppingANoticeTimerLeavesTheBroadcastCountdownRunning() async {
@@ -135,6 +171,10 @@ import TimeoutNotice
         let timer = NoticeTimer(clock: clock)
         bindings.start(seconds: 60, for: .init(number: 4))
         timer.start(seconds: 30, for: .init(number: 3))
+        #expect(clock.countdownRequests == [
+            .init(count: 60, interval: .seconds(1)),
+            .init(count: 30, interval: .seconds(1)),
+        ])
         timer.stop(.init(number: 3))
         timer.stop()
         await until { clock.running == 1 }
@@ -175,6 +215,58 @@ import TimeoutNotice
 
 @MainActor @Observable private final class Recorded<Value> {
     var values: [Value] = []
+}
+
+private enum NoticeTimerEvent: Equatable {
+    case requestedNext
+    case sent(TimeoutNotice.Event)
+}
+
+private actor PositiveTickClock: ClockPort {
+    private let events: AsyncStream<NoticeTimerEvent>.Continuation
+    private var deliveredPositive = false
+    private var finished = false
+    private var pending: CheckedContinuation<Int?, Never>?
+
+    init(events: AsyncStream<NoticeTimerEvent>.Continuation) { self.events = events }
+
+    nonisolated func countdown(from count: Int, every interval: Duration) -> AsyncStream<Int> {
+        AsyncStream(unfolding: { await self.next() })
+    }
+
+    private func next() async -> Int? {
+        if !deliveredPositive {
+            deliveredPositive = true
+            return 29
+        }
+        guard !finished else { return nil }
+        return await withCheckedContinuation {
+            pending = $0
+            events.yield(.requestedNext)
+        }
+    }
+
+    func supplyZero() {
+        finished = true
+        pending?.resume(returning: 0)
+        pending = nil
+    }
+
+    func finish() {
+        finished = true
+        pending?.resume(returning: nil)
+        pending = nil
+    }
+
+    nonisolated func now() -> Double {
+        Issue.record("NoticeTimer must only request countdowns")
+        return 0
+    }
+
+    nonisolated func ticks(every interval: Duration) -> AsyncStream<Double> {
+        Issue.record("NoticeTimer must only request countdowns")
+        return AsyncStream { $0.finish() }
+    }
 }
 
 private extension HostSpy.Call {
