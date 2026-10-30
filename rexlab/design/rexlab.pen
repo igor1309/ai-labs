@@ -143101,50 +143101,52 @@
                 },
                 {
                   "type": "frame",
-                  "id": "xalNy",
-                  "name": "ЕЩЁ РИСОВАТЬ",
-                  "height": 52,
-                  "fill": "$fm-surface-2",
-                  "cornerRadius": 16,
-                  "gap": 8,
-                  "padding": 12,
-                  "justifyContent": "center",
-                  "alignItems": "center",
+                  "id": "S1jN5f",
+                  "name": "Balanced result actions",
+                  "width": 320,
+                  "layout": "vertical",
+                  "gap": 12,
                   "children": [
                     {
-                      "type": "icon",
-                      "id": "UVRhM",
-                      "name": "paintbrush",
-                      "width": 22,
-                      "height": 22,
-                      "icon": "paintbrush",
-                      "library": "lucide",
-                      "fill": "$fm-ink"
-                    },
-                    {
-                      "type": "text",
-                      "id": "sY6M6",
+                      "type": "frame",
+                      "id": "xalNy",
                       "name": "ЕЩЁ РИСОВАТЬ",
-                      "fill": "$fm-ink",
-                      "content": "ЕЩЁ РИСОВАТЬ",
-                      "fontFamily": "Nunito",
-                      "fontSize": 16,
-                      "fontWeight": "800"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
-                  "id": "Yld4q",
-                  "name": "Control row",
-                  "width": "fill_container",
-                  "gap": 8,
-                  "alignItems": "center",
-                  "children": [
+                      "width": "fill_container",
+                      "height": 52,
+                      "fill": "$fm-surface-2",
+                      "cornerRadius": 16,
+                      "gap": 8,
+                      "padding": 12,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "icon",
+                          "id": "UVRhM",
+                          "name": "paintbrush",
+                          "width": 22,
+                          "height": 22,
+                          "icon": "paintbrush",
+                          "library": "lucide",
+                          "fill": "$fm-ink"
+                        },
+                        {
+                          "type": "text",
+                          "id": "sY6M6",
+                          "name": "ЕЩЁ РИСОВАТЬ",
+                          "fill": "$fm-ink",
+                          "content": "ЕЩЁ РИСОВАТЬ",
+                          "fontFamily": "Nunito",
+                          "fontSize": 16,
+                          "fontWeight": "800"
+                        }
+                      ]
+                    },
                     {
                       "type": "frame",
                       "id": "sJXxB",
                       "name": "МОИ РАБОТЫ",
+                      "width": "fill_container",
                       "height": 52,
                       "fill": "$fm-amber",
                       "cornerRadius": 16,
@@ -143179,6 +143181,7 @@
                       "type": "frame",
                       "id": "NNmje",
                       "name": "НОВАЯ",
+                      "width": "fill_container",
                       "height": 52,
                       "fill": "$fm-amber",
                       "cornerRadius": 16,
