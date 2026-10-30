@@ -21,7 +21,7 @@ import struct SystemAudioCapture.AudioPiece
 
 let benchmarks: @Sendable () -> Void = {
 
-    for lines in [20, 800, 1_620] {
+    for lines in [20, 800, 1_620, 6_000] {
         Benchmark(
             "One word with \(lines) lines in the panel",
             configuration: .init(
@@ -64,6 +64,7 @@ final class Call: @unchecked Sendable {
 
     static func played(lines: Int) async throws -> Call {
 
+        let began = ContinuousClock.now
         let call = try await Call()
         Call.current = call
         // A sentence and its pause at a time, so getting there is quick.
@@ -71,7 +72,7 @@ final class Call: @unchecked Sendable {
             call.feed(slots: 30)
             await call.waitForWord(Self.spokenWords(through: call.slots))
         }
-        FileHandle.standardError.write(Data("played \(call.slots * 4 / 600) min: \(call.lines) lines in the panel\n".utf8))
+        FileHandle.standardError.write(Data("played \(call.slots * 4 / 600) min: \(call.lines) lines in the panel in \(ContinuousClock.now - began)\n".utf8))
         return call
     }
 
