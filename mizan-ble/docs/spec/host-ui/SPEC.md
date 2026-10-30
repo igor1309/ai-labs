@@ -38,7 +38,7 @@ Feature: The operator's screens
   Scenario: S-3 Timed out
     Given no client completed a handshake in time
     When the countdown ends
-    Then I see that no client came in time and the amount was cleared, and can type a new one
+    Then I see, until timeout notice ends its notice, that no client came in time and the amount was cleared, and can type a new one
 
   Scenario: S-4 A client is connecting
     Given a client started the handshake

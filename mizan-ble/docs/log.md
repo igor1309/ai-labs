@@ -2,6 +2,7 @@
 
 ## 2026-10-30
 
+- A host that timed out shows it for 30 seconds, or until the operator taps a key or button, then returns to plain amount entry; before, it showed "Timed out" until the next lock (LAB-791).
 - Every host, client, payment and settings screen state now has a light and dark snapshot, and a test fails when any iPhone screen moves its header, its eyebrow row or the foot of its actions (LAB-778).
 - On a real iPad and iPhone a host left alone ends its broadcast when its countdown runs out and returns to amount entry (LAB-625).
 - The client shows the host's signal as bars and dBm while it looks for a host, keeps the reading from the moment it starts the handshake marked "at start", and says "No signal" when it hears none; the host no longer shows a signal label it cannot know (LAB-784).

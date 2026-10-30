@@ -4,6 +4,7 @@ import HostBroadcast
 import HostPayment
 import HostUI
 import Settings
+import TimeoutNotice
 import SettingsUI
 import IMRxObservation
 import Observation
@@ -12,10 +13,12 @@ import Observation
     private(set) var amount: ObservableModel<AmountEntry.State, AmountEntry.Event, Never>?
     private(set) var broadcast: ObservableModel<HostBroadcast.State, HostBroadcast.Event, HostBroadcast.Effect>?
     private(set) var payment: ObservableModel<HostPayment.State, HostPayment.Event, HostPayment.Effect>?
+    private(set) var notice: ObservableModel<TimeoutNotice.State, TimeoutNotice.Event, TimeoutNotice.Effect>?
     var settingsPresented = false
     private var countdownSeconds: Int
     private let settings: Settings
     private let bindings: HostBindings
+    private let noticeTimer: NoticeTimer
     private let radio: any HostRadioPort
     private let log: any LogSink
     private let restChanged: () -> Void
@@ -23,7 +26,7 @@ import Observation
 
     var screen: HostState {
         HostMapping.screen(amount: amount?.state ?? .init(bluetooth: .unavailable(reason: "Bluetooth unavailable")),
-                           broadcast: broadcast?.state ?? .init(), payment: payment?.state,
+                           broadcast: broadcast?.state ?? .init(), notice: notice?.state ?? .init(), payment: payment?.state,
                            name: settings.advertisedName, seconds: countdownSeconds)
     }
     var settingsScreen: SettingsState { HostMapping.settings(name: settings.advertisedName, seconds: countdownSeconds) }
@@ -37,16 +40,27 @@ import Observation
         self.restChanged = restChanged
         countdownSeconds = settings.countdown
         bindings = HostBindings(radio: radio, clock: clock, settings: settings, log: log)
+        noticeTimer = NoticeTimer(clock: clock)
         let entry = AmountEntry.State(bluetooth: bluetooth.amountAvailability)
         amount = .init(initialState: entry,
                        reduce: loggedReducer(AmountEntry.reduce, initial: entry, category: .amountEntry, log: log,
                                              changed: { _, _ in }),
                        handleEffect: { _ in AsyncStream { $0.finish() } })
+        let hidden = TimeoutNotice.State()
+        notice = .init(initialState: hidden,
+                       reduce: loggedReducer(TimeoutNotice.reduce, initial: hidden, category: .timeoutNotice, log: log,
+                                             changed: { _, _ in }),
+                       handleEffect: TimeoutNotice.EffectHandler(timer: noticeTimer).handle)
+        noticeTimer.send = { [weak self] event in self?.notice?.event(event) }
         let initial = HostBroadcast.State()
         let handler = HostBroadcast.Handler(session: bindings, advertiser: bindings, sender: bindings, countdown: bindings, setting: bindings)
         broadcast = .init(initialState: initial,
                           reduce: loggedReducer(HostBroadcast.reduce, initial: initial, category: .hostBroadcast, log: log,
                                                 changed: { [weak self] previous, next in
+            // Queued now, so an action the operator takes on the timed-out screen comes after it.
+            if next.phase == .timedOut, previous.phase != .timedOut, let attempt = previous.attempt {
+                self?.notice?.event(.timedOut(.init(number: attempt.number)))
+            }
             // A queued actor job runs after the reduction has invoked its effect handler.
             Task { @MainActor [weak self] in self?.broadcastChanged(from: previous, to: next) }
         }), handleEffect: handler.handle)
@@ -54,6 +68,7 @@ import Observation
     }
 
     func event(_ event: HostEvent) {
+        notice?.event(.acted)
         guard let amount, let broadcast,
               let input = HostMapping.event(event, amount: amount.state, payment: payment != nil) else { return }
         switch input {
@@ -160,7 +175,9 @@ import Observation
         amount = nil
         broadcast = nil
         payment = nil
+        notice = nil
         bindings.stop()
+        noticeTimer.stop()
         pendingPaymentEvents.removeAll()
         settingsPresented = false
     }

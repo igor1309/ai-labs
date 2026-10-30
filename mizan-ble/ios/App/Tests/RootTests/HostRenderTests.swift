@@ -8,7 +8,7 @@ import Testing
     @Test(arguments: [ColorScheme.light, .dark], [393.0, 430.0])
     func compactHandshakeKeepsTheCountdownBelowItsCopy(scheme: ColorScheme, width: Double) throws {
         let state = HostMapping.screen(
-            amount: typedAmount("124.5"), broadcast: handshake(), payment: nil,
+            amount: typedAmount("124.5"), broadcast: handshake(), notice: .init(), payment: nil,
             name: "MIZAN-ABCD", seconds: 60
         )
         #expect(state.buttons.isEmpty)

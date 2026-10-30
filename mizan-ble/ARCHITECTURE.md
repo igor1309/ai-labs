@@ -78,6 +78,7 @@ nothing; what a screen offers follows from the state.
 |---|---|---|---|
 | Amount entry | `AmountEntry` | Core | The keypad's amount and whether it can be locked |
 | Host broadcast | `HostBroadcast` | Core | The host from a locked amount, through the countdown and handshake, to a secure link |
+| Timeout notice | `TimeoutNotice` | Core | How long the host shows that it timed out: 30 s, or until the operator acts on the host screen |
 | Host payment | `HostPayment` | Core | The host from a secure link, through the client's decision and the mock outcome, to a result |
 | Client find | `ClientFind` | Core | The client from scanning, through host choice's answer, to the payer's start |
 | Client connect | `ClientConnect` | Core | The client from a chosen host, through the handshake, to a secure link and the amount |
@@ -134,6 +135,7 @@ flowchart TB
   subgraph Core
     AmountEntry
     HostBroadcast
+    TimeoutNotice
     HostPayment
     ClientFind
     ClientConnect
@@ -174,7 +176,7 @@ requires. An adapter provides its own API only; the root answers each
 component's interface with a thin translation over it: the host flows'
 advertiser, sender and link over the host radio, client find's scanner and
 the client flows' links and senders over the client radio, the countdown,
-deadline and ticks with the clock's own countdown and ticks, the client
+deadline, the notice's timer and ticks with the clock's own countdown and ticks, the client
 radio's `now` with the clock's now, and the
 settings' store over preferences.
 
@@ -182,6 +184,7 @@ settings' store over preferences.
 |---|---|---|
 | Amount entry | A key and Bluetooth's availability in, the amount and whether it can be locked out | — |
 | Host broadcast | Lock, cancel, retry, new amount, the advertiser's events and the transaction's end in; its state; a secure link handed over | A session, an advertiser, a sender, a countdown, the countdown setting |
+| Timeout notice | Host broadcast's timeouts, the operator's actions and its timer's end in; whether a notice shows, and for which timeout | A timer |
 | Host payment | The client's decision, a lost link, the outcome, cancel and new amount in; its state; the end | A session, a sender, a link |
 | Client find | Host choice's answer, the picker's strongest signal, Bluetooth's state, start and the transaction's end in; its state; a host, with its name or none, handed over | A scanner |
 | Client connect | The link's steps, cancel, retry in; its state; a link, its session and the amount handed over | A link, a session, a deadline |
@@ -221,7 +224,8 @@ or reads real time; only the apps wire it in (`ios/scripts/tests/test_clock_boun
 
 - **Host:** the host UI sends key presses to amount entry, lock, cancel
   and broadcast again to host broadcast, and the mock outcome, cancel and
-  new amount to host payment. Their effects open and close a session
+  new amount to host payment. Each of the operator's actions, and host
+  broadcast's timeout, also go to timeout notice. Their effects open and close a session
   (session crypto); serve, advertise, stop advertising and retire the
   service, or finish it after what is queued (host radio; a serve waits
   for a finish); start and stop
@@ -339,6 +343,10 @@ Each line can be overturned by the owner.
   signal now, in dBm; host choice commits over time, in hosts, bands and
   durations, never a signal level. The answer flows one way, so the
   picker never learns which host was chosen.
+- **The timeout notice is apart from host broadcast:** how long a
+  timeout is drawn is a wait of its own, on its own timer, so it can
+  never end or restart the countdown, and host broadcast's states stay
+  as they are. Host broadcast's spec is at its limit.
 - **Two radio adapters, one per role,** because the host is only ever a
   peripheral and the client only a central; neither knows the other's API.
 - **The GATT layout lives here,** not in one spec, since both radios and
