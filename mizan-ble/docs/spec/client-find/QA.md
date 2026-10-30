@@ -1,24 +1,24 @@
 # Client find — QA
 
 Driven through its reducer as tables, and its effect handler with a fake
-scanner. Picker answers and Bluetooth states are events the test sends.
+scanner. Host choice's answers and Bluetooth states are events the test sends.
 Rows read the state and what the scanner fake recorded.
 
 ## S-1 No host nearby
 
-Scanning, picker none: the state reads no host, start refused. Evidence: `ClientFindTests.noHostNearby`.
+Scanning, host choice none: the state reads no host, start refused. Evidence: `ClientFindTests.noHostNearby`.
 
 ## S-2 A host is chosen
 
-Scanning, picker MIZAN-7F3A: the state reads MIZAN-7F3A, start offered. Evidence: `ClientFindTests.aHostIsChosen`.
+Scanning, host choice MIZAN-7F3A: the state reads MIZAN-7F3A, start offered. Evidence: `ClientFindTests.aHostIsChosen`.
 
 ## S-3 No clear nearest host
 
-Scanning, picker hold closer: the state reads hold closer, start refused. Evidence: `ClientFindTests.noClearNearestHost`.
+Scanning, host choice hold closer: the state reads hold closer, start refused. Evidence: `ClientFindTests.noClearNearestHost`.
 
 ## S-4 The chosen host goes quiet
 
-MIZAN-7F3A chosen, picker none: the state reads gone, start refused. Evidence: `ClientFindTests.chosenHostGoesQuiet`.
+MIZAN-7F3A chosen, host choice none: the state reads gone, start refused. Evidence: `ClientFindTests.chosenHostGoesQuiet`.
 
 ## S-5 Starting the handshake
 
