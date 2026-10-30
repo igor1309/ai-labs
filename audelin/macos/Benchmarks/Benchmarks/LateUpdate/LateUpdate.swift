@@ -131,9 +131,23 @@ final class Call: @unchecked Sendable {
         while let state = await shown.next() {
             latest = state
             guard case let .lines(lines) = state.log else { continue }
-            let last = lines.entries.last { $0.speaker == .me }
-            if let last, (last.settled + last.pending).hasSuffix(word) { return }
+            if let last = Self.newestOfMine(in: lines), (last.settled + last.pending).hasSuffix(word) { return }
         }
+    }
+
+    /// Looks from the end: `lines.entries` builds the whole call on every
+    /// state, which the benchmark would then count as the app's cost.
+    private static func newestOfMine(in lines: PanelState.Lines) -> PanelState.Entry? {
+
+        for row in lines.rows.reversed() {
+            switch row {
+            case let .entry(entry) where entry.speaker == .me: return entry
+            case let .late(late):
+                if let entry = late.entries.last(where: { $0.speaker == .me }) { return entry }
+            default: continue
+            }
+        }
+        return nil
     }
 
     private static func speaks(slot: Int) -> Bool { slot % 30 < 20 }
