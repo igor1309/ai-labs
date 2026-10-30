@@ -3,6 +3,98 @@ import Testing
 
 @MainActor
 struct ClientFindTests {
+    @Test func signalWhileScanning() async {
+        let host = ClientFind.Host(id: "till", name: "MIZAN-7F3A")
+        for scanStarted in [false, true] {
+            let answers: [[ClientFind.Answer]] = scanStarted
+                ? [[], [.holdCloser], [.host(host)], [.host(host), .none]]
+                : [[]]
+            for choices in answers {
+                let flow = Flow()
+                let start = flow.reduce(.bluetoothChanged(.available))
+                if scanStarted { await flow.finish(start) }
+                for choice in choices { await flow.send(.pickerAnswered(choice)) }
+                let before = flow.state
+                let calls = flow.ports.calls
+                for dBm in [-100, -70, -58, 0] {
+                    #expect(flow.reduce(.signalRead(dBm)) == nil)
+                    #expect(flow.state.signal == .live(dBm: dBm))
+                    #expect(flow.state.selection == before.selection)
+                    #expect(flow.state.phase == before.phase)
+                    #expect(flow.state.canStart == before.canStart)
+                    #expect(flow.state.bluetooth == before.bluetooth)
+                    #expect(flow.ports.calls == calls)
+                    if !before.canStart {
+                        let reading = flow.state
+                        #expect(flow.reduce(.start) == nil)
+                        #expect(flow.state == reading)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test func noHostHeard() async {
+        for scanStarted in [false, true] {
+            let flow = Flow()
+            for reading: Int? in [-58, nil] {
+                #expect(flow.reduce(.signalRead(reading)) == nil)
+                #expect(flow.state == ClientFind.State())
+            }
+            let start = flow.reduce(.bluetoothChanged(.available))
+            if scanStarted { await flow.finish(start) }
+            for dBm in [-70, -58] {
+                await flow.send(.signalRead(dBm))
+                #expect(flow.state.signal == .live(dBm: dBm))
+                let before = flow.state
+                for _ in 0..<2 {
+                    #expect(flow.reduce(.signalRead(nil)) == nil)
+                    #expect(flow.state.signal == .none)
+                    #expect(flow.state.selection == before.selection)
+                    #expect(flow.state.phase == before.phase)
+                    #expect(flow.state.canStart == before.canStart)
+                    #expect(flow.state.bluetooth == before.bluetooth)
+                }
+            }
+            #expect(flow.ports.calls == (scanStarted ? [.start] : []))
+        }
+    }
+
+    @Test func signalAtTheStart() async {
+        let host = ClientFind.Host(id: "till", name: "MIZAN-7F3A")
+        for reading: Int? in [nil, -58] {
+            let flow = Flow()
+            await flow.send(.bluetoothChanged(.available))
+            if reading != nil { await flow.send(.signalRead(-62)) }
+            await flow.send(.pickerAnswered(.host(host)))
+            if let reading { await flow.send(.signalRead(reading)) }
+            let stop = flow.reduce(.start)
+            let expected: ClientFind.Signal = reading.map { .atStart(dBm: $0) } ?? .none
+            #expect(stop == .stopScanning)
+            #expect(flow.state.signal == expected)
+            for handedOver in [false, true] {
+                if handedOver { await flow.finish(stop) }
+                let phase: ClientFind.Phase = handedOver ? .handedOver(host) : .stoppingScan(host)
+                for event: ClientFind.Event in [
+                    .signalRead(-80), .signalRead(nil),
+                    .bluetoothChanged(.unavailable(reason: "off")),
+                    .signalRead(-90), .signalRead(nil),
+                    .bluetoothChanged(.available),
+                    .pickerAnswered(.none), .pickerAnswered(.holdCloser),
+                    .pickerAnswered(.host(.init(id: "other", name: "Other"))),
+                    .start, .scanningStarted,
+                ] {
+                    #expect(flow.reduce(event) == nil)
+                    #expect(flow.state.signal == expected)
+                    #expect(flow.state.phase == phase)
+                    #expect(flow.state.selection == .host(host))
+                    #expect(!flow.state.canStart)
+                }
+            }
+            #expect(flow.ports.calls == [.start, .stop])
+        }
+    }
+
     @Test func effectsRunBeforeReturningTheirStreams() async {
         let cases: [(ClientFind.Effect, Ports.Call, ClientFind.Event)] = [
             (.startScanning, .start, .scanningStarted),
@@ -177,12 +269,18 @@ struct ClientFindTests {
         let host = ClientFind.Host(id: "till", name: "MIZAN-7F3A")
         await flow.send(.bluetoothChanged(.available))
         await flow.send(.pickerAnswered(.host(host)))
+        await flow.send(.signalRead(-58))
         await flow.send(.start)
-        await flow.send(.transactionEnded)
+        #expect(flow.state.signal == .atStart(dBm: -58))
+        let restart = flow.reduce(.transactionEnded)
+        #expect(flow.state.signal == .none)
+        #expect(flow.state.phase == .startingScan)
+        await flow.finish(restart)
         await flow.send(.transactionEnded)
         #expect(flow.state.phase == .scanning)
         #expect(flow.state.isScanning)
         #expect(flow.state.selection == .none)
+        #expect(flow.state.signal == .none)
         #expect(!flow.state.canStart)
         #expect(flow.ports.isScanning)
         #expect(flow.ports.calls == [.start, .stop, .start])
@@ -198,16 +296,28 @@ struct ClientFindTests {
             let host = ClientFind.Host(id: "till", name: "MIZAN-7F3A")
             await flow.send(.bluetoothChanged(.available))
             await flow.send(.pickerAnswered(.host(host)))
-            await flow.send(.bluetoothChanged(.unavailable(reason: reason)))
+            await flow.send(.signalRead(-58))
+            #expect(flow.state.signal == .live(dBm: -58))
+            let stop = flow.reduce(.bluetoothChanged(.unavailable(reason: reason)))
+            #expect(stop == .stopScanning)
+            #expect(flow.state.signal == .none)
+            #expect(flow.state.phase == .stoppingScan(nil))
+            for reading: Int? in [-80, nil] {
+                let before = flow.state
+                #expect(flow.reduce(.signalRead(reading)) == nil)
+                #expect(flow.state == before)
+            }
+            await flow.finish(stop)
             for event: ClientFind.Event in [
                 .pickerAnswered(.host(host)), .pickerAnswered(.none),
                 .pickerAnswered(.holdCloser), .start, .transactionEnded,
-                .scanningStarted, .scanningStopped,
+                .scanningStarted, .scanningStopped, .signalRead(-80), .signalRead(nil),
             ] {
                 await flow.send(event)
                 #expect(flow.state.bluetooth == .unavailable(reason: reason))
                 #expect(flow.state.phase == .idle)
                 #expect(flow.state.selection == .none)
+                #expect(flow.state.signal == .none)
                 #expect(!flow.state.isScanning)
                 #expect(!flow.state.canStart)
                 #expect(!flow.ports.isScanning)
@@ -299,11 +409,14 @@ struct ClientFindTests {
         let host = ClientFind.Host(id: "till", name: "MIZAN-7F3A")
         await flow.send(.bluetoothChanged(.available))
         await flow.send(.pickerAnswered(.host(host)))
+        await flow.send(.signalRead(-58))
         await flow.send(.start)
         await flow.send(.bluetoothChanged(.unavailable(reason: "off")))
         #expect(flow.state.phase == .handedOver(host))
         #expect(flow.state.bluetooth == .unavailable(reason: "off"))
+        #expect(flow.state.signal == .atStart(dBm: -58))
         await flow.send(.transactionEnded)
+        #expect(flow.state.signal == .none)
         #expect(flow.state.phase == .idle)
         #expect(flow.state.bluetooth == .unavailable(reason: "off"))
         #expect(flow.state.selection == .none)
@@ -319,10 +432,15 @@ struct ClientFindTests {
     @Test func scannerCommandsFinishInOrderDuringBluetoothChanges() async {
         let flow = Flow()
         let start = flow.reduce(.bluetoothChanged(.available))
+        await flow.send(.signalRead(-70))
+        #expect(flow.state.signal == .live(dBm: -70))
         #expect(flow.reduce(.bluetoothChanged(.unavailable(reason: "off"))) == nil)
         #expect(flow.state.phase == .startingScan)
+        await flow.send(.signalRead(-58))
+        #expect(flow.state.signal == .live(dBm: -58))
         await flow.finish(start)
         #expect(flow.state.phase == .idle)
+        #expect(flow.state.signal == .none)
         #expect(flow.state.bluetooth == .unavailable(reason: "off"))
         #expect(!flow.state.isScanning)
         #expect(!flow.ports.isScanning)
@@ -330,12 +448,15 @@ struct ClientFindTests {
 
         await flow.send(.bluetoothChanged(.available))
         await flow.send(.pickerAnswered(.host(.init(id: "till", name: "MIZAN-7F3A"))))
+        await flow.send(.signalRead(-58))
         let stop = flow.reduce(.bluetoothChanged(.unavailable(reason: "off")))
         #expect(stop == .stopScanning)
         #expect(flow.reduce(.bluetoothChanged(.available)) == nil)
         #expect(flow.state.phase == .stoppingScan(nil))
+        #expect(flow.state.signal == .none)
         await flow.finish(stop)
         #expect(flow.state.phase == .scanning)
+        #expect(flow.state.signal == .none)
         #expect(flow.state.selection == .none)
         #expect(!flow.state.canStart)
         #expect(flow.ports.isScanning)

@@ -42,12 +42,12 @@ A host chosen with no name, then a reading with its name: the state names no hos
 
 ## S-10 The signal while scanning
 
-Scanning, signals −70 then −58 dBm, under each of none, hold closer, a host and gone: the state reads live −70, then live −58; selection and start stay as host choice left them. Evidence: Missing.
+Scanning, signals −70 then −58 dBm, under each of none, hold closer, a host and gone: the state reads live −70, then live −58; selection and start stay as host choice left them. Evidence: `ClientFindTests.signalWhileScanning`.
 
 ## S-11 The signal at the start
 
-MIZAN-7F3A chosen at −62 dBm, a −58 reading, start; then during the stop and after the handover a −80 reading, no signal, and Bluetooth off: the state reads −58 at the start throughout. Evidence: Missing.
+MIZAN-7F3A chosen at −62 dBm, a −58 reading, start; then during the stop and after the handover a −80 reading, no signal, and Bluetooth off: the state reads −58 at the start throughout. Evidence: `ClientFindTests.signalAtTheStart`.
 
 ## S-12 No host heard
 
-Scanning at −58 dBm, then no signal: the state reads no signal. Evidence: Missing.
+Scanning at −58 dBm, then no signal: the state reads no signal. Evidence: `ClientFindTests.noHostHeard`.
