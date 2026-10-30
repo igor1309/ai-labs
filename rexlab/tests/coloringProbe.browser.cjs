@@ -212,16 +212,19 @@ async function ui(page, output) {
   await drawing.dispatchEvent("pointercancel", { pointerId: 1 }); await page.mouse.up();
   assert.equal(await drawing.getAttribute("data-revision"), revision, "pointercancel discards uncommitted stroke");
   assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), committedBeforeCancel, "pointercancel removes preview pixels");
-  await page.locator("#animate").focus(); await page.keyboard.press("Enter");
-  assert.equal(await drawing.evaluate(canvas => getComputedStyle(canvas).animationName), "probe-fade");
-  const paintedAnimated = await drawing.evaluate(canvas => canvas.toDataURL());
-  await page.locator("#animate").focus(); await page.keyboard.press("Enter");
-  assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), paintedAnimated, "animation uses the exact canvas");
-  await page.emulateMedia({ reducedMotion: "no-preference" });
-  await page.locator("#animate").focus(); await page.keyboard.press("Enter");
-  assert.equal(await drawing.evaluate(canvas => getComputedStyle(canvas).animationName), "probe-alive");
-  await page.locator("#animate").focus(); await page.keyboard.press("Enter");
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  async function checkAnimation() {
+    const paintedBaseline = await drawing.evaluate(canvas => canvas.toDataURL());
+    for (const [preference, animation] of [["reduce", "probe-fade"], ["no-preference", "probe-alive"]]) {
+      await page.emulateMedia({ reducedMotion: preference });
+      await page.locator("#animate").focus(); await page.keyboard.press("Enter");
+      assert.equal(await drawing.evaluate(canvas => getComputedStyle(canvas).animationName), animation);
+      assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), paintedBaseline, "animation preserves pre-entry paint");
+      await page.locator("#animate").focus(); await page.keyboard.press("Enter");
+      assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), paintedBaseline, "leaving animation preserves paint");
+    }
+    await page.emulateMedia({ reducedMotion: "reduce" });
+  }
+  await checkAnimation();
   // Wait-free double tap uses the actual browser event times and shared filter.
   const tap = await drawing.boundingBox();
   const revisionBeforeTap = Number(await drawing.getAttribute("data-revision"));
@@ -289,6 +292,7 @@ async function ui(page, output) {
   await page.waitForFunction(() => document.querySelector("#status").textContent.includes("SAVED"));
   assert.deepEqual(await pixelAt(500, 420), [255, 147, 69, 255], "page fill paints distant body point");
   assert.deepEqual(await pixelAt(420, 180), [255, 240, 207, 255], "page fill leaves plate unchanged");
+  await checkAnimation();
   await press("#undo");
   await page.waitForFunction(() => document.querySelector("#status").textContent.includes("SAVED"));
   assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), pristine, "page fill is undoable");
