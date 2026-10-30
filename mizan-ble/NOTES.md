@@ -47,6 +47,32 @@ door.
   only feeds it. Its tests cover one host, two close hosts, a host that
   fades out and the 127 reading, with no radio.
 
+### Measured on devices
+
+An iPad Pro 11" (3rd generation) as the host and an iPhone 15 Pro on
+iOS 27 as the client, 2026-10-29, with the picker's starting values.
+
+- **Payments:** a confirmed payment with success, one with failure and a
+  declined one ended as expected on both screens, and so did a payment
+  with the iPhone as host after switching modes. From connecting to the
+  opened amount took 1.1–1.3 s; the session read is 50 bytes and the
+  largest write 512.
+- **Smoothed RSSI (α 0.3):** −40 to −55 dBm with the phone beside the
+  iPad, −60 to −66 at arm's length, −66 to −77 a few steps away. With the
+  phone held still the average moves 5–13 dB within a second.
+- **The floor is right, the edge is not:** −65 dBm falls at arm's length,
+  where a payer stands, but there the answer flips between the host and
+  "hold closer" 2 to 8 times a second, because the picker chooses and
+  drops a host at the same line. The settings stay at their starting
+  values until the picker holds its choice (see Open).
+- **A second host** was not at hand, so the choice between two tills
+  moves to v0.1.0; the rehearsal lanes cover it meanwhile.
+- **The log keeps no secret:** both devices' logs from every payment,
+  collected and read in full, hold no amount, key, nonce, message bytes or
+  device identifier, nor any long hex, base64 or UUID run. A line holds phases,
+  case names, counts and the signal strength in whole dBm, which says how
+  far a radio is, not who anyone is or what they paid.
+
 ### Encrypting the exchange with a per-session key
 
 The amount, the client's decision and the host's result never cross the
@@ -101,4 +127,6 @@ another.
 
 ## Open
 
-None.
+- **Holding the choice:** how the picker keeps a chosen host near the
+  floor (separate lines to choose and to drop, a dwell, or both), and
+  whether α, the floor and the margin then change.

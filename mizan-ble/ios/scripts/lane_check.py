@@ -41,8 +41,8 @@ def check_log(settings, expected, text):
         phase = re.compile(r'\bphase=' + re.escape(item['phase']) + r'(?![\w])')
         if not any(category.search(line) and phase.search(line) for line in lines):
             failures.append('missing ' + item['category'] + ' phase=' + item['phase'])
-    # Counts are public metadata, even when a counter happens to equal a small amount.
-    public = re.sub(r'\b(?:bytes|counter|length|digits|seconds)=\d+\b', '', text)
+    # Counts and signal strength are public metadata, even when they equal a small amount.
+    public = re.sub(r'\b(?:(?:bytes|counter|length|digits|seconds|hosts)=\d+|rssi=-?\d+)\b', '', text)
     failures.extend(amount_leaks(settings, public))
     if re.search(r'(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{32,}={0,2}(?![A-Za-z0-9+/])', public):
         failures.append('secret-shaped run exposed')

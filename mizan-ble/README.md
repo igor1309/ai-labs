@@ -6,9 +6,10 @@ till) enters an amount and advertises it; the client (an iPhone) finds the
 host, shows the amount, and confirms or declines. The host then shows a
 mocked payment result, and both sides end the transaction.
 
-Status: building v0.0.1 (2026-10-29). The app shell launches with the mode
-switch and logs; host and client screens await flow wiring. v0.0.1 is the two-mode
-app with both apps in the foreground; later versions try to drop the
+Status: v0.0.1 is built (2026-10-30) and checked on a real iPad and iPhone:
+payments confirm, fail and decline end to end, and the measured signal
+values are in [NOTES.md](NOTES.md). v0.0.1 is the two-mode app with both
+apps in the foreground; later versions try to drop the
 explicit handshake (v0.1.0) and the foreground app (v0.2.0).
 
 | Path | What it holds |

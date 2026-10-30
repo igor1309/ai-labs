@@ -82,6 +82,7 @@ final class StoreSpy: SettingsStore {
     var starts: [Int] { lock.withLock { started } }
     private var started: [Int] = []
     func now() -> Double { lock.withLock { time } }
+    func setTime(_ value: Double) { lock.withLock { time = value } }
     func countdown(from count: Int, every interval: Duration) -> AsyncStream<Int> {
         let (stream, sink) = AsyncStream<Int>.makeStream()
         lock.withLock { remaining = count; continuation = sink; started.append(count) }

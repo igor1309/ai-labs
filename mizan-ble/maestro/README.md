@@ -40,8 +40,8 @@ overwritten; start a later run in a new minute.
 
 The stdlib checker rejects missing category/phase lines, logged amount
 representations, also next to punctuation, and long hex/base64-shaped
-strings. Public byte counts and
-counters do not count as amount leaks. S-10 also checks its actual captured
+strings. Public byte counts, counters, host counts and signal strength in
+whole dBm do not count as amount leaks. S-10 also checks its actual captured
 frames, requiring the session read, the key write, and amount, decision,
 acknowledgement and result traffic. It
 computes amount bodies as unsigned eight-byte big-endian integers and

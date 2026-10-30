@@ -4,6 +4,44 @@ import Testing
 private typealias Picker = HostPicker<String>
 
 struct HostPickerTests {
+    @Test func viewReportsSmoothedLeaderAndCandidateCount() {
+        var scan = makeScan(alpha: 0.5)
+        scan.hear("A", -70)
+        scan.hear("A", -60)
+        scan.hear("B", -50)
+        scan.hear("B", -58)
+        scan.hear("unavailable", 127)
+        let view = scan.picker.view(at: scan.clock.now)
+        #expect(view.leaderAverage == -54)
+        #expect(view.candidateCount == 2)
+    }
+
+    @Test func viewExcludesExpiredCandidatesAtTheFadeBoundary() {
+        var scan = makeScan()
+        let empty = scan.picker.view(at: scan.clock.now)
+        #expect(empty.leaderAverage == nil && empty.candidateCount == 0)
+        scan.hear("A", -50)
+        scan.clock.advance(by: 1)
+        scan.hear("B", -70)
+        let beforeFade = scan.picker.view(at: scan.clock.now + 0.999)
+        #expect(beforeFade.leaderAverage == -50 && beforeFade.candidateCount == 2)
+        let atFade = scan.picker.view(at: scan.clock.now + 1)
+        #expect(atFade.leaderAverage == -70 && atFade.candidateCount == 1)
+        let allExpired = scan.picker.view(at: scan.clock.now + 2)
+        #expect(allExpired.leaderAverage == nil && allExpired.candidateCount == 0)
+    }
+
+    @Test func viewDoesNotMutateThePicker() {
+        var scan = makeScan()
+        scan.window(["A": -50])
+        let picker = scan.picker
+        let expired = picker.view(at: scan.clock.now + 2)
+        #expect(expired.leaderAverage == nil && expired.candidateCount == 0)
+        let current = picker.view(at: scan.clock.now)
+        #expect(current.leaderAverage == -50 && current.candidateCount == 1)
+        #expect(scan.picker.answer(at: scan.clock.now) == .host("A"))
+    }
+
     @Test func oneNearHost() {
         var scan = makeScan()
         scan.window(["A": -50])
