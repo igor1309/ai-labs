@@ -1,7 +1,7 @@
 repo = "igor1309/mizan-ble"
 description = "A proof of concept: an iPad host and an iPhone client agree a mocked payment over Bluetooth LE, built with SwiftUI and Core Bluetooth."
-# No page of its own yet; point this at the v0.0.1 blog post once it is out.
-homepage = "https://github.com/igor1309/mizan-ble"
+# The first of the three v0.0.1 posts on igor1309.dev.
+homepage = "https://igor1309.dev/articles/2026/2026-10-18-mizan-ble-a-payment-between-an-ipad-and-an-iphone/"
 topics = ["swift", "swiftui", "ios", "core-bluetooth", "bluetooth-low-energy", "cryptokit", "payments", "ai-assisted"]
 check = "cd ios && python3 -I -m unittest discover -s scripts/tests && swift build && swift test && cd App && swift test"
 
