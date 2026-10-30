@@ -92,18 +92,16 @@ public struct ResultCard<Actions: View>: View {
 
     public var body: some View {
 
-        VStack(spacing: isCompact ? Tokens.space2 : Tokens.space5) {
-            ResultMark(outcome)
-            Text(title)
-                .font(Tokens.text(Tokens.sizeLead, .semibold))
-                .foregroundStyle(Tokens.text)
-                .multilineTextAlignment(.center)
-            actions
+        Card(isCompact: isCompact) {
+            StatusPanel(title, detail: "", level: .panel, isCompact: isCompact) {
+                ResultMark(outcome)
+            } value: {
+                EmptyView()
+            } footer: {
+                actions
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .padding(isCompact ? Tokens.space4 : Tokens.space7)
-        .frame(maxWidth: .infinity)
-        .background(Tokens.raised, in: RoundedRectangle(cornerRadius: Tokens.radiusXl))
-        .animation(Motion.fast(reduced: reduceMotion).animation, value: title)
         .animation(Motion.fast(reduced: reduceMotion).animation, value: outcome)
     }
 }

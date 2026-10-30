@@ -2,6 +2,7 @@
 
 ## 2026-10-30
 
+- Cards, status panels, notices, icon badges, the exchange strip, the countdown picker and divided lists now come from the design system, so every screen uses the same card padding and title placement; Settings on iPhone keeps Done in the shared footer (LAB-728).
 - On an iPhone every screen's actions sit in one shared footer and use one shared action button, so a tall screen no longer moves its header or button; host and client line up to the pixel on a 6.1-inch iPhone (LAB-728).
 - On an iPhone the host's action button sits at the foot of the screen like the client's, and its screen no longer scrolls, so the header holds the same place on both sides (LAB-728).
 - v0.0.1 is built: payments confirm, fail and decline on a real iPad and iPhone, with the signal values measured there and no secret in the log (LAB-728).
