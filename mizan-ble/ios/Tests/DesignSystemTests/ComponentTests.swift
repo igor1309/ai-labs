@@ -38,6 +38,17 @@ struct ComponentTests {
         )).client.kind == .client)
     }
 
+    @MainActor @Test func actionSlotsKeepTheirPlaceWhenTheActionChanges() {
+
+        let lock = ActionSlots(["Lock & broadcast"]) { Text($0) }
+        let cancel = ActionSlots(["Cancel"]) { Text($0) }
+        let retry = ActionSlots(["Broadcast again", "New amount"]) { Text($0) }
+
+        #expect(lock.slots.map(\.id) == cancel.slots.map(\.id))
+        #expect(retry.slots.map(\.id) == [0, 1])
+        #expect(retry.slots.map(\.item) == ["Broadcast again", "New amount"])
+    }
+
     @Test func motionKindsResolveToTheirSpecs() {
 
         for reduced in [false, true] {
