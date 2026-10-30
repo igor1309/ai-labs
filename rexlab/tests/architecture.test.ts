@@ -36,6 +36,7 @@ const inSkeletons = (file: string) => file.startsWith("skeletons/");
 const inDig = (file: string) => file.startsWith("dig/");
 const inPicturePuzzle = (file: string) => file.startsWith("picturePuzzle/");
 const SCREENS = [
+  "ColoringWorkshopScreen.tsx",
   "CareResultScreen.tsx",
   "CareWelcomeScreen.tsx",
   "CatalogueScreen.tsx",
@@ -111,6 +112,7 @@ const ADAPTERS = [
   "treasurePictures.ts"
 ];
 const COMPOSITION = [
+  "coloringWorkshopRoot.ts",
   "coloringProbe/main.ts",
   "App.tsx",
   "careGame.tsx",
@@ -151,9 +153,13 @@ describe("the import graph", () => {
     const coloring = (file: string) => file.startsWith("coloring/");
     expect(GRAPH.get("coloring/index.ts")).toEqual([]);
     expect(edges(coloring, target => !coloring(target))).toEqual([]);
-    expect(edges(file => !coloring(file), target => coloring(target) && target !== "coloring/index.ts")).toEqual([]);
+    // Only the coloring composition root builds the concrete vector painter;
+    // presentation and the save queue receive their collaborators.
+    expect(edges(file => !coloring(file) && file !== "coloringWorkshopRoot.ts", target => coloring(target) && target !== "coloring/index.ts")).toEqual([]);
     expect(GRAPH.get("indexedColoringWorks.ts")).toEqual(["coloring/index.ts"]);
     expect(edges(file => !COMPOSITION.includes(file), target => target === "indexedColoringWorks.ts")).toEqual([]);
+    expect(GRAPH.get("coloringWorkshop.ts")).toEqual(["coloring/index.ts"]);
+    expect(GRAPH.get("coloringWorkshopRoot.ts")).toEqual(expect.arrayContaining(["coloring/painter.ts", "indexedColoringWorks.ts", "coloringWorkshop.ts"]));
   });
   it("keeps the coloring technical probe isolated from game entry points", () => {
     const probe = (file: string) => file.startsWith("coloringProbe/");

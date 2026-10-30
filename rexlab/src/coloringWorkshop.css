@@ -1,0 +1,139 @@
+.coloring-workshop {
+  box-sizing: border-box;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  color: var(--fm-ink);
+  background: var(--fm-bg);
+  overflow: hidden;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+.coloring-workshop button {
+  box-sizing: border-box;
+  position: relative;
+  min-width: 60px;
+  min-height: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 2px solid transparent;
+  border-radius: 18px;
+  background: var(--fm-surface-2);
+  color: var(--fm-ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background-color var(--motion-small) var(--ease-out), border-color var(--motion-small) var(--ease-out), opacity var(--motion-small) var(--ease-out);
+}
+.coloring-workshop button svg { flex-shrink: 0; width: 22px; height: 22px; }
+.coloring-workshop button .coloring-selection { position: absolute; top: 3px; right: 3px; width: 14px; height: 14px; }
+.coloring-workshop button:disabled { opacity: .4; cursor: default; }
+.coloring-workshop button:focus-visible { outline: 3px solid var(--fm-terra); outline-offset: 2px; }
+.coloring-workshop button[aria-pressed="true"] { border-color: var(--fm-amber); background: color-mix(in srgb, var(--fm-amber) 25%, var(--fm-surface)); }
+.coloring-header, .coloring-navigation { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.coloring-header h1 { flex: 1; display: flex; align-items: center; justify-content: center; gap: 12px; margin: 0; font-size: clamp(18px, 3vw, 30px); }
+.coloring-header .coloring-done { color: #1d2742; background: var(--fm-amber); }
+.coloring-navigation { justify-content: center; }
+.coloring-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+.coloring-paper { min-width: 0; min-height: 0; flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; padding: 12px; border: 1px solid var(--fm-line); border-radius: 28px; background: var(--fm-surface); }
+.coloring-paper h2 { flex-shrink: 0; margin: 0; font-size: clamp(18px, 2.5vw, 28px); letter-spacing: .04em; }
+.coloring-canvas-space { flex: 1; width: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; container-type: size; }
+.coloring-canvas-space canvas { display: block; width: min(100cqw, calc(100cqh * 920 / 620)); height: min(100cqh, calc(100cqw * 620 / 920)); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.coloring-tools { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
+.coloring-palette { display: grid; grid-template-columns: repeat(6, 60px); gap: 4px; justify-content: center; }
+.coloring-palette button { padding: 0; }
+.coloring-swatch { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid #1d274240; color: #091e40; }
+.coloring-swatch svg { background: #fff0cf; border-radius: 50%; }
+.coloring-tool-row, .coloring-sizes { display: flex; gap: 4px; align-items: center; justify-content: center; }
+.coloring-dot { display: block; width: var(--dot); height: var(--dot); border-radius: 50%; background: currentColor; }
+.coloring-compact-tools { display: none; }
+.coloring-save { margin: 0; min-height: 24px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--fm-ink-soft); font-size: 13px; font-weight: 700; }
+.coloring-save svg { width: 18px; }
+.coloring-chooser { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; animation: fade-in var(--motion-small) var(--ease-out) both; }
+.coloring-overlay { position: fixed; z-index: 100; inset: 0; padding: 12px; display: grid; place-items: center; background: #091e4080; animation: fade-in var(--motion-small) var(--ease-out) both; }
+.coloring-error { box-sizing: border-box; display: flex; flex-direction: column; align-items: stretch; gap: 10px; width: min(460px, 100%); max-height: 100%; overflow: auto; padding: 24px; border-radius: 24px; color: var(--fm-ink); background: var(--fm-surface); }
+.coloring-error > svg { align-self: center; color: var(--fm-terra); }
+.coloring-error h2 { margin: 0 0 8px; font-size: 22px; text-align: center; }
+@media (min-width: 1000px) and (min-height: 600px) {
+  .coloring-workshop { padding: 24px 32px; }
+  .coloring-body { flex-direction: row; }
+  .coloring-tools { justify-content: center; width: 380px; }
+  .coloring-tool-row { flex-wrap: wrap; }
+  .coloring-tool-row > button span { display: none; }
+}
+@media (max-width: 600px), (max-height: 599px) {
+  .coloring-workshop { gap: 8px; padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); }
+  .coloring-header, .coloring-navigation { gap: 4px; }
+  .coloring-header h1 { font-size: 16px; gap: 5px; }
+  .coloring-header h1 svg { display: none; }
+  .coloring-header button { flex-direction: column; gap: 2px; font-size: 11px; padding: 4px 8px; }
+  .coloring-navigation button { flex: 1; font-size: 12px; }
+  .coloring-paper { padding: 8px; border-radius: 20px; }
+  .coloring-full-palette, .coloring-full-sizes { display: none; }
+  .coloring-compact-tools { display: flex; gap: 4px; }
+  .coloring-compact-tools button { font-size: 12px; }
+  .coloring-compact-tools .coloring-swatch { width: 22px; height: 22px; }
+  .coloring-tools { flex-direction: row; justify-content: center; gap: 0; }
+  .coloring-compact-tools, .coloring-tool-row { gap: 0; }
+  .coloring-tool-row > button { flex-direction: column; gap: 2px; font-size: 10px; padding: 4px; }
+  .coloring-tool-row > button span { display: none; }
+  .coloring-compact-tools button { flex-direction: column; gap: 2px; padding: 4px 6px; font-size: 10px; }
+  .coloring-compact-tools button > svg:has(+ .coloring-swatch) { display: none; }
+  .coloring-palette { grid-template-columns: repeat(4, 60px); }
+  .coloring-save { font-size: 11px; }
+  .coloring-save:has(button) { flex-wrap: wrap; }
+}
+@media (max-height: 599px) and (orientation: landscape) {
+  .coloring-workshop { position: relative; padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .coloring-header { padding-right: 0; }
+  .coloring-body { flex-direction: row; }
+  .coloring-tools { flex-direction: column; width: 252px; }
+  .coloring-navigation { position: absolute; top: 76px; right: max(8px, env(safe-area-inset-right)); width: 252px; }
+  .coloring-navigation button { font-size: 10px; padding: 4px; }
+  .coloring-tools { padding-top: 64px; justify-content: center; }
+  .coloring-tools .coloring-tool-row > button span { display: block; }
+}
+.coloring-workshop {
+  --fm-bg: #f2efe8;
+  --fm-surface: #fffdf8;
+  --fm-surface-2: #e6e2d9;
+  --fm-ink: #1d2742;
+  --fm-ink-soft: #5c647a;
+  --fm-line: #1d27421f;
+  --fm-amber: #e39b2d;
+  --fm-terra: #c9583d;
+}
+[data-theme="dark"] .coloring-workshop {
+  --fm-bg: #0f1320;
+  --fm-surface: #181e2e;
+  --fm-surface-2: #222a3d;
+  --fm-ink: #ece8de;
+  --fm-ink-soft: #9ca3b6;
+  --fm-line: #ece8de1f;
+  --fm-amber: #f2b24b;
+  --fm-terra: #e57a5d;
+}
+@media (min-width: 740px) and (max-height: 599px) and (orientation: landscape) {
+  .coloring-header h1 { margin-right: 264px; }
+  .coloring-navigation { top: max(8px, env(safe-area-inset-top)); right: max(80px, calc(env(safe-area-inset-right) + 72px)); }
+  .coloring-tools { display: grid; grid-template-columns: repeat(4, 60px); grid-template-rows: auto 60px; align-content: center; gap: 8px 4px; padding-top: 0; }
+  .coloring-full-palette { display: block; grid-column: 1 / -1; }
+  .coloring-palette { grid-template-columns: repeat(4, 60px); }
+  .coloring-compact-tools, .coloring-tool-row { display: contents; }
+  .coloring-compact-tools > button:first-child { display: none; }
+  .coloring-tools .coloring-tool-row > button span { display: none; }
+}
+.coloring-body:has(.coloring-chooser) .coloring-tools { display: none; }
+.coloring-paper:has(.coloring-chooser) h2 { display: none; }
+.coloring-canvas-space, .coloring-selection, .coloring-swatch > svg { animation: fade-in var(--motion-small) var(--ease-out) both; }
+@media (max-height: 599px) and (orientation: landscape) {
+  .coloring-workshop:has(.coloring-chooser) .coloring-navigation { visibility: hidden; }
+  .coloring-paper:has(.coloring-chooser) { padding: 4px; }
+  .coloring-chooser { gap: 8px; }
+  .coloring-chooser .coloring-palette { grid-template-columns: repeat(6, 60px); }
+}

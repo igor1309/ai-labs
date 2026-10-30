@@ -21,3 +21,18 @@ screenshots. It checks 60 reduced-motion configurations and one normal-motion
 outward walk. Set `CHROME_PATH` to use a local Chrome executable, or `BOARD_URL`
 to check an already running server instead. CI installs Chromium with its OS
 dependencies and runs these checks on shard 1.
+
+The coloring workshop is an exported screen for the coloring flow. Construct
+`coloringWorkshopRoot(indexedDB, document)` once, then await `newWork(id,
+onNavigate)` with a fresh identity or `open(id, onNavigate)` for a saved work.
+Render `ColoringWorkshopScreen` with that session, the root's `painter` and
+`language`. It follows the document's `data-theme` and the app's shared motion
+and tap filter. The navigation callback receives `home`, `gallery`, `new` or
+`result` and the durable work; `result` follows successful completion only.
+Await `session.settled()` before closing the root's storage connection. Opening
+fails visibly to the caller when storage or reward history is unreadable.
+
+For workshop browser checks, run `node tests/coloringWorkshop.browser.cjs`
+from `rexlab/` after installing Chromium. It builds its own screen harness,
+uses real Canvas and IndexedDB, and checks drawing, restore, interruption,
+save errors and responsive layouts without a development server.

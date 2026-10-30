@@ -142,6 +142,7 @@ export function createPainter(makeCanvas: () => HTMLCanvasElement) {
     }
   };
   return {
+    width: WIDTH, height: HEIGHT,
     canvas, render, pixels, inspection,
     preview(target: HTMLCanvasElement, committed: readonly Action[], active: Stroke) {
       render(target, [...committed, active]);

@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- The coloring workshop offers clipped painting, compact tools and ordered autosave with retry and confirmed loss handling in English and Russian, both themes and orientations (LAB-803).
+
 - Coloring works now have an editable action history and atomic local storage that preserves unreadable records and earned status (LAB-803).
 
 - An isolated Stegosaurus coloring probe offers editable paint, persistent undo, independent works and animation; desktop browser checks and payload measurements are recorded; physical iPad acceptance remains pending (LAB-801).
