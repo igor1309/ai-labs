@@ -345,3 +345,19 @@ it("disables drawing, undo and tool controls until one pending completion commit
   commit({ completedCount: 1, earned: true }); await f.settled();
   expect(f.navigate).toHaveBeenCalledExactlyOnceWith({ destination: "result", work: expect.objectContaining({ actions: accepted.actions, completed: true, rewarded: true }), completion: { completedCount: 1, earned: true } });
 });
+
+it.each(["en", "ru"] as Language[])("chooses a brush size on its own sheet in %s without replacing paint or saving", language => {
+  const f = open(language);
+  const before = f.session.getSnapshot().work;
+  const trigger = screen.getByRole("button", { name: language === "en" ? "SIZE" : "РАЗМЕР" });
+  fireEvent.click(trigger);
+  const dialog = screen.getByRole("dialog", { name: language === "en" ? "SIZE" : "РАЗМЕР" });
+  expect(within(dialog).getAllByRole("button")).toHaveLength(4);
+  fireEvent.click(within(dialog).getByRole("button", { name: language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  expect(f.container.querySelector("canvas")).toBe(f.canvas);
+  expect(f.session.getSnapshot().work).toBe(before);
+  expect(f.write).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ" }).getAttribute("aria-pressed")).toBe("true");
+});

@@ -1,3 +1,4 @@
+import { coloringWorkshopRoot } from "./coloringWorkshopRoot.ts";
 import { jawMouth } from "./jawPresentation.ts";
 import { readJaws, jawPictures } from "./jawContent.ts";
 import { localJawAudio } from "./localJawAudio.ts";
@@ -286,7 +287,7 @@ export function appProps(browser: Browser): AppProps {
     },
     random: Math.random,
     viewport,
-    portraitLayouts: { "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], "whoseJaw-result": ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] },
+    portraitLayouts: { "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], "whoseJaw-result": ["tall", "tall-narrow"], coloring: ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] },
     pictureMotion: {
       now: () => browser.performance.now(),
       duration: Number.parseFloat(token("--motion-screen")),
@@ -368,5 +369,21 @@ export function appProps(browser: Browser): AppProps {
       const id = browser.setTimeout(fire, ms);
       return () => browser.clearTimeout(id);
     }
+  };
+}
+
+// Canvas paths are created only when coloring reads its collection or opens.
+export function browserColoring(browser: Pick<Window, "indexedDB" | "document" | "crypto">) {
+  let resources: ReturnType<typeof coloringWorkshopRoot> | undefined;
+  const get = () => resources ??= coloringWorkshopRoot({ open: (...args) => browser.indexedDB.open(...args) }, browser.document);
+  return {
+    source: {
+      list: async () => get().list(),
+      reset: async () => get().reset(),
+      open: (...args: Parameters<ReturnType<typeof coloringWorkshopRoot>["open"]>) => get().open(...args),
+      newWork: (...args: Parameters<ReturnType<typeof coloringWorkshopRoot>["newWork"]>) => get().newWork(...args)
+    },
+    get painter() { return get().painter; },
+    identity: () => browser.crypto.randomUUID()
   };
 }

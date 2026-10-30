@@ -33,9 +33,10 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
   const [color, setColor] = useState<Color>(COLORS[1]);
   const [size, setSize] = useState<BrushSize>(BRUSH_SIZES[1]);
   const [tool, setTool] = useState<"brush" | "fill">("brush");
-  const [chooser, setChooser] = useState<boolean>(false);
+  const [chooser, setChooser] = useState<"color" | "size" | null>(null);
   const paletteButton = useRef<HTMLButtonElement>(null);
-  const previousChooser = useRef(false);
+  const previousChooser = useRef<"color" | "size" | null>(null);
+  const sizeButton = useRef<HTMLButtonElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const active = useRef<Contact | undefined>(undefined);
   const paintRef = useRef(state.work.actions);
@@ -54,11 +55,11 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
     }
   };
   useLayoutEffect(() => {
-    if (blocked) { cancel(); setChooser(false); }
+    if (blocked) { cancel(); setChooser(null); }
     if (canvas.current) painter.render(canvas.current, state.work.actions);
   }, [painter, state.work, blocked]);
   useLayoutEffect(() => {
-    if (!chooser && previousChooser.current) paletteButton.current?.focus();
+    if (!chooser && previousChooser.current) (previousChooser.current === "size" ? sizeButton : paletteButton).current?.focus();
     previousChooser.current = chooser;
   }, [chooser]);
   useEffect(() => {
@@ -80,7 +81,7 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
       }
       if (event.type === "click") ignoreMouseClick = false;
     };
-    const interrupted = () => { cancel(); setChooser(false); };
+    const interrupted = () => { cancel(); setChooser(null); };
     const hidden = () => { if (document.visibilityState !== "visible") cancel(); };
     const stopGuard = arbitrate(guard);
     window.addEventListener("resize", interrupted);
@@ -119,30 +120,30 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
     if (contact.tool === "brush" && canvas.current) painter.preview(canvas.current, paintRef.current, contact.action);
   };
   const go = (destination: WorkshopDestination) => { if (canAct()) session.go(destination); };
-  const closeChooser = () => setChooser(false);
+  const closeChooser = () => setChooser(null);
   const palette = (popup = false) => <div className="coloring-palette" role="group" aria-label={text.color}>{COLORS.map((value, i) =>
     <Button key={value} autoFocus={popup && color === value} aria-label={text.colors[i]} aria-pressed={color === value} disabled={blocked} onClick={() => { if (canAct()) { setColor(value); if (popup) closeChooser(); } }}>
       <span className="coloring-swatch" style={{ background: value }}>{color === value && <Check aria-hidden="true" size={22} />}</span>
     </Button>)}</div>;
-  const sizes = <div className="coloring-sizes" role="group" aria-label={text.size}>{BRUSH_SIZES.map((value, i) =>
-    <Button key={value} aria-label={`${text.brush} ${text.sizes[i]}`} aria-pressed={tool === "brush" && size === value} disabled={blocked} onClick={() => { if (canAct()) { setSize(value); setTool("brush"); } }}>
+  const sizes = (popup = false) => <div className="coloring-sizes" role="group" aria-label={text.size}>{BRUSH_SIZES.map((value, i) =>
+    <Button key={value} autoFocus={popup && size === value} aria-label={`${text.brush} ${text.sizes[i]}`} aria-pressed={tool === "brush" && size === value} disabled={blocked} onClick={() => { if (canAct()) { setSize(value); setTool("brush"); if (popup) closeChooser(); } }}>
       <span className="coloring-dot" style={{ "--dot": `${value / 2 + 4}px` } as CSSProperties} />
       {tool === "brush" && size === value && <Check className="coloring-selection" aria-hidden="true" />}
     </Button>)}</div>;
   return <section className="coloring-workshop" lang={language} aria-label={text.title}>
-    <header className="coloring-header" inert={chooser || state.errorOpen || state.confirmingLoss}>
+    <header className="coloring-header" inert={chooser !== null || state.errorOpen || state.confirmingLoss}>
       <Button onClick={() => go("home")} disabled={blocked}><Home aria-hidden="true" /><span>{text.home}</span></Button>
       <h1><Paintbrush aria-hidden="true" />{text.title}</h1>
       <Button className="coloring-done" disabled={blocked || empty} onClick={() => go("result")}><Check aria-hidden="true" />{text.done}</Button>
     </header>
-    <nav className="coloring-navigation" aria-label={text.title} inert={chooser || state.errorOpen || state.confirmingLoss}>
+    <nav className="coloring-navigation" aria-label={text.title} inert={chooser !== null || state.errorOpen || state.confirmingLoss}>
       <Button onClick={() => go("gallery")} disabled={blocked}><Images aria-hidden="true" />{text.gallery}</Button>
       <Button onClick={() => go("new")} disabled={blocked}><Plus aria-hidden="true" />{text.new}</Button>
     </nav>
     <div className="coloring-body" inert={state.errorOpen || state.confirmingLoss}>
       <div className="coloring-paper">
         <h2>{text.dinosaur}</h2>
-        <div className="coloring-canvas-space" inert={chooser}><canvas ref={canvas} width={WIDTH} height={HEIGHT} role="img" aria-label={text.dinosaur}
+        <div className="coloring-canvas-space" inert={chooser !== null}><canvas ref={canvas} width={WIDTH} height={HEIGHT} role="img" aria-label={text.dinosaur}
           onContextMenu={event => event.preventDefault()}
           onPointerDown={event => {
             if (chooser || !canAct() || event.button !== 0) return;
@@ -169,29 +170,32 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
           onLostPointerCapture={event => { if (active.current?.id === event.pointerId) cancel(); }}
         /></div>
       </div>
-      <div className="coloring-tools" role="group" aria-label={text.brush} inert={chooser}>
+      <div className="coloring-tools" role="group" aria-label={text.brush} inert={chooser !== null}>
         <div className="coloring-full-palette">{palette()}</div>
-        <Button ref={paletteButton} className="coloring-palette-button" aria-label={text.color} aria-haspopup="dialog" aria-expanded={chooser} disabled={blocked} onClick={() => { if (canAct()) setChooser(true); }}>
+        <Button ref={paletteButton} className="coloring-palette-button" aria-label={text.color} aria-haspopup="dialog" aria-expanded={chooser === "color"} disabled={blocked} onClick={() => { if (canAct()) setChooser("color"); }}>
           <span className="coloring-swatch" style={{ background: color }}><Palette aria-hidden="true" /></span>
         </Button>
-        {sizes}
+        <div className="coloring-inline-sizes">{sizes()}</div>
+        <Button ref={sizeButton} className="coloring-size-button" aria-label={text.size} aria-haspopup="dialog" aria-expanded={chooser === "size"} disabled={blocked} onClick={() => { if (canAct()) setChooser("size"); }}>
+          <span className="coloring-dot" style={{ "--dot": `${size / 2 + 4}px` } as CSSProperties} />
+        </Button>
         <Button aria-label={text.fill} aria-pressed={tool === "fill"} disabled={blocked} onClick={() => { if (canAct()) setTool("fill"); }}><PaintBucket aria-hidden="true" />{tool === "fill" && <Check className="coloring-selection" aria-hidden="true" />}</Button>
         <Button aria-label={text.undo} disabled={blocked || !state.work.actions.length} onClick={() => { if (canAct()) session.undo(); }}><Undo2 aria-hidden="true" /></Button>
       </div>
       {chooser && <div className="coloring-picker-layer" onPointerDown={event => { if (event.target === event.currentTarget) event.preventDefault(); }} onClick={event => { if (event.target === event.currentTarget) closeChooser(); }}>
-        <div className="coloring-chooser" role="dialog" aria-modal="true" aria-label={text.color} onKeyDown={event => {
+        <div className="coloring-chooser" role="dialog" aria-modal="true" aria-label={chooser === "size" ? text.size : text.color} onKeyDown={event => {
           if (event.key === "Escape") { event.preventDefault(); closeChooser(); }
           if (event.key !== "Tab") return;
           const buttons = [...event.currentTarget.querySelectorAll("button")];
           const edge = event.shiftKey ? buttons[0] : buttons.at(-1);
           if (document.activeElement === edge) { event.preventDefault(); (event.shiftKey ? buttons.at(-1) : buttons[0])?.focus(); }
         }}>
-          <div className="coloring-picker-header"><strong>{text.color}</strong><Button aria-label={text.close} onClick={closeChooser}><X aria-hidden="true" /></Button></div>
-          {palette(true)}
+          <div className="coloring-picker-header"><strong>{chooser === "size" ? text.size : text.color}</strong><Button aria-label={text.close} onClick={closeChooser}><X aria-hidden="true" /></Button></div>
+          {chooser === "size" ? sizes(true) : palette(true)}
         </div>
       </div>}
     </div>
-    <p className="coloring-save" role="status" aria-live="polite" inert={chooser || state.errorOpen || state.confirmingLoss}>
+    <p className="coloring-save" role="status" aria-live="polite" inert={chooser !== null || state.errorOpen || state.confirmingLoss}>
       {state.save === "error" ? <TriangleAlert aria-hidden="true" /> : state.save === "saved" ? <Check aria-hidden="true" /> : <Save aria-hidden="true" />}
       {text[state.save === "error" ? "error" : state.save]}
       {state.saveError && state.save !== "error" && <><TriangleAlert aria-hidden="true" /><span>{text.error}</span></>}

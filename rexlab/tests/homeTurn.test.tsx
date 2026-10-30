@@ -52,7 +52,7 @@ import { openWindow, styleAt } from "./windowSizes.ts";
 // test lays them out and their animations recorded.
 
 // Fixed swipe distances use the four-column fixture without the optional games.
-const HOME_GAMES = ALL_GAMES.filter((game) => game !== "picturePuzzle" && game !== "whoseJaw");
+const HOME_GAMES = ALL_GAMES.filter((game) => game !== "picturePuzzle" && game !== "whoseJaw" && game !== "coloring");
 
 const GLIDE = 240;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -156,7 +156,11 @@ function openTurning(
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(7)}
-      {...(withOptionalGames && { picturePuzzle: { dinosaurs: readPictureDinosaurs(records), bodyPicture: fakeBodyPicture, random: seededRandom(17),
+      {...(withOptionalGames && { coloring: {
+        source: { list: async () => ({ works: [], unavailable: [], completedCount: 0, recentId: null }), reset: async () => {},
+          open: async () => { throw new Error("No work in layout fixture"); }, newWork: async () => { throw new Error("No work in layout fixture"); } },
+        painter: { width: 920, height: 620, render: () => {}, preview: () => {}, regionAt: () => undefined }, identity: () => "layout"
+      }, picturePuzzle: { dinosaurs: readPictureDinosaurs(records), bodyPicture: fakeBodyPicture, random: seededRandom(17),
         choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage) },
         whoseJaw: { ...jawGameParts(), progress: localWhoseJawProgress(() => storage, jaws.map(({ id }) => id)), total: jaws.length, jawPicture: "jaw.webp", gummyPicture: "gummy.webp" } })}
       portraitLayouts={{ home: narrow ? ["tall", "tall-narrow"] : ["tall"] }}

@@ -1,5 +1,7 @@
 # rexlab — Change Log
 
+- LAB-804: Coloring opens from Home with completed-work counts on its tile and featured card; phone brush sizes have their own chooser.
+
 ## 2026-10-30
 
 - A saved coloring result brings the child's own dinosaur alive and awards one star per work, with a durable collection best and editable history (LAB-803).

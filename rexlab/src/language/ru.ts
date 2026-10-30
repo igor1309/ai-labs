@@ -2,6 +2,7 @@ import type { Texts } from "./texts.ts";
 
 export const ru: Texts = {
   gameAudio: { mute: "ВЫКЛЮЧИТЬ ЗВУК", on: "ЗВУК ВКЛ.", off: "ЗВУК ВЫКЛ." },
+  coloring: "РАСКРАСЬ ДИНОЗАВРА",
   whoseJaw: "ЧЬЯ ЧЕЛЮСТЬ?",
   jawShelf: "ПОЛКА ЧЕЛЮСТЕЙ",
   jawProgress: "ЧЕЛЮСТИ НА МЕСТЕ",

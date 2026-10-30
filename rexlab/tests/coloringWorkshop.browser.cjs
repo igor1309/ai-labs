@@ -157,29 +157,29 @@ const { chromium } = require("playwright");
         assert(Math.abs(layout.canvas.w / layout.canvas.h - 920 / 620) < .01, context);
         assert.equal(layout.background, theme === "dark" ? "rgb(24, 30, 46)" : "rgb(255, 253, 248)");
         for (const b of layout.buttons) {
-          // Painting controls use the accepted 48-point targets; compact navigation also uses 48.
-          assert(b.w >= 48 && b.h >= 48 && b.x >= 0 && b.y >= 0 && b.x + b.w <= viewport.width + 1 && b.y + b.h <= viewport.height + 1, context);
+          // Every visible child control retains its full touch target.
+          assert(b.w >= 60 && b.h >= 60 && b.x >= 0 && b.y >= 0 && b.x + b.w <= viewport.width + 1 && b.y + b.h <= viewport.height + 1, context);
           assert(b.x + b.w <= layout.canvas.x + 1 || b.x >= layout.canvas.x + layout.canvas.w - 1 || b.y + b.h <= layout.canvas.y + 1 || b.y >= layout.canvas.y + layout.canvas.h - 1, context);
         }
-        assert.equal(layout.dock.h, 52, context);
+        assert.equal(layout.dock.h, 60, context);
         assert(layout.dock.y >= layout.canvas.y + layout.canvas.h, context);
-        const wide = viewport.width >= 1000 && viewport.height >= 600;
+        const wide = viewport.width >= 1180 && viewport.height >= 600;
         const dockButtons = layout.buttons.filter(b => b.dock);
-        assert.equal(dockButtons.length, wide ? 17 : 6, context);
+        assert.equal(dockButtons.length, wide ? 17 : 4, context);
         for (const b of dockButtons) {
-          assert(b.y >= layout.dock.y && b.y + b.h <= layout.dock.y + 52, context);
+          assert(b.y >= layout.dock.y && b.y + b.h <= layout.dock.y + 60, context);
         }
         for (let i = 0; i < layout.buttons.length; i++) for (const b of layout.buttons.slice(i + 1)) {
           const a = layout.buttons[i];
           assert(a.x + a.w <= b.x + 1 || b.x + b.w <= a.x + 1 || a.y + a.h <= b.y + 1 || b.y + b.h <= a.y + 1, context);
         }
-        assert.equal(await page.getByRole("group", { name: language === "en" ? "SIZE" : "РАЗМЕР", exact: true }).getByRole("button").count(), 3);
+        assert.equal(await page.getByRole("group", { name: language === "en" ? "SIZE" : "РАЗМЕР", exact: true }).getByRole("button").count(), wide ? 3 : 0);
         if (wide) {
           const colors = await page.getByRole("group", { name: language === "en" ? "COLOR" : "ЦВЕТ", exact: true }).getByRole("button").all();
           assert.equal(colors.length, 12);
           for (const button of colors) {
             const r = await button.boundingBox();
-            assert.equal(r.width, 48); assert.equal(r.height, 48);
+            assert.equal(r.width, 60); assert.equal(r.height, 60);
           }
         } else {
           const trigger = page.getByRole("button", { name: language === "en" ? "COLOR" : "ЦВЕТ", exact: true });
@@ -195,29 +195,29 @@ const { chromium } = require("playwright");
           assert(picker.x < originalBox.x + originalBox.width && picker.x + picker.width > originalBox.x && picker.y < originalBox.y + originalBox.height && picker.y + picker.height > originalBox.y, context);
           for (const button of await dialog.getByRole("button").all()) {
             const r = await button.boundingBox();
-            assert(r && r.width === 48 && r.height === 48 && r.x >= 0 && r.y >= 0 && r.x + r.width <= viewport.width + 1 && r.y + r.height <= viewport.height + 1, context);
+            assert(r && r.width === 60 && r.height === 60 && r.x >= 0 && r.y >= 0 && r.x + r.width <= viewport.width + 1 && r.y + r.height <= viewport.height + 1, context);
           }
           const grid = await dialog.getByRole("group").getByRole("button").all();
           const cells = await Promise.all(grid.map(b => b.boundingBox()));
-          assert.equal(new Set(cells.map(r => r.x)).size, 4, context);
-          assert.equal(new Set(cells.map(r => r.y)).size, 3, context);
+          assert.equal(new Set(cells.map(r => r.x)).size, viewport.width > viewport.height && viewport.height < 600 ? 6 : 4, context);
+          assert.equal(new Set(cells.map(r => r.y)).size, viewport.width > viewport.height && viewport.height < 600 ? 2 : 3, context);
           await dialog.getByRole("button", { name: language === "en" ? "BLUE" : "ГОЛУБОЙ", exact: true }).press("Enter");
           assert.equal(await dialog.count(), 0);
           assert(await trigger.evaluate(el => el === document.activeElement));
           assert.equal(await trigger.locator(".coloring-swatch").evaluate(el => el.style.backgroundColor), "rgb(66, 165, 245)");
           assert.equal((await state()).work.revision, 0);
+          // Choosers replace the paper area; CLOSE restores the same canvas
+          // and the size chooser changes only the selected tool.
           await trigger.press("Enter");
-          // An outside contact reaches the shield for the entire tap.
-          const outside = { x: 4, y: viewport.height / 2 };
-          assert(await page.evaluate(p => document.elementFromPoint(p.x, p.y).classList.contains("coloring-picker-layer"), outside), context);
-          await pointer(".coloring-picker-layer", "pointerdown", 1, outside.x, outside.y, 50000 + layoutId * 1000);
-          await pointer(".coloring-picker-layer", "pointerup", 1, outside.x, outside.y, 50030 + layoutId * 1000);
-          await page.locator(".coloring-picker-layer").evaluate((el, p) => el.dispatchEvent(new PointerEvent("click", { pointerId: 1, clientX: p.x, clientY: p.y, bubbles: true, cancelable: true })), outside);
+          await dialog.getByRole("button", { name: language === "en" ? "CLOSE" : "ЗАКРЫТЬ", exact: true }).press("Enter");
+          const sizeTrigger = page.getByRole("button", { name: language === "en" ? "SIZE" : "РАЗМЕР", exact: true });
+          await sizeTrigger.press("Enter");
+          await dialog.getByRole("button", { name: language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ", exact: true }).press("Enter");
           assert.equal(await dialog.count(), 0);
           assert.equal((await state()).work.revision, 0);
           assert.deepEqual((await state()).work.actions, []);
           assert.deepEqual(await canvas.boundingBox(), originalBox, context);
-          assert(await trigger.evaluate(el => el === document.activeElement));
+          assert(await sizeTrigger.evaluate(el => el === document.activeElement));
           await originalCanvas.dispose();
         }
       }
@@ -226,6 +226,6 @@ const { chromium } = require("playwright");
     assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--motion-amount").trim()), "0");
     assert.deepEqual(errors, []);
     if (process.env.COLORING_SCREENSHOT) await page.screenshot({ path: process.env.COLORING_SCREENSHOT });
-    console.log("PASS workshop: production paint/restore/undo/completion, tap safety, contact isolation/cancellation, save failures/retry, 24 single-row RU/EN/theme layouts, temporary 4x3 overlay pickers and reduced motion");
+    console.log("PASS workshop: production paint/restore/undo/completion, tap safety, contact isolation/cancellation, save failures/retry, 24 single-row RU/EN/theme layouts, color and size chooser sheets and reduced motion");
   } finally { if (browser) await browser.close(); }
 })().catch(error => { console.error(error); console.error(`FAIL workshop: ${error.message.split("\n")[0]}`); process.exitCode = 1; });

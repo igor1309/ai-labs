@@ -80,3 +80,8 @@ jobs:
         if: matrix.shard == 1
         working-directory: rexlab
         run: node tests/coloringResult.browser.cjs
+
+      - name: Check coloring full flow in Chromium
+        if: matrix.shard == 1
+        working-directory: rexlab
+        run: node tests/coloringFlow.browser.cjs
