@@ -143,10 +143,11 @@ public struct HostView: View {
                     IconBadge(.large, tint: Tokens.clientTint) {
                         BluetoothSymbol().foregroundStyle(Tokens.clientHi)
                     }
-                } value: {
+                } value: { EmptyView() } footer: {
                     if let secondsRemaining {
                         Text(secondsRemaining).typeRole(.code).foregroundStyle(Tokens.hostHi)
                     }
+                    panelButtons
                 }
             case let .result(outcome, title):
                 ResultCard(outcome, title: title, isCompact: isCompact) { panelButtons }
@@ -164,9 +165,16 @@ public struct HostView: View {
         _ title: String, detail: String,
         @ViewBuilder visual: () -> some View, @ViewBuilder value: () -> some View
     ) -> some View {
+        statusCard(title, detail: detail, visual: visual, value: value) { panelButtons }
+    }
+    private func statusCard(
+        _ title: String, detail: String,
+        @ViewBuilder visual: () -> some View, @ViewBuilder value: () -> some View,
+        @ViewBuilder footer: () -> some View
+    ) -> some View {
         Card(isCompact: isCompact) {
             StatusPanel(title, detail: detail, level: .panel, isCompact: isCompact,
-                        visual: visual, value: value) { panelButtons }
+                        visual: visual, value: value, footer: footer)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .transition(Motion.panelTransition(reduced: reduceMotion))
