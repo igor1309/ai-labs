@@ -24,22 +24,16 @@ public struct HostView: View {
             ) {
                 CompactHostSteps(state.steps, isSettingsEnabled: state.isSettingsEnabled, onSettings: openSettings)
             } content: {
-                ViewThatFits(in: .vertical) {
-                    compactContent
-                    ScrollView { compactContent }
+                VStack(spacing: Tokens.space3) {
+                    amount
+                    panel
                 }
+            } actions: {
+                actionButtons
             }
         } else {
             regularShell
         }
-    }
-
-    private var compactContent: some View {
-        VStack(spacing: Tokens.space3) {
-            amount
-            panel
-        }
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var regularShell: some View {
@@ -88,8 +82,8 @@ public struct HostView: View {
             exchange
         }
         .frame(maxWidth: .infinity, maxHeight: horizontalSizeClass == .compact ? nil : .infinity, alignment: .leading)
-        .animation(Motion.fast(reduced: reduceMotion).animation, value: state.noticeProjection)
-        .animation(Motion.fast(reduced: reduceMotion).animation, value: state.toneProjection)
+        .motion(.fast, value: state.noticeProjection)
+        .motion(.fast, value: state.toneProjection)
     }
 
     private var amountValue: some View {
@@ -107,111 +101,84 @@ public struct HostView: View {
     }
 
     private var exchange: some View {
-        ExchangeStrip(
-            host: DeviceChip(.host, code: state.exchange.hostCode, state: state.exchange.hostDetail),
-            message: Message(
-                state.exchange.message, direction: state.exchange.direction,
-                tone: state.exchange.tone, systemImage: state.exchange.symbol
-            ),
-            client: DeviceChip(
-                state.exchange.clientIsEmpty ? .empty : .client,
-                code: state.exchange.clientCode, state: state.exchange.clientDetail
-            ),
-            isCompact: horizontalSizeClass == .compact
-        )
+        ExchangeStrip(state.exchange, isCompact: horizontalSizeClass == .compact)
     }
-
     private func note(_ notice: HostState.Notice) -> some View {
-        HStack(spacing: Tokens.space3) {
-            Image(systemName: notice.symbol).typeRole(.lead)
-                .foregroundStyle(notice.isFailure ? Tokens.bad : Tokens.hostHi)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: Tokens.space1) {
-                Text(notice.title).typeRole(horizontalSizeClass == .compact ? .labelS : .label)
-                Text(notice.detail).typeRole(.small).foregroundStyle(Tokens.text2)
-            }
-        }
-        .padding(.horizontal, horizontalSizeClass == .compact ? Tokens.space3 : Tokens.space5)
-        .padding(.vertical, horizontalSizeClass == .compact ? Tokens.space2 : Tokens.space3)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            notice.isFailure ? Tokens.badTint : Tokens.hostTint,
-            in: RoundedRectangle(cornerRadius: Tokens.radiusLg)
+        NoticeBanner(
+            notice.title, detail: notice.detail, systemImage: notice.symbol,
+            tone: notice.isFailure ? .failure : .host, isCompact: horizontalSizeClass == .compact
         )
     }
-
+    private var isCompact: Bool { horizontalSizeClass == .compact }
     private var panel: some View {
         Group {
             switch state.panel {
             case let .keypad(rows):
-                VStack(spacing: Tokens.space4) {
-                    Grid(horizontalSpacing: .zero, verticalSpacing: Tokens.space1) {
-                        ForEach(rows.indices, id: \.self) { row in
-                            GridRow {
-                                ForEach(rows[row]) { action in
-                                    key(action).frame(maxHeight: .infinity)
+                Card(isCompact: isCompact, padding: .tight) {
+                    VStack(spacing: Tokens.space4) {
+                        Grid(horizontalSpacing: .zero, verticalSpacing: Tokens.space1) {
+                            ForEach(rows.indices, id: \.self) { row in
+                                GridRow {
+                                    ForEach(rows[row]) { action in
+                                        key(action).frame(maxHeight: .infinity)
+                                    }
                                 }
                             }
                         }
+                        panelButtons
                     }
-                    buttons
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .padding(horizontalSizeClass == .compact ? Tokens.space2 : Tokens.space4)
                 .transition(Motion.panelTransition(reduced: reduceMotion))
             case let .countdown(countdown, title, detail):
-                VStack(spacing: horizontalSizeClass == .compact ? Tokens.space2 : Tokens.space5) {
+                statusCard(title, detail: detail) {
                     CountdownRing(
                         secondsText: countdown.seconds, caption: countdown.caption,
                         accessibilityLabel: countdown.accessibilityLabel, fraction: countdown.fraction,
-                        isCompact: horizontalSizeClass == .compact
+                        isCompact: isCompact
                     )
-                    Text(title).font(Tokens.text(Tokens.sizeLead, .semibold)).foregroundStyle(Tokens.text)
-                    Text(detail).typeRole(.eyebrow).multilineTextAlignment(.center)
-                    buttons
-                }
-                .padding(horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space7)
-                .transition(Motion.panelTransition(reduced: reduceMotion))
+                } value: { EmptyView() }
             case let .connection(title, detail, secondsRemaining):
-                VStack(spacing: horizontalSizeClass == .compact ? Tokens.space2 : Tokens.space5) {
-                    BluetoothSymbol().foregroundStyle(Tokens.clientHi)
-                        .frame(width: Tokens.space12, height: Tokens.space12)
-                        .frame(width: Tokens.space14 * 2, height: Tokens.space14 * 2)
-                        .background(Tokens.clientTint, in: Circle())
-                        .accessibilityHidden(true)
-                    Text(title).typeRole(.lead).foregroundStyle(Tokens.text)
-                    Text(detail).typeRole(.eyebrow).multilineTextAlignment(.center)
-                    if horizontalSizeClass == .compact, let secondsRemaining {
+                statusCard(title, detail: detail) {
+                    IconBadge(.large, tint: Tokens.clientTint) {
+                        BluetoothSymbol().foregroundStyle(Tokens.clientHi)
+                    }
+                } value: { EmptyView() } footer: {
+                    if let secondsRemaining {
                         Text(secondsRemaining).typeRole(.code).foregroundStyle(Tokens.hostHi)
                     }
-                    buttons
-                }
-                .padding(horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space7)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .transition(Motion.panelTransition(reduced: reduceMotion))
-                .overlay(alignment: .bottom) {
-                    if horizontalSizeClass != .compact, let secondsRemaining {
-                        Text(secondsRemaining).typeRole(.code).foregroundStyle(Tokens.hostHi)
-                            .padding(Tokens.space7)
-                    }
+                    panelButtons
                 }
             case let .result(outcome, title):
-                ResultCard(outcome, title: title, isCompact: horizontalSizeClass == .compact) { buttons }
+                ResultCard(outcome, title: title, isCompact: isCompact) { panelButtons }
                     .transition(Motion.panelTransition(reduced: reduceMotion))
             case let .processor(eyebrow, title):
-                VStack(spacing: horizontalSizeClass == .compact ? Tokens.space2 : Tokens.space6) {
+                statusCard(title, detail: "") {
                     Text(eyebrow).typeRole(.eyebrow).foregroundStyle(Tokens.hostHi)
-                    Text(title).typeRole(.lead).foregroundStyle(Tokens.text)
-                    buttons
-                }
-                .padding(horizontalSizeClass == .compact ? Tokens.space4 : Tokens.space7)
-                .transition(Motion.panelTransition(reduced: reduceMotion))
+                } value: { EmptyView() }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Tokens.raised, in: RoundedRectangle(cornerRadius: Tokens.radiusXl))
-        .animation(Motion.panel(reduced: reduceMotion).animation, value: state.panelProjection)
+        .motion(.panel, value: state.panelProjection)
     }
-
+    private func statusCard(
+        _ title: String, detail: String,
+        @ViewBuilder visual: () -> some View, @ViewBuilder value: () -> some View
+    ) -> some View {
+        statusCard(title, detail: detail, visual: visual, value: value) { panelButtons }
+    }
+    private func statusCard(
+        _ title: String, detail: String,
+        @ViewBuilder visual: () -> some View, @ViewBuilder value: () -> some View,
+        @ViewBuilder footer: () -> some View
+    ) -> some View {
+        Card(isCompact: isCompact) {
+            StatusPanel(title, detail: detail, level: .panel, isCompact: isCompact,
+                        visual: visual, value: value, footer: footer)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .transition(Motion.panelTransition(reduced: reduceMotion))
+    }
     @ViewBuilder
     private func key(_ action: HostAction) -> some View {
         Group {
@@ -227,23 +194,29 @@ public struct HostView: View {
         .opacity(action.isEnabled ? 1 : 0.5)
     }
 
+    /// On an iPhone the buttons sit in the shell's actions, at the foot of the screen.
+    @ViewBuilder
+    private var panelButtons: some View {
+        if horizontalSizeClass != .compact { buttons }
+    }
+
     @ViewBuilder
     private var buttons: some View {
         if !state.buttons.isEmpty {
             VStack(spacing: horizontalSizeClass == .compact ? Tokens.space2 : Tokens.space5) {
-                ForEach(state.buttons) { action in
-                    Button { send(action) } label: {
-                        Label(action.title, systemImage: action.symbol)
-                    }
-                    .buttonStyle(.action(action.kind))
-                    .disabled(!action.isEnabled)
-                    .allowsHitTesting(action.isEnabled && isEnabled)
-                    .opacity(action.isEnabled ? 1 : 0.5)
-                    .transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
-                }
+                actionButtons
             }
-            .animation(Motion.standard(reduced: reduceMotion).animation, value: state.buttonsProjection)
         }
+    }
+
+    private var actionButtons: some View {
+        ForEach(state.buttons) { action in
+            ActionButton(action.title, systemImage: action.symbol, kind: action.kind, isEnabled: action.isEnabled) {
+                send(action)
+            }
+            .transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
+        }
+        .motion(.standard, value: state.buttonsProjection)
     }
 
     private func send(_ action: HostAction) {
