@@ -34,8 +34,8 @@ public struct ClientView: View {
                 Spacer(minLength: Tokens.space1)
             }
         } actions: {
-            ForEach(state.actions, id: \.id) { action in
-                button(action).transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
+            ActionSlots(state.actions) { action in
+                button(action)
             }
             .motion(.standard, value: state.actionsProjection)
         }

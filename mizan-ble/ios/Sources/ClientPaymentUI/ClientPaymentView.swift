@@ -31,8 +31,8 @@ public struct ClientPaymentView: View {
         } actions: {
             if !state.actions.isEmpty {
                 HStack(spacing: Tokens.space3) {
-                    ForEach(state.actions, id: \.id) { action in
-                        button(action).transition(Motion.itemTransition(reduced: reduceMotion, from: .bottom))
+                    ActionSlots(state.actions) { action in
+                        button(action)
                     }
                 }
                 .motion(.standard, value: state.actionsProjection)
