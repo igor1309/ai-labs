@@ -69,9 +69,8 @@ on cancellation and failure; `--keep` preserves it. The report gives its path.
 
 The summary labels the main thread's share of sampled CPU and lists complete
 `PanelUpdate`, `TranscriptWrite` and `Hearing` intervals: count, total and longest.
-PanelUpdate measures each observation-driven panel render pass, including the
-transcript's text layout; a burst of states can share one pass. The rehearsal
-adds the interval around the hosting view's normal layout callback.
+PanelUpdate measures mapping a reading state and delivering it to the panel,
+not SwiftUI's render; the sampled frames show the render's cost.
 Compare summaries from matching workloads, builds, machines and instrumentation:
 
     python3 -I scripts/summarize-trace.py --compare OLD/summary.json NEW/summary.json

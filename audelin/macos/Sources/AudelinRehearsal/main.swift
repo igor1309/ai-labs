@@ -24,18 +24,17 @@ do { options = try Options(Array(CommandLine.arguments.dropFirst())) } catch {
 let application = NSApplication.shared
 application.setActivationPolicy(.regular)
 let shown = Shown()
-private let host = SignpostedPanelHost(rootView: ShownPanel(shown: shown))
 let window = NSWindow(
     contentRect: NSRect(x: 0, y: 0, width: PanelConfig.glassLedger.panelWidth, height: 640),
     styleMask: [.titled, .resizable], backing: .buffered, defer: false
 )
 window.title = "Audelin rehearsal"
-window.contentView = host
+window.contentView = NSHostingView(rootView: ShownPanel(shown: shown))
 window.center()
 window.makeKeyAndOrderFront(nil)
 
 Task { @MainActor in
-    let code = await rehearse(options, updatePanel: { shown.state = $0 })
+    let code = await rehearse(options, shown: shown)
     exit(code)
 }
 application.run()
@@ -59,7 +58,7 @@ private struct ShownPanel: View {
 }
 
 @MainActor
-private func rehearse(_ options: Options, updatePanel: @escaping @MainActor (PanelState) -> Void) async -> Int32 {
+private func rehearse(_ options: Options, shown: Shown) async -> Int32 {
 
     let root = options.recordingsDirectory.map { URL(fileURLWithPath: $0, isDirectory: true) }
         ?? FileManager.default.temporaryDirectory.appendingPathComponent("audelin-rehearsal-\(ProcessInfo.processInfo.processIdentifier)")
@@ -91,7 +90,7 @@ private func rehearse(_ options: Options, updatePanel: @escaping @MainActor (Pan
         makeSession: { await makeSession(handler: $0) }
     )
     let showing = Task { @MainActor in
-        for await state in await panel.states() { updatePanel(state) }
+        for await state in await panel.states() { shown.state = state }
     }
 
     report("recording into \(root.path)")

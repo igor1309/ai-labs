@@ -1,7 +1,7 @@
 import struct CallText.State
 import LiveText
 import os
-import SwiftUI
+import Reading
 
 /// A fresh ID for each call keeps overlapping hearings and writes distinct.
 struct ProfileIntervals: Sendable {
@@ -18,32 +18,16 @@ struct ProfileIntervals: Sendable {
     }()
 }
 
-/// Measures the hosting view's render pass without requesting one.
-@MainActor
-public class SignpostedPanelHost<Content: View>: NSHostingView<Content> {
+struct SignpostedPanelUpdate: Sendable {
 
-    private let intervals: ProfileIntervals
+    let receive: @Sendable (ReadingState) async -> Void
+    let intervals: ProfileIntervals
 
-    public required init(rootView: Content) {
-
-        intervals = .system
-        super.init(rootView: rootView)
-    }
-
-    init(rootView: Content, intervals: ProfileIntervals) {
-
-        self.intervals = intervals
-        super.init(rootView: rootView)
-    }
-
-    @available(*, unavailable)
-    public required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
-
-    public override func layout() {
+    func callAsFunction(_ state: ReadingState) async {
 
         let end = intervals.begin("PanelUpdate")
         defer { end() }
-        super.layout()
+        await receive(state)
     }
 }
 
