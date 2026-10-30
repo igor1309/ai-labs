@@ -13,9 +13,9 @@ import Testing
 struct PanelLoadTests {
 
     static let states = 100
-    /// Text states per audio second on today's composed session, to put the
-    /// cost in terms of the main actor.
-    static let todaysRate = 140.0
+    /// The most text states per audio second the composed session sends, to
+    /// put the cost in terms of the main actor.
+    static let todaysRate = 10.0
 
     @Test func aTextStateLateInALongCallCostsThePanelAboutWhatAnEarlyOneDoes() async throws {
 

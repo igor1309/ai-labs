@@ -77,16 +77,15 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     var transcriptFile: (any SessionTranscriptFile)?
     var text: CallReader?
     var writing: WritingReader?
-    private var readingOutput: AsyncStream<State>.Continuation?
+    private var readingOutput: NewestText?
     private var readingObservation: Task<Void, Never>?
 
     // Register before Session begins so its first text state cannot be missed.
     func readingText() -> AsyncStream<State> {
 
-        // Listening omissions retire identities even when a later snapshot reuses them.
-        let (stream, output) = AsyncStream<State>.makeStream()
+        let output = NewestText()
         readingOutput = output
-        return stream
+        return output.stream
     }
 
     @usableFromInline

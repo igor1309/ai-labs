@@ -6,7 +6,8 @@
   every audio piece; one side's text failing leaves the other side's going;
   a transcript that keeps failing is reported once; a hearing late in a
   long call costs what an early one does; a word crossing a chunk's edge
-  is no longer lost (LAB-753).
+  is no longer lost; an entry whose id returns reads as new, and a
+  stalled panel finds only the newest text waiting (LAB-753).
 
 - Live text breaks long monologues into bounded paragraphs and joins short
   fragments before a pause to the following words (LAB-749).

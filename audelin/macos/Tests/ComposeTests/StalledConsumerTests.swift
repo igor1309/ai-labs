@@ -56,9 +56,7 @@ struct StalledConsumerTests {
                 return words.contains("mine\(myLast)") && words.contains("theirs\(theirLast)")
             }
             let waiting = read.withLock { $0 }
-            withKnownIssue("every text state waits for the panel, each with the whole call") {
-                #expect(waiting <= 10, "\(waiting) text states waited for the panel after \(Int(stall)) s")
-            }
+            #expect(waiting <= 10, "\(waiting) text states waited for the panel after \(Int(stall)) s")
             for (side, last) in [("mine", myLast), ("theirs", theirLast)] {
                 let heard = shown.allWords.filter { $0.hasPrefix(side) && $0.dropFirst(side.count).allSatisfy(\.isNumber) }
                 #expect(heard == (1...last).map { "\(side)\($0)" }, "the panel lost or repeated \(side) after the stall")

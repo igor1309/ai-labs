@@ -26,6 +26,8 @@ public actor SideText {
     private var sampleRate = 1.0
     private var shownThrough = 0.0
     private var latest: [Text] = []
+    private var shownIDs: [Int: Int] = [:]
+    private var highestID = -1
     private var later: [Range<Double>] = []
 
     /// Each activation gets its own filling-in run, using the same live text.
@@ -148,7 +150,7 @@ public actor SideText {
         // still belongs to the retained engine, but its text stays hidden.
         heardThrough = progress.heardThrough
         sampleRate = progress.sampleRate
-        latest = progress.text
+        latest = identified(progress.text)
         guard current(turn) else { return }
         show()
         publish()
@@ -176,7 +178,7 @@ public actor SideText {
             let heard = try await text.hear(chunk)
             heardThrough = chunk.end
             sampleRate = chunk.sampleRate
-            latest = heard
+            latest = identified(heard)
             guard current(turn) else { return }
             show()
             publish()
@@ -215,7 +217,7 @@ public actor SideText {
         do {
             let finished = try await text.finish()
             guard current(turn) else { return }
-            latest = finished
+            latest = identified(finished)
             show()
             await end(.finished)
         } catch {
@@ -266,6 +268,22 @@ public actor SideText {
             })
         }
         shownThrough = heardThrough
+    }
+
+    /// Updates replace unread ones, so an id live text leaves out and then
+    /// brings back for other words gets a new id here, where every hearing
+    /// is seen; an id kept from one hearing to the next keeps its id.
+    private func identified(_ texts: [Text]) -> [Text] {
+
+        var next: [Int: Int] = [:]
+        let identified = texts.map { text in
+            let id = shownIDs[text.id] ?? (text.id > highestID ? text.id : highestID + 1)
+            highestID = max(highestID, id)
+            next[text.id] = id
+            return Text(id: id, start: text.start, end: text.end, settled: text.settled, pending: text.pending)
+        }
+        shownIDs = next
+        return identified
     }
 
     private func publish() { continuation.yield(state) }

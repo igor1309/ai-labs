@@ -60,11 +60,8 @@ struct ReturningEntryTests {
         #expect(Set(old.map(\.time)) == ["00:02"])
         #expect(Set(old.map(\.id)).count == 1, "the old entry changed identity as it grew")
         #expect(Set(new.map(\.id)).count == 1, "the new entry changed identity as it grew")
-        // A known bug: the side keeps only its newest snapshot, so the one leaving the entry out is lost.
-        withKnownIssue("an id that returns while the call text is behind continues the old entry") {
-            #expect(Set(new.map(\.time)) == ["00:12"])
-            #expect(Set(old.map(\.id)).isDisjoint(with: new.map(\.id)))
-        }
+        #expect(Set(new.map(\.time)) == ["00:12"])
+        #expect(Set(old.map(\.id)).isDisjoint(with: new.map(\.id)))
 
         audio.end()
         quietAudio.end()

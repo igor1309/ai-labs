@@ -195,9 +195,16 @@ Guards, passing on trunk:
 - Text flood: the last entry now ends where its last word ends, and the
   session drops a side's state, and the panel's, when it equals the one
   before. The endurance test reads about 800 states with no repeats over
-  the same audio, from 140 a second; its two checks now pass. A stalled
-  panel still finds the states it missed waiting, about 130 after 20 s and
-  400 after 60 s, until the panel keeps identities without every state.
+  the same audio, from 140 a second; its two checks now pass.
+- Returning ids: side text sees every hearing, so an id live text leaves
+  out and later brings back for other words gets a new id there; an
+  entry that returns while the call text is behind reads as new, at its
+  own time.
+- Stalled panel: with identity settled before any state can be skipped,
+  the panel's text keeps only the newest listening state and the newest
+  one after it, since only a listening state takes entries away. A panel
+  stalled for 20 or 60 s finds no more than 10 states waiting, from about
+  130 and 400, and then shows every word.
 - One side's text failing leaves the other side's going: the panel shows
   the failure, and the other side's words reach the panel and transcript
   to the end of the call.
@@ -213,6 +220,14 @@ Guards, passing on trunk:
   when it overlaps it more than any word already kept. The recorded windows had one such word,
   "По" in "Три. По SLA", which the expected reading had dropped too; the
   20-minute call now hears all 1,831 words once and in order.
+
+Still open: a text state costs the panel 80 to 140× as much with 1,620
+entries as with 20 (11 to 22 ms against 0.15 ms over two runs), since every
+state still maps and reduces the whole call. At no more than 10 states an
+audio second that is 11 to 22% of the main actor late in a long call, from
+127%; making the
+panel's work follow only what changed is a larger change to the reducer
+and its mapping.
 
 ## Candidates already in the code
 
