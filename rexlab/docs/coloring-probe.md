@@ -3,6 +3,11 @@
 Open `/prototypes/coloring.html` on the RexLab development server. The page
 has no game entry and uses the separate IndexedDB database
 `rexlab-coloring-probe-1`. It contains no rewards or completion flow.
+From `rexlab/`, install with `npm ci`, then run `npm run dev -- --host`.
+On an iPad on the same Wi-Fi, open the printed Network origin followed by
+`/prototypes/coloring.html`. Keep that origin unchanged when checking
+restoration: browser storage belongs to its origin. This is a development
+command, not a deployed release or a service kept running by this task.
 
 The original vector Stegosaurus has ten closed regions. The same geometry
 supplies clipping, fill selection and protected outlines. Its logical canvas
@@ -33,13 +38,16 @@ an empty collection. No storage reset is offered.
 
 - Journal, independent work, pointer ownership and save-order/failure logic
   have deterministic automated coverage, including transaction completion,
-  abort, corrupt records, synchronous open failure and retry.
+  abort, corrupt records, sparse point arrays, synchronous open failure and retry.
 - The Chromium contract probe covers real canvas pixels, no-op actions, all
   brush diameters, clipping, nonoverlapping regions, fill replacement, protected
   details, exact restore, undo/continue, independent journals and thumbnails,
   stale writes, atomic abort and corruption. Its UI checks cover cancellation,
   extra pointers, shared double taps, exact composition animation and six
-  viewport sizes in both languages and themes. They passed in desktop Chromium 156.0.8078.4; physical Safari results remain pending.
+  viewport sizes in both languages and themes. They also drive tool selection,
+  compare cancelled previews with committed pixels, decode thumbnails against
+  their painted revisions, and retry a healthy save beside a damaged work.
+  They passed in desktop Chromium 156.0.8078.4; physical Safari results remain pending.
 - Browser verification ran from the unrestricted workspace after the implementation
   sandbox denied Chromium launch. The harness builds in memory and intercepts
   requests without a persistent local service.
