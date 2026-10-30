@@ -111,7 +111,7 @@ shared key, on both screens for the payer to compare.
   has no Bluetooth. Fifteen Maestro lanes in [`maestro/`](maestro/) drive
   it through every scenario and check the app's log, including that no
   amount, key or identifier is ever logged.
-- 389 Swift Testing tests in 36 suites, run with `swift test` in `ios/`
+- 387 Swift Testing tests in 35 suites, run with `swift test` in `ios/`
   and `ios/App/`.
 - Screen snapshot tests render the host on an 11-inch iPad and both sides
   on an iPhone 15 Pro, in light and dark, with each device's safe area.
