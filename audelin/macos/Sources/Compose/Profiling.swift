@@ -1,7 +1,6 @@
 import struct CallText.State
 import LiveText
 import os
-import PanelUI
 import SwiftUI
 
 /// A fresh ID for each call keeps overlapping hearings and writes distinct.
@@ -19,32 +18,32 @@ struct ProfileIntervals: Sendable {
     }()
 }
 
-/// Measures a hosted panel update through the transcript's AppKit layout.
+/// Measures the hosting view's render pass without requesting one.
 @MainActor
-public struct SignpostedPanelUpdate<Content: View> {
+public class SignpostedPanelHost<Content: View>: NSHostingView<Content> {
 
-    private let host: NSHostingView<Content>
-    private let content: (PanelState) -> Content
     private let intervals: ProfileIntervals
 
-    public init(host: NSHostingView<Content>, content: @escaping (PanelState) -> Content) {
+    public required init(rootView: Content) {
 
-        self.init(host: host, content: content, intervals: .system)
+        intervals = .system
+        super.init(rootView: rootView)
     }
 
-    init(host: NSHostingView<Content>, content: @escaping (PanelState) -> Content, intervals: ProfileIntervals) {
+    init(rootView: Content, intervals: ProfileIntervals) {
 
-        self.host = host
-        self.content = content
         self.intervals = intervals
+        super.init(rootView: rootView)
     }
 
-    public func callAsFunction(_ state: PanelState) {
+    @available(*, unavailable)
+    public required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    public override func layout() {
 
         let end = intervals.begin("PanelUpdate")
         defer { end() }
-        host.rootView = content(state)
-        host.layoutSubtreeIfNeeded()
+        super.layout()
     }
 }
 

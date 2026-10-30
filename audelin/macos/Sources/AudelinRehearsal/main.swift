@@ -5,6 +5,7 @@ import Compose
 import Foundation
 import LiveText
 import struct MicrophoneCapture.AudioPiece
+import Observation
 import PanelUI
 import SessionRehearsal
 import SwiftUI
@@ -22,8 +23,8 @@ do { options = try Options(Array(CommandLine.arguments.dropFirst())) } catch {
 
 let application = NSApplication.shared
 application.setActivationPolicy(.regular)
-let host = NSHostingView(rootView: ShownPanel(state: .init(recording: .off, log: .empty)))
-let updatePanel = SignpostedPanelUpdate(host: host, content: ShownPanel.init)
+let shown = Shown()
+private let host = SignpostedPanelHost(rootView: ShownPanel(shown: shown))
 let window = NSWindow(
     contentRect: NSRect(x: 0, y: 0, width: PanelConfig.glassLedger.panelWidth, height: 640),
     styleMask: [.titled, .resizable], backing: .buffered, defer: false
@@ -34,18 +35,25 @@ window.center()
 window.makeKeyAndOrderFront(nil)
 
 Task { @MainActor in
-    let code = await rehearse(options, updatePanel: { updatePanel($0) })
+    let code = await rehearse(options, updatePanel: { shown.state = $0 })
     exit(code)
 }
 application.run()
 
-struct ShownPanel: View {
+/// The panel's latest state, for the window to draw.
+@MainActor @Observable
+final class Shown {
 
-    let state: PanelState
+    var state = PanelState(recording: .off, log: .empty)
+}
+
+private struct ShownPanel: View {
+
+    let shown: Shown
 
     var body: some View {
 
-        PanelView(state: state, event: { _ in })
+        PanelView(state: shown.state, event: { _ in })
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }

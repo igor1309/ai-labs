@@ -69,9 +69,9 @@ on cancellation and failure; `--keep` preserves it. The report gives its path.
 
 The summary labels the main thread's share of sampled CPU and lists complete
 `PanelUpdate`, `TranscriptWrite` and `Hearing` intervals: count, total and longest.
-PanelUpdate measures updating the hosted panel and laying out its transcript.
-The rehearsal decorates the host update and completes layout before ending the
-interval.
+PanelUpdate measures each observation-driven panel render pass, including the
+transcript's text layout; a burst of states can share one pass. The rehearsal
+adds the interval around the hosting view's normal layout callback.
 Compare summaries from matching workloads, builds, machines and instrumentation:
 
     python3 -I scripts/summarize-trace.py --compare OLD/summary.json NEW/summary.json
