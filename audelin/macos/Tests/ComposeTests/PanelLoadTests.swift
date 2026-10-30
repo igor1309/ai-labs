@@ -1,6 +1,7 @@
 @testable import CallText
 import Foundation
 import PanelUI
+import Reading
 import Testing
 @testable import Compose
 
@@ -27,18 +28,43 @@ struct PanelLoadTests {
         }
         let busy = Int(late * Self.todaysRate * 100)
         let line = "panel load: \(early * 1000) ms a state early, \(late * 1000) ms late; "
-            + "at today's rate the main actor would be \(busy)% busy late\n"
+            + "at today's rate the model alone would keep the main actor \(busy)% busy late\n"
         FileHandle.standardError.write(Data(line.utf8))
+        FileHandle.standardError.write(Data("panel load late, per step: \(steps(entries: 1_620))\n".utf8))
         withKnownIssue("every state maps and reduces the whole call's entries") {
             #expect(late / early <= 3, "a state late in a long call costs the panel \(late / early)x one early")
         }
     }
 
-    /// Feeds the panel states that each carry the whole call's `entries` with
-    /// its last one growing, and times until it shows the last, per state.
-    private func secondsPerState(entries count: Int) async throws -> Double {
+    /// Where a state's time goes: each step the panel takes, timed apart.
+    private func steps(entries count: Int) -> String {
 
-        let states = Self.states
+        let feed = feed(entries: count)
+        var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
+        var shown = panelState(reading)
+        var times = [Duration](repeating: .zero, count: 5)
+        let clock = ContinuousClock()
+        for state in feed {
+            var update: ReadingTextUpdate?
+            times[0] += clock.measure { update = readingText(state) }
+            let previous = reading
+            times[1] += clock.measure { reading = ReadingReducer.reduce(reading, .textUpdated(update!)).0 }
+            times[2] += clock.measure { _ = reading == previous }
+            var next: PanelState?
+            times[3] += clock.measure { next = panelState(reading) }
+            times[4] += clock.measure { _ = next == shown }
+            shown = next!
+        }
+        let names = ["mapping the text", "reducing", "comparing reading states", "mapping the panel", "comparing panel states"]
+        return zip(names, times).map { name, time in
+            let ms = (Double(time.components.seconds) + Double(time.components.attoseconds) / 1e18) * 1000 / Double(feed.count)
+            return "\(name) \(String(format: "%.2f", ms)) ms"
+        }.joined(separator: ", ")
+    }
+
+    /// States that each carry the whole call's `entries` with its last one growing.
+    private func feed(entries count: Int) -> [State] {
+
         let words = String(repeating: "word ", count: 20)
         var history: [State.Entry] = []
         for index in 0..<count - 1 {
@@ -48,10 +74,18 @@ struct PanelLoadTests {
         }
         let start = Double(count) * 6
         var feed: [State] = []
-        for step in 0..<states {
+        for step in 0..<Self.states {
             let text = Text(id: count, start: start, end: start + Double(step) / Self.todaysRate, settled: "", pending: "w\(step)")
             feed.append(State(status: .listening, entries: history + [State.Entry(speaker: .mine, text: text, writtenLater: false)]))
         }
+        return feed
+    }
+
+    /// Feeds the panel `feed(entries:)` and times until it shows the last, per state.
+    private func secondsPerState(entries count: Int) async throws -> Double {
+
+        let states = Self.states
+        let feed = feed(entries: count)
 
         let clock = ReadingClockSpy()
         let panel = clock.panel()

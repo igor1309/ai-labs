@@ -226,6 +226,9 @@ about 343 ms, against 5 ms with 20 entries. Of that, 237 ms goes to the
 view rebuilding the whole attributed transcript; the model, which
 `PanelLoadTests` measures, takes 2 to 8 ms. At 5 to 10 updates an audio
 second the main actor falls behind long before the call ends.
+`TranscriptLogLoadTests` times the log itself, 800 entries against 20,
+and `PanelLoadTests` prints the model's cost step by step; both are known
+issues until the cost stops growing.
 
 ## Candidates already in the code
 
