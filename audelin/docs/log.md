@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- Call text keeps an ordered final prefix and merges only the remaining entries;
+  a lagging side holds that prefix back until its text catches up or ends (LAB-810).
+
 - Side text retains final entries and their recovered-audio marks, processing only
   newly final entries and the live tail on each hearing (LAB-813).
 

@@ -2,6 +2,8 @@
 public protocol Side: Sendable {
 
     /// Delivers complete snapshots in order until this side ends.
+    /// Final entries append in start order and never change. Subsequent entries cannot
+    /// start before the end of the last final entry, even across switches.
     /// Cancellation ends the subscription, without stopping the side.
     func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async
     func start(enabled: Bool) async
@@ -30,12 +32,20 @@ public struct SideState: Equatable, Sendable {
     }
 
     public let status: Status
-    public let entries: [Entry]
+    public let finalEntries: [Entry]
+    public let tailEntries: [Entry]
+    public var entries: [Entry] { finalEntries + tailEntries }
 
     public init(status: Status, entries: [Entry]) {
 
+        self.init(status: status, finalEntries: [], tailEntries: entries)
+    }
+
+    public init(status: Status, finalEntries: [Entry], tailEntries: [Entry]) {
+
         self.status = status
-        self.entries = entries
+        self.finalEntries = finalEntries
+        self.tailEntries = tailEntries
     }
 }
 
@@ -85,4 +95,6 @@ public struct State: Equatable, Sendable {
 
     public internal(set) var status: Status
     public internal(set) var entries: [Entry]
+    /// Leading entries whose text and position in the call will not change.
+    public internal(set) var finalCount: Int = 0
 }

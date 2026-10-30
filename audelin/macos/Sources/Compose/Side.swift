@@ -31,9 +31,15 @@ extension TrackText: TextEngine {}
 struct CallSide: CallText.Side {
 
     private let side: SideReader
+    private let mapEntry: @Sendable (SideText.State.Entry) -> SideState.Entry
 
-    init(audio: any SideText.LiveAudio, text: any TextEngine, written: any FillIn.WrittenTrack, sampleRate: Double) {
+    init(
+        audio: any SideText.LiveAudio, text: any TextEngine,
+        written: any FillIn.WrittenTrack, sampleRate: Double,
+        mapEntry: @escaping @Sendable (SideText.State.Entry) -> SideState.Entry = CallSide.entry
+    ) {
 
+        self.mapEntry = mapEntry
         let audio = SideAudio(source: audio)
         let hearing = SideHearing(text: text)
         side = SideReader(audio: audio, text: hearing, fillIn: {
@@ -49,7 +55,14 @@ struct CallSide: CallText.Side {
 
     func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async {
 
-        for await snapshot in side.updates.removingRepeats() {
+        var finalEntries: [SideState.Entry] = []
+        var lastStatus: SideText.State.Status?
+        var lastTail: [SideText.State.Entry] = []
+        for await snapshot in side.updates {
+            guard snapshot.status != lastStatus || snapshot.finalCount != finalEntries.count
+                || snapshot.tailEntries != lastTail else { continue }
+            lastStatus = snapshot.status
+            lastTail = snapshot.tailEntries
             let status: SideState.Status = switch snapshot.status {
             case .off: .off
             case .fillingIn: .gettingReady
@@ -57,13 +70,21 @@ struct CallSide: CallText.Side {
             case .finished: .finished
             case .failed(let failure): .failed(Self.message(failure))
             }
-            await receive(SideState(status: status, entries: snapshot.entries.map {
-                .init(text: .init(
-                    id: $0.text.id, start: $0.text.start, end: $0.text.end,
-                    settled: $0.text.settled, pending: $0.text.pending
-                ), writtenLater: $0.writtenLater)
-            }))
+            if snapshot.finalCount > finalEntries.count {
+                finalEntries.append(contentsOf: snapshot.finalEntries.dropFirst(finalEntries.count).map(mapEntry))
+            }
+            await receive(SideState(
+                status: status, finalEntries: finalEntries, tailEntries: snapshot.tailEntries.map(mapEntry)
+            ))
         }
+    }
+
+    static func entry(_ entry: SideText.State.Entry) -> SideState.Entry {
+
+        .init(text: .init(
+            id: entry.text.id, start: entry.text.start, end: entry.text.end,
+            settled: entry.text.settled, pending: entry.text.pending
+        ), writtenLater: entry.writtenLater)
     }
 
     private static func message(_ failure: SideText.State.Failure) -> String {

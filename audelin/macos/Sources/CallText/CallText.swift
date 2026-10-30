@@ -7,7 +7,9 @@ public actor CallText {
 
     private let continuation: AsyncStream<State>.Continuation
     private let sides: [any Side]
+    private let sortedEntry: @Sendable (State.Entry) -> Void
     private var snapshots = [SideState](repeating: .init(status: .off, entries: []), count: 2)
+    private var committed = [0, 0]
     private var listeners: [Task<Void, Never>] = []
     private var endedSides = [false, false]
     private var stopping: Task<Void, Never>?
@@ -18,7 +20,13 @@ public actor CallText {
 
     public init(microphone: any Side, call: any Side) {
 
+        self.init(microphone: microphone, call: call, sortedEntry: { _ in })
+    }
+
+    init(microphone: any Side, call: any Side, sortedEntry: @escaping @Sendable (State.Entry) -> Void) {
+
         sides = [microphone, call]
+        self.sortedEntry = sortedEntry
         // An omitted entry can return under the same producer id in the next snapshot.
         (updates, continuation) = AsyncStream.makeStream()
     }
@@ -48,7 +56,10 @@ public actor CallText {
         guard started, !ended, stopping == nil, self.enabled != enabled else { return }
         self.enabled = enabled
         snapshots = snapshots.map { snapshot in
-            .init(status: snapshot.ended ? snapshot.status : (enabled ? .gettingReady : .off), entries: snapshot.entries)
+            .init(
+                status: snapshot.ended ? snapshot.status : (enabled ? .gettingReady : .off),
+                finalEntries: snapshot.finalEntries, tailEntries: snapshot.tailEntries
+            )
         }
         publish()
         // Side calls suspend, so each switch must wait for earlier propagation.
@@ -89,6 +100,7 @@ public actor CallText {
 
         endedSides[index] = true
         if stopping == nil, endedSides.allSatisfy({ $0 }) { finish() }
+        else { publish() }
     }
 
     private func finish() {
@@ -115,15 +127,62 @@ public actor CallText {
         } else {
             state.status = .listening
         }
-        state.entries = snapshots.enumerated().flatMap { index, snapshot in
-            snapshot.entries.map { entry in
-                State.Entry(speaker: index == 0 ? .mine : .theirs, text: entry.text, writtenLater: entry.writtenLater)
-            }
-        }.sorted {
-            if $0.text.start != $1.text.start { return $0.text.start < $1.text.start }
-            return $0.speaker == .mine && $1.speaker == .theirs
-        }
+        mergeEntries()
         continuation.yield(state)
+    }
+
+    private struct Remaining {
+
+        let entry: State.Entry
+        let side: Int
+        let isFinal: Bool
+    }
+
+    private func mergeEntries() {
+
+        var remaining: [Remaining] = []
+        for (index, snapshot) in snapshots.enumerated() {
+            func include(_ entries: some Sequence<SideState.Entry>, final: Bool) {
+                for entry in entries {
+                    remaining.append(Remaining(entry: .init(
+                        speaker: index == 0 ? .mine : .theirs, text: entry.text, writtenLater: entry.writtenLater
+                    ), side: index, isFinal: final))
+                }
+            }
+            include(snapshot.finalEntries.dropFirst(committed[index]), final: true)
+            include(snapshot.tailEntries, final: false)
+        }
+        sort(&remaining)
+
+        // A revisable start can move. Only an immutable segment's end is a
+        // lower bound on future text; a side with no finals still knows none.
+        let bounds = snapshots.enumerated().compactMap { index, snapshot -> (Double, State.Speaker)? in
+            guard !snapshot.ended, !endedSides[index] else { return nil }
+            return (snapshot.finalEntries.last?.text.end ?? -.infinity, index == 0 ? .mine : .theirs)
+        }
+        let newlyFinal = remaining.prefix { item in
+            item.isFinal && bounds.allSatisfy { start, speaker in
+                item.entry.text.start < start || (item.entry.text.start == start
+                    && (item.entry.speaker == .mine || speaker == .theirs))
+            }
+        }
+        for item in newlyFinal { committed[item.side] += 1 }
+        // One array mutation preserves the prefix in place when unshared,
+        // or copies it once when a buffered/retained state still owns it.
+        state.entries.replaceSubrange(state.finalCount..., with: remaining.lazy.map(\.entry))
+        state.finalCount += newlyFinal.count
+    }
+
+    private static func precedes(_ lhs: State.Entry, _ rhs: State.Entry) -> Bool {
+
+        if lhs.text.start != rhs.text.start { return lhs.text.start < rhs.text.start }
+        return lhs.speaker == .mine && rhs.speaker == .theirs
+    }
+
+    private func sort(_ entries: inout [Remaining]) {
+
+        for item in entries { sortedEntry(item.entry) }
+        entries.sort { Self.precedes($0.entry, $1.entry) }
     }
 
     deinit {
