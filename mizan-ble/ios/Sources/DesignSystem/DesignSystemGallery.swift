@@ -59,6 +59,36 @@ public struct DesignSystemGallery: View {
                     .frame(width: 320)
                 }
             }
+            section("SURFACES & STATUS") {
+                HStack(alignment: .top, spacing: Tokens.space12) {
+                    Card(isCompact: true) {
+                        StatusPanel("Waiting for a client", detail: "ON THEIR IPHONE", level: .panel) {
+                            IconBadge(.large, tint: Tokens.clientTint) {
+                                BluetoothSymbol().foregroundStyle(Tokens.clientHi)
+                            }
+                        } value: {
+                            EmptyView()
+                        } footer: {
+                            EmptyView()
+                        }
+                    }
+                    .frame(width: 320)
+                    VStack(spacing: Tokens.space4) {
+                        ForEach(NoticeBanner.Tone.allCases, id: \.self) {
+                            NoticeBanner("Client left", detail: "Start a new amount", systemImage: "info.circle", tone: $0)
+                        }
+                    }
+                    .frame(width: 320)
+                    VStack(spacing: Tokens.space4) {
+                        SegmentedPicker([.init(30, title: "30s"), .init(60, title: "60s"), .init(90, title: "90s")],
+                                        selection: 60) { _ in }
+                        Card(isCompact: true, padding: .list) {
+                            DividedList(["Device", "Service"], id: \.self) { KeyValueRow($0, value: "H2") }
+                        }
+                    }
+                    .frame(width: 320)
+                }
+            }
             shells
         }
         .frame(width: 1635, alignment: .leading)

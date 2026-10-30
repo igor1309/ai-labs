@@ -110,18 +110,20 @@ struct SettingsGear: View {
 
 /// The session header above the current stage. Its parent supplies the size.
 /// It lays out inside the safe area; its backgrounds reach the screen's edges.
-public struct IPhoneShell<Steps: View, Content: View>: View {
+public struct IPhoneShell<Steps: View, Content: View, Actions: View>: View {
     let side: Side
     let eyebrow: String
     let status: StatusPill
     let onSwitch: (Side) -> Void
     let steps: Steps
     let content: Content
+    let actions: Actions
 
     public init(
         side: Side = .client, eyebrow: String, status: StatusPill,
         onSwitch: @escaping (Side) -> Void,
-        @ViewBuilder steps: () -> Steps, @ViewBuilder content: () -> Content
+        @ViewBuilder steps: () -> Steps, @ViewBuilder content: () -> Content,
+        @ViewBuilder actions: () -> Actions
     ) {
         self.side = side
         self.eyebrow = eyebrow
@@ -129,6 +131,7 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
         self.onSwitch = onSwitch
         self.steps = steps()
         self.content = content()
+        self.actions = actions()
     }
 
     public var body: some View {
@@ -152,7 +155,10 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
                     Spacer(minLength: Tokens.space2)
                     status
                 }
-                content.frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Content takes what is left and can never push the header or
+                // the actions, so every screen keeps them in the same place.
+                content.frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                ActionStack { actions }
             }
             .padding([.top, .horizontal], Tokens.space5)
             .padding(.bottom, Tokens.space2)
@@ -160,6 +166,29 @@ public struct IPhoneShell<Steps: View, Content: View>: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Tokens.ground, ignoresSafeAreaEdges: .all)
+    }
+}
+
+public extension IPhoneShell where Actions == EmptyView {
+
+    init(
+        side: Side = .client, eyebrow: String, status: StatusPill,
+        onSwitch: @escaping (Side) -> Void,
+        @ViewBuilder steps: () -> Steps, @ViewBuilder content: () -> Content
+    ) {
+        self.init(side: side, eyebrow: eyebrow, status: status, onSwitch: onSwitch,
+                  steps: steps, content: content, actions: { EmptyView() })
+    }
+}
+
+/// The actions at the foot of a screen, full width, one under the other.
+public struct ActionStack<Actions: View>: View {
+    let actions: Actions
+
+    public init(@ViewBuilder actions: () -> Actions) { self.actions = actions() }
+
+    public var body: some View {
+        VStack(spacing: Tokens.space2) { actions }
     }
 }
 
