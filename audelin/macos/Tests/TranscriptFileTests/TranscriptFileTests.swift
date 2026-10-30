@@ -233,6 +233,26 @@ struct TranscriptFileTests {
         }
     }
 
+    @Test func anEarlierSegmentChangingOrGoingIsWrittenEvenAfterAFailedWrite() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let file = try await TranscriptFile(url: url)
+            let first = TranscriptFile.Segment(side: .mine, start: 0, settled: "one", pending: "")
+            let second = TranscriptFile.Segment(side: .theirs, start: 2, settled: "two", pending: "")
+            try await file.write([first, second])
+            await #expect(throws: TranscriptFile.Failure.invalidStart) {
+                try await file.write([.init(side: .mine, start: 0, settled: "changed", pending: ""),
+                                      .init(side: .theirs, start: -1, settled: "bad", pending: "")])
+            }
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:00\none\n\n**Them** 00:00:02\ntwo\n")
+            try await file.write([.init(side: .mine, start: 0, settled: "again", pending: "now"), second])
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:00\nagain now\n\n**Them** 00:00:02\ntwo\n")
+            try await file.write([second])
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Them** 00:00:02\ntwo\n")
+        }
+    }
+
     @Test(arguments: [-1.0, Double.nan, .infinity, -.infinity, Double(Int.max)])
     func invalidStartsFailWithoutReplacingText(start: Double) async throws {
 

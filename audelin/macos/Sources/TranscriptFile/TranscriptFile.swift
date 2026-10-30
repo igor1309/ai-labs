@@ -42,6 +42,7 @@ public actor TranscriptFile {
 
     private let binding: any TranscriptFileBinding
     private var closed = false
+    private var rendered: [Rendered] = []
     private static let noText = "# Transcript\n\nNo text was heard.\n"
 
     /// Creates a new file exclusively; an existing path is always an error.
@@ -91,7 +92,25 @@ public actor TranscriptFile {
 
     private func render(_ segments: [Segment]) throws -> String {
 
-        let parts = try segments.map { segment in
+        for (index, segment) in segments.enumerated() {
+            if index < rendered.count, rendered[index].segment == segment { continue }
+            let part = try Rendered(segment)
+            if index < rendered.count { rendered[index] = part } else { rendered.append(part) }
+        }
+        rendered.removeLast(rendered.count - segments.count)
+        guard rendered.contains(where: \.hasWords) else { return Self.noText }
+        return "# Transcript\n\n" + rendered.lazy.map(\.text).joined(separator: "\n\n") + "\n"
+    }
+
+    /// One segment's text, kept so an unchanged segment is not rendered again.
+    private struct Rendered {
+
+        let segment: Segment
+        let text: String
+        let hasWords: Bool
+
+        init(_ segment: Segment) throws {
+
             guard segment.start.isFinite, segment.start >= 0, segment.start < Double(Int.max) else {
                 throw Failure.invalidStart
             }
@@ -100,11 +119,9 @@ public actor TranscriptFile {
             let side = segment.side == .mine ? "Me" : "Them"
             let later = segment.filledInLater ? " (filled in later)" : ""
             let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
-            return (heading: "**\(side)** \(time)\(later)", words: words)
+            self.segment = segment
+            text = "**\(side)** \(time)\(later)\n\(words)"
+            hasWords = !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
-        guard parts.contains(where: { !$0.words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
-            return Self.noText
-        }
-        return "# Transcript\n\n" + parts.map { "\($0.heading)\n\($0.words)" }.joined(separator: "\n\n") + "\n"
     }
 }
