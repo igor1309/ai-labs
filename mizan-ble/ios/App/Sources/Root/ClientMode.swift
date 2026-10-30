@@ -25,7 +25,8 @@ import Observation
     private var pendingReview: [Incoming] = []
     private var pendingPayment: [Incoming] = []
 
-    var screen: ClientState { ClientMapping.screen(find: find?.state ?? .init(), connect: connect?.state) }
+    var screen: ClientState { ClientMapping.screen(find: find?.state ?? .init(), connect: connect?.state, lines: lines) }
+    private let lines: ClientMapping.SignalLines
     var paymentScreen: ClientPaymentState? {
         if let review { return ClientMapping.screen(review: review.state, payment: payment?.state) }
         if let payment {
@@ -43,6 +44,7 @@ import Observation
         self.clock = clock
         self.log = log
         self.restChanged = restChanged
+        lines = .init(floor: settings.pickerFloor, dropGap: settings.pickerDropGap)
         discovery = ClientDiscovery(radio: radio, clock: clock, settings: settings, log: log)
         let initial = ClientFind.State()
         let handler = ClientFind.EffectHandler(scanner: discovery)

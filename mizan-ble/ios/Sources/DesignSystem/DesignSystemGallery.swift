@@ -128,6 +128,14 @@ public struct DesignSystemGallery: View {
                     KeypadKey("7") {}
                     KeypadKey(systemImage: "delete.left", accessibilityLabel: "Delete") {}
                 }
+                HStack(spacing: Tokens.space8) {
+                    SignalMeter(.init(label: "−52 dBm", bars: 4, tone: .live))
+                    SignalMeter(.init(label: "−61 dBm", bars: 3, tone: .live))
+                    SignalMeter(.init(label: "−67 dBm", bars: 2, tone: .live))
+                    SignalMeter(.init(label: "−74 dBm", bars: 1, tone: .live))
+                    SignalMeter(.init(label: "−52 dBm at start", bars: 4, tone: .atStart))
+                    SignalMeter(.noSignal)
+                }
             }
             HStack(alignment: .top, spacing: Tokens.space12) {
                 section("HOST RAIL") {

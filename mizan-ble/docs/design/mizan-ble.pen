@@ -5933,6 +5933,226 @@
                           ]
                         }
                       ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "PfqQ5",
+                      "name": "DS / Signal",
+                      "reusable": true,
+                      "height": 20,
+                      "gap": "$mz-space-2",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "XlBUN",
+                          "name": "Bars",
+                          "height": 16,
+                          "gap": "$mz-space-1",
+                          "alignItems": "end",
+                          "children": [
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 2,
+                              "id": "mBgRA",
+                              "name": "Bar 1",
+                              "fill": "$mz-client",
+                              "width": 4,
+                              "height": 4
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 2,
+                              "id": "Y7UeY",
+                              "name": "Bar 2",
+                              "fill": "$mz-client",
+                              "width": 4,
+                              "height": 8
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 2,
+                              "id": "I0LvZ9",
+                              "name": "Bar 3",
+                              "fill": "$mz-client",
+                              "width": 4,
+                              "height": 12
+                            },
+                            {
+                              "type": "rectangle",
+                              "cornerRadius": 2,
+                              "id": "IKm4M",
+                              "name": "Bar 4",
+                              "fill": "$mz-client",
+                              "width": 4,
+                              "height": 16
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "id": "Qmarp",
+                          "name": "Label",
+                          "fill": "$mz-text-2",
+                          "content": "−52 dBm",
+                          "fontFamily": "$mz-font-mono",
+                          "fontSize": "$mz-size-small",
+                          "fontWeight": "500"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "U7dDzL",
+                      "name": "Signal Variants",
+                      "gap": "$mz-space-8",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "ltUFL",
+                          "type": "ref",
+                          "ref": "PfqQ5",
+                          "name": "Live · 4",
+                          "descendants": {
+                            "mBgRA": {
+                              "fill": "$mz-client"
+                            },
+                            "Y7UeY": {
+                              "fill": "$mz-client"
+                            },
+                            "I0LvZ9": {
+                              "fill": "$mz-client"
+                            },
+                            "IKm4M": {
+                              "fill": "$mz-client"
+                            },
+                            "Qmarp": {
+                              "content": "−52 dBm",
+                              "fill": "$mz-text-2"
+                            }
+                          }
+                        },
+                        {
+                          "id": "h7NSAn",
+                          "type": "ref",
+                          "ref": "PfqQ5",
+                          "name": "Live · 3",
+                          "descendants": {
+                            "mBgRA": {
+                              "fill": "$mz-client"
+                            },
+                            "Y7UeY": {
+                              "fill": "$mz-client"
+                            },
+                            "I0LvZ9": {
+                              "fill": "$mz-client"
+                            },
+                            "IKm4M": {
+                              "fill": "$mz-raised-2"
+                            },
+                            "Qmarp": {
+                              "content": "−61 dBm",
+                              "fill": "$mz-text-2"
+                            }
+                          }
+                        },
+                        {
+                          "id": "l0RiTx",
+                          "type": "ref",
+                          "ref": "PfqQ5",
+                          "name": "Live · 2",
+                          "descendants": {
+                            "mBgRA": {
+                              "fill": "$mz-client"
+                            },
+                            "Y7UeY": {
+                              "fill": "$mz-client"
+                            },
+                            "I0LvZ9": {
+                              "fill": "$mz-raised-2"
+                            },
+                            "IKm4M": {
+                              "fill": "$mz-raised-2"
+                            },
+                            "Qmarp": {
+                              "content": "−67 dBm",
+                              "fill": "$mz-text-2"
+                            }
+                          }
+                        },
+                        {
+                          "id": "VNTd6",
+                          "type": "ref",
+                          "ref": "PfqQ5",
+                          "name": "Live · 1",
+                          "descendants": {
+                            "mBgRA": {
+                              "fill": "$mz-client"
+                            },
+                            "Y7UeY": {
+                              "fill": "$mz-raised-2"
+                            },
+                            "I0LvZ9": {
+                              "fill": "$mz-raised-2"
+                            },
+                            "IKm4M": {
+                              "fill": "$mz-raised-2"
+                            },
+                            "Qmarp": {
+                              "content": "−74 dBm",
+                              "fill": "$mz-text-2"
+                            }
+                          }
+                        },
+                        {
+                          "id": "wkRMd",
+                          "type": "ref",
+                          "ref": "PfqQ5",
+                          "name": "At start",
+                          "descendants": {
+                            "mBgRA": {
+                              "fill": "$mz-text-2"
+                            },
+                            "Y7UeY": {
+                              "fill": "$mz-text-2"
+                            },
+                            "I0LvZ9": {
+                              "fill": "$mz-text-2"
+                            },
+                            "IKm4M": {
+                              "fill": "$mz-text-2"
+                            },
+                            "Qmarp": {
+                              "content": "−52 dBm at start",
+                              "fill": "$mz-text-2"
+                            }
+                          }
+                        },
+                        {
+                          "id": "oNuUo",
+                          "type": "ref",
+                          "ref": "PfqQ5",
+                          "name": "Empty",
+                          "descendants": {
+                            "mBgRA": {
+                              "fill": "$mz-raised-2"
+                            },
+                            "Y7UeY": {
+                              "fill": "$mz-raised-2"
+                            },
+                            "I0LvZ9": {
+                              "fill": "$mz-raised-2"
+                            },
+                            "IKm4M": {
+                              "fill": "$mz-raised-2"
+                            },
+                            "Qmarp": {
+                              "content": "No signal",
+                              "fill": "$mz-text-2"
+                            }
+                          }
+                        }
+                      ]
                     }
                   ]
                 }
@@ -8572,6 +8792,30 @@
                               ]
                             },
                             {
+                              "id": "KvHxG",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Qmarp": {
+                                  "content": "No signal",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
+                            },
+                            {
                               "type": "frame",
                               "id": "ztH1x",
                               "name": "Text",
@@ -9258,6 +9502,30 @@
                               ]
                             },
                             {
+                              "id": "aWc49",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-client"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-client"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-client"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-client"
+                                },
+                                "Qmarp": {
+                                  "content": "−52 dBm",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
+                            },
+                            {
                               "type": "frame",
                               "id": "V7rX8",
                               "name": "Text",
@@ -9651,7 +9919,7 @@
                               "id": "xUkhU",
                               "name": "Peer",
                               "fill": "$mz-text-3",
-                              "content": "IPHONE · RSSI −52",
+                              "content": "EXCHANGING KEYS",
                               "fontFamily": "$mz-font-mono",
                               "fontSize": "$mz-size-eyebrow",
                               "fontWeight": "normal",
@@ -9945,6 +10213,30 @@
                                   ]
                                 }
                               ]
+                            },
+                            {
+                              "id": "Dcopr",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "Qmarp": {
+                                  "content": "−52 dBm at start",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
                             },
                             {
                               "type": "frame",
@@ -10584,6 +10876,30 @@
                                   "name": "Mark"
                                 }
                               ]
+                            },
+                            {
+                              "id": "dgNr8",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "Qmarp": {
+                                  "content": "−52 dBm at start",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
                             },
                             {
                               "type": "frame",
@@ -14737,6 +15053,30 @@
                                   ]
                                 }
                               ]
+                            },
+                            {
+                              "id": "qd8PX",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Qmarp": {
+                                  "content": "No signal",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
                             },
                             {
                               "type": "frame",
@@ -56561,6 +56901,30 @@
                               ]
                             },
                             {
+                              "id": "kpnT1",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Qmarp": {
+                                  "content": "No signal",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
+                            },
+                            {
                               "type": "frame",
                               "id": "oGUpi",
                               "name": "Text",
@@ -56955,7 +57319,7 @@
                               "id": "IJ3N0",
                               "name": "Peer",
                               "fill": "$mz-text-3",
-                              "content": "IPHONE · RSSI −52",
+                              "content": "EXCHANGING KEYS",
                               "fontFamily": "$mz-font-mono",
                               "fontSize": "$mz-size-eyebrow",
                               "fontWeight": "normal",
@@ -57249,6 +57613,30 @@
                                   ]
                                 }
                               ]
+                            },
+                            {
+                              "id": "caeOW",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "Qmarp": {
+                                  "content": "−52 dBm at start",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
                             },
                             {
                               "type": "frame",
@@ -60693,7 +61081,7 @@
               "fill": "$mz-text-2",
               "textGrowth": "fixed-width",
               "width": 1400,
-              "content": "The rings or mark keep one 240 pt slot, the title one line and the subtitle two lines, and the button one place, so a change of state changes words and colours but moves nothing. Proposed, not decided: the copy for hold closer and Bluetooth off.",
+              "content": "The rings or mark keep one 240 pt slot, the title one line and the subtitle two lines, and the button one place, so a change of state changes words and colours but moves nothing. Proposed, not decided: the copy for hold closer and Bluetooth off. Under the rings, DS / Signal shows the nearest host's smoothed signal: live while finding, kept as the signal at start from the tap on, \"No signal\" when no host is heard; bars by the picker's lines (4 from 10 dB above the floor, 3 from the floor, 2 from the drop line, 1 below). Proposed, not decided: the copy \"at start\" and \"No signal\".",
               "lineHeight": 1.5,
               "fontFamily": "$mz-font-text",
               "fontSize": "$mz-size-lead",
@@ -60980,6 +61368,30 @@
                                   ]
                                 }
                               ]
+                            },
+                            {
+                              "id": "Z1LJEP",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Qmarp": {
+                                  "content": "No signal",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
                             },
                             {
                               "type": "frame",
@@ -61307,6 +61719,30 @@
                                   ]
                                 }
                               ]
+                            },
+                            {
+                              "id": "G6PRmG",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-client"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-client"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-client"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-client"
+                                },
+                                "Qmarp": {
+                                  "content": "−52 dBm",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
                             },
                             {
                               "type": "frame",
@@ -61642,6 +62078,30 @@
                                   ]
                                 }
                               ]
+                            },
+                            {
+                              "id": "B3LUn",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-client"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-client"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Qmarp": {
+                                  "content": "−67 dBm",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
                             },
                             {
                               "type": "frame",
@@ -61980,6 +62440,30 @@
                               ]
                             },
                             {
+                              "id": "X963L",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Qmarp": {
+                                  "content": "No signal",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
+                            },
+                            {
                               "type": "frame",
                               "id": "a1y3qT",
                               "name": "Text",
@@ -62313,6 +62797,30 @@
                               ]
                             },
                             {
+                              "id": "Ruvlg",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "Qmarp": {
+                                  "content": "−52 dBm at start",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
+                            },
+                            {
                               "type": "frame",
                               "id": "rVHDq",
                               "name": "Text",
@@ -62593,6 +63101,30 @@
                                   "name": "Mark"
                                 }
                               ]
+                            },
+                            {
+                              "id": "E9DTlo",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-text-2"
+                                },
+                                "Qmarp": {
+                                  "content": "−52 dBm at start",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
                             },
                             {
                               "type": "frame",
@@ -62936,6 +63468,30 @@
                               ]
                             },
                             {
+                              "id": "BwT5e",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-raised-2"
+                                },
+                                "Qmarp": {
+                                  "content": "No signal",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
+                            },
+                            {
                               "type": "frame",
                               "id": "j4ey0",
                               "name": "Text",
@@ -63261,6 +63817,30 @@
                                   ]
                                 }
                               ]
+                            },
+                            {
+                              "id": "fd6eP",
+                              "type": "ref",
+                              "ref": "PfqQ5",
+                              "name": "Signal",
+                              "descendants": {
+                                "mBgRA": {
+                                  "fill": "$mz-client"
+                                },
+                                "Y7UeY": {
+                                  "fill": "$mz-client"
+                                },
+                                "I0LvZ9": {
+                                  "fill": "$mz-client"
+                                },
+                                "IKm4M": {
+                                  "fill": "$mz-client"
+                                },
+                                "Qmarp": {
+                                  "content": "−52 dBm",
+                                  "fill": "$mz-text-2"
+                                }
+                              }
                             },
                             {
                               "type": "frame",
