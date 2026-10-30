@@ -153,7 +153,10 @@ get("theme").onclick = () => { if (!contact.busy) { dark = !dark; refresh(); } }
 get("close").onclick = () => { panel = undefined; refresh(); };
 get("new").onclick = create;
 get("reload").onclick = () => { void load(); };
-get("retry").onclick = () => { if (readError || unavailable.size) void load(); else void current?.retry(); };
+get("retry").onclick = () => {
+  if (current?.state === "error") void current.retry();
+  else if (readError || unavailable.size) void load();
+};
 
 // Gate extra fingers before they can change the shared tap filter's state.
 const ignored = new Set<number>();

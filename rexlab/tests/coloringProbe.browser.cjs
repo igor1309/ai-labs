@@ -260,6 +260,40 @@ async function ui(page, output) {
   await page.locator("#works").focus(); await page.keyboard.press("Enter");
   assert.equal(await page.locator("#choices button:disabled").count(), 1);
   assert(await page.locator("#choices .work").count() >= 1);
+  // A damaged sibling must not divert a healthy work's failed-save RETRY.
+  await page.locator("#close").focus(); await page.keyboard.press("Enter");
+  await page.setViewportSize({ width: 1024, height: 768 });
+  if (await page.locator("html").getAttribute("lang") !== "en") { await page.locator("#language").focus(); await page.keyboard.press("Enter"); }
+  const healthyId = await drawing.getAttribute("data-work");
+  async function durable(id) {
+    return page.evaluate(async id => {
+      const { indexedWorks } = await import("/harness.js");
+      const store = indexedWorks(indexedDB, "rexlab-coloring-probe-1");
+      try {
+        const entries = await store.list(); const record = entries.find(entry => entry.id === id).value;
+        return { document: record.document, thumbnail: [...new Uint8Array(await record.thumbnail.arrayBuffer())], damaged: entries.find(entry => entry.id === "unknown-work").value };
+      } finally { await store.close(); }
+    }, id);
+  }
+  const lastGood = await durable(healthyId);
+  await page.evaluate(() => {
+    window.probeOriginalToBlob = HTMLCanvasElement.prototype.toBlob;
+    HTMLCanvasElement.prototype.toBlob = function (callback) { callback(null); };
+  });
+  await stroke(600, 400);
+  await page.waitForFunction(() => document.querySelector("#status").textContent.includes("SAVE FAILED"));
+  const retainedPaint = await drawing.evaluate(canvas => canvas.toDataURL());
+  const retainedRevision = Number(await drawing.getAttribute("data-revision"));
+  assert.equal(retainedRevision, lastGood.document.revision + 1);
+  assert.deepEqual(await durable(healthyId), lastGood, "failure preserves prior document, thumbnail and damaged sibling");
+  await page.evaluate(() => { HTMLCanvasElement.prototype.toBlob = window.probeOriginalToBlob; delete window.probeOriginalToBlob; });
+  await page.locator("#retry").focus(); await page.keyboard.press("Enter");
+  await page.waitForFunction(() => document.querySelector("#status").textContent.includes("SAVED"));
+  assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), retainedPaint, "retry retains the current paint");
+  const recovered = await durable(healthyId);
+  assert.equal(recovered.document.revision, retainedRevision, "retry saves the failed current revision");
+  assert.notDeepEqual(recovered.thumbnail, lastGood.thumbnail, "retry saves the changed thumbnail");
+  assert.deepEqual(recovered.damaged, lastGood.damaged, "retry never overwrites the damaged sibling");
   await page.addInitScript(() => {
     const factory = window.indexedDB;
     window.allowProbeStorage = false;
