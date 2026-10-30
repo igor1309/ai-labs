@@ -30,21 +30,35 @@ import TimeoutNotice
         #expect(noticeLog(h) == ["hidden", "showing attempt=1", "hidden"])
     }
 
-    @Test func anActionEndsTheNoticeAndStillTakesEffect() async throws {
+    @Test(arguments: (0...9).map(HostEvent.digit) + [.decimalPoint, .delete, .lockAndBroadcast, .openSettings])
+    func anActionEndsTheNoticeAndStillTakesEffect(_ event: HostEvent) async throws {
         let h = Harness()
         defer { h.finish() }
         let root = AppRoot(radios: h.pair, launchSide: .host, clock: h.clock, store: h.store, log: h.log)
         let host = try #require(root.host)
         try await timeOut(h, host)
-        host.event(.digit(5))
-        await until { host.notice?.state.showing == nil && host.screen.amount == "5" }
+        let expectedAmount: String
+        switch event {
+        case .digit(let digit): expectedAmount = String(digit)
+        case .decimalPoint: expectedAmount = "0."
+        default: expectedAmount = "0"
+        }
+        let callsBeforeAction = h.host.calls
+        host.event(event)
+        await until { host.notice?.state.showing == nil && host.screen.amount == expectedAmount && h.clock.running == 0 }
+        #expect(host.screen.notice == nil)
         #expect(host.screen.status == "Idle")
+        #expect(host.screen.amount == expectedAmount)
         #expect(host.screen.buttons.map(\.event) == [.lockAndBroadcast])
-        #expect(host.screen.buttons[0].isEnabled)
+        #expect(host.screen.buttons[0].isEnabled == (expectedAmount != "0" && expectedAmount != "0."))
+        #expect(host.settingsPresented == (event == .openSettings))
+        // With the amount cleared, Lock & broadcast has no lockable input.
+        #expect(host.broadcast?.state.phase == .timedOut)
+        #expect(h.host.calls == callsBeforeAction)
         // The stopped wait is gone, so its thirty seconds cannot end anything later.
         #expect(h.clock.running == 0)
         h.clock.advance(30)
-        #expect(host.screen.amount == "5")
+        #expect(host.screen.amount == expectedAmount)
         #expect(noticeLog(h) == ["hidden", "showing attempt=1", "hidden"])
     }
 

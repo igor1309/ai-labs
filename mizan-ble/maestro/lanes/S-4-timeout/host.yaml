@@ -26,6 +26,12 @@ appId: dev.igor1309.mizan-ble.rehearsal
     timeout: 25000
 - assertVisible: "Advertising stopped. The amount was cleared."
 - assertNotVisible: "Advertising"
+- extendedWaitUntil:
+    notVisible: "No client in 15 s"
+    timeout: 40000
+- assertNotVisible: "Advertising stopped. The amount was cleared."
+- assertVisible: "Idle"
+- assertVisible: "0 Mizan"
 - assertVisible: "Lock & broadcast"
 - tapOn:
     id: "key 7"
