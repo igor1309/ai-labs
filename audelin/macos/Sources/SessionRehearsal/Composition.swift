@@ -5,10 +5,10 @@ import Session
 import Synchronization
 
 // The app's composition of the reading and session models, so the rehearsal
-// runs the same models the app does.
+// and the benchmarks run the same models the app does.
 
 @MainActor
-func makeReading() -> ReadingInputs {
+public func makeReading() -> ReadingInputs {
 
     let model = ObservableModel<ReadingState, ReadingEvent, Never>(
         initialState: .init(), reduce: ReadingReducer.reduce, handleEffect: { switch $0 {} }
@@ -16,7 +16,7 @@ func makeReading() -> ReadingInputs {
     return ReadingInputs(state: { model.state }, send: { model.event($0) })
 }
 
-func makeSession(handler: SessionEffectHandler) async -> SessionInputs {
+public func makeSession(handler: SessionEffectHandler) async -> SessionInputs {
 
     let model = SessionModel()
     await model.start(handler: handler)
