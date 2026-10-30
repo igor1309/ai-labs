@@ -76,8 +76,11 @@ public actor AudelinPanel {
 
         let reading = await makeReading()
         current = (id, reading, enableLiveText)
-        return await ReadingSubscription(reading: reading, text: text, now: now, ticks: ticks(), sink: sink) { [weak self] state in
+        let update = SignpostedPanelUpdate(receive: { [weak self] state in
             await self?.receive(state, id: id)
+        }, intervals: .system)
+        return await ReadingSubscription(reading: reading, text: text, now: now, ticks: ticks(), sink: sink) { state in
+            await update(state)
         }
     }
 

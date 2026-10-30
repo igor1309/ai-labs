@@ -272,7 +272,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         self.text = text
         let writing = WritingReader(
             callText: makeCallText(text),
-            transcript: transcriptFile.map { TranscriptDestination(file: $0) },
+            transcript: transcriptFile.map { TranscriptDestination(file: SignpostedTranscriptFile(base: $0, intervals: .system)) },
             failureReport: transcriptFailures
         )
         self.writing = writing

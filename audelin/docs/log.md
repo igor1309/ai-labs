@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- Rehearsals capture bounded CPU-and-hangs windows or run endurance without a
+  profiler; summaries include named intervals and compare growth (LAB-793).
+
 - The reading reducer keeps call entries in order and rebuilds only changed
   entries when text arrives, reducing work in long calls (LAB-775).
 

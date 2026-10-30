@@ -1,0 +1,6 @@
+<trace-query-result><node><schema name="os-signpost-interval"/>
+<row><start-time>0</start-time><duration>6000000</duration><string>PanelUpdate</string><subsystem id="app">dev.igor1309.audelin</subsystem></row>
+<row><start-time>1000000</start-time><duration>3000000</duration><string>TranscriptWrite</string><subsystem ref="app"/></row>
+<row><start-time>2000000</start-time><duration>2000000</duration><string id="hearing">Hearing</string><subsystem ref="app"/></row>
+<row><start-time>3000000</start-time><duration>4000000</duration><string ref="hearing"/><subsystem ref="app"/></row>
+</node></trace-query-result>

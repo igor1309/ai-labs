@@ -44,16 +44,29 @@ unless `--keep` is given.
 
 ## Profile
 
-    scripts/profile-rehearsal.sh --minutes 180 --speed 10
+    scripts/profile-rehearsal.sh capture --capture-after 120 --capture-for 30 --minutes 20 --speed 1
 
-builds a release, records the whole rehearsal under Time Profiler, and writes
-`summary.txt` with the heaviest frames, the app's heaviest functions and
-the main-thread hangs into `profiles/<date>/`, next to the trace.
-`--out DIR` picks the folder. It needs a logged-in GUI session, as the
-panel is on screen. The Allocations template does not start the app, so
-memory comes from the rehearsal's own footprint. A whole 3-hour run at
-10× records 18 minutes: a trace of about 300 MB, whose export takes tens
-of minutes. Profile short windows instead.
+Capture builds a release and records CPU, hangs and signposts only for the
+30-second wall-clock window after 120 seconds, keeping the trace and `summary.txt`.
+
+    scripts/profile-rehearsal.sh endurance --minutes 180 --speed 1
+
+Endurance runs without Instruments and writes only `rehearsal.log`, the app's
+own report. Both modes need a logged-in GUI session for the panel.
+
+`--out DIR` picks a fresh folder instead of `profiles/<date>/`. Capture requires
+positive `--capture-for`; `--capture-after` defaults to zero. The rehearsal
+continues to its own end after capture. Raw XML is removed on success and failure.
+
+The summary labels the main thread's share of sampled CPU and lists complete
+`PanelUpdate`, `TranscriptWrite` and `Hearing` intervals: count, total and longest.
+PanelUpdate measures reading-state mapping and delivery, before SwiftUI layout.
+Compare summaries from matching workloads, builds, machines and instrumentation:
+
+    python3 -I scripts/summarize-trace.py --compare OLD/summary.txt NEW/summary.txt
+
+The comparison shows growth in frame self and inclusive time, main-thread share,
+hangs and intervals. Older summaries must be regenerated with this format.
 
 ## Not covered
 

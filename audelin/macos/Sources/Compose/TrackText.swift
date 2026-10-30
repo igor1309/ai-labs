@@ -131,7 +131,7 @@ public actor TrackText {
 
     init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer, executor: (any TaskExecutor)?) {
 
-        self.recognizerSource = recognizerSource
+        self.recognizerSource = { SignpostedRecognizer(base: try await recognizerSource(), intervals: .system) }
         self.executor = executor
     }
 

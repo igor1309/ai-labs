@@ -21,6 +21,9 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.sha }}
 
+      - name: Test profiling tools
+        run: python3 -I -m unittest discover -s audelin/macos/scripts/tests
+
       # Swift 6 and Swift Testing: take the image's newest Xcode, as
       # foliotell-core does.
       - name: Select newest Xcode
