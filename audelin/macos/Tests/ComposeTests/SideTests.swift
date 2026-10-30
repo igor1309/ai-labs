@@ -9,6 +9,49 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct SideTests {
 
+    @Test(arguments: [2, 3])
+    func fillingInKeepsFinalTextBeforeLiveHearing(finalWordCount: Int) async {
+
+        let rig = SideRig(sampleRate: 1, finalWordCount: finalWordCount)
+        defer { rig.cleanup() }
+        rig.audio.capture(sideTones(0..<3, sampleRate: 1))
+        await rig.side.start(enabled: true)
+        rig.engine.release.end()
+        let caughtUp = await rig.next { $0.status == .listening }
+        #expect(caughtUp.entries.map(\.text) == [
+            .init(id: 0, start: 0, end: 1, settled: "word0"),
+            .init(id: 1, start: 1, end: 2, settled: "word1"),
+            .init(id: 2, start: 2, end: 3,
+                  settled: finalWordCount == 3 ? "word2" : "",
+                  pending: finalWordCount == 3 ? "" : "word2")
+        ])
+        rig.audio.end()
+        await rig.side.stop()
+        await rig.listener.value
+    }
+
+    @Test(arguments: [2, 3])
+    func liveHearingKeepsFinalTextBeforeFinishing(finalWordCount: Int) async {
+
+        let rig = SideRig(sampleRate: 1, finalWordCount: finalWordCount)
+        defer { rig.cleanup() }
+        await rig.side.start(enabled: true)
+        rig.engine.release.end()
+        _ = await rig.next { $0.status == .listening }
+        await rig.audio.send(sideTones(0..<3, sampleRate: 1))
+        let live = await rig.next { $0.status == .listening }
+        #expect(live.entries.map(\.text) == [
+            .init(id: 0, start: 0, end: 1, settled: "word0"),
+            .init(id: 1, start: 1, end: 2, settled: "word1"),
+            .init(id: 2, start: 2, end: 3,
+                  settled: finalWordCount == 3 ? "word2" : "",
+                  pending: finalWordCount == 3 ? "" : "word2")
+        ])
+        rig.audio.end()
+        await rig.side.stop()
+        await rig.listener.value
+    }
+
     @Test(arguments: [1.0, 3.0, 48_000.0])
     func fillsMissedAudioThenHearsLiveAudioThroughTheSameEngine(sampleRate: Double) async {
 
@@ -130,12 +173,12 @@ private struct SideRig {
     let snapshots = AsyncStream<SideState>.makeStream()
     let listener: Task<Void, Never>
 
-    init(sampleRate: Double, silent: Bool = false, failWord: Int? = nil) {
+    init(sampleRate: Double, silent: Bool = false, failWord: Int? = nil, finalWordCount: Int = 0) {
 
         written = SideWritten(chunks: (0..<3).map {
             FillIn.Audio(start: Double($0) / sampleRate, samples: [Float($0)], sampleRate: sampleRate)
         })
-        engine = SideEngine(silent: silent, failWord: failWord)
+        engine = SideEngine(silent: silent, failWord: failWord, finalWordCount: finalWordCount)
         side = CallSide(audio: audio, text: engine, written: written, sampleRate: sampleRate)
         let side = side, continuation = snapshots.continuation
         listener = Task {
@@ -183,12 +226,18 @@ private actor SideEngine: TextEngine {
     nonisolated let preparing = Signal(), release = Signal()
     private let silent: Bool
     private let failWord: Int?
+    private let finalWordCount: Int
     private var text: [SideText.Text] = []
     private(set) var samples: [Float] = []
     private(set) var preparations = 0
     private(set) var stops = 0
 
-    init(silent: Bool, failWord: Int?) { self.silent = silent; self.failWord = failWord }
+    init(silent: Bool, failWord: Int?, finalWordCount: Int) {
+
+        self.silent = silent
+        self.failWord = failWord
+        self.finalWordCount = finalWordCount
+    }
 
     func prepare() async throws {
 
@@ -208,7 +257,12 @@ private actor SideEngine: TextEngine {
                 text.append(.init(id: text.count, start: start, end: start + 1 / audio.sampleRate, pending: "word\(Int(sample))"))
             }
         }
-        return .init(final: [], tail: text)
+        return .init(
+            final: text.prefix(finalWordCount).map {
+                .init(id: $0.id, start: $0.start, end: $0.end, settled: $0.pending)
+            },
+            tail: Array(text.dropFirst(finalWordCount))
+        )
     }
 
     func finish() -> TrackText.Update {
