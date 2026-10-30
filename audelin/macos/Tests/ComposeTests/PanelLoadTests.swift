@@ -27,13 +27,25 @@ struct PanelLoadTests {
             late = min(late, try await secondsPerState(entries: 1_620))
         }
         let busy = Int(late * Self.todaysRate * 100)
-        let line = "panel load: \(early * 1000) ms a state early, \(late * 1000) ms late; "
-            + "at today's rate the model alone would keep the main actor \(busy)% busy late\n"
+        let line = report("\(early * 1000) ms a state early, \(late * 1000) ms late; "
+            + "at today's rate the model alone would keep the main actor \(busy)% busy late")
         FileHandle.standardError.write(Data(line.utf8))
-        FileHandle.standardError.write(Data("panel load late, per step: \(steps(entries: 1_620))\n".utf8))
+        FileHandle.standardError.write(Data(report("late, per step: \(steps(entries: 1_620))").utf8))
         withKnownIssue("every state maps and reduces the whole call's entries") {
             #expect(late / early <= 3, "a state late in a long call costs the panel \(late / early)x one early")
         }
+    }
+
+    @Test func loadReportNamesTheCompiledBuild() {
+        var build = "optimized"
+        // The assertion's autoclosure runs only when debug assertions are enabled.
+        assert({ build = "debug"; return true }())
+        #expect(report("measurement") == "panel load (\(build)): measurement\n")
+    }
+
+    private func report(_ measurement: String) -> String {
+        let build = _isDebugAssertConfiguration() ? "debug" : "optimized"
+        return "panel load (\(build)): \(measurement)\n"
     }
 
     /// Where a state's time goes: each step the panel takes, timed apart.

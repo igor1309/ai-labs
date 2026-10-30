@@ -14,17 +14,30 @@ struct TranscriptLogLoadTests {
 
     static let updates = 5
 
-    @Test func anUpdateLateInALongCallCostsTheLogAboutWhatAnEarlyOneDoes() {
+    @Test(arguments: [800, 6_000])
+    func anUpdateLateInALongCallCostsTheLogAboutWhatAnEarlyOneDoes(entries: Int) {
 
         // The quickest of three runs each, so a busy machine slows neither side alone.
         var early = Cost.slowest, late = Cost.slowest
         for _ in 0..<3 {
             early = early.quicker(cost(entries: 20))
-            late = late.quicker(cost(entries: 800))
+            late = late.quicker(cost(entries: entries))
         }
-        let line = "log load: \(early.line) early, \(late.line) late\n"
+        let line = report("\(early.line) at 20 entries, \(late.line) at \(entries) entries")
         FileHandle.standardError.write(Data(line.utf8))
         #expect(late.update / early.update <= 3, "an update late in a long call costs the log \(late.update / early.update)x one early")
+    }
+
+    @Test func loadReportNamesTheCompiledBuild() {
+        var build = "optimized"
+        // The assertion's autoclosure runs only when debug assertions are enabled.
+        assert({ build = "debug"; return true }())
+        #expect(report("measurement") == "log load (\(build)): measurement\n")
+    }
+
+    private func report(_ measurement: String) -> String {
+        let build = _isDebugAssertConfiguration() ? "debug" : "optimized"
+        return "log load (\(build)): \(measurement)\n"
     }
 
     /// Hosts the log with `count` entries, then changes the last entry's
@@ -34,14 +47,16 @@ struct TranscriptLogLoadTests {
 
         let config = PanelConfig.glassLedger
         let size = CGSize(width: config.panelWidth, height: 400)
-        let host = Offscreen.host(log(lines(count, step: 0), config: config, size: size), size: size)
+        // Settled history keeps its strings while only the live entry changes.
+        var lines = lines(count)
+        let host = Offscreen.host(log(lines, config: config, size: size), size: size)
         let style = Transcript.Style(tokens: .light, config: config)
         let rows = Transcript.Rows()
-        _ = rows.update(lines(count, step: 0), style: style)
+        _ = rows.update(lines, style: style)
         var build = Duration.zero, update = Duration.zero
         let clock = ContinuousClock()
         for step in 1...Self.updates {
-            let lines = lines(count, step: step)
+            lines.rows[count - 1] = .entry(.init(id: count, time: "12:35", speaker: .me, settled: "", pending: "w\(step)"))
             build += clock.measure { _ = rows.update(lines, style: style) }
             update += clock.measure {
                 host.rootView = log(lines, config: config, size: size)
@@ -52,13 +67,13 @@ struct TranscriptLogLoadTests {
         return Cost(update: update.seconds / Double(Self.updates), build: build.seconds / Double(Self.updates))
     }
 
-    private func lines(_ count: Int, step: Int) -> PanelState.Lines {
+    private func lines(_ count: Int) -> PanelState.Lines {
 
         let words = String(repeating: "слово ", count: 20)
         var rows: [PanelState.Row] = (0..<count - 1).map {
             .entry(.init(id: $0, time: "12:34", speaker: $0.isMultiple(of: 2) ? .me : .them, settled: words))
         }
-        rows.append(.entry(.init(id: count, time: "12:35", speaker: .me, settled: "", pending: "w\(step)")))
+        rows.append(.entry(.init(id: count, time: "12:35", speaker: .me, settled: "", pending: "w0")))
         return .init(rows: rows, holds: [], newBelow: 0, followsLive: true)
     }
 
