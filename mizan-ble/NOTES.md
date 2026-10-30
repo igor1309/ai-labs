@@ -140,6 +140,6 @@ another.
 
 ## Open
 
-- **Holding the choice:** how the picker keeps a chosen host near the
-  floor (separate lines to choose and to drop, a dwell, or both), and
-  whether α, the floor and the margin then change.
+- **Tuning:** whether α, the floor and the margin change now that the
+  picker holds its choice; that needs a measuring run on the iPad and
+  iPhone.
