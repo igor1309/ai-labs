@@ -116,7 +116,7 @@ import Foundation
             complete?(.failure(.tooLarge(maximum: maximum)))
             return
         }
-        let characteristic: Characteristic = target == .key ? .key : .toHost
+        let characteristic: Characteristic = target == .key ? .clientPublic : .toHost
         writes.append(PendingWrite(target: target, complete: complete))
         binding.write(bytes, to: characteristic, host: host)
     }
@@ -189,7 +189,7 @@ import Foundation
             tearDown(reason)
         case .written(let peer, let characteristic, let error) where peer == selectedHost(at: .ready):
             guard let index = writes.firstIndex(where: {
-                ($0.target == .key ? Characteristic.key : .toHost) == characteristic
+                ($0.target == .key ? Characteristic.clientPublic : .toHost) == characteristic
             }) else { return }
             let write = writes.remove(at: index)
             continuation.yield(.writeAnswered(write.target, error))
@@ -217,7 +217,7 @@ internal enum GATT {
 
 internal enum Characteristic: String, CaseIterable, Sendable {
     case session = "5AF4FD78-A9BD-4831-9E32-AB7C524B5025"
-    case key = "3BE0A31F-A0AD-4BE6-B1F8-FCD73973F34C"
+    case clientPublic = "3BE0A31F-A0AD-4BE6-B1F8-FCD73973F34C"
     case toClient = "760B00DB-3591-4F2F-9352-D74A127CB218"
     case toHost = "15B7A4C5-0B45-4B5B-BAC8-08BACE8C7C1B"
 }
