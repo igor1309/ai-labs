@@ -20,13 +20,14 @@ function database(initial: [IDBValidKey, unknown][] = []) {
   const openRequest: Request = { result: undefined, error: null };
   const request: Request = { result: null, error: null };
   let staged: { key: IDBValidKey; value: unknown } | undefined;
+  let cleared = false;
   let aborted = false, closed = false, opens = 0, transactions = 0;
   const tx = {
     error: null as Error | null,
     oncomplete: undefined as (() => void) | undefined,
     onabort: undefined as (() => void) | undefined,
     onerror: undefined as (() => void) | undefined,
-    abort() { aborted = true; staged = undefined; tx.onabort?.(); },
+    abort() { aborted = true; staged = undefined; cleared = false; tx.onabort?.(); },
     objectStore() { return {
       openCursor(key?: IDBValidKey) {
         request.result = key !== undefined && rows.has(key) ? { key, value: structuredClone(rows.get(key)) } : null;
@@ -34,6 +35,7 @@ function database(initial: [IDBValidKey, unknown][] = []) {
         if (waiter) waiter(); else unreadRequests++;
         return request;
       },
+      clear() { cleared = true; const waiter = requestWaiters.shift(); if (waiter) waiter(); else unreadRequests++; },
       put(value: unknown, key: IDBValidKey) { staged = { key, value: structuredClone(value) }; }
     }; }
   };
@@ -52,6 +54,7 @@ function database(initial: [IDBValidKey, unknown][] = []) {
     get aborted() { return aborted; }, get closed() { return closed; }, get opens() { return opens; },
     get transactions() { return transactions; }, get staged() { return staged; },
     complete() {
+      if (cleared) { rows.clear(); cleared = false; }
       if (staged) { rows.set(staged.key, staged.value); staged = undefined; }
       tx.oncomplete?.();
     },
@@ -65,6 +68,9 @@ function database(initial: [IDBValidKey, unknown][] = []) {
       advance();
     }
   };
+}
+function stored(record: ColoringRecord, sequence: number) {
+  return { ...record, history: { schema: 1, sequence, rewarded: record.document.rewarded } };
 }
 function fixture(initial: [IDBValidKey, unknown][] = []) {
   const { model, dot, thumbnail } = coloringFixture();
@@ -83,11 +89,11 @@ describe("production coloring durable revisions", () => {
     let acknowledged = false;
     const saving = repository.write({ ...candidate, document: mutable }, null).then(() => { acknowledged = true; });
     mutable.actions[0].points[0].x = 99;
-    await start(); spy.request.onsuccess!();
-    expect(spy.staged).toEqual({ key: "one", value: candidate });
+    await start(); spy.readAll();
+    expect(spy.staged).toEqual({ key: "one", value: stored(candidate, 1) });
     expect(spy.rows.size).toBe(0); expect(acknowledged).toBe(false);
     spy.complete(); await saving;
-    expect(acknowledged).toBe(true); expect(spy.rows.get("one")).toEqual(candidate);
+    expect(acknowledged).toBe(true); expect(spy.rows.get("one")).toEqual(stored(candidate, 1));
     await repository.close(); expect(spy.closed).toBe(true);
   });
 
@@ -97,14 +103,14 @@ describe("production coloring durable revisions", () => {
     const { spy, repository, start } = fixture([["one", previous]]);
     const next = { document: model.complete(previous.document), thumbnail: new Blob(["completed"], { type: "image/png" }) };
     const saving = repository.write(next, 1); const rejected = expect(saving).rejects.toThrow("Quota");
-    await start(); spy.request.onsuccess!();
-    expect(spy.staged?.value).toEqual(next);
+    await start(); spy.readAll();
+    expect(spy.staged?.value).toEqual(stored(next, 1));
     spy.tx.error = new Error("Quota"); spy.tx.abort(); await rejected;
     expect(spy.rows.get("one")).toEqual(previous);
     expect(previous.document.completed).toBe(false);
     const retry = repository.write(next, 1);
-    await spy.requested(); spy.request.onsuccess!(); spy.complete(); await retry;
-    expect(spy.rows.get("one")).toEqual(next);
+    await spy.requested(); spy.readAll(); spy.complete(); await retry;
+    expect(spy.rows.get("one")).toEqual(stored(next, 1));
     await repository.close();
   });
 
@@ -126,7 +132,7 @@ describe("production coloring durable revisions", () => {
     if (scenario === "empty completion") candidate = { document: { ...completed, actions: [] }, thumbnail: thumbnail() };
     const { spy, repository, start } = fixture(previous ? [["one", previous]] : []);
     const saving = repository.write(candidate, expected); const rejected = expect(saving).rejects.toThrow();
-    await start(); spy.request.onsuccess!(); await rejected;
+    await start(); spy.readAll(); await rejected;
     expect(spy.aborted).toBe(true); expect(spy.staged).toBeUndefined();
     expect([...spy.rows]).toEqual(previous ? [["one", previous]] : []);
     await repository.close();
@@ -138,11 +144,11 @@ describe("production coloring durable revisions", () => {
     const next = { document: model.undo(previous.document), thumbnail: thumbnail() };
     const { spy, repository, start } = fixture([["one", previous]]);
     const saving = repository.write(next, previous.document.revision);
-    await start(); spy.request.onsuccess!(); spy.complete(); await saving;
-    expect(spy.rows.get("one")).toEqual(next);
+    await start(); spy.readAll(); spy.complete(); await saving;
+    expect(spy.rows.get("one")).toEqual(stored(next, 1));
     expect(next.document).toMatchObject({ id: "one", actions: [], completed: true, rewarded: true });
     const listing = repository.list(); await spy.requested(); spy.readAll(); spy.complete();
-    expect(await listing).toEqual({ works: [next], unavailable: [], completedCount: 1 });
+    expect(await listing).toEqual({ works: [next], unavailable: [], completedCount: 1, recentId: "one" });
     await repository.close();
   });
 
@@ -153,15 +159,15 @@ describe("production coloring durable revisions", () => {
     const { spy, repository, start } = fixture([["one", one], ["two", two]]);
     const repeat = { ...one, document: model.complete(model.append(one.document, { ...dot, color: "#42a5f5" })) };
     const saving = repository.write(repeat, one.document.revision);
-    await start(); spy.request.onsuccess!(); spy.complete(); await saving;
+    await start(); spy.readAll(); spy.complete(); await saving;
     expect(spy.rows.get("two")).toEqual(two);
     const listing = repository.list(); await spy.requested(); spy.readAll(); spy.complete();
-    expect(await listing).toEqual({ works: [repeat, two], unavailable: [], completedCount: 1 });
+    expect(await listing).toEqual({ works: [repeat, two], unavailable: [], completedCount: 1, recentId: "one" });
     const next = { ...two, document: model.complete(two.document) };
     const second = repository.write(next, two.document.revision);
-    await spy.requested(); spy.request.onsuccess!(); spy.complete(); await second;
+    await spy.requested(); spy.readAll(); spy.complete(); await second;
     const listed = repository.list(); await spy.requested(); spy.readAll(); spy.complete();
-    expect(await listed).toEqual({ works: [repeat, next], unavailable: [], completedCount: 2 });
+    expect(await listed).toEqual({ works: [next, repeat], unavailable: [], completedCount: 2, recentId: "two" });
     await repository.close();
   });
 
@@ -177,10 +183,11 @@ describe("production coloring durable revisions", () => {
     const initial: [IDBValidKey, unknown][] = [["healthy", healthy], ...bad];
     const { spy, repository, start } = fixture(initial);
     const listing = repository.list(); await start(); spy.readAll(); spy.complete();
-    expect(await listing).toEqual({ works: [healthy], unavailable: bad.map(([key]) => key), completedCount: null });
+    expect(await listing).toEqual({ works: [healthy], unavailable: bad.map(([key]) => key), completedCount: null, recentId: "healthy" });
     expect([...spy.rows]).toEqual(initial);
     const next = { ...healthy, document: model.complete(healthy.document) };
-    const saving = repository.write(next, 1); await spy.requested(); spy.request.onsuccess!(); spy.complete(); await saving;
+    const saving = repository.write(next, 1); const denied = expect(saving).rejects.toThrow("history unreadable");
+    await spy.requested(); spy.readAll(); await denied;
     expect(bad.map(([key]) => [key, spy.rows.get(key)])).toEqual(bad);
     await repository.close();
   });
@@ -188,7 +195,7 @@ describe("production coloring durable revisions", () => {
   it.each([undefined, null, "broken", { schema: 99 }])("refuses to overwrite an unreadable existing row %#", async corrupt => {
     const { record, spy, repository, start } = fixture([["one", corrupt]]);
     const saving = repository.write(record, null); const rejected = expect(saving).rejects.toThrow();
-    await start(); spy.request.onsuccess!(); await rejected;
+    await start(); spy.readAll(); await rejected;
     expect(spy.aborted).toBe(true); expect(spy.rows.has("one")).toBe(true);
     expect(spy.rows.get("one")).toEqual(corrupt); expect(spy.staged).toBeUndefined();
     await repository.close();
@@ -207,7 +214,7 @@ describe("production coloring durable revisions", () => {
     const { record, spy, repository, start } = fixture([["one", previous]]);
     const saving = repository.write({ ...record, document: model.complete(work) }, work.revision);
     const rejected = expect(saving).rejects.toThrow();
-    await start(); spy.request.onsuccess!(); await rejected;
+    await start(); spy.readAll(); await rejected;
     expect(spy.aborted).toBe(true); expect(spy.staged).toBeUndefined();
     expect(spy.rows.get("one")).toEqual(before);
     await repository.close();
@@ -230,7 +237,7 @@ describe("production coloring durable revisions", () => {
     const failed = repository.list(); const rejected = expect(failed).rejects.toThrow("Version");
     await spy.opened.promise; spy.openRequest.error = new Error("Version"); spy.openRequest.onerror!(); await rejected;
     const listing = repository.list(); await Promise.resolve(); spy.openRequest.onsuccess!(); await spy.requested();
-    spy.readAll(); spy.complete(); expect(await listing).toEqual({ works: [], unavailable: [], completedCount: 0 });
+    spy.readAll(); spy.complete(); expect(await listing).toEqual({ works: [], unavailable: [], completedCount: 0, recentId: null });
     expect(spy.opens).toBe(2); await repository.close();
   });
 
@@ -245,6 +252,69 @@ describe("production coloring durable revisions", () => {
     const reopened = repository.list(); await Promise.resolve(); spy.openRequest.onsuccess!(); await spy.requested();
     spy.readAll(); spy.complete(); await reopened;
     expect(spy.opens).toBe(3); await repository.close();
+  });
+
+  it("orders CONTINUE by successful edits across independent works and restarts, never by reads or a failed save", async () => {
+    const { model, dot, thumbnail } = coloringFixture();
+    const one = { document: model.complete(model.append(model.newWork("one"), dot)), thumbnail: thumbnail() };
+    const two = { document: model.append(model.newWork("two"), { ...dot, color: "#42a5f5" }), thumbnail: thumbnail() };
+    const { spy, repository, start } = fixture([["one", stored(one, 10)], ["two", stored(two, 20)]]);
+    const listing = repository.list(); await start(); spy.readAll(); spy.complete();
+    expect(await listing).toMatchObject({ works: [two, one], recentId: "two" });
+    const edited = { ...one, document: model.append(one.document, { ...dot, color: "#9ccc65" }) };
+    const saving = repository.write(edited, one.document.revision);
+    const rejected = expect(saving).rejects.toThrow("Quota");
+    await spy.requested(); spy.readAll(); spy.tx.error = new Error("Quota"); spy.tx.abort(); await rejected;
+    const unchanged = repository.list(); await spy.requested(); spy.readAll(); spy.complete();
+    expect(await unchanged).toMatchObject({ recentId: "two", works: [two, one] });
+    const retry = repository.write(edited, one.document.revision); await spy.requested(); spy.readAll(); spy.complete(); await retry;
+    await repository.close();
+    const reopened = indexedColoringWorks(spy.factory, "production-coloring-test", model);
+    const restored = reopened.list(); await Promise.resolve(); spy.openRequest.onsuccess!(); await spy.requested(); spy.readAll(); spy.complete();
+    expect(await restored).toEqual({ works: [edited, two], recentId: "one", completedCount: 1, unavailable: [] });
+    expect(spy.rows.get("one")).toEqual(stored(edited, 21));
+    expect(spy.rows.get("two")).toEqual(stored(two, 20));
+    await reopened.close();
+  });
+
+  it.each(["journal", "thumbnail"])("retains the reward of a damaged %s and allows healthy and new works beside it", async damage => {
+    const { model, dot, thumbnail } = coloringFixture();
+    const healthy = { document: model.append(model.newWork("healthy"), dot), thumbnail: thumbnail() };
+    const completed = { document: model.complete(model.append(model.newWork("broken"), dot)), thumbnail: thumbnail() };
+    const broken = { ...stored(completed, 4), ...(damage === "journal" ? { document: { ...completed.document, actions: [null] } } : { thumbnail: new Blob() }) };
+    const { spy, repository, start } = fixture([["healthy", stored(healthy, 2)], ["broken", broken]]);
+    const listing = repository.list(); await start(); spy.readAll(); spy.complete();
+    expect(await listing).toEqual({ works: [healthy], unavailable: ["broken"], recentId: "broken", completedCount: 1 });
+    const next = { ...healthy, document: model.complete(healthy.document) };
+    const saving = repository.write(next, healthy.document.revision); await spy.requested(); spy.readAll(); spy.complete(); await saving;
+    const fresh = { document: model.append(model.newWork("fresh"), dot), thumbnail: thumbnail() };
+    const creating = repository.write(fresh, null); await spy.requested(); spy.readAll(); spy.complete(); await creating;
+    const after = repository.list(); await spy.requested(); spy.readAll(); spy.complete();
+    expect(await after).toEqual({ works: [fresh, next], unavailable: ["broken"], recentId: "fresh", completedCount: 2 });
+    expect(spy.rows.get("broken")).toEqual(broken);
+    await repository.close();
+  });
+
+  it.each([null, { schema: 99, sequence: 1, rewarded: true }, { schema: 1, sequence: -1, rewarded: false }, { schema: 1, sequence: 1, rewarded: true }])("blocks edits when shared reward history is unreadable or inconsistent %#", async history => {
+    const { record, spy, repository, start } = fixture();
+    spy.rows.set("one", { ...record, history });
+    const listing = repository.list(); await start(); spy.readAll(); spy.complete();
+    expect((await listing).completedCount).toBeNull();
+    const saving = repository.write(record, null); const rejected = expect(saving).rejects.toThrow("history unreadable");
+    await spy.requested(); spy.readAll(); await rejected;
+    expect(spy.rows.get("one")).toEqual({ ...record, history });
+    await repository.close();
+  });
+
+  it("resets only coloring data atomically, retaining the original rows on failure", async () => {
+    const { spy, repository } = fixture([["broken", { schema: 99 }]]);
+    const reset = repository.reset(); const rejected = expect(reset).rejects.toThrow("Quota");
+    await spy.opened.promise; spy.openRequest.onsuccess!(); await spy.requested();
+    spy.tx.error = new Error("Quota"); spy.tx.abort(); await rejected;
+    expect([...spy.rows]).toEqual([["broken", { schema: 99 }]]);
+    const retry = repository.reset(); await spy.requested(); spy.complete(); await retry;
+    expect([...spy.rows]).toEqual([]);
+    await repository.close();
   });
 
   it("rejects malformed candidates and missing dependencies before opening storage", async () => {

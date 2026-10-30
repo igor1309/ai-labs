@@ -37,6 +37,7 @@ const inDig = (file: string) => file.startsWith("dig/");
 const inPicturePuzzle = (file: string) => file.startsWith("picturePuzzle/");
 const SCREENS = [
   "ColoringWorkshopScreen.tsx",
+  "ColoringGalleryScreen.tsx",
   "CareResultScreen.tsx",
   "CareWelcomeScreen.tsx",
   "CatalogueScreen.tsx",
@@ -113,6 +114,7 @@ const ADAPTERS = [
 ];
 const COMPOSITION = [
   "coloringWorkshopRoot.ts",
+  "ColoringGame.tsx",
   "coloringProbe/main.ts",
   "App.tsx",
   "careGame.tsx",

@@ -19,6 +19,8 @@ export function coloringWorkshopRoot(factory: Pick<IDBFactory, "open">, document
     coloringWorkshop(work, durable, { model, write: store.write, thumbnail, navigate });
   return {
     painter,
+    list: store.list,
+    reset: store.reset,
     async open(id: string, navigate: (navigation: WorkshopNavigation) => void) {
       const collection = await store.list();
       if (collection.completedCount === null) throw new Error("Coloring history is unreadable");
@@ -29,7 +31,7 @@ export function coloringWorkshopRoot(factory: Pick<IDBFactory, "open">, document
     async newWork(id: string, navigate: (navigation: WorkshopNavigation) => void) {
       const collection = await store.list();
       if (collection.completedCount === null) throw new Error("Coloring history is unreadable");
-      if (collection.works.some(record => record.document.id === id)) throw new Error("Coloring identity already exists");
+      if (collection.works.some(record => record.document.id === id) || collection.unavailable.includes(id)) throw new Error("Coloring identity already exists");
       return session(model.newWork(id), null, navigate);
     },
     close: store.close

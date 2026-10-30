@@ -2,6 +2,8 @@
 
 ## 2026-10-30
 
+- Coloring gallery lists independent drafts and completed works, continues the latest saved edit and keeps unreadable history visible (LAB-803).
+
 - The coloring workshop offers clipped painting, compact tools and ordered autosave with retry and confirmed loss handling in English and Russian, both themes and orientations (LAB-803).
 
 - Coloring works now have an editable action history and atomic local storage that preserves unreadable records and earned status (LAB-803).

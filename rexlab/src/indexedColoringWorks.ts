@@ -4,7 +4,8 @@ export type ColoringRecord = Readonly<{ document: Work; thumbnail: Blob }>;
 export type ColoringCollection = {
   works: ColoringRecord[];
   unavailable: IDBValidKey[];
-  // An unreadable row may hold a reward; never present a partial count as a best.
+  recentId: string | null;
+  // Unreadable reward history must never become a partial collection best.
   completedCount: number | null;
 };
 type WorkValidation = {
@@ -48,22 +49,65 @@ export function indexedColoringWorks(factory: Pick<IDBFactory, "open">, name: st
     if (document.id !== key) throw new Error("Coloring work identity mismatch");
     return Object.freeze({ document, thumbnail: value.thumbnail });
   }
+  type History = { schema: 1; sequence: number; rewarded: boolean };
+  type Row = { key: IDBValidKey; value: unknown };
+  function history(row: Row): History {
+    const value = row.value;
+    if (!value || typeof value !== "object") throw new Error("Coloring history unreadable");
+    if ("history" in value) {
+      const entry = value.history as History;
+      if (!entry || entry.schema !== 1 || !Number.isSafeInteger(entry.sequence) || entry.sequence < 1 || typeof entry.rewarded !== "boolean" || typeof row.key !== "string") {
+        throw new Error("Coloring history unreadable");
+      }
+      return { schema: 1, sequence: entry.sequence, rewarded: entry.rewarded };
+    }
+    // Earlier documents kept rewards in the journal. Read them through its
+    // validator; a malformed legacy journal cannot establish reward history.
+    if (!("document" in value)) throw new Error("Coloring history unreadable");
+    const document = model.readWork(value.document);
+    if (document.id !== row.key) throw new Error("Coloring identity mismatch");
+    return { schema: 1, sequence: 0, rewarded: document.rewarded };
+  }
+  function inspect(rows: Row[]) {
+    const works: ColoringRecord[] = [], unavailable: IDBValidKey[] = [];
+    const histories = new Map<IDBValidKey, History>();
+    let readable = true;
+    for (const row of rows) {
+      let entry: History | undefined;
+      try { entry = history(row); histories.set(row.key, entry); }
+      catch { readable = false; }
+      try {
+        const record = readRecord(row.value, row.key);
+        if (entry && record.document.rewarded !== entry.rewarded) { readable = false; throw new Error("Coloring reward mismatch"); }
+        works.push(record);
+      } catch { unavailable.push(row.key); }
+    }
+    works.sort((a, b) => (histories.get(b.document.id)?.sequence ?? 0) - (histories.get(a.document.id)?.sequence ?? 0));
+    const ordered = [...histories].sort((a, b) => b[1].sequence - a[1].sequence);
+    return { works, unavailable, histories, completedCount: readable ? ordered.filter(([, entry]) => entry.rewarded).length : null,
+      recentId: typeof ordered[0]?.[0] === "string" ? ordered[0][0] : null };
+  }
+  function scan(store: IDBObjectStore, done: (rows: Row[]) => void) {
+    const rows: Row[] = [];
+    const request = store.openCursor();
+    request.onsuccess = () => {
+      const cursor = request.result;
+      if (!cursor) { done(rows); return; }
+      rows.push({ key: cursor.key, value: cursor.value });
+      cursor.continue();
+    };
+  }
   return {
     async list(): Promise<ColoringCollection> {
       const db = await open();
       return new Promise((resolve, reject) => {
         const tx = db.transaction("works", "readonly");
-        const works: ColoringRecord[] = [], unavailable: IDBValidKey[] = [];
-        const request = tx.objectStore("works").openCursor();
-        request.onsuccess = () => {
-          const cursor = request.result;
-          if (!cursor) return;
-          try { works.push(readRecord(cursor.value, cursor.key)); }
-          catch { unavailable.push(cursor.key); }
-          cursor.continue();
-        };
-        tx.oncomplete = () => resolve({ works, unavailable,
-          completedCount: unavailable.length ? null : works.filter(work => work.document.completed).length });
+        let collection: ColoringCollection;
+        scan(tx.objectStore("works"), rows => {
+          const { works, unavailable, completedCount, recentId } = inspect(rows);
+          collection = { works, unavailable, completedCount, recentId };
+        });
+        tx.oncomplete = () => resolve(collection);
         tx.onabort = () => reject(tx.error ?? new Error("Coloring read aborted"));
         tx.onerror = () => {};
       });
@@ -76,24 +120,37 @@ export function indexedColoringWorks(factory: Pick<IDBFactory, "open">, name: st
         const tx = db.transaction("works", "readwrite");
         const store = tx.objectStore("works");
         let failure: unknown;
-        // A cursor distinguishes a missing key from an existing, corrupt undefined value.
-        const request = store.openCursor(safe.document.id);
-        request.onsuccess = () => {
+        // The shared transaction orders edits across works, including windows.
+        // Reward receipts remain readable independently of paint and thumbnails.
+        scan(store, rows => {
           try {
-            const cursor = request.result;
-            const previous = cursor ? readRecord(cursor.value, cursor.key).document : null;
+            const collection = inspect(rows);
+            if (collection.completedCount === null) throw new Error("Coloring history unreadable");
+            const row = rows.find(row => row.key === safe.document.id);
+            const previous = row ? readRecord(row.value, row.key).document : null;
             if ((previous?.revision ?? null) !== expected || (previous && safe.document.revision <= previous.revision)) {
               throw new Error("Stored coloring work changed; reopen before saving");
             }
             if (previous?.completed && !safe.document.completed) throw new Error("A coloring reward cannot be removed");
             if (!previous?.completed && safe.document.completed && model.isEmpty(safe.document)) throw new Error("Empty coloring work cannot complete");
             if (!previous && model.isEmpty(safe.document)) throw new Error("An empty new work is not saved");
-            store.put(safe, safe.document.id);
+            const sequence = [...collection.histories.values()].reduce((latest, entry) => Math.max(latest, entry.sequence), 0) + 1;
+            if (!Number.isSafeInteger(sequence)) throw new Error("Coloring edit order exhausted");
+            store.put({ ...safe, history: { schema: 1, sequence, rewarded: safe.document.rewarded } }, safe.document.id);
           } catch (error) { failure = error; tx.abort(); }
-        };
-        // Request success is provisional: document, thumbnail and reward commit together.
+        });
         tx.oncomplete = () => resolve();
         tx.onabort = () => reject(failure ?? tx.error ?? new Error("Coloring save aborted"));
+        tx.onerror = () => {};
+      });
+    },
+    async reset(): Promise<void> {
+      const db = await open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction("works", "readwrite");
+        tx.objectStore("works").clear();
+        tx.oncomplete = () => resolve();
+        tx.onabort = () => reject(tx.error ?? new Error("Coloring reset aborted"));
         tx.onerror = () => {};
       });
     },
