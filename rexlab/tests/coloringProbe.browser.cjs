@@ -230,6 +230,7 @@ async function ui(page, output) {
   const revisionBeforeTap = Number(await drawing.getAttribute("data-revision"));
   await page.mouse.dblclick(tap.x + tap.width * .5, tap.y + tap.height * .5, { delay: 20 });
   assert.equal(Number(await drawing.getAttribute("data-revision")), revisionBeforeTap + 1, "double tap adds one dot");
+  await page.waitForFunction(() => document.querySelector("#status").textContent.includes("SAVED"));
   await page.locator("#works").focus(); await page.keyboard.press("Enter");
   await page.locator("#new").focus(); await page.keyboard.press("Enter");
   assert.notEqual(await drawing.getAttribute("data-work"), initialId);
