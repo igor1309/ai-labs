@@ -53,7 +53,7 @@ A at −68 dBm, 5 readings over 1 s: A leading, between the lines; at exactly �
 
 ## S-14 Since when a leader is below the drop line
 
-A leading at −60, averages driven to exactly −71 by a reading at t, then ticks to t + 0.5 s: A below the drop line since t; at −70.9 it is between the lines. Evidence: Missing.
+A leading at −68, a reading of −78 at t taking its average to exactly −71, then ticks to t + 0.5 s: A below the drop line since t; from −70, a reading of −73, an average of −70.9: between the lines. Evidence: Missing.
 
 ## S-15 A leader back over the drop line
 
