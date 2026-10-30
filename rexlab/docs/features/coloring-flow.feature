@@ -53,8 +53,12 @@ Feature: Coloring full flow and durable progress
     Given saving a changed work is pending or has failed
     When I choose HOME, GALLERY or NEW WORK
     Then navigation waits for saving and keeps the work visible
-    And on failure I see RETRY and KEEP EDITING with symbols
+    And on failure the shared save-error panel offers RETRY, KEEP EDITING and HOME WITHOUT SAVING with symbols
     And KEEP EDITING stays in the workshop with all current paint
+    And HOME WITHOUT SAVING asks for confirmation that current changes will be lost
+    And cancelling that confirmation retains my paint in the workshop
+    And confirming returns HOME and restores only the last durable revision for that work
+    And a never-saved new work is dropped only after that confirmation
     And no navigation silently discards the unsaved revision
     When I force-close before a save succeeds
     Then reopening restores only the last successful revision
@@ -67,7 +71,7 @@ Feature: Coloring full flow and durable progress
     And no unreadable history is presented as a new empty collection or first best
     And no existing stored work is automatically cleared or overwritten
     And readable works can still be viewed
-    And all coloring editing, NEW WORK and completion remain unavailable until every work and the reward history can be read safely
+    And coloring stays read-only with HOME and a parent recovery action available until safe reading is restored or a reset is confirmed
     And successful retry restores the saved collection without a first-best celebration
     And other games and the language, theme and age settings remain unchanged
 
@@ -103,3 +107,18 @@ Feature: Coloring full flow and durable progress
       | iPad at 1024 by 768      |
       | iPhone at 390 by 844     |
       | small iPhone at 320 by 568 |
+
+  Scenario: A parent can recover permanently unreadable coloring storage
+    Given malformed coloring data or an unsupported version cannot be restored by RETRY
+    When a parent opens recovery
+    Then a normal-case parent warning explains that resetting loses all coloring works and earned coloring stars on this device
+    And CANCEL returns to the read-only gallery without changing any stored data
+    When the parent explicitly confirms RESET COLORING and the reset saves successfully
+    Then coloring starts with an empty collection and new work identities
+    And other games, language, theme and age settings are retained
+    And a reset creates no star or best celebration
+    And the first completion after reset establishes a new baseline without claiming a historical FIRST BEST
+    And subsequent new completed works can celebrate increases from that baseline
+    When the confirmed reset cannot be saved
+    Then the original stored data remains intact and the recovery error is visible
+    And coloring remains read-only with HOME available

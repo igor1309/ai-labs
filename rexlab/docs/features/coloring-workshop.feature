@@ -10,7 +10,7 @@ Feature: Coloring workshop
   Scenario: Start a new work
     When I choose NEW WORK in coloring
     Then a new independent work opens with an unpainted Stegosaurus
-    And I see 12 color swatches, a round brush with 3 sizes, FILL and UNDO
+    And I see 12 color swatches including the unpainted base color, a round brush with 3 sizes, FILL and UNDO
     And the selected color, tool and size are shown by shape as well as color
     And HOME, GALLERY and DONE have symbols beside their uppercase words
     And no eraser, color mixing, template tasks or other dinosaurs are offered

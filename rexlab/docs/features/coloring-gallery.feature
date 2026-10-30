@@ -3,7 +3,8 @@ Feature: Coloring gallery
   The gallery belongs inside coloring. Each work has a stable independent
   identity, editable paint, thumbnail, draft or completed status and a
   remembered flag recording whether its one star has been awarded.
-  This version offers no deletion or duplication of works.
+  Normal play offers no deletion or duplication of works; a parent can
+  explicitly reset unreadable coloring storage after a loss warning.
 
   Scenario: An empty collection offers a new work
     When I enter coloring with no works
@@ -54,3 +55,9 @@ Feature: Coloring gallery
     When I later undo all paint in that saved draft and saving succeeds
     Then it remains an editable empty draft in the gallery under the same identity
     And it cannot be completed until nonempty again
+
+  Scenario: A completed work is undone to empty
+    Given a completed work has been undone to its initial unpainted appearance and saved
+    When I open GALLERY
+    Then its thumbnail shows that empty appearance with completed status and its existing star
+    And opening it allows more painting but DONE stays unavailable until nonempty

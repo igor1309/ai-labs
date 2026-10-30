@@ -4,6 +4,7 @@ Feature: Coloring result and reward
   separate nonempty work earns exactly one star on its first successfully
   saved completion. The collection best is its highest saved number of
   completed works at Explorer; it is not an average of artistic scores.
+  The best is derived from the saved completed count, not stored separately.
   Without deletion the best equals the completed count: the first saved
   completion celebrates FIRST BEST and every additional work NEW BEST.
   Stars mark works in this game, not a new shared spendable currency.
@@ -46,7 +47,10 @@ Feature: Coloring result and reward
     Given a nonempty draft and a completed collection of 2
     When I choose DONE and saving fails
     Then I remain in the workshop with my paint intact
-    And a visible save-error symbol and RETRY action replace any saved confirmation
+    And the shared save-error panel offers RETRY, KEEP EDITING and HOME WITHOUT SAVING with symbols
+    And HOME WITHOUT SAVING requires confirmation that the current changes will be lost
+    And confirming returns HOME with only the last durable revision retained
+    And KEEP EDITING closes the panel and retains the current paint
     And no result, completion, star or best celebration is claimed
     When I retry and saving succeeds
     Then the result opens with exactly one newly earned star and a collection of 3
@@ -56,3 +60,12 @@ Feature: Coloring result and reward
     When I make and successfully complete another nonempty work
     Then the second work earns one star even if its colors match the first
     And the completed collection and Explorer best become 2
+
+  Scenario: Completion freezes its accepted revision
+    Given a nonempty draft with a pending stroke save
+    When I choose DONE
+    Then further painting, fills, UNDO and tool changes are disabled until completion succeeds or fails
+    And all earlier accepted edits save in order before that same revision completes
+    When I attempt to undo or draw while completion is pending
+    Then the accepted paint is unchanged and the result uses that paint with one reward
+    And on any save failure editing is restored with that paint intact and no completion reward
