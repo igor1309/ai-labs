@@ -16,9 +16,9 @@ struct ClientFindTests {
                 for choice in choices { await flow.send(.pickerAnswered(choice)) }
                 let before = flow.state
                 let calls = flow.ports.calls
-                for dBm in [-100, -70, -58, 0] {
-                    #expect(flow.reduce(.signalRead(dBm)) == nil)
-                    #expect(flow.state.signal == .live(dBm: dBm))
+                for reading: Int? in [-100, -70, nil, -58, 0, nil] {
+                    #expect(flow.reduce(.signalRead(reading)) == nil)
+                    #expect(flow.state.signal == (reading.map { .live(dBm: $0) } ?? .none))
                     #expect(flow.state.selection == before.selection)
                     #expect(flow.state.phase == before.phase)
                     #expect(flow.state.canStart == before.canStart)
