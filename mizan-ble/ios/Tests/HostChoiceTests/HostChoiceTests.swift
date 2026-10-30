@@ -62,6 +62,12 @@ struct HostChoiceTests {
         }
     }
 
+    @Test func unchosenLeaderBelowDropInsideTheHoldIsNotChosen() {
+        var choice = Choice(hold: 1)
+        #expect(choice.receive(.leader("A", .belowDrop(since: 10)), at: 10.2) == .holdCloser)
+        #expect(choice.chosen == nil)
+    }
+
     @Test func noHostWithoutChoiceAnswersNone() {
         var choice = Choice(hold: 1)
         #expect(choice.receive(.noHost, at: 10) == .none)
