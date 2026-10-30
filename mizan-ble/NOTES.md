@@ -129,4 +129,9 @@ another.
 
 - **Holding the choice:** how the picker keeps a chosen host near the
   floor (separate lines to choose and to drop, a dwell, or both), and
-  whether α, the floor and the margin then change.
+  whether α, the floor and the margin then change. A host whose readings
+  stop must still expire on time, even while a dwell is running. Tuning
+  needs a full recording of raw readings; the device log keeps only
+  changes of 3 dB or more, at most one a second, so it cannot be replayed.
+- **Switching hosts:** how long a second host must lead by the margin
+  before the picker moves to it. This waits for a second host on hand.
