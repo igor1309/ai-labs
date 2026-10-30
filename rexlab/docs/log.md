@@ -2,6 +2,7 @@
 
 ## 2026-10-30
 
+- Coloring probe fill regions have Russian/English names and plate/spike groups; the combined body region explicitly includes legs and tail (LAB-801).
 - An isolated Stegosaurus coloring probe offers editable paint, persistent undo, independent works and animation; desktop browser checks and payload measurements are recorded; physical iPad acceptance remains pending (LAB-801).
 
 ## 2026-10-28
