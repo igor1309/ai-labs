@@ -252,32 +252,56 @@ struct HostPickerTests {
         #expect(picker.receive(host: "B", rssi: -90, at: 101.3) == leading("A", .belowDrop(since: 101.2), at: 101.3))
     }
 
-    @Test func leaderBetweenTheLinesAndAtTheFloor() {
+    @Test func leaderBetweenTheLinesAndAtTheFloor() throws {
         for rssi in [-68, -65] {
             var picker = makePicker()
             window(&picker, ["A": rssi], from: 100)
             #expect(picker.answer(at: 101) == leading("A", .betweenLines, at: 101))
         }
-        var picker = makePicker(alpha: 0.1)
-        window(&picker, ["A": -65], from: 100)
-        #expect(picker.receive(host: "A", rssi: -64, at: 101.2) == leading("A", .aboveFloor, at: 101.2))
-        #expect(picker.view(at: 101.2).strongestAverage == -64.9)
+        var picker = makePicker()
+        window(&picker, ["A": -64], from: 100)
+        #expect(picker.receive(host: "A", rssi: -67, at: 101.2) == leading("A", .aboveFloor, at: 101.2))
+        #expect(abs(try #require(picker.view(at: 101.2).strongestAverage) - -64.9) < 0.000001)
     }
 
-    @Test func belowDropSinceTheCrossingReadingThroughTicks() {
-        var picker = makePicker(alpha: 0.5)
+    @Test func belowDropSinceTheCrossingReadingThroughTicks() throws {
+        var picker = makePicker()
         window(&picker, ["A": -60], from: 100)
         #expect(picker.answer(at: 101) == leading("A", .aboveFloor, at: 101))
-        #expect(picker.receive(host: "A", rssi: -82, at: 101.2) == leading("A", .belowDrop(since: 101.2), at: 101.2))
-        #expect(picker.view(at: 101.2).strongestAverage == -71)
+        #expect(picker.receive(host: "A", rssi: -100, at: 101.2) == leading("A", .belowDrop(since: 101.2), at: 101.2))
+        #expect(picker.view(at: 101.2).strongestAverage == -72)
         for time in [101.3, 101.7] {
             #expect(picker.answer(at: time) == leading("A", .belowDrop(since: 101.2), at: time))
         }
 
-        var aboveLine = makePicker(alpha: 0.1)
-        window(&aboveLine, ["A": -71], from: 100)
-        #expect(aboveLine.receive(host: "A", rssi: -70, at: 101.2) == leading("A", .betweenLines, at: 101.2))
-        #expect(aboveLine.view(at: 101.2).strongestAverage == -70.9)
+        var atLine = makePicker()
+        window(&atLine, ["A": -68], from: 100)
+        #expect(atLine.answer(at: 101) == leading("A", .betweenLines, at: 101))
+        #expect(atLine.receive(host: "A", rssi: -78, at: 101.2) == leading("A", .belowDrop(since: 101.2), at: 101.2))
+        #expect(atLine.view(at: 101.2).strongestAverage == -71)
+        for time in [101.3, 101.7] {
+            #expect(atLine.answer(at: time) == leading("A", .belowDrop(since: 101.2), at: time))
+        }
+
+        var aboveLine = makePicker()
+        window(&aboveLine, ["A": -70], from: 100)
+        #expect(aboveLine.receive(host: "A", rssi: -73, at: 101.2) == leading("A", .betweenLines, at: 101.2))
+        #expect(abs(try #require(aboveLine.view(at: 101.2).strongestAverage) - -70.9) < 0.000001)
+    }
+
+    @Test func recoveryFromBelowTheDropLineEndsTheRunOnlyOverTheLine() {
+        let cases: [(rssi: Int, band: Picker.Band, laterSince: Double)] = [
+            (-71, .belowDrop(since: 101.2), 101.2),
+            (-68, .betweenLines, 101.5),
+            (-65, .betweenLines, 101.5),
+        ]
+        for (rssi, band, laterSince) in cases {
+            var picker = makePicker(alpha: 1)
+            window(&picker, ["A": -60], from: 100)
+            #expect(picker.receive(host: "A", rssi: -80, at: 101.2) == leading("A", .belowDrop(since: 101.2), at: 101.2))
+            #expect(picker.receive(host: "A", rssi: rssi, at: 101.3) == leading("A", band, at: 101.3))
+            #expect(picker.receive(host: "A", rssi: -80, at: 101.5) == leading("A", .belowDrop(since: laterSince), at: 101.5))
+        }
     }
 
     @Test func crossingBackOverTheDropLineStartsANewRun() throws {
@@ -344,6 +368,30 @@ struct HostPickerTests {
         #expect(picker.answer(at: 102) == leading("A", .belowDrop(since: 100), at: 102))
         #expect(picker.receive(host: "B", rssi: 127, at: 102.5) == leading("A", .belowDrop(since: 100), at: 102.5))
         #expect(picker.receive(host: "B", rssi: -85, at: 103) == leading("B", .belowDrop(since: 101), at: 103))
+    }
+
+    @Test func laterCrossingBeforeLeadingKeepsItsStartTime() {
+        for (immature, rivalRSSI): (Bool, Int?) in [
+            (true, nil), (false, -50), (true, -50), (false, -67),
+        ] {
+            var picker = makePicker()
+            for index in 0..<5 {
+                let time = 100 + Double(index) * 0.25
+                if let rivalRSSI { picker.receive(host: "B", rssi: rivalRSSI, at: time) }
+                if !immature || index == 4 { picker.receive(host: "A", rssi: -68, at: time) }
+            }
+            let priorLeader: Picker.Leader? = rivalRSSI == -50 ? .init(host: "B", band: .aboveFloor) : nil
+            #expect(picker.answer(at: 101) == Picker.Answer(time: 101, hostHeard: true, leader: priorLeader))
+            #expect(picker.receive(host: "A", rssi: -78, at: 101.2) == Picker.Answer(time: 101.2, hostHeard: true, leader: priorLeader))
+            #expect(picker.answer(at: 101.3) == Picker.Answer(time: 101.3, hostHeard: true, leader: priorLeader))
+
+            for time in [101.5, 101.75, 102, 102.5] {
+                picker.receive(host: "A", rssi: -71, at: time)
+            }
+            let beforeFade: Picker.Leader? = rivalRSSI == nil ? .init(host: "A", band: .belowDrop(since: 101.2)) : priorLeader
+            #expect(picker.answer(at: 102.5) == Picker.Answer(time: 102.5, hostHeard: true, leader: beforeFade))
+            #expect(picker.answer(at: 103) == leading("A", .belowDrop(since: 101.2), at: 103))
+        }
     }
 
     @Test func suppliedDropGapControlsTheLineAndRecovery() {

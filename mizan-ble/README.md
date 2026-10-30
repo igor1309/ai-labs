@@ -44,6 +44,14 @@ are wired. Test the root with `swift test` in `ios/App`. The app icon is the
 Icon Composer file `ios/App/MizanBLE/AppIcon.icon`; its layers are
 exported from the design's "Mizan · App icon" frame.
 
+Screen snapshots render the host on an 11-inch iPad and the host and client
+on an iPhone 15 Pro, in light and dark, with each device's real safe area.
+Run `ios/scripts/snapshot-tests.sh`; it creates and uses one pinned iPhone 15
+Pro simulator on iOS 26.3. After an intended change, rerun it with
+`SNAPSHOT_RECORD=1` and commit the new references in
+`ios/Tests/UISnapshotTests/__Snapshots__`. CI compares them on the
+self-hosted Mac, the machine they were recorded on.
+
 Run the `MizanBLE Rehearsal` scheme on a simulator to play against a
 scripted other side. Add `-scriptedRadio /absolute/path/to/settings.json`
 to the scheme's launch arguments, or put `scripted-radio.json` in the
