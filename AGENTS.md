@@ -153,6 +153,8 @@ composes it.
   normal test cannot.
 - A behaviour no normal test can make fail means the code lacks a seam (an
   injected closure, spy, clock or hook). Add the seam.
+- Before you delete a throw-away test, one written to explore or reproduce
+  something, consider keeping it as a regression test.
 
 ## Reaching the owner
 
