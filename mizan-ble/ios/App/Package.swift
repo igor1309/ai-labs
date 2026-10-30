@@ -23,6 +23,7 @@ let package = Package(
             .product(name: "HostUI", package: "ios"),
             .product(name: "ClientFind", package: "ios"),
             .product(name: "HostPicker", package: "ios"),
+            .product(name: "HostChoice", package: "ios"),
             .product(name: "ClientConnect", package: "ios"),
             .product(name: "ClientReview", package: "ios"),
             .product(name: "ClientPayment", package: "ios"),

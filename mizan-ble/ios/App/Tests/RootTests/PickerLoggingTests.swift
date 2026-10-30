@@ -205,6 +205,28 @@ import Settings
         secret.assertAbsent(from: h.log.entries)
     }
 
+    @Test func chosenHostIsHeldThroughDipsUntilTheHoldRunsOut() {
+        let h = Harness()
+        defer { h.finish() }
+        h.store.set(.number(1), for: .pickerAlpha)
+        h.store.set(.number(1), for: .pickerWindowReadings)
+        let discovery = makeDiscovery(h)
+        defer { discovery.stop() }
+        let host = SecretsGate().peer
+        discovery.start()
+        discovery.reading(host: host, name: "private", rssi: -60, time: 0)
+        discovery.reading(host: host, name: nil, rssi: -60, time: 1)
+        discovery.reading(host: host, name: nil, rssi: -68, time: 1.1)
+        discovery.reading(host: host, name: nil, rssi: -80, time: 1.2)
+        discovery.reading(host: host, name: nil, rssi: -60, time: 1.3)
+        #expect(messages(h) == ["picker none hosts=0", "picker holdCloser rssi=-60 hosts=1", "picker host rssi=-60 hosts=1"])
+        discovery.reading(host: host, name: nil, rssi: -80, time: 1.4)
+        discovery.reading(host: host, name: nil, rssi: -80, time: 2.39)
+        #expect(!messages(h).dropFirst(2).contains { $0.hasPrefix("picker holdCloser") })
+        discovery.reading(host: host, name: nil, rssi: -80, time: 2.4)
+        #expect(messages(h).last == "picker holdCloser rssi=-80 hosts=1")
+    }
+
     @Test func stoppedPickerLogsNoReadings() {
         let h = Harness()
         defer { h.finish() }
