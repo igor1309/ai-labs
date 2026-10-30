@@ -58,7 +58,18 @@ async function canvasAndStorage(page) {
     check(painter.regionAt({ x: 210, y: 425 }) === undefined, "outline rejects fill");
     const painted = painter.pixels(canvas);
     const store = indexedWorks(indexedDB, "lab801-contract");
+    async function assertThumbnail(blob, source, label) {
+      const expected = document.createElement("canvas"); expected.width = 256; expected.height = 192;
+      expected.getContext("2d").drawImage(source, 0, 0, 256, 192);
+      const actual = document.createElement("canvas"); actual.width = 256; actual.height = 192;
+      const bitmap = await createImageBitmap(blob);
+      actual.getContext("2d").drawImage(bitmap, 0, 0); bitmap.close();
+      const expectedPixels = expected.getContext("2d").getImageData(0, 0, 256, 192).data;
+      const actualPixels = actual.getContext("2d").getImageData(0, 0, 256, 192).data;
+      check(equal(expectedPixels, actualPixels), label);
+    }
     const thumbnail = await painter.thumbnail(canvas);
+    await assertThumbnail(thumbnail, canvas, "thumbnail shows original painted composition");
     await store.write({ document: original, thumbnail }, null);
     const entry = (await store.list())[0];
     const restored = readRecord(entry.value, entry.id).document;
@@ -74,6 +85,11 @@ async function canvasAndStorage(page) {
     await store.write({ document: second, thumbnail: await painter.thumbnail(canvas) }, null);
     const firstAgain = readRecord((await store.list()).find(entry => entry.id === "real-a").value, "real-a");
     check(JSON.stringify(firstAgain.document) === JSON.stringify(continued), "independent journals");
+    const secondRecord = readRecord((await store.list()).find(entry => entry.id === "real-b").value, "real-b");
+    await assertThumbnail(secondRecord.thumbnail, canvas, "second work thumbnail shows its own paint");
+    painter.render(canvas, continued.actions);
+    await assertThumbnail(firstAgain.thumbnail, canvas, "continued work thumbnail shows latest revision");
+    check(!equal([...new Uint8Array(await firstAgain.thumbnail.arrayBuffer())], [...new Uint8Array(await secondRecord.thumbnail.arrayBuffer())]), "distinct compositions have distinct thumbnails");
     const stableThumbnail = [...new Uint8Array(await firstAgain.thumbnail.arrayBuffer())];
     let rejected = false;
     try { await store.write({ document: append(continued, dot), thumbnail }, original.revision); } catch { rejected = true; }
