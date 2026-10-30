@@ -5,7 +5,7 @@ settings instances where a row needs a second read.
 
 ## S-1 Defaults on a fresh install
 
-Empty store: countdown 60, α 0.3, window 1 s and 5, floor −65, margin 6, fade 2, drop gap 6, hold 1. Evidence for drop gap and hold: Missing. Evidence: `SettingsTests.freshStoreReadsDefaults`.
+Empty store: countdown 60, α 0.3, window 1 s and 5, floor −65, margin 6, fade 2, drop gap 6, hold 1. Evidence: `SettingsTests.freshStoreReadsDefaults`.
 
 ## S-2 Choosing a countdown
 
@@ -29,16 +29,16 @@ Margin 8 stored: 8. Evidence: `SettingsTests.validStoredPickerValuesAreReadAtEac
 
 ## S-7 A drop gap from the store
 
-Drop gap 4 stored: 4. Evidence: Missing.
+Drop gap 4 stored: 4. Evidence: `SettingsTests.storedDropGapIsRead`.
 
 ## S-8 A drop gap out of range
 
-Drop gap 25 stored: the default 6. Evidence: Missing.
+Drop gap 25 stored: the default 6. Evidence: `SettingsTests.outOfRangeDropGapReadsDefault`.
 
 ## S-9 A hold from the store
 
-Hold 0.5 stored: 0.5. Evidence: Missing.
+Hold 0.5 stored: 0.5. Evidence: `SettingsTests.storedHoldIsRead`.
 
 ## S-10 A hold out of range
 
-Hold 6 stored: the default 1. Evidence: Missing.
+Hold 6 stored: the default 1. Evidence: `SettingsTests.outOfRangeHoldReadsDefault`.

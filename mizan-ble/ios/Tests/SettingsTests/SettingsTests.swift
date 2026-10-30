@@ -12,6 +12,8 @@ struct SettingsTests {
         #expect(settings.pickerFloor == -65)
         #expect(settings.pickerMargin == 6)
         #expect(settings.pickerFade == 2)
+        #expect(settings.pickerDropGap == 6)
+        #expect(settings.choiceHold == 1)
     }
 
     @Test func chosenCountdownSurvivesANewInstance() {
@@ -140,6 +142,32 @@ struct SettingsTests {
         #expect(Settings.pickerFloorRange == -100 ... -30)
         #expect(Settings.pickerMarginRange == 0...20)
         #expect(Settings.pickerFadeRange == 0.5...10)
+        #expect(Settings.pickerDropGapRange == 0...20)
+        #expect(Settings.choiceHoldRange == 0...5)
+    }
+
+    @Test func storedDropGapIsRead() {
+        let settings = Settings(store: MemoryStore([.pickerDropGap: .number(4)]), random: { 0 })
+
+        #expect(settings.pickerDropGap == 4)
+    }
+
+    @Test func outOfRangeDropGapReadsDefault() {
+        let settings = Settings(store: MemoryStore([.pickerDropGap: .number(25)]), random: { 0 })
+
+        #expect(settings.pickerDropGap == 6)
+    }
+
+    @Test func storedHoldIsRead() {
+        let settings = Settings(store: MemoryStore([.choiceHold: .number(0.5)]), random: { 0 })
+
+        #expect(settings.choiceHold == 0.5)
+    }
+
+    @Test func outOfRangeHoldReadsDefault() {
+        let settings = Settings(store: MemoryStore([.choiceHold: .number(6)]), random: { 0 })
+
+        #expect(settings.choiceHold == 1)
     }
 }
 
