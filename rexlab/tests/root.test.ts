@@ -612,7 +612,7 @@ describe("coloring identities on a local HTTP preview", () => {
     const crypto = {
       getRandomValues: (bytes: Uint8Array) => { bytes.fill(++seed); return bytes; }
     } as Crypto;
-    const coloring = browserColoring({ document, indexedDB: {} as IDBFactory, crypto });
+    const coloring = browserColoring({ document: {} as Document, indexedDB: {} as IDBFactory, crypto });
     expect(coloring.identity()).toBe("01010101-0101-4101-8101-010101010101");
     expect(coloring.identity()).toBe("02020202-0202-4202-8202-020202020202");
   });
