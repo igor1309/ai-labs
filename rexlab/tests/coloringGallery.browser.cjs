@@ -147,7 +147,72 @@ const { chromium } = require("playwright");
     await page.evaluate(() => window.gallery.readFailure(true)); await press("NEW WORK");
     await page.getByRole("alert").waitFor();
     await page.evaluate(() => window.gallery.readFailure(false)); await press("RETRY");
+
+    const histories = [
+      { id: "brush-only", actions: [
+        { kind: "stroke", color: "#ef5350", size: 40, points: [{ x: 380, y: 330 }, { x: 420, y: 330 }, { x: 420, y: 365 }] },
+        { kind: "stroke", color: "#42a5f5", size: 20, points: [{ x: 300, y: 120 }, { x: 320, y: 120 }] },
+        { kind: "stroke", color: "#9ccc65", size: 40, points: [{ x: 220, y: 510 }, { x: 240, y: 510 }] }
+      ] },
+      { id: "mixed", actions: [
+        { kind: "stroke", color: "#ab67cb", size: 20, points: [{ x: 300, y: 120 }, { x: 320, y: 120 }] },
+        { kind: "stroke", color: "#ef5350", size: 40, points: [{ x: 380, y: 330 }, { x: 420, y: 330 }] },
+        { kind: "fill", color: "#42a5f5", region: "body" },
+        { kind: "stroke", color: "#9ccc65", size: 20, points: [{ x: 400, y: 330 }, { x: 440, y: 330 }] },
+        { kind: "fill", color: "#ff9345", region: "front-far" },
+        { kind: "stroke", color: "#f78fbd", size: 40, points: [{ x: 550, y: 130 }, { x: 565, y: 130 }] }
+      ] }
+    ];
+    const reference = actions => page.evaluate(actions => {
+      const painter = window.gallery.painter();
+      const canvas = painter.canvas(276, 186);
+      // Replay the fixture, independently of the saved journal and thumbnail adapter.
+      painter.render(canvas, actions);
+      return canvas.toDataURL("image/png");
+    }, actions);
+    const thumbnailMatches = async (id, actions, referenceImage) => {
+      const comparison = await page.evaluate(async ({ id, referenceImage }) => {
+        const record = (await window.gallery.list()).works.find(r => r.document.id === id);
+        const actual = await createImageBitmap(record.thumbnail);
+        const expected = await createImageBitmap(await (await fetch(referenceImage)).blob());
+        const pixels = image => {
+          const canvas = document.createElement("canvas"); canvas.width = image.width; canvas.height = image.height;
+          const ctx = canvas.getContext("2d"); ctx.drawImage(image, 0, 0);
+          return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        };
+        try {
+          const actualPixels = pixels(actual), expectedPixels = pixels(expected);
+          let differentChannels = 0;
+          for (let i = 0; i < expectedPixels.length; i++) if (actualPixels[i] !== expectedPixels[i]) differentChannels++;
+          return { width: actual.width, height: actual.height, differentChannels };
+        } finally { actual.close(); expected.close(); }
+      }, { id, referenceImage });
+      assert.deepEqual(comparison, { width: 276, height: 186, differentChannels: 0 }, `${id}: thumbnail must match every replayed pixel`);
+      assert.deepEqual((await listed()).works.find(r => r.document.id === id).document.actions, actions);
+    };
+    const undoneReferences = new Map();
+    for (const { id, actions } of histories) {
+      const accepted = await page.evaluate(async ({ id, actions }) => {
+        const session = await window.gallery.newWork(id);
+        for (const action of actions) { session.append(action); await session.settled(); }
+        const state = session.getSnapshot();
+        return { save: state.save, actions: state.work.actions };
+      }, { id, actions });
+      assert.deepEqual(accepted, { save: "saved", actions }, `${id}: all fixture actions must be accepted and saved`);
+      const expected = await reference(actions);
+      await thumbnailMatches(id, actions, expected);
+      await page.reload(); await mount({});
+      // Keep the same pixel oracle: reload must preserve the saved image exactly.
+      await thumbnailMatches(id, actions, expected);
+      await page.locator(`[data-work-id="${id}"] button`).press("Enter");
+      await page.locator("canvas").waitFor(); await press("UNDO"); await saved(); await back();
+      const undone = await reference(actions.slice(0, -1));
+      undoneReferences.set(id, undone);
+      await thumbnailMatches(id, actions.slice(0, -1), undone);
+    }
+    await page.reload(); await mount({});
+    for (const { id, actions } of histories) await thumbnailMatches(id, actions.slice(0, -1), undoneReferences.get(id));
     assert.deepEqual(errors, []);
-    console.log("PASS gallery: independent durable thumbnails/statuses/continue, workshop saves and retry, empty drafts, corruption/recovery, tap safety, 24 RU/EN/theme layouts and reduced motion");
+    console.log("PASS gallery: independent durable thumbnails/statuses/continue, full-pixel brush/mixed thumbnails and undo/reload, workshop saves and retry, empty drafts, corruption/recovery, tap safety, 24 RU/EN/theme layouts and reduced motion");
   } finally { if (browser) await browser.close(); }
 })().catch(error => { console.error(error); console.error(`FAIL gallery: ${error.message.split("\n")[0]}`); process.exitCode = 1; });

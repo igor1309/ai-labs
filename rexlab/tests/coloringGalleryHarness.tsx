@@ -46,6 +46,8 @@ export async function mount(options: { language?: Language; theme?: "light" | "d
 }
 export const counts = () => ({ starts, homes });
 export const list = () => resources.list();
+export const newWork = (id: string) => resources.newWork(id, () => {});
+export const painter = () => resources.painter;
 export const readFailure = (deny: boolean) => { denyReads = deny; };
 export const writeFailure = (deny: boolean) => { denyWrites = deny; };
 export const completionAbort = (abort: boolean) => { abortCompletion = abort; };
