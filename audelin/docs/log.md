@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- The reading reducer keeps call entries in order and rebuilds only changed
+  entries when text arrives, reducing work in long calls (LAB-775).
+
 - A long synthetic call can be profiled with one command: the real session
   and panel under Time Profiler, with a summary of the heaviest frames,
   hangs and peak memory (LAB-772).

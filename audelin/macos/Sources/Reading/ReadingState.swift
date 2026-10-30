@@ -119,5 +119,37 @@ public struct ReadingState: Equatable, Sendable {
     var text: [ReadingTextUpdate.Entry.ID: ReadingTextUpdate.Entry] = [:]
     var lines = Lines()
 
+    struct Rendered: Sendable {
+
+        struct Location: Sendable {
+
+            let row: Int
+            let lateEntry: Int?
+        }
+
+        var prepared = false
+        var ordered: [ReadingTextUpdate.Entry.ID] = []
+        var entries: [ReadingTextUpdate.Entry.ID: Entry] = [:]
+        var locations: [ReadingTextUpdate.Entry.ID: Location] = [:]
+    }
+
+    // Per-reduction work stays local to the value and does not affect what the panel observes.
+    struct Work: Sendable {
+
+        var entryOrderComparisons = 0
+        var rowsBuilt = 0
+    }
+
+    var rendered = Rendered()
+    var work = Work()
+
+    // Rendering indexes and work counts are derived bookkeeping, not panel state.
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+
+        lhs.banners == rhs.banners && lhs.recording == rhs.recording && lhs.problems == rhs.problems
+            && lhs.status == rhs.status && lhs.anchors == rhs.anchors && lhs.nextDisplayID == rhs.nextDisplayID
+            && lhs.text == rhs.text && lhs.lines == rhs.lines
+    }
+
     public init() {}
 }
