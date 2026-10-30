@@ -52,6 +52,54 @@ the next such growth is caught on the PR that adds it.
 - **MetricKit** hang reports come from real use and arrive late. They are a
   signal after release, not a check.
 
+## How other apps do it
+
+Read in October 2026 from each project's own repository.
+
+- **Zed** (`.agents/skills/gpui-bench`) is the most thorough, and measures.
+  Each benchmark drives the production path from the triggering event to a
+  presented frame. It runs fixed workload sizes chosen to go from normal to
+  degraded to severe, and changes one dimension at a time. Setup and the
+  correctness checks stay outside the timed part. Its gate metric is
+  retired instructions and heap allocations, which vary by about 0.01% to
+  0.1% between runs, against wall time's percent-level noise. Wall time is
+  always reported next to them, and a frame budget (8.33 ms at 120 Hz)
+  sets what counts as slow. Benchmarks never run concurrently, each run
+  is time-boxed, and a performance fix ships the benchmark that reproduces
+  its problem.
+- **iTerm2** keeps a separate `PerformanceTests` target, built optimized.
+  Its `measure` blocks run on a preloaded state (100,000 lines of
+  scrollback), and they time the old code path and the new one side by
+  side, so the baseline sits in the same run.
+- **Ghostty** keeps its benchmarks disabled by default and runs them by
+  hand under Instruments. For comparisons, a CLI benchmark replays fixed,
+  pre-generated input. It runs with `hyperfine` warmups and medians, in a
+  release build, and never runs two benchmarks at once.
+- **NetNewsWire** keeps XCTest `measure` blocks over recorded real feeds,
+  with the expected time in a comment. They don't gate CI.
+- **Signal** times operations in the app itself and logs any that pass a
+  threshold, in production too.
+- **CotEditor** and **Telegram** commit no speed tests. Telegram's
+  `measure` folder measures navigation geometry from screenshots.
+
+All of them measure an optimized build. None profiles a sped-up rehearsal,
+and none times a whole session to find which part grows; each one picks
+the operation and runs it at fixed sizes.
+
+What this means for audelin:
+
+- The size-ladder ratio tests and the count tests match Zed and iTerm2. They
+  should run optimized: the ratio tests now run in a debug `swift test`,
+  where unspecialised generics change both the cost and its growth.
+- Wall-clock ratio tests are what flake under load. A count that barely
+  varies is a steadier gate: the process's retired instructions
+  (`proc_pid_rusage`, `ri_instructions`) and heap allocations
+  (`malloc_zone_statistics`) are public API. The per-thread counter Zed
+  uses on macOS (`thread_selfcounts`) is a bare syscall, not public API.
+- An absolute frame budget on this Mac would give "slow" a meaning that
+  the 3× ratio does not have.
+- Run one measurement at a time, on a quiet machine.
+
 ## Four questions, four measurements
 
 One long run at 10× under Time Profiler gave a number for each of the
