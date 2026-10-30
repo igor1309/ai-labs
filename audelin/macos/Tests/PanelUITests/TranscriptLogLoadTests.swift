@@ -65,8 +65,13 @@ struct TranscriptLogLoadTests {
     private func log(_ lines: PanelState.Lines, config: PanelConfig, size: CGSize) -> AnyView {
 
         AnyView(
-            TranscriptLog(lines: lines, tokens: .light, config: config, event: { _ in })
-                .frame(width: size.width, height: size.height)
+            // The panel stacks the log and lets it be as tall as its text,
+            // so it proposes no height.
+            VStack(spacing: 0) {
+                TranscriptLog(lines: lines, tokens: .light, config: config, event: { _ in })
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: size.width, height: size.height, alignment: .top)
                 .environment(\.colorScheme, .light)
         )
     }

@@ -105,8 +105,16 @@ struct TranscriptLog: NSViewRepresentable {
                 return CGSize(width: width, height: limit)
             }
         }
-        layout.ensureLayout(for: layout.documentRange)
-        let height = ceil(layout.usageBoundsForTextContainer.height)
+        // Lay out only the document's end, whose bottom edge is the height;
+        // laying out a long call's whole log on every update grows with it.
+        let end = NSTextRange(location: layout.documentRange.endLocation)
+        layout.ensureLayout(for: end)
+        var bottom = layout.usageBoundsForTextContainer.maxY
+        layout.enumerateTextSegments(in: end, type: .standard, options: .middleFragmentsExcluded) { _, rect, _, _ in
+            bottom = max(bottom, rect.maxY)
+            return true
+        }
+        let height = ceil(bottom)
 
         return CGSize(width: width, height: min(height, proposal.height ?? height))
     }
