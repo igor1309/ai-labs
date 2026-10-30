@@ -43,7 +43,7 @@ import Observation
         self.clock = clock
         self.log = log
         self.restChanged = restChanged
-        discovery = ClientDiscovery(radio: radio, clock: clock, settings: settings)
+        discovery = ClientDiscovery(radio: radio, clock: clock, settings: settings, log: log)
         let initial = ClientFind.State()
         let handler = ClientFind.EffectHandler(scanner: discovery)
         find = .init(initialState: initial,

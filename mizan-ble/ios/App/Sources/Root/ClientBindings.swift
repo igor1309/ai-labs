@@ -12,16 +12,19 @@ import Settings
     private let radio: any ClientRadioPort
     private let clock: any ClockPort
     private let settings: Settings
+    private let log: any LogSink
     private var picker: HostPicker<UUID>
+    private var lastPickerLine: (answer: HostPicker<UUID>.Answer, rssi: Int?, time: Double)?
     private var hosts: [UUID: ClientFind.Host] = [:]
     private var ticks: Task<Void, Never>?
     private(set) var isScanning = false
     var send: (ClientFind.Event) -> Void = { _ in }
 
-    init(radio: any ClientRadioPort, clock: any ClockPort, settings: Settings) {
+    init(radio: any ClientRadioPort, clock: any ClockPort, settings: Settings, log: any LogSink) {
         self.radio = radio
         self.clock = clock
         self.settings = settings
+        self.log = log
         picker = Self.picker(settings)
     }
     deinit { ticks?.cancel() }
@@ -34,13 +37,15 @@ import Settings
         guard !isScanning else { return }
         picker = Self.picker(settings)
         hosts.removeAll()
+        lastPickerLine = nil
         isScanning = true
+        logPicker(.none, at: clock.now())
         radio.startScanning()
         let source = clock.ticks(every: .milliseconds(100))
         ticks = Task.immediate { [weak self] in
             for await time in source {
                 guard !Task.isCancelled, let self else { return }
-                self.answer(self.picker.answer(at: time))
+                self.answer(self.picker.answer(at: time), at: time)
             }
         }
     }
@@ -55,16 +60,37 @@ import Settings
     func reading(host: UUID, name: String?, rssi: Int, time: Double) {
         guard isScanning else { return }
         hosts[host] = .init(id: host.uuidString, name: name ?? hosts[host]?.name)
-        answer(picker.receive(host: host, rssi: rssi, at: time))
+        answer(picker.receive(host: host, rssi: rssi, at: time), at: time)
     }
-    private func answer(_ answer: HostPicker<UUID>.Answer) {
+    private func answer(_ answer: HostPicker<UUID>.Answer, at time: Double) {
         guard isScanning else { return }
+        logPicker(answer, at: time)
         switch answer {
         case .none: send(.pickerAnswered(.none))
         case .holdCloser: send(.pickerAnswered(.holdCloser))
         case .host(let id):
             if let host = hosts[id] { send(.pickerAnswered(.host(host))) }
         }
+    }
+
+    private func logPicker(_ answer: HostPicker<UUID>.Answer, at time: Double) {
+        let view = picker.view(at: time)
+        let rssi = view.leaderAverage.map { Int($0.rounded()) }
+        let signalMoved: Bool
+        if let previous = lastPickerLine, let previousRSSI = previous.rssi, let rssi {
+            signalMoved = abs(rssi - previousRSSI) >= 3 && time - previous.time >= 1
+        } else {
+            signalMoved = false
+        }
+        guard lastPickerLine?.answer != answer || signalMoved else { return }
+        let name: String = switch answer {
+        case .none: "none"
+        case .holdCloser: "holdCloser"
+        case .host: "host"
+        }
+        lastPickerLine = (answer, rssi, time)
+        let signal = rssi.map { " rssi=\($0)" } ?? ""
+        log.write(.init(category: .clientFind, message: "picker \(name)\(signal) hosts=\(view.candidateCount)"))
     }
 }
 

@@ -7,6 +7,16 @@ public struct HostPicker<HostID: Hashable & Sendable>: Sendable {
         case none
     }
 
+    public struct View: Equatable, Sendable {
+        public let leaderAverage: Double?
+        public let candidateCount: Int
+    }
+
+    public func view(at time: Double) -> View {
+        let live = candidates.values.filter { time - $0.last < fade }
+        return View(leaderAverage: live.map(\.average).max(), candidateCount: live.count)
+    }
+
     private struct Candidate: Sendable {
         var average: Double
         let first: Double

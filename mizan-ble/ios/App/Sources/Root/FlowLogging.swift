@@ -67,9 +67,19 @@ extension ClientFind.State: LogDescribable {
         switch phase {
         case .idle: "idle"
         case .startingScan: "startingScan"
-        case .scanning: "scanning"
+        case .scanning: "scanning \(selection.logDescription)"
         case .stoppingScan: "stoppingScan"
         case .handedOver: "handedOver"
+        }
+    }
+}
+extension ClientFind.Selection: LogDescribable {
+    public var logDescription: String {
+        switch self {
+        case .none: "none"
+        case .host: "host"
+        case .holdCloser: "holdCloser"
+        case .gone: "gone"
         }
     }
 }

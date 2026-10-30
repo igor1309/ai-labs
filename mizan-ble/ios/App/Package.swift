@@ -41,7 +41,6 @@ let package = Package(
             "Root",
             .product(name: "HostRadio", package: "ios"),
             .product(name: "ClientRadio", package: "ios"),
-            .product(name: "SystemClock", package: "ios"),
         ]),
         .target(name: "ScriptedSettings"),
         .target(name: "ScriptedRadio", dependencies: [
@@ -51,6 +50,6 @@ let package = Package(
         ]),
         .testTarget(name: "ScriptedSettingsTests", dependencies: ["ScriptedSettings"]),
         .testTarget(name: "ScriptedRadioTests", dependencies: ["ScriptedRadio"]),
-        .testTarget(name: "RootTests", dependencies: ["Root"]),
+        .testTarget(name: "RootTests", dependencies: ["Root", "DeviceRadios"]),
     ]
 )

@@ -8,6 +8,77 @@ appId: dev.igor1309.mizan-ble.rehearsal
     visible: "Lock & broadcast"
     timeout: 15000
 - assertVisible: "Lock & broadcast"
+- tapOn: "Settings"
+- assertVisible: "Advertising countdown"
+- assertVisible: "After this, advertising stops and the amount resets."
+- assertVisible: ".*Advertised name.*"
+- assertVisible: ".*Currency.*"
+- assertVisible: ".*Processor.*"
+- assertVisible:
+    text: "15 s"
+    enabled: true
+- tapOn:
+    text: "15 s"
+    enabled: true
+- assertVisible:
+    text: "15 s"
+    selected: true
+- assertVisible:
+    text: "Done"
+    enabled: true
+- assertVisible:
+    text: "30 s"
+    enabled: true
+- tapOn:
+    text: "30 s"
+    enabled: true
+- assertVisible:
+    text: "30 s"
+    selected: true
+- assertVisible:
+    text: "Done"
+    enabled: true
+- assertVisible:
+    text: "60 s"
+    enabled: true
+- tapOn:
+    text: "60 s"
+    enabled: true
+- assertVisible:
+    text: "60 s"
+    selected: true
+- assertVisible:
+    text: "Done"
+    enabled: true
+- assertVisible:
+    text: "90 s"
+    enabled: true
+- tapOn:
+    text: "90 s"
+    enabled: true
+- assertVisible:
+    text: "90 s"
+    selected: true
+- assertVisible:
+    text: "Done"
+    enabled: true
+- assertVisible:
+    text: "120 s"
+    enabled: true
+- tapOn:
+    text: "120 s"
+    enabled: true
+- assertVisible:
+    text: "120 s"
+    selected: true
+- assertVisible:
+    text: "Done"
+    enabled: true
+- tapOn:
+    text: "Done"
+    enabled: true
+- assertVisible: "Lock & broadcast"
+- assertNotVisible: "Advertising countdown"
 - tapOn:
     id: "key 3"
 - tapOn:
