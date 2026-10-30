@@ -251,6 +251,40 @@ async function ui(page, output) {
     }
     await page.screenshot({ path: resolve(output.directory, `probe-${width}x${height}.png`) });
   }
+  // Drive tool selection and observable paint through the actual page.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  if (await page.locator("html").getAttribute("lang") !== "en") { await page.locator("#language").focus(); await page.keyboard.press("Enter"); }
+  async function press(selector) { await page.locator(selector).focus(); await page.keyboard.press("Enter"); }
+  async function chooseColor(index) { await press("#colors"); await press(`button[aria-label="COLOR ${index}"]`); }
+  async function dotAt(x, y) {
+    const box = await drawing.boundingBox();
+    await page.mouse.click(box.x + x / 1024 * box.width, box.y + y / 768 * box.height);
+  }
+  async function pixelAt(x, y) { return drawing.evaluate((canvas, point) => [...canvas.getContext("2d").getImageData(point.x, point.y, 1, 1).data], { x, y }); }
+  const pristine = await drawing.evaluate(canvas => canvas.toDataURL());
+  await chooseColor(1); await dotAt(400, 400);
+  assert.equal(await drawing.getAttribute("data-revision"), "0", "base contact creates no history");
+  assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), pristine);
+  assert(await page.locator("#undo").isDisabled());
+  await chooseColor(7); await dotAt(5, 5);
+  assert.equal(await drawing.getAttribute("data-revision"), "0", "outside contact creates no history");
+  assert(await page.locator("#undo").isDisabled());
+  for (const size of [8, 20, 40]) {
+    await press("#sizes"); await press(`#choices button:has-text("${size}")`);
+    await stroke(400, 400);
+    await page.waitForFunction(() => document.querySelector("#status").textContent.includes("SAVED"));
+    assert.deepEqual(await pixelAt(400, 400), [66, 165, 245, 255]);
+    assert.deepEqual(await pixelAt(400, 400 - size / 2 - 2), [255, 240, 207, 255], "selected brush diameter");
+    await press("#undo");
+    assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), pristine, "undo restores chosen brush action");
+  }
+  await chooseColor(3); await press("#tool"); await dotAt(400, 400);
+  await page.waitForFunction(() => document.querySelector("#status").textContent.includes("SAVED"));
+  assert.deepEqual(await pixelAt(500, 420), [255, 147, 69, 255], "page fill paints distant body point");
+  assert.deepEqual(await pixelAt(420, 180), [255, 240, 207, 255], "page fill leaves plate unchanged");
+  await press("#undo");
+  assert.equal(await drawing.evaluate(canvas => canvas.toDataURL()), pristine, "page fill is undoable");
+  await press("#tool");
   // Per-work damage is visible and a healthy work remains editable after reload.
   await page.evaluate(async () => {
     const db = await new Promise((yes, no) => { const request = indexedDB.open("rexlab-coloring-probe-1", 1); request.onsuccess = () => yes(request.result); request.onerror = () => no(request.error); });
@@ -308,7 +342,7 @@ async function ui(page, output) {
   await page.evaluate(() => { window.allowProbeStorage = true; });
   await page.locator("#retry").focus(); await page.keyboard.press("Enter");
   await page.waitForFunction(() => document.querySelector("#drawing")?.dataset.work);
-  assert.equal(await drawing.getAttribute("data-work"), initialId, "retry restores the existing collection");
+  assert.equal(await drawing.getAttribute("data-work"), healthyId, "retry restores the existing collection");
   return "UI: restore/undo/continue, cancellation, second finger, double tap, exact animation, 24 device/language/theme layouts, damaged-work chooser and denied-storage retry passed";
 }
 
