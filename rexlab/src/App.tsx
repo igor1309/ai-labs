@@ -329,11 +329,11 @@ export function App({
 
   const home = useCallback(() => go({ kind: "home" }), [go]);
   const countColoringStart = useCallback(() => startCounter.countStart("coloring"), [startCounter]);
-  const [coloringCount, setColoringCount] = useState<number | null>(null);
+  const [coloringCount, setColoringCount] = useState<number | null | undefined>(undefined);
   useEffect(() => {
     if (!coloring || screen.kind !== "home") return;
     let current = true;
-    setColoringCount(null);
+    setColoringCount(undefined);
     void coloring.source.list().then(collection => {
       if (current) setColoringCount(collection.completedCount);
     }, () => { if (current) setColoringCount(null); });

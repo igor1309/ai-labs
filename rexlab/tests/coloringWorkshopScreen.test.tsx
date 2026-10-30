@@ -210,18 +210,13 @@ it.each(["en", "ru"] as Language[])("overlays the mounted canvas with a color pi
   expect(f.session.getSnapshot().work.actions.at(-1)).toMatchObject({ kind: "stroke", color: "#42a5f5", size: 40 });
 });
 
-it.each(["outside", "close", "Escape", "resize", "orientationchange"])("dismisses the picker by %s without changing paint or the selected color", async method => {
+it.each(["close", "Escape", "resize", "orientationchange"])("dismisses the picker by %s without changing paint or the selected color", async method => {
   const f = open(); f.tap(); await f.settled();
   const work = f.session.getSnapshot().work;
   const trigger = screen.getByRole("button", { name: "COLOR" });
   fireEvent.click(trigger);
   const dialog = screen.getByRole("dialog");
-  if (method === "outside") {
-    const shield = f.container.querySelector(".coloring-picker-layer")!;
-    f.step("pointerdown", 2, 0, 1, 2000, shield);
-    f.step("pointerup", 2, 0, 1, 2030, shield);
-    fireEvent.click(shield);
-  } else if (method === "close") fireEvent.click(within(dialog).getByRole("button", { name: "CLOSE" }));
+  if (method === "close") fireEvent.click(within(dialog).getByRole("button", { name: "CLOSE" }));
   else if (method === "Escape") fireEvent.keyDown(dialog, { key: "Escape" });
   else fireEvent(window, new Event(method));
   expect(screen.queryByRole("dialog")).toBeNull();
@@ -232,17 +227,17 @@ it.each(["outside", "close", "Escape", "resize", "orientationchange"])("dismisse
   expect(screen.getByRole("button", { name: "RED" }).getAttribute("aria-pressed")).toBe("true");
 });
 
-it.each(["outside", "selection"])("filters a second tap after picker %s dismissal before it can paint", async method => {
+it.each(["close", "selection"])("filters a second tap after picker %s dismissal before it can paint", async method => {
   const f = open("en", false, true);
   fireEvent.click(screen.getByRole("button", { name: "COLOR" }));
-  const target = method === "outside" ? f.container.querySelector(".coloring-picker-layer")! : within(screen.getByRole("dialog")).getByRole("button", { name: "BLUE" });
+  const target = method === "close" ? within(screen.getByRole("dialog")).getByRole("button", { name: "CLOSE" }) : within(screen.getByRole("dialog")).getByRole("button", { name: "BLUE" });
   tapAt(target, 1000, { x: 15, y: 17 });
   expect(screen.queryByRole("dialog")).toBeNull();
   f.tap(2, 0, 1200); await f.settled();
   expect(f.session.getSnapshot().work.revision).toBe(0);
   expect(f.write).not.toHaveBeenCalled();
   f.tap(2, 0, 2000); await f.settled();
-  expect(f.session.getSnapshot().work.actions).toEqual([{ ...f.dot, color: method === "outside" ? "#ef5350" : "#42a5f5", points: [{ x: 2, y: 0 }] }]);
+  expect(f.session.getSnapshot().work.actions).toEqual([{ ...f.dot, color: method === "close" ? "#ef5350" : "#42a5f5", points: [{ x: 2, y: 0 }] }]);
 });
 
 it("keeps keyboard focus inside the temporary picker", () => {

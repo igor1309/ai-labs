@@ -23,6 +23,12 @@ const { chromium } = require("playwright");
     const errors = []; page.on("pageerror", error => { errors.push(error.message); console.error("PAGEERROR", error.message); });
     // Only the storage boundary fails: every screen, session and adapter is real.
     await page.addInitScript(() => {
+      // Fix the calendar date without changing pointer or animation clocks.
+      const RealDate = Date;
+      window.Date = class extends RealDate {
+        constructor(...args) { super(...(args.length ? args : ["2026-10-30T12:00:00Z"])); }
+        static now() { return RealDate.now(); }
+      };
       window.storageFault = null;
       const transaction = IDBDatabase.prototype.transaction;
       IDBDatabase.prototype.transaction = function (...args) {
@@ -220,8 +226,8 @@ const { chromium } = require("playwright");
   } finally {
     try { await browser?.close(); }
     finally {
-      if (server) { server.httpServer.closeAllConnections(); await new Promise((resolve, reject) => server.httpServer.close(error => error ? reject(error) : resolve())); }
-      await rm(output, { recursive: true, force: true });
+      try { if (server) { server.httpServer.closeAllConnections(); await new Promise((resolve, reject) => server.httpServer.close(error => error ? reject(error) : resolve())); } }
+      finally { await rm(output, { recursive: true, force: true }); }
     }
   }
 })().catch(error => { console.error(error); console.error(`FAIL coloring flow: ${error.message.split("\n")[0]}`); process.exitCode = 1; });

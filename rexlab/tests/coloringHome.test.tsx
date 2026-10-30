@@ -16,12 +16,13 @@ function fixture({ language = "en", featured = "compare", level = "explorer" }: 
   const { model, dot, thumbnail } = coloringFixture();
   let collection: GalleryCollection = { works: [], unavailable: [], completedCount: 4, recentId: null };
   let failure = false;
+  let deferred: Promise<GalleryCollection> | undefined;
   let identity = 0;
   const countStart = vi.fn();
   const saveAge = vi.fn();
   let active!: ReturnType<typeof coloringWorkshop>;
   const source: GallerySource = {
-    list: vi.fn(async () => { if (failure) throw new Error("denied"); return collection; }),
+    list: vi.fn(async () => { if (deferred) return deferred; if (failure) throw new Error("denied"); return collection; }),
     reset: vi.fn(async () => {}),
     open: vi.fn(async () => { throw new Error("no work"); }),
     newWork: vi.fn(async (id, navigate) => {
@@ -40,7 +41,7 @@ function fixture({ language = "en", featured = "compare", level = "explorer" }: 
   };
   const view = render(<StrictMode><InputArbitrationContext value={input.arbitrate}><App {...props} /></InputArbitrationContext></StrictMode>);
   const click = async (name: string) => { await act(async () => { fireEvent.click(screen.getByRole("button", { name })); }); };
-  return { ...view, viewport, click, countStart, source, saveAge, dot, active: () => active, fail: (value: boolean) => { failure = value; }, collection: (value: GalleryCollection) => { collection = value; } };
+  return { ...view, defer: (value: Promise<GalleryCollection>) => { deferred = value; }, viewport, click, countStart, source, saveAge, dot, active: () => active, fail: (value: boolean) => { failure = value; }, collection: (value: GalleryCollection) => { collection = value; } };
 }
 
 it.each(["en", "ru"] as Language[])("shares the durable count and drawing symbol between the %s tile and featured card", async language => {
@@ -91,4 +92,14 @@ it("uses the source's history count even when a completed work has unreadable pa
   await f.click("HOME"); expect(f.container.querySelector(".coloring-tile-count")?.textContent).toBe("7");
   await f.click("COLOR A DINOSAUR"); f.collection({ works: [], unavailable: ["damaged"], recentId: "damaged", completedCount: null });
   await f.click("HOME"); expect(f.container.querySelector(".coloring-tile-count")?.textContent).toBe("?");
+});
+
+it.each([4, null])("shows no warning while Home history is pending, then shows its settled %s result", async completedCount => {
+  const f = fixture(); await act(async () => {}); await f.click("COLOR A DINOSAUR");
+  let resolve!: (value: GalleryCollection) => void;
+  f.defer(new Promise(done => { resolve = done; }));
+  await f.click("HOME");
+  expect(f.container.querySelector(".coloring-tile-count")).toBeNull();
+  await act(async () => { resolve({ works: [], unavailable: [], recentId: null, completedCount }); });
+  expect(f.container.querySelector(".coloring-tile-count")?.textContent).toBe(completedCount === null ? "?" : "4");
 });

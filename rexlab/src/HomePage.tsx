@@ -81,7 +81,7 @@ export type HomePageProps = {
   dig: { picture: string; dugUp: number | undefined };
   // Its tile and featured card share the collection across all levels.
   whoseJaw?: { picture: string; collected: number; total: number; onOpen: () => void } | undefined;
-  coloring?: { picture: string; completed: number | null; onOpen: () => void } | undefined;
+  coloring?: { picture: string; completed: number | null | undefined; onOpen: () => void } | undefined;
   picturePuzzle?: { picture: string; collected: number; onOpen: () => void } | undefined;
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
@@ -206,7 +206,7 @@ export function HomePage({
     coloring: coloring && {
       name: text.coloring, symbol: Pencil,
       picture: <Picture className="coloring-tile-picture" src={coloring.picture} alt="" width={800} height={600} />,
-      badge: coloring.completed === null ? { symbol: TriangleAlert, value: "?" } : { symbol: Star, value: coloring.completed },
+      badge: coloring.completed === undefined ? undefined : coloring.completed === null ? { symbol: TriangleAlert, value: "?" } : { symbol: Star, value: coloring.completed },
       onOpen: coloring.onOpen
     },
     whoseJaw: whoseJaw && {

@@ -182,7 +182,7 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
         <Button aria-label={text.fill} aria-pressed={tool === "fill"} disabled={blocked} onClick={() => { if (canAct()) setTool("fill"); }}><PaintBucket aria-hidden="true" />{tool === "fill" && <Check className="coloring-selection" aria-hidden="true" />}</Button>
         <Button aria-label={text.undo} disabled={blocked || !state.work.actions.length} onClick={() => { if (canAct()) session.undo(); }}><Undo2 aria-hidden="true" /></Button>
       </div>
-      {chooser && <div className="coloring-picker-layer" onPointerDown={event => { if (event.target === event.currentTarget) event.preventDefault(); }} onClick={event => { if (event.target === event.currentTarget) closeChooser(); }}>
+      {chooser && <div className="coloring-picker-layer">
         <div className="coloring-chooser" role="dialog" aria-modal="true" aria-label={chooser === "size" ? text.size : text.color} onKeyDown={event => {
           if (event.key === "Escape") { event.preventDefault(); closeChooser(); }
           if (event.key !== "Tab") return;
