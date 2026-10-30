@@ -2,6 +2,7 @@
 
 ## 2026-10-30
 
+- On a real iPad and iPhone a host left alone ends its broadcast when its countdown runs out and returns to amount entry (LAB-625).
 - The client keeps the host it offered through short dips in signal, instead of flipping between the host and hold closer at arm's length (LAB-764).
 - Screen snapshots of the host on an 11-inch iPad and of host and client on an iPhone 15 Pro, light and dark, now fail CI when a screen moves (LAB-779).
 - On an iPhone, Lock & broadcast fades the keypad out before the countdown fades in, and the status pill, device chips, amount and explanation take their new text and place at once and fade in, so no two texts draw over each other and nothing slides (LAB-728).
