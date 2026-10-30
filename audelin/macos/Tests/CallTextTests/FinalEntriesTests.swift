@@ -90,6 +90,31 @@ struct FinalEntriesTests {
         await call.stop()
     }
 
+    @Test(arguments: [State.Speaker.mine, .theirs])
+    func listenReturningAlonePublishesTheOtherSidesFinalPrefix(ending: State.Speaker) async {
+
+        let mine = FinalSide(), theirs = FinalSide()
+        let call = CallText(microphone: mine, call: theirs)
+        await call.start()
+        let openSide = ending == .mine ? theirs : mine
+        let endingSide = ending == .mine ? mine : theirs
+        let finals = [word(0), word(1)], tail = [word(2)]
+        await openSide.send(final: finals, tail: tail)
+        let entries = ending == .mine
+            ? ordered([], finals, theirTail: tail)
+            : ordered(finals, [], myTail: tail)
+        let held = State(status: .listening, entries: entries, finalCount: 0)
+        #expect(await call.state == held)
+        var updates = call.updates.makeAsyncIterator()
+        while let snapshot = await updates.next(), snapshot != held {}
+
+        await endingSide.endListening()
+        let released = State(status: .listening, entries: entries, finalCount: 2)
+        #expect(await updates.next() == released)
+        #expect(await call.state == released)
+        await call.stop()
+    }
+
     @Test func switchingOffAndOnKeepsThePrefixAndTheLaggingSidesBound() async {
 
         let mine = FinalSide(), theirs = FinalSide()
@@ -223,5 +248,7 @@ private actor FinalSide: Side {
         await withCheckedContinuation { deliveries.continuation.yield(Delivery(state: state, received: $0)) }
     }
 
-    func stop() { deliveries.continuation.finish() }
+    func endListening() { deliveries.continuation.finish() }
+
+    func stop() { endListening() }
 }

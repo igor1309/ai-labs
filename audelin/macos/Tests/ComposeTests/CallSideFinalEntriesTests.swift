@@ -21,10 +21,14 @@ struct CallSideFinalEntriesTests {
             .init(final: prefix, tail: [revision]),
             .init(final: prefix + [final], tail: [next]),
         ], ending: .init(final: prefix + [final, segment(count + 1, settled: "next")], tail: []))
-        let audio = TextAudio(), mapped = Values<Int>()
+        let audio = TextAudio(), mapped = Values<Int>(), revisedSnapshotTaken = Signal()
         let side = CallSide(audio: audio, text: engine, written: TextTrack(chunks: []), sampleRate: 1, mapEntry: {
             mapped.append($0.text.id)
             return CallSide.entry($0)
+        }, snapshotTaken: {
+            if $0.finalCount == count, $0.tailEntries.map(\.text.pending) == ["revised"] {
+                revisedSnapshotTaken.send()
+            }
         })
         let snapshots = AsyncStream<SideState>.makeStream()
         let listener = Task {
@@ -46,8 +50,11 @@ struct CallSideFinalEntriesTests {
         #expect(revised.tailEntries.map(\.text.pending) == ["revised"])
         #expect(Array(mapped.all.dropFirst(count + 1)) == [count])
         #expect(storage(first.finalEntries) == storage(revised.finalEntries), "tail changes do not copy the mapped final prefix")
+        await revisedSnapshotTaken.next()
 
         await audio.send(chunk(2))
+        await revisedSnapshotTaken.next()
+        #expect(Array(mapped.all.dropFirst(count + 2)).isEmpty, "a consumed duplicate maps nothing")
         await audio.send(chunk(3))
         let advanced = await states.next()!
         #expect(advanced.finalEntries.map(\.text.id) == Array(0...count))

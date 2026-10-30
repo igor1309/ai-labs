@@ -32,14 +32,17 @@ struct CallSide: CallText.Side {
 
     private let side: SideReader
     private let mapEntry: @Sendable (SideText.State.Entry) -> SideState.Entry
+    private let snapshotTaken: @Sendable (SideText.State) -> Void
 
     init(
         audio: any SideText.LiveAudio, text: any TextEngine,
         written: any FillIn.WrittenTrack, sampleRate: Double,
-        mapEntry: @escaping @Sendable (SideText.State.Entry) -> SideState.Entry = CallSide.entry
+        mapEntry: @escaping @Sendable (SideText.State.Entry) -> SideState.Entry = CallSide.entry,
+        snapshotTaken: @escaping @Sendable (SideText.State) -> Void = { _ in }
     ) {
 
         self.mapEntry = mapEntry
+        self.snapshotTaken = snapshotTaken
         let audio = SideAudio(source: audio)
         let hearing = SideHearing(text: text)
         side = SideReader(audio: audio, text: hearing, fillIn: {
@@ -59,6 +62,8 @@ struct CallSide: CallText.Side {
         var lastStatus: SideText.State.Status?
         var lastTail: [SideText.State.Entry] = []
         for await snapshot in side.updates {
+            // A suppressed snapshot still acknowledges completed processing.
+            defer { snapshotTaken(snapshot) }
             guard snapshot.status != lastStatus || snapshot.finalCount != finalEntries.count
                 || snapshot.tailEntries != lastTail else { continue }
             lastStatus = snapshot.status
