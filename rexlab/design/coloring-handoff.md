@@ -2,7 +2,7 @@
 
 Visual review proposal, not a shipped game or approved final illustration.
 
-The Pen document open in this task's checkout contains 31 new screen/state
+The Pen document open in this task's checkout contains 30 new screen/state
 frames and a reusable stegosaurus illustration. The frames use the existing
 Field Guide Midnight tokens and Nunito, uppercase child-facing labels,
 picture/symbol controls and a paper canvas that follows the selected theme.
