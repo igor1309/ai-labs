@@ -63,6 +63,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     let missingModels: @Sendable () -> [String]
     let monotonicNow: @Sendable () -> Double
     let timeOrigin: Double
+    let intervals: ProfileIntervals
     let captureLogSink: any LogSink
     let executor: (any TaskExecutor)?
     let openTrackFile: @Sendable (URL) async throws -> TrackFile
@@ -176,7 +177,8 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
         openTranscript: @escaping @Sendable (URL) async throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
         makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText,
-        captureLogSink: any LogSink
+        captureLogSink: any LogSink,
+        intervals: ProfileIntervals = .system
     ) {
 
         self.folder = folder
@@ -189,6 +191,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         self.monotonicNow = monotonicNow
         self.timeOrigin = monotonicNow()
         self.missingModels = missingModels
+        self.intervals = intervals
         self.captureLogSink = captureLogSink
         self.executor = executor
         self.openTrackFile = openTrack
@@ -272,7 +275,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         self.text = text
         let writing = WritingReader(
             callText: makeCallText(text),
-            transcript: transcriptFile.map { TranscriptDestination(file: SignpostedTranscriptFile(base: $0, intervals: .system)) },
+            transcript: transcriptFile.map { TranscriptDestination(file: SignpostedTranscriptFile(base: $0, intervals: intervals)) },
             failureReport: transcriptFailures
         )
         self.writing = writing
@@ -299,7 +302,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     private func track(_ side: SessionSide, recognizerSource: @escaping @Sendable () async throws -> any Recognizer) -> CallSide? {
 
         guard let destination = sides[side], let file = destination.track else { return nil }
-        let adapter = TrackText(recognizerSource: recognizerSource, executor: executor)
+        let adapter = TrackText(recognizerSource: recognizerSource, executor: executor, intervals: intervals)
         return CallSide(audio: destination.audio, text: adapter, written: WrittenTrack(track: file), sampleRate: TrackFile.sampleRate)
     }
 }

@@ -24,13 +24,18 @@ while (($#)); do
         --capture-for) length="$2" ;;
       esac
       shift 2 ;;
+    --help|-h)
+      echo 'usage: profile-rehearsal.sh capture --capture-for SECONDS [--capture-after SECONDS] [--out DIR] [rehearsal options...]'
+      echo '       profile-rehearsal.sh endurance [--out DIR] [rehearsal options...]'
+      echo '--capture-for requires a positive integer number of seconds.'
+      exit 0 ;;
     --report) die '--report is managed by this script; use --out DIR' ;;
     *) args+=("$1"); shift ;;
   esac
 done
 if [[ "$mode" == capture ]]; then
   [[ "$after" =~ ^[0-9]+([.][0-9]+)?$ ]] || die '--capture-after must be nonnegative seconds'
-  [[ "$length" =~ ^[0-9]+([.][0-9]+)?$ && "$length" =~ [1-9] ]] || die '--capture-for must be positive seconds'
+  [[ "$length" =~ ^[0-9]+$ && "$length" =~ [1-9] ]] || die '--capture-for must be a positive integer number of seconds'
 else
   [[ "$after" == 0 && -z "$length" ]] || die 'capture options require capture mode'
 fi
@@ -48,6 +53,7 @@ cleanup() {
   fi
   rm -f "$out/time-profile.xml" "$out/hangs.xml" "$out/signposts.xml"
   if [[ "$mode" == capture && "$status" != 0 ]]; then
+    rm -f "$out/summary.json"
     echo "capture failed (exit $status); see rehearsal.log and command diagnostics" > "$out/summary.txt"
   fi
   exit "$status"
@@ -60,7 +66,10 @@ swift build -c release --product AudelinRehearsal
 app="$(swift build -c release --show-bin-path)/AudelinRehearsal"
 
 if [[ "$mode" == endurance ]]; then
-  "$app" ${args[@]+"${args[@]}"} --report "$out/rehearsal.log"
+  "$app" ${args[@]+"${args[@]}"} --report "$out/rehearsal.log" &
+  pid=$!
+  wait "$pid"
+  pid=
   exit
 fi
 
@@ -76,14 +85,14 @@ pid=
 table() { xcrun xctrace export --input "$out/time.trace" --xpath "/trace-toc/run[@number=\"1\"]/data/table[@schema=\"$1\"]"; }
 table time-profile > "$out/time-profile.xml"
 table potential-hangs > "$out/hangs.xml"
-table os-signpost-interval > "$out/signposts.xml"
+table region-of-interest > "$out/signposts.xml"
 
 {
   echo "rehearsal ${args[*]-}"
   echo "capture after ${after}s for ${length}s (wall clock; trace contains only this window)"
   grep '^rehearsal: ' "$out/rehearsal.log"
   echo
-  python3 -I scripts/summarize-trace.py "$out/time-profile.xml" "$out/hangs.xml" AudelinRehearsal 20 --signposts "$out/signposts.xml"
+  python3 -I scripts/summarize-trace.py "$out/time-profile.xml" "$out/hangs.xml" AudelinRehearsal 20 --signposts "$out/signposts.xml" --json "$out/summary.json"
 } > "$out/summary.txt"
 cat "$out/summary.txt"
 echo "trace and summary in $out"

@@ -14,12 +14,15 @@ struct RecognizerSourceTests {
     @Test func prepareWaitsForSourceThenHears() async throws {
 
         let began = Signal(), release = DrainGate()
-        let recognizer = SessionRecognizer(name: "ready")
+        let profiling = ProfileIntervalSpy()
+        let recognizer = SessionRecognizer(name: "ready", onHear: {
+            #expect(profiling.active("Hearing") == 1)
+        })
         let adapter = TrackText(recognizerSource: {
             began.send()
             await release.wait()
             return recognizer
-        })
+        }, executor: nil, intervals: profiling.intervals)
         let preparing = Task { try await adapter.prepare() }
         defer { release.release(); preparing.cancel(); began.end() }
         await began.next()
@@ -33,6 +36,8 @@ struct RecognizerSourceTests {
         ])
         #expect(await recognizer.chunks == [.init(samples: [0.25], sampleRate: 48_000)])
         await adapter.shutdown()
+        #expect(profiling.began.all == ["Hearing"])
+        #expect(profiling.ended.all == ["Hearing"])
     }
 
     @Test func sourceFailureIsThrownByPrepare() async {

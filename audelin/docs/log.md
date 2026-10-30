@@ -2,6 +2,9 @@
 
 ## 2026-10-30
 
+- Capture summaries show the recorded signpost intervals and keep machine data
+  separately; terminating endurance also stops its rehearsal (LAB-793).
+
 - Rehearsals capture bounded CPU-and-hangs windows or run endurance without a
   profiler; summaries include named intervals and compare growth (LAB-793).
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Summarizes an xctrace Time Profiler export as plain text.
 
-    python3 -I scripts/summarize-trace.py PROFILE.xml HANGS.xml BINARY [TOP] [--signposts INTERVALS.xml]
-    python3 -I scripts/summarize-trace.py --compare OLD/summary.txt NEW/summary.txt
+    python3 -I scripts/summarize-trace.py PROFILE.xml HANGS.xml BINARY [TOP] [--signposts INTERVALS.xml] [--json SUMMARY.json]
+    python3 -I scripts/summarize-trace.py --compare OLD/summary.json NEW/summary.json
 
 PROFILE.xml is the time-profile table and HANGS.xml the potential-hangs
 table, both from `xctrace export`. BINARY names the profiled executable:
@@ -16,10 +16,11 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 
 
-def rows(path):
+def rows(path, named=False):
     """Yields each row's columns, with id/ref sharing resolved, and the
     lookup that resolves a nested element."""
     seen = {}
+    names = []
 
     def lookup(element):
         return seen.get(element.get("ref"), element) if element is not None else None
@@ -37,8 +38,11 @@ def rows(path):
 
     with open(path, "rb") as source:
         for _, element in ET.iterparse(source, events=("end",)):
-            if element.tag == "row":
-                yield [resolve(column) for column in element], lookup
+            if element.tag == "schema":
+                names = [column.findtext("mnemonic") for column in element.findall("col")]
+            elif element.tag == "row":
+                columns = [resolve(column) for column in element]
+                yield (dict(zip(names, columns)) if named else columns), lookup
                 # Shared elements stay reachable through `seen`.
                 element.clear()
 
@@ -85,16 +89,15 @@ def summarize(profile, hangs, binary, signposts=None):
         long.append((duration, by_tag["start-time"].get("fmt", "?"), by_tag["hang-type"].get("fmt", "?") if "hang-type" in by_tag else "?"))
     intervals = {}
     if signposts:
-        for columns, _ in rows(signposts):
-            by_tag = {column.tag: column for column in columns}
-            # Other subsystems can share the Points of Interest instrument.
-            if by_tag["subsystem"].text != "dev.igor1309.audelin":
+        for columns, _ in rows(signposts, named=True):
+            if columns["subsystem"].text != "dev.igor1309.audelin" or columns["class"].text != "Interval":
                 continue
-            name = by_tag["string"].text
-            duration = by_tag.get("duration")
-            # An interval crossing the recording boundary has no measured duration.
-            if duration is None or not duration.text:
+            # Boundary-clipped regions still have a duration, but lack an endpoint.
+            if any(columns[key].tag == "sentinel" for key in
+                   ("process", "end-process", "start-thread", "end-thread")):
                 continue
+            name = columns["name"].text
+            duration = columns["duration"]
             value = int(duration.text)
             interval = intervals.setdefault(name, {"count": 0, "total_ns": 0, "longest_ns": 0})
             interval["count"] += 1
@@ -107,9 +110,6 @@ def summarize(profile, hangs, binary, signposts=None):
                   "longest_ns": max((item[0] for item in long), default=0)},
         "hang_details": sorted(long, reverse=True), "intervals": intervals,
     }
-
-
-DATA_PREFIX = "summary-data: "
 
 
 def share(summary):
@@ -131,16 +131,14 @@ def report(summary, top):
     print("\nsignpost intervals (complete instances in the capture):")
     for name, interval in sorted(summary["intervals"].items()):
         print(f"{name}: count {interval['count']}, total {interval['total_ns'] / 1e6:.1f} ms, longest {interval['longest_ns'] / 1e6:.1f} ms")
-    # Keep all frames at full precision so comparison is independent of the displayed top N.
-    print("\n" + DATA_PREFIX + json.dumps(summary, ensure_ascii=False, sort_keys=True))
 
 
 def read_summary(path):
     with open(path, encoding="utf-8") as source:
-        for line in source:
-            if line.startswith(DATA_PREFIX):
-                return json.loads(line[len(DATA_PREFIX):])
-    raise ValueError(f"{path}: no summary-data record; regenerate with this summarizer")
+        try:
+            return json.load(source)
+        except json.JSONDecodeError as error:
+            raise ValueError(f"{path}: no JSON summary; regenerate with this summarizer") from error
 
 
 def compare(old, new):
@@ -168,7 +166,8 @@ def compare(old, new):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--compare", nargs=2, metavar=("OLD", "NEW"))
-    parser.add_argument("--signposts", help="os-signpost-interval table export")
+    parser.add_argument("--signposts", help="region-of-interest table export")
+    parser.add_argument("--json", help="write full-precision machine data to this file")
     parser.add_argument("profile", nargs="?")
     parser.add_argument("hangs", nargs="?")
     parser.add_argument("binary", nargs="?")
@@ -179,7 +178,12 @@ def main():
     else:
         if not all([args.profile, args.hangs, args.binary]):
             parser.error("PROFILE.xml HANGS.xml BINARY are required")
-        report(summarize(args.profile, args.hangs, args.binary, args.signposts), args.top)
+        summary = summarize(args.profile, args.hangs, args.binary, args.signposts)
+        if args.json:
+            with open(args.json, "w", encoding="utf-8") as destination:
+                json.dump(summary, destination, ensure_ascii=False, sort_keys=True)
+                destination.write("\n")
+        report(summary, args.top)
 
 
 if __name__ == "__main__":

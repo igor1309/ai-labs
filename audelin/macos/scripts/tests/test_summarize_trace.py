@@ -1,6 +1,7 @@
 import contextlib
 import importlib.util
 import io
+import json
 from pathlib import Path
 import subprocess
 import sys
@@ -40,9 +41,16 @@ class SummaryTests(unittest.TestCase):
 
     def test_compare_cli_uses_all_frames_even_below_displayed_top(self):
         with tempfile.TemporaryDirectory() as folder:
-            old, new = [Path(folder) / name for name in ("old.txt", "new.txt")]
-            old.write_text("rehearsal: done\n" + self.rendered("old", top=0))
-            new.write_text(self.rendered("new", top=0))
+            old, new = [Path(folder) / name for name in ("old.json", "new.json")]
+            for version, path in (("old", old), ("new", new)):
+                result = subprocess.run([
+                    sys.executable, "-I", str(SCRIPT), str(FIXTURES / f"profile-{version}.xml"),
+                    str(FIXTURES / f"hangs-{version}.xml"), "AudelinRehearsal", "0",
+                    "--signposts", str(FIXTURES / f"signposts-{version}.xml"), "--json", str(path)],
+                    capture_output=True, text=True, check=True)
+                self.assertNotIn("summary-data:", result.stdout)
+                self.assertNotIn("caller", result.stdout)
+                self.assertEqual(json.loads(path.read_text()), json.loads(json.dumps(self.summary(version))))
             result = subprocess.run([sys.executable, "-I", str(SCRIPT), "--compare", str(old), str(new)],
                                     capture_output=True, text=True, check=True)
         text = result.stdout
@@ -80,6 +88,24 @@ class SummaryTests(unittest.TestCase):
             legacy.write_text("samples: 100 ms of CPU")
             with self.assertRaisesRegex(ValueError, "regenerate with this summarizer"):
                 trace.read_summary(legacy)
+
+    def test_real_export_reports_all_three_intervals(self):
+        summary = trace.summarize(FIXTURES / "profile-old.xml", FIXTURES / "hangs-old.xml",
+                                  "AudelinRehearsal", FIXTURES / "signposts-real.xml")
+        self.assertEqual(summary["intervals"], {
+            "Hearing": {"count": 2, "total_ns": 6250, "longest_ns": 3292},
+            "TranscriptWrite": {"count": 1, "total_ns": 1613458, "longest_ns": 1613458},
+            "PanelUpdate": {"count": 1, "total_ns": 17834, "longest_ns": 17834},
+        })
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            trace.report(summary, 0)
+        for name in summary["intervals"]:
+            self.assertIn(name + ": count ", output.getvalue())
+
+    def test_numeric_duration_without_endpoint_is_excluded(self):
+        self.assertEqual(self.summary("old")["intervals"]["PanelUpdate"],
+                         {"count": 2, "total_ns": 4_000_000, "longest_ns": 3_000_000})
 
 
 if __name__ == "__main__":

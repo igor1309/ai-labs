@@ -2,6 +2,7 @@
 @testable import Compose
 import LiveText
 import Reading
+import Synchronization
 import Testing
 
 @Suite(.timeLimit(.minutes(1)))
@@ -74,4 +75,25 @@ private struct ProfileFile: SessionTranscriptFile {
     let onClose: @Sendable () async -> Void
     func write(_ state: State) async throws { try await onWrite(state) }
     func close() async { await onClose() }
+}
+
+final class ProfileIntervalSpy: Sendable {
+
+    let began = Values<String>()
+    let ended = Values<String>()
+    private let running = Mutex<[String: Int]>([:])
+
+    var intervals: ProfileIntervals {
+        ProfileIntervals { name in
+            let name = String(describing: name)
+            self.running.withLock { $0[name, default: 0] += 1 }
+            self.began.append(name)
+            return {
+                self.running.withLock { $0[name, default: 0] -= 1 }
+                self.ended.append(name)
+            }
+        }
+    }
+
+    func active(_ name: String) -> Int { running.withLock { $0[name, default: 0] } }
 }

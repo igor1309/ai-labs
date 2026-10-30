@@ -67,13 +67,19 @@ actor SessionRecognizer: Recognizer {
 
     let heard = Signal()
     let name: String
+    let onHear: @Sendable () -> Void
     private(set) var chunks: [AudioChunk] = []
     private(set) var finishes = 0
 
-    init(name: String) { self.name = name }
+    init(name: String, onHear: @escaping @Sendable () -> Void = {}) {
+
+        self.name = name
+        self.onHear = onHear
+    }
 
     func hear(_ chunk: AudioChunk) -> Hearing {
 
+        onHear()
         chunks.append(chunk)
         heard.send()
         return Hearing(words: [.init(name + " pending", start: 0, end: 1.0 / 48_000)])
