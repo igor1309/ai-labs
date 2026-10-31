@@ -12,6 +12,7 @@
 
 ## 2026-10-30
 
+- Coloring probe fill regions have Russian/English names and plate/spike groups; the combined body region explicitly includes legs and tail (LAB-801).
 - LAB-804: Coloring opens from Home with completed-work counts on its tile and featured card; phone brush sizes have their own chooser.
 
 - Coloring strokes update once per display frame without replaying saved brush history for every pen sample (LAB-803).
