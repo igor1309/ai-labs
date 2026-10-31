@@ -2,6 +2,8 @@
 
 ## 2026-10-31
 
+- LAB-799: Landscape colouring centers its leading controls below the system safe area and removes the idle save prompt; save failures keep a visible retry action.
+
 - LAB-820: Shared touch protection suppresses selection and long-press menus throughout RexLab while preserving scrolling, pinch zoom and game input.
 - LAB-799: Landscape colouring gives the dinosaur a full-height canvas, with coloured navigation icons and drawing tools in separate leading groups and temporary colour/size pickers.
 

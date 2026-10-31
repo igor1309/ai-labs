@@ -11,7 +11,10 @@
   --coloring-new: #dbd0ef;
   --coloring-gallery: #cde2f2;
   --coloring-brush: #cfe6df;
+  --coloring-safe-top: env(safe-area-inset-top, 0px);
+  --coloring-safe-bottom: env(safe-area-inset-bottom, 0px);
   box-sizing: border-box;
+  position: relative;
   height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -107,6 +110,8 @@
 @media (orientation: landscape) {
   .coloring-title, .coloring-paper h2, .coloring-navigation span { display: none; }
   .coloring-paper { padding: 0; border: 0; border-radius: 0; background: transparent; }
+  .coloring-save:not(.coloring-save-error) { position: absolute; width: 1px; height: 1px; min-height: 0; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .coloring-save-error { position: absolute; z-index: 10; right: max(8px, env(safe-area-inset-right)); bottom: max(8px, var(--coloring-safe-bottom)); max-width: calc(100% - max(8px, env(safe-area-inset-left)) - max(8px, env(safe-area-inset-right))); box-sizing: border-box; flex-wrap: wrap; padding: 8px; border: 1px solid var(--fm-line); border-radius: 18px; background: var(--fm-surface); }
   .coloring-navigation { grid-template-columns: repeat(4, 60px); justify-content: center; }
 }
 @media (min-width: 600px) and (min-height: 480px) {
@@ -119,8 +124,8 @@
   .coloring-picker-layer { position: fixed; inset: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
 }
 @media (orientation: landscape) and (min-width: 900px) and (min-height: 480px) {
-  .coloring-workshop { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; column-gap: 20px; row-gap: 4px; }
-  .coloring-rail { grid-column: 1; grid-row: 1 / -1; display: flex; flex-direction: column; align-self: start; gap: 24px; }
+  .coloring-workshop { display: grid; container: coloring-workshop / size; grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); column-gap: 20px; row-gap: 0; padding-top: calc(32px + var(--coloring-safe-top)); padding-bottom: calc(32px + var(--coloring-safe-bottom)); }
+  .coloring-rail { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; align-self: center; gap: 24px; }
   .coloring-navigation, .coloring-tools { box-sizing: border-box; display: grid; grid-template-columns: repeat(2, 60px); gap: 8px; padding: 8px; border-radius: 28px; background: color-mix(in srgb, var(--coloring-home) 28%, var(--fm-bg)); }
   .coloring-navigation button { width: 60px; height: 60px; padding: 4px; }
   .coloring-tools { position: relative; flex: none; }
@@ -128,14 +133,14 @@
   .coloring-tools button { background: var(--fm-surface); }
   .coloring-tools button[aria-pressed="true"] { background: var(--coloring-brush); }
   .coloring-body { grid-column: 2; grid-row: 1; }
-  .coloring-save { grid-column: 2; grid-row: 2; justify-content: flex-start; }
   .coloring-chooser { bottom: auto; top: 50%; transform: translateY(-50%); }
 }
-@media (orientation: landscape) and (min-width: 900px) and (min-height: 684px) {
+/* Nine targets and the group divider need spare height inside the safe area. */
+@container coloring-workshop (min-height: 704px) {
   .coloring-navigation, .coloring-tools { grid-template-columns: 60px; }
 }
 @media (max-height: 599px) and (orientation: landscape) {
-  .coloring-workshop { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); gap: 4px; }
+  .coloring-workshop { padding-top: calc(8px + var(--coloring-safe-top)); padding-bottom: calc(8px + var(--coloring-safe-bottom)); gap: 4px; }
   .coloring-save { min-height: 18px; }
 }
 @media (orientation: landscape) and (max-width: 899px) {
