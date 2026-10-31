@@ -3,6 +3,7 @@ import PanelUI
 import Recording
 import Session
 import Testing
+@testable import Audelin
 @testable import Compose
 
 @Suite(.timeLimit(.minutes(1)))

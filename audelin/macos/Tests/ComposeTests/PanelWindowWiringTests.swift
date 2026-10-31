@@ -6,6 +6,7 @@ import Preferences
 import Recording
 import Session
 import Testing
+@testable import Audelin
 
 @MainActor
 struct PanelWindowWiringTests {
@@ -111,37 +112,32 @@ struct PanelWindowWiringTests {
                 do {
                     #expect(await sessions.begin(id: 1) == .ready)
                     let firstSession = try #require(connected.all.first)
-                    #expect(await firstSession.snapshot().phase == .recording)
-                    #expect(await firstSession.snapshot().wantedLiveText == false)
+                    let firstBegun = try await firstSession.state { $0.phase == .recording }
+                    #expect(firstBegun.wantedLiveText == false)
                     await panel.send(.switchLiveTextOn)
-                    #expect(await firstSession.snapshot().wantedLiveText)
+                    _ = try await firstSession.state { $0.wantedLiveText }
 
                     await firstSession.send(.liveTextChanged(false))
-                    #expect(await firstSession.snapshot().wantedLiveText == false)
+                    _ = try await firstSession.state { !$0.wantedLiveText }
                     #expect(await sessions.begin(id: 2) == .ready)
                     #expect(connected.all.count == 2)
                     let secondSession = try #require(connected.all.last)
-                    #expect(await secondSession.snapshot().phase == .recording)
-                    #expect(await secondSession.snapshot().wantedLiveText == false)
+                    let secondBegun = try await secondSession.state { $0.phase == .recording }
+                    #expect(secondBegun.wantedLiveText == false)
                     await panel.send(.switchLiveTextOn)
-                    #expect(await secondSession.snapshot().wantedLiveText)
-                    #expect(await firstSession.snapshot().phase == .recording)
-                    #expect(await firstSession.snapshot().wantedLiveText == false)
+                    _ = try await secondSession.state { $0.wantedLiveText }
 
+                    // A session reduces its events in order, so its ended state shows any switch the panel
+                    // sent it before the end.
                     await sessions.end(id: 1)
-                    await secondSession.send(.liveTextChanged(false))
-                    #expect(await secondSession.snapshot().wantedLiveText == false)
-                    await panel.send(.switchLiveTextOn)
-                    #expect(await secondSession.snapshot().wantedLiveText)
-                    let firstEnded = await firstSession.snapshot()
-                    #expect(firstEnded.phase == .ended)
+                    let firstEnded = try await firstSession.state { $0.phase == .ended }
                     #expect(firstEnded.wantedLiveText == false)
-                    await sessions.end(id: 2)
-                    let secondEnded = await secondSession.snapshot()
-                    #expect(secondEnded.phase == .ended)
+                    await secondSession.send(.liveTextChanged(false))
+                    _ = try await secondSession.state { !$0.wantedLiveText }
                     await panel.send(.switchLiveTextOn)
-                    #expect(await firstSession.snapshot() == firstEnded)
-                    #expect(await secondSession.snapshot() == secondEnded)
+                    _ = try await secondSession.state { $0.wantedLiveText }
+                    await sessions.end(id: 2)
+                    _ = try await secondSession.state { $0.phase == .ended }
                 } catch {
                     await sessions.end(id: 1)
                     await sessions.end(id: 2)
