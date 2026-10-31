@@ -102,10 +102,10 @@ func unavailable(_ side: SessionSide) -> [[SessionState.Piece: SessionState.Heal
 func unmatchedReplies() -> [(SessionState, SessionEvent)] {
 
     let held = SessionState.LiveTextRequest(id: anyRequestID(), enabled: .random())
-    let holding = recording().with { $0.pendingLiveText = held }
+    let holding = makeRecording().with { $0.pendingLiveText = held }
     let error = [nil, anyError()].randomElement()!
     return [
-        (recording(), .liveTextSet(request: held, error: error)),
+        (makeRecording(), .liveTextSet(request: held, error: error)),
         (holding, .liveTextSet(request: .init(id: held.id + 1, enabled: held.enabled), error: error)),
         (holding, .liveTextSet(request: .init(id: held.id, enabled: !held.enabled), error: error)),
     ]
@@ -136,7 +136,7 @@ func resultsNotAwaited() -> [(SessionState, SessionEvent)] {
     return cases.flatMap { awaited, events in
         events.flatMap { piece, event in
             statuses.filter { $0 != awaited }.map { status in
-                (scrambled(phases.randomElement()!).with { $0[status: piece] = status }, event)
+                (makeScrambled(phases.randomElement()!).with { $0[status: piece] = status }, event)
             }
         }
     }
@@ -146,30 +146,30 @@ func eventsInTheWrongPhase() -> [(SessionState, SessionEvent)] {
 
     var cases: [(SessionState, SessionEvent)] = []
     for phase in phases where phase != .idle {
-        cases.append((scrambled(phase), .begin(liveText: .random())))
+        cases.append((makeScrambled(phase), .begin(liveText: .random())))
     }
     for phase in phases where phase != .bringingUp {
-        cases.append((scrambled(phase), .modelsChecked(missing: [])))
-        cases.append((scrambled(phase), .modelsChecked(missing: [anyError()])))
+        cases.append((makeScrambled(phase), .modelsChecked(missing: [])))
+        cases.append((makeScrambled(phase), .modelsChecked(missing: [anyError()])))
     }
     for status in statuses where status != .down {
-        cases.append((scrambled(.bringingUp).with { $0.folder = status }, .modelsChecked(missing: [])))
+        cases.append((makeScrambled(.bringingUp).with { $0.folder = status }, .modelsChecked(missing: [])))
     }
     for phase in phases where phase != .recording {
         for change in SessionReducerTests.LiveTextChange.allCases {
-            cases.append((scrambled(phase), change.event(.random())))
+            cases.append((makeScrambled(phase), change.event(.random())))
         }
     }
     for phase in phases {
-        for side in sides { cases.append((scrambled(phase), .accessChanged(side, available: true))) }
+        for side in sides { cases.append((makeScrambled(phase), .accessChanged(side, available: true))) }
     }
     for phase in [SessionState.Phase.idle, .ended] {
-        for side in sides { cases.append((scrambled(phase), .accessChanged(side, available: false))) }
-        for piece in bringUpOrder { cases.append((scrambled(phase), .pieceFailed(piece, error: anyError()))) }
+        for side in sides { cases.append((makeScrambled(phase), .accessChanged(side, available: false))) }
+        for piece in bringUpOrder { cases.append((makeScrambled(phase), .pieceFailed(piece, error: anyError()))) }
     }
     for status in liveTexts {
         for phase in [SessionState.Phase.idle, .ending, .ended] {
-            let state = scrambled(phase).with {
+            let state = makeScrambled(phase).with {
                 $0.wantedLiveText = true
                 $0.callText = .up
             }
@@ -177,7 +177,7 @@ func eventsInTheWrongPhase() -> [(SessionState, SessionEvent)] {
         }
         for phase in [SessionState.Phase.bringingUp, .recording] {
             for callText in [SessionState.PieceStatus.down, .stopping, .closed] {
-                let state = scrambled(phase).with {
+                let state = makeScrambled(phase).with {
                     $0.wantedLiveText = true
                     $0.callText = callText
                 }
@@ -190,7 +190,7 @@ func eventsInTheWrongPhase() -> [(SessionState, SessionEvent)] {
 
 // MARK: - States
 
-func anyState(_ phase: SessionState.Phase) -> SessionState {
+func makeState(_ phase: SessionState.Phase) -> SessionState {
 
     SessionState(
         wantedLiveText: .random(),
@@ -203,59 +203,59 @@ func anyState(_ phase: SessionState.Phase) -> SessionState {
     )
 }
 
-func idle() -> SessionState { anyState(.idle) }
+func makeIdle() -> SessionState { makeState(.idle) }
 
-func checkingModels() -> SessionState { anyState(.bringingUp) }
+func makeCheckingModels() -> SessionState { makeState(.bringingUp) }
 
 /// Bring-up holding `piece`: every piece before it in bring-up order is up.
-func bringingUp(starting piece: SessionState.Piece) -> SessionState {
+func makeBringingUp(starting piece: SessionState.Piece) -> SessionState {
 
-    anyState(.bringingUp).with { state in
+    makeState(.bringingUp).with { state in
         for earlier in bringUpOrder.prefix(while: { $0 != piece }) { state[status: earlier] = .up }
         state[status: piece] = .starting
     }
 }
 
-func endingWhileStarting(_ piece: SessionState.Piece) -> SessionState {
+func makeEndingWhileStarting(_ piece: SessionState.Piece) -> SessionState {
 
-    bringingUp(starting: piece).with { $0.phase = .ending }
+    makeBringingUp(starting: piece).with { $0.phase = .ending }
 }
 
-func recording(withDown down: [SessionState.Piece] = []) -> SessionState {
+func makeRecording(withDown down: [SessionState.Piece] = []) -> SessionState {
 
-    anyState(.recording).with { state in
+    makeState(.recording).with { state in
         for piece in bringUpOrder { state[status: piece] = .up }
         for piece in down { state[status: piece] = .down }
     }
 }
 
 /// Recording while a live text request waits for its reply: `stale` when a newer change came after it.
-func holdingLiveText(stale: Bool = false) -> SessionState {
+func makeHoldingLiveText(stale: Bool = false) -> SessionState {
 
-    recording().with {
+    makeRecording().with {
         $0.pendingLiveText = .init(id: $0.liveTextRequestID - (stale ? 1 : 0), enabled: .random())
     }
 }
 
 /// Bring-down holding `piece`: every piece before it in stop order is closed.
-func stopping(_ piece: SessionState.Piece) -> SessionState {
+func makeStopping(_ piece: SessionState.Piece) -> SessionState {
 
-    recording().with { state in
+    makeRecording().with { state in
         state.phase = .ending
         for earlier in piecesStopped(before: piece) { state[status: earlier] = .closed }
         state[status: piece] = .stopping
     }
 }
 
-func hosting(_ host: SessionReducerTests.LiveTextHost) -> SessionState {
+func makeHosting(_ host: SessionReducerTests.LiveTextHost) -> SessionState {
 
-    anyState(host.phase).with { $0.callText = host.callText }
+    makeState(host.phase).with { $0.callText = host.callText }
 }
 
 /// Any phase and piece statuses: for events whose guard must decide on one field alone.
-func scrambled(_ phase: SessionState.Phase) -> SessionState {
+func makeScrambled(_ phase: SessionState.Phase) -> SessionState {
 
-    anyState(phase).with { state in
+    makeState(phase).with { state in
         for piece in bringUpOrder { state[status: piece] = statuses.randomElement()! }
     }
 }
