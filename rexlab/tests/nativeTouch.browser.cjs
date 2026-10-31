@@ -67,7 +67,14 @@ async function check(browser, files, device) {
     const row = page.locator(".games-tiles");
     const box = await row.boundingBox();
     const before = await row.evaluate(e => e.scrollLeft);
-    await cdp.send("Input.synthesizeScrollGesture", { x: Math.round(Math.min(box.x + box.width / 2, page.viewportSize().width - 30)), y: Math.round(box.y + box.height / 2), xDistance: -180, yDistance: 0, gestureSourceType: "touch" });
+    const swipeX = Math.round(Math.min(box.x + box.width / 2, page.viewportSize().width - 30));
+    const swipeY = Math.round(box.y + box.height / 2);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: swipeX, y: swipeY }] });
+    for (let distance = 20; distance <= 180; distance += 20) {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: swipeX - distance, y: swipeY }] });
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)));
+    }
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await page.waitForFunction(before => document.querySelector(".games-tiles").scrollLeft > before, before);
 
     // Every game's entry and the catalogue/dinosaur page use the shared policy.
