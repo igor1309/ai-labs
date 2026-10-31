@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BASE_COLOR, BRUSH_SIZES, COLORS, coloringModel, type Action } from "../src/coloring/index.ts";
 import { coloringFixture } from "./coloringFixture.ts";
+import { artworkFor } from "../src/coloring/artworks.ts";
 
 describe("production editable coloring work", () => {
   it("round trips all colors, brush sizes and region fills with independent undo histories", () => {
@@ -118,4 +119,25 @@ describe("production editable coloring work", () => {
     expect(() => model.append(overflow, dot)).toThrow();
     expect(() => model.complete({ ...overflow, actions: [dot] })).toThrow();
   });
+});
+
+it.each([
+  ["stegosaurus-production-1", "plate-1", "stegosaurus-explorer-1"],
+  ["stegosaurus-explorer-1", "plate-panel-4", "stegosaurus-production-1"]
+] as const)("restores %s with its own fills, undo history and earned status", (version, region, other) => {
+  const { model } = coloringFixture(artworkFor(version).geometry.artwork);
+  const body: Action = { kind: "fill", color: COLORS[1], region: "body" };
+  const plate: Action = { kind: "fill", color: COLORS[6], region };
+  const completed = model.complete(model.append(model.append(model.newWork(version), body), plate));
+  const saved = JSON.parse(JSON.stringify(completed));
+  const restoredModel = coloringFixture(artworkFor(saved.geometry).geometry.artwork).model;
+  const restored = restoredModel.readWork(saved);
+  expect(restored).toEqual({ schema: 1, geometry: version, id: version, revision: 3, actions: [body, plate], completed: true, rewarded: true });
+  expect(restoredModel.undo(restored)).toEqual({ ...restored, revision: 4, actions: [body] });
+  const empty = restoredModel.undo(restoredModel.undo(restored));
+  expect(empty).toMatchObject({ geometry: version, id: version, actions: [], completed: true, rewarded: true });
+  expect(restoredModel.isEmpty(empty)).toBe(true);
+  expect(restoredModel.append(empty, plate).actions).toEqual([plate]);
+  expect(() => coloringFixture(artworkFor(other).geometry.artwork).model.readWork(saved)).toThrow("Unsupported");
+  expect(saved).toEqual(completed);
 });
