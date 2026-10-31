@@ -5,19 +5,19 @@ extension TranscriptWritingTests {
 
     @Test func eachFailedWriteIsToldAndWritingGoesOn() async {
 
-        let executor = TestExecutor()
+        let changes = Changes()
         let second = WriteFailure(message: "second write denied")
         let third = WriteFailure(message: "third write out of space")
         let texts = ["first", "first revised\nsecond", "first revised again\nsecond\nthird"]
         let run = Run(
-            executor: executor, enabled: true, holds: [:],
+            changes: changes, enabled: true, holds: [:],
             failures: [texts[1]: second, texts[2]: third]
         )
-        defer { run.requestStop(); executor.run() }
-        await executor.run(until: { run.observed.started })
+        defer { run.requestStop() }
+        await changes.until({ run.observed.started })
         for (index, text) in texts.enumerated() {
             run.call.send(text)
-            await executor.run(until: {
+            await changes.until({
                 run.observed.texts.count == index + 1
                     && (index == 0 ? run.transcript.kept == text : run.report.recorded.count == index)
             })
@@ -26,12 +26,11 @@ extension TranscriptWritingTests {
         #expect(run.report.recorded == [second, third])
         #expect(!run.observed.stopped)
         run.setEnabled(false)
-        await executor.run(until: {
+        await changes.until({
             run.transcript.kept == "live text off" && run.observed.texts.count == 4
         })
         #expect(run.call.recorded == [.subscribe, .start(true), .switchTo(false)])
         run.requestStop()
-        await executor.finish()
         await run.task.value
         #expect(run.transcript.writes == texts + ["live text off"])
         #expect(run.transcript.kept == "live text off")
@@ -41,20 +40,19 @@ extension TranscriptWritingTests {
 
     @Test func aWriteAfterAFailedOneKeepsTheNewerText() async {
 
-        let executor = TestExecutor()
+        let changes = Changes()
         let failure = WriteFailure(message: "write failed")
         let old = "first draft\nsecond draft"
         let new = "first corrected\nsecond final\nthird"
-        let run = Run(executor: executor, enabled: true, holds: [:], failures: [old: failure])
-        defer { run.requestStop(); executor.run() }
-        await executor.run(until: { run.observed.started })
+        let run = Run(changes: changes, enabled: true, holds: [:], failures: [old: failure])
+        defer { run.requestStop() }
+        await changes.until({ run.observed.started })
         run.call.send(old)
-        await executor.run(until: { run.report.recorded == [failure] })
+        await changes.until({ run.report.recorded == [failure] })
         #expect(run.transcript.kept == nil)
         run.call.send(new)
-        await executor.run(until: { run.transcript.kept == new })
+        await changes.until({ run.transcript.kept == new })
         run.requestStop()
-        await executor.finish()
         await run.task.value
         #expect(run.transcript.writes == [old, new])
         #expect(run.transcript.kept == new)
@@ -64,21 +62,20 @@ extension TranscriptWritingTests {
 
     @Test func theLastWriteFailingIsToldBeforeStoppingReturns() async {
 
-        let executor = TestExecutor()
-        let reporting = Gate(changed: executor.notify)
+        let changes = Changes()
+        let reporting = Gate(changed: changes.notify)
         let failure = WriteFailure(message: "last write failed")
         let run = Run(
-            executor: executor, enabled: true, holds: [:], lastText: "last text",
+            changes: changes, enabled: true, holds: [:], lastText: "last text",
             failures: ["last text": failure], reportGate: reporting
         )
-        defer { reporting.open(); run.requestStop(); executor.run() }
-        await executor.run(until: { run.observed.started })
+        defer { reporting.open(); run.requestStop() }
+        await changes.until({ run.observed.started })
         run.requestStop()
-        await executor.run(until: { reporting.entered })
+        await changes.until({ reporting.entered })
         #expect(!run.observed.stopped)
         #expect(run.events.recorded == [.transcriptFailed(failure)])
         reporting.open()
-        await executor.finish()
         await run.task.value
         #expect(run.observed.stopped)
         #expect(run.events.recorded == [.transcriptFailed(failure), .stopReturned(1)])
@@ -89,51 +86,49 @@ extension TranscriptWritingTests {
 
     @Test func callTextFailingIsPassedOnWhileTheTranscriptFailsApart() async {
 
-        let executor = TestExecutor()
-        let held = Gate(changed: executor.notify)
-        let stopping = Gate(changed: executor.notify)
+        let changes = Changes()
+        let held = Gate(changed: changes.notify)
+        let stopping = Gate(changed: changes.notify)
         let first = CallUpdate(text: "first draft", status: .on)
         let failed = CallUpdate(text: "first final\nlast word", status: .failed("hearing failed"))
         let failure = WriteFailure(message: "held write failed")
         let call = FakeCallText<CallUpdate>(
             startGate: nil, stopGate: nil, startText: nil, lastText: nil,
-            switchText: { _ in failed }, changed: executor.notify
+            switchText: { _ in failed }, changed: changes.notify
         )
-        let transcript = FakeTranscript(holds: [first: held], failures: [first: failure], changed: executor.notify)
+        let transcript = FakeTranscript(holds: [first: held], failures: [first: failure], changed: changes.notify)
         let events = Events()
-        let report = FakeFailureReport(events: events, gate: nil, changed: executor.notify)
+        let report = FakeFailureReport(events: events, gate: nil, changed: changes.notify)
         let observed = Observation<CallUpdate>()
         let subject = TranscriptWriting(callText: call, transcript: transcript, failureReport: report)
-        let task = Task(executorPreference: executor) {
+        let task = Task {
             let reader = Task {
                 for await update in subject.updates {
                     observed.receive(update)
-                    executor.notify()
+                    changes.notify()
                 }
             }
             await subject.start()
             observed.didStart()
-            executor.notify()
+            changes.notify()
             await stopping.wait()
             await subject.stop()
             observed.didStop()
             await reader.value
-            executor.complete()
         }
-        defer { held.open(); stopping.open(); executor.run() }
-        await executor.run(until: { observed.started })
+        defer { held.open(); stopping.open() }
+        await changes.until({ observed.started })
         call.send(first)
-        await executor.run(until: { held.entered && observed.texts == [first] })
+        await changes.until({ held.entered && observed.texts == [first] })
         call.send(failed)
         call.finishUpdates()
-        await executor.run(until: { observed.texts == [first, failed] })
+        await changes.until({ observed.texts == [first, failed] })
         #expect(transcript.writes == [first])
         #expect(transcript.kept == nil)
         #expect(report.recorded.isEmpty)
         held.open()
-        await executor.run(until: { transcript.kept == failed && report.recorded == [failure] })
+        await changes.until({ transcript.kept == failed && report.recorded == [failure] })
         stopping.open()
-        await executor.finish()
         await task.value
         #expect(observed.stopped)
         #expect(observed.texts == [first, failed])
@@ -145,17 +140,16 @@ extension TranscriptWritingTests {
 
     @Test func withoutATranscriptCallTextRunsAndNothingIsTold() async {
 
-        let executor = TestExecutor()
+        let changes = Changes()
         let run = Run(
-            executor: executor, enabled: true, holds: [:],
+            changes: changes, enabled: true, holds: [:],
             startText: "while starting", lastText: "last text", hasTranscript: false
         )
-        defer { run.requestStop(); executor.run() }
-        await executor.run(until: { run.observed.started && run.observed.texts == ["while starting"] })
+        defer { run.requestStop() }
+        await changes.until({ run.observed.started && run.observed.texts == ["while starting"] })
         run.setEnabled(false)
-        await executor.run(until: { run.observed.texts == ["while starting", "live text off"] })
+        await changes.until({ run.observed.texts == ["while starting", "live text off"] })
         run.requestStop()
-        await executor.finish()
         await run.task.value
         #expect(run.observed.stopped)
         #expect(run.call.recorded == [.subscribe, .start(true), .switchTo(false), .stop])
@@ -167,29 +161,28 @@ extension TranscriptWritingTests {
 
     @Test func aSecondStopWaitsForTheFirst() async {
 
-        let executor = TestExecutor()
-        let held = Gate(changed: executor.notify)
-        let run = Run(executor: executor, enabled: true, holds: ["last text": held], lastText: "last text")
-        defer { held.open(); run.requestStop(); executor.run() }
-        await executor.run(until: { run.observed.started })
+        let changes = Changes()
+        let held = Gate(changed: changes.notify)
+        let run = Run(changes: changes, enabled: true, holds: ["last text": held], lastText: "last text")
+        defer { held.open(); run.requestStop() }
+        await changes.until({ run.observed.started })
         run.requestStop()
-        await executor.run(until: { held.entered })
+        await changes.until({ held.entered })
         let second = Observation<String>()
-        let secondStop = Task(executorPreference: executor) {
+        let secondStop = Task {
             second.didStart()
-            executor.notify()
+            changes.notify()
             await run.subject.stop()
             run.events.record(.stopReturned(2))
             second.didStop()
-            executor.notify()
+            changes.notify()
         }
-        await executor.run(until: { second.started })
+        await changes.until({ second.started })
         #expect(!run.observed.stopped)
         #expect(!second.stopped)
         #expect(run.events.recorded.isEmpty)
         #expect(run.call.recorded == [.subscribe, .start(true), .stop])
         held.open()
-        await executor.finish()
         await run.task.value
         await secondStop.value
         #expect(run.observed.stopped)

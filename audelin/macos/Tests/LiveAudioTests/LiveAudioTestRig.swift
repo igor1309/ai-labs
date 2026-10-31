@@ -55,6 +55,7 @@ final class FakeCapture: Capture, Sendable {
 
     private let input = AsyncThrowingStream<AudioPiece, any Error>.makeStream()
     private let stopCount = Mutex(0)
+    private let stopped = AsyncStream<Void>.makeStream()
     let startFailure: Refusal?
     let stopFailure: Refusal?
     let stopEndsInput: Bool
@@ -78,7 +79,14 @@ final class FakeCapture: Capture, Sendable {
 
         stopCount.withLock { $0 += 1 }
         if stopEndsInput { finish() }
+        stopped.continuation.yield(())
         if let stopFailure { throw stopFailure }
+    }
+
+    func waitUntilStopped() async {
+
+        var iterator = stopped.stream.makeAsyncIterator()
+        _ = await iterator.next()
     }
 
     func give(_ pieces: [AudioPiece]) {
@@ -118,48 +126,4 @@ func read(_ stream: AsyncThrowingStream<AudioPiece, any Error>) async throws -> 
     var result: [AudioPiece] = []
     for try await piece in stream { result.append(piece) }
     return result
-}
-
-/// Drives runnable work before inspecting whether held input blocks stop.
-final class CaptureExecutor: TaskExecutor {
-
-    private let jobs = Mutex<[UnownedJob]>([])
-    private let events = AsyncStream<Void>.makeStream()
-    private let completed = Mutex(false)
-
-    func enqueue(_ job: consuming ExecutorJob) {
-
-        let job = UnownedJob(job)
-        jobs.withLock { $0.append(job) }
-        events.continuation.yield(())
-    }
-
-    func complete() {
-
-        completed.withLock { $0 = true }
-        events.continuation.finish()
-    }
-
-    func run(until condition: () -> Bool) async {
-
-        var iterator = events.stream.makeAsyncIterator()
-        while !condition() && !completed.withLock({ $0 }) {
-            run()
-            if !condition() { _ = await iterator.next() }
-        }
-        run()
-    }
-
-    func finish() async {
-
-        for await _ in events.stream { run() }
-        run()
-    }
-
-    func run() {
-
-        while let job = jobs.withLock({ $0.isEmpty ? nil : $0.removeFirst() }) {
-            job.runSynchronously(on: asUnownedTaskExecutor())
-        }
-    }
 }

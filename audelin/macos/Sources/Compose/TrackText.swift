@@ -25,7 +25,6 @@ public actor TrackText {
         let task: Task<Void, Never>
         let requests: AsyncStream<Reply>.Continuation
         let reading: Task<Void, Never>
-        let executor: (any TaskExecutor)?
 
         @discardableResult
         func stop() -> Task<Void, Never> {
@@ -34,7 +33,7 @@ public actor TrackText {
             requests.finish()
             reading.cancel()
             task.cancel()
-            return Task(executorPreference: executor) { await live.stop() }
+            return Task { @concurrent in await live.stop() }
         }
     }
 
@@ -109,30 +108,18 @@ public actor TrackText {
     }
 
     private let recognizerSource: @Sendable () async throws -> any Recognizer
-    private let executor: (any TaskExecutor)?
     private var loading: (reply: RecognizerReply, task: Task<Void, Never>)?
     private var listening: Listening?
     private var accepted: Accepted?
 
     public init(recognizer: any Recognizer) {
 
-        self.init(recognizer: recognizer, executor: nil)
-    }
-
-    init(recognizer: any Recognizer, executor: (any TaskExecutor)?) {
-
-        self.init(recognizerSource: { recognizer }, executor: executor)
+        self.init(recognizerSource: { recognizer })
     }
 
     public init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer) {
 
-        self.init(recognizerSource: recognizerSource, executor: nil)
-    }
-
-    init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer, executor: (any TaskExecutor)?) {
-
         self.recognizerSource = recognizerSource
-        self.executor = executor
     }
 
     public func prepare() async throws {
@@ -143,7 +130,7 @@ public actor TrackText {
             let reply = RecognizerReply(), source = recognizerSource
             // A cancelled prepare ends only its wait; another prepare can use
             // the same load even when the source does not honor cancellation.
-            let task = Task(executorPreference: executor) {
+            let task = Task { @concurrent in
                 do { await reply.complete(.success(try await source())) }
                 catch { await reply.complete(.failure(error)) }
             }
@@ -154,11 +141,11 @@ public actor TrackText {
         guard listening == nil else { return }
         let live = LiveText(recognizer: recognizer)
         let source = AsyncStream<AudioChunk>.makeStream()
-        let task = Task(executorPreference: executor) { await live.listen(to: Source(stream: source.stream)) }
+        let task = Task { @concurrent in await live.listen(to: Source(stream: source.stream)) }
         let requests = AsyncStream<Reply>.makeStream()
         // The session owns replies; cancelling a caller leaves its accepted
         // interval and update available when side text replays that interval.
-        let reading = Task(executorPreference: executor) {
+        let reading = Task { @concurrent in
             var updates = live.updates.makeAsyncIterator()
             for await reply in requests.stream {
                 await reply.complete(await updates.next())
@@ -166,7 +153,7 @@ public actor TrackText {
         }
         listening = Listening(
             live: live, source: source.continuation, task: task,
-            requests: requests.continuation, reading: reading, executor: executor
+            requests: requests.continuation, reading: reading
         )
     }
 
