@@ -84,10 +84,17 @@ struct TranscriptLogLoadTests {
         else { return "no log to probe" }
         let clock = ContinuousClock()
         var edit = Duration.zero, scroll = Duration.zero, height = Duration.zero, rest = Duration.zero, rules = Duration.zero
+        var looks = Duration.zero, select = Duration.zero, fits = Duration.zero
         // Each step of an update alone, after an edit to the last line as an update makes.
         for step in 1...Self.updates {
             let last = NSRange(location: storage.length - 2, length: 2)
+            looks += clock.measure {
+                text.selectedTextAttributes = [.backgroundColor: NSColor.selectedTextBackgroundColor, .foregroundColor: NSColor.textColor]
+                text.ruleColor = NSColor.separatorColor
+            }
+            let selection = text.selectedRange()
             edit += clock.measure { storage.replaceCharacters(in: last, with: "w\(step % 10)") }
+            select += clock.measure { text.setSelectedRange(NSIntersectionRange(selection, NSRange(location: 0, length: storage.length))) }
             scroll += clock.measure { text.scrollToEndOfDocument(nil) }
             height += clock.measure {
                 let end = NSTextRange(location: layout.documentRange.endLocation)
@@ -95,13 +102,18 @@ struct TranscriptLogLoadTests {
                 _ = layout.usageBoundsForTextContainer
                 layout.enumerateTextSegments(in: end, type: .standard, options: .middleFragmentsExcluded) { _, _, _, _ in true }
             }
+            fits += clock.measure {
+                text.frame.size.width = size.width
+                layout.ensureLayout(for: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+                _ = layout.textLayoutFragment(for: CGPoint(x: 0, y: size.height))
+            }
             rest += clock.measure { host.layoutSubtreeIfNeeded() }
             rules += clock.measure { _ = text.ruleFrames(in: text.visibleRect) }
         }
         let ms = { (d: Duration) in
             String(format: "%.2f", (Double(d.components.seconds) * 1000 + Double(d.components.attoseconds) / 1e15) / Double(Self.updates))
         }
-        return "probe: edit \(ms(edit)), scroll to end \(ms(scroll)), height \(ms(height)), layout \(ms(rest)), rule frames \(ms(rules)) ms an update"
+        return "probe: looks \(ms(looks)), edit \(ms(edit)), select \(ms(select)), fits \(ms(fits)), scroll to end \(ms(scroll)), height \(ms(height)), layout \(ms(rest)), rule frames \(ms(rules)) ms an update"
     }
 
     private func lines(_ count: Int) -> PanelState.Lines {
