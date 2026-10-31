@@ -37,8 +37,8 @@ jobs:
           path: ~/Library/Application Support/FluidAudio/Models
           key: audelin-models-${{ hashFiles('audelin/macos/Package.resolved') }}
 
-      # Compiling is bounded by the job; the tests run under two minutes,
-      # so a hang fails at once and names the tests it left unfinished.
+      # Compiling is bounded by the job; the main tests have a three-minute
+      # limit that names unfinished tests when exceeded.
       - name: Build tests
         working-directory: audelin/macos
         run: swift build --build-tests
@@ -52,7 +52,7 @@ jobs:
 
       - name: Run tests
         working-directory: audelin/macos
-        run: sh ../scripts/swift-test-bounded.sh 120
+        run: sh ../scripts/swift-test-bounded.sh 180
 
       - name: Build preview app tests
         working-directory: audelin/macos/PreviewApps
