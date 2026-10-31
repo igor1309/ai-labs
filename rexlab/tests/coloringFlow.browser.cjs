@@ -211,7 +211,9 @@ const { chromium } = require("playwright");
           }
           await p.getByRole("button", { name: language === "en" ? "FILL" : "ЗАЛИВКА", exact: true }).press("Enter");
           const box = await p.locator("canvas").boundingBox();
-          const [x, y, region, geometry] = creature === "stegosaurus" ? [420, 330, "body", "stegosaurus-production-1"] : level === "hatchling" ? [280, 360, "body", "triceratops-production-1"] : [424, 370, "flank", "triceratops-explorer-1"];
+          const [x, y, region, geometry] = creature === "stegosaurus"
+            ? level === "hatchling" ? [420, 330, "body", "stegosaurus-production-1"] : [440, 396, "flank", "stegosaurus-explorer-1"]
+            : level === "hatchling" ? [280, 360, "body", "triceratops-production-1"] : [424, 370, "flank", "triceratops-explorer-1"];
           await p.mouse.click(box.x + box.width * x / 920, box.y + box.height * y / 620);
           await p.waitForFunction(() => /^(SAVED|СОХРАНЕНО)$/.test(document.querySelector(".coloring-save")?.textContent));
           const documents = await p.evaluate(async () => {

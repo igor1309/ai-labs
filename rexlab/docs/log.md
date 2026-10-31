@@ -2,6 +2,8 @@
 
 ## 2026-10-31
 
+- LAB-824: Stegosaurus gains a richer prehistoric coloring scene for Explorer and Paleontologist, with patterned back plates, body markings and scenery. Hatchling keeps the simple drawing, and saved works retain their original artwork across age changes.
+
 - LAB-823: Coloring adds Triceratops alongside Stegosaurus: simple artwork for Hatchling and a richer prehistoric scene for Explorer and Paleontologist. Saved drawings keep their original artwork across age changes, with a shared star collection.
 - LAB-822: A game index brings current activities, difficulty, rewards and replay approaches together, distinguishing planned modes and prototypes.
 

@@ -146,9 +146,10 @@ it.each(["en", "ru"] as Language[])("offers matching original creature previews 
 });
 
 
-it.each(["en", "ru"] as Language[])("keeps saved Triceratops names and editing across both age choices in %s", async language => {
-  for (const level of ["hatchling", "explorer"] as const) for (const version of ["triceratops-production-1", "triceratops-explorer-1"]) {
-    const works = ARTWORKS.slice(1).map(({ geometry }) => {
+it.each(["en", "ru"] as Language[])("keeps saved creature names and editing across all age choices in %s", async language => {
+  for (const level of ["hatchling", "explorer", "paleontologist"] as const) for (const { geometry, names } of ARTWORKS) {
+    const version = geometry.artwork.version;
+    const works = ARTWORKS.map(({ geometry }) => {
       const { model, dot, thumbnail } = coloringFixture(geometry.artwork);
       return { document: model.append(model.newWork(geometry.artwork.version), dot), thumbnail: thumbnail() };
     });
@@ -158,13 +159,36 @@ it.each(["en", "ru"] as Language[])("keeps saved Triceratops names and editing a
     const artworks = ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names }));
     const view = render(<ColoringGalleryScreen artworks={artworks} offeredVersions={coloringVersionsFor(level)} session={session} language={language} home={vi.fn()} />);
     expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(2);
-    const name = language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС";
-    expect(screen.getAllByRole("button", { name })).toHaveLength(1);
-    expect(screen.getByAltText(`${name} · 1`)).toBeTruthy();
-    expect(screen.getByAltText(`${name} · 2`)).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС" })).toHaveLength(1);
+    const name = names[language];
     const card = view.container.querySelector(`[data-work-id="${version}"]`)! as HTMLElement;
+    const number = ARTWORKS.findIndex(entry => entry.geometry.artwork.version === version) + 1;
+    expect(within(card).getByAltText(`${name} · ${number}`)).toBeTruthy();
     await act(async () => fireEvent.click(within(card).getByRole("button")));
     expect(source.open).toHaveBeenCalledExactlyOnceWith(version, expect.any(Function));
+    view.unmount();
+  }
+});
+
+it.each(["en", "ru"] as Language[])("matches Stegosaurus previews, localized labels and new-work selection at every age in %s", async language => {
+  for (const level of ["hatchling", "explorer", "paleontologist"] as const) {
+    const source = { list: async () => ({ works: [], unavailable: [], completedCount: 0, recentId: null }), reset: vi.fn(), open: vi.fn(), newWork: vi.fn(async () => ({} as ColoringWorkshopSession)) };
+    const countStart = vi.fn();
+    const session = coloringGallery({ source, identity: () => "fresh", workshop: vi.fn(), countStart, navigate: vi.fn() });
+    await session.load();
+    const artworks = ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names }));
+    const view = render(<ColoringGalleryScreen artworks={artworks} offeredVersions={coloringVersionsFor(level)} session={session} language={language} home={vi.fn()} />);
+    const version = level === "hatchling" ? "stegosaurus-production-1" : "stegosaurus-explorer-1";
+    const selected = artworks.find(artwork => artwork.version === version)!;
+    const button = screen.getByRole("button", { name: language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК" });
+    expect(button.textContent).toContain(language === "en" ? "STEGOSAURUS" : "СТЕГОЗАВР");
+    expect(selected.preview.render).toHaveBeenLastCalledWith(button.querySelector("canvas"));
+    const other = artworks.find(artwork => artwork.names.en === "STEGOSAURUS" && artwork.version !== version)!;
+    expect(other.preview.render).not.toHaveBeenCalled();
+    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(2);
+    await act(async () => fireEvent.click(button));
+    expect(source.newWork).toHaveBeenCalledExactlyOnceWith("fresh", expect.any(Function), version);
+    expect(countStart).toHaveBeenCalledTimes(1);
     view.unmount();
   }
 });
