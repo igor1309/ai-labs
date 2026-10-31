@@ -9,7 +9,6 @@ import protocol TranscriptWriting.CallText
 
 struct SessionConstruction: Sendable {
 
-    var executor: (any TaskExecutor)?
     var missingModels: @Sendable () -> [String] = { [] }
     var recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordingTrack = SessionPieces.defaultRecordingTrack
     var closeTrack: @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack
