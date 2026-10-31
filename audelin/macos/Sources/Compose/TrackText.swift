@@ -130,11 +130,6 @@ public actor TrackText {
     /// How many segments have been made into text: a count of the work, not its time.
     private(set) var mapped = 0
 
-    public init(recognizer: any Recognizer) {
-
-        self.init(recognizerSource: { recognizer })
-    }
-
     public init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer) {
 
         self.recognizerSource = recognizerSource

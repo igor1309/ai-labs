@@ -21,11 +21,11 @@ struct FinishedTextSwitchTests {
             .success(.init(words: [.init("continuing", start: 0, end: 1)])),
         ], endings: [.success(.init(words: []))])
         let finished = SwitchObservedSide(side: CallSide(
-            audio: finishedAudio, text: Compose.TrackText(recognizer: finishedRecognizer),
+            audio: finishedAudio, text: Compose.TrackText(recognizerSource: { finishedRecognizer }),
             written: TextTrack(chunks: []), sampleRate: 1
         ))
         let open = SwitchObservedSide(side: CallSide(
-            audio: openAudio, text: Compose.TrackText(recognizer: openRecognizer),
+            audio: openAudio, text: Compose.TrackText(recognizerSource: { openRecognizer }),
             written: TextTrack(chunks: []), sampleRate: 1
         ))
         let call = CallText(microphone: onCallSide ? open : finished, call: onCallSide ? finished : open)
