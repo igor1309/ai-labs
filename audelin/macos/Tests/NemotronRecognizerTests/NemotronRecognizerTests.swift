@@ -415,7 +415,6 @@ private actor ControlledModelLoad {
     }
 }
 
-/// Replies with cumulative snapshots once enough audio has arrived.
 /// A barrier on each side of a suspension.
 private struct SuspendingBarriers {
 
@@ -432,7 +431,7 @@ private struct SuspendingBarriers {
     }
 }
 
-/// Runs nowhere in particular of its own, so it blocks whatever thread the recognizer gave it.
+/// Blocks whichever thread the recognizer runs it on; it has no isolation of its own.
 private struct BarrierDecoder: TokenDecoder {
 
     let chunk = 1.12
@@ -452,6 +451,7 @@ private struct BarrierDecoder: TokenDecoder {
     }
 }
 
+/// Replies with cumulative snapshots once enough audio has arrived.
 private actor ScriptedDecoder: TokenDecoder {
 
     struct Failed: Error {}

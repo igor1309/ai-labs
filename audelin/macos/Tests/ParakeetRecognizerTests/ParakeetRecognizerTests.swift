@@ -380,8 +380,7 @@ private actor ControlledModelLoad {
     }
 }
 
-/// Replies with the scripted windows in turn, then with none.
-/// Runs nowhere in particular of its own, so it blocks whatever thread the recognizer gave it.
+/// Blocks whichever thread the recognizer runs it on; it has no isolation of its own.
 private struct BarrierReader: WindowReader {
 
     let before: ThreadBarrier
@@ -396,6 +395,7 @@ private struct BarrierReader: WindowReader {
     }
 }
 
+/// Replies with the scripted windows in turn, then with none.
 private actor ScriptedReader: WindowReader {
 
     struct Failed: Error {}
