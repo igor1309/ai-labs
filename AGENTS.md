@@ -107,12 +107,26 @@ composes it.
   swift-imrx. It composes each instance from the generic model, the tested
   reducer and the tested effect handler or doer. A sync model stays on the
   actor that made it; callers elsewhere `await` the hop.
-- Reducer tests are one-line `assert(state, event, reducedTo:)` cases; an
-  async reducer pairs each with `assert(state, event, effect:)`. Effect
+- Each reducer state test is paired with an effect test for the same
+  `(state, event)`: `assert(state, event, delivers:)`. Effect
   handler tests drive collaborators through spies:
   `expect(sut, with: effect, toDeliver: event, on: { spy.complete(…) })`.
   Doer tests feed it states and check its collaborator and `send` spies,
   including that a state seen twice does the work once.
+- `State` is the machine's whole contract, as in Vortex
+  (`ios.config/.claude/skills/rx-state-machine-development/references/state-machine-dod.md`
+  § Tests and § Dependencies; canonical: `swift-vortex/Tests/Feature/CBDC/Core/PaymentClose/`).
+  Every field is public with a public `init`: no hidden bookkeeping, and no computed property
+  that derives what is shown. A screen's machine owns UI state, rendered values included. The
+  view only renders state, animates transitions and sends user interactions; it decides nothing.
+- The reducer produces UI values through injected pure dependencies (a formatter is a closure
+  passed to `init`), never through private helpers. Reducer tests check each dependency with a
+  spy: no call on init or on no-op paths, the exact payload on each call, and the spy's stub
+  value used in the resulting state.
+- A reducer test builds its given state with a `make*` factory, gives the expected state as the
+  given state plus a mutation closure (`assert(state, event) { $0.status = .dismissed }`), and
+  omits the closure for "no change". No test spells out a whole expected state, and reducer
+  tests need no `@testable`.
 
 ## Writing docs and comments
 
