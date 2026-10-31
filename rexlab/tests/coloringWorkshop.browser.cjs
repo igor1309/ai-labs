@@ -21,7 +21,7 @@ const { chromium } = require("playwright");
     page.on("pageerror", error => errors.push(error.message));
     await page.route("http://workshop.test/**", route => {
       const path = new URL(route.request().url()).pathname.slice(1);
-      if (!path) return route.fulfill({ contentType: "text/html", body: `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Workshop contract</title>${css.map(name => `<link rel="stylesheet" href="/${name}">`).join("")}` });
+      if (!path) return route.fulfill({ contentType: "text/html", body: `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Workshop contract</title>${css.map(name => `<link rel="stylesheet" href="/${name}">`).join("")}` });
       assert(files.has(path), `Missing browser module ${path}`);
       return route.fulfill({ contentType: path.endsWith(".css") ? "text/css" : "text/javascript", body: files.get(path) });
     });
@@ -318,14 +318,17 @@ const { chromium } = require("playwright");
         await originalCanvas.dispose();
       }
     }
-    // Synthetic CSS insets exercise the layout budget, not Safari's system chrome.
+    // Synthetic browser environment insets exercise production env() bindings, not Safari chrome.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 24, bottom: 20, left: 0, right: 0 } });
     for (const viewport of [{ width: 1133, height: 744 }, { width: 1180, height: 820 }, { width: 1180, height: 768 }, { width: 1024, height: 480 }]) {
       await page.setViewportSize(viewport);
       await mount({ id: `safe-area-${viewport.width}-${viewport.height}` });
-      await page.locator(".coloring-workshop").evaluate(el => {
-        el.style.setProperty("--coloring-safe-top", "24px");
-        el.style.setProperty("--coloring-safe-bottom", "20px");
+      const padding = await page.locator(".coloring-workshop").evaluate(el => {
+        const style = getComputedStyle(el);
+        return [parseFloat(style.paddingTop), parseFloat(style.paddingBottom)];
       });
+      assert.deepEqual(padding, viewport.height < 600 ? [32, 28] : [56, 52]);
       const nav = await page.locator(".coloring-navigation").boundingBox();
       const tools = await page.locator(".coloring-tools").boundingBox();
       const topClearance = nav.y - 24, bottomClearance = viewport.height - 20 - tools.y - tools.height;
@@ -335,6 +338,8 @@ const { chromium } = require("playwright");
       const columns = await page.locator(".coloring-navigation button").evaluateAll(buttons => new Set(buttons.map(b => b.getBoundingClientRect().x)).size);
       assert.equal(columns, viewport.height === 820 ? 1 : 2, context);
     }
+    await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 0, bottom: 0, left: 0, right: 0 } });
+    await cdp.detach();
     // Error status and retry remain visible and usable beside phone/tablet pickers.
     for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }, { width: 1133, height: 744 }, { width: 1024, height: 480 }]) {
       await page.setViewportSize(viewport);
@@ -363,8 +368,20 @@ const { chromium } = require("playwright");
           const r = el.getBoundingClientRect();
           return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
         }));
+        const undo = page.getByRole("button", { name: language === "en" ? "UNDO" : "ОТМЕНИТЬ", exact: true });
+        await withinViewport(undo);
+        assert(await undo.evaluate(el => {
+          const r = el.getBoundingClientRect();
+          return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+        }), "Unresolved save error must not cover Undo");
         for (const name of language === "en" ? ["COLOR", "SIZE"] : ["ЦВЕТ", "РАЗМЕР"]) {
-          await page.getByRole("button", { name, exact: true }).press("Enter"); await finishAnimations();
+          const trigger = page.getByRole("button", { name, exact: true });
+          assert(await trigger.evaluate(el => {
+            const r = el.getBoundingClientRect();
+            return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+          }), `Unresolved save error must not cover ${name}`);
+          await trigger.press("Enter"); await finishAnimations();
+          await page.getByRole("dialog").waitFor();
           for (const button of await page.getByRole("dialog").getByRole("button").all()) {
             const r = await withinViewport(button);
             assert(r.width === 60 && r.height === 60);

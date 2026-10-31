@@ -144,6 +144,9 @@
   .coloring-workshop { padding-top: calc(8px + var(--coloring-safe-top)); padding-bottom: calc(8px + var(--coloring-safe-bottom)); gap: 4px; }
   .coloring-save { min-height: 18px; }
 }
+@media (orientation: landscape) and (max-width: 899px), (orientation: landscape) and (max-height: 479px) {
+  .coloring-save-error { position: static; flex-shrink: 0; }
+}
 @media (orientation: landscape) and (max-width: 899px) {
   .coloring-chooser { flex-direction: row; align-items: center; gap: 8px; }
   .coloring-picker-header { flex-direction: column; height: auto; gap: 4px; }
