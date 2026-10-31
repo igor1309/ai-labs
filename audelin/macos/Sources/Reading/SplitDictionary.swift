@@ -40,6 +40,8 @@ struct SplitDictionary<Key: Hashable & Sendable, Value: Sendable>: Sendable, Exp
     mutating func setSealed(_ key: Key, _ value: Value) { sealed[key] = value }
 
     mutating func removeAll() { self = .init() }
+
+    mutating func removeTail() { tail.removeAll(keepingCapacity: true) }
 }
 
 extension SplitDictionary: Equatable where Value: Equatable {

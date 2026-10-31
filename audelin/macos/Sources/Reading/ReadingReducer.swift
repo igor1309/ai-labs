@@ -32,6 +32,7 @@ public enum ReadingReducer {
             prepareRows(&state)
             state.status = update.status
             var needsLayout = false
+            var touchesSealedRows = false
             var changed: Set<ReadingTextUpdate.Entry.ID> = []
             var appended: [ReadingTextUpdate.Entry.ID] = []
             // Only listening replaces the log; a status transition cannot
@@ -43,7 +44,8 @@ public enum ReadingReducer {
                 let removed = state.text.tail.keys.filter { !present.contains($0) }
                 if !removed.isEmpty {
                     needsLayout = true
-                    state.rendered.ordered.removeAll { !present.contains($0) }
+                    let gone = Set(removed)
+                    state.rendered.ordered.removeAll { gone.contains($0) }
                     for id in removed {
                         state.anchors[id] = nil
                         state.text[id] = nil
@@ -58,7 +60,9 @@ public enum ReadingReducer {
                 if state.anchors[entry.id] == nil {
                     state.anchors[entry.id] = .init(id: state.nextDisplayID, start: entry.start)
                     state.nextDisplayID += 1
-                    let isLast = insert(entry.id, into: &state)
+                    let index = insert(entry.id, into: &state)
+                    let isLast = index == state.rendered.ordered.count - 1
+                    if index < state.rendered.inSealedRows { touchesSealedRows = true }
                     if isLast, !entry.writtenLater, !hasGaps(state) { appended.append(entry.id) } else { needsLayout = true }
                     if !state.lines.followsLive { state.lines.newBelow += 1 }
                 }
@@ -78,7 +82,7 @@ public enum ReadingReducer {
                 state.rendered.entries.seal(id)
             }
             if needsLayout {
-                rebuildLayout(&state)
+                rebuildLayout(&state, keepingSealedRows: !touchesSealedRows && !hasGaps(state))
             } else {
                 for id in appended {
                     state.rendered.locations[id] = .init(row: state.lines.rows.count, lateEntry: nil)
@@ -113,9 +117,9 @@ public enum ReadingReducer {
         rebuildLayout(&state)
     }
 
-    /// Places the entry in call order; true when it went last.
+    /// Places the entry in call order, returning where.
     @discardableResult
-    private static func insert(_ id: ReadingTextUpdate.Entry.ID, into state: inout ReadingState) -> Bool {
+    private static func insert(_ id: ReadingTextUpdate.Entry.ID, into state: inout ReadingState) -> Int {
 
         let anchor = state.anchors[id]!
         var lower = 0
@@ -131,7 +135,7 @@ public enum ReadingReducer {
             }
         }
         state.rendered.ordered.insert(id, at: lower)
-        return lower == state.rendered.ordered.count - 1
+        return lower
     }
 
     private static func hasGaps(_ state: ReadingState) -> Bool {
@@ -140,10 +144,21 @@ public enum ReadingReducer {
     }
 
     /// Rows before the first that still holds a changeable entry cannot change.
+    /// A late group stays open at the end, since the next late entry joins it.
     private static func sealRows(_ state: inout ReadingState) {
 
-        let firstOpen = state.rendered.locations.tail.values.map(\.row).min()
-        state.lines.rows.seal(upTo: firstOpen ?? state.lines.rows.count)
+        let rows = state.lines.rows
+        var end = state.rendered.locations.tail.values.map(\.row).min() ?? rows.count
+        while end > rows.sealed.count, case .late = rows[end - 1] { end -= 1 }
+        guard end > rows.sealed.count else { return }
+        for index in rows.sealed.count..<end {
+            switch rows[index] {
+            case .entry: state.rendered.inSealedRows += 1
+            case let .late(group): state.rendered.inSealedRows += group.entries.count
+            case .gap: break
+            }
+        }
+        state.lines.rows.seal(upTo: end)
     }
 
     private static func displayEntry(
@@ -169,16 +184,26 @@ public enum ReadingReducer {
         }
     }
 
-    private static func rebuildLayout(_ state: inout ReadingState) {
+    /// Lays the rows out again. Keeping the sealed rows needs nothing new to fall
+    /// among them, and no gaps, which a problem can place anywhere.
+    private static func rebuildLayout(_ state: inout ReadingState, keepingSealedRows: Bool = false) {
 
+        let kept = keepingSealedRows ? state.lines.rows.sealed : []
         var result: [ReadingState.Row] = []
         var late: [ReadingState.Entry] = []
         var lateIDs: [ReadingTextUpdate.Entry.ID] = []
-        state.rendered.locations.removeAll()
-        state.lines.layout += 1
+        if keepingSealedRows {
+            state.rendered.locations.removeTail()
+        } else {
+            state.rendered.locations.removeAll()
+            state.rendered.inSealedRows = 0
+            state.lines.layout += 1
+        }
         func locate(_ id: ReadingTextUpdate.Entry.ID, _ location: ReadingState.Rendered.Location) {
 
-            if state.text.isSealed(id) { state.rendered.locations.setSealed(id, location) }
+            if state.text.isSealed(id) {
+                if state.rendered.locations[id] != location { state.rendered.locations.setSealed(id, location) }
+            }
             else { state.rendered.locations[id] = location }
         }
         var lateStart = 0.0
@@ -187,7 +212,7 @@ public enum ReadingReducer {
 
             guard !late.isEmpty else { return }
             for (index, id) in lateIDs.enumerated() {
-                locate(id, .init(row: result.count, lateEntry: index))
+                locate(id, .init(row: kept.count + result.count, lateEntry: index))
             }
             lateIDs = []
             result.append(.late(.init(span: "\(lineTime(lateStart))–\(lineTime(lateEnd))", entries: late)))
@@ -207,7 +232,7 @@ public enum ReadingReducer {
             }
             result.append(.gap(.init(speaker: speaker, time: lineTime(problem.began), kind: problem.kind)))
         }
-        for id in state.rendered.ordered {
+        for id in state.rendered.ordered[state.rendered.inSealedRows...] {
             let text = state.text[id]!
             let anchor = state.anchors[id]!
             while gapIndex < gaps.count, gaps[gapIndex].began <= anchor.start {
@@ -222,13 +247,13 @@ public enum ReadingReducer {
                 lateIDs.append(id)
             } else {
                 flushLate()
-                locate(id, .init(row: result.count, lateEntry: nil))
+                locate(id, .init(row: kept.count + result.count, lateEntry: nil))
                 result.append(.entry(entry))
             }
         }
         flushLate()
         for problem in gaps.dropFirst(gapIndex) { appendGap(problem) }
-        state.lines.rows = .init(tail: result)
+        state.lines.rows = .init(sealed: kept, tail: result)
         sealRows(&state)
     }
 

@@ -134,7 +134,7 @@ public struct ReadingState: Equatable, Sendable {
 
     struct Rendered: Sendable {
 
-        struct Location: Sendable {
+        struct Location: Equatable, Sendable {
 
             let row: Int
             let lateEntry: Int?
@@ -142,6 +142,8 @@ public struct ReadingState: Equatable, Sendable {
 
         var prepared = false
         var ordered: [ReadingTextUpdate.Entry.ID] = []
+        /// Leading `ordered` entries that the sealed rows show.
+        var inSealedRows = 0
         var entries: SplitDictionary<ReadingTextUpdate.Entry.ID, Entry> = [:]
         var locations: SplitDictionary<ReadingTextUpdate.Entry.ID, Location> = [:]
     }
