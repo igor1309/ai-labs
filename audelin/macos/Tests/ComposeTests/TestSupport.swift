@@ -24,6 +24,7 @@ final class Values<Value: Sendable>: Sendable {
     var all: [Value] { stored.withLock { $0 } }
 
     func append(_ value: Value) { stored.withLock { $0.append(value) } }
+    func append(contentsOf values: [Value]) { stored.withLock { $0.append(contentsOf: values) } }
 }
 
 struct Signal: Sendable {
