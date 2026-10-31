@@ -1,7 +1,9 @@
+export { explorerProbes } from "./triceratopsExplorerProbes.ts";
+import type { AgeLevel } from "../src/ageLevel.ts";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { ColoringGame } from "../src/ColoringGame.tsx";
-import { coloringWorkshopRoot } from "../src/coloringWorkshopRoot.ts";
+import { coloringWorkshopRoot, coloringVersionsFor } from "../src/coloringWorkshopRoot.ts";
 import type { Language } from "../src/language/language.ts";
 import { browserInput } from "../src/root.ts";
 import { InputArbitrationContext } from "../src/inputArbitration.ts";
@@ -10,8 +12,9 @@ import "../src/app.css";
 const input = browserInput(window);
 let root: Root | undefined;
 let resources: ReturnType<typeof coloringWorkshopRoot>;
-let starts = 0, identities = 0, homes = 0;
+let starts = 0, homes = 0;
 let language: Language = "en";
+let level: AgeLevel = "hatchling";
 let denyReads = false, denyWrites = false;
 let abortCompletion = false;
 const put = IDBObjectStore.prototype.put;
@@ -26,12 +29,13 @@ IDBDatabase.prototype.transaction = function (...args: Parameters<IDBDatabase["t
   return transaction.apply(this, args);
 };
 function show() {
-  flushSync(() => root!.render(<InputArbitrationContext value={input.arbitrate}><ColoringGame source={resources} painter={resources.painter} language={language}
-    identity={() => `gallery-${++identities}`} countStart={() => { starts++; }}
+  flushSync(() => root!.render(<InputArbitrationContext value={input.arbitrate}><ColoringGame source={resources} artworks={resources.artworks} offeredVersions={coloringVersionsFor(level)} painterFor={resources.painterFor} language={language}
+    identity={() => Array.from(crypto.getRandomValues(new Uint32Array(4)), value => value.toString(16)).join("-")} countStart={() => { starts++; }}
     home={() => { homes++; flushSync(() => root!.render(<button onClick={show}>ENTER COLORING</button>)); }} /></InputArbitrationContext>));
 }
-export async function mount(options: { language?: Language; theme?: "light" | "dark"; seed?: boolean } = {}) {
+export async function mount(options: { language?: Language; level?: AgeLevel; theme?: "light" | "dark"; seed?: boolean } = {}) {
   root?.unmount(); await resources?.close();
+  level = options.level ?? "hatchling";
   language = options.language ?? "en"; denyReads = false; denyWrites = false; abortCompletion = false;
   document.documentElement.dataset.theme = options.theme ?? "light";
   resources = coloringWorkshopRoot(indexedDB, document);
@@ -48,6 +52,8 @@ export const counts = () => ({ starts, homes });
 export const list = () => resources.list();
 export const newWork = (id: string) => resources.newWork(id, () => {});
 export const painter = () => resources.painter;
+export const painterFor = (geometry: string) => resources.painterFor(geometry);
+export const reset = () => resources.reset();
 export const readFailure = (deny: boolean) => { denyReads = deny; };
 export const writeFailure = (deny: boolean) => { denyWrites = deny; };
 export const completionAbort = (abort: boolean) => { abortCompletion = abort; };

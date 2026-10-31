@@ -74,6 +74,7 @@ const SCREENS = [
 ];
 const PRESENTATION = [
   ...SCREENS,
+  "ColoringArtworkPreview.tsx",
   "ageLevelPictures.ts",
   "Button.tsx",
   "GameAudioButton.tsx",
@@ -159,6 +160,10 @@ describe("the import graph", () => {
     // Only the coloring composition root builds the concrete vector painter;
     // presentation and the save queue receive their collaborators.
     expect(edges(file => !coloring(file) && file !== "coloringWorkshopRoot.ts", target => coloring(target) && target !== "coloring/index.ts")).toEqual([]);
+    expect(GRAPH.get("ColoringGalleryScreen.tsx")).not.toContain("coloring/index.ts");
+    expect(GRAPH.get("ColoringArtworkPreview.tsx")).toEqual([]);
+    const publicColoring = readFileSync(join(SRC, "coloring/index.ts"), "utf8");
+    expect(publicColoring).not.toMatch(/\b(Geometry|VectorShape|PaintRegion|ProtectedDetail|ColoringArtwork|VECTOR_SCALE)\b/);
     expect(GRAPH.get("indexedColoringWorks.ts")).toEqual(["coloring/index.ts"]);
     expect(edges(file => !COMPOSITION.includes(file), target => target === "indexedColoringWorks.ts")).toEqual([]);
     expect(GRAPH.get("coloringWorkshop.ts")).toEqual(["coloring/index.ts"]);

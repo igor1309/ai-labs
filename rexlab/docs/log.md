@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- LAB-823: Coloring adds Triceratops alongside Stegosaurus: simple artwork for Hatchling and a richer prehistoric scene for Explorer and Paleontologist. Saved drawings keep their original artwork across age changes, with a shared star collection.
 - LAB-822: A game index brings current activities, difficulty, rewards and replay approaches together, distinguishing planned modes and prototypes.
 
 - LAB-820: Shared touch protection suppresses selection and long-press menus throughout RexLab while preserving scrolling, pinch zoom and game input.

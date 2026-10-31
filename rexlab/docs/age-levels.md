@@ -64,8 +64,9 @@ Each long wrong turn starts at a distinct interior solution junction and
 reaches a dead end at least 4 moves away. Replay keeps the chosen level
 and generates different walls, even with a repeating random source.
 
-Coloring has only Explorer in its first version. All three global age
-choices explicitly play Explorer without changing the saved global choice.
-It offers no level switch or promotion. Each separate nonempty completed
-work earns one star once; its best is the saved completed collection count
+Coloring uses the simple Triceratops for Hatchling and a richer Triceratops
+scene for Explorer and Paleontologist. Stegosaurus is available at every level.
+Saved works always reopen with their own artwork, regardless of the current
+level. Tools and rewards are shared; coloring offers no level switch or
+promotion. Each separate nonempty completed work earns one star once; its best is the saved completed collection count
 at Explorer, never a judgement of artistic quality.

@@ -35,14 +35,16 @@ scroll, pinch zoom, draw again, undo, navigate away and return.
 
 The coloring workshop is an exported screen for the coloring flow. Construct
 `coloringWorkshopRoot(indexedDB, document)` once, then await `newWork(id,
-onNavigate)` with a fresh identity or `open(id, onNavigate)` for a saved work.
-Render `ColoringWorkshopScreen` with that session, the root's `painter` and
-`language`. It follows the document's `data-theme` and the app's shared motion
+onNavigate, geometryVersion)` with a fresh identity or `open(id, onNavigate)` for a saved work.
+Omitting the geometry version creates a Stegosaurus; the root's `artworks` offers
+Stegosaurus and Triceratops with localized names and matching preview geometry.
+Render `ColoringWorkshopScreen` with that session, `painterFor(work.geometry)`,
+the chosen dinosaur name and `language`. It follows the document's `data-theme` and the app's shared motion
 and tap filter. The navigation callback receives `home`, `gallery`, `new` or
 `result` and the durable work; `result` follows successful completion only.
 The `result` navigation also includes the transaction's saved collection count
 and whether this completion earned a star. `ColoringGame` composes gallery,
-workshop and result from that root, with `identity`, `countStart`, `home` and
+workshop and result from that root's `artworks`, `painterFor` and storage source, with `identity`, `countStart`, `home` and
 `language` supplied by its host. Result EDIT reopens the durable history.
 Await `session.settled()` before closing the root's storage connection. Opening
 fails visibly to the caller when storage or reward history is unreadable.
