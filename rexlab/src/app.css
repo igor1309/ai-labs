@@ -575,6 +575,16 @@ body {
   --safe-area-right: env(safe-area-inset-right);
 }
 
+/* Selection and callouts steal a child's repeated taps or held finger.
+   Apply to descendants too: nested scrollers must keep panning and pinch
+   zoom, while game surfaces can override manipulation with their own rules. */
+:where(html, body, body *) {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 body {
   margin: 0;
   min-height: 100vh;

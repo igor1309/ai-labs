@@ -2,6 +2,8 @@
 
 ## 2026-10-31
 
+- LAB-820: Shared touch protection suppresses selection and long-press menus throughout RexLab while preserving scrolling, pinch zoom and game input.
+
 - LAB-805: New coloring works open on local HTTP previews used for iPad testing.
 
 ## 2026-10-30
