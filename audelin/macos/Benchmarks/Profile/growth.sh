@@ -1,8 +1,8 @@
 #!/bin/bash
-# growth.sh TAG [TAG_TO_COMPARE]: Time Profiler at 20 and 1,620 lines, cut to the
+# growth.sh TAG [TAG_TO_COMPARE]: Time Profiler at 20, 1,620 and 6,000 lines, cut to the
 # words, then CPU per word by step and how much each step grows. Loads the Mac for
-# minutes, so run nothing heavy alongside. Runs stay in runs/TAG-20 and runs/TAG-1620.
-# LARGE=6000 replaces the 1,620-line run. SILENT=1 keeps the other side silent the whole call; QUIET=1 lets it say one sentence first.
+# minutes, so run nothing heavy alongside. Runs stay in runs/TAG-LINES.
+# SILENT=1 keeps the other side silent the whole call; QUIET=1 lets it say one sentence first.
 set -euo pipefail
 cd "$(dirname "$0")"
 ./build.sh
@@ -18,10 +18,11 @@ record() {
       --xpath "/trace-toc/run[@number=\"1\"]/data/table[@schema=\"$table\"]" > "$out/$table.xml"
   done
   python3 -I window.py "$out/time-profile.xml" "$out/region-of-interest.xml" "$out/stacks.json" "$((words * rounds))"
+  rm -rf "$out/t.trace" "$out/time-profile.xml" "$out/region-of-interest.xml"
 }
 record "$1-20" 20 100 300
-large="${LARGE:-1620}"
-record "$1-$large" "$large" 300 20
-pairs=("$1-20" "$1-$large")
-if (($# > 1)); then pairs+=("$2-20" "$2-$large"); fi
+record "$1-1620" 1620 300 20
+record "$1-6000" 6000 300 20
+pairs=("$1-20" "$1-1620" "$1-20" "$1-6000")
+if (($# > 1)); then pairs+=("$2-20" "$2-1620" "$2-20" "$2-6000"); fi
 python3 -I steps.py "${pairs[@]}"

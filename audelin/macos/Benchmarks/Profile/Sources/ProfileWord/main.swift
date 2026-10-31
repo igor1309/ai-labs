@@ -41,26 +41,6 @@ if mode == "savecost" {
     try? FileManager.default.removeItem(at: dir)
     exit(0)
 }
-if mode == "wordcost" {
-    // One line per word: instructions, lines, sealed rows. For what the slow words have in common.
-    func instructions() -> UInt64 {
-        var info = rusage_info_v4()
-        withUnsafeMutablePointer(to: &info) {
-            $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { _ = proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0) }
-        }
-        return info.ri_instructions
-    }
-    let call = try await Call.played(lines: n)
-    try await Task.sleep(for: .seconds(2))
-    for _ in 0..<m {
-        let before = instructions()
-        await call.speakOneWord()
-        let sealed = if case let .lines(lines) = call.latest?.log { lines.rows.sealed.count } else { 0 }
-        print(instructions() - before, call.lines, sealed)
-    }
-    await call.end()
-    exit(0)
-}
 if mode == "words" {
     let signposter = OSSignposter(subsystem: "dev.igor1309.audelin.profile", category: .pointsOfInterest)
     for round in 0..<Int(CommandLine.arguments[4])! {

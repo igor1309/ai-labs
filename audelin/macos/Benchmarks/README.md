@@ -11,14 +11,19 @@ Run from this directory, outside the agent sandbox (SwiftPM cannot start its
 own sandbox inside it). All four loads take under a minute once built:
 
 ```sh
+./measure.sh BASE TIP       # both commits with the same tools: report.md in /tmp/audelin-measure
 ./compare.sh                # this code against the saved base: a table of medians
 ./save-base.sh              # save a new base (commit it)
 ./test-optimized.sh         # the app's tests, optimized and bounded
-Profile/growth.sh TAG [OLD] # Time Profiler at 20 and 1,620 lines: CPU per word by step
+Profile/growth.sh TAG [OLD] # Time Profiler at 20, 1,620 and 6,000 lines: CPU per word by step
 SILENT=1 Profile/growth.sh TAG [OLD] # the same with the other side silent the whole call
 QUIET=1 Profile/growth.sh TAG [OLD]  # the same with it saying one sentence, then nothing
 Profile/saves.sh [SECONDS]  # real speaking speed: saves per minute, app CPU, CPU per save
 ```
+
+`measure.sh` is how two commits are compared. It refuses uncommitted tools, puts
+this commit's tools on both in throwaway worktrees, and alternates three benchmark
+runs before one profile of each. Every number in the report came from that run.
 
 Use these rather than typing the commands. `Profile/` is its own package, built
 against this checkout.
