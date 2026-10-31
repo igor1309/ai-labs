@@ -235,6 +235,7 @@ const { chromium } = require("playwright");
           assert.equal(await p.locator("canvas").evaluate(e => getComputedStyle(e).animationName), "fade-in");
           assert.equal(await p.evaluate(() => JSON.parse(localStorage.getItem("rexlab-age-level")).level), level);
           const edit = await p.getByRole("button", { name: language === "en" ? "EDIT" : "ЕЩЁ РИСОВАТЬ", exact: true }).boundingBox();
+          await p.getByRole("button", { name: language === "en" ? "EDIT" : "ЕЩЁ РИСОВАТЬ", exact: true }).evaluate(e => Promise.all(document.getAnimations().map(a => a.finished)));
           await p.mouse.dblclick(edit.x + edit.width / 2, edit.y + edit.height / 2, { delay: 30 });
           await p.locator(".coloring-workshop").waitFor();
           assert.equal(await p.locator(".coloring-save").textContent(), language === "en" ? "SAVED" : "СОХРАНЕНО");
