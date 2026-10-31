@@ -12,7 +12,7 @@ const { chromium } = require("playwright");
       name: "production-coloring-contract",
       resolveId(id) { if (id === "coloring-harness") return "\0coloring-harness"; },
       load(id) {
-        if (id === "\0coloring-harness") return ["index", "geometry", "painter"]
+        if (id === "\0coloring-harness") return ["index", "geometry", "painter", "stegosaurusExplorer"]
           .map(name => `export * from ${JSON.stringify(resolve(root, `src/coloring/${name}.ts`))}`).join(";\n");
       }
     }], build: { write: false, rolldownOptions: { preserveEntrySignatures: "strict", input: "coloring-harness", output: { entryFileNames: "harness.js" } } } });
@@ -195,6 +195,51 @@ const { chromium } = require("playwright");
       window.productionCanvas = canvas;
       document.body.append(canvas);
       return "PASS production coloring: design geometry, hits, clipped round strokes, no-ops/base, protected details, fill/undo, replay, incremental preview, interleaved thumbnails and DPR pixels";
+    }));
+    console.log(await page.evaluate(async () => {
+      const { STEGOSAURUS, STEGOSAURUS_EXPLORER, BASE_COLOR, VECTOR_SCALE, WIDTH, HEIGHT, createPainter } = await import("/harness.js");
+      const base = [...BASE_COLOR.slice(1).match(/../g).map(byte => parseInt(byte, 16)), 255];
+      const fill = [239, 83, 80, 255];
+      const shape = node => {
+        if ("path" in node) return `<path d="${node.path}" transform="translate(${node.x} ${node.y})"/>`;
+        return `<ellipse cx="${node.width / 2}" cy="${node.height / 2}" rx="${node.width / 2}" ry="${node.height / 2}" transform="translate(${node.x} ${node.y}) rotate(${-node.rotation} ${node.width / 2} ${node.height / 2})"/>`;
+      };
+      for (const geometry of [STEGOSAURUS, STEGOSAURUS_EXPLORER]) {
+        const painter = createPainter(() => document.createElement("canvas"), geometry), canvas = painter.canvas();
+        painter.render(canvas, []);
+        const blank = painter.pixels(canvas);
+        const defs = geometry.regions.map(region => `<clipPath id="${region.id}">${shape(region)}</clipPath>`).join("");
+        for (const region of geometry.regions) {
+          const paths = geometry.regions.map(node => {
+            let drawing = `<g fill="${node.id === region.id ? "white" : "black"}">${shape(node)}</g>`, parent = node.parent;
+            while (parent) {
+              drawing = `<g clip-path="url(#${parent})">${drawing}</g>`;
+              parent = geometry.regions.find(node => node.id === parent).parent;
+            }
+            return drawing;
+          }).join("");
+          const image = new Image();
+          image.src = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}"><defs>${defs}</defs><g transform="scale(${VECTOR_SCALE})">${paths}</g></svg>`)}`;
+          await image.decode();
+          const mask = painter.canvas(), ctx = mask.getContext("2d"); ctx.drawImage(image, 0, 0);
+          const ownership = ctx.getImageData(0, 0, WIDTH, HEIGHT).data;
+          painter.render(canvas, [{ kind: "fill", region: region.id, color: "#ef5350" }]);
+          const painted = painter.pixels(canvas);
+          let eligible = 0;
+          for (let offset = 0; offset < blank.length; offset += 4) {
+            // Fully owned, base-colored pixels exclude ink, protected details
+            // and partially covered antialiased boundaries.
+            if (ownership[offset] !== 255 || ownership[offset + 3] !== 255 ||
+                !base.every((channel, index) => blank[offset + index] === channel)) continue;
+            eligible++;
+            if (!fill.every((channel, index) => Math.abs(painted[offset + index] - channel) <= 1)) {
+              throw new Error(`${geometry.artwork.version}/${region.id}: incomplete fill at ${offset / 4 % WIDTH},${Math.floor(offset / 4 / WIDTH)}`);
+            }
+          }
+          if (!eligible) throw new Error(`${geometry.artwork.version}/${region.id}: no visible interior checked`);
+        }
+      }
+      return "PASS complete fills: every opaque base interior in both Stegosaurus variants";
     }));
     if (process.env.COLORING_SCREENSHOT) await page.screenshot({ path: process.env.COLORING_SCREENSHOT });
   } finally { if (browser) await browser.close(); }
