@@ -36,7 +36,12 @@ async function check(browser, files, device) {
     const page = await context.newPage();
     page.setDefaultTimeout(15000);
     const errors = [];
-    page.on("pageerror", error => errors.push(error.message));
+    page.on("pageerror", error => {
+      // Chromium reports expected view-transition cancellation during rapid
+      // navigation/rotation as page errors; retain every other failure.
+      if (/^Transition was (aborted because of invalid state\. Viewport size changed|skipped\. New ViewTransition started)$/.test(error.message)) return;
+      errors.push(error.message);
+    });
     const settle = async () => {
       await page.waitForFunction(() => !document.documentElement.hasAttribute("data-turning"));
       await page.evaluate(async () => {
@@ -116,6 +121,7 @@ async function check(browser, files, device) {
     assert.equal(await page.locator('[aria-current="location"]').getAttribute("aria-label"), start);
     await press("HOME"); await page.locator(".home").waitFor();
     if (portrait) { await page.setViewportSize(devices[device].viewport); await settle(); }
+    await cdp.send("Emulation.setPageScaleFactor", { pageScaleFactor: 1 });
 
     await enter("coloring"); await page.locator('.gallery-works[aria-busy="false"]').waitFor(); await protection(page);
     await press("NEW WORK"); await page.locator(".coloring-workshop canvas").waitFor(); await protection(page);
@@ -126,6 +132,7 @@ async function check(browser, files, device) {
     const paint = async () => {
       const bounds = await canvas.boundingBox();
       const x = bounds.x + bounds.width * 420 / 920, y = bounds.y + bounds.height * 330 / 620;
+      await page.waitForFunction(({ x, y }) => document.elementFromPoint(x, y)?.tagName === "CANVAS", { x, y });
       await cancel();
       await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
       await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + 20, y }] });
