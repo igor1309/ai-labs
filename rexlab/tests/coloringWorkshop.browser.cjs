@@ -200,6 +200,10 @@ const { chromium } = require("playwright");
         const navButtons = layout.buttons.filter(b => !b.dock);
         const dockButtons = layout.buttons.filter(b => b.dock);
         assert.equal(new Set(navButtons.map(b => b.background)).size, 4, context);
+        const navigationColors = theme === "dark"
+          ? ["rgb(81, 69, 44)", "rgb(70, 56, 93)", "rgb(41, 71, 93)", "rgb(242, 178, 75)"]
+          : ["rgb(232, 217, 183)", "rgb(219, 208, 239)", "rgb(205, 226, 242)", "rgb(227, 155, 45)"];
+        assert.deepEqual(navButtons.map(b => b.background), navigationColors, context);
         if (landscape) {
           assert.equal(layout.titles, 0, context);
           assert.equal(layout.border, "0px", context);
