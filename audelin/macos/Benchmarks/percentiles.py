@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """percentiles.py DIR BASE TIP: instructions per word across DIR/REF-ROUND.md, the lowest to highest run at each percentile."""
 import glob, re, sys
+if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+    print(__doc__)
+    sys.exit(0)
 
 UNITS = {"K": 1e3, "M": 1e6, "G": 1e9}
 COLUMNS = {"p50": 3, "p90": 5, "p99": 6}

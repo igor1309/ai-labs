@@ -3,6 +3,7 @@
 # words, then CPU per word by step and how much each step grows. Loads the Mac for
 # minutes, so run nothing heavy alongside. Runs stay in runs/TAG-LINES.
 # SILENT=1 keeps the other side silent the whole call; QUIET=1 lets it say one sentence first.
+case "${1:-}" in -h|--help) sed -n '2,/^[^#]/s/^# \{0,1\}//p' "$0"; exit 0;; esac
 set -euo pipefail
 cd "$(dirname "$0")"
 ./build.sh

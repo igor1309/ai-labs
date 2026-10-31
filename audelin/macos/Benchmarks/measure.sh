@@ -3,6 +3,7 @@
 # tools on both. Alternates three benchmark runs, then profiles each once. The report
 # and everything behind it go to a new folder in /tmp/audelin-measure. Takes a long
 # time and loads the Mac, so run it outside the agent sandbox with nothing heavy alongside.
+case "${1:-}" in -h|--help) sed -n '2,/^[^#]/s/^# \{0,1\}//p' "$0"; exit 0;; esac
 set -uo pipefail
 cd "$(dirname "$0")"
 here="$PWD"

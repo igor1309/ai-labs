@@ -7,26 +7,55 @@ not its drawing. Setup plays a call until the panel holds 20, 800, 1,620 or
 6,000 lines (1,620 is a 3-hour call, 6,000 about 11 hours); each sample then
 speaks one more word and waits until the panel shows it.
 
-Run from this directory, outside the agent sandbox (SwiftPM cannot start its
-own sandbox inside it). All four loads take under a minute once built:
+Run everything from this directory, outside the agent sandbox (SwiftPM cannot start
+its own sandbox inside it), with nothing heavy alongside. Every tool takes `-h`.
 
-```sh
-./measure.sh BASE TIP       # both commits with the same tools: report.md in /tmp/audelin-measure
-./compare.sh                # this code against the saved base: a table of medians
-./save-base.sh              # save a new base (commit it)
-./test-optimized.sh         # the app's tests, optimized and bounded
-Profile/growth.sh TAG [OLD] # Time Profiler at 20, 1,620 and 6,000 lines: CPU per word by step
-SILENT=1 Profile/growth.sh TAG [OLD] # the same with the other side silent the whole call
-QUIET=1 Profile/growth.sh TAG [OLD]  # the same with it saying one sentence, then nothing
-Profile/saves.sh [SECONDS]  # real speaking speed: saves per minute, app CPU, CPU per save
-```
+## Which command
 
-`measure.sh` is how two commits are compared. It refuses uncommitted tools, puts
-this commit's tools on both in throwaway worktrees, and alternates three benchmark
-runs before one profile of each. Every number in the report came from that run.
+| Question | Command | Time |
+|---|---|---|
+| Did this commit help, against an earlier one? | `./measure.sh BASE TIP` | about 25 min, plus builds |
+| Quick: this code against the saved base | `./compare.sh` | under a minute once built |
+| Do the app's tests pass, optimized? | `./test-optimized.sh` | a few minutes |
+| Which step grows, one commit only | `Profile/growth.sh TAG [OLD]` | about 5–12 min |
+| The same with the other side silent or gone quiet | `SILENT=1 Profile/growth.sh TAG`, `QUIET=1 Profile/growth.sh TAG` | about 5–12 min |
+| Which frames grow, between two finished runs | `cd Profile && python3 -I frames.py TAG-20 TAG-6000 45` | seconds |
+| Saves and CPU at real speaking speed | `Profile/saves.sh [SECONDS]` | minutes |
 
 Use these rather than typing the commands. `Profile/` is its own package, built
-against this checkout.
+against the checkout.
+
+## Comparing two commits
+
+`./measure.sh BASE TIP` is the only way two commits are compared. It refuses
+uncommitted tools, checks both commits out under `/tmp/audelin-measure/tree-<sha>`,
+copies this commit's `Benchmarks` over each, alternates three benchmark runs, then
+profiles each once at 20, 1,620 and 6,000 lines. It prints the path of `report.md`,
+which sits beside the raw runs in a new folder there. `/tmp` does not last, so put the
+report's table in the issue. The trees are reused by later runs; they take gigabytes,
+so remove old ones with `git worktree remove --force`.
+
+Reading the report:
+- **Instructions per word** give each percentile's lowest to highest run. A change is
+  real only if the `overlap` column says `no` and it is larger than the 20% noise below.
+- **CPU per word by step** comes from one run. Its lengths use different word and round
+  counts, so compare growth between commits, not one commit's two lengths.
+- **Frames growing most** say where to look next. A frame is any depth, so parents and
+  children repeat.
+
+## Which base
+
+- **The start of this work is `7690a9d5`** (branch `audelin-bench`): `9770e037` plus only
+  what the benchmark needs. Use it to report progress against the beginning.
+- **`9770e037` and anything before `825b034a` cannot run these tools:** they have no
+  `SessionRehearsal` product. A commit needs that product to be measured.
+- **To judge a new change, BASE is the commit before it.** To judge a round of work, BASE
+  is the TIP of the last report in the tracker (LAB-776).
+- **The saved `base` that `compare.sh` reads stays at the start of the work,** so its
+  table keeps meaning the same thing. `./save-base.sh` replaces it for everyone; do that
+  only when the owner decides on a new starting point, and commit the result.
+
+## Reading the number
 
 Read the median instructions per word: they count all the process's work,
 the transcript writer's included. Runs of the same code differ by up to about
@@ -34,8 +63,8 @@ the transcript writer's included. Runs of the same code differ by up to about
 Mac runs and is not compared. Instructions swing too when the Mac is busy (a
 run beside a build read 12 M at 20 lines), so run it with nothing heavy alongside.
 
-`base` was saved from `9770e037`, before the final-text work (LAB-815, 813,
-810). Medians per word, base, on the owner's MacBook Pro:
+Saved `base`, from `9770e037` before the final-text work (LAB-815, 813, 810). Medians
+per word on the owner's MacBook Pro:
 
 | lines | instructions | wall clock |
 |---|---|---|
@@ -43,3 +72,7 @@ run beside a build read 12 M at 20 lines), so run it with nothing heavy alongsid
 | 800 | 30 M | 0.80 ms |
 | 1,620 | 52 M | 1.4 ms |
 | 6,000 | 203 M | 5.3 ms |
+
+Latest results, what is left and what is next live in LAB-776, not here.
+
+What this does not measure: the view's drawing, a real recogniser, or a real call.

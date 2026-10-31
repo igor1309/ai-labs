@@ -2,6 +2,9 @@
 """window.py PROFILE.xml SIGNPOSTS.xml OUT.json WORDS: keeps samples inside the 'words' signposts."""
 import bisect, importlib.util, json, pathlib, sys
 from collections import Counter
+if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+    print(__doc__)
+    sys.exit(0)
 spec = importlib.util.spec_from_file_location("st", pathlib.Path(__file__).resolve().parents[2] / "scripts/summarize-trace.py")
 st = importlib.util.module_from_spec(spec); spec.loader.exec_module(st)
 prof, sign, out, words = sys.argv[1:5]

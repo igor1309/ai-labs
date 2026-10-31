@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """medians.py COMPARE_OUTPUT: median instructions per word, base and this code, from `--format markdown`."""
 import re, sys
+if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+    print(__doc__)
+    sys.exit(0)
 
 UNITS = {"K": 1e3, "M": 1e6, "G": 1e9}
 lines, unit, rows = None, None, {}

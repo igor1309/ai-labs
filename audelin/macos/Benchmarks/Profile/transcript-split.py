@@ -2,6 +2,9 @@
 """transcript-split.py SMALL LARGE: the transcript's CPU per word by part, and its growth, for two runs."""
 import json, re, sys
 from collections import Counter
+if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+    print(__doc__)
+    sys.exit(0)
 
 TRANSCRIPT = re.compile(r"TranscriptFile|WritingTranscript|TranscriptWriting|SessionTranscriptFile|Transcript\.")
 

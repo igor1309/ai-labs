@@ -1,6 +1,9 @@
 """steps.py SMALL LARGE [SMALL LARGE...]: CPU per word by step, and its growth, per pair of runs."""
 import json,re,sys
 from collections import Counter
+if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+    print(__doc__)
+    sys.exit(0)
 STEPS=[
  ('transcript render and write',r'TranscriptFile|WritingTranscript|TranscriptWriting|SessionTranscriptFile|Transcript\.'),
  ('repeat checks',r'ReadingState\.==|ReadingState\.Lines\.==|Dictionary<>\.==|PanelState\.==|SessionState\.=='),

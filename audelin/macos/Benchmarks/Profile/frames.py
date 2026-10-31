@@ -2,6 +2,9 @@
 """frames.py SMALL LARGE [COUNT]: CPU per word by frame (any depth), the frames that grow most between two runs."""
 import json, sys
 from collections import Counter
+if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+    print(__doc__)
+    sys.exit(0)
 
 
 def frames(tag):
