@@ -1,5 +1,30 @@
-export { explorerProbes } from "./triceratopsExplorerProbes.ts";
 export { ankylosaurusProbes } from "./ankylosaurusProbes.ts";
+export { explorerProbes } from "./triceratopsExplorerProbes.ts";
+export { stegosaurusExplorerProbes } from "./stegosaurusExplorerProbes.ts";
+export { STEGOSAURUS } from "../src/coloring/geometry.ts";
+export { STEGOSAURUS_EXPLORER } from "../src/coloring/stegosaurusExplorer.ts";
+
+// Visible interiors include the small toes and plates, independently of the
+// painter's hit testing and the larger connected head/body/near-leg region.
+export const stegosaurusHatchlingProbes: readonly (readonly [number, number, string])[] = [
+  [232, 492, "front-far"], [447, 488, "rear-far"],
+  [441, 116, "plate-1"], [326, 135, "plate-2"], [239, 184, "plate-3"],
+  [184, 245, "plate-4"], [248, 242, "plate-5"], [309, 194, "plate-6"],
+  [395, 162, "plate-7"], [474, 176, "plate-8"], [551, 149, "plate-9"],
+  [553, 216, "plate-10"], [616, 203, "plate-11"], [680, 237, "plate-12"],
+  [627, 251, "plate-13"], [397, 391, "body"], [358, 227, "back"],
+  [156, 276, "plate-14"], [195, 282, "plate-15"],
+  [182, 562, "toe-1"], [198, 562, "toe-2"], [220, 562, "toe-3"],
+  [286, 565, "toe-4"], [300, 567, "toe-5"], [322, 568, "toe-6"],
+  [413, 561, "toe-7"], [431, 560, "toe-8"], [452, 561, "toe-9"],
+  [535, 563, "toe-10"], [553, 564, "toe-11"], [578, 565, "toe-12"],
+  [344, 493, "spot-1"], [287, 341, "spot-2"], [265, 424, "spot-3"],
+  [312, 448, "spot-4"], [336, 368, "spot-5"], [190, 360, "spot-6"],
+  [352, 299, "spot-7"], [566, 314, "spot-8"], [532, 398, "spot-9"],
+  [546, 474, "spot-10"], [648, 307, "spot-11"], [721, 286, "spot-12"],
+  [805, 168, "spike-1"], [829, 165, "spike-2"],
+  [854, 148, "spike-3"], [848, 189, "spike-4"]
+];
 import type { AgeLevel } from "../src/ageLevel.ts";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";

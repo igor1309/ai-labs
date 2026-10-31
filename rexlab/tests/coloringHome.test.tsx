@@ -43,7 +43,7 @@ function fixture({ language = "en", featured = "compare", level = "explorer" }: 
   };
   const view = render(<StrictMode><InputArbitrationContext value={input.arbitrate}><App {...props} /></InputArbitrationContext></StrictMode>);
   const click = async (name: string) => { await act(async () => { fireEvent.click(screen.getByRole("button", { name })); }); };
-  return { ...view, defer: (value: Promise<GalleryCollection>) => { deferred = value; }, viewport, click, countStart, source, saveAge, dot, active: () => active, fail: (value: boolean) => { failure = value; }, collection: (value: GalleryCollection) => { collection = value; } };
+  return { ...view, artworks: props.coloring.artworks, defer: (value: Promise<GalleryCollection>) => { deferred = value; }, viewport, click, countStart, source, saveAge, dot, active: () => active, fail: (value: boolean) => { failure = value; }, collection: (value: GalleryCollection) => { collection = value; } };
 }
 
 it.each(["en", "ru"] as Language[])("shares the durable count and drawing symbol between the %s tile and featured card", async language => {
@@ -107,7 +107,7 @@ it.each([4, null])("shows no warning while Home history is pending, then shows i
 });
 
 
-it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("offers the %s Triceratops through App alongside both other creatures", async level => {
+it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("offers the %s Triceratops through App without a third artwork choice", async level => {
   const f = fixture({ level }); await act(async () => {});
   await f.click("COLOR A DINOSAUR");
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(3);
@@ -115,6 +115,22 @@ it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("offers the %
   await f.click("TRICERATOPS");
   expect(f.active().getSnapshot().work.geometry).toBe(level === "hatchling" ? "triceratops-production-1" : "triceratops-explorer-1");
   expect(screen.getByLabelText("TRICERATOPS").tagName).toBe("CANVAS");
+  expect(f.saveAge).not.toHaveBeenCalled();
+});
+
+it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("starts the %s Stegosaurus from its matching gallery preview", async level => {
+  const f = fixture({ level }); await act(async () => {});
+  await f.click("COLOR A DINOSAUR");
+  const version = level === "hatchling" ? "stegosaurus-production-1" : "stegosaurus-explorer-1";
+  const button = screen.getByRole("button", { name: "NEW WORK" });
+  const artwork = f.artworks.find(entry => entry.version === version)!;
+  expect(button.textContent).toContain("STEGOSAURUS");
+  expect(artwork.preview.render).toHaveBeenLastCalledWith(button.querySelector("canvas"));
+  expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(3);
+  await f.click("NEW WORK");
+  expect(f.source.newWork).toHaveBeenCalledWith("work-1", expect.any(Function), version);
+  expect(f.active().getSnapshot().work).toMatchObject({ geometry: version, actions: [] });
+  expect(screen.getByLabelText("STEGOSAURUS").tagName).toBe("CANVAS");
   expect(f.saveAge).not.toHaveBeenCalled();
 });
 

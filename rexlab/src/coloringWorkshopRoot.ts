@@ -1,7 +1,8 @@
-import type { AgeLevel } from "./ageLevel.ts";
 import { ANKYLOSAURUS } from "./coloring/ankylosaurus.ts";
+import type { AgeLevel } from "./ageLevel.ts";
 import { TRICERATOPS } from "./coloring/triceratops.ts";
 import { TRICERATOPS_EXPLORER } from "./coloring/triceratopsExplorer.ts";
+import { STEGOSAURUS_EXPLORER } from "./coloring/stegosaurusExplorer.ts";
 import type { GalleryArtwork } from "./ColoringGalleryScreen.tsx";
 import { coloringModel, type Work } from "./coloring/index.ts";
 import { ARTWORK } from "./coloring/geometry.ts";
@@ -67,5 +68,8 @@ export function coloringWorkshopRoot(factory: Pick<IDBFactory, "open">, document
 }
 
 export function coloringVersionsFor(level: AgeLevel): readonly string[] {
-  return [ARTWORK.version, (level === "hatchling" ? TRICERATOPS : TRICERATOPS_EXPLORER).artwork.version, ANKYLOSAURUS.artwork.version];
+  return [
+    level === "hatchling" ? ARTWORK.version : STEGOSAURUS_EXPLORER.artwork.version,
+    (level === "hatchling" ? TRICERATOPS : TRICERATOPS_EXPLORER).artwork.version, ANKYLOSAURUS.artwork.version
+  ];
 }

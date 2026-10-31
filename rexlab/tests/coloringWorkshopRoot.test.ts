@@ -39,9 +39,9 @@ it("wires every gallery preview to its cached artwork painter with empty actions
 });
 
 it.each([
-  ["hatchling", "triceratops-production-1"],
-  ["explorer", "triceratops-explorer-1"],
-  ["paleontologist", "triceratops-explorer-1"]
-] as const)("offers all creatures with the age-appropriate Triceratops for %s", (level, version) => {
-  expect(coloringVersionsFor(level)).toEqual(["stegosaurus-production-1", version, "ankylosaurus-production-1"]);
+  ["hatchling", "stegosaurus-production-1", "triceratops-production-1"],
+  ["explorer", "stegosaurus-explorer-1", "triceratops-explorer-1"],
+  ["paleontologist", "stegosaurus-explorer-1", "triceratops-explorer-1"]
+] as const)("offers age-appropriate Stegosaurus and Triceratops for %s", (level, stegosaurus, triceratops) => {
+  expect(coloringVersionsFor(level)).toEqual([stegosaurus, triceratops, "ankylosaurus-production-1"]);
 });

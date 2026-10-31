@@ -4,6 +4,8 @@
 
 - LAB-825: Coloring adds Ankylosaurus at every age level, with broad armor panels, short legs and a club tail. Its drawings join the shared gallery and star collection and stay editable after reopening.
 
+- LAB-824: Stegosaurus gains a richer prehistoric coloring scene for Explorer and Paleontologist, with patterned back plates, body markings and scenery. Hatchling keeps the simple drawing, and saved works retain their original artwork across age changes.
+
 - LAB-823: Coloring adds Triceratops alongside Stegosaurus: simple artwork for Hatchling and a richer prehistoric scene for Explorer and Paleontologist. Saved drawings keep their original artwork across age changes, with a shared star collection.
 - LAB-822: A game index brings current activities, difficulty, rewards and replay approaches together, distinguishing planned modes and prototypes.
 
@@ -14,6 +16,7 @@
 
 ## 2026-10-30
 
+- Coloring probe fill regions have Russian/English names and plate/spike groups; the combined body region explicitly includes legs and tail (LAB-801).
 - LAB-804: Coloring opens from Home with completed-work counts on its tile and featured card; phone brush sizes have their own chooser.
 
 - Coloring strokes update once per display frame without replaying saved brush history for every pen sample (LAB-803).

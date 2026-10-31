@@ -1,12 +1,16 @@
 // Contract test: production gallery/workshop composition, durable IndexedDB,
 // thumbnail pixels, shared tap filtering and responsive layouts in Chromium.
 const assert = require("node:assert/strict");
-const { resolve } = require("node:path");
+const { mkdir } = require("node:fs/promises");
+const { tmpdir } = require("node:os");
+const { join, resolve } = require("node:path");
 const { chromium } = require("playwright");
 
 (async () => {
   let browser;
   try {
+    const artifacts = resolve(process.env.COLORING_ARTIFACT_DIR || join(tmpdir(), "rexlab-coloring-artifacts"));
+    await mkdir(artifacts, { recursive: true });
     const { build } = await import("vite");
     const react = (await import("@vitejs/plugin-react")).default;
     const bundle = await build({ root: resolve(__dirname, ".."), configFile: false, logLevel: "error", plugins: [react()],
@@ -163,13 +167,13 @@ const { chromium } = require("playwright");
         { kind: "stroke", color: "#f78fbd", size: 40, points: [{ x: 550, y: 130 }, { x: 565, y: 130 }] }
       ] }
     ];
-    const reference = actions => page.evaluate(actions => {
-      const painter = window.gallery.painter();
+    const reference = (actions, geometry = "stegosaurus-production-1") => page.evaluate(({ actions, geometry }) => {
+      const painter = window.gallery.painterFor(geometry);
       const canvas = painter.canvas(276, 186);
       // Replay the fixture, independently of the saved journal and thumbnail adapter.
       painter.render(canvas, actions);
       return canvas.toDataURL("image/png");
-    }, actions);
+    }, { actions, geometry });
     const thumbnailMatches = async (id, actions, referenceImage) => {
       const comparison = await page.evaluate(async ({ id, referenceImage }) => {
         const record = (await window.gallery.list()).works.find(r => r.document.id === id);
@@ -329,7 +333,7 @@ const { chromium } = require("playwright");
           await page.evaluate(async () => {
             await Promise.all(document.getAnimations().filter(animation => animation.effect?.getComputedTiming().iterations !== Infinity).map(animation => animation.finished.catch(() => {})));
           });
-          await page.screenshot({ path: "/tmp/lab-823/triceratops.png" });
+          await page.screenshot({ path: join(artifacts, "triceratops.png") });
         }
         await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ");
       }
@@ -397,10 +401,191 @@ const { chromium } = require("playwright");
               await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
               await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
             });
-            await page.screenshot({ path: "/tmp/lab-823/triceratops-explorer.png" });
+            await page.screenshot({ path: join(artifacts, "triceratops-explorer.png") });
           }
           await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ");
         }
+      }
+    }
+    // Each Stegosaurus keeps its own fill ownership, including inset panels,
+    // tiny toes, protected details and regions hidden behind later paths.
+    const stegoContracts = await page.evaluate(async () => {
+      const shape = (node, attributes) => {
+        if ("path" in node) return `<path d="${node.path}" transform="translate(${node.x} ${node.y})" ${attributes}/>`;
+        return `<ellipse cx="${node.width / 2}" cy="${node.height / 2}" rx="${node.width / 2}" ry="${node.height / 2}" transform="translate(${node.x} ${node.y}) rotate(${-node.rotation} ${node.width / 2} ${node.height / 2})" ${attributes}/>`;
+      };
+      const results = [];
+      for (const [geometry, probes, protectedPoints] of [
+        [window.gallery.STEGOSAURUS, window.gallery.stegosaurusHatchlingProbes, [[83, 280], [82, 275], [30, 298], [50, 315], [465, 380], [476, 440]]],
+        [window.gallery.STEGOSAURUS_EXPLORER, window.gallery.stegosaurusExplorerProbes, [[151, 382], [148, 376], [118, 420], [384, 544], [28, 570], [468, 84]]]
+      ]) {
+        const painter = window.gallery.painterFor(geometry.artwork.version), canvas = painter.canvas();
+        const pixel = (x, y) => [...canvas.getContext("2d").getImageData(x, y, 1, 1).data];
+        painter.render(canvas, []);
+        const blank = painter.pixels(canvas);
+        const protectedPixels = protectedPoints.map(([x, y]) => pixel(x, y));
+        const cases = [];
+        const defs = geometry.regions.map(node => `<clipPath id="${node.id}">${shape(node, "")}</clipPath>`).join("");
+        for (const [x, y, region] of probes) {
+          // SVG masks rasterize the vector ownership independently of the
+          // painter's compositing, hit testing and saved action validation.
+          const paths = geometry.regions.map(node => {
+            let drawing = shape(node, `fill="${node.id === region ? "white" : "black"}"`), parent = node.parent;
+            while (parent) {
+              drawing = `<g clip-path="url(#${parent})">${drawing}</g>`;
+              parent = geometry.regions.find(node => node.id === parent).parent;
+            }
+            return drawing;
+          }).join("");
+          const image = new Image();
+          image.src = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="920" height="620"><defs>${defs}</defs><g transform="scale(2)">${paths}</g></svg>`)}`;
+          await image.decode();
+          const mask = document.createElement("canvas"); mask.width = 920; mask.height = 620;
+          const ctx = mask.getContext("2d"); ctx.drawImage(image, 0, 0);
+          const ownership = ctx.getImageData(0, 0, 920, 620).data;
+          painter.render(canvas, [{ kind: "fill", region, color: "#ef5350" }]);
+          const painted = painter.pixels(canvas);
+          let changed = 0, leaked = 0, erased = 0;
+          for (let i = 0; i < blank.length; i += 4) {
+            // A single channel unit at antialiased edges is the painter's
+            // existing visible-pixel tolerance, rather than a paint change.
+            if (Math.abs(blank[i] - painted[i]) <= 1 && Math.abs(blank[i + 1] - painted[i + 1]) <= 1 &&
+                Math.abs(blank[i + 2] - painted[i + 2]) <= 1 && Math.abs(blank[i + 3] - painted[i + 3]) <= 1) continue;
+            changed++;
+            if (ownership[i] === 0) leaked++;
+            if (blank[i + 3] === 255 && ((blank[i] === 9 && blank[i + 1] === 30 && blank[i + 2] === 64) ||
+                (blank[i] === 7 && blank[i + 1] === 9 && blank[i + 2] === 10))) erased++;
+          }
+          cases.push({ region, hit: painter.regionAt({ x, y }), pixels: probes.map(([x, y]) => pixel(x, y)),
+            protectedPixels: protectedPoints.map(([x, y]) => pixel(x, y)), changed, leaked, erased });
+        }
+        painter.render(canvas, [{ kind: "stroke", color: "#ab67cb", size: 40, points: protectedPoints.map(([x, y]) => ({ x, y })) }]);
+        results.push({ version: geometry.artwork.version, regions: geometry.artwork.regions, probes, cases, protectedPixels,
+          protectedHits: protectedPoints.map(([x, y]) => painter.regionAt({ x, y }) ?? null),
+          brushedDetails: protectedPoints.map(([x, y]) => pixel(x, y)), outside: pixel(0, 0) });
+      }
+      return results;
+    });
+    for (const contract of stegoContracts) {
+      assert.deepEqual(contract.probes.map(([, , region]) => region), contract.regions, `${contract.version}: every region has an interior probe`);
+      for (const [index, test] of contract.cases.entries()) {
+        const context = `${contract.version}/${test.region}`;
+        assert.equal(test.hit, test.region, `${context}: tap ownership`);
+        for (const [other, pixel] of test.pixels.entries()) assert.deepEqual(pixel, index === other ? [239, 83, 80, 255] : [255, 240, 207, 255], `${context}: independent interior ${contract.probes[other][2]}`);
+        assert(test.changed > 0, `${context}: visible fill`);
+        assert.equal(test.leaked, 0, `${context}: no pixels outside its visible mask`);
+        assert.equal(test.erased, 0, `${context}: outlines and ink retained`);
+        assert.deepEqual(test.protectedPixels, contract.protectedPixels, `${context}: protected details retained`);
+      }
+      assert.deepEqual(contract.protectedHits, contract.protectedHits.map(() => null), `${contract.version}: protected taps reject fills`);
+      assert.deepEqual(contract.brushedDetails, contract.protectedPixels, `${contract.version}: brush preserves details`);
+      assert.deepEqual(contract.outside, [0, 0, 0, 0]);
+    }
+
+    // Gallery previews and new selections use the global age, while saved
+    // thumbnails and edit sessions continue to use the saved geometry.
+    await page.setViewportSize({ width: 1024, height: 768 });
+    const stegoWorks = [];
+    for (const level of ["hatchling", "explorer", "paleontologist"]) {
+      const version = level === "hatchling" ? "stegosaurus-production-1" : "stegosaurus-explorer-1";
+      const [x, y, region] = level === "hatchling" ? [420, 330, "body"] : [440, 396, "flank"];
+      const [otherX, otherY, otherRegion] = level === "hatchling" ? [326, 135, "plate-2"] : [460, 178, "plate-panel-4"];
+      await mount({ level });
+      assert.equal(await page.locator(".gallery-new").count(), 3);
+      assert(await page.locator(".gallery-new").first().locator("canvas").evaluate((canvas, version) => {
+        const expected = window.gallery.painterFor(version).canvas(canvas.width, canvas.height);
+        window.gallery.painterFor(version).render(expected, []);
+        return canvas.toDataURL() === expected.toDataURL();
+      }, version), `${level}: gallery preview matches selected geometry`);
+      await press("NEW WORK"); await page.locator('canvas[aria-label="STEGOSAURUS"]').waitFor();
+      await press("FILL"); await tap(x, y); await saved();
+      assert.deepEqual(await surfacePixel(x, y), [239, 83, 80, 255]);
+      assert.deepEqual(await surfacePixel(otherX, otherY), [255, 240, 207, 255]);
+      const created = (await listed()).works.find(r => !r.document.completed && r.document.geometry === version).document;
+      assert.deepEqual(created.actions, [{ kind: "fill", region, color: "#ef5350" }], `${level}: new selection saves its own region`);
+      if (level === "paleontologist") {
+        await press("UNDO"); await saved(); await back();
+        continue;
+      }
+      await press("COLOR"); await press("BLUE"); await tap(otherX, otherY); await saved();
+      await press("COLOR"); await press("BASE"); await tap(x, y); await saved();
+      assert.deepEqual(await surfacePixel(x, y), [255, 240, 207, 255]);
+      assert.deepEqual(await surfacePixel(otherX, otherY), [66, 165, 245, 255]);
+      await press("UNDO"); await saved();
+      assert.deepEqual(await surfacePixel(x, y), [239, 83, 80, 255]);
+      await press("COLOR"); await press("GREEN"); await press("BRUSH");
+      // This deliberate brush contact repeats the preceding base-fill point;
+      // keep it outside the app's 500 ms double-tap suppression window.
+      await page.waitForTimeout(510); await tap(x, y); await saved();
+      assert.equal((await listed()).works.find(r => r.document.id === created.id).document.actions.at(-1).kind, "stroke");
+      assert.deepEqual(await surfacePixel(x, y), [156, 204, 101, 255]);
+      await press("UNDO"); await saved();
+      assert.deepEqual(await surfacePixel(x, y), [239, 83, 80, 255]);
+      const snapshot = await page.locator("canvas").evaluate(canvas => canvas.toDataURL());
+      await page.screenshot({ path: join(artifacts, `stegosaurus-${level}.png`) });
+      await press("DONE"); await page.getByRole("heading", { name: "YOUR STEGOSAURUS!", exact: true }).waitFor();
+      await press("HOME"); await press("ENTER COLORING");
+      await page.locator('.gallery-works[aria-busy="false"]').waitFor();
+      const work = (await listed()).works.find(r => r.document.id === created.id).document;
+      assert.equal(work.completed, true); assert.equal(work.rewarded, true);
+      assert.deepEqual(work.actions, [{ kind: "fill", region, color: "#ef5350" }, { kind: "fill", region: otherRegion, color: "#42a5f5" }]);
+      const thumbnail = await reference(work.actions, version);
+      await thumbnailMatches(work.id, work.actions, thumbnail);
+      stegoWorks.push({ work, snapshot, thumbnail, x, y, otherX, otherY });
+    }
+    assert.equal((await listed()).completedCount, 5);
+    // Preserve the original persisted image byte-for-byte across age switches.
+    const legacyThumbnail = await page.evaluate(async () => {
+      const record = (await window.gallery.list()).works.find(r => r.document.id === "legacy-stego");
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader(); reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error); reader.readAsDataURL(record.thumbnail);
+      });
+    });
+    for (const level of ["paleontologist", "hatchling", "explorer"]) {
+      for (const language of ["en", "ru"]) {
+        await page.reload(); await mount({ level, language });
+        const starts = (await page.evaluate(() => window.gallery.counts())).starts;
+        for (const { work, snapshot, thumbnail, x, y, otherX, otherY } of stegoWorks) {
+          const name = language === "en" ? "STEGOSAURUS" : "СТЕГОЗАВР";
+          await thumbnailMatches(work.id, work.actions, thumbnail);
+          assert.match(await page.locator(`[data-work-id="${work.id}"] img`).getAttribute("alt"), new RegExp(`^${name} · `));
+          assert.equal(await page.locator(`[data-work-id="${work.id}"] .gallery-earned-star`).count(), 1);
+          await page.locator(`[data-work-id="${work.id}"] button`).press("Enter");
+          await page.locator(`canvas[aria-label="${name}"]`).waitFor();
+          assert.equal(await page.locator("canvas").evaluate(canvas => canvas.toDataURL()), snapshot, `${level}: reopened pixels keep ${work.geometry}`);
+          await press(language === "en" ? "UNDO" : "ОТМЕНИТЬ");
+          await page.waitForFunction(() => /^(SAVED|СОХРАНЕНО)$/.test(document.querySelector(".coloring-save")?.textContent));
+          assert.deepEqual(await surfacePixel(otherX, otherY), [255, 240, 207, 255]);
+          assert.deepEqual(await surfacePixel(x, y), [239, 83, 80, 255]);
+          await press(language === "en" ? "COLOR" : "ЦВЕТ"); await press(language === "en" ? "BLUE" : "ГОЛУБОЙ");
+          await press(language === "en" ? "FILL" : "ЗАЛИВКА"); await tap(otherX, otherY);
+          await page.waitForFunction(() => /^(SAVED|СОХРАНЕНО)$/.test(document.querySelector(".coloring-save")?.textContent));
+          await press(language === "en" ? "DONE" : "ГОТОВО"); await page.locator(".coloring-result").waitFor();
+          assert.equal(await page.locator(".coloring-result-earned, .celebration").count(), 0);
+          assert.equal((await listed()).completedCount, 5);
+          await press(language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК");
+          await page.locator(`canvas[aria-label="${name}"]`).waitFor();
+          assert.equal(await page.getByRole("button", { name: language === "en" ? "DONE" : "ГОТОВО", exact: true }).isDisabled(), true);
+          assert(await page.locator("canvas").evaluate((canvas, version) => {
+            const painter = window.gallery.painterFor(version), expected = painter.canvas();
+            painter.render(expected, []);
+            return canvas.toDataURL() === expected.toDataURL();
+          }, work.geometry), `${level}: NEW WORK retains ${work.geometry}`);
+          await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ");
+          await page.locator('.gallery-works[aria-busy="false"]').waitFor();
+          await thumbnailMatches(work.id, work.actions, thumbnail);
+        }
+        // The pre-variant save has no new geometry inferred from today's age.
+        await thumbnailMatches(legacy.id, legacy.actions, legacyThumbnail);
+        assert.equal(await page.locator('[data-work-id="legacy-stego"] .gallery-earned-star').count(), 1);
+        await page.locator('[data-work-id="legacy-stego"] button').press("Enter");
+        await page.locator(".coloring-workshop canvas").waitFor();
+        assert.deepEqual(await surfacePixel(420, 330), [66, 165, 245, 255]);
+        assert.equal((await listed()).works.find(r => r.document.id === "legacy-stego").document.geometry, "stegosaurus-production-1");
+        await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ");
+        await page.locator('.gallery-works[aria-busy="false"]').waitFor();
+        assert.equal((await page.evaluate(() => window.gallery.counts())).starts, starts + stegoWorks.length);
       }
     }
     await mount({});
@@ -462,7 +647,7 @@ const { chromium } = require("playwright");
     assert.equal(await page.getByRole("button", { name: "DONE", exact: true }).isDisabled(), true);
     await press("UNDO"); await saved(); await press("DONE");
     await page.getByRole("heading", { name: "YOUR ANKYLOSAURUS!", exact: true }).waitFor();
-    assert.equal((await listed()).completedCount, 4);
+    assert.equal((await listed()).completedCount, 6);
     await press("NEW WORK"); await page.locator('canvas[aria-label="ANKYLOSAURUS"]').waitFor();
     assert.equal(await page.getByRole("button", { name: "DONE", exact: true }).isDisabled(), true);
     await press("FILL"); await tap(110, 280); await saved();
@@ -498,7 +683,7 @@ const { chromium } = require("playwright");
           }
           await press(language === "en" ? "DONE" : "ГОТОВО");
           await page.getByRole("heading", { name: language === "en" ? "YOUR ANKYLOSAURUS!" : "ТВОЙ АНКИЛОЗАВР!", exact: true }).waitFor();
-          assert.equal((await listed()).completedCount, 4);
+          assert.equal((await listed()).completedCount, 6);
         }
       }
     }
@@ -515,12 +700,12 @@ const { chromium } = require("playwright");
       } finally { db.close(); }
     });
     await mount({}); assert.deepEqual((await listed()).unavailable, ["legacy-stego"]);
-    assert.equal((await listed()).completedCount, 4);
+    assert.equal((await listed()).completedCount, 6);
     await page.evaluate(() => window.gallery.damage("legacy-stego", "history")); await mount({});
     await press("PARENT RECOVERY"); await press("RESET COLORING");
     await page.getByText("LET’S PAINT A DINOSAUR!", { exact: true }).waitFor();
     assert.equal((await listed()).completedCount, 0); assert.deepEqual((await listed()).works, []);
-    console.log("PASS creatures: legacy Stegosaurus, Hatchling and Explorer independent Triceratops fills, cross-level reopen, brush, base/undo, durable thumbnails/reload, shared rewards, new-work identity, RU/EN iPad layouts, unknown geometry and reset; screenshots /tmp/lab-823/triceratops.png and /tmp/lab-823/triceratops-explorer.png");
+    console.log(`PASS creatures: both Stegosaurus variants and Triceratops, every-region Canvas fills and masks, age-selected previews, cross-age saves/undo/thumbnails, controls, rewards and reset; screenshots ${artifacts}`);
     assert.deepEqual(errors, []);
     console.log("PASS gallery: independent durable thumbnails/statuses/continue, full-pixel brush/mixed thumbnails and undo/reload, workshop saves and retry, empty drafts, corruption/recovery, tap safety, 24 RU/EN/theme layouts and reduced motion");
   } finally { if (browser) await browser.close(); }
