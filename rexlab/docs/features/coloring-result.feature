@@ -12,7 +12,7 @@ Feature: Coloring result and reward
   Scenario: Complete a nonempty work
     Given an uncompleted work contains one visible dot and the completed collection is 2
     When I choose DONE and saving the completion succeeds
-    Then the result shows that Stegosaurus coming alive with its own paint
+    Then the result shows that work’s creature coming alive with its own paint
     And one earned star animates and the completed collection becomes 3
     And a new Explorer collection best of 3 celebrates
     And the work including its undo history, completion flag, reward flag and collection count are saved together
@@ -69,3 +69,19 @@ Feature: Coloring result and reward
     When I attempt to undo or draw while completion is pending
     Then the accepted paint is unchanged and the result uses that paint with one reward
     And on any save failure editing is restored with that paint intact and no completion reward
+
+
+  Scenario Outline: Both creatures share the collection and reward rules
+    Given a nonempty saved <creature> work
+    When I choose DONE
+    Then its own painted artwork and localized uppercase creature name appear on the result
+    And the first completion earns exactly one star in the shared coloring collection
+    When I choose EDIT and complete it again
+    Then its artwork and editable history are retained without another star
+    When I choose NEW WORK from the result
+    Then another unpainted <creature> opens under a new identity
+
+    Examples:
+      | creature    |
+      | Stegosaurus |
+      | Triceratops |

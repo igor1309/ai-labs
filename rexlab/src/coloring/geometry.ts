@@ -1,14 +1,12 @@
 import type { Artwork } from "./index.ts";
-
-// Saved points use this fixed coordinate space, independent of screen size or DPR.
-export const WIDTH = 920;
-export const HEIGHT = 620;
+export { WIDTH, HEIGHT } from "./index.ts";
 export const VECTOR_SCALE = 2;
 export type VectorShape = Readonly<{ x: number; y: number } & (
   { path: string } | { width: number; height: number; rotation: number }
 )>;
 export type PaintRegion = VectorShape & Readonly<{ id: string; parent?: string; outline: number }>;
 export type ProtectedDetail = VectorShape & Readonly<{ fill?: string; stroke?: string; strokeWidth?: number }>;
+export type Geometry = Readonly<{ artwork: Artwork; regions: readonly PaintRegion[]; details: readonly ProtectedDetail[] }>;
 
 // Curves preserve the design illustration's proportions. Overlaid regions are
 // clipped to their parent; their visible parts own fill independently of it.
@@ -498,3 +496,5 @@ export const ARTWORK: Artwork = Object.freeze({
   version: "stegosaurus-production-1",
   regions: Object.freeze(REGIONS.map(region => region.id))
 });
+
+export const STEGOSAURUS: Geometry = { artwork: ARTWORK, regions: REGIONS, details: DETAILS };

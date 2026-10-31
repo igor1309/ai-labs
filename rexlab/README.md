@@ -3,11 +3,13 @@
 A dinosaur learning web app for children aged 5–7, played on an iPad and
 served at https://rexlab.enoa.ai.
 
-The first game, Compare, asks which of two dinosaurs is heavier or taller,
-ten questions a round, and celebrates a new best score. It is in English and
-Russian, with all text for children in capitals, and has light and dark
-themes.
+Activities include comparison, memory, sorting, skeleton assembly, digging,
+care, sand writing, labyrinths, picture puzzles, jaw matching and coloring.
+The app is in English and Russian, with child-facing text in capitals and
+light and dark themes.
 
+- [Games and approaches](docs/games.md): current activities, levels, rewards,
+  replay and planned work, with links to detailed rules and designs.
 - Behaviour: `docs/features/` (Gherkin).
 - Architecture: `docs/mvp-infrastructure.md`.
 - Dinosaur pictures: `art/style.md`; placeholders stand in until the
@@ -33,14 +35,16 @@ scroll, pinch zoom, draw again, undo, navigate away and return.
 
 The coloring workshop is an exported screen for the coloring flow. Construct
 `coloringWorkshopRoot(indexedDB, document)` once, then await `newWork(id,
-onNavigate)` with a fresh identity or `open(id, onNavigate)` for a saved work.
-Render `ColoringWorkshopScreen` with that session, the root's `painter` and
-`language`. It follows the document's `data-theme` and the app's shared motion
+onNavigate, geometryVersion)` with a fresh identity or `open(id, onNavigate)` for a saved work.
+Omitting the geometry version creates a Stegosaurus; the root's `artworks` offers
+Stegosaurus and Triceratops with localized names and matching preview geometry.
+Render `ColoringWorkshopScreen` with that session, `painterFor(work.geometry)`,
+the chosen dinosaur name and `language`. It follows the document's `data-theme` and the app's shared motion
 and tap filter. The navigation callback receives `home`, `gallery`, `new` or
 `result` and the durable work; `result` follows successful completion only.
 The `result` navigation also includes the transaction's saved collection count
 and whether this completion earned a star. `ColoringGame` composes gallery,
-workshop and result from that root, with `identity`, `countStart`, `home` and
+workshop and result from that root's `artworks`, `painterFor` and storage source, with `identity`, `countStart`, `home` and
 `language` supplied by its host. Result EDIT reopens the durable history.
 Await `session.settled()` before closing the root's storage connection. Opening
 fails visibly to the caller when storage or reward history is unreadable.

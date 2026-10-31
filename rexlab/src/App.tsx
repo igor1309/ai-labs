@@ -1,3 +1,4 @@
+import { coloringVersionsFor } from "./coloringWorkshopRoot.ts";
 import { ColoringGame, type ColoringGameProps } from "./ColoringGame.tsx";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
 import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } from "./ageLevel.ts";
@@ -684,7 +685,7 @@ export function App({
       case "dig":
         return dig.content(language);
       case "coloring":
-        return coloring && <ColoringGame {...coloring} language={language} home={home} countStart={countColoringStart} />;
+        return coloring && <ColoringGame {...coloring} offeredVersions={coloringVersionsFor(ageLevel.level)} language={language} home={home} countStart={countColoringStart} />;
       case "whoseJaw":
         return jawGame.content(language);
       case "picturePuzzle":

@@ -6,6 +6,7 @@ import Foundation
 import PanelUI
 import Preferences
 import Testing
+@testable import Audelin
 @testable import Compose
 
 private let recordingSkipReason: String? = {

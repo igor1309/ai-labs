@@ -24,6 +24,11 @@ export type PaintInspection = {
   same(before: readonly Action[], after: readonly Action[]): boolean;
 };
 export type Artwork = { version: string; regions: readonly string[] };
+
+// Saved points use this fixed coordinate space, independent of screen size or DPR.
+export const WIDTH = 920;
+export const HEIGHT = 620;
+
 const object = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value);
 const validId = (value: unknown): value is string => typeof value === "string" && /^[\w-]{1,100}$/.test(value);
 const coordinate = (value: unknown): value is number => typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 100000;

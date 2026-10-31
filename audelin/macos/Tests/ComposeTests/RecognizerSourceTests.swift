@@ -6,6 +6,7 @@ import struct MicrophoneCapture.AudioPiece
 import Session
 import struct SystemAudioCapture.AudioPiece
 import Testing
+@testable import Audelin
 @testable import Compose
 
 @Suite(.timeLimit(.minutes(1)))
@@ -120,7 +121,7 @@ struct RecognizerSourceTests {
                 callRecognizerSource: { beganTheirs.send(); await release.wait(); return theirs },
                 missingModels: { [] }
             )
-            let session = await makeSession(pieces.handler())
+            let session = await makeSession(handler: pieces.handler())
             let subscription = subscribe(pieces, to: session)
             do {
                 await session.send(.begin(liveText: true))

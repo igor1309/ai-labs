@@ -39,3 +39,13 @@ it("blocks departing controls and keeps its saved composition visible on an edit
   expect(view.container.querySelector("canvas")).not.toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "EDIT" })); expect(props.choose).toHaveBeenCalledWith("edit");
 });
+
+
+it.each(["en", "ru"] as const)("names the completed Triceratops and its painted image in %s", language => {
+  const { model, dot } = coloringFixture();
+  const work = { ...model.complete(model.append(model.newWork("own"), dot)), geometry: "triceratops-production-1" };
+  render(<ColoringResultScreen dinosaur={language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС"} work={work} completion={{ earned: true, completedCount: 1 }}
+    painter={{ width: 920, height: 620, render: vi.fn() }} language={language} busy={false} error={false} choose={vi.fn()} />);
+  expect(screen.getByRole("heading", { name: language === "en" ? "YOUR TRICERATOPS!" : "ТВОЙ ТРИЦЕРАТОПС!" })).toBeTruthy();
+  expect(screen.getByRole("img", { name: language === "en" ? "YOUR PAINTED TRICERATOPS" : "ТВОЙ РАСКРАШЕННЫЙ ТРИЦЕРАТОПС" })).toBeTruthy();
+});
