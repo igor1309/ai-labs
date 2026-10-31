@@ -8,6 +8,8 @@ import { browserInput } from "../src/root.ts";
 import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import type { Action } from "../src/coloring/index.ts";
 import type { Language } from "../src/language/language.ts";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 function open(language: Language = "en", failure = false, sharedFilter = false) {
   const { model, dot, thumbnail } = coloringFixture();
@@ -59,6 +61,27 @@ function animationFrames() {
     act(() => callbacks.forEach(callback => callback(0)));
   } };
 }
+
+it("protects workshop words and controls while preserving drawing after repeated selection and menu attempts", async () => {
+  // Vitest ignores component CSS imports; the shared sheet is in setup.
+  const style = document.createElement("style");
+  style.textContent = readFileSync(join(import.meta.dirname, "../src/coloringWorkshop.css"), "utf8");
+  document.head.append(style);
+  onTestFinished(() => style.remove());
+  const f = open("en", false, true);
+  for (const element of [screen.getByRole("heading", { level: 1 }), screen.getByRole("button", { name: "FILL" }), f.canvas]) {
+    expect(getComputedStyle(element).userSelect).toBe("none");
+    for (const type of ["contextmenu", "selectstart", "contextmenu"]) expect(fireEvent(element, new Event(type, { bubbles: true, cancelable: true }))).toBe(false);
+  }
+  expect(getComputedStyle(f.canvas).touchAction).toBe("none");
+  f.step("pointerdown", 0, 0, 1, 1000); f.step("pointermove", 20, 0, 1, 1010); f.step("pointerup", 20, 0, 1, 1020);
+  await f.settled();
+  expect(f.session.getSnapshot().work.actions).toEqual([{ kind: "stroke", color: "#ef5350", size: 20, points: [{ x: 0, y: 0 }, { x: 20, y: 0 }] }]);
+  fireEvent.click(screen.getByRole("button", { name: "UNDO" }), { detail: 0 }); await f.settled();
+  expect(f.session.getSnapshot().work.actions).toEqual([]);
+  f.tap(1, 0, 1100); await f.settled();
+  expect(f.session.getSnapshot().work.actions).toEqual([{ ...f.dot, points: [{ x: 1, y: 0 }] }]);
+});
 
 it("batches coalesced samples per frame in one contact buffer and commits the release before a pending frame", async () => {
   const frames = animationFrames();

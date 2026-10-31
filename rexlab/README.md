@@ -22,6 +22,15 @@ outward walk. Set `CHROME_PATH` to use a local Chrome executable, or `BOARD_URL`
 to check an already running server instead. CI installs Chromium with its OS
 dependencies and runs these checks on shard 1.
 
+Run `node tests/nativeTouch.browser.cjs` for shared input protection, touch
+scrolling, labyrinth taps and coloring drawing/navigation in Chromium with
+iPhone/iPad portrait and landscape emulation. The check routes a production
+build in memory and closes its own browser. It cannot verify native Safari
+selection handles or callouts; those require physical devices. On iPhone and
+iPad Safari in both orientations, repeat double taps and long presses on
+text, pictures, canvas and controls; verify no selection or callout, then
+scroll, pinch zoom, draw again, undo, navigate away and return.
+
 The coloring workshop is an exported screen for the coloring flow. Construct
 `coloringWorkshopRoot(indexedDB, document)` once, then await `newWork(id,
 onNavigate)` with a fresh identity or `open(id, onNavigate)` for a saved work.
