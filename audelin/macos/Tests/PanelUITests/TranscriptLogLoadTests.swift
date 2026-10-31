@@ -23,7 +23,7 @@ struct TranscriptLogLoadTests {
             early = early.quicker(cost(entries: 20))
             late = late.quicker(cost(entries: entries))
         }
-        let line = report("\(early.line) at 20 entries, \(late.line) at \(entries) entries; \(probe(entries: entries))")
+        let line = report("\(early.line) at 20 entries, \(late.line) at \(entries) entries; at 20 \(probe(entries: 20)); at \(entries) \(probe(entries: entries))")
         FileHandle.standardError.write(Data(line.utf8))
         #expect(late.update / early.update <= 3, "an update late in a long call costs the log \(late.update / early.update)x one early")
     }
@@ -79,15 +79,29 @@ struct TranscriptLogLoadTests {
         let size = CGSize(width: config.panelWidth, height: 400)
         let host = Offscreen.host(log(lines(count), config: config, size: size), size: size)
         guard let text = Offscreen.textView(in: host) as? LogTextView,
+              let storage = text.textStorage,
               let layout = text.textLayoutManager
         else { return "no log to probe" }
         let clock = ContinuousClock()
-        let end = NSTextRange(location: layout.documentRange.endLocation)
-        let ms = { (d: Duration) in String(format: "%.2f", (Double(d.components.attoseconds) / 1e15) + Double(d.components.seconds) * 1000) }
-        let ensure = clock.measure { layout.ensureLayout(for: end) }
-        let scroll = clock.measure { text.scrollToEndOfDocument(nil) }
-        let rules = clock.measure { _ = text.ruleFrames(in: text.visibleRect) }
-        return "probe: ensure end \(ms(ensure)) ms, scroll to end \(ms(scroll)) ms, rule frames \(ms(rules)) ms"
+        var edit = Duration.zero, scroll = Duration.zero, height = Duration.zero, rest = Duration.zero, rules = Duration.zero
+        // Each step of an update alone, after an edit to the last line as an update makes.
+        for step in 1...Self.updates {
+            let last = NSRange(location: storage.length - 2, length: 2)
+            edit += clock.measure { storage.replaceCharacters(in: last, with: "w\(step % 10)") }
+            scroll += clock.measure { text.scrollToEndOfDocument(nil) }
+            height += clock.measure {
+                let end = NSTextRange(location: layout.documentRange.endLocation)
+                layout.ensureLayout(for: end)
+                _ = layout.usageBoundsForTextContainer
+                layout.enumerateTextSegments(in: end, type: .standard, options: .middleFragmentsExcluded) { _, _, _, _ in true }
+            }
+            rest += clock.measure { host.layoutSubtreeIfNeeded() }
+            rules += clock.measure { _ = text.ruleFrames(in: text.visibleRect) }
+        }
+        let ms = { (d: Duration) in
+            String(format: "%.2f", (Double(d.components.seconds) * 1000 + Double(d.components.attoseconds) / 1e15) / Double(Self.updates))
+        }
+        return "probe: edit \(ms(edit)), scroll to end \(ms(scroll)), height \(ms(height)), layout \(ms(rest)), rule frames \(ms(rules)) ms an update"
     }
 
     private func lines(_ count: Int) -> PanelState.Lines {
