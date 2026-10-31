@@ -69,8 +69,7 @@ final class DrainExecutor: TaskExecutor {
             return released
         }
         if released {
-            let executor = asUnownedTaskExecutor()
-            DispatchQueue.global().async { job.runSynchronously(on: executor) }
+            globalConcurrentExecutor.enqueue(ExecutorJob(job))
         } else {
             notify()
         }
