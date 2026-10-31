@@ -10,7 +10,7 @@ import "../src/app.css";
 const input = browserInput(window);
 let root: Root | undefined;
 let resources: ReturnType<typeof coloringWorkshopRoot>;
-let starts = 0, identities = 0, homes = 0;
+let starts = 0, homes = 0;
 let language: Language = "en";
 let denyReads = false, denyWrites = false;
 let abortCompletion = false;
@@ -27,7 +27,7 @@ IDBDatabase.prototype.transaction = function (...args: Parameters<IDBDatabase["t
 };
 function show() {
   flushSync(() => root!.render(<InputArbitrationContext value={input.arbitrate}><ColoringGame source={resources} artworks={resources.artworks} painter={resources.painter} painterFor={resources.painterFor} language={language}
-    identity={() => `gallery-${++identities}`} countStart={() => { starts++; }}
+    identity={() => Array.from(crypto.getRandomValues(new Uint32Array(4)), value => value.toString(16)).join("-")} countStart={() => { starts++; }}
     home={() => { homes++; flushSync(() => root!.render(<button onClick={show}>ENTER COLORING</button>)); }} /></InputArbitrationContext>));
 }
 export async function mount(options: { language?: Language; theme?: "light" | "dark"; seed?: boolean } = {}) {
