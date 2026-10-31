@@ -73,8 +73,9 @@ struct TranscriptLogLoadTests {
         var rows: [PanelState.Row] = (0..<count - 1).map {
             .entry(.init(id: $0, time: "12:34", speaker: $0.isMultiple(of: 2) ? .me : .them, settled: words))
         }
-        rows.append(.entry(.init(id: count, time: "12:35", speaker: .me, settled: "", pending: "w0")))
-        return .init(rows: .init(tail: rows), holds: [], newBelow: 0, followsLive: true)
+        // As the app holds a long call: final rows sealed, the live one in the tail.
+        let live: PanelState.Row = .entry(.init(id: count, time: "12:35", speaker: .me, settled: "", pending: "w0"))
+        return .init(rows: .init(sealed: rows, tail: [live]), holds: [], newBelow: 0, followsLive: true)
     }
 
     private func log(_ lines: PanelState.Lines, config: PanelConfig, size: CGSize) -> AnyView {

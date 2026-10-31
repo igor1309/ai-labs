@@ -85,7 +85,11 @@ extension Transcript {
         private var pieces: [Piece] = []
         /// Where each piece ends in the transcript.
         private var ends: [Int] = []
+        /// How many entries the pieces up to and including each one hold.
+        private var entryEnds: [Int] = []
         private var entries: [EntryRange] = []
+        /// The sealed rows of the last update: unchanged ones share its storage and compare at once.
+        private var sealed: [PanelState.Row] = []
 
         /// The transcript's length after the last update.
         var length: Int { ends.last ?? 0 }
@@ -96,19 +100,24 @@ extension Transcript {
                 builder = Builder(style: style)
                 pieces = []
                 ends = []
+                entryEnds = []
                 entries = []
+                sealed = []
             }
             let builder = builder!
 
             let rows = lines.rows
-            var first = 0
+            // Walking a long call's rows on every update would grow with the call.
+            var first = sealed == rows.sealed ? sealed.count : 0
+            sealed = rows.sealed
             while first < min(pieces.count, rows.count), pieces[first].row == rows[first] { first += 1 }
 
             let start = first == 0 ? 0 : ends[first - 1]
             let range = NSRange(location: start, length: length - start)
-            entries.removeLast(entries.count - pieces[..<first].reduce(0) { $0 + $1.entries.count })
+            entries.removeLast(entries.count - (first == 0 ? 0 : entryEnds[first - 1]))
             pieces.removeLast(pieces.count - first)
             ends.removeLast(ends.count - first)
+            entryEnds.removeLast(entryEnds.count - first)
 
             let text = NSMutableAttributedString()
             for row in rows[first...] {
@@ -122,6 +131,7 @@ extension Transcript {
                 text.append(piece.text)
                 pieces.append(piece)
                 ends.append(start + text.length)
+                entryEnds.append(entries.count)
             }
 
             return Edit(range: range, text: text, entries: entries)

@@ -121,6 +121,50 @@ struct TranscriptLogTests {
         #expect(edit.entries.last?.body.location == start + ("\n13:10\tя\t" as NSString).length)
     }
 
+    @Test func unchangedSealedRowsAreNotBuiltAgain() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        _ = rows.update(sealedLines(many(5), live: "по"), style: style)
+
+        let edit = rows.update(sealedLines(many(5), live: "по слог"), style: style)
+
+        #expect(rows.built == 7)
+        #expect(edit.entries.count == 6)
+        expectApplied(edit, to: sealedLines(many(5), live: "по"), becomes: sealedLines(many(5), live: "по слог"), style: style)
+    }
+
+    @Test func aChangedSealedRowIsBuiltFromThere() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let before = sealedLines(many(5), live: "по")
+        _ = rows.update(before, style: style)
+        var changed = many(5)
+        changed[2] = newest("другое")
+
+        let edit = rows.update(sealedLines(changed, live: "по"), style: style)
+
+        #expect(rows.built == 6 + 4)
+        expectApplied(edit, to: before, becomes: sealedLines(changed, live: "по"), style: style)
+    }
+
+    @Test func rowsThatJoinTheSealedPartKeepTheirText() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let entries = many(5)
+        let before = sealedLines(Array(entries[..<3]), tail: Array(entries[3...]))
+        _ = rows.update(before, style: style)
+        let after = sealedLines(entries, tail: [])
+
+        let edit = rows.update(after, style: style)
+
+        #expect(rows.built == 5)
+        #expect(edit.text.length == 0)
+        #expect(edit.entries.count == 5)
+    }
+
     @Test func aNewAppearanceBuildsEveryRow() {
 
         let rows = Transcript.Rows()
@@ -300,6 +344,25 @@ struct TranscriptLogTests {
     private func newest(_ pending: String) -> PanelState.Entry {
 
         .init(id: 1000, time: "13:10", speaker: .me, settled: "Последняя фраза.", pending: pending)
+    }
+
+    private func sealedLines(_ sealed: [PanelState.Entry], live: String) -> PanelState.Lines {
+
+        sealedLines(sealed, tail: [newest(live)])
+    }
+
+    private func sealedLines(_ sealed: [PanelState.Entry], tail: [PanelState.Entry]) -> PanelState.Lines {
+
+        .init(rows: .init(sealed: sealed.map(PanelState.Row.entry), tail: tail.map(PanelState.Row.entry)))
+    }
+
+    private func expectApplied(
+        _ edit: Transcript.Edit, to before: PanelState.Lines, becomes after: PanelState.Lines, style: Transcript.Style
+    ) {
+
+        let storage = NSTextStorage(attributedString: Transcript(lines: before, style: style).string)
+        TranscriptLog.apply(edit, to: storage)
+        #expect(storage.string == Transcript(lines: after, style: style).string.string)
     }
 
     private func many(_ count: Int) -> [PanelState.Entry] {
