@@ -226,7 +226,9 @@ const { chromium } = require("playwright");
           assert.equal(layout.body.y, viewport.height < 600 ? 8 : 32, context);
           assert.equal(layout.body.h, viewport.height - (viewport.height < 600 ? 16 : 64), context);
           assert.equal(new Set(navButtons.map(b => b.x)).size, singleRail ? 1 : 2, context);
-          assert.equal(new Set(dockButtons.map(b => b.x)).size, singleRail ? 1 : 2, context);
+          assert.equal(new Set(dockButtons.slice(0, 4).map(b => b.x)).size, singleRail ? 1 : 2, context);
+          const undo = dockButtons[4];
+          assert(Math.abs(undo.x + undo.w / 2 - layout.dock.x - layout.dock.w / 2) < 1, context);
           assert(layout.canvas.h >= viewport.height * .75, context);
           assert(Math.abs(layout.canvas.h - Math.min(layout.body.h, layout.body.w * 620 / 920)) < 1, context);
         } else {

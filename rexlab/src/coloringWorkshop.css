@@ -131,6 +131,7 @@
   .coloring-tools { position: relative; flex: none; }
   .coloring-tools::before { content: ""; position: absolute; height: 2px; width: 40px; background: var(--fm-line); top: -13px; left: calc(50% - 20px); }
   .coloring-tools button { background: var(--fm-surface); }
+  .coloring-tools button:last-child { grid-column: 1 / -1; justify-self: center; }
   .coloring-tools button[aria-pressed="true"] { background: var(--coloring-brush); }
   .coloring-body { grid-column: 2; grid-row: 1; }
   .coloring-chooser { bottom: auto; top: 50%; transform: translateY(-50%); }
