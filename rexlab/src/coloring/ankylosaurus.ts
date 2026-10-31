@@ -8,7 +8,7 @@ const regions: readonly PaintRegion[] = [
   { id: "rear-far", x: 0, y: 0, outline: 3, path: "M177 212 L204 215 L204 248 L213 259 Q204 268 179 262 L175 239 Z" },
   { id: "front-far", x: 0, y: 0, outline: 3, path: "M292 208 L319 208 L320 246 L329 257 Q321 266 298 261 L290 239 Z" },
   { id: "body", x: 0, y: 0, outline: 3, path: "M115 186 C115 140 153 108 212 106 C266 102 310 123 333 163 Q351 195 330 216 C300 240 244 245 190 234 Q133 231 115 205 Z" },
-  { id: "armor-1", x: 0, y: 0, parent: "body", outline: 2.5, path: "M137 150 L153 136 Q160 130 168 138 L180 153 L168 165 L145 165 Z" },
+  { id: "armor-1", x: 0, y: 0, parent: "body", outline: 2.5, path: "M137 150 L153 136 Q160 130 168 138 L181 153 L170 169 L144 169 Z" },
   { id: "armor-2", x: 0, y: 0, parent: "body", outline: 2.5, path: "M184 139 L198 125 Q205 117 213 125 L229 140 L217 157 L195 157 Z" },
   { id: "armor-3", x: 0, y: 0, parent: "body", outline: 2.5, path: "M235 140 L248 118 Q256 112 264 120 L280 144 L266 160 L245 158 Z" },
   { id: "armor-4", x: 0, y: 0, parent: "body", outline: 2.5, path: "M283 150 L295 135 Q302 130 310 140 L325 163 L313 175 L292 170 Z" },
