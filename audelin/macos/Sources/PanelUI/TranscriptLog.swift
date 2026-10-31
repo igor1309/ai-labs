@@ -91,7 +91,7 @@ struct TranscriptLog: NSViewRepresentable {
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView scroll: NSScrollView, context: Context) -> CGSize? {
         let diagStart = ContinuousClock.now
-        defer { Self.diag("fits w=\(proposal.width.map { "\(Int($0))" } ?? "nil") h=\(proposal.height.map { "\(Int($0))" } ?? "nil")", diagStart, lines.rows.count) }
+        defer { Self.diag("fits w=\(proposal.width.map { "\($0)" } ?? "nil") h=\(proposal.height.map { "\($0)" } ?? "nil")", diagStart, lines.rows.count) }
 
         let width = proposal.width ?? config.panelWidth
         guard let text = scroll.documentView as? NSTextView,
