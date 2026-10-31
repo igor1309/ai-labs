@@ -10,8 +10,7 @@ themes.
 
 - Behaviour: `docs/features/` (Gherkin).
 - Architecture: `docs/mvp-infrastructure.md`.
-- Dinosaur pictures: `art/style.md`; placeholders stand in until the
-  artwork is generated.
+- Dinosaur pictures: `art/style.md`.
 - Running it locally, commands and releases: `AGENTS.md`.
 
 For the board's browser geometry checks, run `npx playwright install chromium`
