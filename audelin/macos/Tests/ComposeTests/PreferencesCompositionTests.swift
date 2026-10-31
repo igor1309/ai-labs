@@ -3,6 +3,7 @@ import Foundation
 import Preferences
 import Recording
 import Testing
+@testable import Audelin
 @testable import Compose
 
 @Suite(.timeLimit(.minutes(1)))

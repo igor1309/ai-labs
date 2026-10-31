@@ -114,12 +114,16 @@ struct CallRecordingSubscriptionTests {
         let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
         let session = CallSession()
         let base = await composedRecording(session: session, initial: .init(missing: []))
-        let sending = Signal(), release = DrainGate()
-        defer { sending.end(); release.release() }
+        let sending = Signal(), cancelled = Signal(), release = DrainGate()
+        defer { sending.end(); cancelled.end(); release.release() }
         let recording = RecordingInputs(
             send: { event in
                 sending.send()
-                await release.wait()
+                await withTaskCancellationHandler {
+                    await release.wait()
+                } onCancel: {
+                    cancelled.send()
+                }
                 await base.send(event)
             },
             state: base.state, states: base.states, end: base.end
@@ -132,7 +136,7 @@ struct CallRecordingSubscriptionTests {
             await forwarding.cancel()
             returned.withLock { $0 = true }
         }
-        for _ in 0..<100 { await Task.yield() }
+        await cancelled.next()
         #expect(returned.withLock { $0 } == false)
         release.release()
         await cancelling.value

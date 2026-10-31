@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { browserInput } from "../src/root.ts";
 import { LabyrinthBoardScreen, type LabyrinthBoardScreenProps } from "../src/LabyrinthBoardScreen.tsx";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { TEXTS } from "../src/language/texts.ts";
@@ -46,6 +47,26 @@ const part = (selector: string) => {
 };
 
 describe("a playable labyrinth board", () => {
+  it("keeps moving and accepting keyboard controls after repeated native selection and menu attempts", async () => {
+    const input = browserInput(window);
+    onTestFinished(input.stop);
+    render(<PlayableBoard />, withPictures);
+    for (const element of [part(".labyrinth-bar h1"), part(".labyrinth-baby-picture"), maze(), cellAt(first)]) {
+      expect(getComputedStyle(element).userSelect).toBe("none");
+      for (const type of ["contextmenu", "selectstart", "contextmenu"]) expect(fireEvent(element, new Event(type, { bubbles: true, cancelable: true }))).toBe(false);
+    }
+    expect(getComputedStyle(maze()).touchAction).toBe("none");
+    tapAt(cellAt(first), 0, { x: 100, y: 100 });
+    tapAt(cellAt(defaultMaze.start), 250, { x: 36, y: 100 });
+    expect(position()).toBe(`${labelFor(first)} · BABY`);
+    const user = userEvent.setup({ delay: null });
+    maze().focus();
+    await user.keyboard(`{${arrow(first, defaultMaze.start)}}`);
+    expect(position()).toBe(`${labelFor(defaultMaze.start)} · BABY`);
+    tapAt(cellAt(first), 1000, { x: 100, y: 100 });
+    expect(position()).toBe(`${labelFor(first)} · BABY`);
+  });
+
   it("moves one step, clears help, and leaves the old space available", async () => {
     const user = userEvent.setup({ delay: null });
     render(<PlayableBoard />, withPictures);

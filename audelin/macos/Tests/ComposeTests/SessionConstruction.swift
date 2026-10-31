@@ -9,7 +9,7 @@ import protocol TranscriptWriting.CallText
 
 struct SessionConstruction: Sendable {
 
-    var executor: (any TaskExecutor)?
+    var missingModels: @Sendable () -> [String] = { [] }
     var recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordingTrack = SessionPieces.defaultRecordingTrack
     var closeTrack: @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack
     var makeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio
@@ -60,13 +60,17 @@ struct HeldCaptureAudio: CaptureAudio {
 
     let base: any CaptureAudio
     let release: @Sendable () async -> Void
+    var delivered: @Sendable (Audio) -> Void = { _ in }
 
     var capturedThrough: Double { base.capturedThrough }
 
     func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async {
 
         await release()
-        await base.listen(receive)
+        await base.listen { [delivered] audio in
+            await receive(audio)
+            delivered(audio)
+        }
     }
 }
 

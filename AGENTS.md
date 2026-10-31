@@ -107,12 +107,26 @@ composes it.
   swift-imrx. It composes each instance from the generic model, the tested
   reducer and the tested effect handler or doer. A sync model stays on the
   actor that made it; callers elsewhere `await` the hop.
-- Reducer tests are one-line `assert(state, event, reducedTo:)` cases; an
-  async reducer pairs each with `assert(state, event, effect:)`. Effect
+- Each reducer state test is paired with an effect test for the same
+  `(state, event)`: `assert(state, event, delivers:)`. Effect
   handler tests drive collaborators through spies:
   `expect(sut, with: effect, toDeliver: event, on: { spy.complete(…) })`.
   Doer tests feed it states and check its collaborator and `send` spies,
   including that a state seen twice does the work once.
+- `State` is the machine's whole contract, as in Vortex
+  (`ios.config/.claude/skills/rx-state-machine-development/references/state-machine-dod.md`
+  § Tests and § Dependencies; canonical: `swift-vortex/Tests/Feature/CBDC/Core/PaymentClose/`).
+  Every field is public with a public `init`: no hidden bookkeeping, and no computed property
+  that derives what is shown. A screen's machine owns UI state, rendered values included. The
+  view only renders state, animates transitions and sends user interactions; it decides nothing.
+- The reducer produces UI values through injected pure dependencies (a formatter is a closure
+  passed to `init`), never through private helpers. Reducer tests check each dependency with a
+  spy: no call on init or on no-op paths, the exact payload on each call, and the spy's stub
+  value used in the resulting state.
+- A reducer test builds its given state with a `make*` factory, gives the expected state as the
+  given state plus a mutation closure (`assert(state, event) { $0.status = .dismissed }`), and
+  omits the closure for "no change". No test spells out a whole expected state, and reducer
+  tests need no `@testable`.
 
 ## Writing docs and comments
 
@@ -124,6 +138,11 @@ composes it.
 
 ## Implementing with Codex
 
+- Size the process to the task. A small task (one test or a few lines in
+  one module, no product-behaviour change) is done by hand, without a
+  Codex brief, an agister run or an agister review: write it, run its
+  tests, read the diff once yourself and open the PR. Codex and agister
+  are for larger work.
 - The implementer is `codex-sol-61`. Use `codex-luna` only when sol is
   severely limited, and only for a very simple task: it is slow on
   production code and writes poor tests.
@@ -133,9 +152,9 @@ composes it.
 - Review a branch against its merge-base with trunk, after merging trunk
   in. A base on a trunk that has moved on shows trunk's new work as the
   branch deleting it.
-- Review every Codex implement run with agister's review processes before
-  it merges. When sol is limited, run the reviewers one at a time, falling
-  back to `claude-opus`.
+- Review every Codex implement run of a larger task with agister's review
+  processes before it merges. When sol is limited, run the reviewers one
+  at a time, falling back to `claude-opus`.
 - An implement run's `verification` is the record of what it checked:
   each command, its exit code and its last line. Read it before
   committing; do not run its checks again. Run only what it lacks: a

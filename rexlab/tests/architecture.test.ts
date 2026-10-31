@@ -36,6 +36,9 @@ const inSkeletons = (file: string) => file.startsWith("skeletons/");
 const inDig = (file: string) => file.startsWith("dig/");
 const inPicturePuzzle = (file: string) => file.startsWith("picturePuzzle/");
 const SCREENS = [
+  "ColoringWorkshopScreen.tsx",
+  "ColoringResultScreen.tsx",
+  "ColoringGalleryScreen.tsx",
   "CareResultScreen.tsx",
   "CareWelcomeScreen.tsx",
   "CatalogueScreen.tsx",
@@ -71,6 +74,7 @@ const SCREENS = [
 ];
 const PRESENTATION = [
   ...SCREENS,
+  "ColoringArtworkPreview.tsx",
   "ageLevelPictures.ts",
   "Button.tsx",
   "GameAudioButton.tsx",
@@ -92,6 +96,7 @@ const PRESENTATION = [
 // The catalogue's own model of a dinosaur, apart from the quiz's.
 const CATALOGUE = "catalogue.ts";
 const ADAPTERS = [
+  "indexedColoringWorks.ts",
   "decodedPictures.ts",
   "dinosaurPictures.ts",
   "dinosaurs.ts",
@@ -110,6 +115,8 @@ const ADAPTERS = [
   "treasurePictures.ts"
 ];
 const COMPOSITION = [
+  "coloringWorkshopRoot.ts",
+  "ColoringGame.tsx",
   "coloringProbe/main.ts",
   "App.tsx",
   "careGame.tsx",
@@ -146,6 +153,22 @@ const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps production coloring pure and its storage adapter wired only by composition", () => {
+    const coloring = (file: string) => file.startsWith("coloring/");
+    expect(GRAPH.get("coloring/index.ts")).toEqual([]);
+    expect(edges(coloring, target => !coloring(target))).toEqual([]);
+    // Only the coloring composition root builds the concrete vector painter;
+    // presentation and the save queue receive their collaborators.
+    expect(edges(file => !coloring(file) && file !== "coloringWorkshopRoot.ts", target => coloring(target) && target !== "coloring/index.ts")).toEqual([]);
+    expect(GRAPH.get("ColoringGalleryScreen.tsx")).not.toContain("coloring/index.ts");
+    expect(GRAPH.get("ColoringArtworkPreview.tsx")).toEqual([]);
+    const publicColoring = readFileSync(join(SRC, "coloring/index.ts"), "utf8");
+    expect(publicColoring).not.toMatch(/\b(Geometry|VectorShape|PaintRegion|ProtectedDetail|ColoringArtwork|VECTOR_SCALE)\b/);
+    expect(GRAPH.get("indexedColoringWorks.ts")).toEqual(["coloring/index.ts"]);
+    expect(edges(file => !COMPOSITION.includes(file), target => target === "indexedColoringWorks.ts")).toEqual([]);
+    expect(GRAPH.get("coloringWorkshop.ts")).toEqual(["coloring/index.ts"]);
+    expect(GRAPH.get("coloringWorkshopRoot.ts")).toEqual(expect.arrayContaining(["coloring/painter.ts", "indexedColoringWorks.ts", "coloringWorkshop.ts"]));
+  });
   it("keeps the coloring technical probe isolated from game entry points", () => {
     const probe = (file: string) => file.startsWith("coloringProbe/");
     expect(edges((file) => !probe(file), probe)).toEqual([]);

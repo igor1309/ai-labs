@@ -6,7 +6,7 @@ import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { JAW_AUDIO_KEY } from "../src/localJawAudio.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import { TURN_TIMING, appProps, drawnOpacity, extendPart, filterDoubleTaps, pageAnimations, turnFrame } from "../src/root.ts";
+import { TURN_TIMING, appProps, browserColoring, browserInput, drawnOpacity, extendPart, pageAnimations, turnFrame } from "../src/root.ts";
 import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser, quizSaved, rootInsets } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
@@ -357,7 +357,7 @@ describe("the app in a browser", () => {
   });
 
   it("gives the home page, catalogue, dinosaur page, compare quiz's question and result, find the pair's welcome, board and result, sort's board and result, the skeleton choice, museum, puzzle, guess and result, every DIG and care screen and sand writing for both portrait sizes", () => {
-    expect(appProps(browser()).portraitLayouts).toEqual({ "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], "whoseJaw-result": ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] });
+    expect(appProps(browser()).portraitLayouts).toEqual({ "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], "whoseJaw-result": ["tall", "tall-narrow"], coloring: ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] });
   });
 
   it("wires the window media queries and the screen's own orientation into one viewport", () => {
@@ -556,15 +556,45 @@ describe("the double-tap filter in a browser", () => {
   // The window, with a handler of the app's registered after the filter.
   function page() {
     const target = new EventTarget();
-    const stop = filterDoubleTaps(target);
+    const { arbitrate, stop } = browserInput(target);
     const handled: string[] = [];
     for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "click"]) target.addEventListener(type, () => handled.push(type));
     const send = (event: Event) => {
       target.dispatchEvent(event);
       return event.defaultPrevented;
     };
-    return { stop, handled, send };
+    return { arbitrate, stop, handled, send };
   }
+
+  it.each(["contextmenu", "selectstart"])("cancels native %s without changing the tap window or swallowing app handlers", (type) => {
+    const { handled, send, stop } = page();
+    const target = new EventTarget();
+    const input = browserInput(target);
+    const delivered: boolean[] = [];
+    target.addEventListener(type, event => delivered.push(event.defaultPrevented));
+    expect(target.dispatchEvent(new Event(type, { cancelable: true }))).toBe(false);
+    expect(delivered).toEqual([true]);
+    input.stop();
+    expect(target.dispatchEvent(new Event(type, { cancelable: true }))).toBe(true);
+    expect(delivered).toEqual([true, false]);
+
+    expect(send(browserEvent(type, {}))).toBe(true);
+    expect(send(touch("pointerdown", 0))).toBe(false);
+    expect(send(touch("pointerup", 50))).toBe(false);
+    expect(send(browserEvent(type, {}))).toBe(true);
+    expect(send(touch("pointerdown", 250))).toBe(true);
+    expect(send(touch("pointercancel", 300))).toBe(true);
+    expect(send(browserEvent(type, {}))).toBe(true);
+    expect(send(touch("pointerdown", 350))).toBe(false);
+    expect(handled).toEqual(["pointerdown", "pointerup", "pointerdown"]);
+    stop();
+  });
+
+  it.each(["touchstart", "touchmove", "touchend", "wheel", "keydown"])("leaves %s defaults available", (type) => {
+    const { send, stop } = page();
+    expect(send(browserEvent(type, {}))).toBe(false);
+    stop();
+  });
 
   it("reads each touch by its event's own time and place, and keeps what it swallows from every handler", () => {
     const { handled, send } = page();
@@ -585,10 +615,35 @@ describe("the double-tap filter in a browser", () => {
   });
 
   it("filters nothing once taken away", () => {
-    const { stop, handled, send } = page();
+    const { arbitrate, stop, handled, send } = page();
+    arbitrate(event => { event.preventDefault(); event.stopImmediatePropagation(); });
     stop();
     [touch("pointerdown", 0), touch("pointerup", 50), touch("pointerdown", 250)].forEach(send);
 
     expect(handled).toEqual(["pointerdown", "pointerup", "pointerdown"]);
+  });
+
+  it("removes a screen's contact rejection while keeping shared double-tap safety", () => {
+    const { arbitrate, handled, send } = page();
+    const leave = arbitrate(event => { event.preventDefault(); event.stopImmediatePropagation(); });
+    expect(send(touch("pointerdown", 0))).toBe(true);
+    expect(handled).toEqual([]);
+    leave();
+    const first = [touch("pointerdown", 1000), touch("pointerup", 1050), browserEvent("click", { detail: 1 })].map(send);
+    const second = [touch("pointerdown", 1200), touch("pointerup", 1250), browserEvent("click", { detail: 1 })].map(send);
+    expect([first, second]).toEqual([[false, false, false], [true, true, true]]);
+    expect(handled).toEqual(["pointerdown", "pointerup", "click"]);
+  });
+});
+
+describe("coloring identities on a local HTTP preview", () => {
+  it("creates distinct UUIDs when randomUUID is unavailable without opening storage", () => {
+    let seed = 0;
+    const crypto = {
+      getRandomValues: (bytes: Uint8Array) => { bytes.fill(++seed); return bytes; }
+    } as Crypto;
+    const coloring = browserColoring({ document: {} as Document, indexedDB: {} as IDBFactory, crypto });
+    expect(coloring.identity()).toBe("01010101-0101-4101-8101-010101010101");
+    expect(coloring.identity()).toBe("02020202-0202-4202-8202-020202020202");
   });
 });
