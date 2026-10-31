@@ -1,4 +1,5 @@
 import BlockingTestWork
+import Dispatch
 import Synchronization
 import Testing
 
@@ -44,4 +45,46 @@ struct BlockingTestWorkTests {
         }
         #expect(cleaned.withLock { $0 })
     }
+}
+
+struct ThreadBarrierTests {
+
+    @Test func threadsOfTheirOwnMeetIt() async {
+
+        let barrier = ThreadBarrier()
+        await withTaskGroup { group in
+            for index in 0..<barrier.count {
+                let queue = DispatchQueue(label: "test.ThreadBarrier.\(index)")
+                group.addTask {
+                    await withCheckedContinuation { done in
+                        queue.async {
+                            barrier.arrive()
+                            done.resume()
+                        }
+                    }
+                }
+            }
+        }
+        #expect(barrier.met)
+    }
+
+    @Test func workSharingAThreadDoesNotMeetItEvenThoughAllOfItArrives() async {
+
+        let barrier = ThreadBarrier(patience: 0.2)
+        let shared = DispatchQueue(label: "test.ThreadBarrier.shared")
+        await withTaskGroup { group in
+            for _ in 0..<barrier.count {
+                group.addTask {
+                    await withCheckedContinuation { done in
+                        shared.async {
+                            barrier.arrive()
+                            done.resume()
+                        }
+                    }
+                }
+            }
+        }
+        #expect(!barrier.met)
+    }
+
 }

@@ -269,17 +269,20 @@ struct ParakeetRecognizerTests {
         }
     }
 
-    @Test func readingStaysOnTheRecognizersQueueAcrossSuspension() async throws {
+    @Test func blockedRecognizersOutnumberingThePoolAllKeepReadingAcrossSuspension() async throws {
 
-        let reader = QueueCheckingReader()
-        let recognizer = ParakeetRecognizer(reader: reader)
-        recognizer.queue.setSpecific(key: recognizerQueue, value: ())
+        let before = ThreadBarrier(), after = ThreadBarrier()
+        let recognizers = (0..<before.count).map { _ in
+            ParakeetRecognizer(reader: BarrierReader(before: before, after: after))
+        }
 
-        _ = try await recognizer.hear(silence(6))
+        try await withThrowingTaskGroup { group in
+            for recognizer in recognizers { group.addTask { _ = try await recognizer.hear(silence(6)) } }
+            try await group.waitForAll()
+        }
 
-        let checks = await reader.onQueue
-        #expect(!checks.isEmpty)
-        #expect(checks.allSatisfy { $0 })
+        #expect(before.met)
+        #expect(after.met)
     }
 
     // MARK: - Helpers
@@ -377,23 +380,22 @@ private actor ControlledModelLoad {
     }
 }
 
-/// Replies with the scripted windows in turn, then with none.
-private nonisolated(unsafe) let recognizerQueue = DispatchSpecificKey<Void>()
+/// Blocks whichever thread the recognizer runs it on; it has no isolation of its own.
+private struct BarrierReader: WindowReader {
 
-/// Records whether each read runs on the recognizer's queue, before and after it suspends.
-private actor QueueCheckingReader: WindowReader {
-
-    private(set) var onQueue: [Bool] = []
+    let before: ThreadBarrier
+    let after: ThreadBarrier
 
     func read(_ samples: [Float]) async throws -> [WindowWord] {
 
-        onQueue.append(DispatchQueue.getSpecific(key: recognizerQueue) != nil)
+        before.arrive()
         await Task.yield()
-        onQueue.append(DispatchQueue.getSpecific(key: recognizerQueue) != nil)
+        after.arrive()
         return []
     }
 }
 
+/// Replies with the scripted windows in turn, then with none.
 private actor ScriptedReader: WindowReader {
 
     struct Failed: Error {}
