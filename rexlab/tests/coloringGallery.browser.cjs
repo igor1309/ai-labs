@@ -393,6 +393,10 @@ const { chromium } = require("playwright");
           assert(box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1);
           assert.deepEqual(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]), [viewport.width, viewport.height]);
           if (level === "explorer" && viewport.width === 1180 && language === "en" && theme === "light") {
+            await page.evaluate(async () => {
+              await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+              await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
+            });
             await page.screenshot({ path: "/tmp/lab-823/triceratops-explorer.png" });
           }
           await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ");
