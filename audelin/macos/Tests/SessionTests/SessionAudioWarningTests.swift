@@ -245,13 +245,3 @@ struct SessionAudioWarningTests {
         return expected
     }
 }
-
-private func assert(_ state: SessionState, _ event: SessionEvent, reducedTo expected: SessionState, sourceLocation: SourceLocation = #_sourceLocation) {
-
-    #expect(SessionReducer.reduce(state, event).0 == expected, sourceLocation: sourceLocation)
-}
-
-private func assert(_ state: SessionState, _ event: SessionEvent, effect expected: SessionEffect?, sourceLocation: SourceLocation = #_sourceLocation) {
-
-    #expect(SessionReducer.reduce(state, event).1 == expected, sourceLocation: sourceLocation)
-}
