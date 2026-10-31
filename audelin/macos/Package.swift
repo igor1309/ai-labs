@@ -53,7 +53,7 @@ let package = Package(
         .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI"]),
         .target(name: "CallAudioProbe"),
         .target(name: "CallAudioAccess"),
-        .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe"]),
+        .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe", "BlockingTestWork"]),
         .testTarget(name: "CallAudioAccessTests", dependencies: ["CallAudioAccess"]),
         .executableTarget(
             name: "Audelin",
