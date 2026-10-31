@@ -37,6 +37,8 @@
   long call costs what an early one does; a word crossing a chunk's edge
   is no longer lost; an entry whose id returns reads as new, and a
   stalled panel finds only the newest text waiting (LAB-753).
+- Opening Audelin again shows the transcript panel during a call and the
+  calls list between calls (LAB-750).
 
 - Live text breaks long monologues into bounded paragraphs and joins short
   fragments before a pause to the following words (LAB-749).

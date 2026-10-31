@@ -15,6 +15,22 @@
       ],
       "flow": "switch.yaml",
       "settings": "switch.json"
+    },
+    {
+      "name": "iphone",
+      "device": "iPhone",
+      "expected": [
+        {
+          "category": "mode",
+          "phase": "host built"
+        },
+        {
+          "category": "mode",
+          "phase": "client built"
+        }
+      ],
+      "flow": "iphone.yaml",
+      "settings": "iphone.json"
     }
   ]
 }

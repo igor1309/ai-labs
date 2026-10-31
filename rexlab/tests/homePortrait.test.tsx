@@ -367,6 +367,7 @@ const COUNTS: Record<HomeGame, string | undefined> = {
   dig: "7",
   sandWriting: undefined,
   whoseJaw: undefined,
+  coloring: undefined,
   picturePuzzle: "0",
   sort: "6",
   care: "8",

@@ -1,3 +1,4 @@
+import { ColoringGame, type ColoringGameProps } from "./ColoringGame.tsx";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
 import { DEFAULT_AGE_LEVEL, pickAgeLevel, type AgeLevel, type AgeLevelSetting } from "./ageLevel.ts";
 import { useCareGame, type CareGameProps, type CarePhase } from "./careGame.tsx";
@@ -125,6 +126,7 @@ export type AppProps = CareGameProps &
   Pick<DigGameProps, "digDinosaurs" | "digProgress" | "sandContext"> & {
     // Every dinosaur, in the order the catalogue shows them.
     catalogue: readonly CatalogueEntry[];
+    coloring?: Omit<ColoringGameProps, "language" | "home" | "countStart">;
     picturePuzzle?: PicturePuzzleGameProps;
     whoseJaw?: WhoseJawGameProps;
     // The skeleton game's sounds, silent if none.
@@ -206,7 +208,8 @@ type Screen =
   | { kind: "sandWriting" }
   | { kind: "picturePuzzle" }
   | { kind: "labyrinth" }
-  | { kind: "whoseJaw" };
+  | { kind: "whoseJaw" }
+  | { kind: "coloring" };
 
 // A food chosen changes the screen at once. A dinosaur's page opens from its
 // card and closes back to it, and a step slides the next page in the
@@ -257,6 +260,7 @@ export function App({
   sandContext,
   picturePuzzle,
   whoseJaw,
+  coloring,
   ...careProps
 }: AppProps) {
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
@@ -275,7 +279,7 @@ export function App({
   // The game the large card features, chosen once as the app starts: it
   // stays while the app is open, past midnight too, and the next day's is
   // chosen when the app is opened again.
-  const [featured] = useState<HomeGame>(() => chooseFeatured(HOME_GAMES.filter((game) => (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined)), { store: featuredStore, random, today: calendarDay(now()) }));
+  const [featured] = useState<HomeGame>(() => chooseFeatured(HOME_GAMES.filter((game) => (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined) && (game !== "coloring" || coloring !== undefined)), { store: featuredStore, random, today: calendarDay(now()) }));
   // The device language is only the first guess: a parent's choice is kept
   // and wins on every later visit.
   const [language, setLanguage] = useState<Language>(() => languageStore.load() ?? languageOfDevice(deviceLanguage));
@@ -323,7 +327,18 @@ export function App({
     ageLevelStore.save(picked);
   };
 
-  const home = () => go({ kind: "home" });
+  const home = useCallback(() => go({ kind: "home" }), [go]);
+  const countColoringStart = useCallback(() => startCounter.countStart("coloring"), [startCounter]);
+  const [coloringCount, setColoringCount] = useState<number | null | undefined>(undefined);
+  useEffect(() => {
+    if (!coloring || screen.kind !== "home") return;
+    let current = true;
+    setColoringCount(undefined);
+    void coloring.source.list().then(collection => {
+      if (current) setColoringCount(collection.completedCount);
+    }, () => { if (current) setColoringCount(null); });
+    return () => { current = false; };
+  }, [coloring, screen.kind]);
 
   // Each game counts a start where it begins, wherever the child began it
   // from, and not as it opens on a welcome or choice screen.
@@ -668,6 +683,8 @@ export function App({
         return skeletonGame.content(language, whoseJaw ? () => go({ kind: "whoseJaw" }, { also: jawGame.openShelf }) : undefined);
       case "dig":
         return dig.content(language);
+      case "coloring":
+        return coloring && <ColoringGame {...coloring} language={language} home={home} countStart={countColoringStart} />;
       case "whoseJaw":
         return jawGame.content(language);
       case "picturePuzzle":
@@ -700,6 +717,7 @@ export function App({
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
             dig={{ picture: digTile, dugUp: dig.dugUp }}
+            coloring={coloring && { picture: bodyPicture("stegosaurus"), completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
             whoseJaw={whoseJaw && { picture: whoseJaw.jawPicture, collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
             picturePuzzle={picturePuzzle && { picture: bodyPicture("tyrannosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
             labyrinth={{ picture: bodyPicture("triceratops"), stars: labyrinth.stars }}

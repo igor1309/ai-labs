@@ -102,7 +102,21 @@ Feature: Live text of calls
     Given recorded calls in the calls folder
     When I pick another folder and confirm the move
     Then every call is in the new folder, still the same call, and new calls are recorded there
+
+  Scenario: S-20 Opening Audelin again during a call shows the panel
+    Given Audelin is recording a call
+    When I open Audelin again from Finder, Spotlight or the Dock
+    Then the transcript panel shows in front, also when I had closed it
+
+  Scenario: S-21 Opening Audelin again between calls shows the calls
+    Given Audelin is running and no call is recording
+    When I open Audelin again
+    Then the calls list shows
 ```
+
+Opening a running menu bar app again is the way back to it when its icon is
+hidden, as under the notch of a crowded menu bar; menu bar apps such as
+Maccy and Stats answer it by showing their main window.
 
 ## Menu bar
 

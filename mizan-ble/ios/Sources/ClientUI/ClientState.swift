@@ -22,31 +22,7 @@ public struct ClientState: Equatable, Sendable {
         var sessionSteps: [SessionStep] { [find, connect, review, result] }
     }
 
-    public struct Exchange: Equatable, Sendable {
-        public var hostCode: String
-        public var hostDetail: String
-        public var message: String
-        public var clientCode: String
-        public var clientDetail: String
-        public var tone: Message.Tone
-        public var direction: Message.Direction
-        public var symbol: String
-
-        public init(
-            hostCode: String, hostDetail: String, message: String,
-            clientCode: String, clientDetail: String, tone: Message.Tone,
-            direction: Message.Direction, symbol: String
-        ) {
-            self.hostCode = hostCode
-            self.hostDetail = hostDetail
-            self.message = message
-            self.clientCode = clientCode
-            self.clientDetail = clientDetail
-            self.tone = tone
-            self.direction = direction
-            self.symbol = symbol
-        }
-    }
+    public typealias Exchange = ExchangeStrip.Model
 
     public enum Icon: Equatable, Sendable {
         case bluetooth(isSlashed: Bool)
@@ -87,11 +63,12 @@ public struct ClientState: Equatable, Sendable {
     public var detail: String
     public var content: Content
     public var actions: [Action]
+    public var signal: SignalMeter.Model
 
     public init(
         eyebrow: String, status: String, statusTone: StatusPill.State,
         steps: Steps, exchange: Exchange, title: String, detail: String,
-        content: Content, actions: [Action]
+        content: Content, actions: [Action], signal: SignalMeter.Model = .noSignal
     ) {
         self.eyebrow = eyebrow
         self.status = status
@@ -102,5 +79,6 @@ public struct ClientState: Equatable, Sendable {
         self.detail = detail
         self.content = content
         self.actions = actions
+        self.signal = signal
     }
 }

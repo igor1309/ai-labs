@@ -5,6 +5,7 @@ appId: dev.igor1309.mizan-ble.rehearsal
 - extendedWaitUntil:
     visible: "Pay a nearby host"
     timeout: 15000
+- assertVisible: "−40 dBm"
 - tapOn: "Start handshake"
 - extendedWaitUntil:
     visible: "MIZAN-CAFE asks for"

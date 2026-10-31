@@ -8,7 +8,7 @@ public protocol LogDescribable {
 public struct LogEntry: Sendable, Equatable {
     public enum Category: String, Sendable {
         case mode, hostRadio, clientRadio, rehearsal
-        case amountEntry, hostBroadcast, hostPayment, clientFind, clientConnect, clientReview, clientPayment
+        case amountEntry, hostBroadcast, timeoutNotice, hostPayment, clientFind, clientConnect, clientReview, clientPayment
     }
 
     public let category: Category
@@ -35,7 +35,7 @@ public struct SystemLogSink: LogSink {
     public init() {}
     public func write(_ entry: LogEntry) {
         let logger = Logger(subsystem: "mizan-ble", category: entry.category.rawValue)
-        // Entries are constructed only here in the root, from redacted case names and counts.
+        // Entries are constructed only here in the root, from redacted case names, counts and whole dBm signal strength.
         if let error = entry.error {
             logger.error("phase=\(entry.message, privacy: .public) failure=\(error, privacy: .public)")
         } else {

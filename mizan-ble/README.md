@@ -6,9 +6,10 @@ till) enters an amount and advertises it; the client (an iPhone) finds the
 host, shows the amount, and confirms or declines. The host then shows a
 mocked payment result, and both sides end the transaction.
 
-Status: building v0.0.1 (2026-10-29). The app shell launches with the mode
-switch and logs; host and client screens await flow wiring. v0.0.1 is the two-mode
-app with both apps in the foreground; later versions try to drop the
+Status: v0.0.1 is built (2026-10-30) and checked on a real iPad and iPhone:
+payments confirm, fail and decline end to end, and the measured signal
+values are in [NOTES.md](NOTES.md). v0.0.1 is the two-mode app with both
+apps in the foreground; later versions try to drop the
 explicit handshake (v0.1.0) and the foreground app (v0.2.0).
 
 | Path | What it holds |
@@ -18,7 +19,7 @@ explicit handshake (v0.1.0) and the foreground app (v0.2.0).
 | [AGENTS.md](AGENTS.md) | Rules for agents: the architecture, the spec process, building and the design |
 | [docs/poc.md](docs/poc.md) | The proof of concept: versions, the host and client flows, design notes, research leads |
 | [NOTES.md](NOTES.md) | How it is built: choosing the host by signal strength, encrypting each exchange with a per-session key |
-| [ios/](ios/) | The component Swift package and the root package `App/` (`Root`, `DeviceRadios` and the MizanBLE app target): the cores `HostBroadcast` (a locked amount through the countdown and handshake to a secure link), `HostPayment` (the client's decision through the mock result), `ClientFind` (scanning, host selection and handover), `ClientConnect` (the handshake from a chosen host to a secure link and the amount), `ClientReview` (the payer's confirm or decline through the host's acknowledgement) and `ClientPayment` (the payer's wait for the host's result and the transaction's end), `DesignSystem`, `HostRadio` (serving and advertising sessions, the owner's writes and queued sends, and service cleanup), `ClientRadio` (Bluetooth readings, GATT connections, writes and host messages), `Preferences` (numbers and text stored in a named suite), `SystemClock` (monotonic instants, countdowns and periodic ticks), and the UI modules `ModeSwitchUI` (the mode and its header switch), `HostUI` (the operator's iPad screens), `SettingsUI` (the host's settings sheet), `ClientUI` (the payer's find and connect screens) and `ClientPaymentUI` (the payer's review and result screens). Each core's effect handler returns its results as a stream, for the app to run on swift-imrx's `ObservableModel`. Run `swift build` and `swift test` here |
+| [ios/](ios/) | The component Swift package and the root package `App/` (`Root`, `DeviceRadios` and the MizanBLE app target): the cores `HostBroadcast` (a locked amount through the countdown and handshake to a secure link), `TimeoutNotice` (showing a timeout for 30 seconds or until the operator acts), `HostPayment` (the client's decision through the mock result), `ClientFind` (scanning, host selection and handover), `ClientConnect` (the handshake from a chosen host to a secure link and the amount), `ClientReview` (the payer's confirm or decline through the host's acknowledgement), `ClientPayment` (the payer's wait for the host's result and the transaction's end) and `HostChoice` (holding the offered host over time), `DesignSystem`, `HostRadio` (serving and advertising sessions, the owner's writes and queued sends, and service cleanup), `ClientRadio` (Bluetooth readings, GATT connections, writes and host messages), `Preferences` (numbers and text stored in a named suite), `SystemClock` (monotonic instants, countdowns and periodic ticks), and the UI modules `ModeSwitchUI` (the mode and its header switch), `HostUI` (the operator's iPad screens), `SettingsUI` (the host's settings sheet), `ClientUI` (the payer's find and connect screens) and `ClientPaymentUI` (the payer's review and result screens). Each core's effect handler returns its results as a stream, for the app to run on swift-imrx's `ObservableModel`. Run `swift build` and `swift test` here |
 | [ios/PreviewApps/](ios/PreviewApps/) | `ModeSwitchPreview`: try the switch in either device shell; `HostPreview`, `SettingsPreview`, `ClientPreview` and `ClientPaymentPreview`: pick the module's states and log the events they send. Each exports light/dark PNGs |
 | [docs/design/](docs/design/) | The design in pen.dev (`mizan-ble.pen`), its index and previews: the design system, the host and client screens and the paired flow, and the Mizan sign candidates |
 | [docs/research/](docs/research/) | Research notes on proximity payments, including an architecture candidate the architecture weighs |
@@ -42,6 +43,14 @@ in the target settings. The shell keeps both radios idle until flows
 are wired. Test the root with `swift test` in `ios/App`. The app icon is the
 Icon Composer file `ios/App/MizanBLE/AppIcon.icon`; its layers are
 exported from the design's "Mizan · App icon" frame.
+
+Screen snapshots render the host on an 11-inch iPad and the host and client
+on an iPhone 15 Pro, in light and dark, with each device's real safe area.
+Run `ios/scripts/snapshot-tests.sh`; it creates and uses one pinned iPhone 15
+Pro simulator on iOS 26.3. After an intended change, rerun it with
+`SNAPSHOT_RECORD=1` and commit the new references in
+`ios/Tests/UISnapshotTests/__Snapshots__`. CI compares them on the
+self-hosted Mac, the machine they were recorded on.
 
 Run the `MizanBLE Rehearsal` scheme on a simulator to play against a
 scripted other side. Add `-scriptedRadio /absolute/path/to/settings.json`

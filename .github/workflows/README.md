@@ -54,13 +54,13 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | foliotell Android (`:core:test`), debug build | `foliotell-android-core` | the `foliotell-android` filter | runs |
 | notio backend (`notio/backend/Tests/`) | `notio-core` | the `notio` filter | runs |
 | notio frontend (`notio/frontend/tests/`), typecheck, build | `notio-frontend-core` | the `notio-frontend` filter | runs |
-| rexlab (`rexlab/tests/*.test.ts`, `*.test.tsx`), typecheck, build, board geometry in Chromium (`npm run test:browser`) | `rexlab-core` | the `rexlab` filter | runs; browser checks once, on shard 1 |
+| rexlab (`rexlab/tests/*.test.ts`, `*.test.tsx`), typecheck, build, board geometry, coloring probe/production pixels, workshop, long drawing contacts, gallery, result and full flow in Chromium (`npm run test:browser`, `node tests/coloringProbe.browser.cjs`, `node tests/coloringPainter.browser.cjs`, `node tests/coloringWorkshop.browser.cjs`, `node tests/coloringDrawing.browser.cjs`, `node tests/coloringGallery.browser.cjs`, `node tests/coloringResult.browser.cjs`, `node tests/coloringFlow.browser.cjs`) | `rexlab-core` | the `rexlab` filter | runs; four unit shards and eight independent browser jobs, each with a 10-minute limit |
 | dev-skills: the marketplace manifest and its skills (no tests) | `dev-skills-validation` | the `dev-skills` filter | runs |
 | session-digest (`session-digest/tests/*.test.ts`), typecheck | `session-digest-core` | the `session-digest` filter | runs |
 | loki (`loki/tests/*.test.js`) | `loki-core` | the `loki` filter, with every compose file: its label check reads those of the projects its allowlist names | runs |
 | neris (`neris/packages/swift-neris/Tests/`) | `neris-core` | the `neris` filter | runs |
 | audelin (`audelin/macos/Tests/`, `audelin/macos/PreviewApps/Tests/`), profiling tool tests (`audelin/macos/scripts/tests/`) | `audelin-core`: main package built once with `-Xswiftc -O`, tests bounded to 120 seconds; preview tests use a debug build | the `audelin` filter, with the recorded fixtures its tests read | runs |
-| mizan-ble (`mizan-ble/ios/Tests/`), Python token-generator tests, the token check, iOS and preview-app builds | `mizan-ble-core` | the `mizan-ble` filter, with the design file `mizan-ble.pen` its tests read | runs |
+| mizan-ble (`mizan-ble/ios/Tests/`), Python token-generator tests, the token check, iOS and preview-app builds; screen snapshots on the self-hosted `local-mac` runner | `mizan-ble-core` | the `mizan-ble` filter, with the design file `mizan-ble.pen` its tests read | runs |
 | claude-insights: the script's pytest and the functions' Deno tests | `claude-insights-core` | the `claude-insights` filter | runs |
 | The langfuse stack (`tests/test_langfuse_shared_stack.py`) | `langfuse-core` | the `langfuse` filter | runs |
 | mac-health (`tools/mac-health/tests/test-*.sh`) | `mac-health-core`: `tools/mac-health/tests/run-all.sh`, on `macos-latest` | the `mac-health` filter | runs |

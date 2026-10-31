@@ -120,26 +120,84 @@ public struct Message: View {
 }
 
 public struct ExchangeStrip: View {
+
+    /// What the strip shows: the two devices and the message between them.
+    public struct Model: Equatable, Sendable {
+        public var hostCode: String
+        public var hostDetail: String
+        public var message: String
+        public var clientCode: String
+        public var clientDetail: String
+        public var tone: Message.Tone
+        public var direction: Message.Direction
+        public var symbol: String
+        public var clientIsEmpty: Bool
+
+        public init(
+            hostCode: String, hostDetail: String, message: String,
+            clientCode: String, clientDetail: String, tone: Message.Tone,
+            direction: Message.Direction, symbol: String, clientIsEmpty: Bool = false
+        ) {
+            self.hostCode = hostCode
+            self.hostDetail = hostDetail
+            self.message = message
+            self.clientCode = clientCode
+            self.clientDetail = clientDetail
+            self.tone = tone
+            self.direction = direction
+            self.symbol = symbol
+            self.clientIsEmpty = clientIsEmpty
+        }
+    }
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let host: DeviceChip
     let message: Message
     let client: DeviceChip
+    let isCompact: Bool
 
-    public init(host: DeviceChip, message: Message, client: DeviceChip) {
+    public init(host: DeviceChip, message: Message, client: DeviceChip, isCompact: Bool = false) {
         self.host = host
         self.message = message
         self.client = client
+        self.isCompact = isCompact
+    }
+
+    public init(_ model: Model, isCompact: Bool = false) {
+        self.init(
+            host: DeviceChip(.host, code: model.hostCode, state: model.hostDetail),
+            message: Message(model.message, direction: model.direction, tone: model.tone, systemImage: model.symbol),
+            client: DeviceChip(model.clientIsEmpty ? .empty : .client, code: model.clientCode, state: model.clientDetail),
+            isCompact: isCompact
+        )
     }
 
     public var body: some View {
-        HStack(spacing: Tokens.space2) {
-            host
-            message.contents.frame(maxWidth: .infinity)
-            client
+        Group {
+            if isCompact {
+                VStack(spacing: Tokens.space1) {
+                    HStack(spacing: Tokens.space2) {
+                        host
+                        Spacer(minLength: .zero)
+                        client
+                    }
+                    message.contents
+                }
+            } else {
+                HStack(spacing: Tokens.space2) {
+                    host
+                    message.contents.frame(maxWidth: .infinity)
+                    client
+                }
+            }
         }
-        .padding(.vertical, Tokens.space3)
+        .lineLimit(1)
+        .padding(.vertical, isCompact ? Tokens.space1 : Tokens.space3)
         .overlay(alignment: .top) { Rectangle().fill(Tokens.lineSoft).frame(height: 1) }
         .overlay(alignment: .bottom) { Rectangle().fill(Tokens.lineSoft).frame(height: 1) }
+        // Chips and message change together, so the whole strip takes its new
+        // layout at once and fades in.
+        .fadesIn(on: [host.code, host.state, message.title, client.code, client.state])
         .animation(Motion.fast(reduced: reduceMotion).animation, value: host.code)
         .animation(Motion.fast(reduced: reduceMotion).animation, value: host.state)
         .animation(Motion.fast(reduced: reduceMotion).animation, value: message.title)

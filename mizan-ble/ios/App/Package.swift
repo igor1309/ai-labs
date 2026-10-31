@@ -19,10 +19,12 @@ let package = Package(
             .product(name: "IMRxObservation", package: "swift-imrx"),
             .product(name: "AmountEntry", package: "ios"),
             .product(name: "HostBroadcast", package: "ios"),
+            .product(name: "TimeoutNotice", package: "ios"),
             .product(name: "HostPayment", package: "ios"),
             .product(name: "HostUI", package: "ios"),
             .product(name: "ClientFind", package: "ios"),
             .product(name: "HostPicker", package: "ios"),
+            .product(name: "HostChoice", package: "ios"),
             .product(name: "ClientConnect", package: "ios"),
             .product(name: "ClientReview", package: "ios"),
             .product(name: "ClientPayment", package: "ios"),
@@ -41,7 +43,6 @@ let package = Package(
             "Root",
             .product(name: "HostRadio", package: "ios"),
             .product(name: "ClientRadio", package: "ios"),
-            .product(name: "SystemClock", package: "ios"),
         ]),
         .target(name: "ScriptedSettings"),
         .target(name: "ScriptedRadio", dependencies: [
@@ -51,6 +52,6 @@ let package = Package(
         ]),
         .testTarget(name: "ScriptedSettingsTests", dependencies: ["ScriptedSettings"]),
         .testTarget(name: "ScriptedRadioTests", dependencies: ["ScriptedRadio"]),
-        .testTarget(name: "RootTests", dependencies: ["Root"]),
+        .testTarget(name: "RootTests", dependencies: ["Root", "DeviceRadios"]),
     ]
 )

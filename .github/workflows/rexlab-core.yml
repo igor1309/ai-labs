@@ -46,12 +46,42 @@ jobs:
         working-directory: rexlab
         run: npm run build
 
+  # Each browser contract owns its server/build lifecycle. Keep their budgets
+  # independent of unit shards and of the other browser contracts.
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        script:
+          - whoseJawBoardLandscape
+          - coloringProbe
+          - coloringPainter
+          - coloringWorkshop
+          - coloringDrawing
+          - coloringGallery
+          - coloringResult
+          - coloringFlow
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        working-directory: rexlab
+        run: npm ci
+
       - name: Install Chromium
-        if: matrix.shard == 1
         working-directory: rexlab
         run: npx playwright install --with-deps chromium
 
-      - name: Check board geometry in Chromium
-        if: matrix.shard == 1
+      - name: Run browser contract
         working-directory: rexlab
-        run: npm run test:browser
+        run: node tests/${{ matrix.script }}.browser.cjs

@@ -38,14 +38,53 @@ door.
   leader, the client takes the host with the strongest average if it is
   above a floor and leads the runner-up by a margin. Starting values: floor
   −65 dBm, margin 6 dB. With no clear leader the client keeps scanning and
-  shows "Hold your phone closer to the till"; it never guesses.
+  shows "Hold your phone closer to the till"; it never guesses. Once
+  chosen, a host is kept while it still leads by the margin and its average
+  stays above a drop line 6 dB under the floor, or dips under it for less
+  than a 1 s hold; it drops at once on a rival or on its fade.
 - **Settings:** α, the window, the floor and the margin are settings, like
   the host's countdown. Starting values are guesses; the values measured
   between a real iPad and iPhone are recorded here.
+- **Signal shown, not judged:** the client draws the strongest smoothed
+  signal as bars and dBm while it scans, counting bars by the picker's own
+  floor and drop line, so a payer sees why it says "hold closer". At Start
+  the scan stops, so the value is frozen and marked "at start". A weak or
+  lost signal during the handshake fails nothing: the link's own errors do
+  that, and the host, as a peripheral, never learns its central's RSSI.
 - **Seam:** the selector is a pure type that takes timestamped readings and
   a clock and returns a host, "keep scanning" or nothing; Core Bluetooth
   only feeds it. Its tests cover one host, two close hosts, a host that
   fades out and the 127 reading, with no radio.
+
+### Measured on devices
+
+An iPad Pro 11" (3rd generation) as the host and an iPhone 15 Pro on
+iOS 27 as the client, 2026-10-29, with the picker's starting values.
+
+- **Payments:** a confirmed payment with success, one with failure and a
+  declined one ended as expected on both screens, and so did a payment
+  with the iPhone as host after switching modes. From connecting to the
+  opened amount took 1.1–1.3 s; the session read is 50 bytes and the
+  largest write 512.
+- **A host left alone times out:** on 2026-10-30, with no client near,
+  the iPad and the iPhone as host each counted down 60 s, ended the
+  broadcast on the second, retired the service within 60 ms and
+  returned to amount entry.
+- **Smoothed RSSI (α 0.3):** −40 to −55 dBm with the phone beside the
+  iPad, −60 to −66 at arm's length, −66 to −77 a few steps away. With the
+  phone held still the average moves 5–13 dB within a second.
+- **The floor is right, the edge is not:** −65 dBm falls at arm's length,
+  where a payer stands, but there the answer flips between the host and
+  "hold closer" 2 to 8 times a second, because the picker chooses and
+  drops a host at the same line. The settings stay at their starting
+  values until the picker holds its choice (see Open).
+- **A second host** was not at hand, so the choice between two tills
+  moves to v0.1.0; the rehearsal lanes cover it meanwhile.
+- **The log keeps no secret:** both devices' logs from every payment,
+  collected and read in full, hold no amount, key, nonce, message bytes or
+  device identifier, nor any long hex, base64 or UUID run. A line holds phases,
+  case names, counts and the signal strength in whole dBm, which says how
+  far a radio is, not who anyone is or what they paid.
 
 ### Encrypting the exchange with a per-session key
 
@@ -101,4 +140,6 @@ another.
 
 ## Open
 
-None.
+- **Tuning:** whether α, the floor and the margin change now that the
+  picker holds its choice; that needs a measuring run on the iPad and
+  iPhone.

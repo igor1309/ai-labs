@@ -35,3 +35,15 @@ Bluetooth-off fixture: the reason, Start disabled. Evidence: Missing.
 ## S-8 A host with no name yet
 
 Chosen-host fixture with no name: "Mizan till" in place of the name, Start enabled. Evidence: Missing.
+
+## S-9 The signal while finding
+
+In-range and hold-closer fixtures, and a gone fixture given a live signal: the signal row matches S-2's and S-3's frames, live bars and dBm, beside each screen's own words. Evidence: Missing.
+
+## S-10 The signal at the start
+
+Connecting and failed fixtures: the signal row matches S-5's and S-6's frames, dimmed, "at start". Evidence: Missing.
+
+## S-11 No signal
+
+No-host, gone and Bluetooth-off fixtures given no signal: the signal row matches S-1's, S-4's and S-7's frames, unlit, "No signal". Evidence: Missing.

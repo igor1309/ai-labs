@@ -5,6 +5,7 @@ appId: dev.igor1309.mizan-ble.rehearsal
 - extendedWaitUntil:
     visible: "Near is in range. Start the handshake to see the amount."
     timeout: 15000
+- assertVisible: "−35 dBm"
 - tapOn: "Start handshake"
 - extendedWaitUntil:
     visible: "Near asks for"

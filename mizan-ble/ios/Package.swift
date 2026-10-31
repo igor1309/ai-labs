@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "ClientReview", targets: ["ClientReview"]),
         .library(name: "AmountEntry", targets: ["AmountEntry"]),
         .library(name: "HostBroadcast", targets: ["HostBroadcast"]),
+        .library(name: "TimeoutNotice", targets: ["TimeoutNotice"]),
         .library(name: "ClientConnect", targets: ["ClientConnect"]),
         .library(name: "ClientPayment", targets: ["ClientPayment"]),
         .library(name: "ClientFind", targets: ["ClientFind"]),
@@ -27,6 +28,11 @@ let package = Package(
         .library(name: "MessageCodec", targets: ["MessageCodec"]),
         .library(name: "SessionCrypto", targets: ["SessionCrypto"]),
         .library(name: "HostPicker", targets: ["HostPicker"]),
+        .library(name: "HostChoice", targets: ["HostChoice"]),
+    ],
+    dependencies: [
+        // Test-only: the screen snapshots in UISnapshotTests.
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
     ],
     targets: [
         .target(name: "HostRadio"),
@@ -41,6 +47,8 @@ let package = Package(
         .testTarget(name: "AmountEntryTests", dependencies: ["AmountEntry"]),
         .target(name: "HostBroadcast"),
         .testTarget(name: "HostBroadcastTests", dependencies: ["HostBroadcast"]),
+        .target(name: "TimeoutNotice"),
+        .testTarget(name: "TimeoutNoticeTests", dependencies: ["TimeoutNotice"]),
         .target(name: "ClientConnect"),
         .testTarget(name: "ClientConnectTests", dependencies: ["ClientConnect"]),
         .target(name: "ClientPayment"),
@@ -64,9 +72,19 @@ let package = Package(
         .testTarget(name: "SessionCryptoTests", dependencies: ["SessionCrypto"]),
         .target(name: "HostPicker"),
         .testTarget(name: "HostPickerTests", dependencies: ["HostPicker"]),
+        .target(name: "HostChoice"),
+        .testTarget(name: "HostChoiceTests", dependencies: ["HostChoice"]),
         .target(
             name: "DesignSystem",
             resources: [.copy("Resources/Fonts")]
+        ),
+        .testTarget(
+            name: "UISnapshotTests",
+            dependencies: [
+                "HostUI", "ClientUI", "ClientPaymentUI", "SettingsUI", "DesignSystem",
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+            ],
+            exclude: ["__Snapshots__"]
         ),
         .testTarget(
             name: "DesignSystemTests",

@@ -2,6 +2,7 @@ import type { Texts } from "./texts.ts";
 
 export const en: Texts = {
   gameAudio: { mute: "MUTE SOUND", on: "SOUND ON", off: "SOUND OFF" },
+  coloring: "COLOR A DINOSAUR",
   whoseJaw: "WHOSE JAW?",
   jawShelf: "JAW SHELF",
   jawProgress: "JAWS PLACED",

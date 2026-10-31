@@ -36,6 +36,9 @@ const inSkeletons = (file: string) => file.startsWith("skeletons/");
 const inDig = (file: string) => file.startsWith("dig/");
 const inPicturePuzzle = (file: string) => file.startsWith("picturePuzzle/");
 const SCREENS = [
+  "ColoringWorkshopScreen.tsx",
+  "ColoringResultScreen.tsx",
+  "ColoringGalleryScreen.tsx",
   "CareResultScreen.tsx",
   "CareWelcomeScreen.tsx",
   "CatalogueScreen.tsx",
@@ -92,6 +95,7 @@ const PRESENTATION = [
 // The catalogue's own model of a dinosaur, apart from the quiz's.
 const CATALOGUE = "catalogue.ts";
 const ADAPTERS = [
+  "indexedColoringWorks.ts",
   "decodedPictures.ts",
   "dinosaurPictures.ts",
   "dinosaurs.ts",
@@ -110,6 +114,9 @@ const ADAPTERS = [
   "treasurePictures.ts"
 ];
 const COMPOSITION = [
+  "coloringWorkshopRoot.ts",
+  "ColoringGame.tsx",
+  "coloringProbe/main.ts",
   "App.tsx",
   "careGame.tsx",
   "digGame.tsx",
@@ -145,6 +152,25 @@ const CATALOGUE_GEOMETRY = ["catalogueColumns.ts", "chipArrangement.ts"];
 const LAYOUT_TURNS = "layoutTurns.ts";
 
 describe("the import graph", () => {
+  it("keeps production coloring pure and its storage adapter wired only by composition", () => {
+    const coloring = (file: string) => file.startsWith("coloring/");
+    expect(GRAPH.get("coloring/index.ts")).toEqual([]);
+    expect(edges(coloring, target => !coloring(target))).toEqual([]);
+    // Only the coloring composition root builds the concrete vector painter;
+    // presentation and the save queue receive their collaborators.
+    expect(edges(file => !coloring(file) && file !== "coloringWorkshopRoot.ts", target => coloring(target) && target !== "coloring/index.ts")).toEqual([]);
+    expect(GRAPH.get("indexedColoringWorks.ts")).toEqual(["coloring/index.ts"]);
+    expect(edges(file => !COMPOSITION.includes(file), target => target === "indexedColoringWorks.ts")).toEqual([]);
+    expect(GRAPH.get("coloringWorkshop.ts")).toEqual(["coloring/index.ts"]);
+    expect(GRAPH.get("coloringWorkshopRoot.ts")).toEqual(expect.arrayContaining(["coloring/painter.ts", "indexedColoringWorks.ts", "coloringWorkshop.ts"]));
+  });
+  it("keeps the coloring technical probe isolated from game entry points", () => {
+    const probe = (file: string) => file.startsWith("coloringProbe/");
+    expect(edges((file) => !probe(file), probe)).toEqual([]);
+    expect(edges((file) => probe(file) && file !== "coloringProbe/main.ts", (target) => !probe(target))).toEqual([]);
+    expect(GRAPH.get("coloringProbe/main.ts")).toContain("root.ts");
+    expect(edges(probe, (target) => COMPOSITION.includes(target) && target !== "root.ts")).toEqual([]);
+  });
   it("keeps game audio independent of UI and storage, with browser persistence wired at the root", () => {
     expect(GRAPH.get("gameAudio.ts")).toEqual(["language/language.ts"]);
     expect(GRAPH.get("root.ts")).toContain("localJawAudio.ts");

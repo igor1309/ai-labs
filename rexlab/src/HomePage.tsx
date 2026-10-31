@@ -1,4 +1,4 @@
-import { Route, Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Pencil, Puzzle, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { Route, Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Pencil, Puzzle, Scale, Shapes, Star, Sun, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
 import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -19,10 +19,10 @@ const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light:
 const BRAND = "RexLab";
 
 // The games the home page offers, each on a tile of its own.
-export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth" | "picturePuzzle" | "whoseJaw";
+export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth" | "picturePuzzle" | "whoseJaw" | "coloring";
 
 // The games in their tiles' order, which never changes.
-export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth", "picturePuzzle", "whoseJaw"];
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth", "picturePuzzle", "whoseJaw", "coloring"];
 
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
@@ -81,6 +81,7 @@ export type HomePageProps = {
   dig: { picture: string; dugUp: number | undefined };
   // Its tile and featured card share the collection across all levels.
   whoseJaw?: { picture: string; collected: number; total: number; onOpen: () => void } | undefined;
+  coloring?: { picture: string; completed: number | null | undefined; onOpen: () => void } | undefined;
   picturePuzzle?: { picture: string; collected: number; onOpen: () => void } | undefined;
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
@@ -127,6 +128,7 @@ export function HomePage({
   moreComing,
   picturePuzzle,
   whoseJaw,
+  coloring,
   onCompareDinosaurs,
   onCatalogue,
   onCare,
@@ -151,7 +153,7 @@ export function HomePage({
   // Each game's own parts, which its tile and the large card both show,
   // so the two never tell the child different things.
   type GameEntry = { name: string; symbol: LucideIcon; picture: ReactNode; badge: Badge | undefined; onOpen: () => void };
-  const games: Record<Exclude<HomeGame, "picturePuzzle" | "whoseJaw">, GameEntry> & { picturePuzzle: GameEntry | undefined; whoseJaw: GameEntry | undefined } = {
+  const games: Record<Exclude<HomeGame, "picturePuzzle" | "whoseJaw" | "coloring">, GameEntry> & { picturePuzzle: GameEntry | undefined; whoseJaw: GameEntry | undefined; coloring: GameEntry | undefined } = {
     compare: {
       name: text.quizCard,
       symbol: Scale,
@@ -200,6 +202,12 @@ export function HomePage({
       picture: <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />,
       badge: dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp },
       onOpen: onDig
+    },
+    coloring: coloring && {
+      name: text.coloring, symbol: Pencil,
+      picture: <Picture className="coloring-tile-picture" src={coloring.picture} alt="" width={800} height={600} />,
+      badge: coloring.completed === undefined ? undefined : coloring.completed === null ? { symbol: TriangleAlert, value: "?" } : { symbol: Star, value: coloring.completed },
+      onOpen: coloring.onOpen
     },
     whoseJaw: whoseJaw && {
       name: text.whoseJaw, symbol: Landmark,
@@ -320,6 +328,13 @@ export function HomePage({
         <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
       </Button>
     ),
+    coloring: games.coloring && (
+      <Button key="coloring" className="card coloring-tile" data-turn-part="tile-coloring" aria-label={games.coloring.name} onClick={games.coloring.onOpen}>
+        {games.coloring.picture}
+        <span className="coloring-tile-row"><span className="coloring-tile-symbol" aria-hidden="true"><Pencil size={20} /></span><span>{games.coloring.name}</span></span>
+        <BadgeChip badge={games.coloring.badge} className="coloring-tile-count" size={18} />
+      </Button>
+    ),
     whoseJaw: games.whoseJaw && (
       <Button key="whoseJaw" className="card whose-jaw-tile" data-turn-part="tile-whoseJaw" aria-label={games.whoseJaw.name} onClick={games.whoseJaw.onOpen}>
         {games.whoseJaw.picture}
@@ -359,8 +374,8 @@ export function HomePage({
       </Button>
     )
   };
-  const featuredGame = (featured === "picturePuzzle" && !picturePuzzle) || (featured === "whoseJaw" && !whoseJaw) ? "compare" : featured;
-  const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined));
+  const featuredGame = (featured === "picturePuzzle" && !picturePuzzle) || (featured === "whoseJaw" && !whoseJaw) || (featured === "coloring" && !coloring) ? "compare" : featured;
+  const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined) && (game !== "coloring" || coloring !== undefined));
   // The tiles and the games still to come, in columns of two.
   const columns = Math.ceil((shown.length + 1) / 2);
   const rowStart = narrow ? NARROW_ROW_START : ROW_START;

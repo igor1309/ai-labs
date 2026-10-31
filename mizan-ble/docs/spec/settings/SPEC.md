@@ -7,7 +7,8 @@ each reads a value in its range, the one last chosen or its default.
 
 Settings owns each setting's default and allowed values: the countdown
 (60 s), the picker's α (0.3), window (1 s and 5 readings), floor (−65 dBm),
-margin (6 dB) and fade (2 s), and the advertised name. It stores through a
+margin (6 dB), fade (2 s) and drop gap (6 dB), host choice's hold (1 s),
+and the advertised name. It stores through a
 store interface of its own, answered by the preferences adapter.
 
 ## Decided
@@ -19,8 +20,8 @@ store interface of its own, answered by the preferences adapter.
 - **The advertised name is made once,** `MIZAN-` and four random upper-case
   hex digits, stored and never changed in v0.0.1, so the payer sees the
   same till each time.
-- **The picker's values have no screen in v0.0.1;** they change in the
-  store, for a trial, and are read at each scan.
+- **The picker's values and the hold have no screen in v0.0.1;** they
+  change in the store, for a trial, and are read at each scan.
 
 ```gherkin
 Feature: Settings with their defaults
@@ -28,7 +29,7 @@ Feature: Settings with their defaults
   Scenario: S-1 Defaults on a fresh install
     Given nothing is stored
     When the settings are read
-    Then I can read a 60 s countdown and the picker's starting values
+    Then I can read a 60 s countdown, the picker's starting values and the hold
 
   Scenario: S-2 Choosing a countdown
     Given the countdown is 60 s
@@ -54,7 +55,28 @@ Feature: Settings with their defaults
     Given the store holds a margin of 8 dB
     When the settings are read
     Then I can read a margin of 8 dB
+
+  Scenario: S-7 A drop gap from the store
+    Given the store holds a drop gap of 4 dB
+    When the settings are read
+    Then I can read a drop gap of 4 dB
+
+  Scenario: S-8 A drop gap out of range
+    Given the store holds a drop gap of 25 dB
+    When the settings are read
+    Then I can read the default drop gap
+
+  Scenario: S-9 A hold from the store
+    Given the store holds a hold of 0.5 s
+    When the settings are read
+    Then I can read a hold of 0.5 s
+
+  Scenario: S-10 A hold out of range
+    Given the store holds a hold of 6 s
+    When the settings are read
+    Then I can read the default hold
 ```
 
 Not the settings': where values are stored (preferences), the screen
-(host UI) and what each value does (host broadcast, host picker).
+(host UI) and what each value does (host broadcast, host picker, host
+choice).
