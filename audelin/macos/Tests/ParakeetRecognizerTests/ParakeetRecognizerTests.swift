@@ -123,8 +123,8 @@ struct ParakeetRecognizerTests {
         let next = try await recognizer.hear(silence(4))
 
         let one = Word("один", start: 4.25, end: 4.5)
-        #expect(first == Hearing(words: [one], from: 4.25, finalThrough: 4))
-        #expect(next == Hearing(words: [one, Word("два", start: 5, end: 5.5)], from: 4.25, finalThrough: 8))
+        #expect(first == Hearing(words: [one], from: 4.25, finalThrough: 4, noWordBefore: 2))
+        #expect(next == Hearing(words: [one, Word("два", start: 5, end: 5.5)], from: 4.25, finalThrough: 8, noWordBefore: 6))
     }
 
     @Test func aPendingWordTheNextWindowDoesNotHearIsGone() async throws {

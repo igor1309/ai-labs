@@ -8,6 +8,8 @@ public actor TrackText {
 
         public let final: [Text]
         public let tail: [Text]
+        /// No text still to come starts before this.
+        public var noTextBefore: Double? = nil
 
         /// The downstream text stores still consume whole-call snapshots.
         public var all: [Text] { final + tail }
@@ -125,6 +127,7 @@ public actor TrackText {
     private var accepted: Accepted?
     private var finalText: [Text] = []
     private var tail: [Text] = []
+    private var noTextBefore: Double?
     private var appliedReply: Reply?
     private let mapSegment: @Sendable (Segments.Segment, Double) -> Text
 
@@ -277,9 +280,10 @@ public actor TrackText {
                 let newlyFinal = update.finalCount - update.from
                 if newlyFinal > 0 { finalText.append(contentsOf: mapped.prefix(newlyFinal)) }
                 tail = Array(mapped.dropFirst(newlyFinal))
+                noTextBefore = update.noWordBefore
                 appliedReply = reply
             }
-            return Update(final: finalText, tail: tail)
+            return Update(final: finalText, tail: tail, noTextBefore: noTextBefore)
         } catch {
             session.stop()
             await session.reading.value

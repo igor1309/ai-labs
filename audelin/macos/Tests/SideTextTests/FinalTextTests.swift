@@ -153,6 +153,34 @@ struct FinalTextTests {
         audio.end()
         await side.waitForAudioEnd()
     }
+
+    @Test func aBoundArrivingWhileOffIsShownOnlyWithTheFinalTextItCovers() async {
+
+        let finals = [word(0, settled: true), word(1, settled: true)]
+        let text = DeltaText(hearings: [
+            TextUpdate(final: [], tail: [word(0)], noTextBefore: 0),
+            TextUpdate(final: finals, tail: [], noTextBefore: 2),
+        ], finish: TextUpdate(final: finals, tail: []))
+        let audio = CueAudio(), side = SideText(audio: audio, text: text, fillIn: { DeltaFill(progress: nil) })
+        await side.start()
+        await listening(side)
+        await audio.send(chunk(0))
+        #expect(await side.state.noTextBefore == 0)
+        let gate = Gate()
+        await text.holdNextHearing(gate)
+        let delivery = Task { await audio.send(chunk(1)) }
+        await gate.entered()
+        await side.setEnabled(false)
+        await gate.release()
+        await delivery.value
+        #expect(await side.state.noTextBefore == 0)
+        await side.setEnabled(true)
+        await listening(side)
+        #expect(await side.state.noTextBefore == 2)
+        #expect(await side.state.finalCount == 2)
+        audio.end()
+        await side.waitForAudioEnd()
+    }
 }
 
 private func word(_ id: Int, settled: Bool = false, sampleRate: Double = 1) -> Text {

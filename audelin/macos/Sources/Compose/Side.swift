@@ -61,11 +61,13 @@ struct CallSide: CallText.Side {
         var finalEntries: [SideState.Entry] = []
         var lastStatus: SideText.State.Status?
         var lastTail: [SideText.State.Entry] = []
+        var lastNoTextBefore: Double?
         for await snapshot in side.updates {
             // A suppressed snapshot still acknowledges completed processing.
             defer { snapshotTaken(snapshot) }
             guard snapshot.status != lastStatus || snapshot.finalCount != finalEntries.count
-                || snapshot.tailEntries != lastTail else { continue }
+                || snapshot.tailEntries != lastTail || snapshot.noTextBefore != lastNoTextBefore else { continue }
+            lastNoTextBefore = snapshot.noTextBefore
             lastStatus = snapshot.status
             lastTail = snapshot.tailEntries
             let status: SideState.Status = switch snapshot.status {
@@ -79,7 +81,8 @@ struct CallSide: CallText.Side {
                 finalEntries.append(contentsOf: snapshot.finalEntries.dropFirst(finalEntries.count).map(mapEntry))
             }
             await receive(SideState(
-                status: status, finalEntries: finalEntries, tailEntries: snapshot.tailEntries.map(mapEntry)
+                status: status, finalEntries: finalEntries, tailEntries: snapshot.tailEntries.map(mapEntry),
+                noTextBefore: snapshot.noTextBefore
             ))
         }
     }
@@ -129,7 +132,7 @@ actor SideHearing: SideText.LiveText {
         let text = text
         let operation = Task {
             let update = try await text.hear(audio)
-            return TextUpdate(final: update.final, tail: update.tail)
+            return TextUpdate(final: update.final, tail: update.tail, noTextBefore: update.noTextBefore)
         }
         hearing = operation
         defer { hearing = nil }
@@ -147,7 +150,7 @@ actor SideHearing: SideText.LiveText {
     func finish() async throws -> TextUpdate {
 
         let update = try await text.finish()
-        return TextUpdate(final: update.final, tail: update.tail)
+        return TextUpdate(final: update.final, tail: update.tail, noTextBefore: update.noTextBefore)
     }
     func stop() async { await text.shutdown() }
 }

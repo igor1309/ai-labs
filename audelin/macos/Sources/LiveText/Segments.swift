@@ -27,6 +27,8 @@ public struct Segments: Equatable, Sendable {
     public private(set) var ending: Ending?
     /// Seconds into the track where the last word ends.
     public var end: Double { words.last?.end ?? finalEnd }
+    /// No word still to come starts before this; nil until the recogniser says.
+    public private(set) var noWordBefore: Double?
 
     /// The silence between two words that starts a new segment.
     let pause: Double
@@ -55,6 +57,21 @@ public struct Segments: Equatable, Sendable {
             }
         }
         cutIntoSegments()
+        if let bound = hearing.noWordBefore { noWordBefore = max(noWordBefore ?? bound, bound) }
+        closeAfterQuiet()
+    }
+
+    /// The next word will start a new segment, so this one need not wait for it.
+    /// Its end is then its last word's, not the next segment's start.
+    private mutating func closeAfterQuiet() {
+
+        guard let noWordBefore, settledCount == words.count, let last = words.last,
+              noWordBefore - last.end >= pause,
+              words.count >= 3 || words.contains(where: endsSentence) else { return }
+        finalCount = all.count
+        finalEnd = last.end
+        words.removeAll()
+        settledCount = 0
     }
 
     mutating func finish(_ hearing: Hearing) {

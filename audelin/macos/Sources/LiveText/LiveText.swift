@@ -13,6 +13,8 @@ public actor LiveText {
         public let segments: [Segments.Segment]
         public let end: Double
         public let ending: Segments.Ending?
+        /// No word still to come starts before this.
+        public var noWordBefore: Double? = nil
     }
 
     /// Ordered, lossless updates starting at the previous final count.
@@ -64,7 +66,7 @@ public actor LiveText {
         continuation.yield(Update(
             from: reportedFinalCount, finalCount: segments.finalCount,
             segments: segments.all[reportedFinalCount...].map { $0 },
-            end: segments.end, ending: segments.ending
+            end: segments.end, ending: segments.ending, noWordBefore: segments.noWordBefore
         ))
         reportedFinalCount = segments.finalCount
     }

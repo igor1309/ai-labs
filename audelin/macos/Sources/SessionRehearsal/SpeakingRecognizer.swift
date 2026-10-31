@@ -68,7 +68,9 @@ public actor SpeakingRecognizer: Recognizer {
 
     private func report(finalThrough: Double) -> Hearing {
 
-        let hearing = Hearing(words: pending, from: pending.first?.start ?? heard, finalThrough: finalThrough)
+        let hearing = Hearing(
+            words: pending, from: pending.first?.start ?? heard, finalThrough: finalThrough, noWordBefore: time(of: slot)
+        )
         pending.removeAll { $0.end <= finalThrough }
         return hearing
     }

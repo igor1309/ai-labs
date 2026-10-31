@@ -31,6 +31,8 @@ public struct State: Equatable, Sendable {
     /// Immutable leading entries, retained across tail revisions.
     public internal(set) var finalEntries: [Entry] = []
     public internal(set) var tailEntries: [Entry]
+    /// No text still to come starts before this.
+    public internal(set) var noTextBefore: Double?
 
     init(status: Status, entries: [Entry]) {
 

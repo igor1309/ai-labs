@@ -58,7 +58,8 @@ public actor CallText {
         snapshots = snapshots.map { snapshot in
             .init(
                 status: snapshot.ended ? snapshot.status : (enabled ? .gettingReady : .off),
-                finalEntries: snapshot.finalEntries, tailEntries: snapshot.tailEntries
+                finalEntries: snapshot.finalEntries, tailEntries: snapshot.tailEntries,
+                noTextBefore: snapshot.noTextBefore
             )
         }
         publish()
@@ -154,11 +155,12 @@ public actor CallText {
         }
         sort(&remaining)
 
-        // A revisable start can move. Only an immutable segment's end is a
-        // lower bound on future text; a side with no finals still knows none.
+        // A revisable start can move. An immutable segment's end is a lower
+        // bound on future text, and so is what the side says of its quiet.
         let bounds = snapshots.enumerated().compactMap { index, snapshot -> (Double, State.Speaker)? in
             guard !snapshot.ended, !endedSides[index] else { return nil }
-            return (snapshot.finalEntries.last?.text.end ?? -.infinity, index == 0 ? .mine : .theirs)
+            let bound = max(snapshot.finalEntries.last?.text.end ?? -.infinity, snapshot.noTextBefore ?? -.infinity)
+            return (bound, index == 0 ? .mine : .theirs)
         }
         let newlyFinal = remaining.prefix { item in
             item.isFinal && bounds.allSatisfy { start, speaker in

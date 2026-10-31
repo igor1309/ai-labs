@@ -32,6 +32,7 @@ public actor SideText {
     // A hearing can return while switched off. Keep its final text hidden
     // until showing resumes, when the recovered-audio ranges are known.
     private var pendingFinal: [Text] = []
+    private var heardNoTextBefore: Double?
     private var shownIDs: [Int: Int] = [:]
     private var highestID = -1
     private var later: [Range<Double>] = []
@@ -278,6 +279,8 @@ public actor SideText {
             pendingFinal.removeAll(keepingCapacity: true)
         }
         state.tailEntries = latest.map(entry)
+        // Shown with the text it covers: hidden final text starts before it.
+        state.noTextBefore = heardNoTextBefore
         shownThrough = heardThrough
     }
 
@@ -295,6 +298,7 @@ public actor SideText {
         pendingFinal.append(contentsOf: update.final.dropFirst(acceptedFinalCount).map(identify))
         acceptedFinalCount = update.final.count
         latest = identified(update.tail)
+        heardNoTextBefore = update.noTextBefore ?? heardNoTextBefore
     }
 
     /// Updates replace unread ones, so an id live text leaves out and then

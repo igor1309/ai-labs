@@ -36,6 +36,8 @@ public struct SideState: Equatable, Sendable {
     public let status: Status
     public let finalEntries: [Entry]
     public let tailEntries: [Entry]
+    /// No text still to come starts before this. Nil when the side cannot say.
+    public let noTextBefore: Double?
     public var entries: [Entry] { finalEntries + tailEntries }
 
     public init(status: Status, entries: [Entry]) {
@@ -43,11 +45,12 @@ public struct SideState: Equatable, Sendable {
         self.init(status: status, finalEntries: [], tailEntries: entries)
     }
 
-    public init(status: Status, finalEntries: [Entry], tailEntries: [Entry]) {
+    public init(status: Status, finalEntries: [Entry], tailEntries: [Entry], noTextBefore: Double? = nil) {
 
         self.status = status
         self.finalEntries = finalEntries
         self.tailEntries = tailEntries
+        self.noTextBefore = noTextBefore
     }
 }
 

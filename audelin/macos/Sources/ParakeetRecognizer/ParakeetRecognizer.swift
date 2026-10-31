@@ -134,7 +134,8 @@ public actor ParakeetRecognizer: Recognizer {
         }
         reportedCount = finalCount
         pendingFrom = finalCount < words.count ? words[finalCount].start : nil
-        return Hearing(words: reported, from: from, finalThrough: through)
+        // The next window starts here, and a window's words start inside it.
+        return Hearing(words: reported, from: from, finalThrough: through, noWordBefore: max(0, chunkStart - Self.context))
     }
 
     private func middle(_ word: Word) -> Double {

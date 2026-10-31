@@ -143,6 +143,49 @@ struct FinalEntriesTests {
         await call.stop()
     }
 
+    @Test func aQuietSideLetsTheOtherSidesFinalEntriesThroughUpToItsBound() async {
+
+        let mine = FinalSide(), theirs = FinalSide()
+        let call = CallText(microphone: mine, call: theirs)
+        await call.start()
+        await mine.send(final: (0..<4).map { word($0) }, tail: [])
+        #expect(await call.state.finalCount == 0)
+
+        await theirs.send(final: [], tail: [], noTextBefore: 2)
+        #expect(await call.state.finalCount == 3)
+
+        // A word arriving at the bound still lands after what went final.
+        await theirs.send(final: [], tail: [word(0, start: 2)], noTextBefore: 2)
+        let state = await call.state
+        #expect(state.finalCount == 3)
+        #expect(state.entries.map(\.text.start) == [0, 1, 2, 2, 3])
+        #expect(state.entries[2].speaker == .mine)
+        await call.stop()
+    }
+
+    @Test func aQuietSidesOpenEntryHoldsBackWhatFollowsIt() async {
+
+        let mine = FinalSide(), theirs = FinalSide()
+        let call = CallText(microphone: mine, call: theirs)
+        await call.start()
+        await mine.send(final: (0..<4).map { word($0) }, tail: [])
+        await theirs.send(final: [], tail: [word(0, start: 1.5)], noTextBefore: 3)
+        #expect(await call.state.finalCount == 2)
+        await call.stop()
+    }
+
+    @Test func switchingOffKeepsASidesBound() async {
+
+        let mine = FinalSide(), theirs = FinalSide()
+        let call = CallText(microphone: mine, call: theirs)
+        await call.start()
+        await theirs.send(final: [], tail: [], noTextBefore: 2)
+        await call.setEnabled(false)
+        await mine.send(final: (0..<4).map { word($0) }, tail: [], status: .off)
+        #expect(await call.state.finalCount == 3)
+        await call.stop()
+    }
+
     @Test(arguments: [20, 800, 6_000])
     func newestEntrySortWorkDoesNotGrowWithTheFinalPrefix(count: Int) async {
 
@@ -239,12 +282,18 @@ private actor FinalSide: Side {
 
     func setEnabled(_ enabled: Bool) async {
 
-        await send(final: state.finalEntries, tail: state.tailEntries, status: enabled ? .listening : .off)
+        await send(
+            final: state.finalEntries, tail: state.tailEntries, status: enabled ? .listening : .off,
+            noTextBefore: state.noTextBefore
+        )
     }
 
-    func send(final: [SideState.Entry], tail: [SideState.Entry], status: SideState.Status = .listening) async {
+    func send(
+        final: [SideState.Entry], tail: [SideState.Entry], status: SideState.Status = .listening,
+        noTextBefore: Double? = nil
+    ) async {
 
-        state = .init(status: status, finalEntries: final, tailEntries: tail)
+        state = .init(status: status, finalEntries: final, tailEntries: tail, noTextBefore: noTextBefore)
         await withCheckedContinuation { deliveries.continuation.yield(Delivery(state: state, received: $0)) }
     }
 

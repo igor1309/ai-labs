@@ -40,11 +40,14 @@ public struct TextUpdate: Equatable, Sendable {
     public let final: [Text]
     /// The current revisable suffix; omitted ids lose their identity.
     public let tail: [Text]
+    /// No text still to come starts before this.
+    public let noTextBefore: Double?
 
-    public init(final: [Text], tail: [Text]) {
+    public init(final: [Text], tail: [Text], noTextBefore: Double? = nil) {
 
         self.final = final
         self.tail = tail
+        self.noTextBefore = noTextBefore
     }
 }
 
