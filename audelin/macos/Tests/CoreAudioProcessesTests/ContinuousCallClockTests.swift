@@ -2,7 +2,47 @@
 import Synchronization
 import Testing
 
+@Suite(.timeLimit(.minutes(1)))
 struct ContinuousCallClockTests {
+
+    @Test func firesOnceAfterRealDelay() async throws {
+
+        let clock = ContinuousCallClock()
+        let delay = Duration.milliseconds(20)
+        let fired = AsyncStream<ContinuousClock.Instant>.makeStream()
+        defer { fired.continuation.finish() }
+
+        await confirmation(expectedCount: 1) { confirm in
+            let origin = ContinuousClock.now
+            let wait = clock.after(delay) {
+                confirm()
+                fired.continuation.yield(ContinuousClock.now)
+            }
+            defer { wait.cancel() }
+            var instants = fired.stream.makeAsyncIterator()
+
+            let instant = await instants.next()
+            #expect(instant.map { origin.duration(to: $0) >= delay } == true)
+        }
+    }
+
+    @Test func cancellingRealWaitDoesNotFire() async throws {
+
+        let clock = ContinuousCallClock()
+        let fired = Mutex(0)
+        let laterFired = AsyncStream<Void>.makeStream()
+        defer { laterFired.continuation.finish() }
+        let wait = clock.after(.milliseconds(20)) { fired.withLock { $0 += 1 } }
+        defer { wait.cancel() }
+
+        wait.cancel()
+        let laterWait = clock.after(.milliseconds(40)) { laterFired.continuation.yield(()) }
+        defer { laterWait.cancel() }
+        var laterFires = laterFired.stream.makeAsyncIterator()
+        _ = await laterFires.next()
+
+        #expect(fired.withLock { $0 } == 0)
+    }
 
     @Test(arguments: [Duration.zero, .seconds(30), .seconds(90)])
     func forwardsTheDeadlineAndFiresAfterSleep(delay: Duration) async throws {
