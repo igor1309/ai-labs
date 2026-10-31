@@ -7,7 +7,7 @@ import SwiftUI
 @MainActor
 struct Transcript {
 
-    struct Style {
+    struct Style: Equatable {
 
         let tokens: GlassLedger
         let config: PanelConfig
@@ -31,34 +31,9 @@ struct Transcript {
 
     init(lines: PanelState.Lines, style: Style) {
 
-        let builder = Builder(style: style)
-
-        let log = style.tokens.space12
-
-        for row in lines.rows {
-
-            switch row {
-            case let .entry(entry):
-                builder.entry(entry, alpha: 1, spacing: log)
-
-            case let .gap(gap):
-                builder.caption("\(gap.speaker == .me ? "я" : "они")  \(gap.text)", alpha: 1, spacing: log)
-
-            case let .late(late):
-                // The design dims the whole group, spaces it tighter than the
-                // log around it, and rules it off from what follows.
-                let group = style.tokens.space8
-                builder.caption("дописано позже · \(late.span)", alpha: 0.6, spacing: group)
-                for (index, entry) in late.entries.enumerated() {
-                    let isLast = index == late.entries.count - 1
-                    builder.entry(entry, alpha: 0.6, spacing: isLast ? log + Transcript.ruleWidth + log : group)
-                }
-                builder.ruleBelow(gap: log)
-            }
-        }
-
-        string = builder.result
-        entries = builder.ranges
+        let edit = Rows().update(lines, style: style)
+        string = edit.text
+        entries = edit.entries
     }
 
     /// The selection as the panel holds it: the text without gutters, and
@@ -87,40 +62,168 @@ struct Transcript {
     }
 }
 
+extension Transcript {
+
+    /// What changed in the transcript since the last update.
+    struct Edit {
+
+        /// The part of the previous transcript to replace.
+        let range: NSRange
+        let text: NSAttributedString
+        /// Every entry's place in the new transcript.
+        let entries: [EntryRange]
+    }
+
+    /// Keeps each row's text from one update to the next, so an update
+    /// builds only the rows from the first that changed.
+    @MainActor
+    final class Rows {
+
+        /// How many rows have been built: a count of the work, not its time.
+        private(set) var built = 0
+        private var builder: Builder?
+        private var pieces: [Piece] = []
+        /// Where each piece ends in the transcript.
+        private var ends: [Int] = []
+        /// How many entries the pieces up to and including each one hold.
+        private var entryEnds: [Int] = []
+        private var entries: [EntryRange] = []
+        /// The sealed rows of the last update: unchanged ones share its storage and compare at once.
+        private var sealed: [PanelState.Row] = []
+
+        /// The transcript's length after the last update.
+        var length: Int { ends.last ?? 0 }
+
+        func update(_ lines: PanelState.Lines, style: Style) -> Edit {
+
+            if builder?.style != style {
+                builder = Builder(style: style)
+                pieces = []
+                ends = []
+                entryEnds = []
+                entries = []
+                sealed = []
+            }
+            let builder = builder!
+
+            let rows = lines.rows
+            // Walking a long call's rows on every update would grow with the call.
+            var first = sealed == rows.sealed ? sealed.count : 0
+            sealed = rows.sealed
+            while first < min(pieces.count, rows.count), pieces[first].row == rows[first] { first += 1 }
+
+            let start = first == 0 ? 0 : ends[first - 1]
+            let range = NSRange(location: start, length: length - start)
+            entries.removeLast(entries.count - (first == 0 ? 0 : entryEnds[first - 1]))
+            pieces.removeLast(pieces.count - first)
+            ends.removeLast(ends.count - first)
+            entryEnds.removeLast(entryEnds.count - first)
+
+            let text = NSMutableAttributedString()
+            for row in rows[first...] {
+                if let last = pieces.last {
+                    text.append(.init(string: "\n", attributes: [.paragraphStyle: last.paragraph]))
+                }
+                let piece = builder.piece(row)
+                built += 1
+                let offset = start + text.length
+                entries += piece.entries.map { .init(id: $0.id, body: NSRange(location: $0.body.location + offset, length: $0.body.length)) }
+                text.append(piece.text)
+                pieces.append(piece)
+                ends.append(start + text.length)
+                entryEnds.append(entries.count)
+            }
+
+            return Edit(range: range, text: text, entries: entries)
+        }
+    }
+
+    /// One row's text, with its entries placed from its own start.
+    struct Piece {
+
+        let row: PanelState.Row
+        let text: NSAttributedString
+        let entries: [EntryRange]
+        /// The style of its last paragraph, which the newline after it takes.
+        let paragraph: NSParagraphStyle
+    }
+}
+
 private extension Transcript {
 
     @MainActor
     final class Builder {
 
         let style: Style
-        let result = NSMutableAttributedString()
-        var ranges: [EntryRange] = []
+        private var result = NSMutableAttributedString()
+        private var ranges: [EntryRange] = []
 
         private var tokens: GlassLedger { style.tokens }
+
+        // Built once a style: every row shares the same few.
+        private var fonts: [FontKey: NSFont] = [:]
+        private var paragraphs: [ParagraphKey: NSParagraphStyle] = [:]
+        private var timeWidths: [CGFloat: CGFloat] = [:]
+        private var caretImage: NSImage?
+        /// The style of the paragraph being built, which the text system
+        /// gives its ending newline too.
+        private var current: NSParagraphStyle?
 
         init(style: Style) {
 
             self.style = style
         }
 
-        func caption(_ string: String, alpha: CGFloat, spacing: CGFloat) {
+        func piece(_ row: PanelState.Row) -> Piece {
+
+            result = NSMutableAttributedString()
+            ranges = []
+            current = nil
+
+            let log = tokens.space12
+            switch row {
+            case let .entry(entry):
+                self.entry(entry, alpha: 1, spacing: log)
+
+            case let .gap(gap):
+                caption("\(gap.speaker == .me ? "я" : "они")  \(gap.text)", alpha: 1, spacing: log)
+
+            case let .late(late):
+                // The design dims the whole group, spaces it tighter than the
+                // log around it, and rules it off from what follows.
+                let group = tokens.space8
+                caption("дописано позже · \(late.span)", alpha: 0.6, spacing: group)
+                for (index, entry) in late.entries.enumerated() {
+                    let isLast = index == late.entries.count - 1
+                    self.entry(entry, alpha: 0.6, spacing: isLast ? log + Transcript.ruleWidth + log : group)
+                }
+                ruleBelow(gap: log)
+            }
+
+            return Piece(row: row, text: result, entries: ranges, paragraph: current!)
+        }
+
+        private func caption(_ string: String, alpha: CGFloat, spacing: CGFloat) {
 
             newParagraph()
+            let paragraph = paragraph(size: tokens.typeCaption, indent: 0, spacing: spacing)
+            current = paragraph
             result.append(.init(string: string, attributes: [
                 .font: font(tokens.typeCaption),
                 .baselineOffset: lift(tokens.typeCaption),
                 .foregroundColor: NSColor(tokens.gutter).withAlphaComponent(alpha),
-                .paragraphStyle: paragraph(size: tokens.typeCaption, indent: 0, spacing: spacing),
+                .paragraphStyle: paragraph,
                 Transcript.gutter: true,
             ]))
         }
 
-        func entry(_ entry: PanelState.Entry, alpha: CGFloat, spacing: CGFloat) {
+        private func entry(_ entry: PanelState.Entry, alpha: CGFloat, spacing: CGFloat) {
 
             newParagraph()
 
             let size = tokens.typeBody
             let paragraph = paragraph(size: size, indent: style.config.gutterWidth + tokens.space12, spacing: spacing)
+            current = paragraph
             func attributes(_ font: NSFont, _ color: Color) -> [NSAttributedString.Key: Any] {
                 [
                     .font: font,
@@ -157,7 +260,7 @@ private extension Transcript {
         }
 
         /// Draws a line under the last paragraph, `gap` below its text.
-        func ruleBelow(gap: CGFloat) {
+        private func ruleBelow(gap: CGFloat) {
 
             guard let last = ranges.last else { return }
             result.addAttribute(Transcript.ruleBelow, value: gap, range: last.body)
@@ -165,14 +268,17 @@ private extension Transcript {
 
         private func caret(_ paragraph: NSParagraphStyle) -> NSAttributedString {
 
-            let color = NSColor(tokens.me)
-            let image = NSImage(size: NSSize(width: 2, height: 15), flipped: false) { rect in
-                color.setFill()
-                rect.fill()
-                return true
-            }
             let attachment = NSTextAttachment()
-            attachment.image = image
+            attachment.image = caretImage ?? {
+                let color = NSColor(tokens.me)
+                let image = NSImage(size: NSSize(width: 2, height: 15), flipped: false) { rect in
+                    color.setFill()
+                    rect.fill()
+                    return true
+                }
+                caretImage = image
+                return image
+            }()
             attachment.bounds = CGRect(x: 0, y: -3, width: 2, height: 15)
 
             let caret = NSMutableAttributedString(attachment: attachment)
@@ -182,15 +288,20 @@ private extension Transcript {
 
         private func newParagraph() {
 
-            guard result.length > 0 else { return }
-            result.append(.init(string: "\n", attributes: [.paragraphStyle: paragraph(size: tokens.typeBody, indent: 0, spacing: tokens.space12)]))
+            guard let current else { return }
+            result.append(.init(string: "\n", attributes: [.paragraphStyle: current]))
         }
 
         private func font(_ size: CGFloat, _ weight: NSFont.Weight = .regular) -> NSFont {
 
+            let key = FontKey(size: size, weight: weight)
+            if let font = fonts[key] { return font }
+
             let descriptor = NSFontDescriptor(fontAttributes: [.family: tokens.fontData])
                 .addingAttributes([.traits: [NSFontDescriptor.TraitKey.weight: weight]])
-            return NSFont(descriptor: descriptor, size: size) ?? .monospacedSystemFont(ofSize: size, weight: weight)
+            let font = NSFont(descriptor: descriptor, size: size) ?? .monospacedSystemFont(ofSize: size, weight: weight)
+            fonts[key] = font
+            return font
         }
 
         /// Fixed-height lines put their extra space above the glyphs; lifting
@@ -204,6 +315,9 @@ private extension Transcript {
         /// below the glyphs as the SwiftUI log does.
         private func paragraph(size: CGFloat, indent: CGFloat, spacing: CGFloat) -> NSParagraphStyle {
 
+            let key = ParagraphKey(size: size, indent: indent, spacing: spacing)
+            if let style = paragraphs[key] { return style }
+
             let style = NSMutableParagraphStyle()
             let height = (size * self.style.config.lineHeight).rounded()
             style.minimumLineHeight = height
@@ -211,12 +325,34 @@ private extension Transcript {
             style.paragraphSpacing = spacing
             style.headIndent = indent
 
-            let time = NSAttributedString(string: "00:00", attributes: [.font: font(size)]).size().width
             style.tabStops = [
-                NSTextTab(textAlignment: .left, location: time + tokens.space8),
+                NSTextTab(textAlignment: .left, location: timeWidth(size) + tokens.space8),
                 NSTextTab(textAlignment: .left, location: indent),
             ]
+            paragraphs[key] = style
             return style
         }
+
+        /// How wide the gutter's time is, so the speaker lines up after it.
+        private func timeWidth(_ size: CGFloat) -> CGFloat {
+
+            if let width = timeWidths[size] { return width }
+            let width = NSAttributedString(string: "00:00", attributes: [.font: font(size)]).size().width
+            timeWidths[size] = width
+            return width
+        }
+    }
+
+    struct FontKey: Hashable {
+
+        let size: CGFloat
+        let weight: NSFont.Weight
+    }
+
+    struct ParagraphKey: Hashable {
+
+        let size: CGFloat
+        let indent: CGFloat
+        let spacing: CGFloat
     }
 }

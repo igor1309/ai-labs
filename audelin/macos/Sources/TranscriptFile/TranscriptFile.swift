@@ -1,7 +1,8 @@
 import Dispatch
 import Foundation
 
-/// One call's latest transcript, replaced whole by each successful write.
+/// One call's latest transcript. Once some of it is final, a write keeps the final text already on
+/// disk and rewrites only what follows it; until then, and after a failure, it replaces the file whole.
 public actor TranscriptFile {
 
     // Blocking file operations must not occupy the cooperative thread pool.
@@ -42,6 +43,14 @@ public actor TranscriptFile {
 
     private let binding: any TranscriptFileBinding
     private var closed = false
+    /// Every entry from `finalCount` on, kept so an unchanged one is not rendered again.
+    private var rendered: [Rendered] = []
+    /// The header and each final entry followed by its separator; only ever appended to.
+    private var finalText = Data("# Transcript\n\n".utf8)
+    private var finalCount = 0
+    private var finalHasWords = false
+    /// How many leading bytes of `finalText` the file on disk is known to hold, once it holds a final entry.
+    private var keptOnDisk: Int?
     private static let noText = "# Transcript\n\nNo text was heard.\n"
 
     /// Creates a new file exclusively; an existing path is always an error.
@@ -76,12 +85,46 @@ public actor TranscriptFile {
     /// A failed replacement leaves writing available for the next snapshot.
     public func write(_ segments: [Segment]) throws {
 
+        try write(count: segments.count, finalCount: 0) { segments[$0] }
+    }
+
+    /// Asks only for segments after those already final, so a save does not walk
+    /// the call. The leading `finalCount` segments must never change again.
+    public func write(count: Int, finalCount: Int, segment: @Sendable (Int) -> Segment) throws {
+
         guard !closed else { throw Failure.writingEnded }
-        let text = try render(segments)
+        // Cleared first, so any failure below, rendering included, makes the next write replace the file whole.
+        let kept = keptOnDisk
+        keptOnDisk = nil
+        try render(count: count, finalCount: finalCount, segment: segment)
+        let (text, tail, noText) = text()
+        if let kept, !noText {
+            try rewrite(after: min(kept, text.count), text: text, tail: tail)
+        } else {
+            try replace(text: text, tail: tail)
+        }
+        if !noText, self.finalCount > 0 { keptOnDisk = text.count }
+    }
+
+    /// Cuts the file back to text it already holds before writing the rest, so a crash or a
+    /// failure in between leaves every final entry whole; the next write after a failure
+    /// replaces the file whole.
+    private func rewrite(after kept: Int, text: Data, tail: Data) throws {
+
+        let file = try binding.open(at: url)
+        try file.truncate(to: kept)
+        try file.write(text[(text.startIndex + kept)...])
+        try file.write(tail)
+        try file.flush()
+    }
+
+    private func replace(text: Data, tail: Data) throws {
+
         let temporary = url.deletingLastPathComponent().appendingPathComponent(".transcript-\(UUID()).tmp")
         let file = try binding.create(at: temporary)
         defer { binding.remove(at: temporary) }
-        try file.write(Data(text.utf8))
+        try file.write(text)
+        try file.write(tail)
         try file.flush()
         try binding.rename(from: temporary, to: url)
     }
@@ -89,9 +132,43 @@ public actor TranscriptFile {
     /// Keeps the last whole transcript and ends further writes.
     public func close() { closed = true }
 
-    private func render(_ segments: [Segment]) throws -> String {
+    private func render(count: Int, finalCount: Int, segment: (Int) -> Segment) throws {
 
-        let parts = try segments.map { segment in
+        let tailCount = max(count - self.finalCount, 0)
+        for position in 0..<tailCount {
+            let segment = segment(self.finalCount + position)
+            if position < rendered.count, rendered[position].segment == segment { continue }
+            let part = try Rendered(segment)
+            if position < rendered.count { rendered[position] = part } else { rendered.append(part) }
+        }
+        rendered.removeLast(rendered.count - tailCount)
+        let newlyFinal = min(max(finalCount - self.finalCount, 0), tailCount)
+        for part in rendered.prefix(newlyFinal) {
+            finalText.append(contentsOf: part.text.utf8)
+            finalText.append(contentsOf: "\n\n".utf8)
+            finalHasWords = finalHasWords || part.hasWords
+        }
+        rendered.removeFirst(newlyFinal)
+        self.finalCount += newlyFinal
+    }
+
+    /// The file's two parts, so the final text is never copied into a new string.
+    private func text() -> (final: Data, tail: Data, noText: Bool) {
+
+        guard finalHasWords || rendered.contains(where: \.hasWords) else { return (Data(Self.noText.utf8), Data(), true) }
+        if rendered.isEmpty { return (finalText.dropLast(), Data(), false) }
+        return (finalText, Data((rendered.lazy.map(\.text).joined(separator: "\n\n") + "\n").utf8), false)
+    }
+
+    /// One segment's text, kept so an unchanged segment is not rendered again.
+    private struct Rendered {
+
+        let segment: Segment
+        let text: String
+        let hasWords: Bool
+
+        init(_ segment: Segment) throws {
+
             guard segment.start.isFinite, segment.start >= 0, segment.start < Double(Int.max) else {
                 throw Failure.invalidStart
             }
@@ -100,11 +177,9 @@ public actor TranscriptFile {
             let side = segment.side == .mine ? "Me" : "Them"
             let later = segment.filledInLater ? " (filled in later)" : ""
             let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
-            return (heading: "**\(side)** \(time)\(later)", words: words)
+            self.segment = segment
+            text = "**\(side)** \(time)\(later)\n\(words)"
+            hasWords = !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
-        guard parts.contains(where: { !$0.words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
-            return Self.noText
-        }
-        return "# Transcript\n\n" + parts.map { "\($0.heading)\n\($0.words)" }.joined(separator: "\n\n") + "\n"
     }
 }

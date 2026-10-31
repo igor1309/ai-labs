@@ -9,6 +9,22 @@ import TranscriptFile
 @Suite(.timeLimit(.minutes(1)))
 struct SessionTranscriptTests {
 
+    @Test func theAppWaitsFiveSecondsAfterEachTranscriptWrite() async throws {
+
+        let clock = PassingClock()
+        var construction = SessionConstruction()
+        construction.transcriptClock = clock
+        try await withSessionRig(construction: construction) { rig, _ in
+            await rig.session.send(.begin(liveText: true))
+            await rig.theirs.heard.next()
+            await clock.slept.next()
+            await rig.session.send(.end)
+            _ = try await rig.state { $0.phase == .ended }
+            #expect(!clock.asked.all.isEmpty)
+            #expect(clock.asked.all.allSatisfy { $0 == .seconds(5) })
+        }
+    }
+
     @Test(arguments: TranscriptOperation.allCases)
     fileprivate func writeFailureReachesSessionOnceAndRecordingContinues(operation: TranscriptOperation) async throws {
 
@@ -56,7 +72,7 @@ struct SessionTranscriptTests {
         }
     }
 
-    @Test(arguments: TranscriptOperation.allCases)
+    @Test(arguments: TranscriptOperation.everyWrite)
     fileprivate func lastWriteFailurePrecedesEndWithSubscriptionForwardingHeld(operation: TranscriptOperation) async throws {
 
         let binding = TranscriptBindingSpy()
@@ -102,7 +118,7 @@ struct SessionTranscriptTests {
         }
     }
 
-    @Test(arguments: TranscriptOperation.allCases)
+    @Test(arguments: TranscriptOperation.everyWrite)
     fileprivate func manualEventForwardingReceivesLastWriteFailureWithoutHoldingStop(operation: TranscriptOperation) async throws {
 
         let binding = TranscriptBindingSpy()
@@ -182,7 +198,10 @@ struct SessionTranscriptTests {
 
 private enum TranscriptOperation: String, CaseIterable, Sendable {
 
-    case create, write, flush, rename
+    case open, write, flush, rename
+
+    /// The steps of every write, whether it replaces the file or rewrites what follows its final text.
+    static let everyWrite: [TranscriptOperation] = [.open, .write, .flush]
 }
 
 private struct TranscriptOperationFailure: Error, CustomStringConvertible {
@@ -215,8 +234,14 @@ private final class TranscriptBindingSpy: TranscriptFileBinding {
 
     func create(at url: URL) throws -> any TranscriptFileHandle {
 
-        try check(.create)
+        try check(.open)
         return Handle(base: try disk.create(at: url), binding: self)
+    }
+
+    func open(at url: URL) throws -> any TranscriptFileHandle {
+
+        try check(.open)
+        return Handle(base: try disk.open(at: url), binding: self)
     }
 
     func rename(from source: URL, to target: URL) throws {
@@ -237,6 +262,8 @@ private final class TranscriptBindingSpy: TranscriptFileBinding {
             try binding.check(.write)
             try base.write(data)
         }
+
+        func truncate(to length: Int) throws { try base.truncate(to: length) }
 
         func flush() throws {
 

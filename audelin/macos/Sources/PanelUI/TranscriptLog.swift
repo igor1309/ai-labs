@@ -68,16 +68,19 @@ struct TranscriptLog: NSViewRepresentable {
 
         text.ruleColor = NSColor(tokens.rule)
 
-        let transcript = Transcript(lines: lines, style: .init(tokens: tokens, config: config))
-        coordinator.entries = transcript.entries
+        let storage = text.textStorage!
+        // Only this path edits the storage; anything else, and the rows start over.
+        if storage.length != coordinator.rows.length { coordinator.rows = Transcript.Rows() }
+        let edit = coordinator.rows.update(lines, style: .init(tokens: tokens, config: config))
+        coordinator.entries = edit.entries
 
         coordinator.quietly {
             // AppKit moves the selection to the end on any storage edit, even
             // one below it; the edit keeps the text above in place, so put it
             // back.
             let selection = text.selectedRange()
-            apply(transcript.string, to: text.textStorage!)
-            let length = text.textStorage!.length
+            Self.apply(edit, to: storage)
+            let length = storage.length
             text.setSelectedRange(NSIntersectionRange(selection, NSRange(location: 0, length: length)))
 
             if lines.followsLive, !coordinator.isSelecting { text.scrollToEndOfDocument(nil) }
@@ -92,8 +95,26 @@ struct TranscriptLog: NSViewRepresentable {
         else { return nil }
 
         text.frame.size.width = width
-        layout.ensureLayout(for: layout.documentRange)
-        let height = ceil(layout.usageBoundsForTextContainer.height)
+
+        // Text that reaches the room it is given fills it: laying out what
+        // fits shows that without laying out a long call's whole log.
+        if let limit = proposal.height {
+            layout.ensureLayout(for: CGRect(x: 0, y: 0, width: width, height: limit))
+            if let below = layout.textLayoutFragment(for: CGPoint(x: 0, y: limit)),
+               below.layoutFragmentFrame.maxY > limit {
+                return CGSize(width: width, height: limit)
+            }
+        }
+        // Lay out only the document's end, whose bottom edge is the height;
+        // laying out a long call's whole log on every update grows with it.
+        let end = NSTextRange(location: layout.documentRange.endLocation)
+        layout.ensureLayout(for: end)
+        var bottom = layout.usageBoundsForTextContainer.maxY
+        layout.enumerateTextSegments(in: end, type: .standard, options: .middleFragmentsExcluded) { _, rect, _, _ in
+            bottom = max(bottom, rect.maxY)
+            return true
+        }
+        let height = ceil(bottom)
 
         return CGSize(width: width, height: min(height, proposal.height ?? height))
     }
@@ -106,28 +127,14 @@ struct TranscriptLog: NSViewRepresentable {
 
 // MARK: - Updating in place
 
-private extension TranscriptLog {
+extension TranscriptLog {
 
-    /// Replaces only what changed after the common prefix, and restyles the
-    /// prefix in place: characters above the change keep their position, so
-    /// the reader's selection and scroll position stay.
-    func apply(_ new: NSAttributedString, to storage: NSTextStorage) {
+    /// Replaces the rows from the first that changed: characters above
+    /// keep their position and layout, so the reader's selection and scroll
+    /// position stay.
+    static func apply(_ edit: Transcript.Edit, to storage: NSTextStorage) {
 
-        let old = storage.string as NSString
-        let next = new.string as NSString
-        var prefix = 0
-        let limit = min(old.length, next.length)
-        while prefix < limit, old.character(at: prefix) == next.character(at: prefix) { prefix += 1 }
-
-        storage.beginEditing()
-        storage.replaceCharacters(
-            in: NSRange(location: prefix, length: old.length - prefix),
-            with: new.attributedSubstring(from: NSRange(location: prefix, length: next.length - prefix))
-        )
-        new.enumerateAttributes(in: NSRange(location: 0, length: prefix)) { attributes, range, _ in
-            storage.setAttributes(attributes, range: range)
-        }
-        storage.endEditing()
+        storage.replaceCharacters(in: edit.range, with: edit.text)
     }
 }
 
@@ -140,6 +147,7 @@ extension TranscriptLog {
 
         var parent: TranscriptLog
         var entries: [Transcript.EntryRange] = []
+        var rows = Transcript.Rows()
         weak var scroll: NSScrollView?
         /// A drag is selecting text: the log holds still under it.
         var isSelecting = false
@@ -229,28 +237,51 @@ final class LogTextView: NSTextView {
 
         super.drawBackground(in: rect)
         ruleColor.setFill()
-        ruleFrames().filter { $0.intersects(rect) }.forEach { $0.fill(using: .sourceOver) }
+        ruleFrames(in: rect).filter { $0.intersects(rect) }.forEach { $0.fill(using: .sourceOver) }
     }
 
-    /// Where the lines under late groups go, in this view.
-    func ruleFrames() -> [NSRect] {
+    /// How far above or below a drawn rect a rule's paragraph can end.
+    private static let ruleReach: CGFloat = 64
+
+    /// Where the lines under late groups go, in this view; with a rect, only
+    /// those near it. Laying out and scanning a long call's whole log on
+    /// every redraw grows with the call.
+    func ruleFrames(in rect: NSRect? = nil) -> [NSRect] {
 
         guard let storage = textStorage,
               let layout = textLayoutManager,
               let content = layout.textContentManager
         else { return [] }
 
-        layout.ensureLayout(for: layout.documentRange)
+        let origin = textContainerOrigin
+        let document = content.documentRange
+        var scan = NSRange(location: 0, length: storage.length)
+        if let rect {
+            let area = CGRect(
+                x: 0, y: max(0, rect.minY - origin.y - Self.ruleReach),
+                width: bounds.width, height: rect.height + 2 * Self.ruleReach
+            )
+            layout.ensureLayout(for: area)
+            // No text where the area starts: none below it either.
+            guard let start = layout.textLayoutFragment(for: CGPoint(x: 0, y: area.minY))?.rangeInElement.location
+            else { return [] }
+            let end = layout.textLayoutFragment(for: CGPoint(x: 0, y: area.maxY))?.rangeInElement.endLocation ?? document.endLocation
+            let from = content.offset(from: document.location, to: start)
+            let to = min(storage.length, content.offset(from: document.location, to: end))
+            scan = NSRange(location: from, length: max(0, to - from))
+        } else {
+            layout.ensureLayout(for: document)
+        }
 
         var frames: [NSRect] = []
-        storage.enumerateAttribute(Transcript.ruleBelow, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
+        storage.enumerateAttribute(Transcript.ruleBelow, in: scan) { value, range, _ in
             guard let gap = value as? CGFloat,
-                  let end = content.location(content.documentRange.location, offsetBy: NSMaxRange(range) - 1),
+                  let end = content.location(document.location, offsetBy: NSMaxRange(range) - 1),
                   let fragment = layout.textLayoutFragment(for: end),
                   let line = fragment.textLineFragments.last
             else { return }
 
-            let y = textContainerOrigin.y + fragment.layoutFragmentFrame.minY + line.typographicBounds.maxY + gap
+            let y = origin.y + fragment.layoutFragmentFrame.minY + line.typographicBounds.maxY + gap
             frames.append(NSRect(x: 0, y: y, width: bounds.width, height: Transcript.ruleWidth))
         }
         return frames

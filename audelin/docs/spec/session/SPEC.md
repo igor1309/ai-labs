@@ -9,10 +9,10 @@ what failed (user S-8, S-9, S-15, S-16, S-7, S-17 in `../SPEC.md`).
 
 - **Bring-up puts each destination before its source:** the call's folder,
   the call app's processes, the track files, the transcript, call text,
-  then the captures, so the first audio and text are kept (S-1, S-15).
+  then the captures, so the first audio and text are kept (S-1; user S-15).
 - **Bring-down keeps everything:** captures stop first, each track file
   closes after its last audio, call text finishes, the transcript closes
-  after its last text, so a call is kept to its last word (S-7, S-17).
+  after its last text, so a call is kept to its last word (user S-7, S-17).
 - **Ended means nothing is left:** an end waits for the step in flight. A
   piece failing to close is named; bring-down goes on, what was kept
   stays, and the Session still ends, so the next call is never stranded.
@@ -22,8 +22,13 @@ what failed (user S-8, S-9, S-15, S-16, S-7, S-17 in `../SPEC.md`).
   access), is named, its output kept, and the rest goes on (S-9).
 - **No processes chosen hears every app but Audelin,** so their side is
   kept, as with no call app running (call app processes S-6) (S-14).
+- **The transcript is saved at most every 5 seconds,** and at once when
+  call text stops (owner, 2026-10-31,
+  `../../research/transcript-save-interval.md`); a crash keeps every
+  final entry already saved (transcript writing S-13, S-14; transcript
+  file S-12, S-13) (S-15, S-16).
 - **Live text is the Session's own:** set by the preference and switch, as
-  call text says (S-8); getting ready is shown beside the tracks (S-15, S-16).
+  call text says (S-8); getting ready is shown beside the tracks (user S-15, S-16).
 
 ```gherkin
 Feature: Bringing a recording up and down
@@ -97,6 +102,16 @@ Feature: Bringing a recording up and down
     Given choosing the call app's processes fails
     When the call is captured
     Then I can read that the choice failed, and their side is recorded
+
+  Scenario: S-15 The transcript is saved every 5 seconds
+    Given a Session recording a call with live text
+    When its transcript is written
+    Then the next write waits 5 seconds on the Session's clock
+
+  Scenario: S-16 A crash keeps every final entry already saved
+    Given a Session recording a call that saves its transcript
+    When the app is killed while it keeps saving
+    Then the transcript holds every entry that was final in the last save
 ```
 
 ## Silent call warning

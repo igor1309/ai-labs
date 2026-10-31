@@ -320,8 +320,8 @@ struct LiveTextTests {
         await live.stop()
         await listening.value
 
-        var last: Segments?
-        while let update = await updates.next() { last = update }
+        var last: SegmentSnapshot?
+        while let update = await updates.next() { last = (all: update.segments, ending: update.ending) }
         #expect(last?.all == [segment(0, start: 0, settled: "по запуску кто")])
         #expect(last?.ending == .finished)
     }
@@ -376,15 +376,19 @@ struct LiveTextTests {
     /// Feeds one chunk per hearing, then ends the audio, and returns every
     /// update Live text published. With `failing`, the recogniser throws on
     /// the chunk after the last hearing.
-    private func run(_ hearings: [Hearing], failing: Bool = false) async -> [Segments] {
+    private func run(_ hearings: [Hearing], failing: Bool = false) async -> [SegmentSnapshot] {
 
         let recognizer = FakeRecognizer(hearings, finishing: finishing)
         let live = LiveText(recognizer: recognizer)
         let chunks = hearings.count + (failing ? 1 : 0)
 
         let collecting = Task {
-            var updates: [Segments] = []
-            for await update in live.updates { updates.append(update) }
+            var updates: [SegmentSnapshot] = []
+            var all: [Segments.Segment] = []
+            for await update in live.updates {
+                all.replaceSubrange(update.from..., with: update.segments)
+                updates.append((all: all, ending: update.ending))
+            }
             return updates
         }
         await live.listen(to: FiniteSource(chunks: chunks))
@@ -444,3 +448,5 @@ private final class OpenSource: AudioSource {
 
     func send() { continuation.yield(.init(samples: [0], sampleRate: 16_000)) }
 }
+
+private typealias SegmentSnapshot = (all: [Segments.Segment], ending: Segments.Ending?)

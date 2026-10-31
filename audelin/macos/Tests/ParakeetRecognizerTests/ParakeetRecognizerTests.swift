@@ -123,8 +123,8 @@ struct ParakeetRecognizerTests {
         let next = try await recognizer.hear(silence(4))
 
         let one = Word("один", start: 4.25, end: 4.5)
-        #expect(first == Hearing(words: [one], from: 4.25, finalThrough: 4))
-        #expect(next == Hearing(words: [one, Word("два", start: 5, end: 5.5)], from: 4.25, finalThrough: 8))
+        #expect(first == Hearing(words: [one], from: 4.25, finalThrough: 4, noWordBefore: 2))
+        #expect(next == Hearing(words: [one, Word("два", start: 5, end: 5.5)], from: 4.25, finalThrough: 8, noWordBefore: 6))
     }
 
     @Test func aPendingWordTheNextWindowDoesNotHearIsGone() async throws {
@@ -305,12 +305,16 @@ struct ParakeetRecognizerTests {
 
     /// Runs the recogniser under Live text over the chunks, and returns every
     /// update Live text published.
-    private func listen(_ recognizer: ParakeetRecognizer, to chunks: [AudioChunk]) async -> [Segments] {
+    private func listen(_ recognizer: ParakeetRecognizer, to chunks: [AudioChunk]) async -> [SegmentSnapshot] {
 
         let live = LiveText(recognizer: recognizer)
         let collecting = Task {
-            var updates: [Segments] = []
-            for await update in live.updates { updates.append(update) }
+            var updates: [SegmentSnapshot] = []
+            var all: [Segments.Segment] = []
+            for await update in live.updates {
+                all.replaceSubrange(update.from..., with: update.segments)
+                updates.append((all: all, ending: update.ending))
+            }
             return updates
         }
         await live.listen(to: Chunks(chunks: chunks))
@@ -449,7 +453,9 @@ private actor RecordedReader: WindowReader {
     nonisolated let duration: Double
     nonisolated let windowSampleCounts: [Int]
     /// Each window's words whose middle its chunk holds, in order, with a
-    /// word read on both sides of a chunk's edge once.
+    /// word read on both sides of a chunk's edge once. A word in a window's
+    /// right context that the next window places just before its chunk is
+    /// counted too.
     nonisolated let chunkWords: [String]
 
     init() async throws {
@@ -471,6 +477,15 @@ private actor RecordedReader: WindowReader {
             for spoken in window.words where spoken.middle >= window.chunkStart
                 && (last || spoken.middle < window.rightContextFrom) {
                 if let previous = words.last, Self.letters(previous) == Self.letters(spoken.w) { continue }
+                words.append(spoken.w)
+            }
+            guard !last else { continue }
+            let following = windows[index + 1]
+            for spoken in window.words where spoken.middle >= window.rightContextFrom
+                && following.words.contains(where: { read in
+                    read.middle < following.chunkStart && Self.letters(read.w) == Self.letters(spoken.w)
+                        && min(read.e, spoken.e) > max(read.s, spoken.s)
+                }) {
                 words.append(spoken.w)
             }
         }
@@ -505,3 +520,5 @@ private struct Chunks: AudioSource {
         return stream
     }
 }
+
+private typealias SegmentSnapshot = (all: [Segments.Segment], ending: Segments.Ending?)

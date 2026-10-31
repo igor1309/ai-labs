@@ -43,6 +43,60 @@ final class Gate: Sendable {
     }
 }
 
+/// Pauses between writes that last until the test ends them or the writer cancels them.
+final class Pauses: Sendable {
+
+    private struct State {
+        var started = 0
+        var cancelled = 0
+        var waiting: CheckedContinuation<Void, Never>?
+    }
+
+    private let state = Mutex(State())
+    private let changed: @Sendable () -> Void
+
+    init(changed: @escaping @Sendable () -> Void) { self.changed = changed }
+
+    var started: Int { state.withLock { $0.started } }
+    var cancelled: Int { state.withLock { $0.cancelled } }
+    var waiting: Bool { state.withLock { $0.waiting != nil } }
+
+    func pause() async {
+
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                let resume = state.withLock { state in
+                    state.started += 1
+                    if Task.isCancelled { return true }
+                    state.waiting = continuation
+                    return false
+                }
+                changed()
+                if resume { continuation.resume() }
+            }
+        } onCancel: {
+            let waiting = state.withLock { state in
+                state.cancelled += 1
+                defer { state.waiting = nil }
+                return state.waiting
+            }
+            waiting?.resume()
+            changed()
+        }
+    }
+
+    /// Ends the pause in progress.
+    func end() {
+
+        let waiting = state.withLock { state in
+            defer { state.waiting = nil }
+            return state.waiting
+        }
+        waiting?.resume()
+        changed()
+    }
+}
+
 /// Drains runnable work before assertions about work still held by a fake.
 final class TestExecutor: TaskExecutor {
 
@@ -272,7 +326,7 @@ struct Run {
         startGate: Gate? = nil, stopGate: Gate? = nil,
         startText: String? = nil, lastText: String? = nil,
         failures: [String: WriteFailure] = [:], reportGate: Gate? = nil,
-        hasTranscript: Bool = true
+        hasTranscript: Bool = true, pauses: Pauses? = nil
     ) {
 
         call = FakeCallText(
@@ -282,7 +336,10 @@ struct Run {
         )
         transcript = FakeTranscript(holds: holds, failures: failures, changed: executor.notify)
         report = FakeFailureReport(events: events, gate: reportGate, changed: executor.notify)
-        subject = TranscriptWriting(callText: call, transcript: hasTranscript ? transcript : nil, failureReport: report)
+        subject = TranscriptWriting(
+            callText: call, transcript: hasTranscript ? transcript : nil, failureReport: report,
+            pause: { await pauses?.pause() }
+        )
         task = Task(executorPreference: executor) { [commands, observed, subject, events] in
             let reader = Task {
                 for await text in subject.updates {

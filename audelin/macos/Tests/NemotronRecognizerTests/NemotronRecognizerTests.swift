@@ -328,12 +328,16 @@ struct NemotronRecognizerTests {
         AudioChunk(samples: .init(repeating: 0, count: Int((seconds * 16_000).rounded())), sampleRate: 16_000)
     }
 
-    private func listen(_ recognizer: NemotronRecognizer, to chunks: [AudioChunk]) async -> [Segments] {
+    private func listen(_ recognizer: NemotronRecognizer, to chunks: [AudioChunk]) async -> [SegmentSnapshot] {
 
         let live = LiveText(recognizer: recognizer)
         let collecting = Task {
-            var updates: [Segments] = []
-            for await update in live.updates { updates.append(update) }
+            var updates: [SegmentSnapshot] = []
+            var all: [Segments.Segment] = []
+            for await update in live.updates {
+                all.replaceSubrange(update.from..., with: update.segments)
+                updates.append((all: all, ending: update.ending))
+            }
             return updates
         }
         await live.listen(to: Chunks(chunks: chunks))
@@ -492,3 +496,5 @@ private struct Chunks: AudioSource {
         return stream
     }
 }
+
+private typealias SegmentSnapshot = (all: [Segments.Segment], ending: Segments.Ending?)

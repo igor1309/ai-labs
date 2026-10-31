@@ -74,6 +74,9 @@ struct TranscriptLogTests {
         #expect(rule.width == text.bounds.width)
         #expect(abs(rule.minY - above.maxY - gap) < 0.5, "\(above) \(rule)")
         #expect(abs(below.minY - rule.maxY - gap) < 0.5, "\(rule) \(below)")
+        // A redraw looks only near what it draws, and finds the same rule.
+        #expect(text.ruleFrames(in: rule.insetBy(dx: 0, dy: -2)) == [rule])
+        #expect(text.ruleFrames(in: NSRect(x: 0, y: rule.maxY + 200, width: 10, height: 10)).isEmpty)
     }
 
     @Test func keepsASelectionWhileTextSettlesAndLinesArrive() throws {
@@ -88,6 +91,107 @@ struct TranscriptLogTests {
 
         #expect(text.selectedRange() == selected)
         #expect((text.string as NSString).substring(with: text.selectedRange()) == "Accountable — я.")
+    }
+
+    @Test func eachNewlineCarriesItsParagraphsStyle() throws {
+
+        let lines = PanelState.Lines(entries: many(5) + [.init(id: 5, time: "13:10", speaker: .me, settled: "Последняя.", pending: "по")])
+        let string = Transcript(lines: lines, style: .init(tokens: .light, config: .glassLedger)).string
+        let text = string.string as NSString
+
+        var newlines = 0
+        for index in 1..<text.length where text.character(at: index) == 0x0A {
+            newlines += 1
+            let own = string.attribute(.paragraphStyle, at: index, effectiveRange: nil) as? NSParagraphStyle
+            let before = string.attribute(.paragraphStyle, at: index - 1, effectiveRange: nil) as? NSParagraphStyle
+            #expect(own != nil && own == before, "newline at \(index)")
+        }
+        #expect(newlines >= 5)
+    }
+
+    @Test func anUpdateToTheNewestEntryBuildsOnlyItsRow() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let first = rows.update(.init(entries: many(800) + [newest("по")]), style: style)
+
+        let edit = rows.update(.init(entries: many(800) + [newest("по слог")]), style: style)
+
+        #expect(rows.built == 802)
+        // From the newline that opens its paragraph.
+        let start = (first.text.string as NSString).range(of: "13:10").location - 1
+        #expect(edit.range == NSRange(location: start, length: first.text.length - start))
+        #expect(edit.entries.last?.body.location == start + ("\n13:10\tя\t" as NSString).length)
+    }
+
+    @Test func unchangedSealedRowsAreNotBuiltAgain() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        _ = rows.update(sealedLines(many(5), live: "по"), style: style)
+
+        let edit = rows.update(sealedLines(many(5), live: "по слог"), style: style)
+
+        #expect(rows.built == 7)
+        #expect(edit.entries.count == 6)
+        expectApplied(edit, to: sealedLines(many(5), live: "по"), becomes: sealedLines(many(5), live: "по слог"), style: style)
+    }
+
+    @Test func aChangedSealedRowIsBuiltFromThere() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let before = sealedLines(many(5), live: "по")
+        _ = rows.update(before, style: style)
+        var changed = many(5)
+        changed[2] = newest("другое")
+
+        let edit = rows.update(sealedLines(changed, live: "по"), style: style)
+
+        #expect(rows.built == 6 + 4)
+        expectApplied(edit, to: before, becomes: sealedLines(changed, live: "по"), style: style)
+    }
+
+    @Test func rowsThatJoinTheSealedPartKeepTheirText() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let entries = many(5)
+        let before = sealedLines(Array(entries[..<3]), tail: Array(entries[3...]))
+        _ = rows.update(before, style: style)
+        let after = sealedLines(entries, tail: [])
+
+        let edit = rows.update(after, style: style)
+
+        #expect(rows.built == 5)
+        #expect(edit.text.length == 0)
+        #expect(edit.entries.count == 5)
+    }
+
+    @Test func aNewAppearanceBuildsEveryRow() {
+
+        let rows = Transcript.Rows()
+        let entries = PanelState.Lines(entries: many(3))
+        _ = rows.update(entries, style: .init(tokens: .light, config: .glassLedger))
+
+        let edit = rows.update(entries, style: .init(tokens: .dark, config: .glassLedger))
+
+        #expect(rows.built == 6)
+        #expect(edit.range.location == 0)
+    }
+
+    @Test func applyEditsNothingAboveTheFirstChangedRow() {
+
+        let style = Transcript.Style(tokens: .light, config: .glassLedger)
+        let rows = Transcript.Rows()
+        let storage = RecordingStorage(rows.update(.init(entries: many(5) + [newest("по")]), style: style).text)
+        let edit = rows.update(.init(entries: many(5) + [newest("по слог")]), style: style)
+
+        TranscriptLog.apply(edit, to: storage)
+
+        #expect(storage.string == Transcript(lines: .init(entries: many(5) + [newest("по слог")]), style: style).string.string)
+        #expect(!storage.styled.isEmpty)
+        #expect(storage.styled.allSatisfy { $0.location >= edit.range.location }, "styled \(storage.styled)")
     }
 
     @Test func holdsWhatADragSelectedAndIgnoresAClick() throws {
@@ -240,6 +344,30 @@ struct TranscriptLogTests {
         return entries
     }
 
+    private func newest(_ pending: String) -> PanelState.Entry {
+
+        .init(id: 1000, time: "13:10", speaker: .me, settled: "Последняя фраза.", pending: pending)
+    }
+
+    private func sealedLines(_ sealed: [PanelState.Entry], live: String) -> PanelState.Lines {
+
+        sealedLines(sealed, tail: [newest(live)])
+    }
+
+    private func sealedLines(_ sealed: [PanelState.Entry], tail: [PanelState.Entry]) -> PanelState.Lines {
+
+        .init(rows: .init(sealed: sealed.map(PanelState.Row.entry), tail: tail.map(PanelState.Row.entry)))
+    }
+
+    private func expectApplied(
+        _ edit: Transcript.Edit, to before: PanelState.Lines, becomes after: PanelState.Lines, style: Transcript.Style
+    ) {
+
+        let storage = NSTextStorage(attributedString: Transcript(lines: before, style: style).string)
+        TranscriptLog.apply(edit, to: storage)
+        #expect(storage.string == Transcript(lines: after, style: style).string.string)
+    }
+
     private func many(_ count: Int) -> [PanelState.Entry] {
 
         (0..<count).map {
@@ -298,5 +426,37 @@ struct TranscriptLogTests {
 
         guard let document = scroll.documentView else { return false }
         return scroll.contentView.documentVisibleRect.maxY >= document.bounds.height - 1
+    }
+}
+
+/// A text storage that records every range it is asked to style.
+private final class RecordingStorage: NSTextStorage {
+
+    private let backing: NSMutableAttributedString
+    private(set) var styled: [NSRange] = []
+
+    init(_ string: NSAttributedString) {
+        backing = NSMutableAttributedString(attributedString: string)
+        super.init()
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+    required init?(pasteboardPropertyList propertyList: Any, ofType type: NSPasteboard.PasteboardType) { fatalError() }
+
+    override var string: String { backing.string }
+
+    override func attributes(at location: Int, effectiveRange range: NSRangePointer?) -> [NSAttributedString.Key: Any] {
+        backing.attributes(at: location, effectiveRange: range)
+    }
+
+    override func replaceCharacters(in range: NSRange, with str: String) {
+        backing.replaceCharacters(in: range, with: str)
+        edited(.editedCharacters, range: range, changeInLength: (str as NSString).length - range.length)
+    }
+
+    override func setAttributes(_ attrs: [NSAttributedString.Key: Any]?, range: NSRange) {
+        styled.append(range)
+        backing.setAttributes(attrs, range: range)
+        edited(.editedAttributes, range: range, changeInLength: 0)
     }
 }

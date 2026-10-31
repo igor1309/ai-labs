@@ -1,0 +1,138 @@
+import AppKit
+import Foundation
+import GlassLedger
+import SwiftUI
+import Testing
+@testable import PanelUI
+
+/// The log redraws on every text update while the reader watches. An update
+/// late in a long call must cost about what one early does, or the main actor
+/// falls behind as the call goes on however rarely the text changes.
+@MainActor
+@Suite(.timeLimit(.minutes(1)))
+struct TranscriptLogLoadTests {
+
+    static let updates = 5
+
+    @Test(arguments: [800, 6_000])
+    func anUpdateLateInALongCallCostsTheLogAboutWhatAnEarlyOneDoes(entries: Int) {
+
+        // The quickest of three runs each, so a busy machine slows neither side alone.
+        var early = Cost.slowest, late = Cost.slowest
+        for _ in 0..<3 {
+            early = early.quicker(cost(entries: 20))
+            late = late.quicker(cost(entries: entries))
+        }
+        let line = report("\(early.line) at 20 entries, \(late.line) at \(entries) entries; \(probe(entries: entries))")
+        FileHandle.standardError.write(Data(line.utf8))
+        #expect(late.update / early.update <= 3, "an update late in a long call costs the log \(late.update / early.update)x one early")
+    }
+
+    @Test func loadReportNamesTheCompiledBuild() {
+        var build = "optimized"
+        // The assertion's autoclosure runs only when debug assertions are enabled.
+        assert({ build = "debug"; return true }())
+        #expect(report("measurement") == "log load (\(build)): measurement\n")
+    }
+
+    private func report(_ measurement: String) -> String {
+        let build = _isDebugAssertConfiguration() ? "debug" : "optimized"
+        return "log load (\(build)): \(measurement)\n"
+    }
+
+    /// Hosts the log with `count` entries, then changes the last entry's
+    /// pending words a few times; the time per update, with the part spent
+    /// building the rows that changed.
+    private func cost(entries count: Int) -> Cost {
+
+        let config = PanelConfig.glassLedger
+        let size = CGSize(width: config.panelWidth, height: 400)
+        // Settled history keeps its strings while only the live entry changes.
+        var lines = lines(count)
+        let host = Offscreen.host(log(lines, config: config, size: size), size: size)
+        let style = Transcript.Style(tokens: .light, config: config)
+        let rows = Transcript.Rows()
+        _ = rows.update(lines, style: style)
+        var build = Duration.zero, update = Duration.zero, layout = Duration.zero
+        let clock = ContinuousClock()
+        for step in 1...Self.updates {
+            lines.rows[count - 1] = .entry(.init(id: count, time: "12:35", speaker: .me, settled: "", pending: "w\(step)"))
+            build += clock.measure { _ = rows.update(lines, style: style) }
+            let handed = clock.measure { host.rootView = log(lines, config: config, size: size) }
+            let laid = clock.measure { host.layoutSubtreeIfNeeded() }
+            update += handed + laid
+            layout += laid
+        }
+        #expect(Offscreen.textView(in: host)?.string.contains("w\(Self.updates)") == true, "the log does not show the last update")
+        return Cost(
+            update: update.seconds / Double(Self.updates),
+            build: build.seconds / Double(Self.updates),
+            layout: layout.seconds / Double(Self.updates)
+        )
+    }
+
+    /// Times each step of the log's layout pass alone at `count` entries, so
+    /// a run that grows names the step that grows.
+    private func probe(entries count: Int) -> String {
+
+        let config = PanelConfig.glassLedger
+        let size = CGSize(width: config.panelWidth, height: 400)
+        let host = Offscreen.host(log(lines(count), config: config, size: size), size: size)
+        guard let text = Offscreen.textView(in: host) as? LogTextView,
+              let layout = text.textLayoutManager
+        else { return "no log to probe" }
+        let clock = ContinuousClock()
+        let end = NSTextRange(location: layout.documentRange.endLocation)
+        let ms = { (d: Duration) in String(format: "%.2f", (Double(d.components.attoseconds) / 1e15) + Double(d.components.seconds) * 1000) }
+        let ensure = clock.measure { layout.ensureLayout(for: end) }
+        let scroll = clock.measure { text.scrollToEndOfDocument(nil) }
+        let rules = clock.measure { _ = text.ruleFrames(in: text.visibleRect) }
+        return "probe: ensure end \(ms(ensure)) ms, scroll to end \(ms(scroll)) ms, rule frames \(ms(rules)) ms"
+    }
+
+    private func lines(_ count: Int) -> PanelState.Lines {
+
+        let words = String(repeating: "слово ", count: 20)
+        var rows: [PanelState.Row] = (0..<count - 1).map {
+            .entry(.init(id: $0, time: "12:34", speaker: $0.isMultiple(of: 2) ? .me : .them, settled: words))
+        }
+        // As the app holds a long call: final rows sealed, the live one in the tail.
+        let live: PanelState.Row = .entry(.init(id: count, time: "12:35", speaker: .me, settled: "", pending: "w0"))
+        return .init(rows: .init(sealed: rows, tail: [live]), holds: [], newBelow: 0, followsLive: true)
+    }
+
+    private func log(_ lines: PanelState.Lines, config: PanelConfig, size: CGSize) -> AnyView {
+
+        AnyView(
+            // The panel stacks the log and lets it be as tall as its text,
+            // so it proposes no height.
+            VStack(spacing: 0) {
+                TranscriptLog(lines: lines, tokens: .light, config: config, event: { _ in })
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: size.width, height: size.height, alignment: .top)
+                .environment(\.colorScheme, .light)
+        )
+    }
+}
+
+private struct Cost {
+
+    static let slowest = Cost(update: .infinity, build: .infinity, layout: .infinity)
+
+    /// Seconds per update, from the new lines to the log laid out.
+    let update: Double
+    /// Seconds of it spent building the rows that changed.
+    let build: Double
+    /// Seconds of it spent laying the log out, after SwiftUI has the new view.
+    let layout: Double
+
+    var line: String { String(format: "%.2f ms an update (%.2f ms building rows, %.2f ms laying out)", update * 1000, build * 1000, layout * 1000) }
+
+    func quicker(_ other: Cost) -> Cost { other.update < update ? other : self }
+}
+
+private extension Duration {
+
+    var seconds: Double { Double(components.seconds) + Double(components.attoseconds) / 1e18 }
+}
