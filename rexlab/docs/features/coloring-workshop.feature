@@ -21,12 +21,13 @@ Feature: Coloring workshop
     Then HOME, NEW WORK, GALLERY and DONE are differently colored icon-only buttons on the leading edge
     And navigation is separated from drawing tools by visible space and a divider
     And navigation is above the current color, BRUSH, FILL, SIZE and UNDO controls
-    And every control has a localized accessible name and a touch target of at least 60 pixels
+    And every control has a localized accessible name and a touch target of at least 48 pixels
     And the dinosaur fills the available canvas without a paper card, workshop heading or dinosaur title
     And there is no top navigation row or bottom palette
     And the leading groups are vertically centered between the top and bottom safe areas
     And HOME has breathing room below the top safe area as well as the system inset
-    And the rail uses two columns at 1133 by 744 and whenever nine targets cannot fit with comfortable clearance
+    And the rail stays one column wide with 48 pixel buttons on iPad mini landscape
+    And short landscape viewports use the horizontal navigation and drawing controls
     And an empty idle work shows no LET’S PAINT footer or save disk
     And saving and saved status remain available to assistive technology without a bottom row
     And the canvas keeps its dimensions and coordinates across idle, saving and saved states
@@ -59,9 +60,9 @@ Feature: Coloring workshop
     When I rotate the tablet or shorten its browser viewport
     Then temporary pickers close and uncommitted contacts are discarded
     And the canvas retains its saved paint and logical drawing coordinates
-    And a shorter tablet uses two columns of leading controls when one column cannot fit
+    And short landscape viewports use horizontal controls when the single rail cannot fit
     And portrait and short phone landscape keep controls and pickers within the safe areas
-    And no control shrinks below a 60 pixel touch target or overlaps the canvas
+    And no control shrinks below a 48 pixel touch target or overlaps the canvas
 
   Scenario: A contact makes one editable stroke
     Given the brush is selected

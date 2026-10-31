@@ -160,8 +160,7 @@ const { chromium } = require("playwright");
     for (const viewport of viewports) {
       await page.setViewportSize(viewport);
       const landscape = viewport.width > viewport.height;
-      const tabletRail = landscape && viewport.width >= 900 && viewport.height >= 480;
-      const singleRail = tabletRail && viewport.height - 64 >= 704;
+      const tabletRail = landscape && viewport.width >= 900 && viewport.height >= 600;
       for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
         await mount({ id: `layout-${++layoutId}`, language, theme, gate: true });
         const layout = await page.evaluate(() => {
@@ -197,7 +196,7 @@ const { chromium } = require("playwright");
         assert.deepEqual(layout.buttons.map(b => b.name), names, context);
         for (const name of names) assert.equal(await page.getByRole("button", { name, exact: true }).count(), 1, context);
         for (const button of layout.buttons) {
-          assert(button.w >= 60 && button.h >= 60 && button.x >= 0 && button.y >= 0 && button.x + button.w <= viewport.width + 1 && button.y + button.h <= viewport.height + 1, context);
+          assert(button.w >= (tabletRail ? 48 : 60) && button.h >= (tabletRail ? 48 : 60) && button.x >= 0 && button.y >= 0 && button.x + button.w <= viewport.width + 1 && button.y + button.h <= viewport.height + 1, context);
           assert(separate(button, layout.canvas), context);
         }
         for (let i = 0; i < layout.buttons.length; i++) for (const b of layout.buttons.slice(i + 1)) assert(separate(layout.buttons[i], b), context);
@@ -213,20 +212,21 @@ const { chromium } = require("playwright");
           assert.equal(layout.border, "0px", context);
           for (const b of navButtons) {
             assert.equal(b.text, "", context);
-            assert.equal(b.w, 60, context); assert.equal(b.h, 60, context);
+            assert.equal(b.w, tabletRail ? 48 : 60, context); assert.equal(b.h, tabletRail ? 48 : 60, context);
           }
         }
         if (tabletRail) {
           assert(layout.nav.x + layout.nav.w < layout.canvas.x && layout.dock.x + layout.dock.w < layout.canvas.x, context);
-          assert(layout.dock.y - layout.nav.y - layout.nav.h >= 20, context);
+          assert(layout.dock.y - layout.nav.y - layout.nav.h >= 16, context);
           const topClearance = layout.nav.y;
           const bottomClearance = viewport.height - layout.dock.y - layout.dock.h;
           assert(Math.abs(topClearance - bottomClearance) < 1, context);
           assert(topClearance >= 32 && bottomClearance >= 32, context);
           assert.equal(layout.body.y, viewport.height < 600 ? 8 : 32, context);
           assert.equal(layout.body.h, viewport.height - (viewport.height < 600 ? 16 : 64), context);
-          assert.equal(new Set(navButtons.map(b => b.x)).size, singleRail ? 1 : 2, context);
-          assert.equal(new Set(dockButtons.slice(0, 4).map(b => b.x)).size, singleRail ? 1 : 2, context);
+          assert.equal(new Set(navButtons.map(b => b.x)).size, 1, context);
+          assert.equal(new Set(dockButtons.slice(0, 4).map(b => b.x)).size, 1, context);
+          assert(layout.nav.w <= 56 && layout.dock.w <= 56, context);
           const undo = dockButtons[4];
           assert(Math.abs(undo.x + undo.w / 2 - layout.dock.x - layout.dock.w / 2) < 1, context);
           assert(layout.canvas.h >= viewport.height * .75, context);
@@ -253,7 +253,7 @@ const { chromium } = require("playwright");
         if (viewport.width >= 600 && viewport.height >= 480) {
           assert.equal(await canvas.evaluate(el => getComputedStyle(el.closest(".coloring-paper")).visibility), "visible", context);
           if (tabletRail) assert(picker.x >= layout.nav.x + layout.nav.w && picker.x <= layout.body.x + 1, context);
-          assert(picker.width < originalBox.width / 2, context);
+          if (tabletRail || !landscape) assert(picker.width < originalBox.width / 2, context);
         }
         for (const button of await dialog.getByRole("button").all()) {
           const r = await button.boundingBox();
@@ -321,7 +321,7 @@ const { chromium } = require("playwright");
     // Synthetic browser environment insets exercise production env() bindings, not Safari chrome.
     const cdp = await page.context().newCDPSession(page);
     await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 24, bottom: 20, left: 0, right: 0 } });
-    for (const viewport of [{ width: 1133, height: 744 }, { width: 1180, height: 820 }, { width: 1180, height: 768 }, { width: 1024, height: 480 }]) {
+    for (const viewport of [{ width: 1133, height: 744 }, { width: 1180, height: 820 }, { width: 1180, height: 768 }, { width: 1024, height: 600 }]) {
       await page.setViewportSize(viewport);
       await mount({ id: `safe-area-${viewport.width}-${viewport.height}` });
       const padding = await page.locator(".coloring-workshop").evaluate(el => {
@@ -336,7 +336,7 @@ const { chromium } = require("playwright");
       assert(Math.abs(topClearance - bottomClearance) < 1, context);
       assert(topClearance >= 24 && bottomClearance >= 24, context);
       const columns = await page.locator(".coloring-navigation button").evaluateAll(buttons => new Set(buttons.map(b => b.getBoundingClientRect().x)).size);
-      assert.equal(columns, viewport.height === 820 ? 1 : 2, context);
+      assert.equal(columns, 1, context);
     }
     await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 0, bottom: 0, left: 0, right: 0 } });
     await cdp.detach();
