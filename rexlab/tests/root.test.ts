@@ -566,6 +566,36 @@ describe("the double-tap filter in a browser", () => {
     return { arbitrate, stop, handled, send };
   }
 
+  it.each(["contextmenu", "selectstart"])("cancels native %s without changing the tap window or swallowing app handlers", (type) => {
+    const { handled, send, stop } = page();
+    const target = new EventTarget();
+    const input = browserInput(target);
+    const delivered: boolean[] = [];
+    target.addEventListener(type, event => delivered.push(event.defaultPrevented));
+    expect(target.dispatchEvent(new Event(type, { cancelable: true }))).toBe(false);
+    expect(delivered).toEqual([true]);
+    input.stop();
+    expect(target.dispatchEvent(new Event(type, { cancelable: true }))).toBe(true);
+    expect(delivered).toEqual([true, false]);
+
+    expect(send(browserEvent(type, {}))).toBe(true);
+    expect(send(touch("pointerdown", 0))).toBe(false);
+    expect(send(touch("pointerup", 50))).toBe(false);
+    expect(send(browserEvent(type, {}))).toBe(true);
+    expect(send(touch("pointerdown", 250))).toBe(true);
+    expect(send(touch("pointercancel", 300))).toBe(true);
+    expect(send(browserEvent(type, {}))).toBe(true);
+    expect(send(touch("pointerdown", 350))).toBe(false);
+    expect(handled).toEqual(["pointerdown", "pointerup", "pointerdown"]);
+    stop();
+  });
+
+  it.each(["touchstart", "touchmove", "touchend", "wheel", "keydown"])("leaves %s defaults available", (type) => {
+    const { send, stop } = page();
+    expect(send(browserEvent(type, {}))).toBe(false);
+    stop();
+  });
+
   it("reads each touch by its event's own time and place, and keeps what it swallows from every handler", () => {
     const { handled, send } = page();
     const first = [touch("pointerdown", 0), touch("pointerup", 50), browserEvent("click", { detail: 1 })].map(send);

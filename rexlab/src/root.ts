@@ -214,6 +214,11 @@ export function filterDoubleTaps(target: Pick<EventTarget, "addEventListener" | 
 // Rejected contacts must reach neither the shared tap policy nor app handlers.
 // Register this once, before mounting screens, so capture order is stable.
 export function browserInput(target: Pick<EventTarget, "addEventListener" | "removeEventListener">, filter = tapFilter()) {
+  // Cancel native selection/menu actions, not the contacts that scroll,
+  // draw or activate controls. These events never enter the tap policy.
+  const nativeActions = ["contextmenu", "selectstart"];
+  const preventNativeAction = (event: Event) => event.preventDefault();
+  nativeActions.forEach(type => target.addEventListener(type, preventNativeAction, { capture: true }));
   const guards = new Set<(event: Event) => void>();
   const arbitrate: InputArbitration = guard => {
     guards.add(guard);
@@ -231,6 +236,7 @@ export function browserInput(target: Pick<EventTarget, "addEventListener" | "rem
   return {
     arbitrate,
     stop() {
+      nativeActions.forEach(type => target.removeEventListener(type, preventNativeAction, { capture: true }));
       stopFilter();
       events.forEach(type => target.removeEventListener(type, reject, { capture: true }));
       guards.clear();
