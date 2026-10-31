@@ -17,7 +17,9 @@ import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, emptyCare, emptyLabyrinth, emptyD
 import { filterTaps, tapAt } from "./taps.ts";
 import { openWindow } from "./windowSizes.ts";
 
-const button = (name: string) => screen.getByRole("button", { name });
+// These flow tests identify controls; visibility and layout have separate
+// contracts. Avoid repeated computed-style walks through the whole App.
+const button = (name: string) => screen.getByRole("button", { name, hidden: true });
 
 function openApp(storage: MemoryStorage, language: Language, theme: Theme, featured: HomeGame = "compare", reduced = false) {
   openWindow(1180, 820);
