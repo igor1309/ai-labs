@@ -453,6 +453,7 @@ const { chromium } = require("playwright");
     assert.deepEqual(await thumbnailPixel(anky.id, 454, 384), [239, 83, 80, 255]);
     assert.deepEqual(await thumbnailPixel(anky.id, 110, 280), [66, 165, 245, 255]);
     await page.reload(); await mount({}); await press("CONTINUE");
+    await page.locator('canvas[aria-label="ANKYLOSAURUS"]').waitFor();
     assert.deepEqual(await surfacePixel(454, 384), [239, 83, 80, 255]);
     assert.deepEqual(await surfacePixel(110, 280), [66, 165, 245, 255]);
     await press("UNDO"); await saved();
