@@ -31,7 +31,7 @@ public struct StartedCapture<Piece: Sendable>: Sendable {
 public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCallText {
 
     // Folder creation and synchronous file initializers perform blocking disk I/O.
-    nonisolated let queue = DispatchSerialQueue(label: "audelin.SessionPieces")
+    private nonisolated let queue = DispatchSerialQueue(label: "audelin.SessionPieces")
     public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     public enum Failure: Error, Equatable {

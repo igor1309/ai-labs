@@ -113,3 +113,41 @@ public func audioFile(_ url: URL) async throws -> AudioFileContents {
         )
     }
 }
+
+/// Holds each arriving thread until more threads have arrived than the
+/// cooperative pool has, so all of them arriving proves the work runs off the
+/// pool and on a thread of its own. Work that shares a thread or runs on the
+/// pool cannot all arrive: patience then lets everyone go, leaving `met` false.
+public final class ThreadBarrier: @unchecked Sendable {
+
+    public let count = ProcessInfo.processInfo.activeProcessorCount + 1
+
+    private let patience: TimeInterval
+    private let condition = NSCondition()
+    private var arrived = 0
+    private var deadline: Date?
+
+    public init(patience: TimeInterval = 20) { self.patience = patience }
+
+    /// Whether every expected thread arrived.
+    public var met: Bool {
+
+        condition.lock()
+        defer { condition.unlock() }
+        return arrived >= count
+    }
+
+    public func arrive() {
+
+        condition.lock()
+        defer { condition.unlock() }
+        arrived += 1
+        if arrived >= count {
+            condition.broadcast()
+            return
+        }
+        let deadline = deadline ?? Date(timeIntervalSinceNow: patience)
+        self.deadline = deadline
+        while arrived < count, condition.wait(until: deadline) {}
+    }
+}
