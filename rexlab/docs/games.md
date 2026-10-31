@@ -61,9 +61,10 @@ Rules: [play](features/sort-dinosaurs-play.feature),
 Fit cut skeleton pieces, then reveal the living dinosaur and a fact.
 Hatchling has 4 upright pieces on a full outline; Explorer has 6–8 pieces
 with staged help; Paleontologist has 10–12 pieces, a partial outline,
-distractor bones and rotation. Five skeletons fill museum stands; each earns
-one collection star, with higher-level badges for finishing without the last
-help step. Mystery guessing adds something to do after collecting them.
+distractor bones. Pieces stay upright; rotation was removed. Five skeletons
+fill museum stands; each earns one collection star, with higher-level badges
+for finishing without the last help step. Mystery guessing adds something to
+do after collecting them.
 
 Plan and rationale: [skeleton levels](skeleton-levels.md).
 Rules: [start](features/skeleton-assembly-start.feature),
@@ -77,8 +78,9 @@ Brush sand away with a finger to discover a creature. Hatchling freely
 uncovers it, with the last sand blowing away at 95%. At Explorer and
 Paleontologist, choices appear at 75% uncovered: identify the creature from
 3 or 4 pictures. The board stays still while brushing. There is no timer or
-penalty; help keeps the round moving. Creatures and occasional bonus finds
-fill the Field Guide; new finds and look-alike choices vary replay.
+penalty; help keeps the round moving. A creature's first dig earns its star
+and increases DUG UP; repeat digs earn no new star. Occasional treasures fill the Field Guide; new finds
+and look-alike choices vary replay.
 
 Plan and rationale: [dig levels](dig-levels.md).
 Rules: [brushing](features/dig-brush.feature),
@@ -144,7 +146,8 @@ Return five different jaws to their owners by tapping or dragging.
 Hatchling offers 2 creatures with food cues; Explorer offers 3 with diet-based
 deduction; Paleontologist offers 4, including same-diet look-alikes, so jaw
 shape decides. Hints, spoken names and facts support observation. Completing
-a round earns 3 stars; collected jaws fill a sixteen-slot shelf with playful
+a round earns 1–3 stars: 3 with no wrong tries, 2 with one, and 1 with two
+or more. Collected jaws fill a sixteen-slot shelf with playful
 chomps. Fresh rounds, best scores and the shelf support replay.
 
 Rules: [board and levels](features/whose-jaw-board.feature),
@@ -180,9 +183,10 @@ than game scores.
 
 Reading with dinosaur names is planned in LAB-273: picture-cued first
 letters, missing letters and shuffled names across the three levels. It is
-not a current Home game. Skeleton excavation (LAB-283), odd-bone-out
-(LAB-285), care redesigns and further coloring creatures remain separate
-work items; an issue proposal is not evidence of a shipped mode.
+not a current Home game. Care redesigns and further coloring creatures remain
+separate work items; an issue proposal is not evidence of a shipped mode.
+Skeleton excavation (LAB-283) and odd-bone-out (LAB-285) were closed
+alternatives, not planned modes.
 
 ## Finding and maintaining the details
 
