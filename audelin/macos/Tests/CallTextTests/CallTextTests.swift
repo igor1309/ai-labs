@@ -177,65 +177,54 @@ struct CallTextTests {
     }
 
     @Test(arguments: [false, true])
-    func liveTextFailureIsReportedAndKeepsTheTextSoFar(onCallTrack: Bool) async {
+    func liveTextFailureIsReportedAndTheOtherSideGoesOn(onCallTrack: Bool) async {
 
         let rig = Rig()
         await rig.call.start()
         await rig.microphone.say(0)
         await rig.other.say(100, at: 0)
-        let retained = await rig.call.state.entries
         let failing = onCallTrack ? rig.other : rig.microphone
+        let going = onCallTrack ? rig.microphone : rig.other
         await failing.fail()
-        var final: State?
-        for await snapshot in rig.call.updates { final = snapshot }
-        #expect(final == State(status: .failed("Live text failed"), entries: retained))
-        #expect((onCallTrack ? rig.microphone : rig.other).abandoned)
+        await going.say(onCallTrack ? 1 : 101, at: 1)
+        #expect(await rig.call.state == State(status: .failed("Live text failed"), entries: ordered(
+            entries(0...(onCallTrack ? 1 : 0), speaker: .mine) + entries(100...(onCallTrack ? 100 : 101), speaker: .theirs)
+        )))
+        #expect(!going.stopped)
         await rig.call.stop()
+        #expect(going.stopped)
     }
 
     @Test(arguments: [false, true])
-    func failureWaitsForBothSidesToReleaseLiveTextWithOtherAudioOpen(onCallTrack: Bool) async {
+    func aFailedSideLeavesTheCallOpenUntilItStops(onCallTrack: Bool) async {
 
-        let release = CueGate(), observed = CallObservation()
-        let failing = CueSide(loading: false)
-        let other = CueSide(loading: false, release: release)
+        let observed = CallObservation()
+        let failing = CueSide(loading: false), other = CueSide(loading: false)
         let call = CallText(microphone: onCallTrack ? other : failing, call: onCallTrack ? failing : other)
-        let retained = ordered(entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs))
-        defer { release.open() }
         await call.start()
-        await (onCallTrack ? other : failing).say(0)
-        await (onCallTrack ? failing : other).say(100, at: 0)
+        await failing.say(0)
         let listener = Task { await observed.listen(to: call) }
         await failing.fail()
-        let stopping = Task { await call.stop() }
-        await release.waitUntilEntered()
-        await observed.wait(for: State(status: .failed("Live text failed"), entries: retained))
-        #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
+        let failed = State(status: .failed("Live text failed"), entries: entries(0...0, speaker: onCallTrack ? .theirs : .mine))
+        await observed.wait(for: failed)
         #expect(!observed.ended)
-        #expect(other.abandoned)
-        #expect(!other.audioEnded)
         #expect(other.stopRequests == 0)
-        #expect(!other.liveTextReleased)
-        release.open()
-        await stopping.value
-        await listener.value
         await call.stop()
+        await listener.value
         #expect(observed.ended)
-        #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
+        #expect(observed.latest == failed)
         #expect(failing.liveTextReleased)
-        #expect(other.liveTextReleased)
-        #expect(!other.audioEnded)
-        #expect(other.stopRequests == 0)
+        #expect(other.stopped)
+        #expect(other.stopRequests == 1)
     }
 
-    @Test func failureDuringStopAbandonsTheOtherSidesOpenAudio() async {
+    @Test func failureDuringStopLetsTheOtherSideFinish() async {
 
-        let stop = CueGate(), release = CueGate(), observed = CallObservation()
+        let stop = CueGate(), observed = CallObservation()
         let failing = CueSide(loading: false, stop: stop)
-        let other = CueSide(loading: false, release: release, stop: stop)
+        let other = CueSide(loading: false, stop: stop)
         let call = CallText(microphone: failing, call: other)
-        let retained = ordered(entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs))
-        defer { stop.open(); release.open() }
+        defer { stop.open() }
         await call.start()
         await failing.say(0)
         await other.say(100, at: 0)
@@ -244,20 +233,17 @@ struct CallTextTests {
         await failing.stopRequested.wait()
         await other.stopRequested.wait()
         await failing.fail()
-        await release.waitUntilEntered()
+        let retained = ordered(entries(0...0, speaker: .mine) + entries(100...100, speaker: .theirs))
         await observed.wait(for: State(status: .failed("Live text failed"), entries: retained))
-        #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
         #expect(!observed.ended)
-        #expect(other.abandoned)
-        #expect(!other.audioEnded)
+        #expect(!other.stopped)
         stop.open()
-        release.open()
         await stopping.value
         await listener.value
         #expect(observed.ended)
-        #expect(observed.latest == State(status: .failed("Live text failed"), entries: retained))
         #expect(failing.stopped)
         #expect(other.stopped)
+        #expect(observed.latest?.status == .failed("Live text failed"))
     }
 
     @Test func oneSidesAudioEndingSettlesItsTextAndLeavesTheOtherReading() async {
@@ -378,7 +364,6 @@ private actor CueSide: Side {
 
     private struct Lifetime {
         var stopped = false
-        var abandoned = false
         var audioEnded = false
         var liveTextReleased = false
         var stopRequests = 0
@@ -407,7 +392,6 @@ private actor CueSide: Side {
     private(set) var switches: [Bool] = []
     private nonisolated let lifetime = Mutex(Lifetime())
     nonisolated var stopped: Bool { lifetime.withLock { $0.stopped } }
-    nonisolated var abandoned: Bool { lifetime.withLock { $0.abandoned } }
     nonisolated var audioEnded: Bool { lifetime.withLock { $0.audioEnded } }
     nonisolated var liveTextReleased: Bool { lifetime.withLock { $0.liveTextReleased } }
     nonisolated var stopRequests: Int { lifetime.withLock { $0.stopRequests } }
@@ -509,13 +493,6 @@ private actor CueSide: Side {
         await ending?.value
         lifetime.withLock { $0.stopped = true }
         stopReturned.open()
-    }
-
-    func abandon() async {
-
-        lifetime.withLock { $0.abandoned = true }
-        beginEnd(finalize: false)
-        await ending?.value
     }
 
     private func beginEnd(finalize: Bool) {

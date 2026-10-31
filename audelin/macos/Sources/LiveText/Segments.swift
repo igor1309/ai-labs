@@ -21,7 +21,14 @@ public struct Segments: Equatable, Sendable {
     }
 
     public private(set) var all: [Segment] = []
+    /// Segments before this count keep their id, text and end. On ending,
+    /// every segment is final; otherwise its end is the next segment's start.
+    public private(set) var finalCount = 0
     public private(set) var ending: Ending?
+    /// Seconds into the track where the last word ends.
+    public var end: Double { words.last?.end ?? finalEnd }
+    /// No word still to come starts before this; nil until the recogniser says.
+    public private(set) var noWordBefore: Double?
 
     /// The silence between two words that starts a new segment.
     let pause: Double
@@ -30,8 +37,11 @@ public struct Segments: Equatable, Sendable {
     /// Start a new segment at the first settled word at this offset.
     let maximumLength: Double = 30
 
+    /// Words after the last cut that can no longer move; segments before it
+    /// are final and keep only their text.
     private var words: [Word] = []
     private var settledCount = 0
+    private var finalEnd = 0.0
 
     public init(pause: Double) {
 
@@ -47,6 +57,21 @@ public struct Segments: Equatable, Sendable {
             }
         }
         cutIntoSegments()
+        if let bound = hearing.noWordBefore { noWordBefore = max(noWordBefore ?? bound, bound) }
+        closeAfterQuiet()
+    }
+
+    /// The next word will start a new segment, so this one need not wait for it.
+    /// Its end is then its last word's, not the next segment's start.
+    private mutating func closeAfterQuiet() {
+
+        guard let noWordBefore, settledCount == words.count, let last = words.last,
+              noWordBefore - last.end >= pause,
+              words.count >= 3 || words.contains(where: endsSentence) else { return }
+        finalCount = all.count
+        finalEnd = last.end
+        words.removeAll()
+        settledCount = 0
     }
 
     mutating func finish(_ hearing: Hearing) {
@@ -55,6 +80,7 @@ public struct Segments: Equatable, Sendable {
         settledCount = words.count
         ending = .finished
         cutIntoSegments()
+        finalCount = all.count
     }
 
     mutating func fail() {
@@ -62,25 +88,29 @@ public struct Segments: Equatable, Sendable {
         settledCount = words.count
         ending = .failed
         cutIntoSegments()
+        finalCount = all.count
     }
 
     /// Replaces pending words from where the report starts; reported words
     /// over settled ones are dropped.
     private mutating func take(_ hearing: Hearing) {
 
-        let settledEnd = settledCount > 0 ? words[settledCount - 1].end : -Double.infinity
+        let settledEnd = settledCount > 0 ? words[settledCount - 1].end : finalCount > 0 ? finalEnd : -Double.infinity
         let reported = hearing.words.filter { $0.start >= settledEnd }
         guard let from = hearing.from ?? reported.first?.start else { return }
 
-        let kept = words[settledCount...].prefix { $0.start < from }
-        words = words[..<settledCount] + kept + reported
+        let kept = words[settledCount...].prefix { $0.start < from }.count
+        words.replaceSubrange((settledCount + kept)..., with: reported)
     }
 
     /// Length cuts require settled words on both sides, so later revisions
     /// cannot move them. Pause cuts may follow pending words and go with them.
+    /// A cut decided by settled words alone is final, so only the words after
+    /// the last such cut are cut again.
     private mutating func cutIntoSegments() {
 
-        guard !words.isEmpty else { return all = [] }
+        all.removeSubrange(finalCount...)
+        guard !words.isEmpty else { return }
 
         var cuts: [Int] = []
         var lower = 0
@@ -104,16 +134,22 @@ public struct Segments: Equatable, Sendable {
             containsSentenceEnd = containsSentenceEnd || endsSentence(current)
         }
         let bounds = [0] + cuts + [words.count]
-        all = zip(bounds, bounds.dropFirst()).enumerated().compactMap { id, bound in
+        all += zip(bounds, bounds.dropFirst()).enumerated().compactMap { offset, bound in
             let (lower, upper) = bound
             guard lower < upper else { return nil }
             let settledUpper = min(max(settledCount, lower), upper)
             return Segment(
-                id: id,
+                id: finalCount + offset,
                 start: words[lower].start,
                 settled: text(words[lower..<settledUpper]),
                 pending: text(words[settledUpper..<upper])
             )
+        }
+        if let final = cuts.last(where: { $0 < settledCount }) {
+            finalCount += cuts.firstIndex(of: final)! + 1
+            finalEnd = words[final - 1].end
+            words.removeSubrange(..<final)
+            settledCount -= final
         }
     }
 

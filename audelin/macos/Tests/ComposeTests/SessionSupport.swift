@@ -68,13 +68,19 @@ actor SessionRecognizer: Recognizer {
 
     let heard = Signal()
     let name: String
+    let onHear: @Sendable () -> Void
     private(set) var chunks: [AudioChunk] = []
     private(set) var finishes = 0
 
-    init(name: String) { self.name = name }
+    init(name: String, onHear: @escaping @Sendable () -> Void = {}) {
+
+        self.name = name
+        self.onHear = onHear
+    }
 
     func hear(_ chunk: AudioChunk) -> Hearing {
 
+        onHear()
         chunks.append(chunk)
         heard.send()
         return Hearing(words: [.init(name + " pending", start: 0, end: 1.0 / 48_000)])
@@ -143,7 +149,8 @@ struct SessionRig: Sendable {
             missingModels: construction.missingModels,
             recordingTrack: construction.recordingTrack,
             closeTrack: construction.closeTrack, makeCaptureAudio: construction.makeCaptureAudio,
-            openTranscript: construction.openTranscript, makeCallText: construction.makeCallText
+            openTranscript: construction.openTranscript, makeCallText: construction.makeCallText,
+            transcriptClock: construction.transcriptClock
         )
         session = await makeSession(handler: pieces.handler())
         subscription = connect?(pieces, session) ?? subscribe(pieces, to: session, beforeForward: beforeForward)

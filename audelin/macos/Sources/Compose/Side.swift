@@ -9,6 +9,7 @@ import protocol FillIn.LiveText
 import protocol FillIn.WrittenTrack
 import struct SideText.Audio
 import struct SideText.Text
+import struct SideText.TextUpdate
 import struct SideText.State
 import struct SideText.FilledText
 import protocol SideText.LiveAudio
@@ -19,8 +20,8 @@ import Synchronization
 protocol TextEngine: Sendable {
 
     func prepare() async throws
-    func hear(_ audio: SideText.Audio) async throws -> [SideText.Text]
-    func finish() async throws -> [SideText.Text]
+    func hear(_ audio: SideText.Audio) async throws -> TrackText.Update
+    func finish() async throws -> TrackText.Update
     func shutdown() async
 }
 
@@ -30,9 +31,18 @@ extension TrackText: TextEngine {}
 struct CallSide: CallText.Side {
 
     private let side: SideReader
+    private let mapEntry: @Sendable (SideText.State.Entry) -> SideState.Entry
+    private let snapshotTaken: @Sendable (SideText.State) -> Void
 
-    init(audio: any SideText.LiveAudio, text: any TextEngine, written: any FillIn.WrittenTrack, sampleRate: Double) {
+    init(
+        audio: any SideText.LiveAudio, text: any TextEngine,
+        written: any FillIn.WrittenTrack, sampleRate: Double,
+        mapEntry: @escaping @Sendable (SideText.State.Entry) -> SideState.Entry = CallSide.entry,
+        snapshotTaken: @escaping @Sendable (SideText.State) -> Void = { _ in }
+    ) {
 
+        self.mapEntry = mapEntry
+        self.snapshotTaken = snapshotTaken
         let audio = SideAudio(source: audio)
         let hearing = SideHearing(text: text)
         side = SideReader(audio: audio, text: hearing, fillIn: {
@@ -45,11 +55,21 @@ struct CallSide: CallText.Side {
     func setEnabled(_ enabled: Bool) async { await side.setEnabled(enabled) }
 
     func stop() async { await side.stop() }
-    func abandon() async { await side.abandon() }
 
     func listen(_ receive: @escaping @Sendable (SideState) async -> Void) async {
 
+        var finalEntries: [SideState.Entry] = []
+        var lastStatus: SideText.State.Status?
+        var lastTail: [SideText.State.Entry] = []
+        var lastNoTextBefore: Double?
         for await snapshot in side.updates {
+            // A suppressed snapshot still acknowledges completed processing.
+            defer { snapshotTaken(snapshot) }
+            guard snapshot.status != lastStatus || snapshot.finalCount != finalEntries.count
+                || snapshot.tailEntries != lastTail || snapshot.noTextBefore != lastNoTextBefore else { continue }
+            lastNoTextBefore = snapshot.noTextBefore
+            lastStatus = snapshot.status
+            lastTail = snapshot.tailEntries
             let status: SideState.Status = switch snapshot.status {
             case .off: .off
             case .fillingIn: .gettingReady
@@ -57,13 +77,22 @@ struct CallSide: CallText.Side {
             case .finished: .finished
             case .failed(let failure): .failed(Self.message(failure))
             }
-            await receive(SideState(status: status, entries: snapshot.entries.map {
-                .init(text: .init(
-                    id: $0.text.id, start: $0.text.start, end: $0.text.end,
-                    settled: $0.text.settled, pending: $0.text.pending
-                ), writtenLater: $0.writtenLater)
-            }))
+            if snapshot.finalCount > finalEntries.count {
+                finalEntries.append(contentsOf: snapshot.finalEntries.dropFirst(finalEntries.count).map(mapEntry))
+            }
+            await receive(SideState(
+                status: status, finalEntries: finalEntries, tailEntries: snapshot.tailEntries.map(mapEntry),
+                noTextBefore: snapshot.noTextBefore
+            ))
         }
+    }
+
+    static func entry(_ entry: SideText.State.Entry) -> SideState.Entry {
+
+        .init(text: .init(
+            id: entry.text.id, start: entry.text.start, end: entry.text.end,
+            settled: entry.text.settled, pending: entry.text.pending
+        ), writtenLater: entry.writtenLater)
     }
 
     private static func message(_ failure: SideText.State.Failure) -> String {
@@ -91,17 +120,20 @@ private final class SideAudio: SideText.LiveAudio, FillIn.LiveAudioPosition, Sen
     }
 }
 
-private actor SideHearing: SideText.LiveText {
+actor SideHearing: SideText.LiveText {
 
     let text: any TextEngine
-    private var hearing: Task<[SideText.Text], any Error>?
+    private var hearing: Task<TextUpdate, any Error>?
 
     init(text: any TextEngine) { self.text = text }
 
-    func hear(_ audio: SideText.Audio) async throws -> [SideText.Text] {
+    func hear(_ audio: SideText.Audio) async throws -> TextUpdate {
 
         let text = text
-        let operation = Task { try await text.hear(audio) }
+        let operation = Task {
+            let update = try await text.hear(audio)
+            return TextUpdate(final: update.final, tail: update.tail, noTextBefore: update.noTextBefore)
+        }
         hearing = operation
         defer { hearing = nil }
         return try await withTaskCancellationHandler {
@@ -115,7 +147,11 @@ private actor SideHearing: SideText.LiveText {
         _ = await hearing?.result
     }
 
-    func finish() async throws -> [SideText.Text] { try await text.finish() }
+    func finish() async throws -> TextUpdate {
+
+        let update = try await text.finish()
+        return TextUpdate(final: update.final, tail: update.tail, noTextBefore: update.noTextBefore)
+    }
     func stop() async { await text.shutdown() }
 }
 
@@ -127,7 +163,7 @@ private struct FillHearing: FillIn.LiveText {
 
     func hear(_ audio: FillIn.Audio) async throws -> [FillIn.Text] {
 
-        try await text.hear(.init(start: audio.start, samples: audio.samples, sampleRate: audio.sampleRate)).map {
+        try await text.hear(.init(start: audio.start, samples: audio.samples, sampleRate: audio.sampleRate)).all.map {
             .init(id: $0.id, start: $0.start, end: $0.end, settled: $0.settled, pending: $0.pending)
         }
     }

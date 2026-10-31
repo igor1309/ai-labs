@@ -125,11 +125,14 @@ func isRefused(_ result: ProbeResult) -> Bool {
 }
 
 final class ProbeRig: Sendable {
+    struct IOReceiver: Sendable {
+        let receive: ProbeIOBlock
+    }
     let clock = ProbeClock()
     let player: PlayerSpy
     let calls = Mutex<[String]>([])
     let configuration = Mutex<[Bool]>([])
-    let callback = Mutex<ProbeIOBlock?>(nil)
+    let callback = Mutex<IOReceiver?>(nil)
     let tapUUID = Mutex<String?>(nil)
     let sampleTime = Mutex(0.0)
     let failure: String
@@ -138,7 +141,7 @@ final class ProbeRig: Sendable {
     init(failure: String = "", formatVariant: Int? = nil) {
         self.failure = failure; self.formatVariant = formatVariant
         player = PlayerSpy(failure: failure)
-        player.log.withLock { $0 = { [weak self] in self?.record($0) } }
+        player.log.withLock { $0 = PlayerSpy.Logger(record: { [weak self] in self?.record($0) }) }
     }
 
     var events: [String] { calls.withLock { $0 } }
@@ -190,7 +193,7 @@ final class ProbeRig: Sendable {
             return status
         }, createIO: { [self] io, _, receive in
             let status = status("create IO")
-            if status == noErr { io.pointee = { _, _, _, _, _, _, _ in noErr }; callback.withLock { $0 = receive } }
+            if status == noErr { io.pointee = { _, _, _, _, _, _, _ in noErr }; callback.withLock { $0 = IOReceiver(receive: receive) } }
             return status
         }, start: { [self] _, _ in status("start") }, stop: { [self] _, _ in status("stop") },
         destroyIO: { [self] _, _ in status("destroy IO") }, destroyAggregate: { [self] _ in status("destroy aggregate") },
@@ -211,7 +214,7 @@ final class ProbeRig: Sendable {
             }
             var output = AudioBufferList()
             withUnsafePointer(to: &time) { time in
-                callback.withLock { $0 }?(time, &list, time, &output, time)
+                callback.withLock { $0 }?.receive(time, &list, time, &output, time)
             }
         }
     }
@@ -236,20 +239,26 @@ final class ProbeRig: Sendable {
 
 final class PlayerSpy: Sendable, ProbePlayer {
     let failure: String
-    let log = Mutex<(@Sendable (String) -> Void)?>(nil)
-    let rendered = Mutex<(@Sendable () -> Void)?>(nil)
+    struct Logger: Sendable {
+        let record: @Sendable (String) -> Void
+    }
+    struct Completion: Sendable {
+        let complete: @Sendable () -> Void
+    }
+    let log = Mutex<Logger?>(nil)
+    let rendered = Mutex<Completion?>(nil)
     init(failure: String) { self.failure = failure }
     func prime() throws {
-        log.withLock { $0 }?("prime")
+        log.withLock { $0 }?.record("prime")
         if failure == "prime" { throw ProbeFailure("prime") }
     }
     func tone(rendered: @escaping @Sendable () -> Void) throws {
-        log.withLock { $0 }?("tone")
+        log.withLock { $0 }?.record("tone")
         if failure == "tone" { throw ProbeFailure("tone") }
-        self.rendered.withLock { $0 = rendered }
+        self.rendered.withLock { $0 = Completion(complete: rendered) }
     }
-    func complete() { rendered.withLock { $0 }?() }
-    func stop() { log.withLock { $0 }?("player stop") }
+    func complete() { rendered.withLock { $0 }?.complete() }
+    func stop() { log.withLock { $0 }?.record("player stop") }
 }
 
 final class ProbeClock: Sendable {

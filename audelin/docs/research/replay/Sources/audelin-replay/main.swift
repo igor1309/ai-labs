@@ -174,6 +174,50 @@ func clock(_ seconds: Double) -> String {
     String(format: "%02d:%02d", Int(seconds) / 60, Int(seconds) % 60)
 }
 
+
+/// What Live text's updates mean for saving the transcript. Live text
+/// publishes once per 0.1 s chunk heard, so the n-th update comes at
+/// n × 0.1 s of audio fed.
+struct SaveCounts {
+
+    struct Retained {
+
+        var all: [Segments.Segment] = []
+        var ending: Segments.Ending?
+    }
+
+    private(set) var segments = Retained()
+    /// Updates whose text differs from the one before: each is a save the
+    /// writer would want.
+    private(set) var changes = 0
+    /// Seconds of audio from a segment's first showing until it is final.
+    private(set) var ages: [Double] = []
+    /// Bytes of the text after the final segments, at each change.
+    private(set) var tailBytes: [Double] = []
+    private var count = 0
+    private var finalCount = 0
+    private var firstShown: [Int: Double] = [:]
+
+    mutating func take(_ update: LiveText.Update) {
+
+        count += 1
+        let fed = Double(count) / 10
+        let before = segments.all
+        segments.all = Array(segments.all.prefix(update.from)) + update.segments
+        segments.ending = update.ending
+        for segment in segments.all[finalCount...] where firstShown[segment.id] == nil { firstShown[segment.id] = fed }
+        if update.finalCount > finalCount {
+            for segment in segments.all[finalCount..<update.finalCount] {
+                ages.append(fed - (firstShown[segment.id] ?? fed))
+            }
+            finalCount = update.finalCount
+        }
+        guard segments.all != before else { return }
+        changes += 1
+        tailBytes.append(Double(segments.all[finalCount...].reduce(0) { $0 + $1.settled.utf8.count + $1.pending.utf8.count }))
+    }
+}
+
 let summary = output.appendingPathComponent("summary.md")
 if !FileManager.default.fileExists(atPath: summary.path) {
     try """
@@ -202,14 +246,15 @@ for source in sources {
 
         let live = LiveText(recognizer: tap, pause: pause)
         let collecting = Task {
-            var last: Segments?
-            for await update in live.updates { last = update }
-            return last
+            var saves = SaveCounts()
+            for await update in live.updates { saves.take(update) }
+            return saves
         }
         let started = Date()
         await live.listen(to: audio)
         let compute = Date().timeIntervalSince(started)
-        let segments = await collecting.value
+        let saves = await collecting.value
+        let segments = saves.segments
 
         // Every word a report calls final, once, with when it was first shown.
         var finals: [Timed] = []
@@ -238,16 +283,30 @@ for source in sources {
             while next < byStart.count, byStart[next].word.end < seen.word.start - 30 { next += 1 }
             if !byStart[next...].prefix(400).contains(where: { same($0.word, seen.word) }) { neverFinal += 1 }
         }
-        let settledWords = segments?.all.flatMap { $0.settled.split(separator: " ") }.count ?? 0
+        let settledWords = segments.all.flatMap { $0.settled.split(separator: " ") }.count
 
-        let text = (segments?.all ?? []).map { "[\(clock($0.start))] \($0.settled)" }.joined(separator: "\n\n")
-        let ending = segments?.ending.map { "\($0)" } ?? "none"
+        let text = segments.all.map { "[\(clock($0.start))] \($0.settled)" }.joined(separator: "\n\n")
+        let ending = segments.ending.map { "\($0)" } ?? "none"
         try "# \(name) — \(model.name)\n\nEnding: \(ending)\n\n\(text)\n"
             .write(to: output.appendingPathComponent("\(name)-\(model.name).md"), atomically: true, encoding: .utf8)
 
         let tsv = finals.map { String(format: "%.2f\t%.2f\t%.2f\t%.2f\t", $0.word.start, $0.word.end, $0.shown, $0.final) + $0.word.text }
         try (["start\tend\tshown\tfinal\tword"] + tsv).joined(separator: "\n")
             .write(to: output.appendingPathComponent("\(name)-\(model.name).tsv"), atomically: true, encoding: .utf8)
+
+        let changes = Double(saves.changes) * 60 / audio.duration
+        let saveLine = "| \(name) | \(model.name) | " + String(format: "%.0f", changes) + " | \(seconds(saves.ages)) | "
+            + String(format: "%.0f / %.0f / %.0f", percentile(saves.tailBytes, 0.5), percentile(saves.tailBytes, 0.9), saves.tailBytes.max() ?? .nan) + " |\n"
+        let savesFile = output.appendingPathComponent("saves.md")
+        if !FileManager.default.fileExists(atPath: savesFile.path) {
+            try "| Track | Recogniser | Text changes per minute | Not yet final, s, median / p90 / max | Text after final, bytes, median / p90 / max |\n|---|---|---|---|---|\n"
+                .write(to: savesFile, atomically: true, encoding: .utf8)
+        }
+        let savesHandle = try FileHandle(forWritingTo: savesFile)
+        savesHandle.seekToEndOfFile()
+        savesHandle.write(saveLine.data(using: .utf8)!)
+        try savesHandle.close()
+        print(saveLine, terminator: "")
 
         let row = [
             name, model.name, "\(finals.count)", "\(settledWords)",

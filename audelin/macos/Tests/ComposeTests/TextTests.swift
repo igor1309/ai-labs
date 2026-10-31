@@ -33,18 +33,18 @@ struct TextTests {
             .success(.init(words: [.init("one.", start: 0.5, end: 1)])),
             .success(.init(words: [.init("two", start: 3.5, end: 4)], finalThrough: 1)),
         ], endings: [.success(.init(words: [.init("last", start: 3.5, end: 4)]))])
-        let adapter = Compose.TrackText(recognizer: recognizer)
+        let adapter = Compose.TrackText(recognizerSource: { recognizer })
         try await adapter.prepare()
         try await adapter.prepare()
-        #expect(try await adapter.hear(.init(start: 0, samples: [0.25, 0.5], sampleRate: 1)) == [
-            .init(id: 0, start: 0.5, end: 2, pending: "one."),
+        #expect(try await adapter.hear(.init(start: 0, samples: [0.25, 0.5], sampleRate: 1)).all == [
+            .init(id: 0, start: 0.5, end: 1, pending: "one."),
         ])
         try await adapter.prepare()
-        #expect(try await adapter.hear(.init(start: 2, samples: [0.125, -0.5, 0.5, 0.25], sampleRate: 2)) == [
+        #expect(try await adapter.hear(.init(start: 2, samples: [0.125, -0.5, 0.5, 0.25], sampleRate: 2)).all == [
             .init(id: 0, start: 0.5, end: 3.5, settled: "one."),
             .init(id: 1, start: 3.5, end: 4, pending: "two"),
         ])
-        #expect(try await adapter.finish() == [
+        #expect(try await adapter.finish().all == [
             .init(id: 0, start: 0.5, end: 3.5, settled: "one."),
             .init(id: 1, start: 3.5, end: 4, settled: "last"),
         ])
@@ -61,15 +61,15 @@ struct TextTests {
             .success(.init(words: [.init("old", start: 0, end: 1)])),
             .success(.init(words: [.init("new", start: 1, end: 2)])),
         ], endings: [.success(.init(words: [])), .success(.init(words: []))])
-        let adapter = Compose.TrackText(recognizer: recognizer)
+        let adapter = Compose.TrackText(recognizerSource: { recognizer })
         try await adapter.prepare()
         _ = try await adapter.hear(.init(start: 0, samples: [0.25], sampleRate: 1))
-        #expect(try await adapter.finish() == [.init(id: 0, start: 0, end: 1, settled: "old")])
+        #expect(try await adapter.finish().all == [.init(id: 0, start: 0, end: 1, settled: "old")])
         try await adapter.prepare()
-        #expect(try await adapter.hear(.init(start: 1, samples: [0.5], sampleRate: 1)) == [
+        #expect(try await adapter.hear(.init(start: 1, samples: [0.5], sampleRate: 1)).all == [
             .init(id: 0, start: 1, end: 2, pending: "new"),
         ])
-        #expect(try await adapter.finish() == [.init(id: 0, start: 1, end: 2, settled: "new")])
+        #expect(try await adapter.finish().all == [.init(id: 0, start: 1, end: 2, settled: "new")])
         #expect(await recognizer.finishes == 2)
     }
 
@@ -80,7 +80,7 @@ struct TextTests {
             hearings: [atFinish ? .success(.init(words: [])) : .failure(.failed)],
             endings: atFinish ? [.failure(.failed)] : []
         )
-        let adapter = Compose.TrackText(recognizer: recognizer)
+        let adapter = Compose.TrackText(recognizerSource: { recognizer })
         try await adapter.prepare()
         let audio = Audio(start: 0, samples: [0.25], sampleRate: 1)
         if atFinish {
@@ -105,12 +105,12 @@ struct TextTests {
         let call = CallText(
             microphone: CallSide(
                 audio: microphone,
-                text: Compose.TrackText(recognizer: recognizer),
+                text: Compose.TrackText(recognizerSource: { recognizer }),
                 written: TextTrack(chunks: [.init(start: 1, samples: [0.5], sampleRate: 1)]), sampleRate: 1
             ),
-            call: CallSide(audio: other, text: Compose.TrackText(recognizer: ScriptRecognizer(
+            call: CallSide(audio: other, text: Compose.TrackText(recognizerSource: { [silent = ScriptRecognizer(
                 hearings: [], endings: [.success(.init(words: []))]
-            )), written: TextTrack(chunks: []), sampleRate: 1)
+            )] in silent }), written: TextTrack(chunks: []), sampleRate: 1)
         )
         await call.start()
         var states = call.updates.makeAsyncIterator()
@@ -154,7 +154,7 @@ struct TextTests {
         do {
             let recognizer = LifetimeRecognizer(released: released, finishes: finishes)
             remaining = recognizer
-            let adapter = Compose.TrackText(recognizer: recognizer)
+            let adapter = Compose.TrackText(recognizerSource: { recognizer })
             try await adapter.prepare()
         }
         await released.next()
@@ -184,7 +184,7 @@ struct TextTests {
                     + extraChunks.map { _ in .success(.init(words: [.init("suffix", start: 4, end: 4.5)], from: 4)) },
                 endings: [.success(.init(words: []))], blocked: began, release: release
             )
-            let adapter = Compose.TrackText(recognizer: recognizer)
+            let adapter = Compose.TrackText(recognizerSource: { recognizer })
             try await adapter.prepare()
             let hearing = Task { try await adapter.hear(original) }
             defer { hearing.cancel(); release.end() }
@@ -198,7 +198,7 @@ struct TextTests {
             release.end()
             try await adapter.prepare()
             var text: [Text] = []
-            for audio in replay { text = try await adapter.hear(audio) }
+            for audio in replay { text = try await adapter.hear(audio).all }
             #expect(text.last?.end == end)
             #expect(text.first?.pending == (extraChunks.isEmpty ? "accepted" : "accepted suffix"))
             _ = try await adapter.finish()
@@ -216,7 +216,7 @@ struct TextTests {
             endings: [.success(.init(words: [.init("final", start: 0, end: 1)]))],
             blocked: began, release: release
         )
-        let adapter = Compose.TrackText(recognizer: recognizer)
+        let adapter = Compose.TrackText(recognizerSource: { recognizer })
         try await adapter.prepare()
         let hearing = Task { try await adapter.hear(.init(start: 0, samples: [0.25], sampleRate: 1)) }
         defer { hearing.cancel(); release.end() }
@@ -226,7 +226,7 @@ struct TextTests {
         #expect(await recognizer.chunks == [.init(samples: [0.25], sampleRate: 1)])
         #expect(await recognizer.finishes == 0)
         release.end()
-        #expect(try await adapter.finish() == [.init(id: 0, start: 0, end: 1, settled: "final")])
+        #expect(try await adapter.finish().all == [.init(id: 0, start: 0, end: 1, settled: "final")])
         #expect(await recognizer.finishes == 1)
     }
 
@@ -237,7 +237,7 @@ struct TextTests {
         let recognizer = ScriptRecognizer(
             hearings: [], endings: [], finishing: began, finishRelease: release
         )
-        let adapter = Compose.TrackText(recognizer: recognizer)
+        let adapter = Compose.TrackText(recognizerSource: { recognizer })
         try await adapter.prepare()
         let finishing = Task { try await adapter.finish() }
         defer { finishing.cancel(); release.end() }
@@ -255,7 +255,7 @@ struct TextTests {
             hearings: [.failure(.failed)], endings: [.success(.init(words: []))],
             blocked: began, release: release
         )
-        let adapter = Compose.TrackText(recognizer: recognizer)
+        let adapter = Compose.TrackText(recognizerSource: { recognizer })
         try await adapter.prepare()
         let audio = Audio(start: 0, samples: [0.25], sampleRate: 1)
         let hearing = Task { try await adapter.hear(audio) }
