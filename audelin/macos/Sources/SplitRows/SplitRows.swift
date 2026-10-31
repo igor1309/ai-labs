@@ -60,7 +60,9 @@ extension SplitRows: Equatable where Element: Equatable {
     @inlinable public static func == (lhs: Self, rhs: Self) -> Bool {
 
         if lhs.sealed.count == rhs.sealed.count { return lhs.tail == rhs.tail && lhs.sealed == rhs.sealed }
-        return lhs.elementsEqual(rhs)
+        // Split differently, usually because a line just went final: two states
+        // differ near the end of the call, so start there.
+        return lhs.count == rhs.count && lhs.reversed().elementsEqual(rhs.reversed())
     }
 }
 
