@@ -326,6 +326,9 @@ const { chromium } = require("playwright");
         assert(box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1, JSON.stringify({ viewport, language, theme, box }));
         assert.deepEqual(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]), [viewport.width, viewport.height]);
         if (viewport.width === 1180 && language === "en" && theme === "light") {
+          await page.evaluate(async () => {
+            await Promise.all(document.getAnimations().filter(animation => animation.effect?.getComputedTiming().iterations !== Infinity).map(animation => animation.finished.catch(() => {})));
+          });
           await page.screenshot({ path: "/tmp/lab-823/triceratops.png" });
         }
         await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ");
