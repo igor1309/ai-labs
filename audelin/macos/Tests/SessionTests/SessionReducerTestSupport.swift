@@ -277,6 +277,12 @@ func nextStopEffect(after piece: SessionState.Piece) -> SessionEffect? {
 
 // MARK: - Events and effects
 
+/// The piece bring-down stops first: the first one up in stop order, other than `piece`.
+func firstPieceUp(in state: SessionState, besides piece: SessionState.Piece) -> SessionState.Piece {
+
+    stopOrder.first { $0 != piece && state[status: $0] == .up }!
+}
+
 func startResult(_ piece: SessionState.Piece, error: String?) -> SessionEvent {
 
     switch piece {

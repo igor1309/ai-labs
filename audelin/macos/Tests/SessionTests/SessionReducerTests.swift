@@ -384,6 +384,45 @@ struct SessionReducerTests {
         assert(makeEndingWhileStarting(start.piece), startResult(start.piece, error: nil), delivers: stopEffect(start.firstStop))
     }
 
+    @Test(arguments: heldStarts.filter { $0.piece != .track(.microphone) })
+    func failedStartWhileEndingStopsTheFirstPieceStillUp_state(_ start: HeldStart) {
+
+        let state = makeEndingWhileStarting(start.piece)
+        let error = anyError()
+        let firstStop = firstPieceUp(in: state, besides: start.piece)
+        assert(state, startResult(start.piece, error: error)) {
+            $0[status: start.piece] = .down
+            $0.fail(start.piece, error)
+            $0[status: firstStop] = .stopping
+        }
+    }
+
+    @Test(arguments: heldStarts.filter { $0.piece != .track(.microphone) })
+    func failedStartWhileEndingStopsTheFirstPieceStillUp_effect(_ start: HeldStart) {
+
+        let state = makeEndingWhileStarting(start.piece)
+        let firstStop = firstPieceUp(in: state, besides: start.piece)
+        assert(state, startResult(start.piece, error: anyError()), delivers: stopEffect(firstStop))
+    }
+
+    @Test func failedProcessesWhileEndingEnd_state() {
+
+        let state = makeEndingWhileStarting(.processes)
+        let error = anyError()
+        assert(state, .processesFinished(selection: nil, error: error)) {
+            $0.processes = .down
+            $0.fail(.processes, error)
+            $0.processSelection = nil
+            $0.folder = .closed
+            $0.phase = .ended
+        }
+    }
+
+    @Test func failedProcessesWhileEndingEnd_effect() {
+
+        assert(makeEndingWhileStarting(.processes), .processesFinished(selection: nil, error: anyError()), delivers: nil)
+    }
+
     @Test func failedStartWhileEndingWithNothingElseUpEnds_state() {
 
         let state = makeEndingWhileStarting(.track(.microphone))
