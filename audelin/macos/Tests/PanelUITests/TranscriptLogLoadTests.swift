@@ -53,18 +53,22 @@ struct TranscriptLogLoadTests {
         let style = Transcript.Style(tokens: .light, config: config)
         let rows = Transcript.Rows()
         _ = rows.update(lines, style: style)
-        var build = Duration.zero, update = Duration.zero
+        var build = Duration.zero, update = Duration.zero, layout = Duration.zero
         let clock = ContinuousClock()
         for step in 1...Self.updates {
             lines.rows[count - 1] = .entry(.init(id: count, time: "12:35", speaker: .me, settled: "", pending: "w\(step)"))
             build += clock.measure { _ = rows.update(lines, style: style) }
-            update += clock.measure {
-                host.rootView = log(lines, config: config, size: size)
-                host.layoutSubtreeIfNeeded()
-            }
+            let handed = clock.measure { host.rootView = log(lines, config: config, size: size) }
+            let laid = clock.measure { host.layoutSubtreeIfNeeded() }
+            update += handed + laid
+            layout += laid
         }
         #expect(Offscreen.textView(in: host)?.string.contains("w\(Self.updates)") == true, "the log does not show the last update")
-        return Cost(update: update.seconds / Double(Self.updates), build: build.seconds / Double(Self.updates))
+        return Cost(
+            update: update.seconds / Double(Self.updates),
+            build: build.seconds / Double(Self.updates),
+            layout: layout.seconds / Double(Self.updates)
+        )
     }
 
     private func lines(_ count: Int) -> PanelState.Lines {
@@ -95,14 +99,16 @@ struct TranscriptLogLoadTests {
 
 private struct Cost {
 
-    static let slowest = Cost(update: .infinity, build: .infinity)
+    static let slowest = Cost(update: .infinity, build: .infinity, layout: .infinity)
 
     /// Seconds per update, from the new lines to the log laid out.
     let update: Double
     /// Seconds of it spent building the rows that changed.
     let build: Double
+    /// Seconds of it spent laying the log out, after SwiftUI has the new view.
+    let layout: Double
 
-    var line: String { String(format: "%.2f ms an update (%.2f ms building rows)", update * 1000, build * 1000) }
+    var line: String { String(format: "%.2f ms an update (%.2f ms building rows, %.2f ms laying out)", update * 1000, build * 1000, layout * 1000) }
 
     func quicker(_ other: Cost) -> Cost { other.update < update ? other : self }
 }
