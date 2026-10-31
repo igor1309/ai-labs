@@ -56,8 +56,6 @@ struct TranscriptLog: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
-        let diagStart = ContinuousClock.now
-        defer { Self.diag("update", diagStart, lines.rows.count) }
 
         let coordinator = context.coordinator
         coordinator.parent = self
@@ -90,8 +88,6 @@ struct TranscriptLog: NSViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView scroll: NSScrollView, context: Context) -> CGSize? {
-        let diagStart = ContinuousClock.now
-        defer { Self.diag("fits w=\(proposal.width.map { "\($0)" } ?? "nil") h=\(proposal.height.map { "\($0)" } ?? "nil")", diagStart, lines.rows.count) }
 
         let width = proposal.width ?? config.panelWidth
         guard let text = scroll.documentView as? NSTextView,
@@ -102,7 +98,9 @@ struct TranscriptLog: NSViewRepresentable {
 
         // Text that reaches the room it is given fills it: laying out what
         // fits shows that without laying out a long call's whole log.
-        if let limit = proposal.height {
+        // An unbounded proposal asks for the whole height: laying out that
+        // much room would lay out a long call's whole log.
+        if let limit = proposal.height, limit.isFinite {
             layout.ensureLayout(for: CGRect(x: 0, y: 0, width: width, height: limit))
             if let below = layout.textLayoutFragment(for: CGPoint(x: 0, y: limit)),
                below.layoutFragmentFrame.maxY > limit {
@@ -121,13 +119,6 @@ struct TranscriptLog: NSViewRepresentable {
         let height = ceil(bottom)
 
         return CGSize(width: width, height: min(height, proposal.height ?? height))
-    }
-
-    // DIAGNOSTIC (LAB-817), reverted before landing.
-    static func diag(_ what: String, _ start: ContinuousClock.Instant, _ rows: Int) {
-        let d = ContinuousClock.now - start
-        let ms = Double(d.components.seconds) * 1000 + Double(d.components.attoseconds) / 1e15
-        FileHandle.standardError.write(Data("LOGDIAG \(rows) \(what) \(String(format: "%.2f", ms))\n".utf8))
     }
 
     static func dismantleNSView(_ scroll: NSScrollView, coordinator: Coordinator) {
