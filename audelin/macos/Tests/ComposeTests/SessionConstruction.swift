@@ -15,6 +15,8 @@ struct SessionConstruction: Sendable {
     var makeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio
     var openTranscript: @Sendable (URL) async throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript
     var makeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
+    /// The rig plays calls faster than real time, so a pause measured on the clock would only slow it.
+    var transcriptPause: @Sendable () async throws -> Void = {}
 }
 
 /// Forwards the real text and holds start until both sides are listening.

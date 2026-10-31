@@ -155,4 +155,49 @@ struct TranscriptWritingTests {
         #expect(run.transcript.kept == "last text")
         #expect(run.transcript.writes == ["last text"])
     }
+
+    @Test func aPauseFollowsEachWriteAndOnlyTheLatestTextIsWrittenAfterIt() async {
+
+        let executor = TestExecutor()
+        let pauses = Pauses(changed: executor.notify)
+        let run = Run(executor: executor, enabled: true, holds: [:], pauses: pauses)
+        defer { pauses.end(); run.requestStop(); executor.run() }
+        await executor.run(until: { run.observed.started })
+        run.call.send("first")
+        await executor.run(until: { pauses.waiting })
+        #expect(run.transcript.writes == ["first"])
+        run.call.send("second")
+        run.call.send("third")
+        await executor.run(until: { run.observed.texts == ["first", "second", "third"] })
+        #expect(run.transcript.writes == ["first"])
+        pauses.end()
+        await executor.run(until: { run.transcript.writes.count == 2 && pauses.waiting })
+        #expect(run.transcript.writes == ["first", "third"])
+        #expect(pauses.started == 2)
+        pauses.end()
+        run.requestStop()
+        await executor.finish()
+        await run.task.value
+        #expect(run.transcript.kept == "third")
+    }
+
+    @Test func stoppingEndsThePauseSoTheLastTextIsWrittenBeforeStopReturns() async {
+
+        let executor = TestExecutor()
+        let pauses = Pauses(changed: executor.notify)
+        let run = Run(executor: executor, enabled: true, holds: [:], lastText: "last", pauses: pauses)
+        defer { pauses.end(); run.requestStop(); executor.run() }
+        await executor.run(until: { run.observed.started })
+        run.call.send("first")
+        await executor.run(until: { pauses.waiting })
+        run.call.send("second")
+        await executor.run(until: { run.observed.texts == ["first", "second"] })
+        run.requestStop()
+        await executor.finish()
+        await run.task.value
+        #expect(run.observed.stopped)
+        #expect(run.transcript.writes == ["first", "last"])
+        #expect(run.transcript.kept == "last")
+        #expect(pauses.cancelled == 1)
+    }
 }

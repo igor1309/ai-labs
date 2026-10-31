@@ -20,7 +20,7 @@ its own sandbox inside it), with nothing heavy alongside. Every tool takes `-h`.
 | Which step grows, one commit only | `Profile/growth.sh TAG [OLD]` | about 5–12 min |
 | The same with the other side silent or gone quiet | `SILENT=1 Profile/growth.sh TAG`, `QUIET=1 Profile/growth.sh TAG` | about 5–12 min |
 | Which frames grow, between two finished runs | `cd Profile && python3 -I frames.py TAG-20 TAG-6000 45` | seconds |
-| Saves and CPU at real speaking speed | `Profile/saves.sh [SECONDS]` | minutes |
+| Saves, bytes written and CPU at real speaking speed | `Profile/saves.sh [SECONDS]` | minutes |
 | Does a real recogniser keep up late in a call? | `./speech.sh TAG [SECONDS]` | about 15 min |
 
 Use these rather than typing the commands. `Profile/` is its own package, built

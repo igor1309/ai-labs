@@ -1,7 +1,8 @@
 import Dispatch
 import Foundation
 
-/// One call's latest transcript, replaced whole by each successful write.
+/// One call's latest transcript. Once some of it is final, a write keeps the final text already on
+/// disk and rewrites only what follows it; until then, and after a failure, it replaces the file whole.
 public actor TranscriptFile {
 
     // Blocking file operations must not occupy the cooperative thread pool.
@@ -48,6 +49,8 @@ public actor TranscriptFile {
     private var finalText = Data("# Transcript\n\n".utf8)
     private var finalCount = 0
     private var finalHasWords = false
+    /// How many leading bytes of `finalText` the file on disk is known to hold, once it holds a final entry.
+    private var keptOnDisk: Int?
     private static let noText = "# Transcript\n\nNo text was heard.\n"
 
     /// Creates a new file exclusively; an existing path is always an error.
@@ -90,8 +93,33 @@ public actor TranscriptFile {
     public func write(count: Int, finalCount: Int, segment: @Sendable (Int) -> Segment) throws {
 
         guard !closed else { throw Failure.writingEnded }
+        // Cleared first, so any failure below, rendering included, makes the next write replace the file whole.
+        let kept = keptOnDisk
+        keptOnDisk = nil
         try render(count: count, finalCount: finalCount, segment: segment)
-        let (text, tail) = text()
+        let (text, tail, noText) = text()
+        if let kept, !noText {
+            try rewrite(after: min(kept, text.count), text: text, tail: tail)
+        } else {
+            try replace(text: text, tail: tail)
+        }
+        if !noText, self.finalCount > 0 { keptOnDisk = text.count }
+    }
+
+    /// Cuts the file back to text it already holds before writing the rest, so a crash or a
+    /// failure in between leaves every final entry whole; the next write after a failure
+    /// replaces the file whole.
+    private func rewrite(after kept: Int, text: Data, tail: Data) throws {
+
+        let file = try binding.open(at: url)
+        try file.truncate(to: kept)
+        try file.write(text[(text.startIndex + kept)...])
+        try file.write(tail)
+        try file.flush()
+    }
+
+    private func replace(text: Data, tail: Data) throws {
+
         let temporary = url.deletingLastPathComponent().appendingPathComponent(".transcript-\(UUID()).tmp")
         let file = try binding.create(at: temporary)
         defer { binding.remove(at: temporary) }
@@ -125,11 +153,11 @@ public actor TranscriptFile {
     }
 
     /// The file's two parts, so the final text is never copied into a new string.
-    private func text() -> (final: Data, tail: Data) {
+    private func text() -> (final: Data, tail: Data, noText: Bool) {
 
-        guard finalHasWords || rendered.contains(where: \.hasWords) else { return (Data(Self.noText.utf8), Data()) }
-        if rendered.isEmpty { return (finalText.dropLast(), Data()) }
-        return (finalText, Data((rendered.lazy.map(\.text).joined(separator: "\n\n") + "\n").utf8))
+        guard finalHasWords || rendered.contains(where: \.hasWords) else { return (Data(Self.noText.utf8), Data(), true) }
+        if rendered.isEmpty { return (finalText.dropLast(), Data(), false) }
+        return (finalText, Data((rendered.lazy.map(\.text).joined(separator: "\n\n") + "\n").utf8), false)
     }
 
     /// One segment's text, kept so an unchanged segment is not rendered again.

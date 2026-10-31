@@ -148,7 +148,8 @@ struct SessionRig: Sendable {
             missingModels: { [] },
             executor: construction.executor, recordingTrack: construction.recordingTrack,
             closeTrack: construction.closeTrack, makeCaptureAudio: construction.makeCaptureAudio,
-            openTranscript: construction.openTranscript, makeCallText: construction.makeCallText
+            openTranscript: construction.openTranscript, makeCallText: construction.makeCallText,
+            transcriptPause: construction.transcriptPause
         )
         session = await makeSession(pieces.handler())
         subscription = connect?(pieces, session) ?? subscribe(pieces, to: session, beforeForward: beforeForward)

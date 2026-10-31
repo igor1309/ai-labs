@@ -12,11 +12,21 @@ import struct SystemAudioCapture.AudioPiece
 
 // ProfileWord words LINES WORDS ROUNDS: plays a call to LINES, then speaks WORDS
 // inside a signpost, so a trace can be cut to the words alone.
-// ProfileWord paced LINES SECONDS: real speaking speed, counts saves of the file.
-// ProfileWord savecost LINES COUNT: one save of a call that size, tail changing.
+// ProfileWord paced LINES SECONDS: real speaking speed, counts saves of the file
+// and the bytes the process writes.
+// ProfileWord savecost LINES COUNT: one save of a call that size, all but the last
+// line final and the last one changing.
 func cpuSeconds() -> Double {
     var u = rusage(); getrusage(RUSAGE_SELF, &u)
     return Double(u.ru_utime.tv_sec + u.ru_stime.tv_sec) + Double(u.ru_utime.tv_usec + u.ru_stime.tv_usec) / 1e6
+}
+/// Bytes this process has asked to write, to any file.
+func bytesWritten() -> UInt64 {
+    var info = rusage_info_v4()
+    let result = withUnsafeMutablePointer(to: &info) {
+        $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0) }
+    }
+    return result == 0 ? info.ri_logical_writes : 0
 }
 func say(_ s: String) { print(s); fflush(stdout) }
 let mode = CommandLine.arguments[1]
@@ -28,16 +38,18 @@ if mode == "savecost" {
     let file = try await TranscriptFile(url: url)
     var segs = (0..<n).map { i in TranscriptFile.Segment(side: i % 2 == 0 ? .mine : .theirs, start: Double(i) * 6.6,
         settled: (0..<16).map { "mine\($0 + i * 16)" }.joined(separator: " "), pending: "") }
-    try await file.write(segs)
-    let c0 = cpuSeconds(); let t0 = ContinuousClock.now
+    let all = segs
+    try await file.write(count: n, finalCount: n - 1) { all[$0] }
+    let c0 = cpuSeconds(); let t0 = ContinuousClock.now; let b0 = bytesWritten()
     for k in 0..<m {
         let last = segs[n - 1]
         segs[n - 1] = .init(side: last.side, start: last.start, settled: last.settled, pending: "w\(k)")
-        try await file.write(segs)
+        let current = segs
+        try await file.write(count: n, finalCount: n - 1) { current[$0] }
     }
     let wall = ContinuousClock.now - t0
     let size = (try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int) ?? 0
-    say("savecost lines=\(n) size=\(size / 1024)KB wall/save=\(wall / m) cpu/save=\(String(format: "%.2f", (cpuSeconds() - c0) / Double(m) * 1000))ms")
+    say("savecost lines=\(n) size=\(size / 1024)KB wall/save=\(wall / m) cpu/save=\(String(format: "%.2f", (cpuSeconds() - c0) / Double(m) * 1000))ms bytes/save=\((bytesWritten() - b0) / UInt64(m))")
     try? FileManager.default.removeItem(at: dir)
     exit(0)
 }
@@ -61,14 +73,18 @@ var transcript: String?
 for case let u as URL in FileManager.default.enumerator(at: call.root, includingPropertiesForKeys: nil)?.allObjects ?? [] where u.lastPathComponent == "transcript.md" { transcript = u.path }
 guard let path = transcript else { say("no transcript"); exit(1) }
 let startLines = call.lines
-var inode: UInt64 = 0, saves = 0
+var seen: [Int] = [], saves = 0
 let stop = ContinuousClock.now + .seconds(m)
-let c0 = cpuSeconds(); let w0 = call.slots
-// Polls the inode: each save renames a new file into place.
+let c0 = cpuSeconds(); let w0 = call.slots; let b0 = bytesWritten()
+// Polls the inode and modification time: a save either renames a new file into
+// place or rewrites the end of this one.
 let watcher = Thread {
     while ContinuousClock.now < stop {
         var st = stat()
-        if stat(path, &st) == 0, UInt64(st.st_ino) != inode { inode = UInt64(st.st_ino); saves += 1 }
+        if stat(path, &st) == 0 {
+            let key = [Int(st.st_ino), st.st_mtimespec.tv_sec, st.st_mtimespec.tv_nsec, Int(st.st_size)]
+            if key != seen { seen = key; saves += 1 }
+        }
         usleep(2000)
     }
 }
@@ -82,7 +98,8 @@ while ContinuousClock.now < stop {
     try await Task.sleep(until: began + .milliseconds(400 * slots), clock: .continuous)
 }
 let cpu = cpuSeconds() - c0
-say("paced lines=\(startLines)->\(call.lines) secs=\(m) slots=\(slots) saves=\(saves - 1) saves/min=\(Double(saves - 1) * 60 / Double(m)) cpu=\(String(format: "%.1f", cpu / Double(m) * 100))% of one core")
+let written = Double(bytesWritten() - b0)
+say("paced lines=\(startLines)->\(call.lines) secs=\(m) slots=\(slots) saves=\(saves - 1) saves/min=\(Double(saves - 1) * 60 / Double(m)) written/min=\(String(format: "%.2f", written * 60 / Double(m) / 1_048_576))MB cpu=\(String(format: "%.1f", cpu / Double(m) * 100))% of one core")
 await call.end()
 exit(0)
 
