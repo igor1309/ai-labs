@@ -61,7 +61,7 @@ const { chromium } = require("playwright");
     assert.equal(await page.locator('[data-work-id="red"] .gallery-earned-star').count(), 1);
     assert.equal(await page.locator('[data-work-id="blue"] .gallery-earned-star').count(), 0);
     await press("CONTINUE"); await page.locator("canvas").waitFor();
-    await press("GREEN"); await press("FILL");
+    await press("COLOR"); await press("GREEN"); await press("FILL");
     const fill = async () => {
       const box = await page.locator("canvas").boundingBox();
       await page.mouse.click(box.x + box.width * 420 / 920, box.y + box.height * 330 / 620);
@@ -84,7 +84,7 @@ const { chromium } = require("playwright");
     assert.equal((await listed()).recentId, "red");
 
     // A failed write keeps its blue preview in the workshop until retry.
-    await press("CONTINUE"); await press("BLUE"); await press("FILL");
+    await press("CONTINUE"); await press("COLOR"); await press("BLUE"); await press("FILL");
     await page.evaluate(() => window.gallery.writeFailure(true));
     await fill(); await page.getByRole("alertdialog").waitFor();
     await press("KEEP EDITING"); await press("GALLERY"); await page.getByRole("alertdialog").waitFor();

@@ -45,6 +45,11 @@ function open(language: Language = "en", failure = false, sharedFilter = false) 
   return { ...view, surface, canvas, captured, step, tap, settled, session, painter, write, complete, navigate, dot };
 }
 
+function choose(kind: "COLOR" | "SIZE" | "ЦВЕТ" | "РАЗМЕР", name: string) {
+  fireEvent.click(screen.getByRole("button", { name: kind }));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name }));
+}
+
 function animationFrames() {
   const pending = new Map<number, FrameRequestCallback>();
   let id = 0;
@@ -109,12 +114,14 @@ it("batches coalesced samples per frame in one contact buffer and commits the re
 
 it.each(["en", "ru"] as Language[])("offers 12 colors, 3 sizes and symbol controls in %s without saving tool choices", language => {
   const f = open(language);
-  const colors = screen.getAllByRole("group", { name: language === "en" ? "COLOR" : "ЦВЕТ" });
-  expect(within(colors[0]!).getAllByRole("button")).toHaveLength(12);
-  const sizes = screen.getAllByRole("group", { name: language === "en" ? "SIZE" : "РАЗМЕР" });
-  expect(within(sizes[0]!).getAllByRole("button")).toHaveLength(3);
-  fireEvent.click(within(colors[0]!).getAllByRole("button")[6]!);
-  fireEvent.click(within(sizes[0]!).getAllByRole("button")[2]!);
+  fireEvent.click(screen.getByRole("button", { name: language === "en" ? "COLOR" : "ЦВЕТ" }));
+  const colors = within(screen.getByRole("group", { name: language === "en" ? "COLOR" : "ЦВЕТ" }));
+  expect(colors.getAllByRole("button")).toHaveLength(12);
+  fireEvent.click(colors.getAllByRole("button")[6]!);
+  fireEvent.click(screen.getByRole("button", { name: language === "en" ? "SIZE" : "РАЗМЕР" }));
+  const sizes = within(screen.getByRole("group", { name: language === "en" ? "SIZE" : "РАЗМЕР" }));
+  expect(sizes.getAllByRole("button")).toHaveLength(3);
+  fireEvent.click(sizes.getAllByRole("button")[2]!);
   fireEvent.click(screen.getByRole("button", { name: language === "en" ? "FILL" : "ЗАЛИВКА" }));
   expect(f.write).not.toHaveBeenCalled();
   expect(f.session.getSnapshot().work.revision).toBe(0);
@@ -128,8 +135,8 @@ it.each(["en", "ru"] as Language[])("offers 12 colors, 3 sizes and symbol contro
 
 it("previews one continuous contact, commits once at release and retains selected color/size", async () => {
   const f = open();
-  fireEvent.click(screen.getByRole("button", { name: "BLUE" }));
-  fireEvent.click(screen.getByRole("button", { name: "BRUSH LARGE" }));
+  choose("COLOR", "BLUE");
+  choose("SIZE", "BRUSH LARGE");
   f.step("pointerdown", 0, 0); f.step("pointermove", 1, 0); f.step("pointerup", 2, 0);
   await f.settled();
   const action: Action = { kind: "stroke", color: "#42a5f5", size: 40, points: [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 2, y: 0 }] };
@@ -184,13 +191,13 @@ it.each(["pointercancel", "lostpointercapture", "resize", "orientationchange", "
 it("uses the shared tap filter: a second tap adds no action and an accepted drag leaves the next contact available", async () => {
   const f = open("en", false, true);
   f.tap(0, 0, 1000); await f.settled();
-  fireEvent.click(screen.getByRole("button", { name: "BLUE" }));
+  choose("COLOR", "BLUE");
   f.tap(0, 0, 1200); await f.settled();
   expect(f.session.getSnapshot().work.revision).toBe(1);
   f.step("pointerdown", -20, 0, 1, 2000);
   f.step("pointermove", 1, 0, 1, 2030);
   f.step("pointerup", 1, 0, 1, 2060); await f.settled();
-  fireEvent.click(screen.getByRole("button", { name: "RED" }));
+  choose("COLOR", "RED");
   f.tap(1, 0, 2100); await f.settled();
   expect(f.session.getSnapshot().work.actions).toHaveLength(3);
 });
@@ -206,7 +213,7 @@ it.each(["canvas", "control"])("keeps the next stroke after a nearby ignored fin
   f.step("pointerup", 1, 0, 1, 1060);
   f.step("pointerup", 21, 0, 2, 1070, ignoredTarget);
   fireEvent(ignoredTarget, new PointerEvent("click", { pointerId: 2, detail: 1, bubbles: true, cancelable: true }));
-  fireEvent.click(screen.getByRole("button", { name: "BLUE" }));
+  choose("COLOR", "BLUE");
   f.step("pointerdown", 1, 0, 1, 1100);
   f.step("pointermove", 2, 0, 1, 1120);
   f.step("pointerup", 3, 0, 1, 1140);
@@ -221,7 +228,7 @@ it.each(["canvas", "control"])("keeps the next stroke after a nearby ignored fin
 it("fill uses the painter's region hit and undo restores paint; outside fill adds no revision", async () => {
   const f = open(); f.tap(); await f.settled();
   fireEvent.click(screen.getByRole("button", { name: "FILL" }));
-  fireEvent.click(screen.getByRole("button", { name: "BLUE" }));
+  choose("COLOR", "BLUE");
   f.tap(); await f.settled();
   expect(f.session.getSnapshot().work.actions).toEqual([f.dot, { kind: "fill", region: "body", color: "#42a5f5" }]);
   fireEvent.click(screen.getByRole("button", { name: "UNDO" })); await f.settled();
@@ -243,7 +250,7 @@ it.each([
   f.canvas.getBoundingClientRect = () => new DOMRect(left, top, width, height);
   f.painter.regionAt.mockReturnValue(region);
   fireEvent.click(screen.getByRole("button", { name: "FILL" }));
-  fireEvent.click(screen.getByRole("button", { name: "BLUE" }));
+  choose("COLOR", "BLUE");
   const contact = { clientX: left + point.x * scaleX, clientY: top + point.y * scaleY, pointerId: 1, button: 0 };
   fireEvent.pointerDown(f.canvas, contact);
   fireEvent.pointerUp(f.canvas, contact);
@@ -275,7 +282,7 @@ it.each(["en", "ru"] as Language[])("overlays the mounted canvas with a color pi
   expect(f.session.getSnapshot().work).toBe(work);
   expect(f.write).toHaveBeenCalledTimes(1);
   expect(trigger.querySelector(".coloring-swatch")?.getAttribute("style")).toContain("rgb(66, 165, 245)");
-  fireEvent.click(screen.getByRole("button", { name: language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ" }));
+  choose(language === "en" ? "SIZE" : "РАЗМЕР", language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ");
   f.tap(2, 0); await f.settled();
   expect(f.session.getSnapshot().work.actions.at(-1)).toMatchObject({ kind: "stroke", color: "#42a5f5", size: 40 });
 });
@@ -294,7 +301,8 @@ it.each(["close", "Escape", "resize", "orientationchange"])("dismisses the picke
   expect(document.activeElement).toBe(trigger);
   expect(f.session.getSnapshot().work).toBe(work);
   expect(f.write).toHaveBeenCalledTimes(1);
-  expect(screen.getByRole("button", { name: "RED" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(trigger);
+  expect(within(screen.getByRole("dialog")).getByRole("button", { name: "RED" }).getAttribute("aria-pressed")).toBe("true");
 });
 
 it.each(["close", "selection"])("filters a second tap after picker %s dismissal before it can paint", async method => {
@@ -338,12 +346,13 @@ it.each(["SMALL", "MEDIUM", "LARGE"] as const)("selects the %s brush directly fr
   const f = open();
   const fill = screen.getByRole("button", { name: "FILL" });
   fireEvent.click(fill);
+  fireEvent.click(screen.getByRole("button", { name: "SIZE" }));
   const sizes = within(screen.getByRole("group", { name: "SIZE" }));
   for (const button of sizes.getAllByRole("button")) expect(button.getAttribute("aria-pressed")).toBe("false");
   const brush = sizes.getByRole("button", { name: `BRUSH ${label}` });
   fireEvent.click(brush);
-  expect(brush.getAttribute("aria-pressed")).toBe("true");
-  expect(brush.querySelector(".coloring-selection")).not.toBeNull();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.getByRole("button", { name: "BRUSH" }).getAttribute("aria-pressed")).toBe("true");
   expect(fill.getAttribute("aria-pressed")).toBe("false");
   expect(f.write).not.toHaveBeenCalled();
   f.tap(); await f.settled();
@@ -424,5 +433,23 @@ it.each(["en", "ru"] as Language[])("chooses a brush size on its own sheet in %s
   expect(f.container.querySelector("canvas")).toBe(f.canvas);
   expect(f.session.getSnapshot().work).toBe(before);
   expect(f.write).not.toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(trigger);
+  expect(within(screen.getByRole("dialog")).getByRole("button", { name: language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+});
+
+it.each(["en", "ru"] as Language[])("switches from fill back to the current brush without changing its size or paint in %s", async language => {
+  const f = open(language);
+  choose(language === "en" ? "SIZE" : "РАЗМЕР", language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ");
+  const fill = screen.getByRole("button", { name: language === "en" ? "FILL" : "ЗАЛИВКА" });
+  fireEvent.click(fill);
+  const brush = screen.getByRole("button", { name: language === "en" ? "BRUSH" : "КИСТЬ" });
+  expect(brush.getAttribute("aria-pressed")).toBe("false");
+  fireEvent.click(brush);
+  expect(brush.getAttribute("aria-pressed")).toBe("true");
+  expect(brush.querySelector(".coloring-selection")).not.toBeNull();
+  expect(fill.getAttribute("aria-pressed")).toBe("false");
+  expect(f.write).not.toHaveBeenCalled();
+  f.tap(); await f.settled();
+  expect(f.session.getSnapshot().work.actions).toEqual([{ ...f.dot, size: 40 }]);
 });
