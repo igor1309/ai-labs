@@ -37,7 +37,7 @@ public actor NemotronRecognizer: Recognizer {
     // Inference reaches it through a task executor preference, which default actors and
     // nonisolated async code follow; an actor with its own executor, or an unstructured
     // task it starts, does not.
-    nonisolated let queue = DispatchSerialQueue(label: "audelin.NemotronRecognizer")
+    private nonisolated let queue = DispatchSerialQueue(label: "audelin.NemotronRecognizer")
     public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     private static let rate = 16_000.0

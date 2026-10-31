@@ -6,6 +6,7 @@ import Foundation
 import PanelUI
 import Preferences
 import Testing
+@testable import Audelin
 @testable import Compose
 
 private let recordingSkipReason: String? = {
@@ -19,6 +20,17 @@ private let recordingSkipReason: String? = {
     }
     return nil
 }()
+
+/// The local gate sets `AUDELIN_REQUIRE_DEVICES=1`: there the suite below must
+/// run, so its skip becomes a failure that names what is missing.
+@Suite struct RealRecordingTranscriptRequirement {
+
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["AUDELIN_REQUIRE_DEVICES"] == "1"))
+    func theRealRecordingTestsCanRun() {
+
+        if let reason = recordingSkipReason { Issue.record(Comment(rawValue: reason)) }
+    }
+}
 
 @Suite(.serialized, .timeLimit(.minutes(1)), .disabled(
     if: recordingSkipReason != nil,

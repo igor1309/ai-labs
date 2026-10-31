@@ -2,6 +2,7 @@ import Foundation
 import Recording
 import Session
 import Testing
+@testable import Audelin
 @testable import Compose
 
 @Suite(.timeLimit(.minutes(1)))
@@ -50,7 +51,7 @@ struct RecordingSessionsTests {
             let begin = Task { await adapter.begin(id: 18) }
             await started.next()
             await connection.session.send(.pieceFailed(.track(.microphone), error: "full"))
-            _ = try await sessionState(connection.session) { $0.health(of: .track(.microphone)) == .failed("full") }
+            _ = try await connection.session.state { $0.health(of: .track(.microphone)) == .failed("full") }
             release.end()
             #expect(await begin.value == .ready)
             await connection.session.send(.pieceFailed(.track(.call), error: "also full"))
@@ -90,11 +91,11 @@ struct RecordingSessionsTests {
             #expect(await adapter.begin(id: 12) == .ready)
             #expect(await adapter.begin(id: 12) == .ready)
             #expect(ids.all == [12])
-            #expect(await connection.session.snapshot().wantedLiveText)
+            _ = try await connection.session.state { $0.wantedLiveText }
             let text = try #require(await rig.pieces.text)
             #expect(await text.state.status != .off)
             await adapter.end(id: 12)
-            let ended = await connection.session.snapshot()
+            let ended = try await connection.session.state { $0.phase == .ended }
             #expect(ended.phase == .ended)
             #expect(ended.microphoneTrack == .closed)
             #expect(ended.callTrack == .closed)
@@ -122,7 +123,7 @@ struct RecordingSessionsTests {
             await rig.pieces.news.continuation.yield(.pieceFailed(.folder, error: "unavailable"))
             #expect(await begin.value == .cannotRecord("folder: unavailable"))
             let end = Task { await adapter.end(id: 3) }
-            _ = try await sessionState(connection.session) { $0.phase == .ending }
+            _ = try await connection.session.state { $0.phase == .ending }
             release.end()
             await end.value
             #expect(connection.reports.all == [.init(id: 3, report: .callCreated(id: "1970.01.01-0000"))])
@@ -141,7 +142,7 @@ struct RecordingSessionsTests {
             rig.call.source.continuation.finish(throwing: ScriptFailure.failed)
             await connection.waitForReport(.init(id: 7, report: .failed(.microphone)))
             await rig.pieces.news.continuation.yield(.pieceFailed(.transcript, error: "unavailable"))
-            _ = try await sessionState(connection.session) { $0.health(of: .transcript) == .failed("unavailable") }
+            _ = try await connection.session.state { $0.health(of: .transcript) == .failed("unavailable") }
             await connection.waitForReport(.init(id: 7, report: .cannotRecord("no track can record")))
             await adapter.end(id: 7)
             // Capture faults can arrive in either order from the independent streams.
@@ -168,12 +169,12 @@ struct RecordingSessionsTests {
             let begin = Task { await adapter.begin(id: 4) }
             await started.next()
             let end = Task { await adapter.end(id: 4) }
-            _ = try await sessionState(connection.session) { $0.phase == .ending }
+            _ = try await connection.session.state { $0.phase == .ending }
             #expect(rig.microphone.stops.all.isEmpty)
             release.end()
             #expect(await begin.value == .ended)
             await end.value
-            #expect(await connection.session.snapshot().phase == .ended)
+            _ = try await connection.session.state { $0.phase == .ended }
             #expect(rig.microphone.stops.all == [true])
             #expect(rig.call.starts.all.isEmpty)
             #expect(connection.joined.all == [true])
@@ -252,7 +253,8 @@ struct RecordingSessionsTests {
                 #expect(reports.reports.all == [.init(id: 21, report: .callCreated(id: "1970.01.01-0000")),
                                                 .init(id: 34, report: .callCreated(id: "1970.01.01-0000")),
                                                 .init(id: 21, report: .ended)])
-                #expect(await secondConnection.session.snapshot().phase == .recording)
+                let secondNow = try await secondConnection.session.current()
+                #expect(secondNow.phase == .recording)
                 #expect(second.microphone.stops.all.isEmpty)
                 #expect(second.call.stops.all.isEmpty)
                 await adapter.end(id: 34)
@@ -315,14 +317,6 @@ private final class RecordingConnection: Sendable {
             }
         }
     }
-}
-
-private func sessionState(_ session: SessionInputs, where matches: (SessionState) -> Bool) async throws -> SessionState {
-
-    for await state in await session.states() {
-        if matches(state) { return state }
-    }
-    throw ScriptFailure.failed
 }
 
 private func recordingState(_ recording: RecordingInputs, where matches: (RecordingState) -> Bool) async throws -> RecordingState {

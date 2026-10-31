@@ -10,6 +10,7 @@ import Synchronization
 import struct SystemAudioCapture.AudioPiece
 import enum SystemAudioCapture.ProcessSelection
 import Testing
+@testable import Audelin
 @testable import Compose
 
 struct SessionProcessList: ProcessList {
@@ -139,22 +140,18 @@ struct SessionRig: Sendable {
             },
             startCall: { selection in selections.append(selection); return try call.start() },
             microphoneRecognizer: recognizers?.0 ?? mine, callRecognizer: recognizers?.1 ?? theirs,
-            missingModels: { [] },
-            executor: construction.executor, recordingTrack: construction.recordingTrack,
+            missingModels: construction.missingModels,
+            recordingTrack: construction.recordingTrack,
             closeTrack: construction.closeTrack, makeCaptureAudio: construction.makeCaptureAudio,
             openTranscript: construction.openTranscript, makeCallText: construction.makeCallText
         )
-        session = await makeSession(pieces.handler())
+        session = await makeSession(handler: pieces.handler())
         subscription = connect?(pieces, session) ?? subscribe(pieces, to: session, beforeForward: beforeForward)
     }
 
     func state(where matches: (SessionState) -> Bool) async throws -> SessionState {
 
-        for await state in await session.states() {
-            try Task.checkCancellation()
-            if matches(state) { return state }
-        }
-        throw ScriptFailure.failed
+        try await session.state(where: matches)
     }
 
     func finish() async {
@@ -198,4 +195,20 @@ func withSessionRig(
 func recordedSamples(_ url: URL) async throws -> [Float] {
 
     try await audioFile(url).samples
+}
+
+extension SessionInputs {
+
+    /// The first state the session publishes that matches: its current state, or a later one.
+    func state(where matches: (SessionState) -> Bool) async throws -> SessionState {
+
+        for await state in await states() {
+            try Task.checkCancellation()
+            if matches(state) { return state }
+        }
+        throw ScriptFailure.failed
+    }
+
+    /// The state the session holds now, events it has not reduced yet aside.
+    func current() async throws -> SessionState { try await state { _ in true } }
 }

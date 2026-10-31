@@ -11,17 +11,14 @@ struct RecordedInputTests {
 
         let failure = StopRefusal()
         let source = FailingCapture(failure: failure, endsInput: endsInput)
-        let forwarding = DrainGate(), executor = DrainExecutor(), returned = Mutex(false)
+        let forwarding = DrainGate(), returned = Mutex(false)
         let tones: [CapturedPiece] = [
             .init(samples: [0.1, -0.1], sampleRate: 8_000),
             .init(samples: [0.2, 0, -0.2], sampleRate: 16_000),
             .init(samples: [0.3, 0.1, -0.3, -0.1], sampleRate: 48_000),
         ]
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            let input = RecordedInput(
-                capture: source, beforeInput: { await forwarding.wait() }, executor: executor
-            )
+        let task = Task {
+            let input = RecordedInput(capture: source, beforeInput: { await forwarding.wait() })
             let stream = try await input.start()
             source.give(tones)
             do {
@@ -37,13 +34,12 @@ struct RecordedInputTests {
             }
             #expect(heard == tones)
         }
-        defer { forwarding.release(); source.finish(); executor.run() }
-        await executor.run(until: { forwarding.entered && source.stops == 1 })
-        #expect(forwarding.entered)
+        defer { forwarding.release(); source.finish() }
+        await forwarding.waitUntilEntered()
+        await source.waitUntilStopped()
         #expect(source.stops == 1)
         #expect(!returned.withLock { $0 })
         forwarding.release()
-        await executor.finish()
         try await task.value
         #expect(returned.withLock { $0 })
     }
@@ -55,6 +51,7 @@ private final class FailingCapture: Capture, Sendable {
 
     private let input = AsyncThrowingStream<CapturedPiece, any Error>.makeStream()
     private let stopCount = Mutex(0)
+    private let stopped = AsyncStream<Void>.makeStream()
     private let failure: StopRefusal
     private let endsInput: Bool
 
@@ -72,7 +69,14 @@ private final class FailingCapture: Capture, Sendable {
 
         stopCount.withLock { $0 += 1 }
         if endsInput { finish() }
+        stopped.continuation.yield(())
         throw failure
+    }
+
+    func waitUntilStopped() async {
+
+        var iterator = stopped.stream.makeAsyncIterator()
+        _ = await iterator.next()
     }
 
     func give(_ pieces: [CapturedPiece]) {

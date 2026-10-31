@@ -7,6 +7,7 @@ import Observation
 import Synchronization
 import Testing
 import protocol TranscriptWriting.CallText
+@testable import Audelin
 @testable import Compose
 
 struct ReadingCompositionTests {

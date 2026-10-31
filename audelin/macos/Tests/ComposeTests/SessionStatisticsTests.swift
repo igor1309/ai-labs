@@ -6,6 +6,7 @@ import Session
 import Synchronization
 import struct SystemAudioCapture.AudioPiece
 import Testing
+@testable import Audelin
 @testable import Compose
 
 @Suite(.timeLimit(.minutes(1)))
@@ -55,7 +56,7 @@ struct SessionStatisticsTests {
     @Test func captureStatisticsWarnAndNonzeroCallAudioClearsTheSessionWarning() async throws {
 
         try await withStatisticsPieces(clock: StatisticsClock([100, 100, 100]), initialPieces: false) { rig in
-            let session = await makeSession(rig.pieces.handler())
+            let session = await makeSession(handler: rig.pieces.handler())
             let sink = StatisticsLog()
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
                 report: { _, _ in }, connect: subscribe, sink: sink,

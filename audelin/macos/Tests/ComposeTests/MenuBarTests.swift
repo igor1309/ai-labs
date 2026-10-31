@@ -9,6 +9,7 @@ import enum SystemAudioCapture.ProcessSelection
 import Recording
 import Synchronization
 import Testing
+@testable import Audelin
 
 @Suite(.timeLimit(.minutes(1)))
 struct MenuBarTests {

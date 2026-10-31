@@ -1,3 +1,4 @@
+import { ARTWORKS, artworkFor } from "../src/coloring/artworks.ts";
 import { StrictMode } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, onTestFinished, vi } from "vitest";
@@ -9,7 +10,7 @@ import type { GalleryCollection, GallerySource } from "../src/coloringGallery.ts
 import type { AgeLevel } from "../src/ageLevel.ts";
 import type { HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
-import { coloringFixture } from "./coloringFixture.ts";
+import { coloringFixture, galleryArtworkFixtures } from "./coloringFixture.ts";
 import { SHIPPED_CATALOGUE, SHIPPED_DINOSAURS, emptyCare, emptyDig, emptyLabyrinth, emptyPairs, emptyProgress, emptySkeletons, emptySorting, englishDevice, fakeBodyPicture, featuring, lightDevice, loadedPictures, manualViewport, pageAtRest, seededRandom } from "./support.ts";
 
 function fixture({ language = "en", featured = "compare", level = "explorer" }: { language?: Language; featured?: HomeGame; level?: AgeLevel } = {}) {
@@ -25,8 +26,9 @@ function fixture({ language = "en", featured = "compare", level = "explorer" }: 
     list: vi.fn(async () => { if (deferred) return deferred; if (failure) throw new Error("denied"); return collection; }),
     reset: vi.fn(async () => {}),
     open: vi.fn(async () => { throw new Error("no work"); }),
-    newWork: vi.fn(async (id, navigate) => {
-      active = coloringWorkshop(model.newWork(id), null, { model, navigate, thumbnail: async () => thumbnail(), write: async () => {}, complete: async () => {
+    newWork: vi.fn(async (id, navigate, geometry) => {
+      const selected = geometry ? coloringFixture(artworkFor(geometry).geometry.artwork).model : model;
+      active = coloringWorkshop(selected.newWork(id), null, { model: selected, navigate, thumbnail: async () => thumbnail(), write: async () => {}, complete: async () => {
         collection = { ...collection, completedCount: 5 }; return { earned: true, completedCount: 5 };
       } });
       return active;
@@ -37,7 +39,7 @@ function fixture({ language = "en", featured = "compare", level = "explorer" }: 
   const props = { ...emptyCare(), ...emptyDig(), ...emptyLabyrinth(), ...emptyPairs(), ...emptySkeletons(), ...emptySorting(), ...englishDevice(), ...lightDevice(), ...loadedPictures(), ...pageAtRest(), ...featuring(featured),
     dinosaurs: SHIPPED_DINOSAURS, catalogue: SHIPPED_CATALOGUE, bodyPicture: fakeBodyPicture, random: seededRandom(7), progress: emptyProgress(), portraitLayouts: {}, viewport,
     languageStore: { load: () => language, save: vi.fn() }, ageLevelStore: { load: () => ({ level, revision: "parent" }), save: saveAge },
-    coloring: { source, painter: { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: () => "body" }, identity: () => `work-${++identity}` }, startCounter: { countStart }
+    coloring: { source, artworks: ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names })), painterFor: () => ({ width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: () => "body" }), identity: () => `work-${++identity}` }, startCounter: { countStart }
   };
   const view = render(<StrictMode><InputArbitrationContext value={input.arbitrate}><App {...props} /></InputArbitrationContext></StrictMode>);
   const click = async (name: string) => { await act(async () => { fireEvent.click(screen.getByRole("button", { name })); }); };
@@ -102,4 +104,16 @@ it.each([4, null])("shows no warning while Home history is pending, then shows i
   expect(f.container.querySelector(".coloring-tile-count")).toBeNull();
   await act(async () => { resolve({ works: [], unavailable: [], recentId: null, completedCount }); });
   expect(f.container.querySelector(".coloring-tile-count")?.textContent).toBe(completedCount === null ? "?" : "4");
+});
+
+
+it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("offers the %s Triceratops through App without a third artwork choice", async level => {
+  const f = fixture({ level }); await act(async () => {});
+  await f.click("COLOR A DINOSAUR");
+  expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(2);
+  expect(screen.getAllByRole("button", { name: "TRICERATOPS" })).toHaveLength(1);
+  await f.click("TRICERATOPS");
+  expect(f.active().getSnapshot().work.geometry).toBe(level === "hatchling" ? "triceratops-production-1" : "triceratops-explorer-1");
+  expect(screen.getByLabelText("TRICERATOPS").tagName).toBe("CANVAS");
+  expect(f.saveAge).not.toHaveBeenCalled();
 });

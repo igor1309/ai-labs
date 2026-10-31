@@ -97,7 +97,8 @@ struct SessionTranscriptTests {
             release.release()
             await rig.subscription.value
             #expect(forwarded.all == [.liveTextChanged(true)])
-            #expect(await rig.session.snapshot() == ended)
+            let now = try await rig.session.current()
+            #expect(now == ended)
         }
     }
 

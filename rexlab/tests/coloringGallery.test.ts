@@ -98,3 +98,10 @@ describe("coloring gallery", () => {
     expect(workshop).not.toHaveBeenCalled(); expect(countStart).not.toHaveBeenCalled();
   });
 });
+
+
+it.each(["stegosaurus-production-1", "triceratops-production-1"])("preserves %s on automatic new work", async geometry => {
+  const f = fixture(); await f.session.load(geometry);
+  expect(f.source.newWork).toHaveBeenCalledExactlyOnceWith("new-unique", f.navigate, geometry);
+  expect(f.countStart).toHaveBeenCalledTimes(1);
+});

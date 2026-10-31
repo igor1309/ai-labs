@@ -101,3 +101,17 @@
   .coloring-gallery { animation: fade-in var(--motion-small) var(--ease-out) both; }
   .coloring-gallery button[data-pressed="true"] { transform: none; }
 }
+
+.gallery-actions .gallery-new { min-width: 0; flex-direction: column; gap: 0; padding: 4px 8px; }
+.gallery-actions .gallery-artwork-preview { width: 100%; height: 64px; object-fit: contain; }
+.gallery-new > span { display: flex; align-items: center; gap: 4px; font-size: clamp(10px, 1.5vw, 14px); }
+.gallery-new > span > svg { width: 18px; height: 18px; }
+@media (max-width: 599px) and (orientation: portrait) {
+  .gallery-actions .gallery-artwork-preview { height: 44px; }
+}
+@media (max-height: 599px) and (orientation: landscape) {
+  .gallery-actions { width: min(62vw, 440px); }
+  .gallery-header { padding-right: min(64vw, 452px); }
+  .gallery-actions .gallery-artwork-preview { height: 32px; }
+  .gallery-header h1 { font-size: 14px; }
+}
