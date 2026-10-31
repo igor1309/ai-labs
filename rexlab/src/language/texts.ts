@@ -8,6 +8,7 @@ import { ru } from "./ru.ts";
 // shown or read out, is written in capitals here rather than styled so.
 export type Texts = {
   gameAudio: { mute: string; on: string; off: string };
+  coloring: string;
   whoseJaw: string;
   jawShelf: string;
   jawCollection: string;

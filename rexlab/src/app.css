@@ -13173,3 +13173,13 @@ body:has(.picture-puzzle-board-screen) {
   font-size: 24px;
   letter-spacing: 1px;
 }
+
+.coloring-tile, .featured-card[data-game="coloring"] { background: #dceade; color: #1d2742; }
+.coloring-tile { position: relative; flex: 1 1 0; min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; border: 0; border-radius: 28px; text-align: left; }
+.coloring-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
+.coloring-tile-row { display: flex; align-items: center; gap: 8px; padding: 12px; font-size: clamp(16px, 1.8vw, 24px); font-weight: 700; }
+.coloring-tile-symbol { flex-shrink: 0; }
+.coloring-tile-count { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 24px; background: #fffdf8; color: #1d2742; font-size: 20px; }
+.featured-card[data-game="coloring"] .coloring-tile-picture { height: 100%; }
+[data-theme="dark"] .coloring-tile, [data-theme="dark"] .featured-card[data-game="coloring"] { background: #253b37; color: #ece8de; }
+[data-theme="dark"] .coloring-tile-count { background: #181e2e; color: #ece8de; }

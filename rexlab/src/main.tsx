@@ -7,7 +7,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import "./app.css";
 import { registerWorker } from "./offline/registerWorker.ts";
-import { appProps, browserInput } from "./root.ts";
+import { appProps, browserColoring, browserInput } from "./root.ts";
 import { InputArbitrationContext } from "./inputArbitration.ts";
 
 const root = document.getElementById("root");
@@ -21,7 +21,7 @@ registerWorker(navigator, import.meta.env.PROD, (error) => console.warn("RexLab 
 createRoot(root).render(
   <StrictMode>
     <InputArbitrationContext value={input.arbitrate}>
-      <App {...appProps(window)} />
+      <App {...appProps(window)} coloring={browserColoring(window)} />
     </InputArbitrationContext>
   </StrictMode>
 );

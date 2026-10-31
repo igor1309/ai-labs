@@ -257,18 +257,13 @@ it.each(["en", "ru"] as Language[])("overlays the mounted canvas with a color pi
   expect(f.session.getSnapshot().work.actions.at(-1)).toMatchObject({ kind: "stroke", color: "#42a5f5", size: 40 });
 });
 
-it.each(["outside", "close", "Escape", "resize", "orientationchange"])("dismisses the picker by %s without changing paint or the selected color", async method => {
+it.each(["close", "Escape", "resize", "orientationchange"])("dismisses the picker by %s without changing paint or the selected color", async method => {
   const f = open(); f.tap(); await f.settled();
   const work = f.session.getSnapshot().work;
   const trigger = screen.getByRole("button", { name: "COLOR" });
   fireEvent.click(trigger);
   const dialog = screen.getByRole("dialog");
-  if (method === "outside") {
-    const shield = f.container.querySelector(".coloring-picker-layer")!;
-    f.step("pointerdown", 2, 0, 1, 2000, shield);
-    f.step("pointerup", 2, 0, 1, 2030, shield);
-    fireEvent.click(shield);
-  } else if (method === "close") fireEvent.click(within(dialog).getByRole("button", { name: "CLOSE" }));
+  if (method === "close") fireEvent.click(within(dialog).getByRole("button", { name: "CLOSE" }));
   else if (method === "Escape") fireEvent.keyDown(dialog, { key: "Escape" });
   else fireEvent(window, new Event(method));
   expect(screen.queryByRole("dialog")).toBeNull();
@@ -279,17 +274,17 @@ it.each(["outside", "close", "Escape", "resize", "orientationchange"])("dismisse
   expect(screen.getByRole("button", { name: "RED" }).getAttribute("aria-pressed")).toBe("true");
 });
 
-it.each(["outside", "selection"])("filters a second tap after picker %s dismissal before it can paint", async method => {
+it.each(["close", "selection"])("filters a second tap after picker %s dismissal before it can paint", async method => {
   const f = open("en", false, true);
   fireEvent.click(screen.getByRole("button", { name: "COLOR" }));
-  const target = method === "outside" ? f.container.querySelector(".coloring-picker-layer")! : within(screen.getByRole("dialog")).getByRole("button", { name: "BLUE" });
+  const target = method === "close" ? within(screen.getByRole("dialog")).getByRole("button", { name: "CLOSE" }) : within(screen.getByRole("dialog")).getByRole("button", { name: "BLUE" });
   tapAt(target, 1000, { x: 15, y: 17 });
   expect(screen.queryByRole("dialog")).toBeNull();
   f.tap(2, 0, 1200); await f.settled();
   expect(f.session.getSnapshot().work.revision).toBe(0);
   expect(f.write).not.toHaveBeenCalled();
   f.tap(2, 0, 2000); await f.settled();
-  expect(f.session.getSnapshot().work.actions).toEqual([{ ...f.dot, color: method === "outside" ? "#ef5350" : "#42a5f5", points: [{ x: 2, y: 0 }] }]);
+  expect(f.session.getSnapshot().work.actions).toEqual([{ ...f.dot, color: method === "close" ? "#ef5350" : "#42a5f5", points: [{ x: 2, y: 0 }] }]);
 });
 
 it("keeps keyboard focus inside the temporary picker", () => {
@@ -391,4 +386,20 @@ it("disables drawing, undo and tool controls until one pending completion commit
   expect(f.complete).toHaveBeenCalledTimes(1); expect(f.navigate).not.toHaveBeenCalled();
   commit({ completedCount: 1, earned: true }); await f.settled();
   expect(f.navigate).toHaveBeenCalledExactlyOnceWith({ destination: "result", work: expect.objectContaining({ actions: accepted.actions, completed: true, rewarded: true }), completion: { completedCount: 1, earned: true } });
+});
+
+it.each(["en", "ru"] as Language[])("chooses a brush size on its own sheet in %s without replacing paint or saving", language => {
+  const f = open(language);
+  const before = f.session.getSnapshot().work;
+  const trigger = screen.getByRole("button", { name: language === "en" ? "SIZE" : "РАЗМЕР" });
+  fireEvent.click(trigger);
+  const dialog = screen.getByRole("dialog", { name: language === "en" ? "SIZE" : "РАЗМЕР" });
+  expect(within(dialog).getAllByRole("button")).toHaveLength(4);
+  fireEvent.click(within(dialog).getByRole("button", { name: language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(document.activeElement).toBe(trigger);
+  expect(f.container.querySelector("canvas")).toBe(f.canvas);
+  expect(f.session.getSnapshot().work).toBe(before);
+  expect(f.write).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: language === "en" ? "BRUSH LARGE" : "КИСТЬ БОЛЬШОЙ" }).getAttribute("aria-pressed")).toBe("true");
 });
