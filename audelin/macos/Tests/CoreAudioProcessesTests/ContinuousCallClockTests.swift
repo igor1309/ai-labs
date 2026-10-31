@@ -29,19 +29,30 @@ struct ContinuousCallClockTests {
     @Test func cancellingRealWaitDoesNotFire() async throws {
 
         let clock = ContinuousCallClock()
-        let fired = Mutex(0)
+        let delay = Duration.milliseconds(20)
         let laterFired = AsyncStream<Void>.makeStream()
         defer { laterFired.continuation.finish() }
-        let wait = clock.after(.milliseconds(20)) { fired.withLock { $0 += 1 } }
-        defer { wait.cancel() }
 
-        wait.cancel()
+        // A wait cancelled before its deadline must never fire. If the test is
+        // descheduled past the deadline before it cancels, the wait may fire
+        // correctly, so that attempt proves nothing and is made again with a
+        // counter of its own.
+        var cancelledInTime: FireCount?
+        for _ in 0..<20 where cancelledInTime == nil {
+            let fired = FireCount()
+            let origin = ContinuousClock.now
+            let wait = clock.after(delay) { fired.count.withLock { $0 += 1 } }
+            wait.cancel()
+            if origin.duration(to: .now) < delay { cancelledInTime = fired }
+        }
+        let fired = try #require(cancelledInTime)
+
         let laterWait = clock.after(.milliseconds(40)) { laterFired.continuation.yield(()) }
         defer { laterWait.cancel() }
         var laterFires = laterFired.stream.makeAsyncIterator()
         _ = await laterFires.next()
 
-        #expect(fired.withLock { $0 } == 0)
+        #expect(fired.count.withLock { $0 } == 0)
     }
 
     @Test(arguments: [Duration.zero, .seconds(30), .seconds(90)])
@@ -127,4 +138,8 @@ private final class ControlledCallSleep: Sendable {
         }
         continuation?.resume()
     }
+}
+
+private final class FireCount: Sendable {
+    let count = Mutex(0)
 }
