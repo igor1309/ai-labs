@@ -77,20 +77,22 @@ struct TranscriptLogLoadTests {
 
         let config = PanelConfig.glassLedger
         let size = CGSize(width: config.panelWidth, height: 400)
-        let host = Offscreen.host(log(lines(count), config: config, size: size), size: size)
+        let same = lines(count)
+        let host = Offscreen.host(log(same, config: config, size: size), size: size)
         guard let text = Offscreen.textView(in: host) as? LogTextView,
               let storage = text.textStorage,
               let layout = text.textLayoutManager
         else { return "no log to probe" }
         let clock = ContinuousClock()
         var edit = Duration.zero, scroll = Duration.zero, height = Duration.zero, rest = Duration.zero, rules = Duration.zero
-        var looks = Duration.zero, select = Duration.zero, fits = Duration.zero
+        var looks = Duration.zero, select = Duration.zero, fits = Duration.zero, unchanged = Duration.zero
         // Each step of an update alone, after an edit to the last line as an update makes.
         for step in 1...Self.updates {
             let last = NSRange(location: storage.length - 2, length: 2)
             looks += clock.measure {
-                text.selectedTextAttributes = [.backgroundColor: NSColor.selectedTextBackgroundColor, .foregroundColor: NSColor.textColor]
-                text.ruleColor = NSColor.separatorColor
+                // As an update hands them: new colour objects of the same colours.
+                text.selectedTextAttributes = [.backgroundColor: NSColor(srgbRed: 0.2, green: 0.4, blue: 0.9, alpha: 1), .foregroundColor: NSColor(white: 1, alpha: 1)]
+                text.ruleColor = NSColor(white: 0.5, alpha: 1)
             }
             let selection = text.selectedRange()
             edit += clock.measure { storage.replaceCharacters(in: last, with: "w\(step % 10)") }
@@ -110,10 +112,18 @@ struct TranscriptLogLoadTests {
             rest += clock.measure { host.layoutSubtreeIfNeeded() }
             rules += clock.measure { _ = text.ruleFrames(in: text.visibleRect) }
         }
+        // SwiftUI's pass alone: the same lines handed again and laid out.
+        host.layoutSubtreeIfNeeded()
+        for _ in 1...Self.updates {
+            unchanged += clock.measure {
+                host.rootView = log(same, config: config, size: size)
+                host.layoutSubtreeIfNeeded()
+            }
+        }
         let ms = { (d: Duration) in
             String(format: "%.2f", (Double(d.components.seconds) * 1000 + Double(d.components.attoseconds) / 1e15) / Double(Self.updates))
         }
-        return "probe: looks \(ms(looks)), edit \(ms(edit)), select \(ms(select)), fits \(ms(fits)), scroll to end \(ms(scroll)), height \(ms(height)), layout \(ms(rest)), rule frames \(ms(rules)) ms an update"
+        return "probe: looks \(ms(looks)), edit \(ms(edit)), select \(ms(select)), fits \(ms(fits)), scroll to end \(ms(scroll)), height \(ms(height)), layout \(ms(rest)), rule frames \(ms(rules)), unchanged lines \(ms(unchanged)) ms an update"
     }
 
     private func lines(_ count: Int) -> PanelState.Lines {

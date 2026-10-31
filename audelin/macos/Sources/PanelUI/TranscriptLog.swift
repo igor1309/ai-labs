@@ -56,6 +56,8 @@ struct TranscriptLog: NSViewRepresentable {
     }
 
     func updateNSView(_ scroll: NSScrollView, context: Context) {
+        let diagStart = ContinuousClock.now
+        defer { Self.diag("update", diagStart, lines.rows.count) }
 
         let coordinator = context.coordinator
         coordinator.parent = self
@@ -88,6 +90,8 @@ struct TranscriptLog: NSViewRepresentable {
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, nsView scroll: NSScrollView, context: Context) -> CGSize? {
+        let diagStart = ContinuousClock.now
+        defer { Self.diag("fits w=\(proposal.width.map { "\(Int($0))" } ?? "nil") h=\(proposal.height.map { "\(Int($0))" } ?? "nil")", diagStart, lines.rows.count) }
 
         let width = proposal.width ?? config.panelWidth
         guard let text = scroll.documentView as? NSTextView,
@@ -117,6 +121,13 @@ struct TranscriptLog: NSViewRepresentable {
         let height = ceil(bottom)
 
         return CGSize(width: width, height: min(height, proposal.height ?? height))
+    }
+
+    // DIAGNOSTIC (LAB-817), reverted before landing.
+    static func diag(_ what: String, _ start: ContinuousClock.Instant, _ rows: Int) {
+        let d = ContinuousClock.now - start
+        let ms = Double(d.components.seconds) * 1000 + Double(d.components.attoseconds) / 1e15
+        FileHandle.standardError.write(Data("LOGDIAG \(rows) \(what) \(String(format: "%.2f", ms))\n".utf8))
     }
 
     static func dismantleNSView(_ scroll: NSScrollView, coordinator: Coordinator) {
