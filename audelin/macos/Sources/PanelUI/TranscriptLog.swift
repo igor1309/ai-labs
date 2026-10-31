@@ -237,28 +237,51 @@ final class LogTextView: NSTextView {
 
         super.drawBackground(in: rect)
         ruleColor.setFill()
-        ruleFrames().filter { $0.intersects(rect) }.forEach { $0.fill(using: .sourceOver) }
+        ruleFrames(in: rect).filter { $0.intersects(rect) }.forEach { $0.fill(using: .sourceOver) }
     }
 
-    /// Where the lines under late groups go, in this view.
-    func ruleFrames() -> [NSRect] {
+    /// How far above or below a drawn rect a rule's paragraph can end.
+    private static let ruleReach: CGFloat = 64
+
+    /// Where the lines under late groups go, in this view; with a rect, only
+    /// those near it. Laying out and scanning a long call's whole log on
+    /// every redraw grows with the call.
+    func ruleFrames(in rect: NSRect? = nil) -> [NSRect] {
 
         guard let storage = textStorage,
               let layout = textLayoutManager,
               let content = layout.textContentManager
         else { return [] }
 
-        layout.ensureLayout(for: layout.documentRange)
+        let origin = textContainerOrigin
+        let document = content.documentRange
+        var scan = NSRange(location: 0, length: storage.length)
+        if let rect {
+            let area = CGRect(
+                x: 0, y: max(0, rect.minY - origin.y - Self.ruleReach),
+                width: bounds.width, height: rect.height + 2 * Self.ruleReach
+            )
+            layout.ensureLayout(for: area)
+            // No text where the area starts: none below it either.
+            guard let start = layout.textLayoutFragment(for: CGPoint(x: 0, y: area.minY))?.rangeInElement.location
+            else { return [] }
+            let end = layout.textLayoutFragment(for: CGPoint(x: 0, y: area.maxY))?.rangeInElement.endLocation ?? document.endLocation
+            let from = content.offset(from: document.location, to: start)
+            let to = min(storage.length, content.offset(from: document.location, to: end))
+            scan = NSRange(location: from, length: max(0, to - from))
+        } else {
+            layout.ensureLayout(for: document)
+        }
 
         var frames: [NSRect] = []
-        storage.enumerateAttribute(Transcript.ruleBelow, in: NSRange(location: 0, length: storage.length)) { value, range, _ in
+        storage.enumerateAttribute(Transcript.ruleBelow, in: scan) { value, range, _ in
             guard let gap = value as? CGFloat,
-                  let end = content.location(content.documentRange.location, offsetBy: NSMaxRange(range) - 1),
+                  let end = content.location(document.location, offsetBy: NSMaxRange(range) - 1),
                   let fragment = layout.textLayoutFragment(for: end),
                   let line = fragment.textLineFragments.last
             else { return }
 
-            let y = textContainerOrigin.y + fragment.layoutFragmentFrame.minY + line.typographicBounds.maxY + gap
+            let y = origin.y + fragment.layoutFragmentFrame.minY + line.typographicBounds.maxY + gap
             frames.append(NSRect(x: 0, y: y, width: bounds.width, height: Transcript.ruleWidth))
         }
         return frames

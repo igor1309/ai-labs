@@ -74,6 +74,9 @@ struct TranscriptLogTests {
         #expect(rule.width == text.bounds.width)
         #expect(abs(rule.minY - above.maxY - gap) < 0.5, "\(above) \(rule)")
         #expect(abs(below.minY - rule.maxY - gap) < 0.5, "\(rule) \(below)")
+        // A redraw looks only near what it draws, and finds the same rule.
+        #expect(text.ruleFrames(in: rule.insetBy(dx: 0, dy: -2)) == [rule])
+        #expect(text.ruleFrames(in: NSRect(x: 0, y: rule.maxY + 200, width: 10, height: 10)).isEmpty)
     }
 
     @Test func keepsASelectionWhileTextSettlesAndLinesArrive() throws {

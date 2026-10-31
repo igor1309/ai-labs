@@ -23,7 +23,7 @@ struct TranscriptLogLoadTests {
             early = early.quicker(cost(entries: 20))
             late = late.quicker(cost(entries: entries))
         }
-        let line = report("\(early.line) at 20 entries, \(late.line) at \(entries) entries")
+        let line = report("\(early.line) at 20 entries, \(late.line) at \(entries) entries; \(probe(entries: entries))")
         FileHandle.standardError.write(Data(line.utf8))
         #expect(late.update / early.update <= 3, "an update late in a long call costs the log \(late.update / early.update)x one early")
     }
@@ -69,6 +69,25 @@ struct TranscriptLogLoadTests {
             build: build.seconds / Double(Self.updates),
             layout: layout.seconds / Double(Self.updates)
         )
+    }
+
+    /// Times each step of the log's layout pass alone at `count` entries, so
+    /// a run that grows names the step that grows.
+    private func probe(entries count: Int) -> String {
+
+        let config = PanelConfig.glassLedger
+        let size = CGSize(width: config.panelWidth, height: 400)
+        let host = Offscreen.host(log(lines(count), config: config, size: size), size: size)
+        guard let text = Offscreen.textView(in: host) as? LogTextView,
+              let layout = text.textLayoutManager
+        else { return "no log to probe" }
+        let clock = ContinuousClock()
+        let end = NSTextRange(location: layout.documentRange.endLocation)
+        let ms = { (d: Duration) in String(format: "%.2f", (Double(d.components.attoseconds) / 1e15) + Double(d.components.seconds) * 1000) }
+        let ensure = clock.measure { layout.ensureLayout(for: end) }
+        let scroll = clock.measure { text.scrollToEndOfDocument(nil) }
+        let rules = clock.measure { _ = text.ruleFrames(in: text.visibleRect) }
+        return "probe: ensure end \(ms(ensure)) ms, scroll to end \(ms(scroll)) ms, rule frames \(ms(rules)) ms"
     }
 
     private func lines(_ count: Int) -> PanelState.Lines {
