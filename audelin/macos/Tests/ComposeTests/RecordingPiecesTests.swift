@@ -11,6 +11,7 @@ import Synchronization
 import struct SystemAudioCapture.AudioPiece
 import enum SystemAudioCapture.ProcessSelection
 import Testing
+@testable import Audelin
 @testable import Compose
 
 @Suite(.timeLimit(.minutes(1)))

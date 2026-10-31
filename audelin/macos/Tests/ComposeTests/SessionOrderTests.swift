@@ -1,5 +1,6 @@
 import Session
 import Testing
+@testable import Audelin
 @testable import Compose
 
 @Suite(.timeLimit(.minutes(1)))
@@ -16,8 +17,7 @@ struct SessionOrderTests {
                 try await pieces.callCapture.start(selection: .chosen(.init(id: "unknown")))
             }
             await rig.session.send(.begin(liveText: true))
-            _ = try await rig.state { $0.phase == .recording }
-            let selection = try #require((await rig.session.snapshot()).processSelection)
+            let selection = try #require(try await rig.state { $0.phase == .recording }.processSelection)
             await #expect(throws: SessionPieces.Failure.unknownSelection(selection.id + "-other")) {
                 try await pieces.callCapture.start(selection: .chosen(.init(id: selection.id + "-other")))
             }
@@ -33,7 +33,7 @@ struct SessionReleaseTests {
         try await withSessionRig { rig, _ in
             var handler: SessionEffectHandler? = rig.pieces.handler(sink: ReleaseSink())
             weak let released = handler
-            var session: SessionInputs? = await makeSession(try #require(handler))
+            var session: SessionInputs? = await makeSession(handler: try #require(handler))
             handler = nil
             await session?.end()
             session = nil
