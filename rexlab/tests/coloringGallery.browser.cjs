@@ -535,8 +535,6 @@ const { chromium } = require("playwright");
     }
     assert.equal((await listed()).completedCount, 5);
     // Preserve the original persisted image byte-for-byte across age switches.
-    // This old save was rendered before repeated pixel inspections can switch
-    // Chromium's Canvas backend and alter antialiased edge rounding.
     const legacyThumbnail = await page.evaluate(async () => {
       const record = (await window.gallery.list()).works.find(r => r.document.id === "legacy-stego");
       return new Promise((resolve, reject) => {
