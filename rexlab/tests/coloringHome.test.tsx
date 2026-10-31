@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, onTestFinished, vi } from "vitest";
+import { ARTWORKS } from "../src/coloring/artworks.ts";
 import { App } from "../src/App.tsx";
 import { browserInput } from "../src/root.ts";
 import { InputArbitrationContext } from "../src/inputArbitration.ts";
@@ -37,7 +38,7 @@ function fixture({ language = "en", featured = "compare", level = "explorer" }: 
   const props = { ...emptyCare(), ...emptyDig(), ...emptyLabyrinth(), ...emptyPairs(), ...emptySkeletons(), ...emptySorting(), ...englishDevice(), ...lightDevice(), ...loadedPictures(), ...pageAtRest(), ...featuring(featured),
     dinosaurs: SHIPPED_DINOSAURS, catalogue: SHIPPED_CATALOGUE, bodyPicture: fakeBodyPicture, random: seededRandom(7), progress: emptyProgress(), portraitLayouts: {}, viewport,
     languageStore: { load: () => language, save: vi.fn() }, ageLevelStore: { load: () => ({ level, revision: "parent" }), save: saveAge },
-    coloring: { source, painter: { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: () => "body" }, identity: () => `work-${++identity}` }, startCounter: { countStart }
+    coloring: { source, artworks: ARTWORKS, painter: { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: () => "body" }, identity: () => `work-${++identity}` }, startCounter: { countStart }
   };
   const view = render(<StrictMode><InputArbitrationContext value={input.arbitrate}><App {...props} /></InputArbitrationContext></StrictMode>);
   const click = async (name: string) => { await act(async () => { fireEvent.click(screen.getByRole("button", { name })); }); };

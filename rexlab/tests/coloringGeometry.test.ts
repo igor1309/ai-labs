@@ -1,7 +1,11 @@
 import { readFile } from "node:fs/promises";
 import sharp from "sharp";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { ColoringArtworkPreview } from "../src/ColoringArtworkPreview.tsx";
 import { describe, expect, it } from "vitest";
-import { ARTWORK, DETAILS, HEIGHT, REGIONS, VECTOR_SCALE, WIDTH, type VectorShape } from "../src/coloring/geometry.ts";
+import { TRICERATOPS } from "../src/coloring/triceratops.ts";
+import { ARTWORK, DETAILS, HEIGHT, REGIONS, VECTOR_SCALE, WIDTH, STEGOSAURUS, type Geometry, type VectorShape } from "../src/coloring/geometry.ts";
 
 function shape(node: VectorShape, attributes: string) {
   const transform = `translate(${node.x} ${node.y})`;
@@ -10,7 +14,8 @@ function shape(node: VectorShape, attributes: string) {
     transform="${transform} rotate(${-node.rotation} ${node.width / 2} ${node.height / 2})" ${attributes}/>`;
 }
 
-async function illustration() {
+async function illustration(geometry: Geometry = STEGOSAURUS) {
+  const { regions: REGIONS, details: DETAILS } = geometry;
   const defs = REGIONS.map(region => `<clipPath id="${region.id}">${shape(region, "")}</clipPath>`).join("");
   const regions = REGIONS.map(region => {
     const drawing = shape(region, `fill="#fff0cf" stroke="#091e40" stroke-width="${region.outline}"`);
@@ -66,4 +71,46 @@ describe("production dinosaur vectors", () => {
       }
     }
   });
+});
+
+
+describe("Triceratops vectors", () => {
+  it("has three independently fillable horns, a broad frill, large regions and stable identities", () => {
+    expect(TRICERATOPS.artwork.version).toBe("triceratops-production-1");
+    expect(TRICERATOPS.regions.filter(region => region.id.startsWith("horn-")).map(region => region.id)).toEqual(["horn-far", "horn-near", "horn-nose"]);
+    expect(TRICERATOPS.artwork.regions).toEqual(TRICERATOPS.regions.map(region => region.id));
+    expect(new Set(TRICERATOPS.artwork.regions).size).toBe(TRICERATOPS.regions.length);
+    for (const id of ["body", "belly", "frill", "head", "rear-near", "front-near"]) {
+      expect(TRICERATOPS.artwork.regions).toContain(id);
+    }
+    for (const region of TRICERATOPS.regions) {
+      expect(region.outline).toBeGreaterThanOrEqual(2);
+      if ("path" in region) expect(region.path).toMatch(/Z$/);
+      if (region.parent) expect(region.parent).toBe("body");
+    }
+  });
+
+  it("keeps its silhouette and thick outlines inside the shared landscape coordinate space", async () => {
+    const actual = await illustration(TRICERATOPS);
+    const pixel = (x: number, y: number) => [...actual.subarray((y * WIDTH + x) * 4, (y * WIDTH + x) * 4 + 4)];
+    for (const [x, y] of [[280, 360], [440, 400], [600, 280], [720, 400], [730, 250], [790, 290], [858, 354]]) {
+      expect(pixel(x!, y!), `fillable interior ${x},${y}`).toEqual([255, 240, 207, 255]);
+    }
+    expect(pixel(746, 370)).toEqual([9, 30, 64, 255]);
+    for (let x = 0; x < WIDTH; x++) {
+      expect(pixel(x, 0)[3]).toBe(0); expect(pixel(x, HEIGHT - 1)[3]).toBe(0);
+    }
+    for (let y = 0; y < HEIGHT; y++) {
+      expect(pixel(0, y)[3]).toBe(0); expect(pixel(WIDTH - 1, y)[3]).toBe(0);
+    }
+  });
+});
+
+
+it.each([STEGOSAURUS, TRICERATOPS])("renders the gallery preview with all clipped regions for $artwork.version", async geometry => {
+  const svg = renderToStaticMarkup(createElement(ColoringArtworkPreview, { geometry }))
+    .replace("<svg ", `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" `);
+  const actual = await sharp(Buffer.from(svg)).ensureAlpha().raw().toBuffer();
+  const expected = await illustration(geometry);
+  expect(actual.equals(expected)).toBe(true);
 });

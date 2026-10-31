@@ -212,6 +212,143 @@ const { chromium } = require("playwright");
     }
     await page.reload(); await mount({});
     for (const { id, actions } of histories) await thumbnailMatches(id, actions.slice(0, -1), undoneReferences.get(id));
+    // A legacy journal without the newer history receipt keeps its geometry,
+    // ordered paint and one earned star beside the new creature.
+    await page.evaluate(async () => {
+      await window.gallery.reset();
+      const painter = window.gallery.painter();
+      const document = { schema: 1, geometry: "stegosaurus-production-1", id: "legacy-stego", revision: 3,
+        actions: [{ kind: "fill", color: "#42a5f5", region: "body" },
+          { kind: "stroke", color: "#ef5350", size: 20, points: [{ x: 420, y: 330 }] }], completed: true, rewarded: true };
+      const canvas = painter.canvas(276, 186); painter.render(canvas, document.actions);
+      const thumbnail = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+      const db = await new Promise((resolve, reject) => {
+        const request = indexedDB.open("rexlab-coloring"); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+      });
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction("works", "readwrite"); tx.objectStore("works").put({ document, thumbnail }, document.id);
+          tx.oncomplete = resolve; tx.onabort = () => reject(tx.error);
+        });
+      } finally { db.close(); }
+    });
+    await page.setViewportSize({ width: 1180, height: 820 });
+    await mount({});
+    assert.equal((await listed()).completedCount, 1);
+    assert.equal(await page.getByRole("button", { name: "TRICERATOPS", exact: true }).count(), 1);
+    await press("CONTINUE");
+    assert.equal(await page.locator('canvas[aria-label="STEGOSAURUS"]').count(), 1);
+    await press("UNDO"); await saved();
+    const surfacePixel = (x, y) => page.locator("canvas").evaluate((canvas, { x, y }) => [...canvas.getContext("2d").getImageData(x, y, 1, 1).data], { x, y });
+    assert.deepEqual(await surfacePixel(420, 330), [66, 165, 245, 255]);
+    await back();
+    const legacy = (await listed()).works.find(r => r.document.id === "legacy-stego").document;
+    assert.deepEqual(legacy.actions, [{ kind: "fill", color: "#42a5f5", region: "body" }]);
+    assert.equal(legacy.rewarded, true);
+
+    await press("TRICERATOPS");
+    await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
+    const probes = [
+      [140, 340, "tail"], [330, 520, "rear-far"], [586, 520, "front-far"],
+      [280, 360, "body"], [440, 400, "belly"], [308, 304, "spot-1"], [402, 294, "spot-2"],
+      [280, 522, "rear-near"], [540, 520, "front-near"], [600, 280, "frill"],
+      [720, 400, "head"], [730, 250, "horn-far"], [790, 290, "horn-near"], [858, 354, "horn-nose"]
+    ];
+    const contract = await page.evaluate(probes => {
+      const painter = window.gallery.painterFor("triceratops-production-1"), canvas = painter.canvas();
+      const pixel = (x, y) => [...canvas.getContext("2d").getImageData(x, y, 1, 1).data];
+      const cases = probes.map(([x, y, region]) => {
+        painter.render(canvas, [{ kind: "fill", region, color: "#ef5350" }]);
+        return { region, hit: painter.regionAt({ x, y }), pixels: probes.map(([x, y]) => pixel(x, y)), eye: pixel(746, 370) };
+      });
+      painter.render(canvas, [{ kind: "stroke", color: "#ab67cb", size: 40, points: [{ x: 600, y: 280 }] }]);
+      return { cases, brush: pixel(600, 280), outside: pixel(0, 0), borderHit: painter.regionAt({ x: 70, y: 278 }) ?? null };
+    }, probes);
+    for (const [index, test] of contract.cases.entries()) {
+      assert.equal(test.hit, test.region, `tap owns ${test.region}`);
+      for (const [other, sample] of test.pixels.entries()) assert.deepEqual(sample, index === other ? [239, 83, 80, 255] : [255, 240, 207, 255], `${test.region} changes only its own enclosed region, sample ${probes[other][2]}`);
+      assert.deepEqual(test.eye, [9, 30, 64, 255]);
+    }
+    assert.deepEqual(contract.brush, [171, 103, 203, 255]);
+    assert.deepEqual(contract.outside, [0, 0, 0, 0]); assert.equal(contract.borderHit, null);
+    const tap = async (x, y) => {
+      const box = await page.locator("canvas").boundingBox();
+      await page.mouse.click(box.x + x * box.width / 920, box.y + y * box.height / 620);
+    };
+    await press("FILL"); await tap(600, 280); await saved();
+    assert.deepEqual(await surfacePixel(600, 280), [239, 83, 80, 255]);
+    assert.deepEqual(await surfacePixel(280, 360), [255, 240, 207, 255]);
+    await press("COLOR"); await press("BLUE"); await tap(280, 360); await saved();
+    const tric = (await listed()).works.find(r => r.document.geometry === "triceratops-production-1").document;
+    assert.deepEqual(tric.actions, [{ kind: "fill", color: "#ef5350", region: "frill" }, { kind: "fill", color: "#42a5f5", region: "body" }]);
+    await back();
+    assert.equal(await page.locator(`[data-work-id="${tric.id}"] img`).getAttribute("alt"), "TRICERATOPS · 1");
+    const thumbnailPixel = async (id, x, y) => {
+      const image = page.locator(`[data-work-id="${id}"] img`); await image.evaluate(img => img.decode());
+      return image.evaluate((img, { x, y }) => {
+        const canvas = document.createElement("canvas"); canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext("2d"); ctx.drawImage(img, 0, 0);
+        return [...ctx.getImageData(Math.floor(x * canvas.width / 920), Math.floor(y * canvas.height / 620), 1, 1).data];
+      }, { x, y });
+    };
+    assert.deepEqual(await thumbnailPixel(tric.id, 600, 280), [239, 83, 80, 255]);
+    assert.deepEqual(await thumbnailPixel(tric.id, 280, 360), [66, 165, 245, 255]);
+    await page.reload(); await mount({}); await press("CONTINUE");
+    assert.equal(await page.locator('canvas[aria-label="TRICERATOPS"]').count(), 1);
+    assert.deepEqual(await surfacePixel(600, 280), [239, 83, 80, 255]);
+    assert.deepEqual(await surfacePixel(280, 360), [66, 165, 245, 255]);
+    await press("UNDO"); await saved();
+    assert.deepEqual(await surfacePixel(280, 360), [255, 240, 207, 255]);
+    assert.deepEqual(await surfacePixel(600, 280), [239, 83, 80, 255]);
+    await press("FILL"); await press("COLOR"); await press("BASE"); await tap(600, 280); await saved();
+    assert.equal(await page.getByRole("button", { name: "DONE", exact: true }).isDisabled(), true);
+    await press("UNDO"); await saved();
+    await press("DONE"); await page.getByRole("heading", { name: "YOUR TRICERATOPS!", exact: true }).waitFor();
+    assert.equal((await listed()).completedCount, 2);
+    await press("EDIT"); await press("DONE");
+    await page.getByText("YOUR STAR", { exact: true }).waitFor(); assert.equal((await listed()).completedCount, 2);
+    await press("NEW WORK"); await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
+    assert.equal(await page.getByRole("button", { name: "DONE", exact: true }).isDisabled(), true);
+    await back(); assert.equal((await listed()).works.length, 2);
+    await page.locator('[data-work-id="legacy-stego"] button').press("Enter");
+    await page.locator('canvas[aria-label="STEGOSAURUS"]').waitFor();
+    assert.deepEqual(await surfacePixel(420, 330), [66, 165, 245, 255]);
+    await press("DONE"); await page.getByText("YOUR STAR", { exact: true }).waitFor();
+    assert.equal((await listed()).completedCount, 2);
+    await press("NEW WORK"); await page.locator('canvas[aria-label="STEGOSAURUS"]').waitFor(); await back();
+    for (const viewport of [{ width: 1024, height: 768 }, { width: 1180, height: 820 }]) {
+      await page.setViewportSize(viewport);
+      for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
+        await mount({ language, theme });
+        const name = language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС";
+        await press(name); await page.locator(`canvas[aria-label="${name}"]`).waitFor();
+        const box = await page.locator("canvas").boundingBox();
+        assert(box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1, JSON.stringify({ viewport, language, theme, box }));
+        assert.deepEqual(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]), [viewport.width, viewport.height]);
+        if (viewport.width === 1180 && language === "en" && theme === "light") {
+          await page.screenshot({ path: "/tmp/lab-823/triceratops.png" });
+        }
+        await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ");
+      }
+    }
+    // Unknown versions retain their receipt and never borrow another renderer.
+    await page.evaluate(async () => {
+      const db = await new Promise(resolve => { const request = indexedDB.open("rexlab-coloring"); request.onsuccess = () => resolve(request.result); });
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction("works", "readwrite"), store = tx.objectStore("works"), request = store.get("legacy-stego");
+          request.onsuccess = () => { const row = request.result; row.document.geometry = "unknown-artwork-9"; store.put(row, "legacy-stego"); };
+          tx.oncomplete = resolve; tx.onabort = () => reject(tx.error);
+        });
+      } finally { db.close(); }
+    });
+    await mount({}); assert.deepEqual((await listed()).unavailable, ["legacy-stego"]);
+    assert.equal((await listed()).completedCount, 2);
+    await page.evaluate(() => window.gallery.damage("legacy-stego", "history")); await mount({});
+    await press("PARENT RECOVERY"); await press("RESET COLORING");
+    await page.getByText("LET’S PAINT A DINOSAUR!", { exact: true }).waitFor();
+    assert.equal((await listed()).completedCount, 0); assert.deepEqual((await listed()).works, []);
+    console.log("PASS creatures: legacy Stegosaurus, 14 independent Triceratops fills, brush, base/undo, durable thumbnails/reload, shared rewards, new-work identity, RU/EN iPad layouts, unknown geometry and reset; screenshot /tmp/lab-823/triceratops.png");
     assert.deepEqual(errors, []);
     console.log("PASS gallery: independent durable thumbnails/statuses/continue, full-pixel brush/mixed thumbnails and undo/reload, workshop saves and retry, empty drafts, corruption/recovery, tap safety, 24 RU/EN/theme layouts and reduced motion");
   } finally { if (browser) await browser.close(); }

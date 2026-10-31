@@ -11,7 +11,8 @@ Feature: Coloring gallery
 
   Scenario: An empty collection offers a new work
     When I enter coloring with no works
-    Then the gallery shows NEW WORK with a drawing symbol
+    Then the gallery offers Stegosaurus and Triceratops with matching vector previews and localized uppercase names
+    And NEW WORK starts an independent Stegosaurus while choosing TRICERATOPS starts an independent Triceratops
     And no work or star has been created merely by opening the gallery
 
   Scenario: Several independent works of one dinosaur
@@ -64,3 +65,13 @@ Feature: Coloring gallery
     When I open GALLERY
     Then its thumbnail shows that empty appearance with completed status and its existing star
     And opening it allows more painting but DONE stays unavailable until nonempty
+
+
+  Scenario: Independent works of both creatures
+    Given I have a saved Stegosaurus work from before Triceratops was available
+    When I choose TRICERATOPS or ТРИЦЕРАТОПС in the gallery
+    Then an unpainted Triceratops opens under a new identity
+    And the existing Stegosaurus paint, undo history and reward flag remain unchanged
+    When I paint the Triceratops and return to the gallery
+    Then each saved thumbnail and its accessible name match its own creature
+    And CONTINUE restores the latest work with its own artwork

@@ -26,7 +26,7 @@ IDBDatabase.prototype.transaction = function (...args: Parameters<IDBDatabase["t
   return transaction.apply(this, args);
 };
 function show() {
-  flushSync(() => root!.render(<InputArbitrationContext value={input.arbitrate}><ColoringGame source={resources} painter={resources.painter} language={language}
+  flushSync(() => root!.render(<InputArbitrationContext value={input.arbitrate}><ColoringGame source={resources} artworks={resources.artworks} painter={resources.painter} painterFor={resources.painterFor} language={language}
     identity={() => `gallery-${++identities}`} countStart={() => { starts++; }}
     home={() => { homes++; flushSync(() => root!.render(<button onClick={show}>ENTER COLORING</button>)); }} /></InputArbitrationContext>));
 }
@@ -48,6 +48,8 @@ export const counts = () => ({ starts, homes });
 export const list = () => resources.list();
 export const newWork = (id: string) => resources.newWork(id, () => {});
 export const painter = () => resources.painter;
+export const painterFor = (geometry: string) => resources.painterFor(geometry);
+export const reset = () => resources.reset();
 export const readFailure = (deny: boolean) => { denyReads = deny; };
 export const writeFailure = (deny: boolean) => { denyWrites = deny; };
 export const completionAbort = (abort: boolean) => { abortCompletion = abort; };

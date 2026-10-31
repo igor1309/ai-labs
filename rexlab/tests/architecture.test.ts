@@ -74,6 +74,7 @@ const SCREENS = [
 ];
 const PRESENTATION = [
   ...SCREENS,
+  "ColoringArtworkPreview.tsx",
   "ageLevelPictures.ts",
   "Button.tsx",
   "GameAudioButton.tsx",

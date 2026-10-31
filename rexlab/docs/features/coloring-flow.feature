@@ -138,3 +138,15 @@ Feature: Coloring full flow and durable progress
     And NEW WORK creates a new independent identity and never reuses the damaged one's identity
     And the damaged work's recorded completion and star still count exactly once if reward history marks it completed
     And no reset is required to continue coloring the healthy or new works
+
+
+  Scenario: Saved geometry remains compatible when another creature is added
+    Given an existing saved work uses geometry stegosaurus-production-1
+    When I reopen coloring after Triceratops becomes available
+    Then the work retains its original Stegosaurus geometry, paint, undo history and earned star
+    And new Triceratops works use geometry triceratops-production-1 in the same collection
+    When I save and reopen works of either creature
+    Then each geometry version selects its own renderer and region validation
+    And unknown geometry versions stay unavailable instead of being interpreted as another creature
+    When a parent confirms RESET COLORING
+    Then saved works and earned coloring stars for both creatures are reset together

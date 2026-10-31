@@ -1,3 +1,4 @@
+import { ARTWORKS } from "../src/coloring/artworks.ts";
 import { jawGameParts } from "./whoseJaw.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { readFileSync } from "node:fs";
@@ -156,7 +157,7 @@ function openTurning(
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(7)}
-      {...(withOptionalGames && { coloring: {
+      {...(withOptionalGames && { coloring: { artworks: ARTWORKS,
         source: { list: async () => ({ works: [], unavailable: [], completedCount: 0, recentId: null }), reset: async () => {},
           open: async () => { throw new Error("No work in layout fixture"); }, newWork: async () => { throw new Error("No work in layout fixture"); } },
         painter: { width: 920, height: 620, render: () => {}, preview: () => {}, regionAt: () => undefined }, identity: () => "layout"

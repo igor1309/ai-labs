@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { ARTWORKS } from "../src/coloring/artworks.ts";
 import { ColoringGalleryScreen } from "../src/ColoringGalleryScreen.tsx";
 import { coloringGallery, type GalleryCollection } from "../src/coloringGallery.ts";
 import type { ColoringWorkshopSession } from "../src/coloringWorkshop.ts";
@@ -19,7 +20,7 @@ function fixture(language: Language = "en") {
   const source = { list: vi.fn(async () => collection), reset: vi.fn(async () => {}), open: vi.fn(async () => ({} as ColoringWorkshopSession)), newWork: vi.fn(async () => ({} as ColoringWorkshopSession)) };
   const home = vi.fn(), workshop = vi.fn(), countStart = vi.fn();
   const session = coloringGallery({ source, identity: () => "fresh", workshop, countStart, navigate: vi.fn() });
-  const view = render(<ColoringGalleryScreen session={session} language={language} home={home} />);
+  const view = render(<ColoringGalleryScreen artworks={ARTWORKS} session={session} language={language} home={home} />);
   const load = async () => { await act(async () => { await session.load(); }); };
   return { ...view, source, home, session, load, red, blue, collection, countStart, workshop };
 }
@@ -123,4 +124,19 @@ it("offers recovery when no reward history can be read, keeping an unsuccessful 
   await act(async () => fireEvent.click(screen.getByRole("button", { name: "RESET COLORING" })));
   expect(within(screen.getByRole("dialog")).getByRole("alert").textContent).toContain("COULDN’T RESET");
   expect(f.source.newWork).not.toHaveBeenCalled(); expect(f.source.open).not.toHaveBeenCalled();
+});
+
+
+it.each(["en", "ru"] as Language[])("offers matching original creature previews and starts Triceratops in %s", async language => {
+  const f = fixture(language); await f.load();
+  const name = language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС";
+  const button = screen.getByRole("button", { name });
+  expect(button.textContent).toContain(name);
+  expect(button.querySelectorAll("clipPath")).toHaveLength(14);
+  const stegosaurus = screen.getByRole("button", { name: language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК" });
+  expect(stegosaurus.textContent).toContain(language === "en" ? "STEGOSAURUS" : "СТЕГОЗАВР");
+  expect(stegosaurus.querySelectorAll("clipPath").length).toBeGreaterThan(14);
+  await act(async () => fireEvent.click(button));
+  expect(f.source.newWork).toHaveBeenCalledExactlyOnceWith("fresh", expect.any(Function), "triceratops-production-1");
+  expect(f.countStart).toHaveBeenCalledTimes(1);
 });

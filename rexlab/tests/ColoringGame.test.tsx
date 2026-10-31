@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import { browserInput } from "../src/root.ts";
 import { InputArbitrationContext } from "../src/inputArbitration.ts";
+import { ARTWORKS } from "../src/coloring/artworks.ts";
 import { ColoringGame } from "../src/ColoringGame.tsx";
 import type { GalleryCollection, GallerySource } from "../src/coloringGallery.ts";
 import { coloringWorkshop, type ColoringWorkshopSession, type WorkshopNavigation } from "../src/coloringWorkshop.ts";
@@ -12,6 +13,7 @@ beforeEach(() => vi.stubGlobal("URL", { createObjectURL: vi.fn(() => "blob:thumb
 afterEach(() => vi.unstubAllGlobals());
 function fixture(strict = false) {
   const { model, dot, thumbnail } = coloringFixture();
+  const tricModel = coloringFixture(ARTWORKS[1].geometry.artwork).model;
   const red = { document: model.complete(model.append(model.newWork("red"), dot)), thumbnail: thumbnail() };
   const blue = { document: model.append(model.newWork("blue"), { ...dot, color: "#42a5f5" }), thumbnail: thumbnail() };
   const records = new Map([["red", red], ["blue", blue]]);
@@ -20,11 +22,11 @@ function fixture(strict = false) {
   const source: GallerySource = {
     async list(): Promise<GalleryCollection> { return { works: [...records.values()], unavailable: [], recentId, completedCount: [...records.values()].filter(r => r.document.completed).length }; },
     async reset() { records.clear(); },
-    async newWork(id, navigate) { return make(model.newWork(id), null, navigate); },
+    async newWork(id, navigate, geometry) { return make((geometry === ARTWORKS[1].geometry.artwork.version ? tricModel : model).newWork(id), null, navigate); },
     async open(id, navigate) { const record = records.get(id)!; return make(record.document, record.document.revision, navigate); }
   };
   function make(work: typeof red.document, durable: number | null, navigate: (navigation: WorkshopNavigation) => void) {
-    active = coloringWorkshop(work, durable, { model, navigate, thumbnail: async () => thumbnail(),
+    active = coloringWorkshop(work, durable, { model: work.geometry === ARTWORKS[1].geometry.artwork.version ? tricModel : model, navigate, thumbnail: async () => thumbnail(),
       async complete(record) {
         if (failed) throw new Error("quota");
         const earned = !records.get(record.document.id)?.document.rewarded;
@@ -35,15 +37,18 @@ function fixture(strict = false) {
     });
     return active;
   }
-  const props = { source, painter: { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn(() => "body") }, identity: () => `new-${++identity}`, countStart: vi.fn(), home: vi.fn(), language: "en" as const };
+  const tricPainter = { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn(() => "body") };
+  const props = { source, artworks: ARTWORKS, painter: { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn(() => "body") }, identity: () => `new-${++identity}`, countStart: vi.fn(), home: vi.fn(), language: "en" as const };
+  const painterFor = (geometry: string) => geometry === ARTWORKS[1].geometry.artwork.version ? tricPainter : props.painter;
+  const gameProps = { ...props, painterFor };
   const input = browserInput(window);
   onTestFinished(input.stop);
-  const view = render(strict ? <StrictMode><ColoringGame {...props} /></StrictMode> : <ColoringGame {...props} />, {
+  const view = render(strict ? <StrictMode><ColoringGame {...gameProps} /></StrictMode> : <ColoringGame {...gameProps} />, {
     wrapper: ({ children }) => <InputArbitrationContext value={input.arbitrate}>{children}</InputArbitrationContext>
   });
   const click = async (name: string) => { await act(async () => fireEvent.click(screen.getByRole("button", { name }))); };
   const settle = async () => { await act(async () => { await active.settled(); }); };
-  return { ...view, props, records, dot, red, blue, click, settle, active: () => active, fail: (value: boolean) => { failed = value; } };
+  return { ...view, props: gameProps, tricPainter, records, dot, red, blue, click, settle, active: () => active, fail: (value: boolean) => { failed = value; } };
 }
 it("integrates the gallery and workshop: durable changes, independent history, completed flags and untouched new works", async () => {
   const f = fixture(); await act(async () => {});
@@ -128,4 +133,29 @@ it("keeps result actions available after StrictMode effect reconnection", async 
   expect(screen.getByRole("region", { name: "WORKSHOP" })).toBeTruthy();
   await f.click("DONE"); await f.settle(); await f.click("HOME");
   expect(f.props.home).toHaveBeenCalledTimes(1);
+});
+
+
+it("selects the Triceratops renderer and name across painting, result, edit and new work", async () => {
+  const f = fixture(); await act(async () => {});
+  await f.click("TRICERATOPS");
+  expect(f.active().getSnapshot().work).toMatchObject({ id: "new-1", geometry: "triceratops-production-1", actions: [] });
+  expect(screen.getByLabelText("TRICERATOPS")).toBeTruthy();
+  expect(f.tricPainter.render).toHaveBeenLastCalledWith(f.container.querySelector("canvas"), []);
+  expect(f.props.painter.render).not.toHaveBeenCalled();
+  act(() => f.active().append(f.dot)); await f.settle();
+  await f.click("DONE"); await f.settle();
+  expect(screen.getByRole("region", { name: "YOUR TRICERATOPS!" })).toBeTruthy();
+  expect(f.tricPainter.render).toHaveBeenLastCalledWith(f.container.querySelector("canvas"), [f.dot]);
+  await f.click("EDIT");
+  expect(screen.getByLabelText("TRICERATOPS")).toBeTruthy();
+  expect(f.active().getSnapshot().work.actions).toEqual([f.dot]);
+  await f.click("NEW WORK");
+  expect(f.active().getSnapshot().work).toMatchObject({ id: "new-2", geometry: "triceratops-production-1", actions: [], completed: false });
+  expect(f.props.countStart).toHaveBeenCalledTimes(2);
+  await f.click("GALLERY");
+  await act(async () => fireEvent.click(f.container.querySelector('[data-work-id="red"] button')!));
+  expect(screen.getByLabelText("STEGOSAURUS")).toBeTruthy();
+  expect(f.props.painter.render).toHaveBeenLastCalledWith(f.container.querySelector("canvas"), f.red.document.actions);
+  expect(f.records.get("red")).toEqual(f.red);
 });
