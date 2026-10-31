@@ -16,7 +16,7 @@ export const stegosaurusExplorerProbes: readonly (readonly [number, number, stri
   [548, 474, "rear-near"], [386, 488, "front-near"],
   [248, 396, "neck"], [124, 392, "head"], [182, 410, "cheek"],
   [818, 548, "horsetail-stem"], [778, 448, "horsetail-left"],
-  [798, 432, "horsetail-crown"], [856, 456, "horsetail-right"],
+  [820, 432, "horsetail-crown"], [856, 456, "horsetail-right"],
   [92, 534, "fern-left"], [126, 510, "fern-crown"], [174, 534, "fern-right"],
   [258, 566, "rock"]
 ];
