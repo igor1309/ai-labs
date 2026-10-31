@@ -22,8 +22,8 @@ struct RecognizerSourceTests {
         let adapter = TrackText(recognizerSource: {
             began.send()
             await release.wait()
-            return recognizer
-        }, executor: nil, intervals: profiling.intervals)
+            return SignpostedRecognizer(base: recognizer, intervals: profiling.intervals)
+        })
         let preparing = Task { try await adapter.prepare() }
         defer { release.release(); preparing.cancel(); began.end() }
         await began.next()

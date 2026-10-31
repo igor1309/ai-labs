@@ -1,3 +1,4 @@
+import BlockingTestWork
 import Dispatch
 import Foundation
 import Testing
@@ -6,16 +7,26 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct TrackFileExecutorTests {
 
-    @Test func isolatedWorkRunsOnEachInstancesOwnQueue() async throws {
+    @Test func blockedFilesOutnumberingThePoolAllKeepWriting() async throws {
 
         try await withTrackFolder { folder in
-            let first = try await TrackFile(url: folder.appendingPathComponent("first.caf"))
-            let second = try await TrackFile(url: folder.appendingPathComponent("second.caf"))
-            #expect(first.queue !== second.queue)
-            await first.checkFileQueue()
-            await second.checkFileQueue()
-            try await first.close()
-            try await second.close()
+            let barrier = ThreadBarrier()
+            var tracks: [TrackFile] = []
+            for index in 0..<barrier.count {
+                tracks.append(try await TrackFile(
+                    url: folder.appendingPathComponent("\(index).caf"),
+                    makeBinding: { url in BarrierTrackBinding(disk: try DiskTrackBinding(url: url), barrier: barrier) },
+                    makeConversion: { try CompleteConversion(inputRate: $0) }
+                ))
+            }
+            try await withThrowingTaskGroup { group in
+                for track in tracks {
+                    group.addTask { try await track.write([Float](repeating: 0, count: 1_600), sampleRate: 16_000) }
+                }
+                try await group.waitForAll()
+            }
+            #expect(barrier.met)
+            for track in tracks { try await track.close() }
         }
     }
 
@@ -64,12 +75,21 @@ private final class ReleaseSpy: TrackFileBinding {
     func remove() { disk.remove() }
 }
 
-private extension TrackFile {
+/// Blocks each write of samples.
+private struct BarrierTrackBinding: TrackFileBinding {
 
-    func checkFileQueue() async {
+    let disk: DiskTrackBinding
+    let barrier: ThreadBarrier
 
-        dispatchPrecondition(condition: .onQueue(queue))
-        await Task.yield()
-        dispatchPrecondition(condition: .onQueue(queue))
+    func initialize() throws { try disk.initialize() }
+
+    func write(_ samples: [Int16], at frame: Int64) throws {
+
+        barrier.arrive()
+        try disk.write(samples, at: frame)
     }
+
+    func read(from frame: Int64, count: Int) throws -> [Float] { try disk.read(from: frame, count: count) }
+    func finalize(frames: Int64) throws { try disk.finalize(frames: frames) }
+    func remove() { disk.remove() }
 }

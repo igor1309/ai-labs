@@ -47,16 +47,12 @@ struct SessionTextShutdownTests {
     @Test(arguments: [SessionSide.microphone, .call])
     func stoppingWaitsForHeldFinalizationWithoutChangingText(side: SessionSide) async throws {
 
-        let finalization = DrainGate(), executor = DrainExecutor()
+        let finalization = DrainGate()
         let stopped = Values<Bool>()
         let mine = HeldSessionRecognizer(finalization: side == .microphone ? finalization : nil)
         let theirs = HeldSessionRecognizer(finalization: side == .call ? finalization : nil)
-        var construction = SessionConstruction()
-        construction.executor = executor
-        let configured = construction
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            try await withDrainRig(construction: configured, recognizers: (mine, theirs)) { rig, folder in
+        let task = Task {
+            try await withDrainRig(construction: SessionConstruction(), recognizers: (mine, theirs)) { rig, folder in
                 let text = try #require(await rig.pieces.text)
                 let writing = try #require(await rig.pieces.writing)
                 for await state in writing.updates {
@@ -79,12 +75,10 @@ struct SessionTextShutdownTests {
                     == "# Transcript\n\n**Me** 00:00:00\nkept\n\n**Them** 00:00:00\nkept\n")
             }
         }
-        defer { finalization.release(); executor.run() }
-        await executor.run(until: { finalization.entered })
-        #expect(finalization.entered)
+        defer { finalization.release() }
+        await finalization.waitUntilEntered()
         #expect(stopped.all.isEmpty)
         finalization.release()
-        await executor.finish()
         try await task.value
         #expect(stopped.all == [true])
     }

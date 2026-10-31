@@ -6,7 +6,7 @@ import Foundation
 public actor TranscriptFile {
 
     // Blocking file operations must not occupy the cooperative thread pool.
-    nonisolated let queue: DispatchSerialQueue
+    private nonisolated let queue: DispatchSerialQueue
     public nonisolated var unownedExecutor: UnownedSerialExecutor { queue.asUnownedSerialExecutor() }
 
     public enum Failure: Error, Equatable {

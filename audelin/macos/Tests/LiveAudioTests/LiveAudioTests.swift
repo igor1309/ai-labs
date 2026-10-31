@@ -93,10 +93,9 @@ struct LiveAudioTests {
     func failedStopDrainsPiecesThatHaveNotYetBeenRead(stopEndsInput: Bool) async throws {
 
         let capture = FakeCapture(stopFailure: .stop, stopEndsInput: stopEndsInput)
-        let input = AudioGate(), executor = CaptureExecutor(), returned = Mutex(false)
-        let task = Task(executorPreference: executor) {
-            defer { executor.complete() }
-            let live = LiveAudio(capture: capture, beforeInput: { await input.wait() }, executor: executor)
+        let input = AudioGate(), returned = Mutex(false)
+        let task = Task {
+            let live = LiveAudio(capture: capture, beforeInput: { await input.wait() })
             let listener = await live.listen()
             let statistics = await live.statistics()
             let stream = try await live.start()
@@ -110,12 +109,12 @@ struct LiveAudioTests {
             #expect(measured.count == tones().count)
             #expect(try await read(stream) == tones())
         }
-        defer { input.release(); capture.finish(); executor.run() }
-        await executor.run(until: { input.isHeld && capture.stops == 1 })
+        defer { input.release(); capture.finish() }
+        await input.waitUntilEntered()
+        await capture.waitUntilStopped()
         #expect(input.isHeld)
         #expect(!returned.withLock { $0 })
         input.release()
-        await executor.finish()
         try await task.value
         #expect(returned.withLock { $0 })
     }

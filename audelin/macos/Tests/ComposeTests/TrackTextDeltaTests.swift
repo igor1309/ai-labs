@@ -12,16 +12,13 @@ struct TrackTextDeltaTests {
 
         let words = (0...count).map { Word("word\($0).", start: Double($0 * 3), end: Double($0 * 3) + 0.5) }
         let start = Double(count * 3)
-        let began = Signal(), release = Signal(), mapped = Values<Int>()
+        let began = Signal(), release = Signal()
         let recognizer = ScriptRecognizer(hearings: [
             .success(Hearing(words: words, finalThrough: words.last!.end)),
             .success(Hearing(words: [Word("draft", start: start + 0.5, end: start + 1)])),
             .success(Hearing(words: [Word("next.", start: start + 4, end: start + 4.5)], finalThrough: start + 4.5)),
         ], endings: [.success(Hearing(words: [Word("last", start: start + 4.5, end: start + 5)]))], blocked: began, release: release)
-        let adapter = TrackText(recognizerSource: { recognizer }, executor: nil, mapSegment: { segment, end in
-            mapped.append(segment.id)
-            return TrackText.text(from: [segment], through: end)[0]
-        })
+        let adapter = TrackText(recognizerSource: { recognizer })
         defer { release.end(); began.end() }
         try await adapter.prepare()
         let firstAudio = Audio(start: 0, samples: [0], sampleRate: 1)
@@ -33,9 +30,9 @@ struct TrackTextDeltaTests {
         let replay = try await adapter.hear(firstAudio)
         #expect(replay.final.map(\.id) == Array(0..<count))
         #expect(replay.tail == [Text(id: count, start: start, end: start + 0.5, settled: "word\(count).")])
-        #expect(mapped.all == Array(0...count))
+        #expect(await adapter.mapped == count + 1)
         #expect(try await adapter.hear(firstAudio) == replay)
-        #expect(mapped.all == Array(0...count))
+        #expect(await adapter.mapped == count + 1)
 
         let changing = Task { try await adapter.hear(Audio(start: 1, samples: [1], sampleRate: 1)) }
         await began.next()
@@ -43,7 +40,7 @@ struct TrackTextDeltaTests {
         let changed = try await changing.value
         #expect(changed.final == replay.final)
         #expect(changed.tail == [Text(id: count, start: start, end: start + 1, settled: "word\(count).", pending: "draft")])
-        #expect(Array(mapped.all.dropFirst(count + 1)) == [count])
+        #expect(await adapter.mapped == count + 2)
 
         let advancing = Task { try await adapter.hear(Audio(start: 2, samples: [2], sampleRate: 1)) }
         await began.next()
@@ -52,12 +49,12 @@ struct TrackTextDeltaTests {
         #expect(advanced.final.count == count + 1)
         #expect(advanced.final.last == Text(id: count, start: start, end: start + 4, settled: "word\(count). draft"))
         #expect(advanced.tail == [Text(id: count + 1, start: start + 4, end: start + 4.5, settled: "next.")])
-        #expect(Array(mapped.all.dropFirst(count + 2)) == [count, count + 1])
+        #expect(await adapter.mapped == count + 4)
 
         let finished = try await adapter.finish()
         #expect(finished.final == advanced.final + [Text(id: count + 1, start: start + 4, end: start + 5, settled: "next. last")])
         #expect(finished.tail.isEmpty)
-        #expect(Array(mapped.all.dropFirst(count + 4)) == [count + 1])
+        #expect(await adapter.mapped == count + 5)
         #expect(await recognizer.chunks.count == 3)
         #expect(await recognizer.finishes == 1)
     }
