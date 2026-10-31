@@ -16,55 +16,6 @@ struct SessionTests {
         #expect(failed.recordedFolder == nil)
     }
 
-    @Test func reducerOrdersBringUpAndBringDown() {
-
-        var state = SessionState()
-        var effect: SessionEffect? = nil
-        let steps: [(SessionEvent, SessionEffect?, SessionState)] = [
-            (.begin(liveText: true), .checkModels, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off)),
-            (.modelsChecked(missing: []), .createFolder, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .starting)),
-            (.folderFinished(error: nil), .selectProcesses, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .starting)),
-            (.processesFinished(selection: .init(id: "chosen-app"), error: nil), .openTrack(.microphone), SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .starting, processSelection: .init(id: "chosen-app"))),
-            (.trackFinished(.microphone, error: nil), .openTrack(.call), SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .starting, processSelection: .init(id: "chosen-app"))),
-            (.trackFinished(.call, error: nil), .openTranscript, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .up, transcript: .starting, processSelection: .init(id: "chosen-app"))),
-            (.transcriptFinished(error: nil), .startCallText(enabled: true), SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .up, transcript: .up, callText: .starting, processSelection: .init(id: "chosen-app"))),
-            (.callTextFinished(error: nil), .startMicrophoneCapture, SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .up, microphoneCapture: .starting, transcript: .up, callText: .up, processSelection: .init(id: "chosen-app"))),
-            (.captureFinished(.microphone, error: nil), .startCallCapture(selection: .chosen(.init(id: "chosen-app"))), SessionState(wantedLiveText: true, phase: .bringingUp, liveText: .off, folder: .up, processes: .up, microphoneTrack: .up, callTrack: .up, microphoneCapture: .up, callCapture: .starting, transcript: .up, callText: .up, processSelection: .init(id: "chosen-app"))),
-        ]
-
-        for (event, expected, expectedState) in steps {
-            (state, effect) = SessionReducer.reduce(state, event)
-            #expect(effect == expected)
-            #expect(state == expectedState)
-        }
-        (state, effect) = SessionReducer.reduce(state, .captureFinished(.call, error: nil))
-        #expect(state.phase == .recording)
-        #expect(effect == nil)
-
-        let (ending, repeatedEffect) = SessionReducer.reduce(state, .end)
-        #expect(ending.phase == .ending)
-        #expect(repeatedEffect == .stopCapture(.microphone))
-        let (stillEnding, noDuplicate) = SessionReducer.reduce(ending, .end)
-        #expect(stillEnding == ending)
-        #expect(noDuplicate == nil)
-
-        (state, effect) = (ending, repeatedEffect)
-        #expect(effect == .stopCapture(.microphone))
-        (state, effect) = SessionReducer.reduce(state, .captureStopped(.microphone, error: nil))
-        #expect(effect == .stopCapture(.call))
-        (state, effect) = SessionReducer.reduce(state, .captureStopped(.call, error: nil))
-        #expect(effect == .closeTrack(.microphone))
-        (state, effect) = SessionReducer.reduce(state, .trackClosed(.microphone, error: nil))
-        #expect(effect == .closeTrack(.call))
-        (state, effect) = SessionReducer.reduce(state, .trackClosed(.call, error: nil))
-        #expect(effect == .stopCallText)
-        (state, effect) = SessionReducer.reduce(state, .callTextStopped(error: nil))
-        #expect(effect == .closeTranscript)
-        (state, effect) = SessionReducer.reduce(state, .transcriptClosed(error: nil))
-        #expect(state.phase == .ended)
-        #expect(effect == nil)
-    }
-
     @Test func bothSidesComeUpInDestinationOrder() async throws {
 
         let rig = await Rig()

@@ -9,9 +9,9 @@ struct SessionAudioWarningTests {
         let event = call(1, 300)
         let expected = callAdvanced(state, through: 300, silentSince: 0, warning: .callSilent, issued: true)
         assert(state, event, reducedTo: expected)
-        assert(state, event, effect: nil)
+        assert(state, event, delivers: nil)
         assert(expected, call(300, 301), reducedTo: callAdvanced(expected, through: 301, silentSince: 0, warning: .callSilent, issued: true))
-        assert(expected, call(300, 301), effect: nil)
+        assert(expected, call(300, 301), delivers: nil)
     }
 
     @Test func staleMicActivityDoesNotWarn() {
@@ -20,7 +20,7 @@ struct SessionAudioWarningTests {
         var expected = callAdvanced(state, through: 300, silentSince: 0)
         expected.audioObservation.microphoneActivity = []
         assert(state, call(0, 300), reducedTo: expected)
-        assert(state, call(0, 300), effect: nil)
+        assert(state, call(0, 300), delivers: nil)
     }
 
     @Test func nonzeroCallSampleResetsSilenceInterval() {
@@ -28,9 +28,9 @@ struct SessionAudioWarningTests {
         let state = fold([call(0, 299), call(299, 300, nonzero: true)] + microphoneWindows(start: 599.9, count: 5))
         let beforeThreshold = callAdvanced(state, through: 599.98, silentSince: 300)
         assert(state, call(300, 599.98), reducedTo: beforeThreshold)
-        assert(state, call(300, 599.98), effect: nil)
+        assert(state, call(300, 599.98), delivers: nil)
         assert(beforeThreshold, call(599.98, 600), reducedTo: callAdvanced(beforeThreshold, through: 600, silentSince: 300, warning: .callSilent, issued: true))
-        assert(beforeThreshold, call(599.98, 600), effect: nil)
+        assert(beforeThreshold, call(599.98, 600), delivers: nil)
     }
 
     @Test func laterCallAudioClearsWarningWithoutRearmingNotification() {
@@ -39,12 +39,12 @@ struct SessionAudioWarningTests {
         #expect(state.audioWarning == .callSilent)
         let cleared = callAdvanced(state, through: 300.02, silentSince: 300.02, issued: true)
         assert(state, call(300, 300.02, nonzero: true), reducedTo: cleared)
-        assert(state, call(300, 300.02, nonzero: true), effect: nil)
+        assert(state, call(300, 300.02, nonzero: true), delivers: nil)
         let later = fold(microphoneWindows(start: 600, count: 5), from: cleared)
         var expected = callAdvanced(later, through: 600.1, silentSince: 300.02, issued: true)
         expected.audioObservation.microphoneActivity.removeFirst()
         assert(later, call(300.02, 600.1), reducedTo: expected)
-        assert(later, call(300.02, 600.1), effect: nil)
+        assert(later, call(300.02, 600.1), delivers: nil)
     }
 
     @Test(arguments: [0.0, 1_000.0])
@@ -52,7 +52,7 @@ struct SessionAudioWarningTests {
 
         let microphoneFirst = fold(microphoneWindows(start: origin + 699.9, count: 5))
         assert(microphoneFirst, call(origin + 400, origin + 699.98), reducedTo: callAdvanced(microphoneFirst, through: origin + 699.98, silentSince: origin + 400))
-        assert(microphoneFirst, call(origin + 400, origin + 699.98), effect: nil)
+        assert(microphoneFirst, call(origin + 400, origin + 699.98), delivers: nil)
 
         let callFirst = fold([call(origin, origin + 300)] + microphoneWindows(start: origin + 400, count: 4))
         let event = level(origin + 400.08, origin + 400.1)
@@ -60,7 +60,7 @@ struct SessionAudioWarningTests {
         expected.audioObservation.microphoneCoveredThrough = origin + 400.1
         expected.audioObservation.microphoneActivity = [.init(qualifiedAt: origin + 400.1, through: origin + 400.1)]
         assert(callFirst, event, reducedTo: expected)
-        assert(callFirst, event, effect: nil)
+        assert(callFirst, event, delivers: nil)
     }
 
     @Test(arguments: [0.0, 299.9])
@@ -71,7 +71,7 @@ struct SessionAudioWarningTests {
         var expected = callAdvanced(state, through: 300, silentSince: 0, warning: warns ? .callSilent : nil, issued: warns)
         if !warns { expected.audioObservation.microphoneActivity.removeFirst() }
         assert(state, call(1, 300), reducedTo: expected)
-        assert(state, call(1, 300), effect: nil)
+        assert(state, call(1, 300), delivers: nil)
     }
 
     @Test(arguments: [299.98, 300.0])
@@ -80,7 +80,7 @@ struct SessionAudioWarningTests {
         let state = fold(microphoneWindows(start: 299.9, count: 5))
         let warns = end == 300
         assert(state, call(0, end), reducedTo: callAdvanced(state, through: end, silentSince: 0, warning: warns ? .callSilent : nil, issued: warns))
-        assert(state, call(0, end), effect: nil)
+        assert(state, call(0, end), delivers: nil)
     }
 
     @Test(arguments: [300.0, 300.02])
@@ -91,7 +91,7 @@ struct SessionAudioWarningTests {
         var expected = callAdvanced(state, through: end, silentSince: 0, warning: warns ? .callSilent : nil, issued: warns)
         if !warns { expected.audioObservation.microphoneActivity = [] }
         assert(state, call(0, end), reducedTo: expected)
-        assert(state, call(0, end), effect: nil)
+        assert(state, call(0, end), delivers: nil)
     }
 
     @Test(arguments: [0.099, 0.1])
@@ -102,7 +102,7 @@ struct SessionAudioWarningTests {
         let state = fold(windows)
         let warns = duration == 0.1
         assert(state, call(0, 300), reducedTo: callAdvanced(state, through: 300, silentSince: 0, warning: warns ? .callSilent : nil, issued: warns))
-        assert(state, call(0, 300), effect: nil)
+        assert(state, call(0, 300), delivers: nil)
     }
 
     @Test(arguments: [0.0099, 0.01])
@@ -111,28 +111,28 @@ struct SessionAudioWarningTests {
         let state = fold(microphoneWindows(start: 299.9, count: 5, rms: rms))
         let warns = rms == 0.01
         assert(state, call(0, 300), reducedTo: callAdvanced(state, through: 300, silentSince: 0, warning: warns ? .callSilent : nil, issued: warns))
-        assert(state, call(0, 300), effect: nil)
+        assert(state, call(0, 300), delivers: nil)
     }
 
     @Test func gapInMicrophoneWindowsBreaksSustainedActivity() {
 
         let state = fold(microphoneWindows(start: 299.88, count: 4) + microphoneWindows(start: 299.98, count: 2))
         assert(state, call(0, 300.02), reducedTo: callAdvanced(state, through: 300.02, silentSince: 0))
-        assert(state, call(0, 300.02), effect: nil)
+        assert(state, call(0, 300.02), delivers: nil)
     }
 
     @Test func quietMicrophoneWindowBreaksSustainedActivity() {
 
         let state = fold(microphoneWindows(start: 299.88, count: 4) + [level(299.96, 299.98, rms: 0)] + microphoneWindows(start: 299.98, count: 2))
         assert(state, call(0, 300.02), reducedTo: callAdvanced(state, through: 300.02, silentSince: 0))
-        assert(state, call(0, 300.02), effect: nil)
+        assert(state, call(0, 300.02), delivers: nil)
     }
 
     @Test func delayedMicrophoneCoverageDoesNotWarnEarly() {
 
         let state = fold(microphoneWindows(start: 299.88, count: 5))
         assert(state, call(0, 600), reducedTo: callAdvanced(state, through: 600, silentSince: 0))
-        assert(state, call(0, 600), effect: nil)
+        assert(state, call(0, 600), delivers: nil)
         let callAhead = fold([call(0, 600)], from: state)
         var expected = callAhead
         expected.audioObservation.microphoneCoveredThrough = 300
@@ -140,14 +140,14 @@ struct SessionAudioWarningTests {
         expected.audioObservation.warningIssued = true
         expected.audioWarning = .callSilent
         assert(callAhead, level(299.98, 300), reducedTo: expected)
-        assert(callAhead, level(299.98, 300), effect: nil)
+        assert(callAhead, level(299.98, 300), delivers: nil)
     }
 
     @Test func gapsInCallStatisticsDoNotCountAsExactZeros() {
 
         let state = fold([call(0, 299)] + microphoneWindows(start: 599.9, count: 5))
         assert(state, call(400, 600), reducedTo: callAdvanced(state, through: 600, silentSince: 400))
-        assert(state, call(400, 600), effect: nil)
+        assert(state, call(400, 600), delivers: nil)
     }
 
     @Test(arguments: [SessionState.Phase.idle, .bringingUp, .ending, .ended])
@@ -157,7 +157,7 @@ struct SessionAudioWarningTests {
         state.phase = phase
         for event in [call(300, 301, nonzero: true), level(300, 300.02)] {
             assert(state, event, reducedTo: state)
-            assert(state, event, effect: nil)
+            assert(state, event, delivers: nil)
         }
     }
 
@@ -166,7 +166,7 @@ struct SessionAudioWarningTests {
         var state = fold([call(0, 300)] + microphoneWindows(start: 299.9, count: 5))
         state.phase = .idle
         assert(state, .begin(liveText: false), reducedTo: SessionState(phase: .bringingUp))
-        assert(state, .begin(liveText: false), effect: .checkModels)
+        assert(state, .begin(liveText: false), delivers: .checkModels)
     }
 
     @Test func warningLeavesHealthFailuresAndRecordabilityAlone() {
@@ -174,14 +174,14 @@ struct SessionAudioWarningTests {
         let initial = SessionState(health: [.capture(.call): .failed("lost")], phase: .recording, failures: [.init(piece: "call", message: "lost")], cannotRecord: "kept reason")
         let state = fold(microphoneWindows(start: 299.9, count: 5), from: initial)
         assert(state, call(0, 300), reducedTo: callAdvanced(state, through: 300, silentSince: 0, warning: .callSilent, issued: true))
-        assert(state, call(0, 300), effect: nil)
+        assert(state, call(0, 300), delivers: nil)
     }
 
     @Test func nonzeroCallAudioClearsWarningEvenWhileMicrophoneLags() {
 
         let warned = fold([call(0, 300)] + microphoneWindows(start: 299.9, count: 5))
         assert(warned, call(300, 400, nonzero: true), reducedTo: callAdvanced(warned, through: 400, silentSince: 400, issued: true))
-        assert(warned, call(300, 400, nonzero: true), effect: nil)
+        assert(warned, call(300, 400, nonzero: true), delivers: nil)
     }
 
     @Test func invalidAndOverlappingIntervalsAreIgnored() {
@@ -195,7 +195,7 @@ struct SessionAudioWarningTests {
         ]
         for event in events {
             assert(state, event, reducedTo: state)
-            assert(state, event, effect: nil)
+            assert(state, event, delivers: nil)
         }
     }
 
@@ -204,7 +204,7 @@ struct SessionAudioWarningTests {
 
         let state = fold(microphoneWindows(start: 299.9, count: 5, rms: rms))
         assert(state, call(0, 300), reducedTo: callAdvanced(state, through: 300, silentSince: 0))
-        assert(state, call(0, 300), effect: nil)
+        assert(state, call(0, 300), delivers: nil)
     }
 
     private func call(_ start: Double, _ end: Double, nonzero: Bool = false) -> SessionEvent {
@@ -246,12 +246,10 @@ struct SessionAudioWarningTests {
     }
 }
 
-private func assert(_ state: SessionState, _ event: SessionEvent, reducedTo expected: SessionState, sourceLocation: SourceLocation = #_sourceLocation) {
+private func assert(
+    _ state: SessionState, _ event: SessionEvent, reducedTo expected: SessionState,
+    sourceLocation: SourceLocation = #_sourceLocation
+) {
 
-    #expect(SessionReducer.reduce(state, event).0 == expected, sourceLocation: sourceLocation)
-}
-
-private func assert(_ state: SessionState, _ event: SessionEvent, effect expected: SessionEffect?, sourceLocation: SourceLocation = #_sourceLocation) {
-
-    #expect(SessionReducer.reduce(state, event).1 == expected, sourceLocation: sourceLocation)
+    #expect(SessionReducer.reduce(state, event).0 == expected, "\(state) + \(event)", sourceLocation: sourceLocation)
 }
