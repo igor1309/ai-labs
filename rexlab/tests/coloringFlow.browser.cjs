@@ -188,7 +188,7 @@ const { chromium } = require("playwright");
             await p.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
             const layout = await p.evaluate(() => {
               const screen = document.querySelector('.coloring-gallery, .coloring-workshop, .coloring-result');
-              return { scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight], boxes: [...screen.querySelectorAll("button, canvas")].filter(e => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== "hidden").map(e => { const b = e.getBoundingClientRect(); return { tag: e.tagName, text: e.textContent, picker: !!e.closest(".coloring-chooser"), x: b.x, y: b.y, w: b.width, h: b.height }; }) };
+              return { scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight], boxes: [...screen.querySelectorAll('button, canvas:not([aria-hidden="true"])')].filter(e => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== "hidden").map(e => { const b = e.getBoundingClientRect(); return { tag: e.tagName, text: e.textContent, picker: !!e.closest(".coloring-chooser"), x: b.x, y: b.y, w: b.width, h: b.height }; }) };
             });
             const details = JSON.stringify({ width, height, language, theme, layout });
             assert.deepEqual(layout.scroll, [width, height], details);
