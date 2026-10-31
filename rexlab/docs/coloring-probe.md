@@ -15,6 +15,18 @@ is 1024 × 768; brush diameters are 8, 20 and 40 logical units. Colors and
 sizes use chooser sheets. The painted canvas itself animates; reduced motion
 keeps the composition still with a short fade.
 
+Fill targets have Russian and English names in the exported `REGION_NAMES`
+metadata, keyed by the unchanged saved IDs: `head` is the head, `plate-1`
+through `plate-6` are individually numbered plates (head toward tail), and
+`spike-1`/`spike-2` are numbered tail spikes. Plates share the `plates`
+group; spikes share `tail-spikes`. A group command can select its member IDs.
+`body` is explicitly named “Body, legs and tail” / “Туловище, ноги и хвост”.
+The placeholder has no independent belly, back or leg regions: these are
+connected parts of `body`. A voice assistant must not silently translate
+“paint the belly” into filling the whole body. Independent belly/back/leg
+targets require separate closed regions in the finished artwork. Names alone
+do not create them. This metadata does not change geometry or saved actions.
+
 Documents contain a schema, geometry version, independent ID, revision and
 complete ordered action journal. Fills replace preceding paint in their own
 region. Undo removes the final action and advances the revision. No-op

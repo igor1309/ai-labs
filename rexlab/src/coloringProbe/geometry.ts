@@ -21,4 +21,18 @@ export const REGIONS = [
   { id: "spike-2", path: "M 893 474 L 970 370 L 928 463 Z" }
 ] as const;
 export type Region = typeof REGIONS[number]["id"];
+// Metadata keys are the persisted fill IDs. A composite region is not a promise
+// that its parts can be filled independently.
+export const REGION_NAMES = {
+  body: { ru: "Туловище, ноги и хвост", en: "Body, legs and tail", group: "body" },
+  head: { ru: "Голова", en: "Head", group: "head" },
+  "plate-1": { ru: "Пластина 1", en: "Plate 1", group: "plates" },
+  "plate-2": { ru: "Пластина 2", en: "Plate 2", group: "plates" },
+  "plate-3": { ru: "Пластина 3", en: "Plate 3", group: "plates" },
+  "plate-4": { ru: "Пластина 4", en: "Plate 4", group: "plates" },
+  "plate-5": { ru: "Пластина 5", en: "Plate 5", group: "plates" },
+  "plate-6": { ru: "Пластина 6", en: "Plate 6", group: "plates" },
+  "spike-1": { ru: "Шип хвоста 1", en: "Tail spike 1", group: "tail-spikes" },
+  "spike-2": { ru: "Шип хвоста 2", en: "Tail spike 2", group: "tail-spikes" }
+} as const satisfies Record<Region, { ru: string; en: string; group: string }>;
 export const DETAILS = { eye: { x: 144, y: 404, radius: 12 }, smile: "M 83 446 Q 126 462 164 440", toes: "M 258 630 L 263 615 M 284 638 L 289 621 M 307 638 L 312 619 M 587 626 L 589 610 M 612 633 L 614 614 M 635 628 L 635 609" };
