@@ -24,8 +24,23 @@ Feature: Coloring workshop
     And every control has a localized accessible name and a touch target of at least 60 pixels
     And the dinosaur fills the available canvas without a paper card, workshop heading or dinosaur title
     And there is no top navigation row or bottom palette
-    And the save status remains visible
+    And the leading groups are vertically centered between the top and bottom safe areas
+    And HOME has breathing room below the top safe area as well as the system inset
+    And the rail uses two columns at 1133 by 744 and whenever nine targets cannot fit with comfortable clearance
+    And an empty idle work shows no LET’S PAINT footer or save disk
+    And saving and saved status remain available to assistive technology without a bottom row
+    And the canvas keeps its dimensions and coordinates across idle, saving and saved states
     And both light and dark themes keep navigation colors distinct
+
+  Scenario: Save failures remain actionable
+    Given a save fails in the workshop
+    Then the failure dialog and its RETRY control are visible within the viewport
+    When I choose KEEP EDITING
+    Then the failure status and its RETRY control remain visible within the viewport
+    And the latest paint is retained
+    When I choose RETRY
+    Then saving status remains accessible along with the unresolved failure until the save succeeds
+    And a successful save clears the failure
 
   Scenario: Temporary tablet pickers
     Given I use the landscape tablet workshop
