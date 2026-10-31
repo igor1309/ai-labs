@@ -15,11 +15,7 @@ final class DrainGate: Sendable {
     }
 
     private let state = Mutex(State())
-    private let onEntry: @Sendable () -> Void
-
-    init(onEntry: @escaping @Sendable () -> Void = {}) { self.onEntry = onEntry }
-
-    var entered: Bool { state.withLock { $0.entered } }
+    private let arrival = AsyncStream<Void>.makeStream()
 
     func wait() async {
 
@@ -30,9 +26,15 @@ final class DrainGate: Sendable {
                 state.waiting.append(continuation)
                 return false
             }
-            onEntry()
+            arrival.continuation.yield(())
             if resume { continuation.resume() }
         }
+    }
+
+    func waitUntilEntered() async {
+
+        var iterator = arrival.stream.makeAsyncIterator()
+        _ = await iterator.next()
     }
 
     func release() {
@@ -47,74 +49,7 @@ final class DrainGate: Sendable {
     }
 }
 
-/// Draining the runnable work makes a held dependency the only way forward.
-final class DrainExecutor: TaskExecutor {
-
-    // A task's executor preference does not keep its executor alive, and a task
-    // can outlive the test that made it, so every executor lives for the process.
-    private static let kept = Mutex<[DrainExecutor]>([])
-
-    private let jobs = Mutex<[UnownedJob]>([])
-    private let enqueued = Signal()
-    private let completed = Mutex(false)
-    private let released = Mutex(false)
-
-    init() { Self.kept.withLock { $0.append(self) } }
-
-    func enqueue(_ job: consuming ExecutorJob) {
-
-        let job = UnownedJob(job)
-        let released = released.withLock { released in
-            if !released { jobs.withLock { $0.append(job) } }
-            return released
-        }
-        if released {
-            let executor = asUnownedTaskExecutor()
-            DispatchQueue.global().async { job.runSynchronously(on: executor) }
-        } else {
-            notify()
-        }
-    }
-
-    /// Work enqueued after the test is done runs on its own instead of waiting forever.
-    func release() {
-
-        released.withLock { $0 = true }
-        run()
-    }
-
-    func notify() { enqueued.send() }
-
-    func complete() {
-
-        completed.withLock { $0 = true }
-        enqueued.end()
-    }
-
-    func run(until condition: () -> Bool) async {
-
-        while !condition() && !completed.withLock({ $0 }) {
-            run()
-            if !condition() { await enqueued.next() }
-        }
-        run()
-    }
-
-    func finish() async {
-
-        for await _ in enqueued.stream { run() }
-        release()
-    }
-
-    func run() {
-
-        while let job = jobs.withLock({ $0.isEmpty ? nil : $0.removeFirst() }) {
-            job.runSynchronously(on: asUnownedTaskExecutor())
-        }
-    }
-}
-
-// Direct calls keep the model's effects outside the controlled task graph.
+// Direct calls leave the test as the only thing driving the pieces.
 func withDrainRig(
     construction: SessionConstruction,
     recognizers: (any Recognizer, any Recognizer)? = nil,
