@@ -40,6 +40,10 @@ over the file system.
 - **The places are `microphone.caf`, `call.caf` and `transcript.md`**
   inside the folder, so every call looks alike (Amanu keeps `mic.caf` and
   `system.caf`; "call" is the side's name here).
+- **The folder is private to the user, mode `0700`,** because it holds
+  the user's recorded calls; no other account on the Mac may list or read
+  them. The mode is given to the folder as it is made, so it is never
+  readable by others even for a moment.
 - **A make that fails leaves nothing,** so it never takes a name from the
   next call.
 

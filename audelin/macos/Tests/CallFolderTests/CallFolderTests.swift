@@ -38,6 +38,17 @@ struct CallFolderTests {
         }
     }
 
+    @Test func madeFolderIsPrivateToTheUser() async throws {
+
+        try await withCallsFolder { calls in
+            let made = try await offPool { try maker(calls).make() }
+            let mode = try await offPool {
+                try FileManager.default.attributesOfItem(atPath: made.url.path)[.posixPermissions] as? Int
+            }
+            #expect(mode == 0o700)
+        }
+    }
+
     @Test func titleFollowsTheTimestampAndATakenNameNumbersTheTimestamp() async throws {
 
         try await withCallsFolder { calls in
