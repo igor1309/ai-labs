@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { ARTWORKS } from "../src/coloring/artworks.ts";
 import { createPainter } from "../src/coloring/painter.ts";
-import { coloringWorkshopRoot } from "../src/coloringWorkshopRoot.ts";
+import { coloringWorkshopRoot, coloringVersionsFor } from "../src/coloringWorkshopRoot.ts";
 
 vi.mock("../src/coloring/painter.ts", () => ({
   createPainter: vi.fn(() => ({
@@ -36,4 +36,12 @@ it("wires every gallery preview to its cached artwork painter with empty actions
   expect(root.painterFor(root.artworks[0]!.version)).not.toBe(root.painterFor(root.artworks[1]!.version));
   expect(createPainter).toHaveBeenCalledTimes(ARTWORKS.length);
   expect(factory.open).not.toHaveBeenCalled();
+});
+
+it.each([
+  ["hatchling", "triceratops-production-1"],
+  ["explorer", "triceratops-explorer-1"],
+  ["paleontologist", "triceratops-explorer-1"]
+] as const)("offers Stegosaurus and the age-appropriate Triceratops for %s", (level, version) => {
+  expect(coloringVersionsFor(level)).toEqual(["stegosaurus-production-1", version]);
 });

@@ -1,3 +1,6 @@
+import type { AgeLevel } from "./ageLevel.ts";
+import { TRICERATOPS } from "./coloring/triceratops.ts";
+import { TRICERATOPS_EXPLORER } from "./coloring/triceratopsExplorer.ts";
 import type { GalleryArtwork } from "./ColoringGalleryScreen.tsx";
 import { coloringModel, type Work } from "./coloring/index.ts";
 import { ARTWORK } from "./coloring/geometry.ts";
@@ -60,4 +63,8 @@ export function coloringWorkshopRoot(factory: Pick<IDBFactory, "open">, document
     },
     close: store.close
   };
+}
+
+export function coloringVersionsFor(level: AgeLevel): readonly string[] {
+  return [ARTWORK.version, (level === "hatchling" ? TRICERATOPS : TRICERATOPS_EXPLORER).artwork.version];
 }

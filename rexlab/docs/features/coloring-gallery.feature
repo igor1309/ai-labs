@@ -11,7 +11,8 @@ Feature: Coloring gallery
 
   Scenario: An empty collection offers a new work
     When I enter coloring with no works
-    Then the gallery offers Stegosaurus and Triceratops with matching vector previews and localized uppercase names
+    Then the gallery offers Stegosaurus and one Triceratops with matching vector previews and localized uppercase names
+    And Triceratops is simple at Hatchling and a richer prehistoric scene at Explorer and Paleontologist
     And NEW WORK starts an independent Stegosaurus while choosing TRICERATOPS starts an independent Triceratops
     And no work or star has been created merely by opening the gallery
 

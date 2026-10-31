@@ -1,23 +1,24 @@
 @next
 Feature: Coloring full flow and durable progress
-  Coloring has only Explorer in this version. For this game all three
-  global age choices explicitly use Explorer, including Hatchling; this
-  is an exception to the nearest-lower-mode rule. It never changes the
-  parent's saved global choice or pretends to offer unbuilt modes.
+  Coloring keeps one shared collection, tools and Explorer collection best.
+  The global age setting chooses the Triceratops artwork for new gallery
+  selections; saved works always keep their original geometry.
 
-  Scenario Outline: One mode with every global age setting
+  Scenario Outline: New artwork follows the global age setting
     Given the global age setting is <level>
     When I enter coloring
-    Then the Explorer workshop, tools, rewards and collection best are used
+    Then the gallery offers Stegosaurus and exactly one Triceratops choice
+    And choosing Triceratops opens <artwork>
+    And the shared workshop, tools, rewards and collection best are used
     And no age switch or next-level offer appears inside coloring
     And the saved global age setting remains <level>
     And other games still start according to that setting
 
     Examples:
-      | level          |
-      | Hatchling      |
-      | Explorer       |
-      | Paleontologist |
+      | level          | artwork                              |
+      | Hatchling      | the simple Triceratops               |
+      | Explorer       | the richer Triceratops landscape     |
+      | Paleontologist | the richer Triceratops landscape     |
 
   Scenario: Home entry and progress
     When I open Home
@@ -144,9 +145,18 @@ Feature: Coloring full flow and durable progress
     Given an existing saved work uses geometry stegosaurus-production-1
     When I reopen coloring after Triceratops becomes available
     Then the work retains its original Stegosaurus geometry, paint, undo history and earned star
-    And new Triceratops works use geometry triceratops-production-1 in the same collection
+    And new gallery Triceratops works use triceratops-production-1 at Hatchling or triceratops-explorer-1 at Explorer and Paleontologist in the same collection
     When I save and reopen works of either creature
     Then each geometry version selects its own renderer and region validation
     And unknown geometry versions stay unavailable instead of being interpreted as another creature
     When a parent confirms RESET COLORING
     Then saved works and earned coloring stars for both creatures are reset together
+
+
+  Scenario: Switching age preserves every saved drawing
+    Given I saved a simple Triceratops at Hatchling and a richer Triceratops scene at Explorer
+    When I select any global age level and reopen either saved drawing
+    Then its original geometry, paint, undo history, thumbnail, localized name and earned star are retained
+    And completing it again awards no additional star
+    And NEW WORK from that drawing starts the same artwork under a fresh identity
+    And returning to the gallery offers the Triceratops chosen by the current global age level

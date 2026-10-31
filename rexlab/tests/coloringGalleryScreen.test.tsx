@@ -1,3 +1,5 @@
+import { coloringVersionsFor } from "../src/coloringWorkshopRoot.ts";
+import { ARTWORKS } from "../src/coloring/artworks.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ColoringGalleryScreen } from "../src/ColoringGalleryScreen.tsx";
@@ -141,4 +143,28 @@ it.each(["en", "ru"] as Language[])("offers matching original creature previews 
   await act(async () => fireEvent.click(button));
   expect(f.source.newWork).toHaveBeenCalledExactlyOnceWith("fresh", expect.any(Function), "triceratops-production-1");
   expect(f.countStart).toHaveBeenCalledTimes(1);
+});
+
+
+it.each(["en", "ru"] as Language[])("keeps saved Triceratops names and editing across both age choices in %s", async language => {
+  for (const level of ["hatchling", "explorer"] as const) for (const version of ["triceratops-production-1", "triceratops-explorer-1"]) {
+    const works = ARTWORKS.slice(1).map(({ geometry }) => {
+      const { model, dot, thumbnail } = coloringFixture(geometry.artwork);
+      return { document: model.append(model.newWork(geometry.artwork.version), dot), thumbnail: thumbnail() };
+    });
+    const source = { list: async () => ({ works, unavailable: [], completedCount: 0, recentId: null }), reset: vi.fn(), open: vi.fn(async () => ({} as ColoringWorkshopSession)), newWork: vi.fn() };
+    const session = coloringGallery({ source, identity: vi.fn(), workshop: vi.fn(), countStart: vi.fn(), navigate: vi.fn() });
+    await session.load();
+    const artworks = ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names }));
+    const view = render(<ColoringGalleryScreen artworks={artworks} offeredVersions={coloringVersionsFor(level)} session={session} language={language} home={vi.fn()} />);
+    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(2);
+    const name = language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС";
+    expect(screen.getAllByRole("button", { name })).toHaveLength(1);
+    expect(screen.getByAltText(`${name} · 1`)).toBeTruthy();
+    expect(screen.getByAltText(`${name} · 2`)).toBeTruthy();
+    const card = view.container.querySelector(`[data-work-id="${version}"]`)! as HTMLElement;
+    await act(async () => fireEvent.click(within(card).getByRole("button")));
+    expect(source.open).toHaveBeenCalledExactlyOnceWith(version, expect.any(Function));
+    view.unmount();
+  }
 });

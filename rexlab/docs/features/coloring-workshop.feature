@@ -1,6 +1,6 @@
 @next
 Feature: Coloring workshop
-  Free creativity with Stegosaurus and Triceratops at Explorer. There is no model to
+  Free creativity with Stegosaurus and age-appropriate Triceratops artwork. There is no model to
   copy, time limit, coverage target or judgement of artistic quality.
   An action means one accepted brush contact from press to release, or
   one fill. A work is nonempty when its current editable paint differs
@@ -135,7 +135,7 @@ Feature: Coloring workshop
   Scenario: Triceratops uses the shared workshop
     When I choose Triceratops in the gallery
     Then friendly original vector art shows a broad frill and exactly three horns
-    And thick outlines enclose large independently fillable body, belly, frill, head, leg and horn regions
+    And thick outlines enclose large independently fillable body, frill, head, leg and horn regions
     And the complete silhouette fits landscape iPad without clipping
     And its canvas has the localized uppercase accessible name TRICERATOPS or ТРИЦЕРАТОПС
     When I fill the frill, a horn or the body
@@ -143,3 +143,19 @@ Feature: Coloring workshop
     And the shared palette, brush, base color, undo, autosave and navigation work as for Stegosaurus
     When I choose NEW WORK from this workshop
     Then another unpainted Triceratops opens without overwriting the saved work
+
+
+  Scenario: A richer landscape for Explorer and Paleontologist
+    Given the global level is Explorer or Paleontologist
+    When I choose Triceratops in the gallery
+    Then a longer-bodied Triceratops stands in a prehistoric landscape with a cycad, fern, rocky ridge, meadow and stream
+    And four varied frill panels, flank, back bands, cheek, beak, three horns and four legs are independently fillable
+    And the plants, sun, cloud, ridge, meadow, stream and rock also have their own enclosed fill regions
+    And painting any region leaves every other region, protected eyes and outlines unchanged
+    And the entire scene fits landscape iPad without clipping
+
+  Scenario: Hatchling retains the simple artwork
+    Given the global level is Hatchling
+    When I choose Triceratops in the gallery
+    Then the simple Triceratops with its belly and two spots opens
+    And its geometry and appearance match existing simple Triceratops drawings

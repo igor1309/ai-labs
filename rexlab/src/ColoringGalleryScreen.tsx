@@ -34,7 +34,7 @@ function containFocus(event: KeyboardEvent<HTMLDivElement>) {
   const edge = event.shiftKey ? buttons[0] : buttons.at(-1);
   if (document.activeElement === edge) { event.preventDefault(); (event.shiftKey ? buttons.at(-1) : buttons[0])?.focus(); }
 }
-export function ColoringGalleryScreen({ session, language, home, artworks }: { session: ColoringGallerySession; language: Language; home(): void; artworks: readonly GalleryArtwork[] }) {
+export function ColoringGalleryScreen({ session, language, home, artworks, offeredVersions }: { session: ColoringGallerySession; language: Language; home(): void; artworks: readonly GalleryArtwork[]; offeredVersions?: readonly string[] | undefined }) {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const text = words[language];
   const dinosaurName = (version: string) => artworks.find(entry => entry.version === version)?.names[language] ?? artworks[0]!.names[language];
@@ -51,7 +51,7 @@ export function ColoringGalleryScreen({ session, language, home, artworks }: { s
       {collection?.completedCount !== null && collection && <span className="gallery-count" aria-label={`${text.completed}: ${collection.completedCount}`}><Star aria-hidden="true" />{collection.completedCount}</span>}
     </header>
     <div className="gallery-actions" inert={modal}>
-      {artworks.map((artwork, index) => <Button className="gallery-new" key={artwork.version}
+      {artworks.filter(artwork => !offeredVersions || offeredVersions.includes(artwork.version)).map((artwork, index) => <Button className="gallery-new" key={artwork.version}
         aria-label={index === 0 ? text.new : artwork.names[language]} disabled={state.busy || readOnly}
         onClick={() => void session.enter(undefined, index === 0 ? undefined : artwork.version)}>
         <ColoringArtworkPreview preview={artwork.preview} /><span><Plus aria-hidden="true" />{artwork.names[language]}</span>

@@ -1,3 +1,5 @@
+import { TRICERATOPS_EXPLORER } from "../src/coloring/triceratopsExplorer.ts";
+import { explorerProbes } from "./triceratopsExplorerProbes.ts";
 import { readFile } from "node:fs/promises";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
@@ -11,11 +13,11 @@ function shape(node: VectorShape, attributes: string) {
     transform="${transform} rotate(${-node.rotation} ${node.width / 2} ${node.height / 2})" ${attributes}/>`;
 }
 
-async function illustration(geometry: Geometry = STEGOSAURUS) {
+async function illustration(geometry: Geometry = STEGOSAURUS, filled?: string) {
   const { regions: REGIONS, details: DETAILS } = geometry;
   const defs = REGIONS.map(region => `<clipPath id="${region.id}">${shape(region, "")}</clipPath>`).join("");
   const regions = REGIONS.map(region => {
-    const drawing = shape(region, `fill="#fff0cf" stroke="#091e40" stroke-width="${region.outline}"`);
+    const drawing = shape(region, `fill="${region.id === filled ? "#ef5350" : "#fff0cf"}" stroke="#091e40" stroke-width="${region.outline}"`);
     let parent = region.parent, result = drawing;
     while (parent) {
       result = `<g clip-path="url(#${parent})">${result}</g>`;
@@ -94,6 +96,44 @@ describe("Triceratops vectors", () => {
       expect(pixel(x!, y!), `fillable interior ${x},${y}`).toEqual([255, 240, 207, 255]);
     }
     expect(pixel(746, 370)).toEqual([9, 30, 64, 255]);
+    for (let x = 0; x < WIDTH; x++) {
+      expect(pixel(x, 0)[3]).toBe(0); expect(pixel(x, HEIGHT - 1)[3]).toBe(0);
+    }
+    for (let y = 0; y < HEIGHT; y++) {
+      expect(pixel(0, y)[3]).toBe(0); expect(pixel(WIDTH - 1, y)[3]).toBe(0);
+    }
+  });
+});
+
+
+describe("Explorer Triceratops scene", () => {
+  it("provides a visible enclosed touch interior for every animal and landscape region", async () => {
+    const geometry = TRICERATOPS_EXPLORER;
+    expect(geometry.artwork.version).toBe("triceratops-explorer-1");
+    expect(geometry.artwork.regions).toEqual(explorerProbes.map(([, , id]) => id));
+    expect(new Set(geometry.artwork.regions).size).toBe(geometry.regions.length);
+    expect(geometry.regions.filter(region => region.id.startsWith("horn-")).map(region => region.id)).toEqual(["horn-far", "horn-near", "horn-nose"]);
+    expect(geometry.regions.length).toBeGreaterThan(TRICERATOPS.regions.length * 2);
+    for (const region of geometry.regions) {
+      expect(region.outline).toBeGreaterThanOrEqual(2);
+      if ("path" in region) expect(region.path).toMatch(/Z$/);
+      if (region.parent) {
+        const parent = geometry.regions.find(candidate => candidate.id === region.parent);
+        expect(parent).toBeDefined(); expect(parent!.parent).toBeUndefined();
+      }
+    }
+    const actual = await illustration(geometry);
+    const pixel = (x: number, y: number) => [...actual.subarray((y * WIDTH + x) * 4, (y * WIDTH + x) * 4 + 4)];
+    for (const [x, y, id] of explorerProbes) {
+      expect(pixel(x, y), id).toEqual([255, 240, 207, 255]);
+    }
+    for (const [index, [, , id]] of explorerProbes.entries()) {
+      const painted = await illustration(geometry, id);
+      for (const [other, [x, y, sample]] of explorerProbes.entries()) {
+        const offset = (y * WIDTH + x) * 4;
+        expect([...painted.subarray(offset, offset + 4)], `${id} at ${sample}`).toEqual(index === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
+      }
+    }
     for (let x = 0; x < WIDTH; x++) {
       expect(pixel(x, 0)[3]).toBe(0); expect(pixel(x, HEIGHT - 1)[3]).toBe(0);
     }

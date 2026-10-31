@@ -334,6 +334,71 @@ const { chromium } = require("playwright");
         await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ");
       }
     }
+    // Explorer replaces the new-work Triceratops choice, while every saved
+    // geometry stays editable and keeps its localized name at either level.
+    await mount({ level: "explorer" });
+    assert.equal(await page.locator(".gallery-new").count(), 2);
+    assert.equal(await page.getByRole("button", { name: "TRICERATOPS", exact: true }).count(), 1);
+    await page.locator(`[data-work-id="${tric.id}"] button`).press("Enter");
+    await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
+    assert.deepEqual(await surfacePixel(600, 280), [239, 83, 80, 255]);
+    await back(); await press("TRICERATOPS");
+    await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
+    const richContract = await page.evaluate(() => {
+      const painter = window.gallery.painterFor("triceratops-explorer-1"), canvas = painter.canvas();
+      const probes = window.gallery.explorerProbes;
+      const pixel = (x, y) => [...canvas.getContext("2d").getImageData(x, y, 1, 1).data];
+      const cases = probes.map(([x, y, region]) => {
+        painter.render(canvas, [{ kind: "fill", region, color: "#ef5350" }]);
+        return { region, hit: painter.regionAt({ x, y }), pixels: probes.map(([x, y]) => pixel(x, y)), eye: pixel(728, 364) };
+      });
+      painter.render(canvas, [{ kind: "stroke", color: "#ab67cb", size: 40, points: [{ x: 424, y: 370 }] }]);
+      return { cases, brush: pixel(424, 370), outside: pixel(0, 0) };
+    });
+    for (const [index, test] of richContract.cases.entries()) {
+      assert.equal(test.hit, test.region, `Explorer tap owns ${test.region}`);
+      for (const [other, sample] of test.pixels.entries()) assert.deepEqual(sample, index === other ? [239, 83, 80, 255] : [255, 240, 207, 255], `${test.region} fills independently of ${richContract.cases[other].region}`);
+      assert.deepEqual(test.eye, [9, 30, 64, 255]);
+    }
+    assert.deepEqual(richContract.brush, [171, 103, 203, 255]);
+    assert.deepEqual(richContract.outside, [0, 0, 0, 0]);
+    await press("FILL"); await tap(602, 206); await saved();
+    await press("COLOR"); await press("BLUE"); await tap(424, 370); await saved();
+    const rich = (await listed()).works.find(r => r.document.geometry === "triceratops-explorer-1").document;
+    assert.deepEqual(rich.actions, [{ kind: "fill", color: "#ef5350", region: "frill-panel-crown" }, { kind: "fill", color: "#42a5f5", region: "flank" }]);
+    await back();
+    assert.deepEqual(await thumbnailPixel(rich.id, 602, 206), [239, 83, 80, 255]);
+    assert.deepEqual(await thumbnailPixel(rich.id, 424, 370), [66, 165, 245, 255]);
+    await page.reload(); await mount({ level: "hatchling", language: "ru" });
+    assert.equal(await page.locator(".gallery-new").count(), 2);
+    assert.equal(await page.locator(`[data-work-id="${rich.id}"] img`).getAttribute("alt"), "ТРИЦЕРАТОПС · 1");
+    await page.locator(`[data-work-id="${rich.id}"] button`).press("Enter");
+    await page.locator('canvas[aria-label="ТРИЦЕРАТОПС"]').waitFor();
+    assert.deepEqual(await surfacePixel(424, 370), [66, 165, 245, 255]);
+    await press("ОТМЕНИТЬ"); await page.waitForFunction(() => document.querySelector(".coloring-save")?.textContent === "СОХРАНЕНО");
+    assert.deepEqual(await surfacePixel(424, 370), [255, 240, 207, 255]);
+    assert.deepEqual(await surfacePixel(602, 206), [239, 83, 80, 255]);
+    await press("ГОТОВО"); await page.getByRole("heading", { name: "ТВОЙ ТРИЦЕРАТОПС!", exact: true }).waitFor();
+    assert.equal((await listed()).completedCount, 3);
+    await press("ДОМОЙ"); await press("ENTER COLORING");
+    for (const level of ["explorer", "paleontologist"]) {
+      for (const viewport of [{ width: 1024, height: 768 }, { width: 1180, height: 820 }]) {
+        await page.setViewportSize(viewport);
+        for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
+          await mount({ level, language, theme });
+          assert.equal(await page.locator(".gallery-new").count(), 2);
+          const name = language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС";
+          await press(name); await page.locator(`canvas[aria-label="${name}"]`).waitFor();
+          const box = await page.locator("canvas").boundingBox();
+          assert(box.x >= 0 && box.y >= 0 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1);
+          assert.deepEqual(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]), [viewport.width, viewport.height]);
+          if (level === "explorer" && viewport.width === 1180 && language === "en" && theme === "light") {
+            await page.screenshot({ path: "/tmp/lab-823/triceratops-explorer.png" });
+          }
+          await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ");
+        }
+      }
+    }
     // Unknown versions retain their receipt and never borrow another renderer.
     await page.evaluate(async () => {
       const db = await new Promise(resolve => { const request = indexedDB.open("rexlab-coloring"); request.onsuccess = () => resolve(request.result); });
@@ -346,12 +411,12 @@ const { chromium } = require("playwright");
       } finally { db.close(); }
     });
     await mount({}); assert.deepEqual((await listed()).unavailable, ["legacy-stego"]);
-    assert.equal((await listed()).completedCount, 2);
+    assert.equal((await listed()).completedCount, 3);
     await page.evaluate(() => window.gallery.damage("legacy-stego", "history")); await mount({});
     await press("PARENT RECOVERY"); await press("RESET COLORING");
     await page.getByText("LET’S PAINT A DINOSAUR!", { exact: true }).waitFor();
     assert.equal((await listed()).completedCount, 0); assert.deepEqual((await listed()).works, []);
-    console.log("PASS creatures: legacy Stegosaurus, 14 independent Triceratops fills, brush, base/undo, durable thumbnails/reload, shared rewards, new-work identity, RU/EN iPad layouts, unknown geometry and reset; screenshot /tmp/lab-823/triceratops.png");
+    console.log("PASS creatures: legacy Stegosaurus, Hatchling and Explorer independent Triceratops fills, cross-level reopen, brush, base/undo, durable thumbnails/reload, shared rewards, new-work identity, RU/EN iPad layouts, unknown geometry and reset; screenshots /tmp/lab-823/triceratops.png and /tmp/lab-823/triceratops-explorer.png");
     assert.deepEqual(errors, []);
     console.log("PASS gallery: independent durable thumbnails/statuses/continue, full-pixel brush/mixed thumbnails and undo/reload, workshop saves and retry, empty drafts, corruption/recovery, tap safety, 24 RU/EN/theme layouts and reduced motion");
   } finally { if (browser) await browser.close(); }

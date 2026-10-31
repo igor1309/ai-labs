@@ -1,9 +1,11 @@
+import { TRICERATOPS_EXPLORER } from "./triceratopsExplorer.ts";
 import { STEGOSAURUS } from "./geometry.ts";
 import { TRICERATOPS } from "./triceratops.ts";
 
 export const ARTWORKS = [
   { geometry: STEGOSAURUS, names: { en: "STEGOSAURUS", ru: "СТЕГОЗАВР" } },
-  { geometry: TRICERATOPS, names: { en: "TRICERATOPS", ru: "ТРИЦЕРАТОПС" } }
+  { geometry: TRICERATOPS, names: { en: "TRICERATOPS", ru: "ТРИЦЕРАТОПС" } },
+  { geometry: TRICERATOPS_EXPLORER, names: { en: "TRICERATOPS", ru: "ТРИЦЕРАТОПС" } }
 ] as const;
 
 export function artworkFor(version: string) {

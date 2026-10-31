@@ -14,20 +14,21 @@ export function coloringTransition(from: Phase, to: Phase) { return from === to 
 export type ColoringGameProps = {
   source: GallerySource;
   artworks: readonly GalleryArtwork[];
+  offeredVersions?: readonly string[];
   painterFor(geometry: string): ColoringWorkshopScreenProps["painter"];
   identity(): string;
   countStart(): void;
   home(): void;
   language: Language;
 };
-function GalleryVisit({ source, identity, countStart, home, language, workshop, navigate, create, artworks }: ColoringGameProps & {
+function GalleryVisit({ source, identity, countStart, home, language, workshop, navigate, create, artworks, offeredVersions }: ColoringGameProps & {
   workshop(session: ColoringWorkshopSession): void;
   navigate(navigation: WorkshopNavigation): void;
   create: boolean | string;
 }) {
   const session = useMemo(() => coloringGallery({ source, identity, countStart, workshop, navigate }), [source, identity, countStart, workshop, navigate]);
   useEffect(() => { void session.load(create); return session.stop; }, [session, create]);
-  return <ColoringGalleryScreen artworks={artworks} session={session} language={language} home={home} />;
+  return <ColoringGalleryScreen offeredVersions={offeredVersions} artworks={artworks} session={session} language={language} home={home} />;
 }
 
 function ResultVisit({ result, source, painter, language, home, workshop, navigate, artworks }: Omit<ColoringGameProps, "identity" | "countStart"> & {

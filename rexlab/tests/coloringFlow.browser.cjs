@@ -173,7 +173,7 @@ const { chromium } = require("playwright");
     // Layout contracts use the actual Home route for all age choices and every
     // phone/tablet orientation, language and theme, without a screen harness.
     for (const [width, height] of [[1024, 768], [768, 1024], [390, 844], [844, 390], [320, 568], [568, 320]]) {
-      for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
+      for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) for (const creature of ["stegosaurus", "triceratops"]) {
         const level = ["hatchling", "explorer", "paleontologist"][(width + (language === "en" ? 0 : 1) + (theme === "light" ? 0 : 1)) % 3];
         const c = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce", serviceWorkers: "block" });
         const p = await c.newPage(); p.setDefaultTimeout(15000);
@@ -190,7 +190,7 @@ const { chromium } = require("playwright");
               const screen = document.querySelector('.coloring-gallery, .coloring-workshop, .coloring-result');
               return { scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight], boxes: [...screen.querySelectorAll('button, canvas:not([aria-hidden="true"])')].filter(e => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== "hidden").map(e => { const b = e.getBoundingClientRect(); return { tag: e.tagName, text: e.textContent, picker: !!e.closest(".coloring-chooser"), x: b.x, y: b.y, w: b.width, h: b.height }; }) };
             });
-            const details = JSON.stringify({ width, height, language, theme, layout });
+            const details = JSON.stringify({ width, height, language, theme, level, creature, layout });
             assert.deepEqual(layout.scroll, [width, height], details);
             for (const b of layout.boxes) {
               assert(b.x >= -1 && b.y >= -1 && b.x + b.w <= width + 1 && b.y + b.h <= height + 1, details);
@@ -201,7 +201,8 @@ const { chromium } = require("playwright");
             }
           };
           await checkLayout();
-          await p.getByRole("button", { name: language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК", exact: true }).press("Enter");
+          assert.equal(await p.locator(".gallery-new").count(), 2);
+          await p.getByRole("button", { name: creature === "stegosaurus" ? (language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК") : (language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС"), exact: true }).press("Enter");
           await p.locator(".coloring-workshop").waitFor(); await checkLayout();
           for (const [label, option, count] of language === "en" ? [["COLOR", "BLUE", 13], ["SIZE", "BRUSH LARGE", 4]] : [["ЦВЕТ", "ГОЛУБОЙ", 13], ["РАЗМЕР", "КИСТЬ БОЛЬШОЙ", 4]]) {
             await p.getByRole("button", { name: label, exact: true }).press("Enter");
@@ -210,8 +211,19 @@ const { chromium } = require("playwright");
           }
           await p.getByRole("button", { name: language === "en" ? "FILL" : "ЗАЛИВКА", exact: true }).press("Enter");
           const box = await p.locator("canvas").boundingBox();
-          await p.mouse.click(box.x + box.width * 420 / 920, box.y + box.height * 330 / 620);
+          const [x, y, region, geometry] = creature === "stegosaurus" ? [420, 330, "body", "stegosaurus-production-1"] : level === "hatchling" ? [280, 360, "body", "triceratops-production-1"] : [424, 370, "flank", "triceratops-explorer-1"];
+          await p.mouse.click(box.x + box.width * x / 920, box.y + box.height * y / 620);
           await p.waitForFunction(() => /^(SAVED|СОХРАНЕНО)$/.test(document.querySelector(".coloring-save")?.textContent));
+          const documents = await p.evaluate(async () => {
+            const db = await new Promise(resolve => { const r = indexedDB.open("rexlab-coloring"); r.onsuccess = () => resolve(r.result); });
+            try { return await new Promise((resolve, reject) => {
+              const tx = db.transaction("works"), r = tx.objectStore("works").getAll();
+              tx.oncomplete = () => resolve(r.result.map(row => row.document)); tx.onabort = () => reject(tx.error);
+            }); } finally { db.close(); }
+          });
+          assert.equal(documents.length, 1);
+          assert.equal(documents[0].geometry, geometry);
+          assert.deepEqual(documents[0].actions, [{ kind: "fill", color: "#42a5f5", region }]);
           await p.getByRole("button", { name: language === "en" ? "DONE" : "ГОТОВО", exact: true }).press("Enter");
           await p.locator(".coloring-result").waitFor(); await checkLayout();
           assert.equal(await p.locator("canvas").evaluate(e => getComputedStyle(e).animationName), "fade-in");
@@ -223,7 +235,7 @@ const { chromium } = require("playwright");
         } finally { await c.close(); }
       }
     }
-    console.log("PASS coloring flow: production Home/counts/starts, offline reload, draw/restore/reedit, independent rewards, storage retry/loss, rotation, double taps and 24 device/language/theme layouts");
+    console.log("PASS coloring flow: production Home/counts/starts, offline reload, draw/restore/reedit, independent rewards, storage retry/loss, rotation, double taps and 48 creature/device/language/theme layouts with age-selected artwork");
   } finally {
     try { await browser?.close(); }
     finally {
