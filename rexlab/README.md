@@ -26,7 +26,10 @@ Run `node tests/nativeTouch.browser.cjs` for shared input protection, touch
 scrolling, labyrinth taps and coloring drawing/navigation in Chromium with
 iPhone/iPad portrait and landscape emulation. The check routes a production
 build in memory and closes its own browser. It cannot verify native Safari
-selection handles or callouts; those require physical devices.
+selection handles or callouts; those require physical devices. On iPhone and
+iPad Safari in both orientations, repeat double taps and long presses on
+text, pictures, canvas and controls; verify no selection or callout, then
+scroll, pinch zoom, draw again, undo, navigate away and return.
 
 The coloring workshop is an exported screen for the coloring flow. Construct
 `coloringWorkshopRoot(indexedDB, document)` once, then await `newWork(id,

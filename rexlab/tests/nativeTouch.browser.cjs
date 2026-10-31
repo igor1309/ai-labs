@@ -107,22 +107,25 @@ async function check(browser, files, device) {
     assert.equal(await page.locator('[aria-current="location"]').getAttribute("aria-label"), start);
     // Event timestamps, rather than runner speed, define the duplicate burst.
     await cancel();
-    await page.evaluate(({ next, start }) => {
-      const cell = label => [...document.querySelectorAll(".labyrinth-cell")].find(e => e.getAttribute("aria-label") === label);
-      const tap = (element, time) => {
-        const box = element.getBoundingClientRect();
-        const point = { clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 };
-        for (const [type, stamp] of [["pointerdown", time], ["pointerup", time + 30]]) {
-          const event = new PointerEvent(type, { ...point, pointerId: 1, pointerType: "touch", button: 0, bubbles: true, cancelable: true });
-          Object.defineProperty(event, "timeStamp", { value: stamp });
-          element.dispatchEvent(event);
-        }
-        element.dispatchEvent(new MouseEvent("click", { ...point, detail: 1, bubbles: true, cancelable: true }));
-      };
-      const forward = cell(next), backward = cell(start);
-      tap(forward, 1000); tap(backward, 1200);
-    }, { next, start });
-    await page.waitForFunction(next => document.querySelector('[aria-current="location"]').getAttribute("aria-label").startsWith(next), next);
+    const burstTap = (label, time) => page.evaluate(({ label, time }) => {
+      const element = [...document.querySelectorAll(".labyrinth-cell")].find(e => e.getAttribute("aria-label") === label);
+      const box = element.getBoundingClientRect();
+      const point = { clientX: box.x + box.width / 2, clientY: box.y + box.height / 2 };
+      for (const [type, stamp] of [["pointerdown", time], ["pointerup", time + 30]]) {
+        const event = new PointerEvent(type, { ...point, pointerId: 1, pointerType: "touch", button: 0, bubbles: true, cancelable: true });
+        Object.defineProperty(event, "timeStamp", { value: stamp });
+        element.dispatchEvent(event);
+      }
+      element.dispatchEvent(new MouseEvent("click", { ...point, detail: 1, bubbles: true, cancelable: true }));
+    }, { label, time });
+    await burstTap(next, 1000);
+    await page.waitForFunction(({ next, start }) => {
+      const current = document.querySelector('[aria-current="location"]');
+      const backward = [...document.querySelectorAll(".labyrinth-cell")].find(e => e.getAttribute("aria-label") === start);
+      return current.getAttribute("aria-label").startsWith(next) && backward?.hasAttribute("data-legal");
+    }, { next, start: start.replace(" · BABY", "") });
+    await burstTap(start.replace(" · BABY", ""), 1200);
+    assert((await page.locator('[aria-current="location"]').getAttribute("aria-label")).startsWith(next));
     await protection(page);
     await cancel(); await back.tap();
     assert.equal(await page.locator('[aria-current="location"]').getAttribute("aria-label"), start);

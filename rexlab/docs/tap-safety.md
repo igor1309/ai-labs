@@ -47,33 +47,6 @@ Gherkin of its own behaviour; LAB-298 changes none.
    Each removes its screens' waits and the guards that existed only for
    them, and specifies its own loading and failure behaviour.
 
-## Native touch protection
-
-Every app page suppresses text selection, image dragging and long-press
-callouts, including Home, the catalogue, dinosaur pages, game screens and
-the coloring gallery, workshop and result. The shared stylesheet applies
-`user-select: none`, its WebKit prefix and `-webkit-touch-callout: none`
-to the document and its descendants; pictures also disable native dragging.
-The browser input root cancels only `contextmenu` and `selectstart` for
-native menus and selection. Its stop function removes both listeners.
-These events do not change the double-tap filter's state.
-
-The shared `touch-action: manipulation` permits page and nested scrolling
-and pinch zoom while excluding double-tap zoom. More specific game rules
-still own drawing, dragging and board gestures. No shared touch-start,
-touch-move or pointer default is cancelled for native protection. Ordinary
-taps, keyboard and assistive clicks retain the existing input policy.
-
-The automated browser contract runs the production app in Chromium with
-iPhone and iPad touch emulation, portrait and landscape. It checks shared
-selection styles and cancellation of selection/menu events across the app,
-native scrolling, repeated labyrinth taps, coloring strokes, undo and
-navigation. Emulation cannot prove native Safari selection handles or
-long-press callouts and does not replace physical iPhone/iPad acceptance.
-On physical Safari, repeat double taps and long presses on text, pictures,
-canvas and controls in both orientations; verify no selection or callout,
-then scroll, pinch zoom, draw again, undo, navigate away and return.
-
 ## Why 500 ms and 100 px
 
 Platforms recognise a double tap by time and place: a window of 300 to
