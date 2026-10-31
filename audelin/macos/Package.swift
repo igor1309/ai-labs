@@ -185,6 +185,14 @@ let package = Package(
         .target(
             name: "TranscriptWriting"
         ),
+        // A call through the app's composition that the compose tests kill mid-save.
+        .executableTarget(
+            name: "SessionCrashWriter",
+            dependencies: [
+                "Compose", "PanelUI", "SessionRehearsal", "CallFolder", "CallAppProcesses", "CallText",
+                "MicrophoneCapture", "SystemAudioCapture", "RecordedCapture", "TranscriptFile",
+            ]
+        ),
         .executableTarget(
             name: "TranscriptFileCrashWriter",
             dependencies: ["TranscriptFile"]
@@ -221,6 +229,7 @@ let package = Package(
             name: "ComposeTests",
             dependencies: [
                 "Compose", "Audelin", "CallAudioAccess", "Lifecycle", "Recording", "BlockingTestWork", "SessionRehearsal",
+                "SessionCrashWriter",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),

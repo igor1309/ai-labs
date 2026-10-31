@@ -149,7 +149,7 @@ struct SessionRig: Sendable {
             executor: construction.executor, recordingTrack: construction.recordingTrack,
             closeTrack: construction.closeTrack, makeCaptureAudio: construction.makeCaptureAudio,
             openTranscript: construction.openTranscript, makeCallText: construction.makeCallText,
-            transcriptPause: construction.transcriptPause
+            transcriptClock: construction.transcriptClock
         )
         session = await makeSession(pieces.handler())
         subscription = connect?(pieces, session) ?? subscribe(pieces, to: session, beforeForward: beforeForward)

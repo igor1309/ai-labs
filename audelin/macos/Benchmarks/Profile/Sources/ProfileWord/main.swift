@@ -13,21 +13,25 @@ import struct SystemAudioCapture.AudioPiece
 // ProfileWord words LINES WORDS ROUNDS: plays a call to LINES, then speaks WORDS
 // inside a signpost, so a trace can be cut to the words alone.
 // ProfileWord paced LINES SECONDS: real speaking speed, counts saves of the file
-// and the bytes the process writes.
+// and the bytes the process writes, and the median cost of each 4 seconds.
 // ProfileWord savecost LINES COUNT: one save of a call that size, all but the last
 // line final and the last one changing.
 func cpuSeconds() -> Double {
     var u = rusage(); getrusage(RUSAGE_SELF, &u)
     return Double(u.ru_utime.tv_sec + u.ru_stime.tv_sec) + Double(u.ru_utime.tv_usec + u.ru_stime.tv_usec) / 1e6
 }
-/// Bytes this process has asked to write, to any file.
-func bytesWritten() -> UInt64 {
+func usage() -> rusage_info_v4 {
     var info = rusage_info_v4()
-    let result = withUnsafeMutablePointer(to: &info) {
+    _ = withUnsafeMutablePointer(to: &info) {
         $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(getpid(), RUSAGE_INFO_V4, $0) }
     }
-    return result == 0 ? info.ri_logical_writes : 0
+    return info
 }
+/// Bytes this process has asked to write, to any file.
+func bytesWritten() -> UInt64 { usage().ri_logical_writes }
+/// Instructions this process has retired: unlike CPU time, the same work counts
+/// the same on a performance or an efficiency core.
+func instructions() -> UInt64 { usage().ri_instructions }
 func say(_ s: String) { print(s); fflush(stdout) }
 let mode = CommandLine.arguments[1]
 let n = Int(CommandLine.arguments[2])!, m = Int(CommandLine.arguments[3])!
@@ -73,17 +77,31 @@ var transcript: String?
 for case let u as URL in FileManager.default.enumerator(at: call.root, includingPropertiesForKeys: nil)?.allObjects ?? [] where u.lastPathComponent == "transcript.md" { transcript = u.path }
 guard let path = transcript else { say("no transcript"); exit(1) }
 let startLines = call.lines
-var seen: [Int] = [], saves = 0
+func fileKey() -> [Int] {
+    var st = stat()
+    guard stat(path, &st) == 0 else { return [] }
+    return [Int(st.st_ino), st.st_mtimespec.tv_sec, st.st_mtimespec.tv_nsec, Int(st.st_size)]
+}
+// Playing to LINES outruns the pause between saves, so the call played so far
+// is saved whole once that pause ends. A real call grows from empty and is
+// never saved whole again, so the counting starts after that save.
+let played = fileKey()
+let settle = ContinuousClock.now + .seconds(10)
+while fileKey() == played, ContinuousClock.now < settle { try await Task.sleep(for: .milliseconds(20)) }
+var seen = fileKey(), saves = 1
+var lastChange = ContinuousClock.now
 let stop = ContinuousClock.now + .seconds(m)
-let c0 = cpuSeconds(); let w0 = call.slots; let b0 = bytesWritten()
-// Polls the inode and modification time: a save either renames a new file into
-// place or rewrites the end of this one.
+let c0 = cpuSeconds(); let w0 = call.slots; let b0 = bytesWritten(); let i0 = instructions()
+// Polls the inode, modification time and size: a save either renames a new
+// file into place or cuts this one back and writes its end.
 let watcher = Thread {
     while ContinuousClock.now < stop {
-        var st = stat()
-        if stat(path, &st) == 0 {
-            let key = [Int(st.st_ino), st.st_mtimespec.tv_sec, st.st_mtimespec.tv_nsec, Int(st.st_size)]
-            if key != seen { seen = key; saves += 1 }
+        let key = fileKey()
+        // A rewrite cuts the file back, then writes: both steps are one save.
+        if !key.isEmpty, key != seen {
+            seen = key
+            if ContinuousClock.now - lastChange > .milliseconds(100) { saves += 1 }
+            lastChange = ContinuousClock.now
         }
         usleep(2000)
     }
@@ -91,15 +109,28 @@ let watcher = Thread {
 watcher.start()
 call.readPanel()
 var slots = 0
+// Each 4 seconds' cost, so the median shows the steady call: the window can
+// open while the app is still working off the played call, and how much of
+// that falls inside it differs between builds.
+var steps: [(cpu: Double, instructions: UInt64)] = []
+var lastStep = (cpu: c0, instructions: i0)
 let began = ContinuousClock.now
 while ContinuousClock.now < stop {
     call.feedPaced()
     slots += 1
+    if slots % 10 == 0 {
+        let (c, i) = (cpuSeconds(), instructions())
+        steps.append((c - lastStep.cpu, i - lastStep.instructions))
+        lastStep = (c, i)
+    }
     try await Task.sleep(until: began + .milliseconds(400 * slots), clock: .continuous)
 }
-let cpu = cpuSeconds() - c0
+let cpu = cpuSeconds() - c0, retired = instructions() - i0
 let written = Double(bytesWritten() - b0)
-say("paced lines=\(startLines)->\(call.lines) secs=\(m) slots=\(slots) saves=\(saves - 1) saves/min=\(Double(saves - 1) * 60 / Double(m)) written/min=\(String(format: "%.2f", written * 60 / Double(m) / 1_048_576))MB cpu=\(String(format: "%.1f", cpu / Double(m) * 100))% of one core")
+func median(_ values: [Double]) -> Double { let v = values.sorted(); return v.isEmpty ? 0 : v[v.count / 2] }
+let steadyCPU = median(steps.map(\.cpu)) / 4 * 100
+let steadyInstructions = median(steps.map { Double($0.instructions) }) / 4 / 1e6
+say("paced lines=\(startLines)->\(call.lines) secs=\(m) slots=\(slots) saves=\(saves - 1) saves/min=\(Double(saves - 1) * 60 / Double(m)) written/min=\(String(format: "%.2f", written * 60 / Double(m) / 1_048_576))MB cpu=\(String(format: "%.1f", cpu / Double(m) * 100))% of one core instructions/s=\(String(format: "%.0f", Double(retired) / Double(m) / 1e6))M median per 4 s: cpu=\(String(format: "%.1f", steadyCPU))% instructions/s=\(String(format: "%.0f", steadyInstructions))M")
 await call.end()
 exit(0)
 
@@ -264,3 +295,4 @@ private struct OneCallApp: ProcessList {
         [AudioProcess(pid: 72, bundleID: "meeting", name: "meeting", isAudelin: false)]
     }
 }
+

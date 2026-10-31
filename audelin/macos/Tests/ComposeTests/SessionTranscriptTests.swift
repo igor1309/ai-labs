@@ -9,6 +9,22 @@ import TranscriptFile
 @Suite(.timeLimit(.minutes(1)))
 struct SessionTranscriptTests {
 
+    @Test func theAppWaitsFiveSecondsAfterEachTranscriptWrite() async throws {
+
+        let clock = PassingClock()
+        var construction = SessionConstruction()
+        construction.transcriptClock = clock
+        try await withSessionRig(construction: construction) { rig, _ in
+            await rig.session.send(.begin(liveText: true))
+            await rig.theirs.heard.next()
+            await clock.slept.next()
+            await rig.session.send(.end)
+            _ = try await rig.state { $0.phase == .ended }
+            #expect(!clock.asked.all.isEmpty)
+            #expect(clock.asked.all.allSatisfy { $0 == .seconds(5) })
+        }
+    }
+
     @Test(arguments: TranscriptOperation.allCases)
     fileprivate func writeFailureReachesSessionOnceAndRecordingContinues(operation: TranscriptOperation) async throws {
 

@@ -37,3 +37,9 @@ reports by letters, within 1 s of each other's start:
   keeps the final one.
 - **Compute / audio**: time to hear the track over its length, model
   loading apart.
+
+`saves.md` gets a row per track and recogniser for saving the transcript
+(LAB-828): **text changes per minute** (updates whose text differs from the
+one before), how long each segment stays **not yet final** (from first shown
+to final, in audio fed), and the bytes of the **text after the final
+segments** at each change.
