@@ -136,25 +136,36 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
   };
   const go = (destination: WorkshopDestination) => { if (canAct()) session.go(destination); };
   const closeChooser = () => setChooser(null);
-  const palette = (popup = false) => <div className="coloring-palette" role="group" aria-label={text.color}>{COLORS.map((value, i) =>
-    <Button key={value} autoFocus={popup && color === value} aria-label={text.colors[i]} aria-pressed={color === value} disabled={blocked} onClick={() => { if (canAct()) { setColor(value); if (popup) closeChooser(); } }}>
+  const palette = () => <div className="coloring-palette" role="group" aria-label={text.color}>{COLORS.map((value, i) =>
+    <Button key={value} autoFocus={color === value} aria-label={text.colors[i]} aria-pressed={color === value} disabled={blocked} onClick={() => { if (canAct()) { setColor(value); closeChooser(); } }}>
       <span className="coloring-swatch" style={{ background: value }}>{color === value && <Check aria-hidden="true" size={22} />}</span>
     </Button>)}</div>;
-  const sizes = (popup = false) => <div className="coloring-sizes" role="group" aria-label={text.size}>{BRUSH_SIZES.map((value, i) =>
-    <Button key={value} autoFocus={popup && size === value} aria-label={`${text.brush} ${text.sizes[i]}`} aria-pressed={tool === "brush" && size === value} disabled={blocked} onClick={() => { if (canAct()) { setSize(value); setTool("brush"); if (popup) closeChooser(); } }}>
+  const sizes = () => <div className="coloring-sizes" role="group" aria-label={text.size}>{BRUSH_SIZES.map((value, i) =>
+    <Button key={value} autoFocus={size === value} aria-label={`${text.brush} ${text.sizes[i]}`} aria-pressed={tool === "brush" && size === value} disabled={blocked} onClick={() => { if (canAct()) { setSize(value); setTool("brush"); closeChooser(); } }}>
       <span className="coloring-dot" style={{ "--dot": `${value / 2 + 4}px` } as CSSProperties} />
       {tool === "brush" && size === value && <Check className="coloring-selection" aria-hidden="true" />}
     </Button>)}</div>;
   return <section className="coloring-workshop" lang={language} aria-label={text.title}>
-    <header className="coloring-header" inert={chooser !== null || state.errorOpen || state.confirmingLoss}>
-      <Button onClick={() => go("home")} disabled={blocked}><Home aria-hidden="true" /><span>{text.home}</span></Button>
-      <h1><Paintbrush aria-hidden="true" />{text.title}</h1>
-      <Button className="coloring-done" disabled={blocked || empty} onClick={() => go("result")}><Check aria-hidden="true" />{text.done}</Button>
-    </header>
-    <nav className="coloring-navigation" aria-label={text.title} inert={chooser !== null || state.errorOpen || state.confirmingLoss}>
-      <Button onClick={() => go("gallery")} disabled={blocked}><Images aria-hidden="true" />{text.gallery}</Button>
-      <Button onClick={() => go("new")} disabled={blocked}><Plus aria-hidden="true" />{text.new}</Button>
-    </nav>
+    <h1 className="coloring-title"><Paintbrush aria-hidden="true" />{text.title}</h1>
+    <div className="coloring-rail" inert={state.errorOpen || state.confirmingLoss}>
+      <nav className="coloring-navigation" aria-label={text.title} inert={chooser !== null}>
+        <Button className="coloring-nav-home" aria-label={text.home} onClick={() => go("home")} disabled={blocked}><Home aria-hidden="true" /><span>{text.home}</span></Button>
+        <Button className="coloring-nav-new" aria-label={text.new} onClick={() => go("new")} disabled={blocked}><Plus aria-hidden="true" /><span>{text.new}</span></Button>
+        <Button className="coloring-nav-gallery" aria-label={text.gallery} onClick={() => go("gallery")} disabled={blocked}><Images aria-hidden="true" /><span>{text.gallery}</span></Button>
+        <Button className="coloring-done" aria-label={text.done} disabled={blocked || empty} onClick={() => go("result")}><Check aria-hidden="true" /><span>{text.done}</span></Button>
+      </nav>
+      <div className="coloring-tools" role="group" aria-label={text.brush} inert={chooser !== null}>
+        <Button ref={paletteButton} className="coloring-palette-button" aria-label={text.color} aria-haspopup="dialog" aria-expanded={chooser === "color"} disabled={blocked} onClick={() => { if (canAct()) setChooser("color"); }}>
+          <span className="coloring-swatch" style={{ background: color }}><Palette aria-hidden="true" /></span>
+        </Button>
+        <Button aria-label={text.brush} aria-pressed={tool === "brush"} disabled={blocked} onClick={() => { if (canAct()) setTool("brush"); }}><Paintbrush aria-hidden="true" />{tool === "brush" && <Check className="coloring-selection" aria-hidden="true" />}</Button>
+        <Button aria-label={text.fill} aria-pressed={tool === "fill"} disabled={blocked} onClick={() => { if (canAct()) setTool("fill"); }}><PaintBucket aria-hidden="true" />{tool === "fill" && <Check className="coloring-selection" aria-hidden="true" />}</Button>
+        <Button ref={sizeButton} className="coloring-size-button" aria-label={text.size} aria-haspopup="dialog" aria-expanded={chooser === "size"} disabled={blocked} onClick={() => { if (canAct()) setChooser("size"); }}>
+          <span className="coloring-dot" style={{ "--dot": `${size / 2 + 4}px` } as CSSProperties} />
+        </Button>
+        <Button aria-label={text.undo} disabled={blocked || !state.work.actions.length} onClick={() => { if (canAct()) session.undo(); }}><Undo2 aria-hidden="true" /></Button>
+      </div>
+    </div>
     <div className="coloring-body" inert={state.errorOpen || state.confirmingLoss}>
       <div className="coloring-paper">
         <h2>{text.dinosaur}</h2>
@@ -186,18 +197,6 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
           onLostPointerCapture={event => { if (active.current?.id === event.pointerId) cancel(); }}
         /></div>
       </div>
-      <div className="coloring-tools" role="group" aria-label={text.brush} inert={chooser !== null}>
-        <div className="coloring-full-palette">{palette()}</div>
-        <Button ref={paletteButton} className="coloring-palette-button" aria-label={text.color} aria-haspopup="dialog" aria-expanded={chooser === "color"} disabled={blocked} onClick={() => { if (canAct()) setChooser("color"); }}>
-          <span className="coloring-swatch" style={{ background: color }}><Palette aria-hidden="true" /></span>
-        </Button>
-        <div className="coloring-inline-sizes">{sizes()}</div>
-        <Button ref={sizeButton} className="coloring-size-button" aria-label={text.size} aria-haspopup="dialog" aria-expanded={chooser === "size"} disabled={blocked} onClick={() => { if (canAct()) setChooser("size"); }}>
-          <span className="coloring-dot" style={{ "--dot": `${size / 2 + 4}px` } as CSSProperties} />
-        </Button>
-        <Button aria-label={text.fill} aria-pressed={tool === "fill"} disabled={blocked} onClick={() => { if (canAct()) setTool("fill"); }}><PaintBucket aria-hidden="true" />{tool === "fill" && <Check className="coloring-selection" aria-hidden="true" />}</Button>
-        <Button aria-label={text.undo} disabled={blocked || !state.work.actions.length} onClick={() => { if (canAct()) session.undo(); }}><Undo2 aria-hidden="true" /></Button>
-      </div>
       {chooser && <div className="coloring-picker-layer">
         <div className="coloring-chooser" role="dialog" aria-modal="true" aria-label={chooser === "size" ? text.size : text.color} onKeyDown={event => {
           if (event.key === "Escape") { event.preventDefault(); closeChooser(); }
@@ -207,7 +206,7 @@ export function ColoringWorkshopScreen({ session, painter, language }: ColoringW
           if (document.activeElement === edge) { event.preventDefault(); (event.shiftKey ? buttons.at(-1) : buttons[0])?.focus(); }
         }}>
           <div className="coloring-picker-header"><strong>{chooser === "size" ? text.size : text.color}</strong><Button aria-label={text.close} onClick={closeChooser}><X aria-hidden="true" /></Button></div>
-          {chooser === "size" ? sizes(true) : palette(true)}
+          {chooser === "size" ? sizes() : palette()}
         </div>
       </div>}
     </div>

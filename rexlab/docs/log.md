@@ -2,6 +2,8 @@
 
 ## 2026-10-31
 
+- LAB-799: Landscape colouring gives the dinosaur a full-height canvas, with coloured navigation icons and drawing tools in separate leading groups and temporary colour/size pickers.
+
 - LAB-805: New coloring works open on local HTTP previews used for iPad testing.
 
 ## 2026-10-30
