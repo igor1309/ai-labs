@@ -38,7 +38,7 @@ const { chromium } = require("playwright");
     });
     const pixel = () => page.locator("canvas").evaluate(canvas => [...canvas.getContext("2d").getImageData(420, 330, 1, 1).data]);
     const fill = async color => {
-      await press(color); await press("FILL");
+      await press("COLOR"); await press(color); await press("FILL");
       const canvas = page.locator("canvas");
       // CSS entry motion is finished before mapping the logical hit point.
       await animations();
