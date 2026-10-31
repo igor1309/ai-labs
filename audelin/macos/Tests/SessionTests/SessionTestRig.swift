@@ -5,7 +5,6 @@ import Foundation
 import Session
 import Testing
 
-struct TestFailure: Error {}
 
 struct Rig {
 
@@ -55,23 +54,12 @@ struct Rig {
         await session.send(.begin(liveText: liveText))
     }
 
-    func settleEffects() async {
+    /// The first state the session publishes that matches: its current state, or a later one.
+    func waitFor(_ matching: @Sendable (SessionState) -> Bool) async -> SessionState {
 
-        await withTaskCancellationHandler {
-            await session.waitForEffects()
-        } onCancel: {
-            Task { await output.releaseAll() }
-        }
-    }
-
-    func waitFor(_ matching: @escaping (SessionState) -> Bool) async -> SessionState {
-
-        let stream = await session.states()
-        var iterator = stream.makeAsyncIterator()
-        while let state = await iterator.next() {
-            if matching(state) { return state }
-        }
-        return await session.snapshot()
+        if let state = await session.state(where: matching) { return state }
+        Issue.record("The session never published the awaited state")
+        return SessionState()
     }
 }
 
