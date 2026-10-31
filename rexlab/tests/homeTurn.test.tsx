@@ -1,4 +1,4 @@
-import { ARTWORKS } from "../src/coloring/artworks.ts";
+import { galleryArtworkFixtures } from "./coloringFixture.ts";
 import { jawGameParts } from "./whoseJaw.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { readFileSync } from "node:fs";
@@ -157,10 +157,10 @@ function openTurning(
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(7)}
-      {...(withOptionalGames && { coloring: { artworks: ARTWORKS,
+      {...(withOptionalGames && { coloring: { artworks: galleryArtworkFixtures(),
         source: { list: async () => ({ works: [], unavailable: [], completedCount: 0, recentId: null }), reset: async () => {},
           open: async () => { throw new Error("No work in layout fixture"); }, newWork: async () => { throw new Error("No work in layout fixture"); } },
-        painter: { width: 920, height: 620, render: () => {}, preview: () => {}, regionAt: () => undefined }, identity: () => "layout"
+        painterFor: () => ({ width: 920, height: 620, render: () => {}, preview: () => {}, regionAt: () => undefined }), identity: () => "layout"
       }, picturePuzzle: { dinosaurs: readPictureDinosaurs(records), bodyPicture: fakeBodyPicture, random: seededRandom(17),
         choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage) },
         whoseJaw: { ...jawGameParts(), progress: localWhoseJawProgress(() => storage, jaws.map(({ id }) => id)), total: jaws.length, jawPicture: "jaw.webp", gummyPicture: "gummy.webp" } })}

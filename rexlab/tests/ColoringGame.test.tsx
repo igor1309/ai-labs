@@ -4,10 +4,10 @@ import { afterEach, beforeEach, expect, it, onTestFinished, vi } from "vitest";
 import { browserInput } from "../src/root.ts";
 import { InputArbitrationContext } from "../src/inputArbitration.ts";
 import { ARTWORKS } from "../src/coloring/artworks.ts";
-import { ColoringGame } from "../src/ColoringGame.tsx";
+import { ColoringGame, type ColoringGameProps } from "../src/ColoringGame.tsx";
 import type { GalleryCollection, GallerySource } from "../src/coloringGallery.ts";
 import { coloringWorkshop, type ColoringWorkshopSession, type WorkshopNavigation } from "../src/coloringWorkshop.ts";
-import { coloringFixture } from "./coloringFixture.ts";
+import { coloringFixture, galleryArtworkFixtures } from "./coloringFixture.ts";
 
 beforeEach(() => vi.stubGlobal("URL", { createObjectURL: vi.fn(() => "blob:thumbnail"), revokeObjectURL: vi.fn() }));
 afterEach(() => vi.unstubAllGlobals());
@@ -38,8 +38,9 @@ function fixture(strict = false) {
     return active;
   }
   const tricPainter = { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn(() => "body") };
-  const props = { source, artworks: ARTWORKS, painter: { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn(() => "body") }, identity: () => `new-${++identity}`, countStart: vi.fn(), home: vi.fn(), language: "en" as const };
-  const painterFor = (geometry: string) => geometry === ARTWORKS[1].geometry.artwork.version ? tricPainter : props.painter;
+  const painter = { width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: vi.fn(() => "body") };
+  const props = { source, artworks: galleryArtworkFixtures(), identity: () => `new-${++identity}`, countStart: vi.fn(), home: vi.fn(), language: "en" as const };
+  const painterFor = (geometry: string) => geometry === ARTWORKS[1].geometry.artwork.version ? tricPainter : painter;
   const gameProps = { ...props, painterFor };
   const input = browserInput(window);
   onTestFinished(input.stop);
@@ -48,7 +49,7 @@ function fixture(strict = false) {
   });
   const click = async (name: string) => { await act(async () => fireEvent.click(screen.getByRole("button", { name }))); };
   const settle = async () => { await act(async () => { await active.settled(); }); };
-  return { ...view, props: gameProps, tricPainter, records, dot, red, blue, click, settle, active: () => active, fail: (value: boolean) => { failed = value; } };
+  return { ...view, props: gameProps, painter, tricPainter, records, dot, red, blue, click, settle, active: () => active, fail: (value: boolean) => { failed = value; } };
 }
 it("integrates the gallery and workshop: durable changes, independent history, completed flags and untouched new works", async () => {
   const f = fixture(); await act(async () => {});
@@ -90,7 +91,7 @@ it("retains the session across rotation and opens its durable result", async () 
   expect(screen.getByRole("region", { name: "YOUR STEGOSAURUS!" })).toBeTruthy();
   expect(screen.getByLabelText("COLLECTION").textContent).toBe("COLLECTION: 2");
   expect(screen.getByText("+1 STAR")).toBeTruthy();
-  expect(f.props.painter.render).toHaveBeenLastCalledWith(f.container.querySelector("canvas"), f.records.get("blue")!.document.actions);
+  expect(f.painter.render).toHaveBeenLastCalledWith(f.container.querySelector("canvas"), f.records.get("blue")!.document.actions);
 });
 
 it("edits a completed result with its history, repeats without celebration, and creates an independent rewarded work", async () => {
@@ -142,7 +143,7 @@ it("selects the Triceratops renderer and name across painting, result, edit and 
   expect(f.active().getSnapshot().work).toMatchObject({ id: "new-1", geometry: "triceratops-production-1", actions: [] });
   expect(screen.getByLabelText("TRICERATOPS")).toBeTruthy();
   expect(f.tricPainter.render).toHaveBeenLastCalledWith(f.container.querySelector("canvas"), []);
-  expect(f.props.painter.render).not.toHaveBeenCalled();
+  expect(f.painter.render).not.toHaveBeenCalled();
   act(() => f.active().append(f.dot)); await f.settle();
   await f.click("DONE"); await f.settle();
   expect(screen.getByRole("region", { name: "YOUR TRICERATOPS!" })).toBeTruthy();
@@ -156,6 +157,13 @@ it("selects the Triceratops renderer and name across painting, result, edit and 
   await f.click("GALLERY");
   await act(async () => fireEvent.click(f.container.querySelector('[data-work-id="red"] button')!));
   expect(screen.getByLabelText("STEGOSAURUS")).toBeTruthy();
-  expect(f.props.painter.render).toHaveBeenLastCalledWith(f.container.querySelector("canvas"), f.red.document.actions);
+  expect(f.painter.render).toHaveBeenLastCalledWith(f.container.querySelector("canvas"), f.red.document.actions);
   expect(f.records.get("red")).toEqual(f.red);
+});
+
+it("requires an artwork painter resolver at construction", () => {
+  const { painterFor, ...missingResolver } = fixture().props;
+  // @ts-expect-error Every accepted game construction must supply the resolver.
+  const invalid: ColoringGameProps = missingResolver;
+  expect(() => render(<ColoringGame {...invalid} />)).toThrow("Coloring game requires an artwork painter resolver");
 });

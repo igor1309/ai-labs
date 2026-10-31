@@ -1,5 +1,12 @@
-import type { Artwork, Geometry, PaintRegion, ProtectedDetail } from "./index.ts";
-export { WIDTH, HEIGHT, VECTOR_SCALE, type Geometry, type PaintRegion, type ProtectedDetail, type VectorShape } from "./index.ts";
+import type { Artwork } from "./index.ts";
+export { WIDTH, HEIGHT } from "./index.ts";
+export const VECTOR_SCALE = 2;
+export type VectorShape = Readonly<{ x: number; y: number } & (
+  { path: string } | { width: number; height: number; rotation: number }
+)>;
+export type PaintRegion = VectorShape & Readonly<{ id: string; parent?: string; outline: number }>;
+export type ProtectedDetail = VectorShape & Readonly<{ fill?: string; stroke?: string; strokeWidth?: number }>;
+export type Geometry = Readonly<{ artwork: Artwork; regions: readonly PaintRegion[]; details: readonly ProtectedDetail[] }>;
 
 // Curves preserve the design illustration's proportions. Overlaid regions are
 // clipped to their parent; their visible parts own fill independently of it.

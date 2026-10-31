@@ -390,7 +390,6 @@ export function browserColoring(browser: Pick<Window, "indexedDB" | "document" |
       newWork: (...args: Parameters<ReturnType<typeof coloringWorkshopRoot>["newWork"]>) => get().newWork(...args)
     },
     get artworks() { return get().artworks; },
-    get painter() { return get().painter; },
     painterFor: (geometry: string) => get().painterFor(geometry),
     identity: () => {
       // getRandomValues also works on local HTTP previews opened from an iPad.

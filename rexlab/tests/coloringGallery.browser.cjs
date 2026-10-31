@@ -51,7 +51,7 @@ const { chromium } = require("playwright");
     assert.equal((await listed()).works.length, 0);
     assert.equal(await page.getByRole("button", { name: "CONTINUE", exact: true }).count(), 0);
     assert.deepEqual(await page.evaluate(() => window.gallery.counts()), { starts: 0, homes: 0 });
-    await press("NEW WORK"); await page.locator("canvas").waitFor();
+    await press("NEW WORK"); await page.locator(".coloring-workshop canvas").waitFor();
     await back(); assert.equal((await listed()).works.length, 0);
     assert.equal((await page.evaluate(() => window.gallery.counts())).starts, 1);
 
@@ -60,7 +60,7 @@ const { chromium } = require("playwright");
     assert.deepEqual(await pixel("blue"), [66, 165, 245, 255]);
     assert.equal(await page.locator('[data-work-id="red"] .gallery-earned-star').count(), 1);
     assert.equal(await page.locator('[data-work-id="blue"] .gallery-earned-star').count(), 0);
-    await press("CONTINUE"); await page.locator("canvas").waitFor();
+    await press("CONTINUE"); await page.locator(".coloring-workshop canvas").waitFor();
     await press("COLOR"); await press("GREEN"); await press("FILL");
     const fill = async () => {
       const box = await page.locator("canvas").boundingBox();
@@ -99,7 +99,7 @@ const { chromium } = require("playwright");
     await page.evaluate(() => document.getAnimations().forEach(animation => animation.finish()));
     const b = await page.getByRole("button", { name: "NEW WORK", exact: true }).boundingBox();
     await page.mouse.dblclick(b.x + b.width / 2, b.y + b.height / 2, { delay: 30 });
-    await page.locator("canvas").waitFor();
+    await page.locator(".coloring-workshop canvas").waitFor();
     assert.equal((await page.evaluate(() => window.gallery.counts())).starts, restoredStarts + 1);
     assert.equal(await page.getByRole("dialog").count(), 0);
     assert.equal(await page.getByRole("button", { name: "DONE", exact: true }).isDisabled(), true);
@@ -205,7 +205,7 @@ const { chromium } = require("playwright");
       // Keep the same pixel oracle: reload must preserve the saved image exactly.
       await thumbnailMatches(id, actions, expected);
       await page.locator(`[data-work-id="${id}"] button`).press("Enter");
-      await page.locator("canvas").waitFor(); await press("UNDO"); await saved(); await back();
+      await page.locator(".coloring-workshop canvas").waitFor(); await press("UNDO"); await saved(); await back();
       const undone = await reference(actions.slice(0, -1));
       undoneReferences.set(id, undone);
       await thumbnailMatches(id, actions.slice(0, -1), undone);

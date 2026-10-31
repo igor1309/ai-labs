@@ -26,7 +26,7 @@ IDBDatabase.prototype.transaction = function (...args: Parameters<IDBDatabase["t
   return transaction.apply(this, args);
 };
 function show() {
-  flushSync(() => root!.render(<InputArbitrationContext value={input.arbitrate}><ColoringGame source={resources} artworks={resources.artworks} painter={resources.painter} painterFor={resources.painterFor} language={language}
+  flushSync(() => root!.render(<InputArbitrationContext value={input.arbitrate}><ColoringGame source={resources} artworks={resources.artworks} painterFor={resources.painterFor} language={language}
     identity={() => Array.from(crypto.getRandomValues(new Uint32Array(4)), value => value.toString(16)).join("-")} countStart={() => { starts++; }}
     home={() => { homes++; flushSync(() => root!.render(<button onClick={show}>ENTER COLORING</button>)); }} /></InputArbitrationContext>));
 }

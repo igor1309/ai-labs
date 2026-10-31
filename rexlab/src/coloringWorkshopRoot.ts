@@ -1,3 +1,4 @@
+import type { GalleryArtwork } from "./ColoringGalleryScreen.tsx";
 import { coloringModel, type Work } from "./coloring/index.ts";
 import { ARTWORK } from "./coloring/geometry.ts";
 import { ARTWORKS, artworkFor } from "./coloring/artworks.ts";
@@ -35,7 +36,11 @@ export function coloringWorkshopRoot(factory: Pick<IDBFactory, "open">, document
   const session = (work: Work, durable: number | null, navigate: (navigation: WorkshopNavigation) => void) =>
     coloringWorkshop(work, durable, { model: forGeometry(work.geometry).model, write: store.write, complete: store.complete, thumbnail, navigate });
   return {
-    artworks: ARTWORKS,
+    artworks: ARTWORKS.map(({ geometry, names }): GalleryArtwork => ({
+      version: geometry.artwork.version,
+      names,
+      preview: { width: 276, height: 186, render: target => forGeometry(geometry.artwork.version).painter.render(target, []) }
+    })),
     get painter() { return forGeometry(ARTWORK.version).painter; },
     painterFor: (version: string) => forGeometry(version).painter,
     list: store.list,

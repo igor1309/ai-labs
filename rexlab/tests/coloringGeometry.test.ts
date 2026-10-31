@@ -1,8 +1,5 @@
 import { readFile } from "node:fs/promises";
 import sharp from "sharp";
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { ColoringArtworkPreview } from "../src/ColoringArtworkPreview.tsx";
 import { describe, expect, it } from "vitest";
 import { TRICERATOPS } from "../src/coloring/triceratops.ts";
 import { ARTWORK, DETAILS, HEIGHT, REGIONS, VECTOR_SCALE, WIDTH, STEGOSAURUS, type Geometry, type VectorShape } from "../src/coloring/geometry.ts";
@@ -104,13 +101,4 @@ describe("Triceratops vectors", () => {
       expect(pixel(0, y)[3]).toBe(0); expect(pixel(WIDTH - 1, y)[3]).toBe(0);
     }
   });
-});
-
-
-it.each([STEGOSAURUS, TRICERATOPS])("renders the gallery preview with all clipped regions for $artwork.version", async geometry => {
-  const svg = renderToStaticMarkup(createElement(ColoringArtworkPreview, { geometry }))
-    .replace("<svg ", `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" `);
-  const actual = await sharp(Buffer.from(svg)).ensureAlpha().raw().toBuffer();
-  const expected = await illustration(geometry);
-  expect(actual.equals(expected)).toBe(true);
 });

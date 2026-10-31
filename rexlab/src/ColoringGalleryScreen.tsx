@@ -3,9 +3,14 @@ import { ArrowLeft, Home, Images, LockKeyhole, Paintbrush, Pencil, Plus, RotateC
 import { Button } from "./Button.tsx";
 import type { ColoringGallerySession, GalleryWork } from "./coloringGallery.ts";
 import type { Language } from "./language/language.ts";
-import type { ColoringArtwork } from "./coloring/index.ts";
-import { ColoringArtworkPreview } from "./ColoringArtworkPreview.tsx";
+import { ColoringArtworkPreview, type ArtworkPreview } from "./ColoringArtworkPreview.tsx";
 import "./coloringGallery.css";
+
+export type GalleryArtwork = Readonly<{
+  version: string;
+  names: Readonly<{ en: string; ru: string }>;
+  preview: ArtworkPreview;
+}>;
 
 const words = {
   en: { title: "MY ART", home: "HOME", new: "NEW WORK", continue: "CONTINUE", edit: "PAINT", view: "VIEW", draft: "DRAFT", completed: "COMPLETED", empty: "LET’S PAINT A DINOSAUR!", loading: "LOADING", warning: "SOME ART COULDN’T BE LOADED", unavailable: "UNAVAILABLE", retry: "RETRY", recovery: "PARENT RECOVERY", reset: "RESET COLORING", cancel: "CANCEL", close: "BACK", loss: "Resetting deletes all coloring works and earned coloring stars on this device. Other games and settings are kept.", resetError: "COULDN’T RESET", readOnly: "VIEW ONLY" },
@@ -29,10 +34,10 @@ function containFocus(event: KeyboardEvent<HTMLDivElement>) {
   const edge = event.shiftKey ? buttons[0] : buttons.at(-1);
   if (document.activeElement === edge) { event.preventDefault(); (event.shiftKey ? buttons.at(-1) : buttons[0])?.focus(); }
 }
-export function ColoringGalleryScreen({ session, language, home, artworks }: { session: ColoringGallerySession; language: Language; home(): void; artworks: readonly ColoringArtwork[] }) {
+export function ColoringGalleryScreen({ session, language, home, artworks }: { session: ColoringGallerySession; language: Language; home(): void; artworks: readonly GalleryArtwork[] }) {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const text = words[language];
-  const dinosaurName = (version: string) => artworks.find(entry => entry.geometry.artwork.version === version)?.names[language] ?? artworks[0]!.names[language];
+  const dinosaurName = (version: string) => artworks.find(entry => entry.version === version)?.names[language] ?? artworks[0]!.names[language];
   const [failedImages, setFailedImages] = useState<ReadonlyMap<string, Blob>>(new Map());
   const retry = () => { setFailedImages(new Map()); void session.load(); };
   const collection = state.collection;
@@ -46,10 +51,10 @@ export function ColoringGalleryScreen({ session, language, home, artworks }: { s
       {collection?.completedCount !== null && collection && <span className="gallery-count" aria-label={`${text.completed}: ${collection.completedCount}`}><Star aria-hidden="true" />{collection.completedCount}</span>}
     </header>
     <div className="gallery-actions" inert={modal}>
-      {artworks.map((artwork, index) => <Button className="gallery-new" key={artwork.geometry.artwork.version}
+      {artworks.map((artwork, index) => <Button className="gallery-new" key={artwork.version}
         aria-label={index === 0 ? text.new : artwork.names[language]} disabled={state.busy || readOnly}
-        onClick={() => void session.enter(undefined, index === 0 ? undefined : artwork.geometry.artwork.version)}>
-        <ColoringArtworkPreview geometry={artwork.geometry} /><span><Plus aria-hidden="true" />{artwork.names[language]}</span>
+        onClick={() => void session.enter(undefined, index === 0 ? undefined : artwork.version)}>
+        <ColoringArtworkPreview preview={artwork.preview} /><span><Plus aria-hidden="true" />{artwork.names[language]}</span>
       </Button>)}
       {readOnly && collection && <span><LockKeyhole aria-hidden="true" />{text.readOnly}</span>}
     </div>
