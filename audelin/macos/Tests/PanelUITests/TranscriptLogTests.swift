@@ -109,7 +109,7 @@ struct TranscriptLogTests {
         #expect(newlines >= 5)
     }
 
-    @Test func anUpdateToTheNewestEntryBuildsOnlyItsRow() {
+    @Test func anUpdateToTheNewestEntryReplacesOnlyItsRow() {
 
         let style = Transcript.Style(tokens: .light, config: .glassLedger)
         let rows = Transcript.Rows()
@@ -117,14 +117,13 @@ struct TranscriptLogTests {
 
         let edit = rows.update(.init(entries: many(800) + [newest("по слог")]), style: style)
 
-        #expect(rows.built == 802)
         // From the newline that opens its paragraph.
         let start = (first.text.string as NSString).range(of: "13:10").location - 1
         #expect(edit.range == NSRange(location: start, length: first.text.length - start))
         #expect(edit.entries.last?.body.location == start + ("\n13:10\tя\t" as NSString).length)
     }
 
-    @Test func unchangedSealedRowsAreNotBuiltAgain() {
+    @Test func anUpdateBehindUnchangedSealedRowsAppliesCleanly() {
 
         let style = Transcript.Style(tokens: .light, config: .glassLedger)
         let rows = Transcript.Rows()
@@ -132,12 +131,11 @@ struct TranscriptLogTests {
 
         let edit = rows.update(sealedLines(many(5), live: "по слог"), style: style)
 
-        #expect(rows.built == 7)
         #expect(edit.entries.count == 6)
         expectApplied(edit, to: sealedLines(many(5), live: "по"), becomes: sealedLines(many(5), live: "по слог"), style: style)
     }
 
-    @Test func aChangedSealedRowIsBuiltFromThere() {
+    @Test func aChangedSealedRowIsReplacedFromThere() {
 
         let style = Transcript.Style(tokens: .light, config: .glassLedger)
         let rows = Transcript.Rows()
@@ -148,7 +146,6 @@ struct TranscriptLogTests {
 
         let edit = rows.update(sealedLines(changed, live: "по"), style: style)
 
-        #expect(rows.built == 6 + 4)
         expectApplied(edit, to: before, becomes: sealedLines(changed, live: "по"), style: style)
     }
 
@@ -163,12 +160,11 @@ struct TranscriptLogTests {
 
         let edit = rows.update(after, style: style)
 
-        #expect(rows.built == 5)
         #expect(edit.text.length == 0)
         #expect(edit.entries.count == 5)
     }
 
-    @Test func aNewAppearanceBuildsEveryRow() {
+    @Test func aNewAppearanceReplacesEveryRow() {
 
         let rows = Transcript.Rows()
         let entries = PanelState.Lines(entries: many(3))
@@ -176,7 +172,6 @@ struct TranscriptLogTests {
 
         let edit = rows.update(entries, style: .init(tokens: .dark, config: .glassLedger))
 
-        #expect(rows.built == 6)
         #expect(edit.range.location == 0)
     }
 

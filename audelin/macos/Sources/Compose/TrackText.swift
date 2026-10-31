@@ -127,8 +127,6 @@ public actor TrackText {
     private var tail: [Text] = []
     private var noTextBefore: Double?
     private var appliedReply: Reply?
-    /// How many segments have been made into text: a count of the work, not its time.
-    private(set) var mapped = 0
 
     public init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer) {
 
@@ -255,7 +253,6 @@ public actor TrackText {
                 let mapped = update.segments.enumerated().map { index, segment in
                     Self.text(segment, index + 1 < update.segments.count ? update.segments[index + 1].start : update.end)
                 }
-                self.mapped += mapped.count
                 let newlyFinal = update.finalCount - update.from
                 if newlyFinal > 0 { finalText.append(contentsOf: mapped.prefix(newlyFinal)) }
                 tail = Array(mapped.dropFirst(newlyFinal))

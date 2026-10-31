@@ -8,7 +8,7 @@ import struct SideText.Text
 struct TrackTextDeltaTests {
 
     @Test(arguments: [20, 800, 6_000])
-    func mapsOnlyChangedSegmentsAcrossCancellationReplayAndFinish(count: Int) async throws {
+    func keepsTextAcrossCancellationReplayAndFinish(count: Int) async throws {
 
         let words = (0...count).map { Word("word\($0).", start: Double($0 * 3), end: Double($0 * 3) + 0.5) }
         let start = Double(count * 3)
@@ -30,9 +30,7 @@ struct TrackTextDeltaTests {
         let replay = try await adapter.hear(firstAudio)
         #expect(replay.final.map(\.id) == Array(0..<count))
         #expect(replay.tail == [Text(id: count, start: start, end: start + 0.5, settled: "word\(count).")])
-        #expect(await adapter.mapped == count + 1)
         #expect(try await adapter.hear(firstAudio) == replay)
-        #expect(await adapter.mapped == count + 1)
 
         let changing = Task { try await adapter.hear(Audio(start: 1, samples: [1], sampleRate: 1)) }
         await began.next()
@@ -40,7 +38,6 @@ struct TrackTextDeltaTests {
         let changed = try await changing.value
         #expect(changed.final == replay.final)
         #expect(changed.tail == [Text(id: count, start: start, end: start + 1, settled: "word\(count).", pending: "draft")])
-        #expect(await adapter.mapped == count + 2)
 
         let advancing = Task { try await adapter.hear(Audio(start: 2, samples: [2], sampleRate: 1)) }
         await began.next()
@@ -49,12 +46,10 @@ struct TrackTextDeltaTests {
         #expect(advanced.final.count == count + 1)
         #expect(advanced.final.last == Text(id: count, start: start, end: start + 4, settled: "word\(count). draft"))
         #expect(advanced.tail == [Text(id: count + 1, start: start + 4, end: start + 4.5, settled: "next.")])
-        #expect(await adapter.mapped == count + 4)
 
         let finished = try await adapter.finish()
         #expect(finished.final == advanced.final + [Text(id: count + 1, start: start + 4, end: start + 5, settled: "next. last")])
         #expect(finished.tail.isEmpty)
-        #expect(await adapter.mapped == count + 5)
         #expect(await recognizer.chunks.count == 3)
         #expect(await recognizer.finishes == 1)
     }

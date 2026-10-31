@@ -79,8 +79,6 @@ extension Transcript {
     @MainActor
     final class Rows {
 
-        /// How many rows have been built: a count of the work, not its time.
-        private(set) var built = 0
         private var builder: Builder?
         private var pieces: [Piece] = []
         /// Where each piece ends in the transcript.
@@ -125,7 +123,6 @@ extension Transcript {
                     text.append(.init(string: "\n", attributes: [.paragraphStyle: last.paragraph]))
                 }
                 let piece = builder.piece(row)
-                built += 1
                 let offset = start + text.length
                 entries += piece.entries.map { .init(id: $0.id, body: NSRange(location: $0.body.location + offset, length: $0.body.length)) }
                 text.append(piece.text)
