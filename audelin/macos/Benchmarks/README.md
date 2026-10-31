@@ -16,6 +16,7 @@ own sandbox inside it). All four loads take under a minute once built:
 ./test-optimized.sh         # the app's tests, optimized and bounded
 Profile/growth.sh TAG [OLD] # Time Profiler at 20 and 1,620 lines: CPU per word by step
 SILENT=1 Profile/growth.sh TAG [OLD] # the same with the other side silent the whole call
+QUIET=1 Profile/growth.sh TAG [OLD]  # the same with it saying one sentence, then nothing
 Profile/saves.sh [SECONDS]  # real speaking speed: saves per minute, app CPU, CPU per save
 ```
 
