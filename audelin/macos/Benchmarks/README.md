@@ -21,6 +21,7 @@ its own sandbox inside it), with nothing heavy alongside. Every tool takes `-h`.
 | The same with the other side silent or gone quiet | `SILENT=1 Profile/growth.sh TAG`, `QUIET=1 Profile/growth.sh TAG` | about 5–12 min |
 | Which frames grow, between two finished runs | `cd Profile && python3 -I frames.py TAG-20 TAG-6000 45` | seconds |
 | Saves and CPU at real speaking speed | `Profile/saves.sh [SECONDS]` | minutes |
+| Does a real recogniser keep up late in a call? | `./speech.sh TAG [SECONDS]` | about 15 min |
 
 Use these rather than typing the commands. `Profile/` is its own package, built
 against the checkout.
@@ -55,6 +56,21 @@ Reading the report:
   table keeps meaning the same thing. `./save-base.sh` replaces it for everyone; do that
   only when the owner decides on a new starting point, and commit the result.
 
+## Real speech
+
+`./speech.sh TAG` plays the call to each length with the fake recogniser, then feeds speech
+through the real Parakeet recogniser on both sides at 1×. Measuring lives in the harness
+(`Speech/`), so production code is untouched. The speech is `say` output, one voice on both
+sides, in sentences with pauses: synthetic, and not a real call. It builds against the code
+after `noWordBefore` (LAB-818), so it cannot measure older commits.
+
+Reading the table: **decoding ÷ audio** below 1 means the model keeps up; **backlog** is how
+far behind the live audio a chunk is when read, and negative means none; **window delay** is
+word end to report without the backlog, the recogniser's own wait; **capture→panel** is word end to
+the panel's state, not drawing; **capture→final** is word end to the word going final. Flat, as
+settled in LAB-795: capture→panel at 6,000 lines within 1.25× of 20 lines, or inside the spread of
+two runs of the same code, and no backlog growth.
+
 ## Reading the number
 
 Read the median instructions per word: they count all the process's work,
@@ -75,4 +91,4 @@ per word on the owner's MacBook Pro:
 
 Latest results, what is left and what is next live in LAB-776, not here.
 
-What this does not measure: the view's drawing, a real recogniser, or a real call.
+The benchmark does not measure the view's drawing or a real recogniser. Nothing here measures a real call.
