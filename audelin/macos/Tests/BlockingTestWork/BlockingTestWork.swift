@@ -126,15 +126,16 @@ public final class ThreadBarrier: @unchecked Sendable {
     private let condition = NSCondition()
     private var arrived = 0
     private var deadline: Date?
+    private var expired = false
 
     public init(patience: TimeInterval = 20) { self.patience = patience }
 
-    /// Whether every expected thread arrived.
+    /// Whether every expected thread was here at once, before patience ran out.
     public var met: Bool {
 
         condition.lock()
         defer { condition.unlock() }
-        return arrived >= count
+        return arrived >= count && !expired
     }
 
     public func arrive() {
@@ -148,6 +149,11 @@ public final class ThreadBarrier: @unchecked Sendable {
         }
         let deadline = deadline ?? Date(timeIntervalSinceNow: patience)
         self.deadline = deadline
-        while arrived < count, condition.wait(until: deadline) {}
+        while arrived < count {
+            guard condition.wait(until: deadline) else {
+                expired = true
+                return
+            }
+        }
     }
 }

@@ -12,11 +12,13 @@ struct SessionDrainTests {
     func captureStopWaitsForDeferredAudioDelivery(side: SessionSide, stopFails: Bool) async throws {
 
         let delivery = DrainGate(), captureStopped = Signal()
-        let stopped = Values<Bool>(), captureStops = Values<Bool>()
+        let stopped = Values<Bool>(), captureStops = Values<Bool>(), delivered = Values<Float>()
         var construction = SessionConstruction()
         construction.makeCallText = { ReadyCallText(text: $0) }
-        construction.makeCaptureAudio = { _, live in
-            HeldCaptureAudio(base: LiveCaptureAudio(capture: live), release: { await delivery.wait() })
+        construction.makeCaptureAudio = { captured, live in
+            HeldCaptureAudio(base: LiveCaptureAudio(capture: live), release: { await delivery.wait() }, delivered: { audio in
+                if captured == side { delivered.append(contentsOf: audio.samples) }
+            })
         }
         let configured = construction
         let task = Task {
@@ -32,6 +34,8 @@ struct SessionDrainTests {
                     try await rig.pieces.callCapture.start(selection: .everyAppButAudelin)
                     rig.call.source.continuation.onTermination = { _ in captureStops.append(true); captureStopped.send() }
                 }
+                let recognizer = side == .microphone ? rig.mine : rig.theirs
+                let expected: [Float] = side == .microphone ? [0.25, -0.5, 0.125] : [-0.25, 0.5, -0.125]
                 let stop = Task {
                     if stopFails {
                         await #expect(throws: ScriptFailure.failed) { try await rig.pieces.stopCapture(side) }
@@ -39,15 +43,13 @@ struct SessionDrainTests {
                         try await rig.pieces.stopCapture(side)
                     }
                     stopped.append(true)
+                    #expect(delivered.all == expected)
                 }
                 try await stop.value
                 try await rig.pieces.microphoneTrack.close()
                 try await rig.pieces.callTrack.close()
                 try await rig.pieces.stop()
-                let recognizer = side == .microphone ? rig.mine : rig.theirs
-                let chunks = await recognizer.chunks
-                let expected: [Float] = side == .microphone ? [0.25, -0.5, 0.125] : [-0.25, 0.5, -0.125]
-                #expect(chunks.flatMap(\.samples) == expected)
+                #expect(await recognizer.chunks.flatMap(\.samples) == expected)
             }
         }
         defer { delivery.release() }
