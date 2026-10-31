@@ -36,14 +36,15 @@ struct ContinuousCallClockTests {
         // A wait cancelled before its deadline must never fire. If the test is
         // descheduled past the deadline before it cancels, the wait may fire
         // correctly, so that attempt proves nothing and is made again with a
-        // counter of its own.
+        // counter of its own, until the suite's time limit cancels the test.
         var cancelledInTime: FireCount?
-        for _ in 0..<20 where cancelledInTime == nil {
+        while cancelledInTime == nil {
+            try Task.checkCancellation()
             let fired = FireCount()
             let origin = ContinuousClock.now
             let wait = clock.after(delay) { fired.count.withLock { $0 += 1 } }
             wait.cancel()
-            if origin.duration(to: .now) < delay { cancelledInTime = fired }
+            if origin.duration(to: .now) < delay { cancelledInTime = fired } else { await Task.yield() }
         }
         let fired = try #require(cancelledInTime)
 
