@@ -2,7 +2,7 @@
 # growth.sh TAG [TAG_TO_COMPARE]: Time Profiler at 20 and 1,620 lines, cut to the
 # words, then CPU per word by step and how much each step grows. Loads the Mac for
 # minutes, so run nothing heavy alongside. Runs stay in runs/TAG-20 and runs/TAG-1620.
-# SILENT=1 keeps the other side silent the whole call; QUIET=1 lets it say one sentence first.
+# LARGE=6000 replaces the 1,620-line run. SILENT=1 keeps the other side silent the whole call; QUIET=1 lets it say one sentence first.
 set -euo pipefail
 cd "$(dirname "$0")"
 ./build.sh
@@ -20,7 +20,8 @@ record() {
   python3 -I window.py "$out/time-profile.xml" "$out/region-of-interest.xml" "$out/stacks.json" "$((words * rounds))"
 }
 record "$1-20" 20 100 300
-record "$1-1620" 1620 300 20
-pairs=("$1-20" "$1-1620")
-if (($# > 1)); then pairs+=("$2-20" "$2-1620"); fi
+large="${LARGE:-1620}"
+record "$1-$large" "$large" 300 20
+pairs=("$1-20" "$1-$large")
+if (($# > 1)); then pairs+=("$2-20" "$2-$large"); fi
 python3 -I steps.py "${pairs[@]}"

@@ -161,7 +161,9 @@ public struct ReadingState: Equatable, Sendable {
     // Rendering indexes and work counts are derived bookkeeping, not panel state.
     public static func == (lhs: Self, rhs: Self) -> Bool {
 
-        lhs.banners == rhs.banners && lhs.recording == rhs.recording && lhs.problems == rhs.problems
+        // More text being final is a change, and finding that out need not walk the call.
+        lhs.text.sealed.count == rhs.text.sealed.count
+            && lhs.banners == rhs.banners && lhs.recording == rhs.recording && lhs.problems == rhs.problems
             && lhs.status == rhs.status && lhs.anchors == rhs.anchors && lhs.nextDisplayID == rhs.nextDisplayID
             && lhs.text == rhs.text && lhs.lines == rhs.lines
     }

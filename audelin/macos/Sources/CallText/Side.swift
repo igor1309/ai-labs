@@ -103,4 +103,10 @@ public struct State: Equatable, Sendable {
     public internal(set) var entries: SplitRows<Entry>
     /// Leading entries whose text and position in the call will not change.
     public internal(set) var finalCount: Int = 0
+
+    // More text being final is a change, and finding that out need not walk the call.
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+
+        lhs.finalCount == rhs.finalCount && lhs.status == rhs.status && lhs.entries == rhs.entries
+    }
 }
