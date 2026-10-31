@@ -138,6 +138,11 @@ composes it.
 
 ## Implementing with Codex
 
+- Size the process to the task. A small task (one test or a few lines in
+  one module, no product-behaviour change) is done by hand, without a
+  Codex brief, an agister run or an agister review: write it, run its
+  tests, read the diff once yourself and open the PR. Codex and agister
+  are for larger work.
 - The implementer is `codex-sol-61`. Use `codex-luna` only when sol is
   severely limited, and only for a very simple task: it is slow on
   production code and writes poor tests.
@@ -147,9 +152,9 @@ composes it.
 - Review a branch against its merge-base with trunk, after merging trunk
   in. A base on a trunk that has moved on shows trunk's new work as the
   branch deleting it.
-- Review every Codex implement run with agister's review processes before
-  it merges. When sol is limited, run the reviewers one at a time, falling
-  back to `claude-opus`.
+- Review every Codex implement run of a larger task with agister's review
+  processes before it merges. When sol is limited, run the reviewers one
+  at a time, falling back to `claude-opus`.
 - An implement run's `verification` is the record of what it checked:
   each command, its exit code and its last line. Read it before
   committing; do not run its checks again. Run only what it lacks: a
