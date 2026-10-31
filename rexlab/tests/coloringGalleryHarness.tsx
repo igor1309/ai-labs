@@ -1,4 +1,5 @@
 export { explorerProbes } from "./triceratopsExplorerProbes.ts";
+export { ankylosaurusProbes } from "./ankylosaurusProbes.ts";
 import type { AgeLevel } from "../src/ageLevel.ts";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";

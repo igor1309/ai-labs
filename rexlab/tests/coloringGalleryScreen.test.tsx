@@ -157,7 +157,7 @@ it.each(["en", "ru"] as Language[])("keeps saved Triceratops names and editing a
     await session.load();
     const artworks = ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names }));
     const view = render(<ColoringGalleryScreen artworks={artworks} offeredVersions={coloringVersionsFor(level)} session={session} language={language} home={vi.fn()} />);
-    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(2);
+    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(3);
     const name = language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС";
     expect(screen.getAllByRole("button", { name })).toHaveLength(1);
     expect(screen.getByAltText(`${name} · 1`)).toBeTruthy();

@@ -107,13 +107,29 @@ it.each([4, null])("shows no warning while Home history is pending, then shows i
 });
 
 
-it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("offers the %s Triceratops through App without a third artwork choice", async level => {
+it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("offers the %s Triceratops through App alongside both other creatures", async level => {
   const f = fixture({ level }); await act(async () => {});
   await f.click("COLOR A DINOSAUR");
-  expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(2);
+  expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(3);
   expect(screen.getAllByRole("button", { name: "TRICERATOPS" })).toHaveLength(1);
   await f.click("TRICERATOPS");
   expect(f.active().getSnapshot().work.geometry).toBe(level === "hatchling" ? "triceratops-production-1" : "triceratops-explorer-1");
   expect(screen.getByLabelText("TRICERATOPS").tagName).toBe("CANVAS");
+  expect(f.saveAge).not.toHaveBeenCalled();
+});
+
+it.each([
+  ["hatchling", "en"], ["explorer", "en"], ["paleontologist", "en"],
+  ["hatchling", "ru"], ["explorer", "ru"], ["paleontologist", "ru"]
+] as const)("opens Ankylosaurus through App at %s in %s without changing age", async (level, language) => {
+  const f = fixture({ level, language }); await act(async () => {});
+  const name = language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР";
+  await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
+  expect(screen.getByRole("button", { name }).textContent).toContain(name);
+  await f.click(name);
+  expect(f.active().getSnapshot().work.geometry).toBe("ankylosaurus-production-1");
+  expect(screen.getByLabelText(name).tagName).toBe("CANVAS");
+  expect(f.source.newWork).toHaveBeenCalledExactlyOnceWith("work-1", expect.any(Function), "ankylosaurus-production-1");
+  expect(f.countStart).toHaveBeenCalledTimes(1);
   expect(f.saveAge).not.toHaveBeenCalled();
 });

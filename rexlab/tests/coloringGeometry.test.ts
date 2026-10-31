@@ -1,3 +1,5 @@
+import { ANKYLOSAURUS } from "../src/coloring/ankylosaurus.ts";
+import { ankylosaurusProbes } from "./ankylosaurusProbes.ts";
 import { TRICERATOPS_EXPLORER } from "../src/coloring/triceratopsExplorer.ts";
 import { explorerProbes } from "./triceratopsExplorerProbes.ts";
 import { readFile } from "node:fs/promises";
@@ -68,6 +70,45 @@ describe("production dinosaur vectors", () => {
         expect(container, `${region.id} container`).toBeDefined();
         parent = container?.parent;
       }
+    }
+  });
+});
+
+describe("Ankylosaurus vectors", () => {
+  it("encloses broad armor panels, four short legs and a separate club inside the landscape canvas", async () => {
+    const geometry = ANKYLOSAURUS;
+    expect(geometry.artwork.version).toBe("ankylosaurus-production-1");
+    expect(geometry.artwork.regions).toEqual(ankylosaurusProbes.map(([, , id]) => id));
+    expect(new Set(geometry.artwork.regions).size).toBe(geometry.regions.length);
+    for (const region of geometry.regions) {
+      expect(region.outline).toBeGreaterThanOrEqual(2.5);
+      if ("path" in region) expect(region.path).toMatch(/Z$/);
+      if (region.parent) {
+        const parent = geometry.regions.find(candidate => candidate.id === region.parent);
+        expect(parent).toBeDefined();
+        expect(parent!.parent).toBeUndefined();
+      }
+    }
+    const blank = await illustration(geometry);
+    for (const [index, [, , id]] of ankylosaurusProbes.entries()) {
+      const painted = await illustration(geometry, id);
+      for (const [other, [x, y, sample]] of ankylosaurusProbes.entries()) {
+        const offset = (y * WIDTH + x) * 4;
+        expect([...painted.subarray(offset, offset + 4)], `${id} at ${sample}`).toEqual(index === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
+      }
+      let interior = 0;
+      for (let i = 0; i < painted.length; i += 4) {
+        if (painted[i] === 239 && painted[i + 1] === 83 && painted[i + 2] === 80 && painted[i + 3] === 255) interior++;
+      }
+      expect(interior, `${id} touch area`).toBeGreaterThan(id.startsWith("armor-") ? 3000 : 800);
+    }
+    for (let x = 0; x < WIDTH; x++) {
+      expect(blank[x * 4 + 3]).toBe(0);
+      expect(blank[((HEIGHT - 1) * WIDTH + x) * 4 + 3]).toBe(0);
+    }
+    for (let y = 0; y < HEIGHT; y++) {
+      expect(blank[y * WIDTH * 4 + 3]).toBe(0);
+      expect(blank[(y * WIDTH + WIDTH - 1) * 4 + 3]).toBe(0);
     }
   });
 });
