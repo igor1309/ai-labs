@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-10-31
+
+- LAB-805: New coloring works open on local HTTP previews used for iPad testing.
+
 ## 2026-10-30
 
 - LAB-804: Coloring opens from Home with completed-work counts on its tile and featured card; phone brush sizes have their own chooser.
