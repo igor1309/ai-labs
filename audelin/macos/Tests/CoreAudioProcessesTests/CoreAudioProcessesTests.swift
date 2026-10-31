@@ -447,24 +447,20 @@ struct CoreAudioProcessesTests {
         let processes = try await watch(binding, clock)
         binding.record(1)
         let received = Mutex<[CallEvent]>([])
-        let executor = StreamTestExecutor()
 
-        let reader = Task(executorPreference: executor) {
+        let reader = Task {
             var iterator = processes.calls.makeAsyncIterator()
             if let start = try await iterator.next() { received.withLock { $0.append(start) } }
             binding.stopRecording(1)
             clock.advance(by: .seconds(30))
             if let end = try await iterator.next() { received.withLock { $0.append(end) } }
         }
-        executor.runQueuedJobs()
+        try await reader.value
         #expect(received.withLock { $0 } == [.started(app: "us.zoom.xos"), .ended(app: "us.zoom.xos")])
         #expect(binding.listensToList)
         #expect(binding.listenedProcesses == [1])
 
         await processes.stop()
-        reader.cancel()
-        executor.runQueuedJobs()
-        try await reader.value
     }
 
     private func watch(_ binding: FakeBinding, _ clock: FakeClock) async throws -> CoreAudioProcesses {
@@ -699,21 +695,3 @@ final class FakeClock: CallClock {
     }
 }
 
-/// Runs stream consumption only when the test drains its queued jobs.
-private final class StreamTestExecutor: TaskExecutor {
-
-    private let jobs = Mutex<[UnownedJob]>([])
-
-    func enqueue(_ job: consuming ExecutorJob) {
-
-        let job = UnownedJob(job)
-        jobs.withLock { $0.append(job) }
-    }
-
-    func runQueuedJobs() {
-
-        while let job = jobs.withLock({ $0.isEmpty ? nil : $0.removeFirst() }) {
-            job.runSynchronously(on: asUnownedTaskExecutor())
-        }
-    }
-}

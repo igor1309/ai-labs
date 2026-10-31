@@ -31,20 +31,27 @@ struct SessionReleaseTests {
     @Test func anEndedSessionReleasesItsHandler() async throws {
 
         try await withSessionRig { rig, _ in
-            var handler: SessionEffectHandler? = rig.pieces.handler(sink: ReleaseSink())
-            weak let released = handler
+            let released = AsyncStream<Void>.makeStream()
+            var handler: SessionEffectHandler? = rig.pieces.handler(sink: ReleaseSink { released.continuation.finish() })
             var session: SessionInputs? = await makeSession(handler: try #require(handler))
             handler = nil
             await session?.end()
             session = nil
-            // The model's loop lets go of its actor, and so of the handler, once the model is released.
-            for _ in 0..<1_000 where released != nil { await Task.yield() }
-            #expect(released == nil)
+            // The model's loop lets go of its actor, and so of the handler and its sink, once
+            // the model is released; a handler kept alive holds this wait until the time limit.
+            for await _ in released.stream {}
         }
     }
 }
 
-private struct ReleaseSink: LogSink {
+/// Reports when the handler that holds it lets go.
+private final class ReleaseSink: LogSink {
+
+    private let onRelease: @Sendable () -> Void
+
+    init(onRelease: @escaping @Sendable () -> Void) { self.onRelease = onRelease }
+
+    deinit { onRelease() }
 
     func write(_ entry: LogEntry) {}
 }
