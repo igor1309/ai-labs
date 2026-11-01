@@ -158,7 +158,7 @@ it.each(["en", "ru"] as Language[])("keeps saved creature names and editing acro
     await session.load();
     const artworks = ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names }));
     const view = render(<ColoringGalleryScreen artworks={artworks} offeredVersions={coloringVersionsFor(level)} session={session} language={language} home={vi.fn()} />);
-    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(3);
+    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(5);
     expect(screen.getAllByRole("button", { name: language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС" })).toHaveLength(1);
     const name = names[language];
     const card = view.container.querySelector(`[data-work-id="${version}"]`)! as HTMLElement;
@@ -185,7 +185,7 @@ it.each(["en", "ru"] as Language[])("matches Stegosaurus previews, localized lab
     expect(selected.preview.render).toHaveBeenLastCalledWith(button.querySelector("canvas"));
     const other = artworks.find(artwork => artwork.names.en === "STEGOSAURUS" && artwork.version !== version)!;
     expect(other.preview.render).not.toHaveBeenCalled();
-    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(3);
+    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(5);
     await act(async () => fireEvent.click(button));
     expect(source.newWork).toHaveBeenCalledExactlyOnceWith("fresh", expect.any(Function), version);
     expect(countStart).toHaveBeenCalledTimes(1);

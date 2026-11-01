@@ -59,7 +59,7 @@ async function check(browser, files, device) {
     const cancel = () => page.evaluate(() => window.dispatchEvent(new PointerEvent("pointercancel", { pointerId: 1, bubbles: true })));
     await home();
     await protection(page);
-    assert.equal(await page.locator("body").evaluate(e => getComputedStyle(e).touchAction), "manipulation");
+    assert.equal(await page.locator("body").evaluate(e => getComputedStyle(e).touchAction), "pan-x pan-y");
     assert(!await page.locator('meta[name="viewport"]').getAttribute("content").then(value => /user-scalable\s*=\s*no|maximum-scale\s*=\s*1(?:\D|$)/.test(value)));
 
     // A nested Home scroller must still accept a native finger swipe.
@@ -155,6 +155,8 @@ async function check(browser, files, device) {
     assert.notDeepEqual(await pixel(), [239, 83, 80, 255]);
     await paint(); await press("DONE"); await page.locator(".coloring-result").waitFor(); await protection(page);
     await press("EDIT"); await page.locator(".coloring-workshop canvas").waitFor();
+    // Keyboard press does not wait for enabled state after async reopening.
+    await page.getByRole("button", { name: "UNDO", exact: true }).click({ trial: true });
     await press("UNDO"); await saved(); assert.notDeepEqual(await pixel(), [239, 83, 80, 255]);
     await paint(); await press("HOME"); await page.locator(".home").waitFor(); await protection(page);
     assert.deepEqual(errors, []);

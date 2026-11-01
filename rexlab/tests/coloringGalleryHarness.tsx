@@ -1,3 +1,5 @@
+export { mosasaurusHatchlingProbes, mosasaurusExplorerProbes } from "./mosasaurusSceneProbes.ts";
+export { trexHatchlingProbes, trexExplorerProbes, trexProtectedProbes } from "./trexSceneProbes.ts";
 export { ankylosaurusHatchlingProbes, ankylosaurusExplorerProbes } from "./ankylosaurusSceneProbes.ts";
 export { ankylosaurusProbes } from "./ankylosaurusProbes.ts";
 export { explorerProbes } from "./triceratopsExplorerProbes.ts";

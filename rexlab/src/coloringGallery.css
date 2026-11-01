@@ -115,3 +115,9 @@
   .gallery-actions .gallery-artwork-preview { height: 32px; }
   .gallery-header h1 { font-size: 14px; }
 }
+/* Five creatures no longer fit one row of child-size buttons on the narrowest phones. */
+@media (max-width: 359px) and (orientation: portrait) {
+  .gallery-actions { flex-wrap: wrap; }
+  .gallery-actions .gallery-new { flex: 1 1 calc(33% - 8px); min-height: 60px; }
+  .gallery-actions .gallery-artwork-preview { display: none; }
+}

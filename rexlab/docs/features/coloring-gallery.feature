@@ -76,3 +76,19 @@ Feature: Coloring gallery
     When I paint the Triceratops and return to the gallery
     Then each saved thumbnail and its accessible name match its own creature
     And CONTINUE restores the latest work with its own artwork
+
+  Scenario: Choose a recognizable T-Rex
+    When I enter the gallery at any age level
+    Then exactly one T-Rex choice has a matching vector preview and the uppercase localized name T-REX or ТИРАННОЗАВР
+    And T-Rex uses trex-hatchling-1 at Hatchling and trex-explorer-1 at Explorer and Paleontologist
+    And Stegosaurus, Triceratops and Ankylosaurus remain available with their age-matched previews
+    And its friendly silhouette has a large head, two small arms, strong hind legs and a long tail
+    And choosing it starts an independent unpainted work without changing existing works
+
+  Scenario: Choose a recognizable Mosasaurus
+    When I enter the gallery at any age level
+    Then exactly one Mosasaurus choice has a matching vector preview and the uppercase localized name MOSASAURUS or МОЗАЗАВР
+    And Mosasaurus uses mosasaurus-hatchling-1 at Hatchling and mosasaurus-explorer-1 at Explorer and Paleontologist
+    And Stegosaurus, Triceratops, Ankylosaurus and T-Rex remain available with their age-matched previews
+    And its friendly swimming silhouette has long toothy jaws, four paddles and a crescent tail fin
+    And choosing it starts an independent unpainted work without changing existing works

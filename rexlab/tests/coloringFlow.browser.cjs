@@ -1,7 +1,7 @@
 // Contract test: released app composition, service-worker offline reload,
 // real Canvas/IndexedDB, Home progress and shared input in Chromium.
 const assert = require("node:assert/strict");
-const { mkdtemp, rm } = require("node:fs/promises");
+const { mkdir, mkdtemp, rm } = require("node:fs/promises");
 const { tmpdir } = require("node:os");
 const { join, resolve } = require("node:path");
 const { chromium } = require("playwright");
@@ -16,7 +16,8 @@ const { chromium } = require("playwright");
     // Preview CORS adds Vary: Origin, unlike the same-origin release host.
     server = await preview({ root, logLevel: "error", build: { outDir: output }, preview: { cors: false, host: "127.0.0.1", port: 0, open: false } });
     const url = server.resolvedUrls.local[0];
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true,
+      ...(process.env.CHROMIUM_SINGLE_PROCESS === "1" ? { args: ["--single-process", "--in-process-gpu"] } : {}) });
     const context = await browser.newContext({ viewport: { width: 1024, height: 768 } });
     const page = await context.newPage();
     page.setDefaultTimeout(15000);
@@ -173,8 +174,8 @@ const { chromium } = require("playwright");
     // Layout contracts use the actual Home route for all age choices and every
     // phone/tablet orientation, language and theme, without a screen harness.
     for (const [width, height] of [[1180, 820], [1024, 768], [768, 1024], [390, 844], [844, 390], [320, 568], [568, 320]]) {
-      for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) for (const creature of ["stegosaurus", "triceratops", "ankylosaurus"]) {
-        const level = ["hatchling", "explorer", "paleontologist"][(width + (language === "en" ? 0 : 1) + (theme === "light" ? 0 : 1)) % 3];
+      for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) for (const creature of ["stegosaurus", "triceratops", "ankylosaurus", ...(height < width && width >= 1024 && language === (theme === "light" ? "en" : "ru") ? ["trex"] : [])]) {
+        const level = creature === "trex" ? (theme === "light" ? "hatchling" : width === 1180 ? "explorer" : "paleontologist") : ["hatchling", "explorer", "paleontologist"][(width + (language === "en" ? 0 : 1) + (theme === "light" ? 0 : 1)) % 3];
         const c = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce", serviceWorkers: "block" });
         const p = await c.newPage(); p.setDefaultTimeout(15000);
         try {
@@ -207,8 +208,8 @@ const { chromium } = require("playwright");
             }
           };
           await checkLayout();
-          assert.equal(await p.locator(".gallery-new").count(), 3);
-          await p.getByRole("button", { name: creature === "stegosaurus" ? (language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК") : creature === "triceratops" ? (language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС") : (language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР"), exact: true }).press("Enter");
+          assert.equal(await p.locator(".gallery-new").count(), 5);
+          await p.getByRole("button", { name: creature === "stegosaurus" ? (language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК") : creature === "triceratops" ? (language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС") : creature === "ankylosaurus" ? (language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР") : (language === "en" ? "T-REX" : "ТИРАННОЗАВР"), exact: true }).press("Enter");
           await p.locator(".coloring-workshop").waitFor(); await checkLayout();
           for (const [label, option, count] of language === "en" ? [["COLOR", "BLUE", 13], ["SIZE", "BRUSH LARGE", 4]] : [["ЦВЕТ", "ГОЛУБОЙ", 13], ["РАЗМЕР", "КИСТЬ БОЛЬШОЙ", 4]]) {
             await p.getByRole("button", { name: label, exact: true }).press("Enter");
@@ -217,7 +218,7 @@ const { chromium } = require("playwright");
           }
           await p.getByRole("button", { name: language === "en" ? "FILL" : "ЗАЛИВКА", exact: true }).press("Enter");
           const box = await p.locator("canvas").boundingBox();
-          const [x, y, region, geometry] = creature === "stegosaurus" ? (level === "hatchling" ? [420, 330, "body", "stegosaurus-production-1"] : [440, 396, "flank", "stegosaurus-explorer-1"]) : creature === "ankylosaurus" ? (level === "hatchling" ? [467, 407, "scute-10", "ankylosaurus-hatchling-2"] : [534, 331, "scute-10", "ankylosaurus-explorer-1"]) : level === "hatchling" ? [280, 360, "body", "triceratops-production-1"] : [424, 370, "flank", "triceratops-explorer-1"];
+          const [x, y, region, geometry] = creature === "trex" ? [704, 179, "head", level === "hatchling" ? "trex-hatchling-1" : "trex-explorer-1"] : creature === "stegosaurus" ? (level === "hatchling" ? [420, 330, "body", "stegosaurus-production-1"] : [440, 396, "flank", "stegosaurus-explorer-1"]) : creature === "ankylosaurus" ? (level === "hatchling" ? [467, 407, "scute-10", "ankylosaurus-hatchling-2"] : [534, 331, "scute-10", "ankylosaurus-explorer-1"]) : level === "hatchling" ? [280, 360, "body", "triceratops-production-1"] : [424, 370, "flank", "triceratops-explorer-1"];
           await p.mouse.click(box.x + box.width * x / 920, box.y + box.height * y / 620);
           await p.waitForFunction(() => /^(SAVED|СОХРАНЕНО)$/.test(document.querySelector(".coloring-save")?.textContent));
           const documents = await p.evaluate(async () => {
@@ -227,6 +228,10 @@ const { chromium } = require("playwright");
               tx.oncomplete = () => resolve(r.result.map(row => row.document)); tx.onabort = () => reject(tx.error);
             }); } finally { db.close(); }
           });
+          if (creature === "trex" && process.env.COLORING_ARTIFACT_DIR) {
+            await mkdir(process.env.COLORING_ARTIFACT_DIR, { recursive: true });
+            await p.screenshot({ path: join(process.env.COLORING_ARTIFACT_DIR, `trex-${level}-app-${width}x${height}.png`) });
+          }
           assert.equal(documents.length, 1);
           assert.equal(documents[0].geometry, geometry);
           assert.deepEqual(documents[0].actions, [{ kind: "fill", color: "#42a5f5", region }]);
@@ -242,7 +247,7 @@ const { chromium } = require("playwright");
         } finally { await c.close(); }
       }
     }
-    console.log("PASS coloring flow: production Home/counts/starts, offline reload, draw/restore/reedit, independent rewards, storage retry/loss, rotation, double taps and 84 creature/device/language/theme layouts with age-selected artwork");
+    console.log("PASS coloring flow: production Home/counts/starts, offline reload, draw/restore/reedit, independent rewards, storage retry/loss, rotation, double taps and 84 existing-creature layouts and four T-Rex iPad layouts with age-selected artwork");
   } finally {
     try { await browser?.close(); }
     finally {

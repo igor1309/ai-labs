@@ -36,7 +36,14 @@ The coloring workshop is an exported screen for the coloring flow. Construct
 `coloringWorkshopRoot(indexedDB, document)` once, then await `newWork(id,
 onNavigate, geometryVersion)` with a fresh identity or `open(id, onNavigate)` for a saved work.
 Omitting the geometry version creates a Stegosaurus; the root's `artworks` offers
-Stegosaurus and Triceratops with localized names and matching preview geometry.
+Stegosaurus, Triceratops, Ankylosaurus and T-Rex with localized names and matching preview geometry.
+The T-Rex workshop versions are `trex-hatchling-1` and `trex-explorer-1`:
+the first has broad animal regions, ground and a three-leaf plant; the second
+adds belly and body markings, a cycad, sun, cloud, hills, ridge and rock.
+The gallery offers exactly one T-Rex: simple at Hatchling, rich at Explorer
+and Paleontologist. Saved drawings keep their original geometry after age
+changes, including when NEW WORK starts another drawing from the workshop
+or result. Each drawing has its own paint, undo history, thumbnail and star.
 Render `ColoringWorkshopScreen` with that session, `painterFor(work.geometry)`,
 the chosen dinosaur name and `language`. It follows the document's `data-theme` and the app's shared motion
 and tap filter. The navigation callback receives `home`, `gallery`, `new` or
@@ -53,5 +60,21 @@ from `rexlab/` after installing Chromium. It builds its own screen harness,
 uses real Canvas and IndexedDB, and checks drawing, restore, interruption,
 save errors and responsive layouts without a development server.
 
+Run `node tests/coloringPainter.browser.cjs` for real raster checks, including
+every T-Rex fill, protected ink and eye highlights, clipped brush paint and
+minimum visible areas and solid interior patches. It saves unpainted and
+painted screenshots of both scenes at four tablet landscape sizes in
+`/tmp/lab-889/browser` (override with `TREX_SCREENSHOTS`). On hosts that cannot
+launch Chromium child processes, set `CHROMIUM_SINGLE_PROCESS=1` to use its
+single-process renderer.
+
 Run `node tests/coloringResult.browser.cjs` for result paint, animation,
 atomic completion abort/retry, repeat rewards, actions and responsive layouts.
+
+
+Run `node tests/coloringGallery.browser.cjs` for gallery previews, independent
+saved works, brush/fill/undo, cross-age restoration, thumbnails and one-time
+completion rewards. Set `COLORING_ARTIFACT_DIR` to choose the workshop screenshot
+directory. `node tests/coloringFlow.browser.cjs` checks the production Home route,
+including all four choices and T-Rex at 1180 × 820 and 1024 × 768 across the three
+age levels, both languages and themes.
