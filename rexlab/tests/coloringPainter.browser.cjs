@@ -12,12 +12,14 @@ const { chromium } = require("playwright");
       name: "production-coloring-contract",
       resolveId(id) { if (id === "coloring-harness") return "\0coloring-harness"; },
       load(id) {
-        if (id === "\0coloring-harness") return ["index", "geometry", "painter", "stegosaurusExplorer"]
-          .map(name => `export * from ${JSON.stringify(resolve(root, `src/coloring/${name}.ts`))}`).join(";\n");
+        if (id === "\0coloring-harness") return ["index", "geometry", "painter", "stegosaurusExplorer", "artworks"]
+          .map(name => `export * from ${JSON.stringify(resolve(root, `src/coloring/${name}.ts`))}`)
+          .concat(["trexSceneProbes", "mosasaurusSceneProbes"].map(name => `export * from ${JSON.stringify(resolve(root, `tests/${name}.ts`))}`)).join(";\n");
       }
     }], build: { write: false, rolldownOptions: { preserveEntrySignatures: "strict", input: "coloring-harness", output: { entryFileNames: "harness.js" } } } });
     const files = new Map(bundle.output.map(file => [file.fileName, file.type === "chunk" ? file.code : file.source]));
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true,
+      ...(process.env.CHROMIUM_SINGLE_PROCESS === "1" ? { args: ["--single-process", "--in-process-gpu"] } : {}) });
     const page = await browser.newPage();
     await page.route("http://coloring.test/**", route => {
       const path = new URL(route.request().url()).pathname.slice(1);
@@ -242,6 +244,8 @@ const { chromium } = require("playwright");
       return "PASS complete fills: every opaque base interior in both Stegosaurus variants";
     }));
     if (process.env.COLORING_SCREENSHOT) await page.screenshot({ path: process.env.COLORING_SCREENSHOT });
+    await require("./trexSceneRaster.cjs")(page);
+    await require("./mosasaurusSceneRaster.cjs")(page);
   } finally { if (browser) await browser.close(); }
 })().catch(error => {
   console.error(error);

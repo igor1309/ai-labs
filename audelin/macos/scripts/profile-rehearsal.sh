@@ -70,8 +70,8 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-swift build -c release --product AudelinRehearsal
-app="$(swift build -c release --show-bin-path)/AudelinRehearsal"
+swift build --package-path App -c release --product AudelinRehearsal
+app="$(swift build --package-path App -c release --show-bin-path)/AudelinRehearsal"
 media="$(mktemp -d "${TMPDIR:-/tmp}/audelin-rehearsal.XXXXXX")"
 
 "$app" ${args[@]+"${args[@]}"} --recordings-dir "$media" --report "$out/rehearsal.log" &

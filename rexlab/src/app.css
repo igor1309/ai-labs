@@ -576,10 +576,10 @@ body {
 }
 
 /* Selection and callouts steal a child's repeated taps or held finger.
-   Apply to descendants too: nested scrollers must keep panning and pinch
-   zoom, while game surfaces can override manipulation with their own rules. */
+   Keep scrolling but block zoom on descendants and nested scrollers too;
+   game surfaces can set their own touch rules. */
 :where(html, body, body *) {
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -13193,3 +13193,21 @@ body:has(.picture-puzzle-board-screen) {
 .featured-card[data-game="coloring"] .coloring-tile-picture { height: 100%; }
 [data-theme="dark"] .coloring-tile, [data-theme="dark"] .featured-card[data-game="coloring"] { background: #253b37; color: #ece8de; }
 [data-theme="dark"] .coloring-tile-count { background: #181e2e; color: #ece8de; }
+
+/* A viewport-attached opaque edge lets WebKit extend a solid colour into
+   its system top bar. Keep it outside screen transforms and transitions;
+   it occupies existing top padding rather than shrinking the play area. */
+.app-top-edge {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: max(6px, env(safe-area-inset-top));
+  z-index: 1000;
+  pointer-events: none;
+  background: #f2efe8;
+}
+
+[data-theme="dark"] .app-top-edge {
+  background: #0f1320;
+}

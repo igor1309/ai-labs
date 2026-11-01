@@ -60,6 +60,14 @@ jobs:
         working-directory: audelin/macos
         run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O
 
+      - name: Build app tests
+        working-directory: audelin/macos/App
+        run: swift build --build-tests -Xswiftc -O
+
+      - name: Run app tests
+        working-directory: audelin/macos/App
+        run: sh ../../scripts/swift-test-bounded.sh 180 -Xswiftc -O
+
       - name: Build preview app tests
         working-directory: audelin/macos/PreviewApps
         run: swift build --build-tests
