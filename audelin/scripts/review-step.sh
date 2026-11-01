@@ -1,12 +1,13 @@
 #!/bin/sh
-# Reviews a step's branch the way the loop needs it: merges origin/trunk
-# first, so the review never reports trunk's newer work as removed (it did
-# three times on 2026-10-27), then runs Agister's code_review against it.
+# Reviews a step's branch without touching it, through Agister's code_review.
+# The base defaults to the branch's merge-base with origin/trunk, so the
+# review shows only the branch's work and never reports trunk's newer work
+# as removed (it did three times on 2026-10-27). Name a base to focus the
+# review on the commits after it.
 #
-#   review-step.sh <goal.md> <output file>
+#   review-step.sh <goal.md> <output file> [base]
 #
-# Run from the step's worktree. Stops if the worktree has uncommitted work
-# or the merge conflicts.
+# Run from the step's worktree. Stops if the worktree has uncommitted work.
 #
 # If a reviewer hit model capacity or a rate limit, home's code_review is
 # switched to one reviewer at a time, the owner is told through ntfy (when
@@ -14,10 +15,13 @@
 
 goal=$1
 out=$2
-[ -f "$goal" ] && [ -n "$out" ] || { echo "usage: review-step.sh <goal.md> <output file>" >&2; exit 2; }
+base=$3
+[ -f "$goal" ] && [ -n "$out" ] || { echo "usage: review-step.sh <goal.md> <output file> [base]" >&2; exit 2; }
 [ -z "$(git status --porcelain)" ] || { echo "STOP: uncommitted work" >&2; exit 1; }
-git fetch -q origin && git merge -q --no-edit origin/trunk || { echo "STOP: merge of origin/trunk failed" >&2; exit 1; }
-review() { agister run code_review --param base=origin/trunk --param candidate=HEAD --param goal="$goal" > "$out" 2>&1; }
+if [ -z "$base" ]; then
+    git fetch -q origin && base=$(git merge-base origin/trunk HEAD) || { echo "STOP: no merge-base with origin/trunk" >&2; exit 1; }
+fi
+review() { agister run code_review --param base="$base" --param candidate=HEAD --param goal="$goal" > "$out" 2>&1; }
 review
 grep -qE 'rate_limited|capacity' "$out" || exit 0
 
