@@ -123,7 +123,8 @@ function scene(rich: boolean): Geometry {
     ? ["hip-spike", "shoulder-spike", "scute-1", "scute-6", "scute-20", "scute-21", "brow-armor", "horn-near", "cheek-scale", "rear-leg-scale", "front-leg-scale", "tail-plate", "rock-left", "rock-facet", "pebble-1", "pebble-2", "horsetail-stem", "horsetail-crown"]
     : ["hip-spike", "shoulder-spike", "brow-armor", "horn-near"]);
   const paintable = regions.filter(({ id }) => !decorative.has(id));
-  details.push(...regions.filter(({ id }) => decorative.has(id)).map(({ id: _id, parent: _parent, outline, ...shape }) => ({ ...shape, stroke: ink, strokeWidth: outline })));
+  const hiddenAccents = new Set(["hip-spike", "shoulder-spike", "scute-1", "scute-6", "scute-20", "scute-21", "brow-armor", "horn-near", "rock-left", "rock-facet"]);
+  details.push(...regions.filter(({ id }) => decorative.has(id) && !hiddenAccents.has(id)).map(({ id: _id, parent: _parent, outline, ...shape }) => ({ ...shape, stroke: ink, strokeWidth: outline })));
   return {
     artwork: Object.freeze({ version: rich ? "ankylosaurus-explorer-1" : "ankylosaurus-hatchling-2", regions: Object.freeze(paintable.map(({ id }) => id)) }),
     regions: paintable, details
