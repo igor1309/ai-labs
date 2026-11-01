@@ -30,10 +30,11 @@ milliseconds, cost, and the count of its calls.
 status, class, duration, cost), each child (id, workflow, status, class),
 the params, the working directory and the result's output.
 
-**Compare.** `GET /api/runs/compare`: every call, of any readable run, that
-itself ended completed or failed, whatever its run's status, grouped by process and agent: runs, completed,
-pass rate, median duration, total cost, and how many had no cost. It reads
-all runs, on request only.
+**Compare.** `GET /api/runs/compare`: every call, of any readable run,
+that itself ended completed or failed, whatever its run's status,
+grouped by process and agent: runs, completed, pass rate, median
+duration, total cost, and how many had no cost. It reads all runs, on
+request only.
 
 **The page.** Runs and Compare from `archive/pages` (`index.html`,
 `page.js`, `runs.js`), embedded, with their table narrowed to the columns
