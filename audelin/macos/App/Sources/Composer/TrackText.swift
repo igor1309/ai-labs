@@ -250,9 +250,7 @@ actor TrackText {
                       update.finalCount <= update.from + update.segments.count else {
                     throw Failure.updateGap
                 }
-                let mapped = update.segments.enumerated().map { index, segment in
-                    Self.text(segment, index + 1 < update.segments.count ? update.segments[index + 1].start : update.end)
-                }
+                let mapped = Self.text(from: update.segments, through: update.end)
                 let newlyFinal = update.finalCount - update.from
                 if newlyFinal > 0 { finalText.append(contentsOf: mapped.prefix(newlyFinal)) }
                 tail = Array(mapped.dropFirst(newlyFinal))
@@ -274,6 +272,14 @@ actor TrackText {
 
         loading?.task.cancel()
         listening?.stop()
+    }
+
+    /// A segment runs to the next one's start, and the last to `end`.
+    static func text(from segments: [Segments.Segment], through end: Double) -> [Text] {
+
+        segments.enumerated().map { index, segment in
+            text(segment, index + 1 < segments.count ? segments[index + 1].start : end)
+        }
     }
 
     private static func text(_ segment: Segments.Segment, _ end: Double) -> Text {
