@@ -175,3 +175,17 @@ Feature: Coloring workshop
     When I choose Triceratops in the gallery
     Then the simple Triceratops with its belly and two spots opens
     And its geometry and appearance match existing simple Triceratops drawings
+
+  Scenario: Simple T-Rex for Hatchling
+    Given I start a new T-Rex work at Hatchling
+    Then a friendly large-headed T-Rex has two little arms, powerful hind legs and a long tail
+    And the head, body, tail and hind legs offer broad independent coloring regions
+    And its eyes, smile, fingers and toes remain protected decorative details
+    And a simple ground and plant frame leave the dinosaur clear and prominent
+
+  Scenario: Rich T-Rex prehistoric scene
+    Given I start a new T-Rex work at Explorer or Paleontologist
+    Then the same recognizable creature appears in a richer prehistoric landscape
+    And its belly and broad body markings add independent coloring regions beyond the Hatchling version
+    And prehistoric plants, rocks, clouds and distant hills offer additional broad independent coloring regions
+    And small facial details, fingers, toes and plant veins remain protected rather than tiny fill targets

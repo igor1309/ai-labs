@@ -165,6 +165,7 @@ Feature: Coloring full flow and durable progress
     Given the global age setting is <level>
     When I choose T-Rex from the coloring gallery
     Then the workshop opens <geometry> with matching preview and localized name
+    And Hatchling has a simple ground and plant frame while Explorer and Paleontologist add independently fillable belly, broad markings and richer plants, rocks, clouds and hills
     And broad enclosed regions color independently while outlines and small decorative details remain protected
     And brush, fill, undo, save, completion rewards and navigation use the shared coloring behavior
     When I paint, save and reopen this work after changing the global age setting
