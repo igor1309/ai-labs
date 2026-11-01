@@ -57,7 +57,7 @@ struct FakeCall: Equatable {
 
         guard isRecording else { return .init(recording: .off, log: .empty) }
 
-        let lines = PanelState.Lines(rows: rows, holds: holds, newBelow: newBelow, followsLive: followsLive)
+        let lines = PanelState.Lines(rows: .init(tail: rows), holds: holds, newBelow: newBelow, followsLive: followsLive)
         let kept = rows.isEmpty ? nil : lines
 
         return .init(

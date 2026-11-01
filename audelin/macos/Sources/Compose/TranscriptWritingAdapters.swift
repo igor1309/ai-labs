@@ -41,7 +41,10 @@ public struct WritingTranscript: SessionTranscriptFile {
 
     public func write(_ state: State) async throws {
 
-        try await file.write(Compose.Transcript.segments(from: state))
+        let entries = state.entries
+        try await file.write(count: entries.count, finalCount: state.finalCount) {
+            Compose.Transcript.segment(from: entries[$0])
+        }
     }
 
     public func close() async { await file.close() }

@@ -134,7 +134,7 @@ actor ToneText: LiveText {
 
     func holdNextHearing(_ gate: Gate) { hearing = gate }
 
-    func hear(_ audio: Audio) async throws -> [Text] {
+    func hear(_ audio: Audio) async throws -> TextUpdate {
 
         let held = hearing
         hearing = nil
@@ -157,7 +157,7 @@ actor ToneText: LiveText {
                 words.append(segment)
             }
         }
-        return words
+        return TextUpdate(final: [], tail: words)
     }
 
     func cancelHearing() async {
@@ -166,13 +166,13 @@ actor ToneText: LiveText {
         if releasesCancelledHearing { await activeHearing?.release() }
     }
 
-    func finish() throws -> [Text] {
+    func finish() throws -> TextUpdate {
 
         finishCalls += 1
         if failFinish { throw CuedFailure(description: "finishing failed") }
         if let buffered { words.append(buffered) }
         words = words.map { Text(id: $0.id, start: $0.start, end: $0.end, settled: $0.pending) }
-        return words
+        return TextUpdate(final: [], tail: words)
     }
 
     func stop() async {
@@ -238,7 +238,7 @@ actor FakeFill: FillingIn {
 
         for chunk in audio.read(from: from, through: through) {
             let words = try await text.hear(chunk)
-            await receive(FilledText(text: words, heardThrough: chunk.end, sampleRate: chunk.sampleRate))
+            await receive(FilledText(text: words.final + words.tail, heardThrough: chunk.end, sampleRate: chunk.sampleRate))
         }
     }
 

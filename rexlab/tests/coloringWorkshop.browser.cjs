@@ -21,7 +21,7 @@ const { chromium } = require("playwright");
     page.on("pageerror", error => errors.push(error.message));
     await page.route("http://workshop.test/**", route => {
       const path = new URL(route.request().url()).pathname.slice(1);
-      if (!path) return route.fulfill({ contentType: "text/html", body: `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Workshop contract</title>${css.map(name => `<link rel="stylesheet" href="/${name}">`).join("")}` });
+      if (!path) return route.fulfill({ contentType: "text/html", body: `<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Workshop contract</title>${css.map(name => `<link rel="stylesheet" href="/${name}">`).join("")}` });
       assert(files.has(path), `Missing browser module ${path}`);
       return route.fulfill({ contentType: path.endsWith(".css") ? "text/css" : "text/javascript", body: files.get(path) });
     });
@@ -160,10 +160,9 @@ const { chromium } = require("playwright");
     for (const viewport of viewports) {
       await page.setViewportSize(viewport);
       const landscape = viewport.width > viewport.height;
-      const tabletRail = landscape && viewport.width >= 900 && viewport.height >= 480;
-      const singleRail = tabletRail && viewport.height >= 684;
+      const tabletRail = landscape && viewport.width >= 900 && viewport.height >= 600;
       for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
-        await mount({ id: `layout-${++layoutId}`, language, theme });
+        await mount({ id: `layout-${++layoutId}`, language, theme, gate: true });
         const layout = await page.evaluate(() => {
           const box = element => {
             const r = element.getBoundingClientRect();
@@ -183,6 +182,10 @@ const { chromium } = require("playwright");
           };
         });
         const context = JSON.stringify({ viewport, language, theme, layout });
+        const status = page.getByRole("status");
+        assert.equal(await status.textContent(), "", context);
+        assert.equal(await status.locator("svg").count(), 0, context);
+        assert.equal(await page.getByText(/LET’S PAINT!|ДАВАЙ РИСОВАТЬ!/).count(), 0, context);
         const separate = (a, b) => a.x + a.w <= b.x + 1 || b.x + b.w <= a.x + 1 || a.y + a.h <= b.y + 1 || b.y + b.h <= a.y + 1;
         assert.deepEqual(layout.scroll, [viewport.width, viewport.height], context);
         assert(layout.canvas.w > 80 && layout.canvas.h > 50, context);
@@ -193,7 +196,7 @@ const { chromium } = require("playwright");
         assert.deepEqual(layout.buttons.map(b => b.name), names, context);
         for (const name of names) assert.equal(await page.getByRole("button", { name, exact: true }).count(), 1, context);
         for (const button of layout.buttons) {
-          assert(button.w >= 60 && button.h >= 60 && button.x >= 0 && button.y >= 0 && button.x + button.w <= viewport.width + 1 && button.y + button.h <= viewport.height + 1, context);
+          assert(button.w >= (tabletRail ? 48 : 60) && button.h >= (tabletRail ? 48 : 60) && button.x >= 0 && button.y >= 0 && button.x + button.w <= viewport.width + 1 && button.y + button.h <= viewport.height + 1, context);
           assert(separate(button, layout.canvas), context);
         }
         for (let i = 0; i < layout.buttons.length; i++) for (const b of layout.buttons.slice(i + 1)) assert(separate(layout.buttons[i], b), context);
@@ -209,14 +212,23 @@ const { chromium } = require("playwright");
           assert.equal(layout.border, "0px", context);
           for (const b of navButtons) {
             assert.equal(b.text, "", context);
-            assert.equal(b.w, 60, context); assert.equal(b.h, 60, context);
+            assert.equal(b.w, tabletRail ? 48 : 60, context); assert.equal(b.h, tabletRail ? 48 : 60, context);
           }
         }
         if (tabletRail) {
           assert(layout.nav.x + layout.nav.w < layout.canvas.x && layout.dock.x + layout.dock.w < layout.canvas.x, context);
-          assert(layout.dock.y - layout.nav.y - layout.nav.h >= 20, context);
-          assert.equal(new Set(navButtons.map(b => b.x)).size, singleRail ? 1 : 2, context);
-          assert.equal(new Set(dockButtons.map(b => b.x)).size, singleRail ? 1 : 2, context);
+          assert(layout.dock.y - layout.nav.y - layout.nav.h >= 16, context);
+          const topClearance = layout.nav.y;
+          const bottomClearance = viewport.height - layout.dock.y - layout.dock.h;
+          assert(Math.abs(topClearance - bottomClearance) < 1, context);
+          assert(topClearance >= 32 && bottomClearance >= 32, context);
+          assert.equal(layout.body.y, viewport.height < 600 ? 8 : 32, context);
+          assert.equal(layout.body.h, viewport.height - (viewport.height < 600 ? 16 : 64), context);
+          assert.equal(new Set(navButtons.map(b => b.x)).size, 1, context);
+          assert.equal(new Set(dockButtons.slice(0, 4).map(b => b.x)).size, 1, context);
+          assert(layout.nav.w <= 56 && layout.dock.w <= 56, context);
+          const undo = dockButtons[4];
+          assert(Math.abs(undo.x + undo.w / 2 - layout.dock.x - layout.dock.w / 2) < 1, context);
           assert(layout.canvas.h >= viewport.height * .75, context);
           assert(Math.abs(layout.canvas.h - Math.min(layout.body.h, layout.body.w * 620 / 920)) < 1, context);
         } else {
@@ -241,7 +253,7 @@ const { chromium } = require("playwright");
         if (viewport.width >= 600 && viewport.height >= 480) {
           assert.equal(await canvas.evaluate(el => getComputedStyle(el.closest(".coloring-paper")).visibility), "visible", context);
           if (tabletRail) assert(picker.x >= layout.nav.x + layout.nav.w && picker.x <= layout.body.x + 1, context);
-          assert(picker.width < originalBox.width / 2, context);
+          if (tabletRail || !landscape) assert(picker.width < originalBox.width / 2, context);
         }
         for (const button of await dialog.getByRole("button").all()) {
           const r = await button.boundingBox();
@@ -287,27 +299,107 @@ const { chromium } = require("playwright");
         assert(await sizeTrigger.evaluate(el => el === document.activeElement));
         assert.equal(await page.getByRole("button", { name: names[5], exact: true }).getAttribute("aria-pressed"), "true");
         assert.equal(await page.getByRole("button", { name: names[6], exact: true }).getAttribute("aria-pressed"), "false");
+        // The storage gate holds saving until the test releases it.
+        await tap(420, 330, 100000 + layoutId * 1000);
+        await page.waitForFunction(() => window.workshop.writeCount() === 1);
+        assert.equal((await state()).save, "saving", context);
+        assert.equal(await status.textContent(), language === "en" ? "SAVING" : "СОХРАНЯЕМ", context);
+        assert.deepEqual(await canvas.boundingBox(), originalBox, context);
+        if (landscape) {
+          const routine = await status.boundingBox();
+          assert(routine.width <= 1 && routine.height <= 1, context);
+          assert.equal(await status.evaluate(el => getComputedStyle(el).clipPath), "inset(50%)", context);
+        }
+        await page.evaluate(() => window.workshop.release()); await settle();
+        assert.equal((await state()).save, "saved", context);
+        assert.equal(await status.textContent(), language === "en" ? "SAVED" : "СОХРАНЕНО", context);
+        assert.deepEqual(await canvas.boundingBox(), originalBox, context);
+        assert(await page.evaluate(original => original === document.querySelector("canvas"), originalCanvas), context);
         await originalCanvas.dispose();
       }
     }
-    // Error status and its retry target leave phone pickers fully reachable.
-    for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }]) {
+    // Synthetic browser environment insets exercise production env() bindings, not Safari chrome.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 24, bottom: 20, left: 0, right: 0 } });
+    for (const viewport of [{ width: 1133, height: 744 }, { width: 1180, height: 820 }, { width: 1180, height: 768 }, { width: 1024, height: 600 }]) {
       await page.setViewportSize(viewport);
-      await mount({ id: `error-picker-${viewport.width}`, gate: true });
-      await tap(420, 330, 105000);
-      await page.waitForFunction(() => window.workshop.writeCount() === 1);
-      await page.evaluate(() => window.workshop.fail());
-      await page.getByRole("alertdialog").waitFor();
-      await page.getByRole("button", { name: "KEEP EDITING", exact: true }).press("Enter");
-      for (const name of ["COLOR", "SIZE"]) {
-        await page.getByRole("button", { name, exact: true }).press("Enter"); await finishAnimations();
-        for (const button of await page.getByRole("dialog").getByRole("button").all()) {
-          const r = await button.boundingBox();
-          assert(r.width === 60 && r.height === 60 && r.x >= 0 && r.y >= 0 && r.x + r.width <= viewport.width && r.y + r.height <= viewport.height, JSON.stringify({ viewport, name, r }));
+      await mount({ id: `safe-area-${viewport.width}-${viewport.height}` });
+      const padding = await page.locator(".coloring-workshop").evaluate(el => {
+        const style = getComputedStyle(el);
+        return [parseFloat(style.paddingTop), parseFloat(style.paddingBottom)];
+      });
+      assert.deepEqual(padding, viewport.height < 600 ? [32, 28] : [56, 52]);
+      const nav = await page.locator(".coloring-navigation").boundingBox();
+      const tools = await page.locator(".coloring-tools").boundingBox();
+      const topClearance = nav.y - 24, bottomClearance = viewport.height - 20 - tools.y - tools.height;
+      const context = JSON.stringify({ viewport, nav, tools, topClearance, bottomClearance });
+      assert(Math.abs(topClearance - bottomClearance) < 1, context);
+      assert(topClearance >= 24 && bottomClearance >= 24, context);
+      const columns = await page.locator(".coloring-navigation button").evaluateAll(buttons => new Set(buttons.map(b => b.getBoundingClientRect().x)).size);
+      assert.equal(columns, 1, context);
+    }
+    await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 0, bottom: 0, left: 0, right: 0 } });
+    await cdp.detach();
+    // Error status and retry remain visible and usable beside phone/tablet pickers.
+    for (const viewport of [{ width: 320, height: 568 }, { width: 568, height: 320 }, { width: 1133, height: 744 }, { width: 1024, height: 480 }]) {
+      await page.setViewportSize(viewport);
+      for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
+        await mount({ id: `error-picker-${viewport.width}-${language}-${theme}`, gate: true, language, theme });
+        await tap(420, 330, 205000);
+        await page.waitForFunction(() => window.workshop.writeCount() === 1);
+        await page.evaluate(() => window.workshop.fail());
+        const alert = page.getByRole("alertdialog");
+        await alert.waitFor(); await finishAnimations();
+        const withinViewport = async locator => {
+          const r = await locator.boundingBox();
+          assert(r && r.x >= 0 && r.y >= 0 && r.x + r.width <= viewport.width + 1 && r.y + r.height <= viewport.height + 1, JSON.stringify({ viewport, language, theme, r }));
+          return r;
+        };
+        await withinViewport(alert);
+        await withinViewport(alert.getByRole("button", { name: language === "en" ? "RETRY" : "ПОВТОРИТЬ", exact: true }));
+        await alert.getByRole("button", { name: language === "en" ? "KEEP EDITING" : "РИСОВАТЬ ДАЛЬШЕ", exact: true }).press("Enter");
+        const status = page.getByRole("status");
+        assert.match(await status.textContent(), language === "en" ? /COULDN’T SAVE/ : /НЕ УДАЛОСЬ СОХРАНИТЬ/);
+        const retry = status.getByRole("button", { name: language === "en" ? "RETRY" : "ПОВТОРИТЬ", exact: true });
+        const r = await withinViewport(retry);
+        const statusBox = await withinViewport(status);
+        const canvasBox = await canvas.boundingBox();
+        assert(statusBox.x + statusBox.width <= canvasBox.x + 1 || canvasBox.x + canvasBox.width <= statusBox.x + 1 || statusBox.y + statusBox.height <= canvasBox.y + 1 || canvasBox.y + canvasBox.height <= statusBox.y + 1, "Save error and Retry must remain outside the canvas");
+        assert(r.width >= 60 && r.height >= 60);
+        assert(await retry.evaluate(el => {
+          const r = el.getBoundingClientRect();
+          return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+        }));
+        const undo = page.getByRole("button", { name: language === "en" ? "UNDO" : "ОТМЕНИТЬ", exact: true });
+        await withinViewport(undo);
+        assert(await undo.evaluate(el => {
+          const r = el.getBoundingClientRect();
+          return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+        }), "Unresolved save error must not cover Undo");
+        for (const name of language === "en" ? ["COLOR", "SIZE"] : ["ЦВЕТ", "РАЗМЕР"]) {
+          const trigger = page.getByRole("button", { name, exact: true });
+          assert(await trigger.evaluate(el => {
+            const r = el.getBoundingClientRect();
+            return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+          }), `Unresolved save error must not cover ${name}`);
+          await trigger.press("Enter"); await finishAnimations();
+          await page.getByRole("dialog").waitFor();
+          for (const button of await page.getByRole("dialog").getByRole("button").all()) {
+            const r = await withinViewport(button);
+            assert(r.width === 60 && r.height === 60);
+          }
+          await page.keyboard.press("Escape");
         }
-        await page.keyboard.press("Escape");
+        await retry.click();
+        await page.waitForFunction(() => window.workshop.writeCount() === 2);
+        assert.match(await status.textContent(), language === "en" ? /SAVING.*COULDN’T SAVE/ : /СОХРАНЯЕМ.*НЕ УДАЛОСЬ СОХРАНИТЬ/);
+        await withinViewport(status);
+        await page.evaluate(() => window.workshop.release()); await settle();
+        assert.equal(await status.textContent(), language === "en" ? "SAVED" : "СОХРАНЕНО");
+        assert.equal(await retry.count(), 0);
+        assert.equal((await state()).work.revision, 1);
+        assert.deepEqual(await pixel(420, 330), [239, 83, 80, 255]);
       }
-      assert.equal((await state()).work.revision, 1);
     }
     // Rotation closes a picker without replacing the canvas or saved paint.
     await page.setViewportSize({ width: 1133, height: 744 });
@@ -329,6 +421,6 @@ const { chromium } = require("playwright");
     assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--motion-amount").trim()), "0");
     assert.deepEqual(errors, []);
     if (process.env.COLORING_SCREENSHOT) await page.screenshot({ path: process.env.COLORING_SCREENSHOT });
-    console.log("PASS workshop: production paint/restore/undo/completion, tap safety, contact isolation/cancellation, save failures/retry, 48 RU/EN/theme layouts, B2 tablet rails, full-height canvas, color/size popovers, focus, rotation, error status and reduced motion");
+    console.log("PASS workshop: production paint/restore/undo/completion, tap safety, contact isolation/cancellation, save failures/retry, 48 RU/EN/theme layouts, centered safe-area tablet rails, idle status absence, stable save-state canvas, color/size popovers, focus, rotation, error status and reduced motion");
   } finally { if (browser) await browser.close(); }
 })().catch(error => { console.error(error); console.error(`FAIL workshop: ${error.message.split("\n")[0]}`); process.exitCode = 1; });

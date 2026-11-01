@@ -104,7 +104,7 @@ struct FakeCallTests {
     private func rows(_ call: FakeCall) -> [PanelState.Row] {
 
         guard case let .lines(lines) = call.state.log else { return [] }
-        return lines.rows
+        return Array(lines.rows)
     }
 
     private func entries(_ call: FakeCall) -> [PanelState.Entry] {

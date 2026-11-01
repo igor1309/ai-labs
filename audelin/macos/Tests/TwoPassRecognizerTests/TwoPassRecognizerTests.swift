@@ -101,14 +101,14 @@ struct TwoPassRecognizerTests {
         "\(start): \(settled) | \(pending)"
     }
 
-    private func read(_ segments: Segments?) -> [String] {
+    private func read(_ segments: SegmentSnapshot?) -> [String] {
 
         segments?.all.map { segment(start: $0.start, settled: $0.settled, pending: $0.pending) } ?? []
     }
 
     /// Feeds one chunk per draft hearing, or `chunks`, then ends the audio,
     /// and returns every update Live text published.
-    private func run(draft: [Hearing], final: [Hearing], finishing: Hearing = .init(words: []), chunks: Int? = nil) async -> [Segments] {
+    private func run(draft: [Hearing], final: [Hearing], finishing: Hearing = .init(words: []), chunks: Int? = nil) async -> [SegmentSnapshot] {
 
         let chunkCount = chunks ?? draft.count
         let draft = FakeRecognizer(draft, finishing: .init(words: []))
@@ -116,13 +116,17 @@ struct TwoPassRecognizerTests {
         return await run(draft: draft, final: final, chunks: chunkCount)
     }
 
-    private func run(draft: FakeRecognizer, final: FakeRecognizer, chunks: Int) async -> [Segments] {
+    private func run(draft: FakeRecognizer, final: FakeRecognizer, chunks: Int) async -> [SegmentSnapshot] {
 
         let recognizer = TwoPassRecognizer(draft: draft, final: final)
         let live = LiveText(recognizer: recognizer)
         let collecting = Task {
-            var updates: [Segments] = []
-            for await update in live.updates { updates.append(update) }
+            var updates: [SegmentSnapshot] = []
+            var all: [Segments.Segment] = []
+            for await update in live.updates {
+                all.replaceSubrange(update.from..., with: update.segments)
+                updates.append((all: all, ending: update.ending))
+            }
             return updates
         }
         await live.listen(to: FiniteSource(chunks: chunks))
@@ -179,3 +183,5 @@ private struct FiniteSource: AudioSource {
         return stream
     }
 }
+
+private typealias SegmentSnapshot = (all: [Segments.Segment], ending: Segments.Ending?)

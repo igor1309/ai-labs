@@ -23,7 +23,7 @@ struct TranscriptTests {
         ]
         for status: State.Status in [.off, .gettingReady, .listening, .failed("failed"), .finished] {
             #expect(Transcript.segments(from: State(status: status, entries: [])) == [])
-            #expect(Transcript.segments(from: State(status: status, entries: entries)) == mapped)
+            #expect(Transcript.segments(from: State(status: status, entries: .init(tail: entries))) == mapped)
             for (entry, segment) in zip(entries, mapped) {
                 #expect(Transcript.segments(from: State(status: status, entries: [entry])) == [segment])
             }

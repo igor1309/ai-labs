@@ -147,4 +147,47 @@ struct TranscriptWritingTests {
         #expect(run.transcript.kept == "last text")
         #expect(run.transcript.writes == ["last text"])
     }
+
+    @Test func aPauseFollowsEachWriteAndOnlyTheLatestTextIsWrittenAfterIt() async {
+
+        let changes = Changes()
+        let pauses = Pauses(changed: changes.notify)
+        let run = Run(changes: changes, enabled: true, holds: [:], pauses: pauses)
+        defer { pauses.end(); run.requestStop() }
+        await changes.until({ run.observed.started })
+        run.call.send("first")
+        await changes.until({ pauses.waiting })
+        #expect(run.transcript.writes == ["first"])
+        run.call.send("second")
+        run.call.send("third")
+        await changes.until({ run.observed.texts == ["first", "second", "third"] })
+        #expect(run.transcript.writes == ["first"])
+        pauses.end()
+        await changes.until({ run.transcript.writes.count == 2 && pauses.waiting })
+        #expect(run.transcript.writes == ["first", "third"])
+        #expect(pauses.started == 2)
+        pauses.end()
+        run.requestStop()
+        await run.task.value
+        #expect(run.transcript.kept == "third")
+    }
+
+    @Test func stoppingEndsThePauseSoTheLastTextIsWrittenBeforeStopReturns() async {
+
+        let changes = Changes()
+        let pauses = Pauses(changed: changes.notify)
+        let run = Run(changes: changes, enabled: true, holds: [:], lastText: "last", pauses: pauses)
+        defer { pauses.end(); run.requestStop() }
+        await changes.until({ run.observed.started })
+        run.call.send("first")
+        await changes.until({ pauses.waiting })
+        run.call.send("second")
+        await changes.until({ run.observed.texts == ["first", "second"] })
+        run.requestStop()
+        await run.task.value
+        #expect(run.observed.stopped)
+        #expect(run.transcript.writes == ["first", "last"])
+        #expect(run.transcript.kept == "last")
+        #expect(pauses.cancelled == 1)
+    }
 }

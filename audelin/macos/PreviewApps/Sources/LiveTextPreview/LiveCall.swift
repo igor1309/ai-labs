@@ -202,9 +202,11 @@ final class LiveCall {
 
             let showing = zip(tracks, lives).map { track, live in
                 Task {
+                    var all: [Segments.Segment] = []
                     for await segments in live.updates {
                         guard self.session === session else { continue }
-                        show(track.0, segments)
+                        all.replaceSubrange(segments.from..., with: segments.segments)
+                        show(track.0, all, ending: segments.ending)
                     }
                 }
             }
@@ -286,18 +288,18 @@ final class LiveCall {
         }
     }
 
-    private func show(_ speaker: PanelState.Speaker, _ segments: Segments) {
+    private func show(_ speaker: PanelState.Speaker, _ segments: [Segments.Segment], ending: Segments.Ending?) {
 
-        transcript.update(speaker, segments.all.map { .init(id: $0.id, start: $0.start, settled: $0.settled, pending: $0.pending) })
-        if segments.ending == .failed { message = "The recogniser failed; the text so far is kept" }
+        transcript.update(speaker, segments.map { .init(id: $0.id, start: $0.start, settled: $0.settled, pending: $0.pending) })
+        if ending == .failed { message = "The recogniser failed; the text so far is kept" }
 
         let now = ContinuousClock.now
-        guard segments.ending != nil || lastLogged[speaker].map({ now - $0 >= .seconds(5) }) ?? true else { return }
+        guard ending != nil || lastLogged[speaker].map({ now - $0 >= .seconds(5) }) ?? true else { return }
         lastLogged[speaker] = now
-        let settled = segments.all.reduce(0) { $0 + $1.settled.split(separator: " ").count }
-        let pending = segments.all.reduce(0) { $0 + $1.pending.split(separator: " ").count }
-        let ending = segments.ending.map { ", \($0)" } ?? ""
-        Log.line("\(speaker == .me ? "я" : "они"): \(segments.all.count) segment(s), \(settled) settled, \(pending) pending word(s)\(ending)")
+        let settled = segments.reduce(0) { $0 + $1.settled.split(separator: " ").count }
+        let pending = segments.reduce(0) { $0 + $1.pending.split(separator: " ").count }
+        let ending = ending.map { ", \($0)" } ?? ""
+        Log.line("\(speaker == .me ? "я" : "они"): \(segments.count) segment(s), \(settled) settled, \(pending) pending word(s)\(ending)")
     }
 
     private func describe(_ source: Source) -> String {

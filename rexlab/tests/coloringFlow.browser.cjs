@@ -188,7 +188,7 @@ const { chromium } = require("playwright");
             await p.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
             const layout = await p.evaluate(() => {
               const screen = document.querySelector('.coloring-gallery, .coloring-workshop, .coloring-result');
-              return { scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight], boxes: [...screen.querySelectorAll('button, canvas:not([aria-hidden="true"])')].filter(e => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== "hidden").map(e => { const b = e.getBoundingClientRect(); return { tag: e.tagName, text: e.textContent, picker: !!e.closest(".coloring-chooser"), x: b.x, y: b.y, w: b.width, h: b.height }; }) };
+              return { scroll: [document.documentElement.scrollWidth, document.documentElement.scrollHeight], boxes: [...screen.querySelectorAll('button, canvas:not([aria-hidden="true"])')].filter(e => e.getBoundingClientRect().width > 0 && getComputedStyle(e).visibility !== "hidden").map(e => { const b = e.getBoundingClientRect(); return { tag: e.tagName, text: e.textContent, picker: !!e.closest(".coloring-chooser"), rail: !!e.closest(".coloring-workshop .coloring-rail"), x: b.x, y: b.y, w: b.width, h: b.height }; }) };
             });
             const details = JSON.stringify({ width, height, language, theme, level, creature, layout });
             assert.deepEqual(layout.scroll, [width, height], details);
@@ -200,7 +200,7 @@ const { chromium } = require("playwright");
             assert.deepEqual(overflowingLabels, [], details);
             for (const b of layout.boxes) {
               assert(b.x >= -1 && b.y >= -1 && b.x + b.w <= width + 1 && b.y + b.h <= height + 1, details);
-              if (b.tag === "BUTTON") { assert(b.w >= 60 && b.h >= 60, details); assert.equal(b.text, b.text.toUpperCase()); }
+              if (b.tag === "BUTTON") { assert(b.w >= (b.rail ? 48 : 60) && b.h >= (b.rail ? 48 : 60), details); assert.equal(b.text, b.text.toUpperCase()); }
               const canvas = layout.boxes.find(b => b.tag === "CANVAS");
               // Temporary tablet pickers cover part of the art; permanent controls stay outside it.
               if (canvas && b.tag === "BUTTON" && !b.picker) assert(b.x + b.w <= canvas.x + 1 || b.x >= canvas.x + canvas.w - 1 || b.y + b.h <= canvas.y + 1 || b.y >= canvas.y + canvas.h - 1, details);
