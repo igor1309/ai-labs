@@ -135,6 +135,9 @@
   .coloring-tools button[aria-pressed="true"] { background: var(--coloring-brush); }
   .coloring-body { grid-column: 2; grid-row: 1; }
   .coloring-chooser { bottom: auto; top: 50%; transform: translateY(-50%); }
+  .coloring-workshop:has(.coloring-save-error) { grid-template-rows: minmax(0, 1fr) auto; row-gap: 8px; }
+  .coloring-workshop:has(.coloring-save-error) .coloring-rail { grid-row: 1 / -1; }
+  .coloring-save-error { position: static; grid-column: 2; grid-row: 2; justify-self: end; max-width: 100%; }
 }
 @media (max-height: 599px) and (orientation: landscape) {
   .coloring-workshop { padding-top: calc(8px + var(--coloring-safe-top)); padding-bottom: calc(8px + var(--coloring-safe-bottom)); gap: 4px; }

@@ -362,7 +362,9 @@ const { chromium } = require("playwright");
         assert.match(await status.textContent(), language === "en" ? /COULDN’T SAVE/ : /НЕ УДАЛОСЬ СОХРАНИТЬ/);
         const retry = status.getByRole("button", { name: language === "en" ? "RETRY" : "ПОВТОРИТЬ", exact: true });
         const r = await withinViewport(retry);
-        await withinViewport(status);
+        const statusBox = await withinViewport(status);
+        const canvasBox = await canvas.boundingBox();
+        assert(statusBox.x + statusBox.width <= canvasBox.x + 1 || canvasBox.x + canvasBox.width <= statusBox.x + 1 || statusBox.y + statusBox.height <= canvasBox.y + 1 || canvasBox.y + canvasBox.height <= statusBox.y + 1, "Save error and Retry must remain outside the canvas");
         assert(r.width >= 60 && r.height >= 60);
         assert(await retry.evaluate(el => {
           const r = el.getBoundingClientRect();
