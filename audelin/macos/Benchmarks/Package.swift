@@ -10,6 +10,7 @@ let package = Package(
     platforms: [.macOS(.v26)],
     dependencies: [
         .package(path: ".."),
+        .package(path: "../App"),
         .package(url: "https://github.com/ordo-one/package-benchmark", exact: "1.38.1"),
     ],
     targets: [
@@ -19,11 +20,11 @@ let package = Package(
                 .product(name: "Benchmark", package: "package-benchmark"),
                 .product(name: "CallAppProcesses", package: "macos"),
                 .product(name: "CallFolder", package: "macos"),
-                .product(name: "Compose", package: "macos"),
+                .product(name: "Composer", package: "App"),
                 .product(name: "MicrophoneCapture", package: "macos"),
                 .product(name: "PanelUI", package: "macos"),
                 .product(name: "RecordedCapture", package: "macos"),
-                .product(name: "SessionRehearsal", package: "macos"),
+                .product(name: "SessionRehearsal", package: "App"),
                 .product(name: "SystemAudioCapture", package: "macos"),
             ],
             path: "Benchmarks/LateUpdate",

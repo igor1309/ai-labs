@@ -104,15 +104,30 @@ struct ClosureLockScannerTests {
         }
     }
 
+    @Test func scansAppSourcesAndTestsWithoutBuildOutputs() async throws {
+        try await withFixtureDirectory { directory in
+            let findings = try await offPool {
+                for name in ["Sources", "Tests", "PreviewApps", "App/Sources", "App/Tests", "App/.build", ".build"] {
+                    let folder = directory.appendingPathComponent(name)
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    try "let receiver: Mutex<() -> Void>".write(
+                        to: folder.appendingPathComponent("Fixture.swift"), atomically: true, encoding: .utf8
+                    )
+                }
+                return try packageClosureLockFindings(in: directory)
+            }
+            #expect(findings.map(\.file).sorted() == [
+                "App/Sources/Fixture.swift", "App/Tests/Fixture.swift", "PreviewApps/Fixture.swift",
+                "Sources/Fixture.swift", "Tests/Fixture.swift",
+            ])
+        }
+    }
+
     @Test func packageLocksStoreConcreteTypes() async throws {
         let package = URL(filePath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
         let findings = try await offPool {
-            try ["Sources", "Tests", "PreviewApps"].flatMap { name in
-                try closureLockFindings(in: package.appendingPathComponent(name)).map {
-                    ClosureLockFinding(file: name + "/" + $0.file, line: $0.line)
-                }
-            }
+            try packageClosureLockFindings(in: package)
         }
         #expect(findings.isEmpty, "\(findings.map(\.description).joined(separator: "\n"))")
     }
@@ -141,5 +156,13 @@ private func withFixtureDirectory<Value>(
         try await body(directory)
     } cleanup: {
         try FileManager.default.removeItem(at: directory)
+    }
+}
+
+private func packageClosureLockFindings(in package: URL) throws -> [ClosureLockFinding] {
+    try ["Sources", "Tests", "PreviewApps", "App/Sources", "App/Tests"].flatMap { name in
+        try closureLockFindings(in: package.appendingPathComponent(name)).map {
+            ClosureLockFinding(file: name + "/" + $0.file, line: $0.line)
+        }
     }
 }
