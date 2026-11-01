@@ -7,6 +7,12 @@ Reads Claude Code JSONL transcripts under:
 The transcript schema is not treated as stable. This parser only relies on
 currently observed message/tool-use shapes and ignores records it does not know.
 It never prints tool-result contents.
+
+Subagent (sidechain) transcripts live next to their parent session, in
+`<session>/subagents/*.jsonl`. They are attributed to the parent: each file is
+analyzed on its own (a subagent has its own context, so a parent read does not
+make a subagent read "repeated"), and its counters are added to the parent's.
+A subagent file whose parent transcript is gone is reported as its own session.
 """
 
 from __future__ import annotations
@@ -15,7 +21,7 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
-from sessions_audit_core import SessionStats, Tracker, iter_jsonl, norm_path, skill_in_command
+from sessions_audit_core import SessionStats, Tracker, iter_jsonl, merge_stats, norm_path, skill_in_command
 
 NAME = "claude"
 TITLE = "Claude Code"
@@ -82,7 +88,29 @@ def normalize_tokens(usage: dict[str, int]) -> dict[str, int]:
     }
 
 
+def sidechain_files(path: Path) -> list[Path]:
+    return sorted((path.with_suffix("") / "subagents").glob("*.jsonl"))
+
+
+def parent_of(path: Path) -> Path | None:
+    """The parent session transcript of a `<session>/subagents/*.jsonl` file."""
+    if path.parent.name != "subagents":
+        return None
+    return path.parent.parent.with_suffix(".jsonl")
+
+
 def analyze(path: Path, large_result_threshold: int) -> SessionStats:
+    s = analyze_file(path, large_result_threshold)
+    sidechains = sidechain_files(path) if parent_of(path) is None else []
+    for side in sidechains:
+        sub = analyze_file(side, large_result_threshold)
+        merge_stats(s, sub)
+        s.extras["usage"] = dict(Counter(s.extras["usage"]) + Counter(sub.extras["usage"]))
+    s.extras["sidechain_files"] = len(sidechains)
+    return s
+
+
+def analyze_file(path: Path, large_result_threshold: int) -> SessionStats:
     s = SessionStats(NAME, str(path))
     t = Tracker(s, large_result_threshold)
     cwd: str | None = None
@@ -158,6 +186,9 @@ def discover(root: Path) -> list[Path]:
         name = p.name
         if ".orphaned-" in name or ".superseded-" in name:
             continue
+        parent = parent_of(p)
+        if parent is not None and parent.exists():
+            continue  # counted inside its parent session
         out.append(p)
     return sorted(out)
 
@@ -168,9 +199,11 @@ def source_info(root: Path) -> dict[str, Any]:
 
 def aggregate_extras(items: list[SessionStats]) -> dict[str, Any]:
     usage: Counter = Counter()
+    sidechains = 0
     for s in items:
         usage.update(s.extras.get("usage", {}))
-    return {"usage": dict(usage)}
+        sidechains += s.extras.get("sidechain_files", 0)
+    return {"usage": dict(usage), "sidechain_files": sidechains}
 
 
 def extra_lines(extras: dict[str, Any]) -> list[str]:
@@ -178,6 +211,7 @@ def extra_lines(extras: dict[str, Any]) -> list[str]:
     if not u:
         return []
     return [
+        f"subagent transcripts counted in their parent sessions: {extras.get('sidechain_files', 0):,}",
         "raw usage fields: "
         f"input={u.get('input_tokens', 0):,} cache-create={u.get('cache_creation_input_tokens', 0):,} "
         f"cache-read={u.get('cache_read_input_tokens', 0):,} output={u.get('output_tokens', 0):,}"

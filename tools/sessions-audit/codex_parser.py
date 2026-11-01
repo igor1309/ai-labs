@@ -9,6 +9,12 @@ Codex documents transcript_path as an unstable interface. This parser therefore
 handles current Responses-style rollout records plus common legacy shapes, and
 ignores unknown records. It deliberately ignores event_msg/item_completed output
 copies so current rollout duplication does not inflate result-size metrics.
+
+Current Codex runs tools in "code mode": the model sends one `exec` custom tool
+call whose input is a JavaScript program, and the real tool calls happen inside
+it as `tools.exec_command({cmd: "..."})`, `tools.apply_patch("...")` and so on.
+Those nested calls are unpacked from the source and analyzed like direct calls;
+a nested call whose arguments are not string literals is counted but not read.
 """
 
 from __future__ import annotations
@@ -25,7 +31,48 @@ from sessions_audit_core import SessionStats, Tracker, iter_jsonl, norm_path, sk
 NAME = "codex"
 TITLE = "Codex"
 
-SUBAGENT_NAME = re.compile(r"(?:spawn|start|create|delegate).*agent|agent.*(?:spawn|start|create|delegate)", re.I)
+SUBAGENT_TOOLS = {"spawn_agent", "create_agent", "delegate_to_agent"}
+POLLING_TOOLS = {"sleep"}
+READ_TOOLS = {"read", "read_file", "file_read"}
+EDIT_TOOLS = {"write", "write_file", "edit", "edit_file"}
+# Commands that print whole files. `cat a | head` is a pipeline and not a read.
+FULL_READ_COMMANDS = {"cat", "nl"}
+SHELL_WRAPPERS = {"bash", "sh", "zsh"}
+
+CODE_MODE_TOOL = "exec"
+CODE_MODE_CALL = re.compile(r"\btools\.(\w+)\s*\(")
+JS_STRING = r"\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`"
+JS_FIRST_STRING = re.compile(JS_STRING, re.S)
+JS_ESCAPES = {"n": "\n", "t": "\t", "r": "\r", "0": "\0"}
+
+
+def js_string(literal: str) -> str:
+    return re.sub(r"\\(.)", lambda m: JS_ESCAPES.get(m.group(1), m.group(1)), literal[1:-1], flags=re.S)
+
+
+def js_property(chunk: str, key: str) -> str | None:
+    m = re.search(r"\b" + key + r"\s*:\s*(" + JS_STRING + ")", chunk, re.S)
+    return js_string(m.group(1)) if m else None
+
+
+def code_mode_calls(source: str) -> list[tuple[str, dict[str, Any]]]:
+    """Nested `tools.<name>(...)` calls of a code-mode program, in order."""
+    matches = list(CODE_MODE_CALL.finditer(source))
+    calls: list[tuple[str, dict[str, Any]]] = []
+    for i, m in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(source)
+        chunk = source[m.end():end]
+        inp: dict[str, Any] = {}
+        for key in ("cmd", "command", "workdir", "path", "file_path"):
+            value = js_property(chunk, key)
+            if value is not None:
+                inp[key] = value
+        if "apply_patch" in m.group(1):
+            first = JS_FIRST_STRING.search(chunk)
+            if first:
+                inp["input"] = js_string(first.group(0))
+        calls.append((m.group(1), inp))
+    return calls
 
 
 def parse_args_value(value: Any) -> Any:
@@ -48,6 +95,9 @@ def command_of(inp: Any) -> str | None:
         if isinstance(command, list):
             # shell_command can represent argv or a command sequence depending on version.
             strings = [x for x in command if isinstance(x, str)]
+            # `["bash", "-lc", "<script>"]`: the script is the command.
+            if len(strings) == 3 and Path(strings[0]).name in SHELL_WRAPPERS and strings[1] in {"-c", "-lc"}:
+                return strings[2]
             return " ".join(strings) if strings else None
         if isinstance(command, str):
             return command
@@ -64,23 +114,37 @@ def path_of(inp: Any) -> str | None:
     return None
 
 
-def simple_cat_paths(command: str) -> list[str]:
-    """Return paths for a simple `cat file...` command; skip pipelines/redirection."""
-    if re.search(r"[|<>`;]|\$\(", command):
+def shell_reads(command: str, cwd: str | None) -> list[str]:
+    """Paths printed whole by `cat`/`nl` segments of a shell command.
+
+    The command is split on `&&`, `||` and `;`; a leading `cd dir` moves the
+    base for later relative paths. Segments with a pipe are filtered output and
+    do not count; commands with substitution or redirection are skipped whole.
+    """
+    if re.search(r"[<>`]|\$\(", command):
         return []
+    lexer = shlex.shlex(command, posix=True, punctuation_chars=";&|")
+    lexer.whitespace_split = True
     try:
-        parts = shlex.split(command)
+        tokens = list(lexer)
     except ValueError:
         return []
-    if not parts:
-        return []
-    # Allow a leading `cd path && cat ...` by keeping only the final segment.
-    if "&&" in parts:
-        idx = max(i for i, x in enumerate(parts) if x == "&&")
-        parts = parts[idx + 1 :]
-    if not parts or parts[0] != "cat":
-        return []
-    return [p for p in parts[1:] if not p.startswith("-")]
+    segments: list[list[str]] = [[]]
+    for tok in tokens:
+        if tok in {"&&", "||", ";"}:
+            segments.append([])
+        else:
+            segments[-1].append(tok)
+    base = cwd
+    out: list[str] = []
+    for seg in segments:
+        if not seg or any(tok in {"|", "&", "|&"} for tok in seg):
+            continue
+        if seg[0] == "cd" and len(seg) == 2:
+            base = norm_path(seg[1], base)
+        elif seg[0] in FULL_READ_COMMANDS:
+            out.extend(norm_path(p, base) for p in seg[1:] if not p.startswith("-"))
+    return out
 
 
 def patch_paths(inp: Any) -> list[str]:
@@ -145,30 +209,35 @@ def analyze(path: Path, large_result_threshold: int) -> SessionStats:
     token_total: dict[str, int] = {}
     peak_last_input = 0
 
-    def on_read(p: str) -> None:
-        t.read(norm_path(p, cwd), True)
-
     def on_tool(name: str, inp: Any, call_id: str | None) -> None:
         t.tool(name, call_id)
         lname = name.lower()
+        if lname == CODE_MODE_TOOL and isinstance(inp, dict) and isinstance(inp.get("input"), str):
+            for nested_name, nested_inp in code_mode_calls(inp["input"]):
+                on_tool(nested_name, nested_inp, None)
+            return
+        workdir = inp.get("workdir") if isinstance(inp, dict) else None
+        base = norm_path(workdir, cwd) if isinstance(workdir, str) and workdir else cwd
         p = path_of(inp)
-        if p and lname in {"read", "read_file", "file_read"}:
-            on_read(p)
-        if p and lname in {"write", "write_file", "edit", "edit_file"}:
-            t.edit(norm_path(p, cwd))
+        if p and lname in READ_TOOLS:
+            t.read(norm_path(p, base), True)
+        if p and lname in EDIT_TOOLS:
+            t.edit(norm_path(p, base))
         if "apply_patch" in lname:
             for changed in patch_paths(inp):
-                t.edit(norm_path(changed, cwd))
+                t.edit(norm_path(changed, base))
 
         cmd = command_of(inp)
         if cmd:
             t.command(cmd)
-            for cat_path in simple_cat_paths(cmd):
-                on_read(cat_path)
+            for read_path in shell_reads(cmd, base):
+                t.read(read_path, True)
 
         t.skill(skill_name(name, inp, cmd))
 
-        if SUBAGENT_NAME.search(name) or lname in {"spawn_agent", "create_agent"}:
+        if lname in POLLING_TOOLS:
+            t.polling()
+        if lname in SUBAGENT_TOOLS:
             t.subagent(inp)
 
     for rec in iter_jsonl(path):
