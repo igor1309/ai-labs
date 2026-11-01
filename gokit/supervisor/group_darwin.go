@@ -94,3 +94,6 @@ func sysctl(mib []int32, out *byte, size *uintptr) error {
 	}
 	return nil
 }
+
+// CheckExitObservation reports whether Exec can observe an exit before reaping.
+func (Exec) CheckExitObservation() error { return nil }

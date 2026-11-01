@@ -1,0 +1,73 @@
+name: Audelin Core
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Test profiling tools
+        timeout-minutes: 2
+        run: python3 -I -m unittest discover -s audelin/macos/scripts/tests
+
+      # Swift 6 and Swift Testing: take the image's newest Xcode, as
+      # foliotell-core does.
+      - name: Select newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
+
+      # The recognizer tests download their speech models, which a fresh
+      # download has handed over broken. Keep the models a passing run used;
+      # the cache saves only when the job succeeds, so a broken download is
+      # never kept.
+      - name: Cache the speech models
+        id: models
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Application Support/FluidAudio/Models
+          key: audelin-models-${{ hashFiles('audelin/macos/Package.resolved') }}
+
+      # Compiling is bounded by the job; the main tests have a three-minute
+      # limit that names unfinished tests when exceeded.
+      # Optimize the debug configuration to retain testable imports while
+      # measuring the same optimized code paths as the app.
+      - name: Build tests
+        working-directory: audelin/macos
+        run: swift build --build-tests -Xswiftc -O
+
+      # Without the cache, the recognizer tests download the models first:
+      # that alone can take longer than the tests' limit.
+      - name: Fetch the speech models
+        if: steps.models.outputs.cache-hit != 'true'
+        working-directory: audelin/macos
+        run: sh ../scripts/swift-test-bounded.sh 900 -Xswiftc -O --filter RecognizerTests
+
+      - name: Run tests
+        working-directory: audelin/macos
+        run: sh ../scripts/swift-test-bounded.sh 180 -Xswiftc -O
+
+      - name: Build preview app tests
+        working-directory: audelin/macos/PreviewApps
+        run: swift build --build-tests
+
+      - name: Run preview app tests
+        working-directory: audelin/macos/PreviewApps
+        run: sh ../../scripts/swift-test-bounded.sh 120
+
+      - name: Build the app bundle
+        working-directory: audelin/macos
+        run: AUDELIN_SIGN_IDENTITY=- sh scripts/bundle.sh

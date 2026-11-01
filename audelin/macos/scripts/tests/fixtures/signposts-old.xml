@@ -1,0 +1,108 @@
+<trace-query-result>
+  <node>
+    <schema name="region-of-interest">
+      <col>
+        <mnemonic>start</mnemonic>
+        <engineering-type>start-time</engineering-type>
+      </col>
+      <col>
+        <mnemonic>duration</mnemonic>
+        <engineering-type>duration</engineering-type>
+      </col>
+      <col>
+        <mnemonic>name</mnemonic>
+        <engineering-type>signpost-name</engineering-type>
+      </col>
+      <col>
+        <mnemonic>subsystem</mnemonic>
+        <engineering-type>subsystem</engineering-type>
+      </col>
+      <col>
+        <mnemonic>class</mnemonic>
+        <engineering-type>roi-class</engineering-type>
+      </col>
+      <col>
+        <mnemonic>process</mnemonic>
+        <engineering-type>process</engineering-type>
+      </col>
+      <col>
+        <mnemonic>end-process</mnemonic>
+        <engineering-type>process</engineering-type>
+      </col>
+      <col>
+        <mnemonic>start-thread</mnemonic>
+        <engineering-type>thread</engineering-type>
+      </col>
+      <col>
+        <mnemonic>end-thread</mnemonic>
+        <engineering-type>thread</engineering-type>
+      </col>
+    </schema>
+    <row>
+      <start-time>0</start-time>
+      <duration id="d">1000000</duration>
+      <signpost-name id="panel">PanelUpdate</signpost-name>
+      <subsystem id="app">dev.igor1309.audelin</subsystem>
+      <roi-class>Interval</roi-class>
+      <process>app</process>
+      <process>app</process>
+      <thread>1</thread>
+      <thread>2</thread>
+    </row>
+    <row>
+      <start-time>2000000</start-time>
+      <duration>3000000</duration>
+      <signpost-name ref="panel" />
+      <subsystem ref="app" />
+      <roi-class>Interval</roi-class>
+      <process>app</process>
+      <process>app</process>
+      <thread>1</thread>
+      <thread>2</thread>
+    </row>
+    <row>
+      <start-time>3000000</start-time>
+      <duration>2000000</duration>
+      <signpost-name>TranscriptWrite</signpost-name>
+      <subsystem ref="app" />
+      <roi-class>Interval</roi-class>
+      <process>app</process>
+      <process>app</process>
+      <thread>1</thread>
+      <thread>2</thread>
+    </row>
+    <row>
+      <start-time>4000000</start-time>
+      <duration ref="d" />
+      <signpost-name>Hearing</signpost-name>
+      <subsystem ref="app" />
+      <roi-class>Interval</roi-class>
+      <process>app</process>
+      <process>app</process>
+      <thread>1</thread>
+      <thread>2</thread>
+    </row>
+    <row>
+      <start-time>5000000</start-time>
+      <duration>9000000000</duration>
+      <signpost-name ref="panel" />
+      <subsystem ref="app" />
+      <roi-class>Interval</roi-class>
+      <process>app</process>
+      <sentinel />
+      <thread>1</thread>
+      <sentinel />
+    </row>
+    <row>
+      <start-time>6000000</start-time>
+      <duration>9000000000</duration>
+      <signpost-name ref="panel" />
+      <subsystem>other.app</subsystem>
+      <roi-class>Interval</roi-class>
+      <process>app</process>
+      <process>app</process>
+      <thread>1</thread>
+      <thread>2</thread>
+    </row>
+  </node>
+</trace-query-result>

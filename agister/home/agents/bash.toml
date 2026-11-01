@@ -1,0 +1,2 @@
+schema = "agister.agent/v1alpha1"
+runtime = "bash"

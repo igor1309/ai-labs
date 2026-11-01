@@ -150,6 +150,7 @@ test("membershipAdminUi_shouldClearExceptionalInputsAfterLogout", async ({ page 
     await page.locator("#program-membership-revocation-reason-input").fill("invalid state");
 
     await page.locator("#logout-button").click();
+    await expect(page.locator("#login-status")).toHaveText("Signed out.");
 
     const retainedValues = await page.locator("#program-membership-admin-panel input, #program-membership-admin-panel textarea")
       .evaluateAll(elements => elements.map(element => element.value).filter(Boolean));
@@ -678,5 +679,6 @@ function close(server) {
       }
       resolve();
     });
+    server.closeAllConnections();
   });
 }

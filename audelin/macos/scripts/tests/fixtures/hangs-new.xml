@@ -1,0 +1,4 @@
+<trace-query-result><node><schema name="potential-hangs"/>
+<row><start-time fmt="00:01">1000000000</start-time><duration>300000000</duration><hang-type id="h" fmt="Main Thread Hang"/></row>
+<row><start-time fmt="00:02">2000000000</start-time><duration>100000000</duration><hang-type ref="h"/></row>
+</node></trace-query-result>

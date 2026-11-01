@@ -1,15 +1,13 @@
 schema: agister.runtime/v1alpha1
-name: codex
 adapter: codex
 contract: codex/2
 efforts: [minimal, low, medium, high, xhigh]
-primitives:
-  select: one
-  items:
-    read-only:
-      grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
-      verified: ["0.158.", "0.159.", "0.160.", "0.161."]
-    workspace-write:
-      grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read,
-               repository.write, host.write]
-      verified: ["0.159.", "0.160.", "0.161."]
+select: one
+options:
+  read-only:
+    grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read]
+    verified: ["0.158.", "0.159.", "0.160.", "0.161."]
+  workspace-write:
+    grants: [repository.read, repository.search, repository.diff, repository.history.read, process.execute, host.read,
+             repository.write, host.write]
+    verified: ["0.159.", "0.160.", "0.161."]

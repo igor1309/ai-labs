@@ -1,27 +1,25 @@
 schema: agister.runtime/v1alpha1
-name: pi
 adapter: pi
 contract: pi/1
 efforts: [off, minimal, low, medium, high, xhigh, max]
-primitives:
-  select: any
-  items:
-    read: {grants: [repository.read, host.read], verified: ["0.85.", "1.0.2"]}
-    grep: {grants: [repository.search, host.read], verified: ["0.85.", "1.0.2"]}
-    find: {grants: [repository.read, host.read], verified: ["0.85.", "1.0.2"]}
-    ls: {grants: [repository.read, host.read], verified: ["0.85.", "1.0.2"]}
-    edit: {grants: [repository.write, host.read, host.write], verified: ["0.85.", "1.0.2"]}
-    write: {grants: [repository.write, host.write], verified: ["0.85.", "1.0.2"]}
-    bash:
-      verified: ["0.85.", "1.0.2"]
-      grants:
-        - process.execute
-        - repository.read
-        - repository.search
-        - repository.diff
-        - repository.history.read
-        - repository.write
-        - repository.history.write
-        - network
-        - host.read
-        - host.write
+select: any
+options:
+  read: {grants: [repository.read, host.read], verified: ["0.85.", "1.0.2"]}
+  grep: {grants: [repository.search, host.read], verified: ["0.85.", "1.0.2"]}
+  find: {grants: [repository.read, host.read], verified: ["0.85.", "1.0.2"]}
+  ls: {grants: [repository.read, host.read], verified: ["0.85.", "1.0.2"]}
+  edit: {grants: [repository.write, host.read, host.write], verified: ["0.85.", "1.0.2"]}
+  write: {grants: [repository.write, host.write], verified: ["0.85.", "1.0.2"]}
+  bash:
+    verified: ["0.85.", "1.0.2"]
+    grants:
+      - process.execute
+      - repository.read
+      - repository.search
+      - repository.diff
+      - repository.history.read
+      - repository.write
+      - repository.history.write
+      - network
+      - host.read
+      - host.write

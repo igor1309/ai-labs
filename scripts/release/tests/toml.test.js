@@ -108,3 +108,33 @@ describe('TOML round-trip', () => {
     assert.deepEqual(parsed.units, obj.units);
   });
 });
+
+describe('multi-line arrays', () => {
+  it('accepts comments and trailing commas while preserving literal hashes, commas and brackets', () => {
+    const parsed = parse(`include = [ # public inputs
+      "src/**", # code
+      # independent comment
+      "tests/**",
+      "a#b,]",
+    ] # end
+    check = "echo #literal"
+    topics = [] # empty
+    [[units]]
+    paths = [
+      { path = "a", basename = "b" },
+    ]`);
+    assert.deepEqual(parsed, {
+      include: ['src/**', 'tests/**', 'a#b,]'], check: 'echo #literal', topics: [], units: [{ paths: [{ path: 'a', basename: 'b' }] }]
+    });
+  });
+
+  it('splits strings ending in escaped backslashes and strings containing escaped quotes', () => {
+    const values = ['a\\', 'b"#],', 'c'];
+    assert.deepEqual(parse(stringify({ values })).values, values);
+  });
+
+  it('rejects unclosed arrays and basic strings', () => {
+    assert.throws(() => parse('include = [\n "src/**",'), /Unterminated TOML array/);
+    assert.throws(() => parse('check = "unclosed'), /Unterminated TOML string/);
+  });
+});

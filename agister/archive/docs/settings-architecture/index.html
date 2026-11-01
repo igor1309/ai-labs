@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agister's settings architecture</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --ground:#08080A; --surface:#17171A; --surface-2:#1E1E22;
+    --line:#2A2A2F; --line-soft:#232327; --line-strong:#3C3C43;
+    --text:#F5F5F7; --text-dim:#8A8A96; --text-faint:#68686F;
+    /* Body text and the diagram's labels share one brightness. */
+    --text-body:#D9D9DF; --text-sub:#B4B4C0;
+    --workflow:#F28DB0; --process:#8DB8FF; --agent:#5FE0BC; --runtime:#FFC24D;
+    --node:#C8A2FF; --agent-node:#C8A2FF; --rule:#FF8F6B; --run:#F5E6B0;
+    --display:"Iowan Old Style","Palatino Linotype",Palatino,"Hoefler Text",Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Helvetica Neue",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--text-body); overflow-wrap: break-word;
+    font: 16px/1.6 var(--sans); -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 40rem; margin: 0 auto; padding: 0 16px 48px; }
+  header { padding: 40px 0 20px; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
+  .eyebrow {
+    margin: 0 0 .75rem; font-family: var(--mono); font-size: .72rem;
+    letter-spacing: .18em; text-transform: uppercase; color: var(--text-faint);
+  }
+  h1, h2 { font-family: var(--display); font-weight: 400; overflow-wrap: break-word; }
+  h1 { margin: 0; font-size: clamp(2rem, 5vw, 2.6rem); line-height: 1.08; letter-spacing: -.01em; text-wrap: balance; }
+  h2 { margin: 2.25rem 0 .5rem; font-size: 1.5rem; line-height: 1.25; letter-spacing: -.005em; }
+  h3 {
+    margin: 1.1rem 0 .4rem; font-family: var(--mono); font-weight: 400; font-size: .72rem;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--text-dim);
+  }
+  p { margin: 0 0 12px; }
+  .intro { font-size: 1.05rem; }
+  code {
+    font-family: var(--mono); font-size: .85em; padding: 1px 5px; border-radius: 2px;
+    background: var(--surface); border: 1px solid var(--line-soft);
+  }
+  a { color: var(--text-dim); text-decoration-color: var(--text-faint); text-underline-offset: 3px; }
+  a:hover { color: var(--text); }
+  :focus-visible { outline: 2px solid var(--text-dim); outline-offset: 2px; }
+
+  /* The four main kinds, each in its own colour, in the text and the diagram. */
+  .k-workflow { color: var(--workflow); }
+  .k-process { color: var(--process); }
+  .k-agent { color: var(--agent); }
+  .k-runtime { color: var(--runtime); }
+  .kind.workflow { --k: var(--workflow); }
+  .kind.process { --k: var(--process); }
+  .kind.agent { --k: var(--agent); }
+  .kind.runtime { --k: var(--runtime); }
+  .kind.node { --k: var(--node); }
+  .kind.service { --k: var(--rule); }
+  .kind.run { --k: var(--run); }
+
+  figure { margin: 24px 0 28px; }
+  figure svg { display: block; width: 100%; height: auto; margin: 0 auto; }
+  figcaption { margin-top: 12px; font-family: var(--mono); font-size: 13px; color: var(--text-dim); }
+  svg text { fill: var(--text); font-family: var(--sans); }
+  /* A box's title, then a few of its fields, on one line. */
+  svg .t { font-weight: 700; font-size: 19px; letter-spacing: -.02em; }
+  svg .t.s { font-size: 17px; }
+  svg .d { fill: var(--text-sub); font-family: var(--mono); font-size: 11.5px; font-weight: 500; letter-spacing: .06em; }
+  svg .d.tight { font-size: 11px; letter-spacing: .02em; }
+  svg .kind .t { fill: var(--k); }
+  svg .row-t { font-size: 14.5px; font-weight: 500; }
+  svg .tag { fill: var(--process); font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; }
+  svg .cmd { fill: var(--run); font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  svg .cmd .prompt { fill: var(--text-sub); font-weight: 400; }
+  svg .badge-t { fill: var(--agent-node); font-family: var(--mono); font-size: 12px; font-weight: 600; }
+  .ic { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .kind { color: var(--k); }
+  .mute { color: var(--text-sub); }
+  /* Each container a step lighter than the one around it. */
+  .service { fill: #131317; stroke: var(--rule); stroke-opacity: .6; }
+  .workflow-box { fill: #1B1B21; stroke: var(--workflow); stroke-opacity: .4; }
+  .node-box { fill: #24242B; stroke: var(--node); stroke-opacity: .4; }
+  .stack-1 { fill: #34343D; stroke: var(--node); stroke-opacity: .5; }
+  .stack-2 { fill: #2A2A32; stroke: var(--node); stroke-opacity: .3; }
+  .panel { fill: #1B1B21; stroke: var(--k); }
+  .panel-top { fill: var(--k); }
+  .row { fill: #2F2F37; }
+  .row.marked { stroke: var(--k); stroke-opacity: .5; }
+  .marker { fill: var(--k); }
+  .chip { fill: var(--ground); stroke: #3A3A44; }
+  .badge { fill: var(--node); fill-opacity: .2; }
+  .call { fill: #3A3527; stroke: var(--run); stroke-opacity: .5; }
+  svg .call-d { fill: #E2D6AE; }
+
+  footer {
+    margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--line);
+    display: flex; gap: 20px; font-family: var(--mono); font-size: .8rem; letter-spacing: .04em;
+  }
+
+  @media (max-width: 34rem) {
+    body { font-size: 17px; }
+    .eyebrow { font-size: .8rem; letter-spacing: .1em; }
+  }
+  /* Wide screens: the diagram on the left, the text on the right. */
+  @media (min-width: 900px) {
+    main {
+      max-width: 96rem; padding: 0 32px 56px;
+      display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 32rem);
+      column-gap: 56px; align-items: start;
+    }
+    header { padding-top: 32px; margin-bottom: 28px; }
+    main > header { grid-column: 1 / -1; }
+    main > footer { grid-column: 2; }
+    figure { grid-column: 1; grid-row: 2 / span 2; margin: 0; }
+    .text { grid-column: 2; grid-row: 2; }
+  }
+  /* The diagram stays in view while the text scrolls, scaled to fit the
+     viewport with its caption. */
+  @media (min-width: 900px) and (min-height: 560px) {
+    figure { position: sticky; top: 20px; }
+    figure svg { max-height: calc(100vh - 120px); }
+  }
+</style>
+</head>
+<body>
+<main>
+<header>
+<p class="eyebrow">Agister · Settings</p>
+<h1>Agister's settings architecture</h1>
+</header>
+
+<figure>
+<svg viewBox="0 0 752 630" role="img" aria-labelledby="diagram-title diagram-desc">
+  <title id="diagram-title">The settings documents, each inside what names it</title>
+  <desc id="diagram-desc">The service frames everything: inside it is the
+  workflow that agister run picks. Inside the workflow is its nodes, one
+  drawn for each; each node uses a process and binds an agent, side by side
+  on one level. In the process are the documents it names: its base, which
+  it extends, its output schema, verification, prompts, skills and brief
+  forms. In the agent are its runtime mapping and its skills. At the bottom
+  of the node is its call, where the process's permissions meet the runtime
+  mapping's primitives.</desc>
+  <defs>
+    <symbol id="i-base" viewBox="0 0 24 24"><g class="ic"><path d="M14 9 9 4 4 9"/><path d="M20 20h-7a4 4 0 0 1-4-4V4"/></g></symbol>
+    <symbol id="i-schema" viewBox="0 0 24 24"><g class="ic"><path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/></g></symbol>
+    <symbol id="i-verify" viewBox="0 0 24 24"><g class="ic"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></g></symbol>
+    <symbol id="i-prompts" viewBox="0 0 24 24"><g class="ic"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 8H7"/><path d="M17 12H7"/></g></symbol>
+    <symbol id="i-skills" viewBox="0 0 24 24"><g class="ic"><path d="M9.94 15.5a2 2 0 0 0-1.44-1.44l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.13 1.58a.5.5 0 0 1 0 .96l-6.13 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/><path d="M20 3v4M22 5h-4M4 17v2M5 18H3"/></g></symbol>
+    <symbol id="i-forms" viewBox="0 0 24 24"><g class="ic"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></g></symbol>
+    <symbol id="i-mapping" viewBox="0 0 24 24"><g class="ic"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></g></symbol>
+    <symbol id="i-call" viewBox="0 0 24 24"><g class="ic"><path d="M6 3 20 12 6 21z"/></g></symbol>
+    <clipPath id="clip-process"><rect x="60" y="183" width="310" height="314" rx="8"/></clipPath>
+    <clipPath id="clip-agent"><rect x="382" y="183" width="310" height="138" rx="8"/></clipPath>
+  </defs>
+
+  <!-- The service: a frame around every run, not a step in it. -->
+  <g class="kind service">
+    <rect class="service" x="0.5" y="0.5" width="751" height="629" rx="16"/>
+    <rect class="marker" x="20" y="22" width="10" height="10" rx="3"/>
+    <text x="40" y="34"><tspan class="t">Service</tspan><tspan class="d" dx="12">LIMITS AND PERMISSIONS FOR EVERY RUN</tspan></text>
+  </g>
+
+  <!-- Level 1: the workflow the command picks. -->
+  <g class="kind workflow">
+    <rect class="workflow-box" x="20" y="60" width="712" height="549" rx="12"/>
+    <rect class="marker" x="40" y="83" width="10" height="10" rx="3"/>
+    <text x="60" y="95"><tspan class="t">Workflow</tspan><tspan class="d" dx="12">PARAMS · VALUES</tspan></text>
+  </g>
+  <rect class="chip" x="500" y="74" width="212" height="29" rx="6"/>
+  <text class="cmd" x="512" y="93"><tspan class="prompt">$</tspan> agister run &lt;workflow&gt;</text>
+
+  <!-- Level 2: its nodes, one drawn for each. -->
+  <g class="kind node">
+    <rect class="stack-2" x="60" y="571" width="632" height="18" rx="8"/>
+    <rect class="stack-1" x="50" y="565" width="652" height="18" rx="8"/>
+    <rect class="node-box" x="40" y="125" width="672" height="452" rx="10"/>
+    <rect class="marker" x="60" y="146" width="10" height="10" rx="3"/>
+    <text x="80" y="158"><tspan class="t s">Node</tspan><tspan class="d" dx="12">FAN_OUT AND JOIN, OR ONE CALL</tspan></text>
+    <rect class="badge" x="654" y="140" width="38" height="22" rx="5"/>
+    <text class="badge-t" x="673" y="155" text-anchor="middle">× n</text>
+  </g>
+
+  <!-- Level 3: what a node uses and binds, side by side; in each, the
+       documents it names. -->
+  <g class="kind process">
+    <rect class="panel" x="60" y="183" width="310" height="314" rx="8"/>
+    <rect class="panel-top" x="60" y="183" width="310" height="3" clip-path="url(#clip-process)"/>
+    <text x="74" y="210"><tspan class="t s">Process</tspan><tspan class="d tight" dx="8">INSTRUCTION · INPUTS · LIMITS</tspan></text>
+    <rect class="row marked" x="74" y="227" width="282" height="36" rx="6"/>
+    <use class="kind" href="#i-base" x="86" y="237.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="250" style="fill: var(--k)">Base process</text>
+    <text class="tag" x="342" y="249" text-anchor="end">EXTENDS</text>
+    <rect class="row" x="74" y="271" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-schema" x="86" y="281.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="294">Output schema</text>
+    <rect class="row" x="74" y="315" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-verify" x="86" y="325.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="338">Verification</text>
+    <rect class="row" x="74" y="359" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-prompts" x="86" y="369.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="382">Prompts</text>
+    <rect class="row" x="74" y="403" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-skills" x="86" y="413.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="426">Skills</text>
+    <rect class="row" x="74" y="447" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-forms" x="86" y="457.5" width="15" height="15"/>
+    <text class="row-t" x="111" y="470">Brief forms</text>
+  </g>
+  <g class="kind agent">
+    <rect class="panel" x="382" y="183" width="310" height="138" rx="8"/>
+    <rect class="panel-top" x="382" y="183" width="310" height="3" clip-path="url(#clip-agent)"/>
+    <text x="396" y="210"><tspan class="t s">Agent</tspan><tspan class="d tight" dx="8">MODEL · EFFORT</tspan></text>
+  </g>
+  <g class="kind runtime">
+    <rect class="row marked" x="396" y="227" width="282" height="36" rx="6"/>
+    <use class="kind" href="#i-mapping" x="408" y="237.5" width="15" height="15"/>
+    <text class="row-t" x="433" y="250" style="fill: var(--k)">Runtime mapping</text>
+  </g>
+    <rect class="row" x="396" y="271" width="282" height="36" rx="6"/>
+    <use class="mute" href="#i-skills" x="408" y="281.5" width="15" height="15"/>
+    <text class="row-t" x="433" y="294">Skills</text>
+
+  <!-- The node's call: where the two sides meet. -->
+  <g class="kind run">
+    <rect class="call" x="60" y="513" width="632" height="44" rx="8"/>
+    <use class="kind" href="#i-call" x="76" y="527" width="16" height="16"/>
+    <text x="102" y="541"><tspan class="t s">Call</tspan><tspan class="d call-d" dx="12">PERMISSIONS MEET PRIMITIVES: THE PLAN</tspan></text>
+  </g>
+</svg>
+<figcaption>Each settings document sits inside whatever names it.</figcaption>
+</figure>
+
+<div class="text">
+<p class="intro">Agister's settings are documents that name each other by
+name. In <code>agister run &lt;workflow&gt;</code> the name picks one
+<span class="k-workflow">workflow</span>; nothing else is run. Each of its
+nodes uses a <span class="k-process">process</span> and binds an
+<span class="k-agent">agent</span> to it. A process names its output
+schema, verification, prompts and skills, and may extend a base process;
+a file input may name the brief forms its text must have. An agent names
+its <span class="k-runtime">runtime mapping</span> and its own skills. The
+service is never picked: it has no name, and it applies to every run.</p>
+
+<p>The diagram reads top down, in the order <code>agister run</code>
+resolves the settings: the command picks the workflow it sits on. Beside
+each box's name are a few of the document's own fields; the sections below
+give them all. A box inside another is part of it or bound by it, and boxes
+side by side inside one box are on one level: a node's process and agent.
+A node is drawn once, stacked for the many a workflow may have. The rows in
+a process or an agent are the documents it names; the process's base is
+one of them, marked <code>extends</code>. The service is no box in the flow
+but the frame around it. Documents compose by field across home, the repository's <code>.agister</code>
+and the nearest project's <code>.agister</code> below the worktree root.
+The launch directory or <code>--dir</code> selects the project. Nested maps
+merge by key; scalars and lists replace whole (<code>[]</code> means none).
+A partial sets only what it changes; prompts, skills and schemas are taken
+whole from the nearest layer. A YAML file holds
+exactly one YAML document; one with a second is invalid.</p>
+
+<h2><span class="k-workflow">Workflow</span></h2>
+
+<p>A workflow composes process calls into one run, and its settings fix
+what each call receives, never whoever starts it. It has its own params and
+values, and nodes; each node uses a process and binds the agent that runs
+it, and <code>agent</code> is required on every node. A process names no
+agent, so only a workflow runs it. A file value may name brief forms, as a
+process's may.</p>
+
+<p>It has one of two shapes. One or more processes over the same inputs,
+run at once, then one process given their results:
+<code>code_review</code>, <code>adr_review</code>. Or one
+<code>call</code>, with no input of its own: it takes its process's params
+and is that call's one run, as <code>implement_codex</code> binds
+<code>implement</code> to <code>codex-sol-61</code> and
+<code>implement_opus</code> binds it to <code>claude-opus</code>. Those are
+today's limits, not what a workflow is.</p>
+
+<p>A layer rebinds a node: it gives the whole <code>fan_out</code> list, or
+sets <code>join.agent</code> or <code>call.agent</code> alone. A workflow
+whose node binds a blocked or broken agent is refused until a layer
+rebinds it.</p>
+
+<h2><span class="k-process">Process</span></h2>
+
+<p>A process is the work, and names no agent. It holds the instruction,
+caller params, input values, the revision input HEAD must be at, whether a
+fresh call needs a clean worktree, and its own limits: workspace access
+(read-only unless it says read-write) and scope (candidate or repository),
+allowed, required and denied permissions, timeout, attempts, cost cap and
+staleness limits, with under <code>stale.recover</code> how many times a
+call may resume a stale turn and with what instruction. It speaks in
+permissions, never in runtime primitives. Limits narrow from the service
+to the process to the caller's <code>--timeout</code> and
+<code>--max-cost</code>.</p>
+
+<p>Its session is <code>fresh-only</code> unless it says
+<code>resumable</code>; a process whose verification repairs, or that may
+resume a stale turn, must be resumable. It works in the caller's worktree;
+Agister makes no checkout and runs no setup. A process with a
+verification, such as <code>implement</code>, is still a process.</p>
+
+<p>A process may extend one base, <code>extends: process:&lt;base&gt;</code>.
+The base extends nothing and is not work: no node may bind it. Its layers
+come first, then the extending process's over it; maps merge by key, lists
+and scalars replace whole, and <code>name</code> and <code>extends</code>
+are never taken from the base. A partial may not set <code>extends</code>.
+Home's six reviews, the five code reviews and the ADR review, extend its <code>review</code> base.</p>
+
+<p>The base is of the process's own layer. The layer whose file holds the
+whole process and names the base defines the base too: its file of the
+base and the extending file together set every field a process requires.
+A base only home has, or a repository's partial of it that leaves a
+required field to home's file, is no base for a process the repository
+defines: <code>check</code> reports the process and its run is refused.
+Partials that do not set <code>extends</code>, over a process home defines
+or over its base, still compose.</p>
+
+<h3>What a process names</h3>
+<ul>
+<li><b>base</b>: the one process it extends, if any.</li>
+<li><b>output schema</b>: the JSON Schema its output must match.</li>
+<li><b>verification</b>: command, timeout, max attempts, failure
+instruction; or held inline in the process. It runs in the call's
+worktree.</li>
+<li><b>prompts</b>: plain text, named by one required <code>prompt</code> and a <code>guidance</code> list; a missing name refuses the call.</li>
+<li><b>skills</b>: each one <code>SKILL.md</code>.</li>
+<li><b>brief forms</b>: <code>briefs/&lt;name&gt;.yaml</code>, named by a
+<code>file</code> input's <code>form: [goal, step]</code>. Each holds its
+parts in order, each a heading, required or not, with the exact text it
+must read (Open: <code>None.</code>) or a file it refers to, and the
+template a caller copies. A call whose text has none of its forms is
+refused before it starts, naming each wrong part. Agister checks the
+structure, never the meaning. A workflow's <code>file</code> value may
+name them too; the diagram draws them under the process.</li>
+</ul>
+
+<h2><span class="k-agent">Agent</span></h2>
+
+<p>An agent is a runtime profile: runtime, model, model family, effort and
+command. It carries no task, no permissions, no limits and no session. It
+names a runtime mapping and its own skills; a node's call gets its
+process's skills, then its agent's, each once.</p>
+
+<h2><span class="k-runtime">Runtime mapping</span></h2>
+
+<p>A runtime mapping covers one adapter (<code>claude-code</code>,
+<code>codex</code>, <code>pi</code> or <code>opencode</code>): the efforts
+it accepts and each restriction primitive, a tool or sandbox mode, with the
+permissions it grants.</p>
+
+<h2>Service</h2>
+
+<p>The hard limits (max timeout, attempts, cost, verify attempts) and the
+permission vocabulary, including which permissions write and which reach
+Agister's state; those are never granted. No document names the service;
+it applies to every run. A process uses only its permissions, within its
+limits; a runtime mapping grants only its permissions.</p>
+
+<h2>Where permissions meet primitives</h2>
+
+<p>The process's effective permissions meet the bound agent's runtime
+mapping to make the enforcement plan. For <code>select: one</code>, the safe primitive with the fewest distinct grants covering
+<code>tools.require</code> is selected; grants beyond the best-effort
+<code>tools.allow</code> ceiling warn. For <code>select: any</code>, fitting
+safe tools are granted. State-reaching grants remain forbidden. An allowed permission that no primitive
+provides is withheld, and the call is refused if the process requires
+it. <code>check</code> makes the plan for every node of every workflow: a
+binding that would be refused is a problem of that workflow, naming the
+node, and one that withholds an allowed permission is listed as
+<code>withheld</code>. Extra grants warn per binding and are recorded beside
+declared and granted permissions; run outcomes and printed results carry
+the warning. Plan warnings persist before runtime startup and remain in
+abandoned and reaped outcomes. Workflows persist node-labelled warnings as
+nodes finish, retaining them when the parent is abandoned or reaped while
+another node runs. Unverified versions warn; probes are observability (ADR-036).</p>
+
+<h2>Blocks</h2>
+
+<p>Two more documents, not in the diagram: <code>layer.yaml</code> names additional prompt folders in a repository or project; blocks, repo only: the agents,
+processes, workflows or runtime mappings this repo refuses, with reasons;
+a workflow that binds a blocked agent is refused until a layer rebinds
+it. A project holds no blocks. Guidance a node must follow belongs in its <code>prompt</code> or <code>guidance</code>, never a pointer in <code>AGENTS.md</code> or a skill. There is no workspace document: <code>workspace.yaml</code> is obsolete,
+and <code>check</code> warns about it.</p>
+</div>
+
+<footer>
+<a href="detailed.html">Details</a>
+<a href="notes.md">Sources</a>
+</footer>
+</main>
+</body>
+</html>

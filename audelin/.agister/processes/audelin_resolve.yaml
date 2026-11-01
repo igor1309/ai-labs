@@ -1,0 +1,26 @@
+schema: agister.process/v1alpha1
+prompt: audelin-resolve
+
+workspace:
+  access: read-write
+
+permissions:
+  require:
+    - repository.read
+    - process.execute
+    - network
+  # The bash runtime runs unsandboxed and grants all of these anyway.
+  allow:
+    - repository.read
+    - repository.search
+    - repository.diff
+    - repository.history.read
+    - repository.write
+    - repository.history.write
+    - process.execute
+    - network
+    - host.read
+    - host.write
+
+limits:
+  time: 10m

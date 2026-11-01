@@ -24,7 +24,7 @@ Implemented by [Accepted Checks and Assessment Criteria First Slice Implementati
 - Corpus command/query coverage: [corpus.test.js](../../tests/corpus.test.js)
 - Storage persistence and graph-invariant coverage: [storage.test.js](../../tests/storage.test.js)
 - Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
-- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- Executable acceptance coverage: [executable-acceptance-corpus-navigation.test.js](../../tests/executable-acceptance-corpus-navigation.test.js)
 
 The implemented first slice supports the Program Curator draft/reject/accept lifecycle for assessment criteria and open-answer checks, current and historical accepted revisions, criterion-revision snapshotting on accepted check revisions, accepted-read authorization for Student/Curator/Admin callers, redaction, Student Workspace non-mutation, backup/restore preservation, and malformed graph rejection. This domain-slice implementation did not introduce Student Workspace attempts, evaluation results, scoring, feedback generation, mastery/weak-area/progress interpretation, LLM execution, human review, UI, HTTP routes, or CLI commands; the later public HTTP surface is specified separately by [Accepted Checks and Assessment Criteria API](accepted-checks-and-assessment-criteria-api.md).
 

@@ -1,86 +1,48 @@
-# Agister CLI
+# Agister
 
-Runs agent calls, and workflows of them, whose agents, processes,
-permissions and output contracts are settings, not code. The decisions are
-in [docs/adr/](docs/adr/); start with
-[ADR-001](docs/adr/001-agister-cli-architecture.md).
+A runner for AI-agent work defined in settings files.
 
-## Build and try
+- [Architecture, ADR-001](docs/adr/001-agister-architecture.md)
+- [ADRs](docs/adr/)
+- [The earlier implementation](archive/README.md), kept unchanged as
+  reference; the installed `agister` is this one
+  (`scripts/loop/install.sh`)
 
-```bash
-cd agister
-go build -o bin/agister ./cmd/agister
-bin/agister --help          # every command and option
-bin/agister init            # example settings into ~/.agister
-bin/agister install home    # this owner's global settings into ~/.agister
-bin/agister check           # validate the settings
-bin/agister run ask_assistant --param question="What does cmd/agister do?"
-bin/agister runs show <run-id>
-bin/agister runs export <run-id> --to <dir> # a run's evidence, for audit
-bin/agister pages           # a page of what the settings can run
-```
+Settings in `home/` define agents, processes and workflows and compose
+with the repository's `.agister/`. An agent may name another with
+`fallback = "claude-opus"`: after capacity retries at 30 seconds, one,
+three and five minutes, each telling the session to go on, the same work
+starts fresh on that agent.
+Other failures do not fall back; a fallback never chains.
 
-Agister's generic code (the process supervisor, the manual clock, the
-in-process fakes and the test-discipline check) is the `gokit` module next
-to it, [../gokit](../gokit/README.md), which `go.mod` points at with a
-`replace`: build from a checkout of the repository.
+A workflow may set `parallel: {max: 1, steps: [...]}` to run nodes one at
+a time. Without `max` all nodes run at once. Failed nodes do not stop the
+remaining nodes; the join receives their outcomes in declaration order.
 
-`agister pages` serves a local page that shows the workflows a
-repository's settings can run and what they are made of:
-[pages/README.md](pages/README.md).
+A workflow may also `branch` on a condition (`equals`, `present`, `all`,
+`any`, `and`, `or`, `not`) over params, inputs and earlier outputs, and
+`repeat` a body with explicit `state`, `next`, `until` and `max`: a
+failed test step can go back to the builder's session until the tests
+pass. A step in a repeat is named `<step>/<pass>` in its record,
+progress and `run.jsonl`, which also keeps each branch taken, each
+pass's state and why a repeat stopped.
+Use `agister check` to validate settings and `agister inspect` to see them.
+See the [caller's guide](skills/agister/SKILL.md).
+`~/.claude/skills/agister` links to that folder in the main checkout, so
+editing the installed skill edits the repo: change it on a branch, or the
+trunk checkout is left dirty and `finish-merged-pr.sh` refuses to run.
 
-## Settings
+Each new run keeps one append-only `run.jsonl` under its run folder. Its
+versioned lines carry ordered events and the active calls' state, including
+capacity, fallback and recovery waits. Tool events keep the name and a short
+input digest. The terminal line carries the full result. Readers fold the
+log, ignore an unfinished last line and still read older `record.json` runs.
+A failed log write fails the run and stops further appends.
 
-Global settings live in `~/.agister/` (`$AGISTER_HOME` or `--home`). The
-worktree root's `.agister/` and the nearest project `.agister/` compose
-over home, selected from the launch directory or `--dir`. Maps merge by
-key; lists and scalars replace whole. Prompts, skills and schemas come
-whole from the nearest layer. Commands check the composed settings before
-use. See [settings and layering](docs/reference/settings-and-layering.md).
-
-### Agents, processes and workflows
-
-An agent is a runtime profile. A process defines the work, its inputs,
-prompt, permissions, limits and output contract. A workflow binds each
-node's process to an agent, as one call or a fan-out and join.
-`agister run` runs workflows. Calls work in the caller's worktree and
-leave changes there, uncommitted; runs are recorded in `<home>/runs/`.
-See [processes and workflows](docs/reference/processes-and-workflows.md).
-
-## Commands
-
-Use `agister --help` for every option; `--version` identifies the binary.
-
-| Command | Purpose |
-| --- | --- |
-| `init` | Install example settings into home |
-| `install <dir>` / `install --restore <stamp>` | Install settings or restore a backup |
-| `check` | Validate the composed settings |
-| `agent create <name>` / `agent list` | Create or list runtime profiles |
-| `process list` / `process show <name>` | Inspect work definitions |
-| `workflow list` / `workflow show <name>` | Inspect bindings and plans |
-| `run <workflow>` | Run a workflow (`--continue` resumes a call) |
-| `runs [list]` / `runs show <id>` | List runs or read a record |
-| `runs watch <id>` / `runs export <id>... --to <dir>` | Follow events or export evidence |
-| `pages` | Serve the local settings and runs page |
-| `version` | Identify the binary |
-
-## Reference and decisions
-
-The [behaviour reference](docs/reference/README.md) covers settings and
-layering, processes and workflows, permissions and runtimes, runs and
-records, the worktree and holds, skills, and home.
-The [ADR list](docs/adr/) records the decisions behind that behaviour.
-
-## Test
-
-The commands are in [AGENTS.md](AGENTS.md); they check `gokit` too. CI:
-`.github/workflows/agister-core.yml`.
-
-Known gaps: backlog issues in the Multica project Agister
-([docs/deferred.md](docs/deferred.md)). Ideas:
-[backlog/](backlog/README.md).
-
-Runtime permissions are [best effort](docs/reference/permissions-and-runtimes.md):
-required permissions and state reach are hard checks; extra grants and
-unverified versions warn in binding views and run results (ADR-036).
+`agister status [<run-id>|--last] [--json]` reports active steps, wait reasons
+and deadlines, terminal outcomes, or lost and unknown runs. `agister runs list`
+lists runs newest first. Each live run keeps a disposable `<run-id>.heartbeat`
+in its run folder, updated every second with its process identity and pending
+log-write age. A pending write of ten seconds reports a stalled writer; a beat
+older than ten seconds reports unknown while its owner is still alive.
+Finishing fsyncs the terminal line, stops the ticker and deletes the heartbeat.

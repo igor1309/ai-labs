@@ -1,9 +1,9 @@
 ---
-date: 2026-10-12
+date: 2026-10-14
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Go — testing seams
-version: 0.0.4
+version: 0.0.5
 type: prompt
 ---
 
@@ -23,14 +23,14 @@ The seam is in the product
   (`func(time.Duration) (fired <-chan time.Time, stop func())`), whatever
   starts a process, the store, the listener. The component that waits or
   starts something takes it as a dependency.
-* Fake below the logic worth proving. Timeout, termination, parsing and
-  cleanup logic runs in every test when the fake is the process and the
-  clock under it. A fake above that logic is fast and no longer proves it.
+* Spy below the logic worth proving. Timeout, termination, parsing and
+  cleanup logic runs in every test when the spy is the process and the
+  clock under it. A spy above that logic is fast and no longer proves it.
 * Collaborators are given, never defaulted. A constructor that falls back
   to the wall clock or a real process when given none lets a test run on
   the real thing without saying so, and hides the state the claim depends
   on. A missing collaborator fails at construction; only the composition
-  root names the real ones. The same holds for a fake, spy or harness: it
+  root names the real ones. The same holds for a spy or harness: it
   fills in nothing the test did not give, no fixed identity and no real
   clock.
 * Background work says when it is done: a channel closed on completion, a
@@ -51,27 +51,27 @@ Time
   is a hang, which the test binary's `-timeout` reports with the test's
   name.
 * A timeout test is deterministic only when the work never ends by itself:
-  the fake blocks until it is ended, so the timer is its only way out.
+  the spy blocks until it is ended, so the timer is its only way out.
 * Nothing is decided by a real wait: no sleep that must outlast some
   logic, no "did not happen within N ms", no assertion on elapsed time.
 * `testing/synctest` does not replace the injected timer where the code
   does file, pipe or process I/O: its time moves only when every goroutine
   is blocked on the bubble's own channels.
 
-Fakes
+Spies
 
-* A fake of an external program is one function of the process it runs
+* A spy of an external program is one function of the process it runs
   as: its context, directory, arguments, environment, stdin, stdout,
   stderr and a hook to report a point it reached, returning its exit code.
   A thin `main` builds it as a binary for the contract tests; every other
   test runs the same function in a goroutine over a pipe, through the seam
   that starts processes. So the contract tests prove the protocol the
   in-process tests rely on.
-* Run in process, the fake takes its environment from the command, never
+* Run in process, the spy takes its environment from the command, never
   from the test process. A signal to its group cancels its context, so a
   "hangs" scenario blocks until it is ended instead of sleeping. It
   reports its points ("started", "blocked") on a channel the test holds.
-* A fake gives distinct answers for the states its test must tell apart.
+* A spy gives distinct answers for the states its test must tell apart.
 
 Real machinery only where it is the claim
 
@@ -80,11 +80,15 @@ Real machinery only where it is the claim
   thing: an adapter against a real process, git, the filesystem or the
   kernel. Its doc comment says so in a line `Contract test: <the real
   thing it is about>`. A test that needs a real repository only because
-  the code it drives does is not about git: fake it.
+  the code it drives does is not about git: use a spy.
 * Every other test starts no process, builds nothing, listens on no socket
   and starts no timer. A unit test drives one component with every
-  collaborator a spy, stub or fake. An integration test names what it
+  collaborator a spy. An integration test names what it
   integrates, and only that is real.
+* Each behaviour has one home: a case about a component's logic is its
+  unit test, a case about a real thing its adapter's contract test. Logic
+  proved only through a real filesystem tree or repository fails without
+  naming the rule that broke; a case proved at two levels is fixed twice.
 * A contract test's build is made once per test binary, not per test, and
   removed when the tests end (`TestMain`).
 * Keep the marker by a test over the test files' syntax: a test that uses

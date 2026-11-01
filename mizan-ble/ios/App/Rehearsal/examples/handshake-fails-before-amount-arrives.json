@@ -1,0 +1,10 @@
+{
+  "hosts": [
+    {
+      "drop": "beforeAmountArrives",
+      "delays": {
+        "amount": 2
+      }
+    }
+  ]
+}

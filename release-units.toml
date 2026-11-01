@@ -50,3 +50,10 @@ path = "reinix"
 metadata = "package.json"
 version = "0.0.6"
 docker = false
+
+[[units]]
+basename = "rexlab"
+path = "rexlab"
+metadata = "package.json"
+version = "0.10.83"
+docker = false

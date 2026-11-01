@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>RexLab · Hatch and grow prototype</title>
+  </head>
+  <body>
+    <main id="nursery"></main>
+    <script type="module">
+      import { startCareHatch } from "./careHatch.ts";
+      startCareHatch(document.getElementById("nursery"));
+    </script>
+  </body>
+</html>

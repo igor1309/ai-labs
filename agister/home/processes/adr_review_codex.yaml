@@ -1,6 +1,3 @@
 schema: agister.process/v1alpha1
-name: adr_review_codex
-
-type: process
-extends: process:review
+extends: review
 prompt: code-review-adr

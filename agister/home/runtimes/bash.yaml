@@ -1,0 +1,15 @@
+schema: agister.runtime/v1alpha1
+adapter: bash
+contract: bash/1
+# A script can do whatever its environment can (ADR-012, rule 4).
+grants:
+  - repository.read
+  - repository.search
+  - repository.diff
+  - repository.history.read
+  - repository.write
+  - repository.history.write
+  - process.execute
+  - network
+  - host.read
+  - host.write

@@ -112,3 +112,16 @@ func TestExecKillsWhatTheExitedLeaderLeftInItsGroup(t *testing.T) {
 		})
 	}
 }
+
+// Contract test: Exec's exit-observation capability on the running platform.
+func TestExecReportsWhetherExitObservationIsSupported(t *testing.T) {
+	t.Parallel()
+	err := (supervisor.Exec{}).CheckExitObservation()
+	if runtime.GOOS == "darwin" {
+		if err != nil {
+			t.Errorf("macOS exit observation: %v", err)
+		}
+	} else if !errors.Is(err, errors.ErrUnsupported) {
+		t.Errorf("exit observation on %s: %v, want unsupported", runtime.GOOS, err)
+	}
+}

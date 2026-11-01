@@ -4,10 +4,10 @@
 # Options: --sort=name (default) | --sort=total
 #
 # ROW PROJECTS (update the loop in main when adding a new project):
-#   agents, agister, agonara, cairana, claude-insights, clipdeck, corpus-scout,
+#   agents, agister, agonara, ali, audelin, cairana, claude-insights, clipdeck, corpus-scout,
 #   dashboard-sync-agent, debates, dev-skills, dragoman, foliotell, gokit, insights,
-#   loki, neris, nexum, nomos, noreta, notio, ntfy-sender, oracle, prompts,
-#   reading, reinix, sandbox, session-digest, tools, warder, web-scout
+#   loki, mizan-ble, neris, nexum, nomos, noreta, notio, ntfy-sender, oracle, prompts,
+#   reading, reinix, rexlab, sandbox, session-digest, tools, warder, web-scout
 
 set -euo pipefail
 
@@ -148,7 +148,7 @@ print_rows() {
 # ---------- drift detection ----------
 
 check_project_drift() {
-  local known=".claude .codex .git .github .lazyweb .wrangler agents agister agonara backlog cairana claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills docker docs dragoman foliotell gokit img insights loki migrate-to-skills neris nexum node_modules nomos noreta notio ntfy-sender oracle prompts reading reinix research sandbox scripts session-digest tests tools vendor warder web-scout worktrees _inbox"
+  local known=".claude .codex .git .github .lazyweb .wrangler agents agister agonara ali audelin backlog cairana claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills docker docs dragoman foliotell gokit img insights loki migrate-to-skills mizan-ble neris nexum node_modules nomos noreta notio ntfy-sender oracle prompts reading reinix research rexlab sandbox scripts session-digest tests tools vendor warder web-scout worktrees _inbox"
   # Entries in `known` that may legitimately be absent (fresh clone, worktree, no active state, etc.).
   # Dotfile entries are tooling/config and skipped wholesale; the rest are explicit.
   local optional="node_modules vendor worktrees _inbox"
@@ -188,7 +188,7 @@ printf "╚%s╝\n" "$(printf '%0.s═' $(seq 1 $inner))"
 printf "  Generated: %s   sort: %s\n" "$(date '+%Y-%m-%d %H:%M')" "$SORT_BY"
 
 # per-project rows
-for proj in agents agister agonara cairana claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills dragoman foliotell gokit insights loki neris nexum nomos noreta notio ntfy-sender oracle prompts reading reinix sandbox session-digest tools warder web-scout; do
+for proj in agents agister agonara ali audelin cairana claude-insights clipdeck corpus-scout dashboard-sync-agent debates dev-skills dragoman foliotell gokit insights loki mizan-ble neris nexum nomos noreta notio ntfy-sender oracle prompts reading reinix rexlab sandbox session-digest tools warder web-scout; do
   [[ -d "$proj" ]] || continue
   read c t x < <(count_project "$proj")
   emit_row "$proj" "$c" "$t" "$x"

@@ -1,0 +1,5 @@
+<trace-query-result><node><schema name="time-profile"/>
+<row><sample-time id="t1">0</sample-time><thread id="main" fmt="Main Thread 1"/><weight id="w">1000000</weight><backtrace id="b"><frame id="f" name="leaf"><binary id="app" name="AudelinRehearsal"/></frame><frame name="caller"><binary ref="app"/></frame><frame name="caller"><binary ref="app"/></frame><frame name="AudelinRehearsal_main"><binary ref="app"/></frame></backtrace></row>
+<row><sample-time>1000000</sample-time><thread id="worker" fmt="Worker"/><weight>3000000</weight><backtrace><frame name="system"><binary name="libsystem"/></frame><frame name="caller"><binary ref="app"/></frame></backtrace></row>
+<row><sample-time>2000000</sample-time><thread ref="worker"/><weight ref="w"/><backtrace><frame name="oldOnly"><binary ref="app"/></frame></backtrace></row>
+</node></trace-query-result>

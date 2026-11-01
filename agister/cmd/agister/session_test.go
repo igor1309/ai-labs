@@ -1,122 +1,277 @@
 package main
 
 import (
-	"path/filepath"
-	"regexp"
-	"strings"
+	"context"
+	"maps"
+	"slices"
 	"testing"
 
-	"github.com/igor1309/ai-labs/agister/internal/cli"
+	"github.com/igor1309/ai-labs/agister/core/call"
+	"github.com/igor1309/ai-labs/agister/core/inputs"
+	"github.com/igor1309/ai-labs/agister/core/workflow"
+	"github.com/igor1309/ai-labs/agister/runstore"
+	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
+	"github.com/igor1309/ai-labs/gokit/clocktest"
 )
 
-// A process's session (ADR-030 rule 3), on real settings directories:
-// Agister's home and a repository's .agister. No agent holds one (rule 1).
+// talkWorkflow is the workflow "talk" of session.feature: the step
+// "first", then "second", continuing "first"'s session, each "ask" on
+// "claude-opus" given q; then each of more.
+func talkWorkflow(more ...string) string {
+	talk := `schema: agister.workflow/v1alpha1
+params:
+  q: {}
+steps:
+  - {name: first, process: ask, agent: claude-opus, inputs: {q: {from: params.q}}}
+  - {name: second, process: ask, agent: claude-opus, session: {from: steps.first.session}, inputs: {q: {from: params.q}}}
+`
+	for _, step := range more {
+		talk += step + "\n"
+	}
+	return talk
+}
 
-// A process says whether its runs are continued, whatever the agent its
-// workflow binds it to. Saying nothing it is fresh-only, and its run is
-// not continued; resumable, the run is continued, in the session it
-// reported. A layer sets the field alone: a repository's fresh-only
-// replaces home's, and refuses the continuation on every agent.
-func TestAProcessThatSetsSessionSaysWhetherItsRunsAreContinued(t *testing.T) {
-	t.Parallel()
-	home, repo := setup(t, "approve")
-	onReviewer := bound(t, home, "ask", "reviewer")
-	runs := &newRuns{home: home}
-	ask := func(workflow string, more ...string) result {
-		return agister(t, home, repo, append([]string{"run", workflow, "--quiet", "--param", "question=q", "--timeout", "1m"}, more...)...)
+// newSessionFixture is the run fixture of session.feature: the settings
+// of record.feature, home's prompt "continuation" "c", and the workflow
+// talk; claude-code completing, its session "s1", the turn of no session,
+// "first"'s, answered after first.
+func newSessionFixture(t *testing.T, talk string, first func()) *runFixture {
+	t.Helper()
+	f := newRecordFixture(t, modelSettings(t, map[string]string{
+		"/u/.agister/prompts/continuation.md": "c",
+		"/r/.agister/workflows/talk.yaml":     talk,
+	}), nil)
+	reply := claudeReply(claudecode.Reply{Output: []byte(`{"ok":true}`), Session: "s1"})
+	f.runtimes.claude.answer = func(ctx context.Context, turn claudecode.Turn) (claudecode.Result, error) {
+		if turn.Session == "" && first != nil {
+			first()
+		}
+		return reply(ctx, turn)
 	}
-	// The example ask is resumable; here the process says nothing.
-	path := filepath.Join(home, "processes", "ask.yaml")
-	resumable := read(t, path)
-	silent := strings.Replace(resumable, "session: resumable\n", "", 1)
-	if silent == resumable {
-		t.Fatalf("the example ask does not set session: resumable:\n%s", resumable)
-	}
-	write(t, path, silent)
-	if r := ask(onReviewer); r.code != cli.ExitCompleted {
-		t.Fatalf("run: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	first := runs.one(t)
-	id := filepath.Base(first.dir)
-	session := func(r run) any {
-		result, _ := r.record["result"].(map[string]any)
-		session, _ := result["session"].(map[string]any)
-		return session["provider_session_id"]
-	}
-	if profile, _ := first.record["profile"].(map[string]any); profile["session"] != "fresh-only" {
-		t.Fatalf("a process that sets no session ran as %v", first.record["profile"])
-	}
+	f.validator = &validatorSpy{}
+	return f
+}
 
-	if r := ask(onReviewer, "--continue", id); r.code != cli.ExitRefused || !strings.Contains(r.stderr, "process ask is fresh-only; it cannot continue run "+id) {
-		t.Fatalf("continued a process that sets no session: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	runs.take(t)
-
-	write(t, path, resumable)
-	if r := agister(t, home, repo, "check"); r.code != 0 {
-		t.Fatalf("check: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	if r := ask(onReviewer, "--continue", id); r.code != cli.ExitCompleted {
-		t.Fatalf("a resumable process was not continued: %d\n%s%s", r.code, r.stdout, r.stderr)
-	}
-	continued := runs.one(t)
-	profile, _ := continued.record["profile"].(map[string]any)
-	if session(first) == nil || session(continued) != session(first) || !strings.Contains(strings.Join(continued.argv(), " "), "--resume "+session(first).(string)) ||
-		continued.record["agent"] != "reviewer" || profile["session"] != "resumable" {
-		t.Fatalf("the continuation ran in session %v of %v, as %v, by %v", session(continued), session(first), continued.record["profile"], continued.argv())
-	}
-
-	// The repository's layer sets the field, and nothing else.
-	layer := filepath.Join(repo, ".agister", "processes", "ask.yaml")
-	write(t, layer, "session: fresh-only\n")
-	for _, workflow := range []string{onReviewer, "ask_assistant"} {
-		if r := ask(workflow, "--continue", id); r.code != cli.ExitRefused || !strings.Contains(r.stderr, "process ask is fresh-only; it cannot continue run "+id) {
-			t.Fatalf("a fresh-only process continued by %s: %d\n%s%s", workflow, r.code, r.stdout, r.stderr)
+// continuesOf is the id of the call each recorded call continues, "" for
+// none, by its step.
+func continuesOf(calls []runstore.Call) map[string]string {
+	continues := map[string]string{}
+	for _, c := range calls {
+		continues[c.Step] = ""
+		if c.Continues != nil {
+			continues[c.Step] = *c.Continues
 		}
 	}
-	// process show names the layer that gave the field.
-	if r := agister(t, home, repo, "process", "show", "ask"); r.code != 0 || !regexp.MustCompile(`(?m)^ +session +repository$`).MatchString(r.stdout) {
-		t.Fatalf("process show: %d\n%s%s", r.code, r.stdout, r.stderr)
+	return continues
+}
+
+// session.feature, "A step resumes the session of the step it names".
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestAStepResumesTheSessionOfTheStepItNames(t *testing.T) {
+	t.Parallel()
+	f := newSessionFixture(t, talkWorkflow(), nil)
+	got := f.run(t, "/r", "run", "talk", "--param", "q=why")
+	if got.stderr != "" || got.code != 0 {
+		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
+	}
+	ran := f.runtimes.claude.ran()
+	continued := "## q\n\nwhy\n\n## continuation\n\nc\n\n## prompt\n\np\n\n## g\n\nrules"
+	if len(ran) != 2 || ran[0].Session != "" || ran[0].Message != askMessage || ran[1].Session != "s1" || ran[1].Message != continued {
+		t.Fatalf("ran %+v; want first of no session, then second of s1, its message %q", ran, continued)
+	}
+	want := map[string]string{"first": "", "second": recordID + "/first"}
+	if got := continuesOf(f.store.last(t).Calls); !maps.Equal(got, want) {
+		t.Errorf("the record's calls continue %v, want %v", got, want)
 	}
 }
 
-// A fresh-only process whose verification repairs is a problem of the
-// process, which check reports and which refuses its call, whether the
-// process sets fresh-only or says nothing; resumable, it has none on any
-// agent. The cases of a fresh-only agent are gone with the agent's session
-// (ADR-030 rule 1).
-func TestCheckReportsAFreshOnlyProcessThatRepairs(t *testing.T) {
+// session.feature, "The session's latest call is the last that went on in
+// it".
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestTheSessionsLatestCallIsTheLastThatWentOnInIt(t *testing.T) {
 	t.Parallel()
-	home, repo := setup(t, "approve")
-	bound(t, home, "implement", "reviewer")
-	path := filepath.Join(home, "processes", "implement.yaml")
-	resumable := read(t, path)
-	silent := strings.Replace(resumable, "session: resumable\n", "", 1)
-	if silent == resumable {
-		t.Fatalf("the example implement does not set session: resumable:\n%s", resumable)
+	f := newSessionFixture(t, talkWorkflow(
+		"  - {name: third, process: ask, agent: claude-opus, session: {from: steps.first.session}, inputs: {q: {from: params.q}}}"), nil)
+	got := f.run(t, "/r", "run", "talk", "--param", "q=why")
+	if got.stderr != "" || got.code != 0 {
+		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
 	}
-	// Resumable, it repairs on either agent.
-	if r := agister(t, home, repo, "check"); r.code != 0 {
-		t.Fatalf("check of the resumable process: %d\n%s%s", r.code, r.stdout, r.stderr)
+	if sessions := sessionsRan(f); !slices.Equal(sessions, []string{"", "s1", "s1"}) {
+		t.Errorf("ran turns of the sessions %q, want none, then s1 twice", sessions)
 	}
+	want := map[string]string{"first": "", "second": recordID + "/first", "third": recordID + "/second"}
+	if got := continuesOf(f.store.last(t).Calls); !maps.Equal(got, want) {
+		t.Errorf("the record's calls continue %v, want %v", got, want)
+	}
+}
 
-	// implement names verify:repo, which repairs.
-	const problem = "process implement: verify.max_attempts 3 repairs in the call's session, but process implement is fresh-only"
-	write(t, filepath.Join(repo, "brief.md"), "Do it.\n")
-	for _, c := range []struct{ name, text string }{
-		{"a process that sets fresh-only", silent + "session: fresh-only\n"},
-		{"a process that sets no session", silent},
-	} {
-		write(t, path, c.text)
-		r := agister(t, home, repo, "check")
-		if r.code != cli.ExitUsage || !strings.Contains(r.stderr, problem+"\n") || strings.Contains(r.stderr, "stops every command") {
-			t.Fatalf("check of %s: %d, want %q\n%s%s", c.name, r.code, problem, r.stdout, r.stderr)
+// session.feature, "The worktree is checked against what the latest call
+// left": a step continuing a session is not asked a clean worktree.
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestTheWorktreeIsCheckedAgainstWhatTheLatestCallLeft(t *testing.T) {
+	t.Parallel()
+	var f *runFixture
+	f = newSessionFixture(t, talkWorkflow(), func() { f.holding.write("t2") })
+	f.settings["/r/.agister/processes/ask.yaml"] = askProcess + "workspace:\n  clean: true\n"
+	got := f.run(t, "/r", "run", "talk", "--param", "q=why")
+	if got.stderr != "" || got.code != 0 {
+		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
+	}
+	if sessions := sessionsRan(f); !slices.Equal(sessions, []string{"", "s1"}) {
+		t.Errorf("ran turns of the sessions %q, want none, then s1", sessions)
+	}
+}
+
+// session.feature, "A worktree changed since the latest call refuses the
+// step".
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestAWorktreeChangedSinceTheLatestCallRefusesTheStep(t *testing.T) {
+	t.Parallel()
+	f := newSessionFixture(t, talkWorkflow(), nil)
+	f.holding.contents = []string{"t1", "t2"}
+	got := f.run(t, "/r", "run", "talk", "--param", "q=why")
+	p := modelPrintedOf(t, got)
+	const why = "the worktree is not as the session's latest call left it"
+	if got.code != 1 || p.Status != "failed" || p.Class == nil || *p.Class != "refused" || p.Reason == nil || *p.Reason != why {
+		t.Errorf("printed %+v, exit %d; want failed, refused, %q, and 1", p, got.code, why)
+	}
+	if sessions := sessionsRan(f); !slices.Equal(sessions, []string{""}) {
+		t.Errorf("ran turns of the sessions %q, want first's alone", sessions)
+	}
+}
+
+// session.feature, "A session's steps are not taken by a reuse".
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestASessionsStepsAreNotTakenByAReuse(t *testing.T) {
+	t.Parallel()
+	f := newSessionFixture(t, talkWorkflow(), nil)
+	kept := func(step string) runstore.Call {
+		call := keptCall("R1/"+step, "t1", "s1")
+		call.Definitions = askDefinitions(f.settings, "claude-opus")
+		if step == "second" {
+			call.Definitions = append(call.Definitions[:3:3], append([]runstore.Definition{definitionAt(f.settings, "prompt", "continuation", "home", "/u/.agister/prompts/continuation.md")}, call.Definitions[3:]...)...)
 		}
-		for _, workflow := range []string{"implement_assistant", "implement_reviewer"} {
-			r = agister(t, home, repo, "run", workflow, "--quiet", "--param", "brief=brief.md", "--timeout", "1m")
-			if r.code != cli.ExitRefused || !strings.Contains(r.stderr, strings.TrimPrefix(problem, "process implement: ")) {
-				t.Fatalf("run %s of %s: %d\n%s%s", workflow, c.name, r.code, r.stdout, r.stderr)
-			}
+		call.Step, call.Inputs = step, []runstore.Input{{Name: "q", Value: "why", Identity: identity("why")}}
+		return call
+	}
+	f.store.kept = map[string]runstore.Record{"R1": {Schema: runstore.Schema, ID: "R1", Status: "completed",
+		Request: runstore.Request{Workflow: "talk", Params: map[string]string{"q": "why"}, Dir: "/r"},
+		Calls:   []runstore.Call{kept("first"), kept("second")}}}
+	got := f.run(t, "/r", "run", "talk", "--param", "q=why", "--reuse", "R1")
+	if got.stderr != "" || got.code != 0 {
+		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
+	}
+	if sessions := sessionsRan(f); !slices.Equal(sessions, []string{"", "s1"}) {
+		t.Errorf("ran turns of the sessions %q, want none, then s1", sessions)
+	}
+	calls := f.store.last(t).Calls
+	for _, c := range calls {
+		if c.Reuses != nil {
+			t.Errorf("the record's call %q reuses %q, want made", c.ID, *c.Reuses)
 		}
+	}
+	want := map[string]string{"first": "", "second": recordID + "/first"}
+	if got := continuesOf(calls); !maps.Equal(got, want) {
+		t.Errorf("the record's calls continue %v, want %v", got, want)
+	}
+}
+
+// session.feature, "A run whose prompt "continuation" does not resolve is
+// refused"; a workflow none of whose steps continues a session runs
+// without it.
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestARunWhosePromptContinuationDoesNotResolveIsRefused(t *testing.T) {
+	t.Parallel()
+	t.Run("a step continuing a session", func(t *testing.T) {
+		t.Parallel()
+		f := newSessionFixture(t, talkWorkflow(), nil)
+		f.runtimes.claude.answer = nil
+		delete(f.settings, "/u/.agister/prompts/continuation.md")
+		got := f.run(t, "/r", "run", "talk", "--param", "q=why")
+		want := ran{stderr: "agister: the run is refused, and nothing runs:\n  " +
+			`the prompt "continuation" does not resolve: no layer holds the prompt "continuation"` + "\n", code: 1}
+		if got != want {
+			t.Errorf("ran %+v, want %+v", got, want)
+		}
+		if _, records, events := f.store.given(); len(records) > 0 || len(events) > 0 {
+			t.Errorf("runstore was given the records %+v and the events %+v, want nothing", records, events)
+		}
+	})
+	t.Run("no step continuing a session", func(t *testing.T) {
+		t.Parallel()
+		f := newSessionFixture(t, `schema: agister.workflow/v1alpha1
+params:
+  q: {}
+steps:
+  - {name: first, process: ask, agent: claude-opus, inputs: {q: {from: params.q}}}
+`, nil)
+		delete(f.settings, "/u/.agister/prompts/continuation.md")
+		if got := f.run(t, "/r", "run", "talk", "--param", "q=why"); got.stderr != "" || got.code != 0 {
+			t.Errorf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
+		}
+	})
+}
+
+// A step's call given a session no call of the run went on in is refused,
+// not admitted.
+func TestAStepGivenASessionNoCallWentOnInIsRefused(t *testing.T) {
+	t.Parallel()
+	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	admits := &admissionSpy{}
+	steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": &turnSpy{result: call.Result{Status: call.Completed}}},
+		clocktest.NewClock(runStart), map[string]plannedCall{"b": sayCall("x")}, &callsSpy{}, noDailyBudget)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := steps.Call(context.Background(), "b", "b", map[string]string{"what": "hi"}, "s9", func(workflow.Report) {})
+	if got.Class != workflow.Refused || got.Reason != `no call of the run went on in the session "s9"` || len(admits.asked()) > 0 {
+		t.Errorf("ended %q, %q, admission asked %+v; want refused, no call of the run went on in the session \"s9\", none asked",
+			got.Class, got.Reason, admits.asked())
+	}
+}
+
+// A fallback session belongs to its answering agent. It cannot be sent
+// to the primary's runtime by a later session binding.
+func TestAStepCannotResumeItsPrimarysFallbackSession(t *testing.T) {
+	t.Parallel()
+	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	primary := &turnSpy{result: call.Result{Status: call.Failed, Class: call.Capacity, Session: "primary"}}
+	for range 5 {
+		primary.reports = append(primary.reports, call.Report{Capacity: &call.CapacityTurn{}})
+	}
+	fallback := &turnSpy{result: call.Result{Status: call.Completed, Session: "fallback", SessionCost: usd(2)}}
+	first := sayCall("work")
+	first.agent = "primary-agent"
+	second := first
+	second.contract, second.agent = "fallback/1", "fallback-agent"
+	first.fallback = &second
+	admits := &admissionSpy{}
+	steps, err := newStepCalls(resolver, admits, map[string]turnCaller{"bash/1": primary, "fallback/1": fallback},
+		clocktest.NewClock(runStart), map[string]plannedCall{"a": first, "b": first}, &callsSpy{}, noDailyBudget)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := steps.Call(context.Background(), "a", "a", map[string]string{"what": "x"}, "", func(workflow.Report) {})
+	if got.Status != workflow.Completed || got.Session != "fallback" {
+		t.Fatalf("first call %+v", got)
+	}
+	got = steps.Call(context.Background(), "b", "b", map[string]string{"what": "x"}, got.Session, func(workflow.Report) {})
+	if got.Class != workflow.Refused || got.Reason != `the session "fallback" ran on "fallback-agent", not "primary-agent"` || len(primary.steps) != 1 || len(admits.asked()) != 1 {
+		t.Errorf("second call %+v, primary turns %d, admissions %d; want refused before runtime", got, len(primary.steps), len(admits.asked()))
+	}
+	if latest, ok := steps.sessions.of("primary"); !ok || latest.agent != "primary-agent" || latest.cost != nil {
+		t.Errorf("primary session %+v, %v; want primary agent and its unknown cost", latest, ok)
 	}
 }

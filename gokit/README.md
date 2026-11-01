@@ -18,6 +18,14 @@ Reusable Go code, standard library only, module
   timer started.
 - `testdiscipline`: checks a module's tests: real machinery only with a
   `Contract test:` line, and `t.Parallel()` first or a `Serial:` reason.
+- `testreport` (and `cmd/testreport`): turns `go test -json` into a report
+  of what ran: tests and subtests per package, passed, failed and skipped,
+  each skip with its reason and each failure in full.
+- `tree`: a value tree whose every node keeps its origin, decoded from
+  YAML or TOML bytes, and merged one tree over another. It is a module of
+  its own, `github.com/igor1309/ai-labs/gokit/tree`, so that gokit keeps
+  to the standard library: tree requires its parsers, `gopkg.in/yaml.v3`
+  and `github.com/BurntSushi/toml`, and gokit by a replace.
 
 ## Use from another module
 
@@ -41,7 +49,14 @@ replace github.com/igor1309/ai-labs/gokit => ../gokit
 
 ## Test
 
-gokit's check is `gokit/scripts/test.sh`: format, vet and race tests.
+gokit's check is `gokit/scripts/test.sh`: format, vet and race tests, each
+saying what it ran; the tests are reported by `testreport`. It runs the
+same check in `gokit/tree`, its stages headed `== gokit/tree`. Its own test
+(`scripts/test_test.go`) runs a copy of it with spies for `go` and `gofmt`:
+it proves the check fails when either module's format, vet, tests or their
+report fail, that each stage's heading comes before that stage's own
+output, that gofmt is given each module's own files, and that each
+module's test events reach its report.
 
 ```bash
 gokit/scripts/test.sh

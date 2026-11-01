@@ -1,28 +1,23 @@
 schema: agister.process/v1alpha1
-name: advisor
-
-type: process
 prompt: advisor
+instruction: >-
+  Answer the question given as input question, following the prompt given
+  as input prompt. The question file holds who asked, the question
+  and its options. Your working directory is a read-only checkout of the
+  revision: read the recorded decisions there yourself.
 
-input:
-  instruction: >-
-    Answer the question given as input question, following the prompt given
-    as input prompt. The question file holds who asked, the question
-    and its options. Your working directory is a read-only checkout of the
-    revision: read the recorded decisions there yourself.
-  params:
-    question: {}
-    revision: {default: HEAD}
-  values:
-    revision: {source: git.revision, rev: "${param.revision}"}
-    question: {source: file, path: "${param.question}"}
+params:
+  question: {}
+  revision: {default: HEAD}
+inputs:
+  revision: {source: git.revision, rev: {from: params.revision}}
+  question: {source: file, path: {from: params.question}}
 
 workspace:
   access: read-only
-  scope: candidate
-  revision: revision
+  revision: {from: inputs.revision}
 
-tools:
+permissions:
   require:
     - repository.read
   allow:
@@ -33,22 +28,12 @@ tools:
     - process.execute
     - host.read
 
-timeout: 20m
-retry:
-  max_attempts: 1
-
-stale:
-  no_event: 10m
-  tool_command: 8m
-  repeated_tool_calls: 5
-
-isolation:
-  deny:
-    - repository.write
-    - repository.history.write
-    - network
+limits:
+  time: 20m
+  stale:
+    no_event: 10m
+    tool_command: 8m
+    repeated_tool_calls: 5
 
 output:
-  format: json
   schema: advice
-  require_valid: true

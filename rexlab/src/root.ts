@@ -1,0 +1,403 @@
+import { coloringWorkshopRoot } from "./coloringWorkshopRoot.ts";
+import { jawMouth } from "./jawPresentation.ts";
+import { readJaws, jawPictures } from "./jawContent.ts";
+import { localJawAudio } from "./localJawAudio.ts";
+import { jawSounds, jawVoice } from "./jawSounds.ts";
+import jawRecords from "./data/jaws.json";
+import welcomeJaw from "./assets/jaws/tyrannosaurus.webp";
+import welcomeGummy from "./assets/dinos/tyrannosaurus/gummy.webp";
+import type { AppProps } from "./App.tsx";
+import digFile from "./data/dig.json";
+import records from "./data/dinosaurs.json";
+import skeletonPlaces from "./data/skeletons.json";
+import { decodedPictures, type DecodingImage } from "./decodedPictures.ts";
+import { readDig, type DigFile } from "./dig/index.ts";
+import { documentVisibility } from "./documentVisibility.ts";
+import { SLIDE_DISTANCE } from "./dinosaurSlide.ts";
+import { bodyPictures, skeletonPictures, wholeSkeletons } from "./dinosaurPictures.ts";
+import { readCatalogue, readDinosaurs, readPals, readPictureDinosaurs, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
+import { HOME_GAMES } from "./HomePage.tsx";
+import { itemPictures } from "./itemPictures.ts";
+import { localAgeLevel } from "./localAgeLevel.ts";
+import { localLanguage } from "./localLanguage.ts";
+import { localWhoseJawProgress, localLabyrinthProgress, localCareProgress, localDigProgress, localFeatured, localPairsProgress, localPicturePuzzleChoice, localPicturePuzzleProgress, localProgress, localSkeletonProgress, localSortingProgress } from "./localProgress.ts";
+import { localTheme } from "./localTheme.ts";
+import { mediaAppearance } from "./mediaAppearance.ts";
+import { mediaReducedMotion } from "./mediaMotion.ts";
+import { mediaViewport } from "./mediaViewport.ts";
+import { pictureStore } from "./Picture.tsx";
+import { skeletonSounds } from "./skeletonSounds.ts";
+import { tapFilter, type TapInput } from "./tapFilter.ts";
+import type { InputArbitration } from "./inputArbitration.ts";
+import { TURN_PART, type Box, type PageAnimation, type TurnFrame } from "./turnMotion.ts";
+
+// Every body picture, loaded through Vite so its URL carries a content
+// hash. Never inlined, so a picture is cached as a file of its own.
+const BODY_PICTURES = import.meta.glob<string>("./assets/dinos/*/body.webp", { eager: true, query: "?url&no-inline", import: "default" });
+
+// Every care picture, loaded the same way.
+const CARE_PICTURES = import.meta.glob<string>("./assets/care/*.webp", { eager: true, query: "?url&no-inline", import: "default" });
+
+// Every skeleton picture, the whole skeleton and each of its pieces,
+// loaded the same way.
+const SKELETON_PICTURES = import.meta.glob<string>("./assets/skeletons/*/*.webp", { eager: true, query: "?url&no-inline", import: "default" });
+
+// The jaws and toothless dinosaurs used throughout a round.
+const JAW_PICTURES = import.meta.glob<string>("./assets/jaws/*.webp", { eager: true, query: "?url&no-inline", import: "default" });
+const GUMMY_PICTURES = import.meta.glob<string>("./assets/dinos/*/gummy.webp", { eager: true, query: "?url&no-inline", import: "default" });
+
+// The pictures care shows: each item, and the empty bowl of hunger.
+const CARE_PICTURE_NAMES = ["plants", "meat", "water", "bath", "nest", "bowl"];
+
+// What the app takes from the browser it runs in.
+export type Browser = {
+  localStorage: Pick<Storage, "getItem" | "setItem">;
+  matchMedia(query: string): MediaQueryList;
+  getComputedStyle(element: Element): Pick<CSSStyleDeclaration, "getPropertyValue">;
+  innerWidth: number;
+  addEventListener(type: "resize", listener: () => void): void;
+  removeEventListener(type: "resize", listener: () => void): void;
+  screen: { orientation?: Pick<ScreenOrientation, "type" | "addEventListener" | "removeEventListener"> };
+  navigator: { language: string };
+  document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener" | "querySelectorAll" | "documentElement"> &
+    Partial<Pick<Document, "startViewTransition" | "fonts">> & {
+      getElementById(id: string): Pick<Element, "setAttribute"> | null;
+    };
+  Image: new () => DecodingImage;
+  setTimeout(fire: () => void, ms: number): number;
+  clearTimeout(id: number): void;
+  requestAnimationFrame(fire: () => void): number;
+  cancelAnimationFrame(id: number): void;
+  Date: { now(): number };
+  performance: { now(): number };
+};
+
+// A screen glides to its other layout over app.css's --motion-standard,
+// easing out. Under reduced motion it fades by the root view transition,
+// timed by the stylesheet.
+export const TURN_TIMING = { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)" };
+
+// A colour that paints nothing, as a browser gives it computed.
+const CLEAR = /^(transparent|rgba\(0, 0, 0, 0\))$/;
+
+// Whether `style` paints a frame: a background, a border, an outline or a
+// shadow.
+function paintsFrame(style: CSSStyleDeclaration): boolean {
+  const drawn = (width: string, line: string) => (Number.parseFloat(style.getPropertyValue(width)) || 0) > 0 && style.getPropertyValue(line) !== "none";
+  return (
+    style.backgroundImage !== "none" ||
+    !CLEAR.test(style.backgroundColor) ||
+    style.boxShadow !== "none" ||
+    drawn("outline-width", "outline-style") ||
+    ["top", "right", "bottom", "left"].some((side) => drawn(`border-${side}-width`, `border-${side}-style`))
+  );
+}
+
+// Draws a part's frame at `box`, under it: a copy of the part alone, none
+// of its content, its classes and attributes giving it the part's
+// background, border, radius and shadow, which the stylesheet takes off
+// the part meanwhile. The part's parent holds the copy where it stands,
+// as its scroll moves it, and under each part it holds.
+export function turnFrame(element: Element, box: Box): TurnFrame | undefined {
+  const view = element.ownerDocument.defaultView;
+  const parent = element.parentElement;
+  if (!view || !parent || !paintsFrame(view.getComputedStyle(element))) return undefined;
+  const copy = element.cloneNode(false) as HTMLElement;
+  copy.removeAttribute(TURN_PART);
+  copy.removeAttribute("id");
+  copy.setAttribute("data-turn-frame", "");
+  copy.setAttribute("aria-hidden", "true");
+  copy.setAttribute("inert", "");
+  Object.assign(copy.style, {
+    position: "absolute",
+    left: "0px",
+    top: "0px",
+    zIndex: "-1",
+    margin: "0px",
+    boxSizing: "border-box",
+    width: `${box.width}px`,
+    height: `${box.height}px`,
+    minWidth: "0px",
+    minHeight: "0px",
+    maxWidth: "none",
+    maxHeight: "none",
+    animation: "none",
+    transition: "none",
+    pointerEvents: "none"
+  });
+  parent.setAttribute("data-turn-frames", "");
+  element.before(copy);
+  // The copy stands at its parent's origin, wherever the part is.
+  const origin = copy.getBoundingClientRect();
+  copy.style.left = `${box.left - origin.left}px`;
+  copy.style.top = `${box.top - origin.top}px`;
+  element.setAttribute("data-turn-framed", "");
+  return {
+    element: copy,
+    remove: () => {
+      copy.remove();
+      element.removeAttribute("data-turn-framed");
+      if (![...parent.children].some((child) => child.hasAttribute("data-turn-frame"))) parent.removeAttribute("data-turn-frames");
+    }
+  };
+}
+
+// Widens what a part shows of what it holds, `right` and `bottom` pixels
+// past its box: as much padding on those sides, and as much margin off,
+// so neither its content nor anything around it moves.
+export function extendPart(element: Element, right: number, bottom: number): () => void {
+  const view = element.ownerDocument.defaultView;
+  if (!view || !(element instanceof HTMLElement)) return () => {};
+  const style = view.getComputedStyle(element);
+  const px = (property: string) => Number.parseFloat(style.getPropertyValue(property)) || 0;
+  const sides = { paddingRight: element.style.paddingRight, paddingBottom: element.style.paddingBottom, marginRight: element.style.marginRight, marginBottom: element.style.marginBottom };
+  Object.assign(element.style, {
+    paddingRight: `${px("padding-right") + right}px`,
+    paddingBottom: `${px("padding-bottom") + bottom}px`,
+    marginRight: `${px("margin-right") - right}px`,
+    marginBottom: `${px("margin-bottom") - bottom}px`
+  });
+  return () => Object.assign(element.style, sides);
+}
+
+// The animations the page runs on `element` itself, its entrance or a
+// transition, that are still running: one finished holds still. An
+// endless one has no end to finish at, and goes on.
+export function pageAnimations(element: Pick<Element, "getAnimations">): PageAnimation[] {
+  return element
+    .getAnimations()
+    .filter((animation) => animation.playState === "running")
+    .map((animation) => ({
+      finish: () => {
+        if (animation.effect?.getComputedTiming().endTime !== Infinity) animation.finish();
+      }
+    }));
+}
+
+// The opacity `element` itself is drawn at, its animations' included.
+export function drawnOpacity(element: Element): number {
+  const view = element.ownerDocument.defaultView;
+  return view ? Number.parseFloat(view.getComputedStyle(element).opacity) : 1;
+}
+
+// Each pointer event the double-tap filter reads, and the step of a touch
+// it is.
+const TOUCH_STEPS = { pointerdown: "press", pointermove: "move", pointerup: "release", pointercancel: "cancel" } as const;
+
+// Puts the double-tap filter before every handler of the app: it listens
+// on `target`, the window in a browser, as events go down, so what it
+// swallows reaches no handler. Each input is timed by its event's own
+// time, never by when it is handled. A click with no detail was made by a
+// key or assistive technology. Returns how to take the filter away.
+export function filterDoubleTaps(target: Pick<EventTarget, "addEventListener" | "removeEventListener">, filter = tapFilter()): () => void {
+  const listen = (type: string, input: (event: Event) => TapInput) => {
+    const listener = (event: Event) => {
+      if (filter(input(event))) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    target.addEventListener(type, listener, { capture: true });
+    return () => target.removeEventListener(type, listener, { capture: true });
+  };
+  const stops = [
+    ...Object.entries(TOUCH_STEPS).map(([type, kind]) =>
+      listen(type, (event) => {
+        const { pointerId, clientX, clientY, timeStamp } = event as PointerEvent;
+        return { kind, pointer: pointerId, x: clientX, y: clientY, time: timeStamp };
+      })
+    ),
+    listen("click", (event) => ({ kind: "tap", byKey: (event as MouseEvent).detail === 0 }))
+  ];
+  return () => stops.forEach((stop) => stop());
+}
+
+// Rejected contacts must reach neither the shared tap policy nor app handlers.
+// Register this once, before mounting screens, so capture order is stable.
+export function browserInput(target: Pick<EventTarget, "addEventListener" | "removeEventListener">, filter = tapFilter()) {
+  // Cancel native selection/menu actions, not the contacts that scroll,
+  // draw or activate controls. These events never enter the tap policy.
+  const nativeActions = ["contextmenu", "selectstart"];
+  const preventNativeAction = (event: Event) => event.preventDefault();
+  nativeActions.forEach(type => target.addEventListener(type, preventNativeAction, { capture: true }));
+  const guards = new Set<(event: Event) => void>();
+  const arbitrate: InputArbitration = guard => {
+    guards.add(guard);
+    return () => { guards.delete(guard); };
+  };
+  const reject = (event: Event) => {
+    for (const guard of guards) {
+      guard(event);
+      if (event.cancelBubble) break;
+    }
+  };
+  const events = ["pointerdown", "pointermove", "pointerup", "pointercancel", "click"];
+  events.forEach(type => target.addEventListener(type, reject, { capture: true }));
+  const stopFilter = filterDoubleTaps(target, filter);
+  return {
+    arbitrate,
+    stop() {
+      nativeActions.forEach(type => target.removeEventListener(type, preventNativeAction, { capture: true }));
+      stopFilter();
+      events.forEach(type => target.removeEventListener(type, reject, { capture: true }));
+      guards.clear();
+    }
+  };
+}
+
+// Names index.html's version footer, which stands outside the app.
+export function versionFooter(document: Browser["document"]): (label: string) => void {
+  const footer = document.getElementById("version");
+  if (!footer) {
+    throw new Error("index.html has no #version element");
+  }
+  return (label) => footer.setAttribute("aria-label", label);
+}
+
+// The app's collaborators in a browser. Progress, start counts and the
+// day's featured game, the chosen language, theme and age level outlive
+// the visit, so all of them are kept in local storage.
+export function appProps(browser: Browser): AppProps {
+  const storage = () => browser.localStorage;
+  const token = (name: string) => browser.getComputedStyle(browser.document.documentElement).getPropertyValue(name);
+  const scrollbarWidth = () => {
+    const clientWidth = Number((browser.document.documentElement as HTMLElement).clientWidth);
+    return clientWidth > 0 ? Math.max(0, browser.innerWidth - clientWidth) : 0;
+  };
+  const viewport = mediaViewport(
+    (query) => browser.matchMedia(query),
+    browser.screen.orientation,
+    browser,
+    () => browser.getComputedStyle(browser.document.documentElement),
+    scrollbarWidth
+  );
+  const appearance = mediaAppearance((query) => browser.matchMedia(query));
+  const visibility = documentVisibility(browser.document);
+  const dinosaurs = readDinosaurs(records);
+  const skeletons = readSkeletons(records, skeletonPlaces);
+  const drawn = wholeSkeletons(SKELETON_PICTURES);
+  const featured = localFeatured(storage, HOME_GAMES);
+  const bodyPicture = bodyPictures(BODY_PICTURES, dinosaurs.map(({ id }) => id));
+  return {
+    dinosaurs,
+    catalogue: readCatalogue(records),
+    bodyPicture,
+    whoseJaw: { audioStore: localJawAudio(storage), mouthFor: jawMouth, progress: localWhoseJawProgress(storage, jawRecords.map(({ id }) => id)), total: jawRecords.length, jawPicture: welcomeJaw, gummyPicture: welcomeGummy,
+      jaws: readJaws(jawRecords, records), jawFor: jawPictures(JAW_PICTURES, jawRecords.map(({ id }) => id), "jaw"),
+      gummyFor: jawPictures(GUMMY_PICTURES, jawRecords.map(({ id }) => id), "gummy"),
+      foodFor: itemPictures(CARE_PICTURES, ["meat", "plants"]),
+      sounds: jawSounds(() => typeof AudioContext === "undefined" ? undefined : new AudioContext()),
+      voice: jawVoice(typeof speechSynthesis === "undefined" ? undefined : speechSynthesis, (words) => new SpeechSynthesisUtterance(words)) },
+    picturePuzzle: {
+      dinosaurs: readPictureDinosaurs(records), bodyPicture, random: Math.random,
+      choiceStore: localPicturePuzzleChoice(storage), progressStore: localPicturePuzzleProgress(storage)
+    },
+    random: Math.random,
+    viewport,
+    portraitLayouts: { "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], "whoseJaw-result": ["tall", "tall-narrow"], coloring: ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] },
+    pictureMotion: {
+      now: () => browser.performance.now(),
+      duration: Number.parseFloat(token("--motion-screen")),
+      easing: token("--ease-out").trim(),
+      slide: {
+        duration: Number.parseFloat(token("--motion-standard")),
+        delay: Number.parseFloat(token("--motion-stagger")),
+        distance: SLIDE_DISTANCE * Number.parseFloat(token("--motion-amount"))
+      }
+    },
+    // A chip's parts as the browser lays them out, which change with no
+    // change of the window as the bundled font comes in for the system's.
+    chipWidths: {
+      width: (part) => part.getBoundingClientRect().width,
+      subscribe: (onChange) => {
+        browser.document.fonts?.addEventListener("loadingdone", onChange);
+        return () => browser.document.fonts?.removeEventListener("loadingdone", onChange);
+      }
+    },
+    // A browser with no view transitions changes the layout at once, and
+    // its fade has then ended.
+    layoutMotion: {
+      parts: browser.document,
+      measure: (element) => element.getBoundingClientRect(),
+      frame: turnFrame,
+      extend: extendPart,
+      animate: (element, keyframes, options) => element.animate(keyframes, options),
+      animations: pageAnimations,
+      opacity: drawnOpacity,
+      nextFrame: (fire) => {
+        const id = browser.requestAnimationFrame(fire);
+        return () => browser.cancelAnimationFrame(id);
+      },
+      startViewTransition: (update, finished) => {
+        if (!browser.document.startViewTransition) {
+          update();
+          finished();
+          return;
+        }
+        browser.document.startViewTransition(update).finished.then(finished, finished);
+      },
+      timing: TURN_TIMING
+    },
+    pageVisibility: { isHidden: visibility.hidden, subscribe: visibility.watch },
+    progress: localProgress(storage),
+    deviceLanguage: browser.navigator.language,
+    languageStore: localLanguage(storage),
+    nameVersion: versionFooter(browser.document),
+    appearance: { isDark: appearance.dark, subscribe: appearance.watch },
+    themeStore: localTheme(storage),
+    ageLevelStore: localAgeLevel(storage),
+    visitors: readVisitors(records),
+    careProgress: localCareProgress(storage),
+    sortables: readSortables(records),
+    sortingProgress: localSortingProgress(storage),
+    labyrinthProgress: localLabyrinthProgress(storage),
+    pals: readPals(records, drawn),
+    pairsProgress: localPairsProgress(storage),
+    itemPicture: itemPictures(CARE_PICTURES, CARE_PICTURE_NAMES),
+    skeletons,
+    skeletonPicture: skeletonPictures(SKELETON_PICTURES, {
+      ...Object.fromEntries([...drawn].map((id) => [id, ["skeleton"]])),
+      ...Object.fromEntries(skeletons.map(({ id, cuts }) => [id, ["skeleton", ...Object.values(cuts).flatMap((cut) => cut.map((piece) => piece.id))]]))
+    }),
+    skeletonProgress: localSkeletonProgress(storage),
+    skeletonSounds: skeletonSounds(),
+    digDinosaurs: readDig(
+      dinosaurs.map(({ id }) => id),
+      digFile as DigFile
+    ),
+    digProgress: localDigProgress(storage),
+    sandContext: (canvas) => canvas.getContext("2d"),
+    reducedMotion: mediaReducedMotion((query) => browser.matchMedia(query)),
+    now: () => new Date(browser.Date.now()),
+    featuredStore: featured,
+    startCounter: featured,
+    pictures: pictureStore(decodedPictures(() => new browser.Image())),
+    startTimer: (ms, fire) => {
+      const id = browser.setTimeout(fire, ms);
+      return () => browser.clearTimeout(id);
+    }
+  };
+}
+
+// Canvas paths are created only when coloring reads its collection or opens.
+export function browserColoring(browser: Pick<Window, "indexedDB" | "document" | "crypto">) {
+  let resources: ReturnType<typeof coloringWorkshopRoot> | undefined;
+  const get = () => resources ??= coloringWorkshopRoot({ open: (...args) => browser.indexedDB.open(...args) }, browser.document);
+  return {
+    source: {
+      list: async () => get().list(),
+      reset: async () => get().reset(),
+      open: (...args: Parameters<ReturnType<typeof coloringWorkshopRoot>["open"]>) => get().open(...args),
+      newWork: (...args: Parameters<ReturnType<typeof coloringWorkshopRoot>["newWork"]>) => get().newWork(...args)
+    },
+    get artworks() { return get().artworks; },
+    painterFor: (geometry: string) => get().painterFor(geometry),
+    identity: () => {
+      // getRandomValues also works on local HTTP previews opened from an iPad.
+      const bytes = browser.crypto.getRandomValues(new Uint8Array(16));
+      bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+      bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+      const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
+      return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+    }
+  };
+}

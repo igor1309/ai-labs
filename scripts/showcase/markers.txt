@@ -1,0 +1,8 @@
+# Case-insensitive literals. Issue ids are public, opaque references.
+agister
+multica
+/Users/
+_inbox
+ai-labs.worktrees
+.agister/
+ntfy

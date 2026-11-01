@@ -1,6 +1,6 @@
 # Agonara Skills
 
-Operator-facing skills for [Agonara](https://github.com/igor1309), packaged for a
+Operator-facing skills for [Agonara](https://github.com/igor1309/agonara), packaged for a
 "bring your own agent" (BYOA) workflow: point the agent you already use at an
 Agonara instance and load the skill folder for the job you are doing.
 

@@ -1,0 +1,78 @@
+name: RexLab Deploy
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to checkout."
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rexlab-deploy
+  cancel-in-progress: false
+
+jobs:
+  core:
+    uses: ./.github/workflows/rexlab-core.yml
+    with:
+      ref: ${{ inputs.ref || github.sha }}
+
+  deploy:
+    needs: [core]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install Wrangler dependencies
+        run: npm ci
+
+      - name: Install RexLab dependencies
+        working-directory: rexlab
+        run: npm ci
+
+      - name: Build
+        working-directory: rexlab
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        run: WRANGLER_LOG_PATH=.wrangler/logs npx wrangler pages deploy dist --project-name rexlab --branch trunk --cwd rexlab
+
+      - name: Verify production page version
+        working-directory: rexlab
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_REF_TYPE: ${{ github.ref_type }}
+          REXLAB_URL: https://rexlab.enoa.ai/
+        run: npm run smoke
+
+      - name: Notify deploy success
+        env:
+          CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+          CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
+        run: |
+          VERSION=$(node -p "require('./rexlab/package.json').version")
+          TEXT=$(printf "✅ rexlab v%s deployed\nhttps://rexlab.enoa.ai/ serves it" "$VERSION")
+          bash vendor/ci-shared/scripts/notify_telegram.sh "$CI_BOT_TOKEN" "$CI_CHAT_ID" "$TEXT"

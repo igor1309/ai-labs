@@ -13,3 +13,6 @@ func exited(int) error { return errors.ErrUnsupported }
 func zombieAlone() error { return nil }
 
 func others(int) (bool, error) { return false, errors.ErrUnsupported }
+
+// CheckExitObservation reports whether Exec can observe an exit before reaping.
+func (Exec) CheckExitObservation() error { return errors.ErrUnsupported }

@@ -1,19 +1,23 @@
 schema: agister.workflow/v1alpha1
-name: adr_review
+params:
+  base: {default: origin/trunk}
+  candidate: {default: HEAD}
+  goal: {}
+inputs:
+  base: {source: git.revision, rev: {from: params.base}}
+  candidate: {source: git.revision, rev: {from: params.candidate}}
+  goal: {source: file, path: {from: params.goal}}
 
-type: workflow
+steps:
+  - name: reviews
+    parallel:
+      max: 1
+      steps:
+        - {name: adr, process: adr_review_codex, agent: codex-sol-61, inputs: {base: {from: inputs.base}, candidate: {from: inputs.candidate}, goal: {from: inputs.goal}}}
+  - name: judge
+    process: review_judge
+    agent: claude-opus
+    inputs: {reviews: {from: steps.reviews.outputs}}
 
-input:
-  params:
-    base: {default: origin/trunk}
-    candidate: {default: HEAD}
-    goal: {}
-  values:
-    base: {source: git.revision, rev: "${param.base}"}
-    candidate: {source: git.revision, rev: "${param.candidate}"}
-    goal: {source: file, path: "${param.goal}"}
-
-fan_out:
-  - {node: adr, uses: process:adr_review_codex, agent: codex-sol-61}
-
-join: {node: judge, uses: process:review_judge, agent: claude-opus}
+outputs:
+  judgement: {from: steps.judge.outputs}

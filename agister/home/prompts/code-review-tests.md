@@ -1,9 +1,9 @@
 ---
-date: 2026-10-12
+date: 2026-10-14
 author: Igor Malyarov
 model: claude-opus-5-5
 name: Code review — tests
-version: 0.1.8
+version: 0.2.0
 type: prompt
 ---
 
@@ -62,7 +62,10 @@ Definition of done:
    behaviour too. Where it claims how an external tool behaves (a version
    a runtime is verified for), its test is a contract test against that
    tool; a comment or note recording a hand observation is no test. The
-   case is the value that could be wrong while every test stays green.
+   case is the value that could be wrong while every test stays green. A
+   finding names the class of inputs, states or variants the assertions
+   miss, uses its concrete case as a witness, and asks for a test of that
+   class.
 2. Proof rests on normal tests only: deterministic, cheap, rerunnable. Look
    for a test's claim that rests on mutation or revert checks (plants,
    mutation specs, reverting by hand), and for a behaviour no normal test
@@ -77,31 +80,40 @@ Definition of done:
    the case is what the record could say wrong while that test stays green.
 5. Look for an existing assertion weakened, removed or widened in the same
    change without a stated reason; the case is the product change the old
-   assertion caught and the new one lets pass.
+   assertion caught and the new one lets pass. The same holds for a check
+   loosened: a timeout raised, the race detector dropped, a test skipped or
+   left out of what CI runs; the case is the slowness, race or failure it
+   hides. A slow check is made cheaper, never loosened.
 6. A test is either a unit test or an integration test. A unit test drives one component with every collaborator a
-   spy, stub or fake. An integration test names what it integrates, and only
+   spy. An integration test names what it integrates, and only
    that is real: an adapter's test against git integrates git; a test of the
    composed application integrates its own components, so the external
-   things they reach (git, processes, network, time) are fakes unless one of
+   things they reach (git, processes, network, time) are spies unless one of
    them is the subject. Look for real machinery anywhere else: building
    binaries, starting processes, real network, real time, or a shared cache,
-   home or global state, where a port, spy, stub or injected seam would do.
+   home or global state, where a port, spy or injected seam would do.
    The case is the load, ordering or leftover state that flips the test, or
    the product change the machinery hides; name the seam with it.
    Machinery a shared harness or composition wires in by default (clock,
    timer, process starter, store) counts as the test's own: name the
-   default that should be the fake. Look for a test labelled as an
+   default that should be the spy. Look for a test labelled as an
    integration or contract test whose claim is not about the real thing it
    uses; the case is a change to that real thing the test would not see.
-7. Collaborators are given, never defaulted. A fake, spy or harness that
+7. Collaborators are given, never defaulted. A spy or harness that
    fills in a value or collaborator the test did not give (a fixed identity,
    a real clock when none is passed) can hide the very state the claim
    depends on; so can product code that falls back to a real collaborator
    when none is given. Look for each; the case is the state the default
    hides and the product change the test then misses. The fix: the test or
    constructor passes it explicitly, and a missing one fails at
-   construction. A fake gives distinct answers for the states its test must
+   construction. A spy gives distinct answers for the states its test must
    tell apart; the case is two such states it answers alike.
+   A spy is asserted both ways. The calls it records are asserted: the
+   arguments each was made with, or only that it was made where it takes
+   none. Each value it gives is asserted to reach the outcome. Look for a
+   spy whose record no assertion reads, or whose answer no assertion
+   depends on; the case is the wrong call, or the answer dropped, that the
+   product could make while every test stays green.
 8. Look for the wall clock: any sleep, poll or real timer in a test. The
    case is the load or ordering that flips it, or the product change it
    lets pass; with it, name the clock, hook or event to inject so the test
@@ -147,6 +159,13 @@ Definition of done:
     test it flips. If the state lives in a package variable or singleton of
     the product, the finding is the product's missing seam (the state should
     be passed in), not the tests' cleanup; cleanups only hide it.
+12. Each behaviour has one home. A case about a component's logic is that
+    component's unit test; a case about a real thing is its adapter's
+    contract test. Look for logic proved only through a real thing (a
+    filesystem tree, a repository, a process): the case is the rule that
+    breaks while only that test fails, without naming the rule. Look for
+    one case proved at two levels: the case is the change that must fix
+    both.
 
 Stop once the tests prove the change and the behaviour its goal requires.
 

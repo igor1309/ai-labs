@@ -17,7 +17,7 @@ The practical split is between:
 
 The usual pattern is to combine a guide with a prompt when working with a chosen agent.
 
-`CLAUDE.md` is the canonical agent instruction file. `AGENTS.md` is a symlink to it — do not reverse the direction (web-based agents cannot follow symlinks).
+`AGENTS.md` is the canonical agent instruction file, kept as a regular file (web-based agents cannot follow symlinks).
 
 ## Structure
 
@@ -48,12 +48,13 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | agents | Agent definitions | OpenClaw agent-fleet operational docs and nested specialized agent definitions |
 | agonara | Application | Bring-your-own-agent (BYOA) structured learning program environment. API-first backend with `/learn`/`/admin` UIs and an operator CLI as first-class clients; curated programs, learner progression, evidence of mastery |
 | nexum | Application | Private repo memory system |
+| rexlab | Web App | Dinosaur educational web app for children aged 5–7 (working name; MVP stage) |
 | notio | Service | Personal capture service |
 | notio-backend | Release unit | Swift/Hummingbird Telegram capture service, Supabase schema/migrations owner, Docker-producing VPS deployable |
 | notio-frontend | Release unit | Svelte/Vite Supabase browse client, Cloudflare Pages deployable |
 | oracle | Web App | "Oracle — Am I Done?" One-shot career outlook tool |
 | reinix | CLI release unit | Workflow runner for governed coding-agent loops |
-| agister | CLI (Go) | Agister orchestrator, CLI stage: generic agent calls through Claude Code, with opt-in Codex, Pi, and OpenCode adapters (OpenCode pending live verification); agents, processes, policies, permission mappings and output contracts are settings (ADR-001); no service yet |
+| agister | CLI (Go) | Agister: a runner for AI-agent work defined in settings files. Agents, processes and workflows are settings; a workflow runs steps in sequence, in parallel, on a branch chosen by a condition, or in a bounded repeat, on Claude Code, Codex and bash; `agister check` refuses what a run would refuse; no service |
 | gokit | Library (Go) | Reusable Go packages extracted from Agister (ADR-019): process supervisor, manual clock, fake program and shell, in-process starter, test-discipline check |
 | nomos | Service | AI sovereignty layer |
 | corpus-scout | MCP tool | Lexical search over a local text corpus |
@@ -68,6 +69,9 @@ The usual pattern is to combine a guide with a prompt when working with a chosen
 | dashboard-sync-agent | Agent definition | Dashboard and loc-script sync |
 | neris | Framework | Agentic execution layer in Swift |
 | warder | Tool (MVP stage) | Local monitor for AI-agent runs: polls the Claude Code source (`claude agents --json`) and writes one complete JSONL observation per successful read on stdout, diagnostics on stderr; one Go module, components as packages under `internal/`, composition root `cmd/warder`; how to build and run it: [warder/README.md](warder/README.md) |
+| ali | Product (concept) | AI Learning Agent: personalized lifelong-learning coach with adaptive teaching and a persistent Personal Learning Twin; Create AI Agents Championship entry (education track); working name, no prototype yet |
+| audelin | Product (implementation) | Local macOS companion for calls: records both sides as two tracks, shows a smooth, selectable live transcript of Russian calls with English terms, and explains a selected term through bb; v1 build: the menu bar app records detected calls, live panel and settings not connected yet |
+| mizan-ble | Product (v0.0.1) | Proof of concept for paying in Mizan between two iOS devices over Bluetooth LE: one app with an iPad host that advertises an amount and an iPhone client that confirms or declines it, with a mocked payment; plan in [mizan-ble/docs/poc.md](mizan-ble/docs/poc.md), architecture and specs in [mizan-ble/ARCHITECTURE.md](mizan-ble/ARCHITECTURE.md); v0.0.1 built and checked on devices |
 | cairana | Product (research) | AI assistant for psychologists. Turns sessions into structured notes, case context, and next steps; working name in naming-validation stage |
 | noreta | Product | Local hub for coding-agent sessions across Claude Code, Codex and Pi — one view of active and past work, with search, grouping, history and project context; read-only macOS MVP; all seven QA features have a domain implementation and a test per scenario; Claude Code adapters read real sessions, their runtime state and transcripts from disk, and `npm start` lists them as plain text; no Codex adapter yet |
 | foliotell | App family | Native document-to-speech apps that read local Markdown and plain-text files aloud: shipping iOS app (release unit `foliotell`, in `ios/`) with Apple speech synthesis; Android sibling app in `android/` (Kotlin/Compose reader with platform TTS, Stage 1 of the Android roadmap) |
