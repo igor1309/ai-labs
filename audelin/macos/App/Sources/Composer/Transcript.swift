@@ -1,9 +1,9 @@
 import CallText
 import TranscriptFile
 
-public enum Transcript {
+enum Transcript {
 
-    public static func segments(from state: State) -> [TranscriptFile.Segment] {
+    static func segments(from state: State) -> [TranscriptFile.Segment] {
 
         state.entries.map(segment(from:))
     }
