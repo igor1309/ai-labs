@@ -63,7 +63,8 @@ func TestServePagesServesTheStoresRunsUntilItsContextEnds(t *testing.T) {
 	code := make(chan int, 1)
 	go func() {
 		code <- servePages(ctx, []string{"--no-open", "--addr", "127.0.0.1:0"}, &stdout, io.Discard,
-			pagesWiring{store: store, now: func() time.Time { return now }, probe: func(int) (string, bool, error) { return "", false, nil }, listen: listen, open: opened})
+			pagesWiring{store: store, now: func() time.Time { return now }, probe: func(int) (string, bool, error) { return "", false, nil }, listen: listen, open: opened,
+				after: func(time.Duration) <-chan time.Time { return nil }})
 	}()
 	addr := <-listened
 	res, err := http.Get("http://" + addr + "/api/runs")

@@ -81,13 +81,14 @@ func deref(s *string) string {
 }
 
 // pagesWiring is what agister pages is composed over: the run store, the
-// clock and the liveness probe agister status uses, the socket and the
-// browser.
+// clock and the liveness probe agister status uses, the socket, the
+// shutdown grace timer and the browser.
 type pagesWiring struct {
 	store  statusStore
 	now    func() time.Time
 	probe  func(int) (string, bool, error)
 	listen func(network, address string) (net.Listener, error)
+	after  func(time.Duration) <-chan time.Time
 	open   func(url string) error
 }
 
@@ -98,7 +99,7 @@ func servePages(ctx context.Context, args []string, stdout, stderr io.Writer, w 
 		fmt.Fprintln(stderr, "agister pages:", err)
 		return 1
 	}
-	return pages.Main(ctx, args, pages.Env{Stdout: stdout, Stderr: stderr, Runs: runs, Listen: w.listen, Open: w.open})
+	return pages.Main(ctx, args, pages.Env{Stdout: stdout, Stderr: stderr, Runs: runs, Listen: w.listen, Open: w.open, After: w.after})
 }
 
 // runPages is agister pages over home's runs, stopped by SIGINT or SIGTERM,
@@ -116,7 +117,7 @@ func runPages(ctx context.Context, user string, args []string, stdout, stderr io
 		fmt.Fprintln(stderr, "agister pages:", err)
 		return 1
 	}
-	return servePages(ctx, args, stdout, stderr, pagesWiring{store: store, now: time.Now, probe: probe, listen: net.Listen,
+	return servePages(ctx, args, stdout, stderr, pagesWiring{store: store, now: time.Now, probe: probe, listen: net.Listen, after: time.After,
 		open: func(url string) error { return exec.Command("open", url).Run() }})
 }
 

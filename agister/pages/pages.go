@@ -288,19 +288,25 @@ Serves the page of the runs kept at http://<addr>/ (default 127.0.0.1:7465)
 until stopped, and opens it in the browser unless --no-open.`
 
 // Env is what Main is given, each required: its output, its socket, the
-// browser and the runs.
+// browser, the runs and the timer that ends shutdown's grace.
 type Env struct {
 	Stdout, Stderr io.Writer
 	Listen         func(network, address string) (net.Listener, error)
 	// Open shows url in the browser.
 	Open func(url string) error
 	Runs Runs
+	// After fires once d has passed, as time.After.
+	After func(d time.Duration) <-chan time.Time
 }
+
+// ShutdownGrace is how long requests in flight may finish once Main's
+// context ends; then they are closed.
+const ShutdownGrace = 2 * time.Second
 
 // Main runs agister pages with args, the words after "pages", until ctx
 // ends, and gives its exit code: 0 stopped, 1 failed, 64 usage.
 func Main(ctx context.Context, args []string, env Env) int {
-	if env.Stdout == nil || env.Stderr == nil || env.Listen == nil || env.Open == nil || env.Runs == nil {
+	if env.Stdout == nil || env.Stderr == nil || env.Listen == nil || env.Open == nil || env.Runs == nil || env.After == nil {
 		if env.Stderr != nil {
 			fmt.Fprintln(env.Stderr, "agister pages: missing collaborator")
 		}
@@ -345,8 +351,16 @@ func Main(ctx context.Context, args []string, env Env) int {
 		return 1
 	case <-ctx.Done():
 	}
-	shutdown, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	shutdown, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	grace := env.After(ShutdownGrace)
+	go func() {
+		select {
+		case <-grace:
+			cancel()
+		case <-shutdown.Done():
+		}
+	}()
 	if err := server.Shutdown(shutdown); err != nil {
 		_ = server.Close()
 	}
