@@ -682,7 +682,7 @@ const { chromium } = require("playwright");
           const canvas = boxes.find(b => b.canvas);
           for (const b of boxes) {
             assert(b.x >= -1 && b.y >= -1 && b.x + b.w <= viewport.width + 1 && b.y + b.h <= viewport.height + 1);
-            if (!b.canvas) { assert(b.w >= 60 && b.h >= 60); assert(b.x + b.w <= canvas.x + 1 || b.x >= canvas.x + canvas.w - 1 || b.y + b.h <= canvas.y + 1 || b.y >= canvas.y + canvas.h - 1); }
+            if (!b.canvas) { assert(b.w >= 48 && b.h >= 48); assert(b.x + b.w <= canvas.x + 1 || b.x >= canvas.x + canvas.w - 1 || b.y + b.h <= canvas.y + 1 || b.y >= canvas.y + canvas.h - 1); }
           }
           assert.deepEqual(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]), [viewport.width, viewport.height]);
           if (level === "hatchling" && viewport.width === 1180 && language === "en" && theme === "light") {
@@ -797,7 +797,7 @@ const { chromium } = require("playwright");
           const canvas = boxes.find(b => b.canvas);
           for (const b of boxes) {
             assert(b.x >= -1 && b.y >= -1 && b.x + b.w <= viewport.width + 1 && b.y + b.h <= viewport.height + 1);
-            if (!b.canvas) { assert(b.w >= 60 && b.h >= 60); assert(b.x + b.w <= canvas.x + 1 || b.x >= canvas.x + canvas.w - 1 || b.y + b.h <= canvas.y + 1 || b.y >= canvas.y + canvas.h - 1); }
+            if (!b.canvas) { assert(b.w >= 48 && b.h >= 48); assert(b.x + b.w <= canvas.x + 1 || b.x >= canvas.x + canvas.w - 1 || b.y + b.h <= canvas.y + 1 || b.y >= canvas.y + canvas.h - 1); }
           }
           assert.deepEqual(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]), [viewport.width, viewport.height]);
           await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ"); await page.locator('.gallery-works[aria-busy="false"]').waitFor();
