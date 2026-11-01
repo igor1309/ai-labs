@@ -46,6 +46,20 @@ const { chromium } = require("playwright");
       await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
     });
     const press = async name => { await page.getByRole("button", { name, exact: true }).press("Enter"); await animations(); };
+    // The system top-bar colour source survives screen transitions and cannot
+    // intercept touches or enter a transformed screen's coordinate space.
+    const topEdge = async () => {
+      const edge = await page.locator(".app-top-edge").evaluate(el => {
+        const s = getComputedStyle(el), box = el.getBoundingClientRect();
+        return { fixed: s.position, pointer: s.pointerEvents, colour: s.backgroundColor,
+          top: box.top, width: box.width, height: box.height, outside: !el.closest("#root") };
+      });
+      assert.equal(edge.fixed, "fixed"); assert.equal(edge.pointer, "none");
+      assert.equal(edge.top, 0); assert.equal(edge.width, page.viewportSize().width);
+      assert(edge.height >= 6); assert(edge.outside);
+      assert.equal(edge.colour, await page.locator("body").evaluate(el => getComputedStyle(el).backgroundColor));
+    };
+    await topEdge();
     const home = () => page.locator(".home").waitFor();
     const gallery = () => page.locator('.gallery-works[aria-busy="false"]').waitFor();
     const workshop = () => page.locator(".coloring-workshop canvas").waitFor();
@@ -78,7 +92,7 @@ const { chromium } = require("playwright");
     await page.reload(); await homeCount(0); await entry().press("Enter"); await gallery();
     assert(await page.evaluate(() => !!navigator.serviceWorker.controller));
     await context.setOffline(true);
-    await press("NEW WORK"); await workshop(); await paint("RED", false);
+    await press("NEW WORK"); await workshop(); await topEdge(); await paint("RED", false);
     assert.equal(await starts(), 1);
     const draft = await records(); const id = draft[0].document.id;
     assert.equal(draft[0].document.actions[0].kind, "stroke");

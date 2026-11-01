@@ -2,6 +2,8 @@
 
 ## 2026-11-01
 
+- LAB-899: A fixed, theme-matched top edge supplies an opaque system-bar background without taking space from games; installed iOS/iPadOS 27 verification is pending.
+
 - LAB-889: The gallery offers T-REX / ТИРАННОЗАВР with age-matched previews. Each drawing keeps its artwork, paint, undo history and single earned star across age changes and return visits.
 
 - LAB-889: T-Rex workshop artwork has a simple scene and a richer prehistoric landscape, with a friendly expressive head, two-finger arms, strong legs, a long tail and independent coloring regions.
