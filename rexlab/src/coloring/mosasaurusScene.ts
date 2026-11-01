@@ -9,8 +9,8 @@ const line = (path: string, strokeWidth = 1.4): ProtectedDetail =>
 // A friendly swimming Mosasaurus: long jaws, four paddles and a crescent tail fin.
 const reptile = [
   region("tail-fin", "M88 150 C70 128 52 108 30 98 Q30 128 50 152 Q34 178 26 210 C52 196 76 178 92 164 Z", undefined, 2.6),
-  region("tail", "M196 132 C150 136 112 146 76 148 Q62 152 66 162 C110 170 154 174 198 170 Z", undefined, 2.6),
-  region("flipper-far-back", "M176 160 C184 180 180 204 164 222 Q154 230 150 220 C156 204 160 186 158 166 Z", undefined, 2.2),
+  region("tail", "M196 128 C150 132 112 142 76 146 Q60 152 66 164 C110 172 154 178 198 174 Z", undefined, 2.6),
+  region("flipper-far-back", "M180 160 C190 182 184 206 166 224 Q152 232 148 220 C152 204 154 186 150 166 Z", undefined, 2.2),
   region("flipper-far-front", "M318 146 C340 156 360 176 362 198 Q360 210 350 204 C336 190 318 174 304 160 Z", undefined, 2.2),
   region("body", "M168 136 C210 112 270 100 326 104 C352 108 360 132 348 152 C330 178 280 192 228 188 C196 186 172 176 160 162 Q156 146 168 136 Z", undefined, 2.8),
   region("flipper-near-back", "M192 182 Q206 172 218 182 C220 200 212 224 194 240 Q180 248 178 236 C186 218 194 200 192 182 Z", undefined, 2.4),
@@ -36,7 +36,7 @@ function seabed(rich: boolean): { regions: PaintRegion[]; details: ProtectedDeta
     region("sand", "M22 268 Q70 252 124 262 C180 272 214 254 262 260 Q314 268 360 258 Q406 250 438 266 Q448 282 436 296 Q384 306 324 298 Q268 306 212 300 Q152 306 104 298 Q56 304 24 292 Q16 280 22 268 Z", undefined, 2),
     region("weed-left", "M70 280 C48 250 64 222 50 194 C76 210 82 246 90 280 Z", undefined, 2),
     region("weed-middle", "M94 282 C92 246 112 218 104 182 C128 206 124 250 112 282 Z", undefined, 2),
-    region("weed-right", "M392 282 C390 252 408 232 400 204 C424 222 422 256 410 282 Z", undefined, 2)
+    region("weed-right", "M388 282 C384 250 404 230 398 202 C428 220 426 256 412 282 Z", undefined, 2)
   ];
   const details = [line("M62 240 Q70 258 80 278 M106 214 Q108 248 103 280 M406 232 Q404 258 401 280", 1.1)];
   if (rich) details.push(line("M60 220 L68 216 M64 252 L74 250 M104 232 L114 228 M108 258 L117 256 M402 246 L410 244", 1));
@@ -49,8 +49,8 @@ function scene(rich: boolean): Geometry {
   if (rich) regions.push(
     region("sky", "M20 22 L440 22 L440 56 L20 56 Z", undefined, 2),
     region("water", "M20 44 Q60 32 100 44 T180 44 T260 44 T340 44 T440 44 L440 280 L20 280 Z", undefined, 2),
-    region("fish-top", "M378 64 C390 52 412 52 422 64 L436 54 L434 76 L422 68 C412 80 390 80 378 64 Z", undefined, 2),
-    region("fish-low", "M320 234 C332 222 354 222 364 234 L378 224 L376 246 L364 238 C354 250 332 250 320 234 Z", undefined, 2)
+    region("fish-top", "M376 64 C388 48 412 48 422 64 L436 52 L434 78 L422 68 C412 82 388 82 376 64 Z", undefined, 2),
+    region("fish-low", "M318 234 C330 218 354 218 364 234 L378 222 L376 248 L364 238 C354 252 330 252 318 234 Z", undefined, 2)
   );
   regions.push(bed.regions[0]!);
   if (rich) regions.push(
@@ -61,8 +61,8 @@ function scene(rich: boolean): Geometry {
   const markings = rich ? [
     region("belly", "M188 172 C230 178 290 172 352 140 Q354 160 336 168 C300 188 240 196 190 186 Z", "body", 1.8),
     region("back-mark", "M186 128 C220 114 270 104 322 106 Q322 118 312 120 C270 120 230 128 198 142 Z", "body", 1.8),
-    region("tail-mark", "M118 140 L150 136 L152 174 L120 170 Z", "tail", 1.8),
-    region("head-mark", "M326 108 C350 92 384 90 410 100 Q396 116 372 106 Q350 108 332 126 Z", "head", 1.8)
+    region("tail-mark", "M124 136 L146 132 L148 180 L126 176 Z", "tail", 1.8),
+    region("head-mark", "M324 110 C348 90 386 88 414 100 Q400 122 372 110 Q350 114 334 132 Z", "head", 1.8)
   ] : [];
   // Markings sit on their own skin surface, behind the paddles and head drawn after them.
   for (const part of reptile) regions.push(part, ...markings.filter(({ parent }) => parent === part.id));

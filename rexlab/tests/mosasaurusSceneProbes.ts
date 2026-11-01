@@ -39,3 +39,8 @@ export const mosasaurusExplorerProbes: readonly (readonly [number, number, strin
   [226, 442, "weed-middle"],
   [822, 502, "weed-right"]
 ];
+
+// Eye, smile, teeth, paddle bones and wave ink in both scenes.
+export const mosasaurusProtectedProbes: readonly (readonly [number, number])[] = [
+  [742, 216], [888, 256], [856, 262], [572, 372], [60, 120]
+];
