@@ -40,8 +40,10 @@ Stegosaurus, Triceratops, Ankylosaurus and T-Rex with localized names and matchi
 The T-Rex workshop versions are `trex-hatchling-1` and `trex-explorer-1`:
 the first has broad animal regions, ground and a three-leaf plant; the second
 adds belly and body markings, a cycad, sun, cloud, hills, ridge and rock.
-Both resolve through `newWork` and `painterFor`; gallery age choices for
-T-Rex are a separate integration step.
+The gallery offers exactly one T-Rex: simple at Hatchling, rich at Explorer
+and Paleontologist. Saved drawings keep their original geometry after age
+changes, including when NEW WORK starts another drawing from the workshop
+or result. Each drawing has its own paint, undo history, thumbnail and star.
 Render `ColoringWorkshopScreen` with that session, `painterFor(work.geometry)`,
 the chosen dinosaur name and `language`. It follows the document's `data-theme` and the app's shared motion
 and tap filter. The navigation callback receives `home`, `gallery`, `new` or
@@ -68,3 +70,11 @@ single-process renderer.
 
 Run `node tests/coloringResult.browser.cjs` for result paint, animation,
 atomic completion abort/retry, repeat rewards, actions and responsive layouts.
+
+
+Run `node tests/coloringGallery.browser.cjs` for gallery previews, independent
+saved works, brush/fill/undo, cross-age restoration, thumbnails and one-time
+completion rewards. Set `COLORING_ARTIFACT_DIR` to choose the workshop screenshot
+directory. `node tests/coloringFlow.browser.cjs` checks the production Home route,
+including all four choices and T-Rex at 1180 × 820 and 1024 × 768 across the three
+age levels, both languages and themes.

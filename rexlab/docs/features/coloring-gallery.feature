@@ -80,5 +80,7 @@ Feature: Coloring gallery
   Scenario: Choose a recognizable T-Rex
     When I enter the gallery at any age level
     Then exactly one T-Rex choice has a matching vector preview and the uppercase localized name T-REX or ТИРАННОЗАВР
+    And T-Rex uses trex-hatchling-1 at Hatchling and trex-explorer-1 at Explorer and Paleontologist
+    And Stegosaurus, Triceratops and Ankylosaurus remain available with their age-matched previews
     And its friendly silhouette has a large head, two small arms, strong hind legs and a long tail
     And choosing it starts an independent unpainted work without changing existing works

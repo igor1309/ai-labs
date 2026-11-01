@@ -1,7 +1,7 @@
 @next
 Feature: Coloring full flow and durable progress
   Coloring keeps one shared collection, tools and Explorer collection best.
-  The global age setting chooses the Triceratops artwork for new gallery
+  The global age setting chooses each creature’s artwork for new gallery
   selections; saved works always keep their original geometry.
 
   Scenario Outline: New artwork follows the global age setting
@@ -170,6 +170,9 @@ Feature: Coloring full flow and durable progress
     And brush, fill, undo, save, completion rewards and navigation use the shared coloring behavior
     When I paint, save and reopen this work after changing the global age setting
     Then its original geometry, paint, undo history, thumbnail and earned star are retained
+    And completing the reopened work again awards no additional star
+    And NEW WORK from the workshop or result keeps that saved geometry under a fresh identity
+    And returning to the gallery offers the T-Rex for the current global age level
     And existing creatures and their saved works remain unchanged
     And both versions fit supported iPad landscape layouts
 
