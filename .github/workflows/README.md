@@ -13,6 +13,8 @@ Workflows are organized into four categories:
 - **Release** — tag-triggered pipelines for per-unit and legacy Oracle releases.
 - **Scheduled & Independent** — health checks, dashboards, deployments, and housekeeping that run on cron or trunk push.
 
+`update-behind-prs.yml` runs on each trunk push. It updates every open PR that has auto-merge armed and has fallen behind trunk, so it is tested again and lands without a hand update. Branch protection requires up-to-date branches. A PR that conflicts fails the run, naming the PR. It pushes with `PR_UPDATE_TOKEN`, because an update pushed with `GITHUB_TOKEN` would start no CI.
+
 ## Path Filtering Policy
 
 `ci.yml` does **not** use top-level `paths-ignore`. All path filtering happens inside the workflow via `dorny/paths-filter` in the `changes` job, which gates per-project jobs with `if:` conditions.
@@ -47,17 +49,18 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | clipdeck (`clipdeck/test/*.test.ts`), typecheck | `clipdeck-core` | the `clipdeck` filter | runs |
 | ntfy-sender (`ntfy-sender/tests/*.test.js`), in Chromium | `ntfy-sender-core` | the `ntfy-sender` filter | runs |
 | noreta (`noreta/tests/*.test.ts`), typecheck | `noreta-core` | the `noreta` filter, with `noreta/docs/qa.md` | runs |
-| agonara (`agonara/tests/*.test.js`), OpenAPI check and lint, Docker build | `agonara-core` | the `agonara` filter, with the documents, skills and root `docs/loc-dashboard.html` its tests read | runs |
+| agonara (`agonara/tests/*.test.js`, `agonara/showcase/*.test.mjs`), OpenAPI check and lint, Docker build | `agonara-core` | the `agonara` filter, with the documents, skills and root `docs/loc-dashboard.html` its tests read | runs |
 | foliotell iOS (`foliotell/ios/Tests/`), build, archive | `foliotell-core` | the `foliotell` filter | runs |
 | foliotell Android (`:core:test`), debug build | `foliotell-android-core` | the `foliotell-android` filter | runs |
 | notio backend (`notio/backend/Tests/`) | `notio-core` | the `notio` filter | runs |
 | notio frontend (`notio/frontend/tests/`), typecheck, build | `notio-frontend-core` | the `notio-frontend` filter | runs |
-| rexlab (`rexlab/tests/*.test.ts`), typecheck, build | `rexlab-core` | the `rexlab` filter | runs |
+| rexlab (`rexlab/tests/*.test.ts`, `*.test.tsx`), typecheck, build, board geometry, coloring probe/production pixels, workshop, long drawing contacts, gallery, result and full flow in Chromium (`npm run test:browser`, `node tests/coloringProbe.browser.cjs`, `node tests/coloringPainter.browser.cjs`, `node tests/coloringWorkshop.browser.cjs`, `node tests/coloringDrawing.browser.cjs`, `node tests/coloringGallery.browser.cjs`, `node tests/coloringResult.browser.cjs`, `node tests/coloringFlow.browser.cjs`, `node tests/nativeTouch.browser.cjs`) | `rexlab-core` | the `rexlab` filter | runs; four unit shards and nine independent browser jobs, each with a 10-minute limit |
 | dev-skills: the marketplace manifest and its skills (no tests) | `dev-skills-validation` | the `dev-skills` filter | runs |
 | session-digest (`session-digest/tests/*.test.ts`), typecheck | `session-digest-core` | the `session-digest` filter | runs |
 | loki (`loki/tests/*.test.js`) | `loki-core` | the `loki` filter, with every compose file: its label check reads those of the projects its allowlist names | runs |
 | neris (`neris/packages/swift-neris/Tests/`) | `neris-core` | the `neris` filter | runs |
-| audelin (`audelin/macos/Tests/`) | `audelin-core` | the `audelin` filter, with the recorded fixtures its tests read | runs |
+| audelin (`audelin/macos/Tests/`, `audelin/macos/PreviewApps/Tests/`), profiling tool tests (`audelin/macos/scripts/tests/`) | `audelin-core`: main package built once with `-Xswiftc -O`, tests bounded to 120 seconds; preview tests use a debug build | the `audelin` filter, with the recorded fixtures its tests read | runs |
+| mizan-ble (`mizan-ble/ios/Tests/`), Python token-generator tests, the token check, iOS and preview-app builds; screen snapshots on the self-hosted `local-mac` runner | `mizan-ble-core` | the `mizan-ble` filter, with the design file `mizan-ble.pen` its tests read | runs |
 | claude-insights: the script's pytest and the functions' Deno tests | `claude-insights-core` | the `claude-insights` filter | runs |
 | The langfuse stack (`tests/test_langfuse_shared_stack.py`) | `langfuse-core` | the `langfuse` filter | runs |
 | mac-health (`tools/mac-health/tests/test-*.sh`) | `mac-health-core`: `tools/mac-health/tests/run-all.sh`, on `macos-latest` | the `mac-health` filter | runs |
@@ -88,7 +91,7 @@ There is no trunk-push Cloudflare Pages deploy path for Notio frontend.
 
 ## RexLab
 
-- `rexlab-core.yml` runs the typecheck, tests, and build from `rexlab/`.
+- `rexlab-core.yml` runs the typecheck, tests, and build from `rexlab/`; four parallel test shards keep the complete suite within each job’s ten-minute limit.
 - `rexlab-deploy.yml` is release-only and reusable; `release-unit.yml` calls it for `rexlab_v<version>` tags. It deploys `rexlab/dist` to the Cloudflare Pages project `rexlab` and succeeds only after `https://rexlab.enoa.ai/` serves a page whose `rexlab-version` meta tag matches the tag's version, then sends a success message to the CI Telegram chat.
 
 There is no trunk-push deploy path for RexLab.

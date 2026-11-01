@@ -55,16 +55,17 @@ type callerSpy struct {
 	params   []map[string]string
 	bound    map[string]map[string]string
 	sessions map[string]string
+	declared map[string]string
 }
 
-func (s *callerSpy) Call(_ context.Context, step string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
+func (s *callerSpy) Call(_ context.Context, step, declared string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
 	s.mu.Lock()
 	*s.trail = append(*s.trail, step)
 	s.params = append(s.params, params)
 	if s.bound == nil {
-		s.bound, s.sessions = map[string]map[string]string{}, map[string]string{}
+		s.bound, s.sessions, s.declared = map[string]map[string]string{}, map[string]string{}, map[string]string{}
 	}
-	s.bound[step], s.sessions[step] = params, session
+	s.bound[step], s.sessions[step], s.declared[step] = params, session, declared
 	s.mu.Unlock()
 	switch reused := s.reused[step]; {
 	case reused != "":
@@ -141,6 +142,14 @@ func (s *eventsSpy) Fallback(step, agent string) {
 
 func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 	s.tell("%s ended %s %q in %v", step, ended.Status, ended.Class, ended.Duration)
+}
+
+func (s *eventsSpy) ChildStarted(step, name string, _ map[string]string, _ map[string]string) {
+	s.tell("%s child %s started", step, name)
+}
+
+func (s *eventsSpy) ChildEnded(step string, ended workflow.ChildEnd) {
+	s.tell("%s child ended %s %q", step, ended.Status, ended.Class)
 }
 
 // fixture is a runner over its spies and its clock, the resolver and the
@@ -593,4 +602,16 @@ func TestARunCarriesEachStepsSessionByItsName(t *testing.T) {
 	if want := map[string]string{"a": "s1"}; !reflect.DeepEqual(got.Sessions, want) {
 		t.Errorf("sessions %v, want %v", got.Sessions, want)
 	}
+}
+
+func (s *eventsSpy) Branch(step, arm string, conditions []workflow.ConditionRead) {
+	s.tell("%s took %s %v", step, arm, conditions)
+}
+
+func (s *eventsSpy) Pass(step string, pass int, state map[string]any) {
+	s.tell("%s pass %d %v", step, pass, state)
+}
+
+func (s *eventsSpy) Stopped(step, why string, passes int) {
+	s.tell("%s stopped %s after %d", step, why, passes)
 }

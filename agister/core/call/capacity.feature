@@ -6,13 +6,13 @@
 
 Feature: A turn failed on capacity is retried
 
-  Scenario: A turn at capacity resumes its session after a wait
+  Scenario: A turn at capacity is told to go on in its session after a wait
     Given a model step whose first turn reports the session "s1", then
       fails at capacity, and whose second turn completes, its text "done"
     When the call is made
     Then the second turn starts once the timer has waited 30s, given
-      the session "s1" and the first turn's message, model, effort,
-      options, instruction and schema
+      the session "s1", the message "Go on." and the first turn's model,
+      effort, options, instruction and schema
     And the call ends completed, its output the text "done"
     And it reports the turn at capacity, retrying in 30s
 
@@ -21,16 +21,17 @@ Feature: A turn failed on capacity is retried
       fails at capacity, reporting no session, and whose second turn
       completes
     When the call is made
-    Then the second turn is given the session "s0", and the call ends
-      completed
+    Then the second turn is given the session "s0" and the first turn's
+      message, and the call ends completed
 
-  Scenario: Four turns at capacity end the call
+  Scenario: Five turns at capacity end the call
     Given a model step whose every turn reports the session "s1", then
       fails at capacity
     When the call is made
-    Then it makes 4 turns, the timer waiting 30s, then 1m, then 3m,
-      between them, each turn after the first given the session "s1"
-    And it ends failed, class "capacity", the reason "4 of 4 turns
+    Then it makes 5 turns, the timer waiting 30s, then 1m, then 3m, then
+      5m, between them, each turn after the first given the session "s1"
+      and the message "Go on."
+    And it ends failed, class "capacity", the reason "5 of 5 turns
       at capacity: Selected model is at capacity"
     And its last report of a turn at capacity has no retry
 
@@ -39,7 +40,7 @@ Feature: A turn failed on capacity is retried
       capacity at 9m45s
     When the call is made
     Then it makes one turn, no wait started, and ends failed, class
-      "capacity", the reason "1 of 4 turns at capacity: Selected model is at
+      "capacity", the reason "1 of 5 turns at capacity: Selected model is at
       capacity"
 
   Scenario: A wait the caller cancels ends the call
@@ -63,6 +64,14 @@ Feature: A turn failed on capacity is retried
     When the call is made
     Then the third turn is given the session "s1" and the recovery
       turn's message
+
+  Scenario: A recovery turn at capacity is told to go on
+    Given a model step whose first turn reports the session "s1", then
+      goes stale, and whose recovery turn reports the session "s1", then
+      fails at capacity, and whose third turn completes
+    When the call is made
+    Then the third turn is given the session "s1" and the message
+      "Go on."
 
   Scenario: A retry spends none of the recovery
     Given a model step of 1 resume, whose first turn fails at capacity,

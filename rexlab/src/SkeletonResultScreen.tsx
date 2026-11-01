@@ -78,6 +78,7 @@ export function SkeletonResultScreen({
       <div className="skeleton-reveal">
         <div
           className="skeleton-board skeleton-reveal-board"
+          data-turn-part="skeleton-result-board"
           role="img"
           aria-label={shownName}
           style={{ "--frame-width": frame.width, "--frame-height": frame.height } as CSSProperties}
@@ -87,7 +88,7 @@ export function SkeletonResultScreen({
           </span>
           {bodyShown && <PictureImage look={bodyLook} className="skeleton-reveal-body" src={body} alt="" />}
         </div>
-        <section className="skeleton-reward">
+        <section className="skeleton-reward" data-turn-part="skeleton-reward">
           <div className="skeleton-reward-row">
             <span className="skeleton-star" role="img" aria-label={text.star} data-new={newStar || undefined}>
               <Star size={40} aria-hidden="true" />

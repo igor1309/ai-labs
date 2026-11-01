@@ -24,7 +24,7 @@ Implemented by [Student Workspace Open-Answer Attempt First Slice Implementation
 - Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
 - Storage coverage: [storage.test.js](../../tests/storage.test.js)
 - Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
-- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- Executable acceptance coverage: [executable-acceptance-corpus-navigation.test.js](../../tests/executable-acceptance-corpus-navigation.test.js)
 
 The implemented first slice supports Student-owned submission, scoped idempotency, internal evaluation and failure transitions, owner-only domain reads, accepted-revision snapshot preservation, redacted summaries/details, backup/restore preservation, and orphan graph rejection. This first-slice implementation did not introduce HTTP routes, UI, CLI commands, provider calls, human review, mastery, weak-area, progress, quick-check, topic-level, period-level, or institutional grading behavior; the later public HTTP surface is specified separately by [Student Workspace Open-Answer Attempt API](student-workspace-open-answer-attempt-api.md).
 

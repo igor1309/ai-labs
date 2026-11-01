@@ -1,0 +1,166 @@
+/// A track's text so far, cut into bounded segments at pauses or settled words.
+public struct Segments: Equatable, Sendable {
+
+    public struct Segment: Equatable, Identifiable, Sendable {
+
+        public let id: Int
+        /// Seconds into the track where the segment's first word starts.
+        public var start: Double
+        /// Words that will not change any more.
+        public var settled: String
+        /// Words the recogniser may still hear differently.
+        public var pending: String
+    }
+
+    public enum Ending: Equatable, Sendable {
+
+        /// The recogniser finished: no more segments come.
+        case finished
+        /// The recogniser failed: no more segments come.
+        case failed
+    }
+
+    public private(set) var all: [Segment] = []
+    /// Segments before this count keep their id, text and end. On ending,
+    /// every segment is final; otherwise its end is the next segment's start.
+    public private(set) var finalCount = 0
+    public private(set) var ending: Ending?
+    /// Seconds into the track where the last word ends.
+    public var end: Double { words.last?.end ?? finalEnd }
+    /// No word still to come starts before this; nil until the recogniser says.
+    public private(set) var noWordBefore: Double?
+
+    /// The silence between two words that starts a new segment.
+    let pause: Double
+    /// Prefer a sentence end once the segment has run this long.
+    let sentenceLength: Double = 15
+    /// Start a new segment at the first settled word at this offset.
+    let maximumLength: Double = 30
+
+    /// Words after the last cut that can no longer move; segments before it
+    /// are final and keep only their text.
+    private var words: [Word] = []
+    private var settledCount = 0
+    private var finalEnd = 0.0
+
+    public init(pause: Double) {
+
+        self.pause = pause
+    }
+
+    mutating func hear(_ hearing: Hearing) {
+
+        take(hearing)
+        if let finalThrough = hearing.finalThrough {
+            while settledCount < words.count, words[settledCount].end <= finalThrough {
+                settledCount += 1
+            }
+        }
+        cutIntoSegments()
+        if let bound = hearing.noWordBefore { noWordBefore = max(noWordBefore ?? bound, bound) }
+        closeAfterQuiet()
+    }
+
+    /// The next word will start a new segment, so this one need not wait for it.
+    /// Its end is then its last word's, not the next segment's start.
+    private mutating func closeAfterQuiet() {
+
+        guard let noWordBefore, settledCount == words.count, let last = words.last,
+              noWordBefore - last.end >= pause,
+              words.count >= 3 || words.contains(where: endsSentence) else { return }
+        finalCount = all.count
+        finalEnd = last.end
+        words.removeAll()
+        settledCount = 0
+    }
+
+    mutating func finish(_ hearing: Hearing) {
+
+        take(hearing)
+        settledCount = words.count
+        ending = .finished
+        cutIntoSegments()
+        finalCount = all.count
+    }
+
+    mutating func fail() {
+
+        settledCount = words.count
+        ending = .failed
+        cutIntoSegments()
+        finalCount = all.count
+    }
+
+    /// Replaces pending words from where the report starts; reported words
+    /// over settled ones are dropped.
+    private mutating func take(_ hearing: Hearing) {
+
+        let settledEnd = settledCount > 0 ? words[settledCount - 1].end : finalCount > 0 ? finalEnd : -Double.infinity
+        let reported = hearing.words.filter { $0.start >= settledEnd }
+        guard let from = hearing.from ?? reported.first?.start else { return }
+
+        let kept = words[settledCount...].prefix { $0.start < from }.count
+        words.replaceSubrange((settledCount + kept)..., with: reported)
+    }
+
+    /// Length cuts require settled words on both sides, so later revisions
+    /// cannot move them. Pause cuts may follow pending words and go with them.
+    /// A cut decided by settled words alone is final, so only the words after
+    /// the last such cut are cut again.
+    private mutating func cutIntoSegments() {
+
+        all.removeSubrange(finalCount...)
+        guard !words.isEmpty else { return }
+
+        var cuts: [Int] = []
+        var lower = 0
+        var containsSentenceEnd = endsSentence(words[0])
+        for index in words.indices.dropFirst() {
+            let previous = words[index - 1]
+            let current = words[index]
+            let afterPause = current.start - previous.end >= pause
+            let pauseCut = afterPause && (index - lower >= 3 || containsSentenceEnd)
+            // A pause decides alone, so a fragment it keeps never stands
+            // alone however long the silence after it.
+            let lengthCut = !afterPause && index < settledCount && (
+                (previous.end - words[lower].start >= sentenceLength && endsSentence(previous))
+                    || current.start - words[lower].start >= maximumLength
+            )
+            if pauseCut || lengthCut {
+                cuts.append(index)
+                lower = index
+                containsSentenceEnd = false
+            }
+            containsSentenceEnd = containsSentenceEnd || endsSentence(current)
+        }
+        let bounds = [0] + cuts + [words.count]
+        all += zip(bounds, bounds.dropFirst()).enumerated().compactMap { offset, bound in
+            let (lower, upper) = bound
+            guard lower < upper else { return nil }
+            let settledUpper = min(max(settledCount, lower), upper)
+            return Segment(
+                id: finalCount + offset,
+                start: words[lower].start,
+                settled: text(words[lower..<settledUpper]),
+                pending: text(words[settledUpper..<upper])
+            )
+        }
+        if let final = cuts.last(where: { $0 < settledCount }) {
+            finalCount += cuts.firstIndex(of: final)! + 1
+            finalEnd = words[final - 1].end
+            words.removeSubrange(..<final)
+            settledCount -= final
+        }
+    }
+
+    private func endsSentence(_ word: Word) -> Bool {
+
+        guard let last = word.text.last else { return false }
+        return ".?!…".contains(last)
+    }
+
+    private func text(_ words: ArraySlice<Word>) -> String {
+
+        words.map(\.text).joined(separator: " ")
+    }
+}

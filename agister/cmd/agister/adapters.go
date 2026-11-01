@@ -367,7 +367,10 @@ func (c *checkResolve) Resolve(document check.Reference) (check.Resolved, []chec
 		lines, err = notRunProcessOf(document.Name, c.docs)
 	}
 	if err != nil {
-		return check.Resolved{}, []check.Fault{{Problems: []check.Problem{{Message: err.Error()}}}}
+		return check.Resolved{}, []check.Fault{{
+			Chain:    []check.Link{{Kind: document.Kind, Name: document.Name}},
+			Problems: []check.Problem{{Source: check.Source{File: c.documentFile(resolve.Reference{Kind: kind, Name: document.Name})}, Message: err.Error()}},
+		}}
 	}
 	if len(lines) > 0 {
 		type synthetic struct {

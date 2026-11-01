@@ -37,6 +37,7 @@ export function SkeletonGuessScreen({ language, skeleton, frame, choices, clue, 
       <div className="skeleton-reveal">
         <div
           className="skeleton-board skeleton-reveal-board"
+          data-turn-part="skeleton-guess-board"
           role="img"
           aria-label={text.skeleton}
           style={{ "--frame-width": frame.width, "--frame-height": frame.height } as CSSProperties}
@@ -53,6 +54,7 @@ export function SkeletonGuessScreen({ language, skeleton, frame, choices, clue, 
                 <Button
                   key={choice.id}
                   className="skeleton-guess-card"
+                  data-turn-part={`skeleton-guess-${choice.id}`}
                   data-wrong={choice.wrong || undefined}
                   disabled={choice.wrong}
                   aria-label={choice.wrong ? `${name}: ${text.digChoice.tryAnother}` : name}

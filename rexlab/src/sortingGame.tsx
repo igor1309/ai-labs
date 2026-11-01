@@ -4,9 +4,11 @@ import { beatBest } from "./bestScore.ts";
 import type { Language } from "./language/language.ts";
 import { droppedOn, presentBoard, presentSortingResult } from "./presentation.ts";
 import { startLevel, type LevelChoice } from "./startLevel.ts";
+import type { ResultType } from "./compareResultLayout.ts";
 import { LevelResultScreen } from "./LevelResultScreen.tsx";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { bestForLevel, boardState, drop, finishBoard, mergeProgress, startBoard, type Dinosaur, type Random, type Sorting, type SortingProgress, type SortingResult } from "./sorting/index.ts";
+import { PORTRAIT_SORT, type SortSizes } from "./sortBoardLayout.ts";
 import { SortScreen, type Basket } from "./SortScreen.tsx";
 
 export type SortingSaved = { progress: SortingProgress; levelChoice: LevelChoice | undefined };
@@ -34,6 +36,9 @@ const OFFERED = ["hatchling", "explorer", "paleontologist"] as const;
 type Kept = { progress: SortingProgress | undefined; levelChoice: LevelChoice | undefined };
 
 type SortingScreen = { kind: "board"; sorting: Sorting } | { kind: "result"; result: SortingResult };
+
+// The screen the game shows, as the gate and the turns read it.
+export type SortingPhase = SortingScreen["kind"];
 
 // A board started, even over one left on HOME and still kept, or its
 // result, is the plain screen change; a drop changes the board at once.
@@ -113,7 +118,9 @@ export function useSortingGame(
     go({ kind: "result", result });
   };
 
-  const content = (language: Language) => {
+  // `boardWidth` is the width a board stands in upright, `resultType` the
+  // result's upright sizes in the window and `boardSizes` the board's.
+  const content = (language: Language, boardWidth: number, resultType: ResultType, boardSizes: SortSizes = PORTRAIT_SORT) => {
     switch (screen?.kind) {
       case undefined:
         return null;
@@ -126,6 +133,8 @@ export function useSortingGame(
             onDrop={onDrop}
             onHome={onHome}
             onSeeResult={() => seeResult(sorting)}
+            width={boardWidth}
+            sizes={boardSizes}
           />
         );
       }
@@ -139,10 +148,13 @@ export function useSortingGame(
             onLevel={chooseLevel}
             onPlayAgain={() => start()}
             onHome={onHome}
+            type={resultType}
           />
         );
     }
   };
 
-  return { start, content, best: kept.progress === undefined ? undefined : bestForLevel(kept.progress, level) ?? undefined };
+  const phase: SortingPhase | undefined = screen?.kind;
+
+  return { start, content, phase, best: kept.progress === undefined ? undefined : bestForLevel(kept.progress, level) ?? undefined };
 }

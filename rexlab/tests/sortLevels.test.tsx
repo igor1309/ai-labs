@@ -183,7 +183,7 @@ describe.each(LEVELS)("the $name board", (level) => {
   );
 
   it("sorts by taps into three baskets, a wrong drop pointing at the right basket by its symbol, and ends in the result", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = dealt(level);
     const opened = openBoard(sorting);
     const third = level.baskets[2] as Basket;
@@ -211,7 +211,7 @@ describe.each(LEVELS)("the $name board", (level) => {
   });
 
   it("drops a dragged card on the third basket, under the first two", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = dealt(level);
     openBoard(sorting);
     layOutBaskets(sorting);

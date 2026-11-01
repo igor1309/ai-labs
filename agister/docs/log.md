@@ -1,5 +1,38 @@
 # Changes
 
+- LAB-690: The skill tells callers to launch a run in the background with a
+  completion notice, not in the foreground, which blocks their session.
+
+- LAB-690: Status orders unstarted runs by their id's timestamp and preserves
+  outcomes from runs recorded before the run log.
+
+- LAB-690: Runs report live steps, waits, stalled writers and lost processes
+  through `status`; `runs list` shows the newest runs first.
+
+- LAB-690: New runs keep one ordered log with active calls and waits; readers
+  include unfinished spend and retain access to older records.
+
+- LAB-565: Agister is public to read at github.com/igor1309/agister, with
+  its site and architecture pages at igor1309.dev/agister/.
+- LAB-567: Agister's public README shows how a run executes and how
+  settings compose, as diagrams; the showcase lineup lists Agister.
+- LAB-566: The run and settings architecture pages ship in the public
+  export, without their links to private notes; the caller's guide points
+  at them.
+- LAB-564: Agister's public README explains what it is and gives a first
+  run on bash that needs no model; the export checks that run works.
+- LAB-563: Agister has a standalone public projection with its local gokit
+  dependency and a check that builds and tests the exported snapshot.
+
+- LAB-534: a workflow runs as an item of another, as a child run in its record;
+  home's tests lens debates its review in private before the judge.
+
+- LAB-467: workflows branch on results and repeat repairs with explicit state
+  and a pass limit; failed tests can return to the builder's session.
+
+- LAB-496: a capacity retry tells its reported session "Go on."; a call
+  makes up to five capacity turns, waiting 30 s, 1 min, 3 min and 5 min.
+
 - LAB-465: `agister check` refuses what `agister run` does not run yet
   (a branch, a repeat, a runtime with no turn, an input from a source a
   run does not take), in run's words, and a step that gives a file's

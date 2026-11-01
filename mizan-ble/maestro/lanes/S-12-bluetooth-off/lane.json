@@ -1,0 +1,20 @@
+{
+  "parts": [
+    {
+      "name": "both-modes",
+      "device": "iPad",
+      "expected": [
+        {
+          "category": "hostRadio",
+          "phase": "bluetoothState poweredOff"
+        },
+        {
+          "category": "mode",
+          "phase": "client built"
+        }
+      ],
+      "flow": "both-modes.yaml",
+      "settings": "both-modes.json"
+    }
+  ]
+}

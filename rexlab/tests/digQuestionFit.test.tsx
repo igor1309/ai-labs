@@ -6,7 +6,7 @@ import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { presentDigBoard } from "../src/presentation.ts";
 import { withPictures } from "./pictures.tsx";
-import { SHIPPED_DIG, fakeBodyPicture, fakeTreasurePicture } from "./support.ts";
+import { SHIPPED_DIG, fakeBodyPicture, fakeTreasurePicture, manualTimers } from "./support.ts";
 import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // jsdom does not lay out: each board title's width in ems of its face,
@@ -28,7 +28,7 @@ function show(level: (typeof levels)[number] | "hatchling", asking: boolean, lan
   const round = asking ? brushRound(started, { from: { x: 400, y: 300 }, to: { x: 400, y: 300 }, radius: 1000 }) : started;
   render(<DigBoardScreen
     {...presentDigBoard(round, fakeBodyPicture, fakeTreasurePicture, (id) => id)} choiceCount={round.choices.length} language={language} level={level}
-    brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} grains dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null} onBrush={() => {}} onHome={() => {}}
+    brush={BRUSH_SIZES[level]} wide={false} onWide={() => {}} menuTimer={manualTimers().startTimer} grains dugUp={0} total={SHIPPED_DIG.length} treasures={0} sandContext={() => null} onBrush={() => {}} onHome={() => {}}
   />, withPictures);
 }
 

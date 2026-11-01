@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"reflect"
 	"testing"
@@ -46,8 +47,24 @@ func TestTheWorkflowsInputsAndEachCallsAreRecorded(t *testing.T) {
 	reviewsGiven := judgedText(t, f)
 	want := map[string][]runstore.Input{"judge": {input("reviews", reviewsGiven, identityOf(reviewsGiven))}}
 	for _, r := range reviews {
-		want[r.step] = review
+		step := r.step
+		if step == "tests" {
+			step = "tests/draft"
+		}
+		want[step] = review
 	}
+	text, err := json.Marshal(reviewResult("tests_review"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reviewText := string(text)
+	critique := `{"challenges":[],"verdict":"converged"}`
+	criticInputs := func(previous string) []runstore.Input {
+		return []runstore.Input{review[0], review[1], review[2], input("critique", previous, identityOf(previous)), goal, input("review", reviewText, identityOf(reviewText))}
+	}
+	want["tests/critique"] = criticInputs("none")
+	want["tests/recheck/1"] = criticInputs(critique)
+	want["tests/revise/1"] = []runstore.Input{review[1], input("critique", critique, identityOf(critique))}
 	if !reflect.DeepEqual(of, want) {
 		t.Errorf("the calls' inputs\n%+v\nwant\n%+v", of, want)
 	}

@@ -24,6 +24,9 @@ import {
 import { PairsBoardScreen } from "./PairsBoardScreen.tsx";
 import { PairsResultScreen } from "./PairsResultScreen.tsx";
 import { PairsWelcomeScreen } from "./PairsWelcomeScreen.tsx";
+import { PORTRAIT_BOARD, type BoardSizes } from "./pairsBoardLayout.ts";
+import { PORTRAIT_PAIRS_RESULT, type PairsResultSizes } from "./pairsResultLayout.ts";
+import type { WelcomeType } from "./pairsWelcomeLayout.ts";
 import { LoadAhead } from "./Picture.tsx";
 import { presentPairsBoard, presentPairsResult, type SkeletonPicture } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
@@ -78,6 +81,9 @@ const waveOf = ({ flip, stagger, wave }: (typeof TIMINGS)["motion"], cards: numb
 type Kept = KeptPairs & { levelChoice: LevelChoice | undefined; offer: LevelOffer };
 
 type PairsScreen = { kind: "welcome" } | { kind: "board"; board: Board; finished: boolean } | { kind: "result"; result: PairsResult; offer?: AgeLevel | null };
+
+// The screen the game shows, each with layouts of its own.
+export type PairsPhase = PairsScreen["kind"];
 
 // A card turned, or turned back, changes the board at once; every other
 // change is the plain screen change.
@@ -221,12 +227,17 @@ export function usePairsGame(
     go({ kind: "welcome" });
   };
 
-  const content = (language: Language) => {
+  // `welcomeType` is the welcome's upright type in the window, and
+  // `boardWidth` and `resultWidth` the widths a board and its result stand
+  // in upright, and `boardSizes` and `resultSizes` their sizes for the
+  // window.
+  const content = (language: Language, welcomeType: WelcomeType, boardWidth: number, resultWidth: number, boardSizes: BoardSizes = PORTRAIT_BOARD, resultSizes: PairsResultSizes = PORTRAIT_PAIRS_RESULT) => {
     switch (screen.kind) {
       case "welcome":
         return (
           <PairsWelcomeScreen
             language={language}
+            type={welcomeType}
             level={level}
             climbLevel={kept.progress.climbLevel}
             stars={kept.progress.stars}
@@ -244,6 +255,8 @@ export function usePairsGame(
             <PairsBoardScreen
               language={language}
               {...board}
+              width={boardWidth}
+              sizes={boardSizes}
               finished={screen.finished}
               onTurn={turnCard}
               onBack={back}
@@ -265,12 +278,15 @@ export function usePairsGame(
             },
             onNotNow: () => go((current) => current.kind === "result" ? { ...current, offer: null } : current)
           } : null}
-          onPlayAgain={play} onBack={back} onHome={home} />;
+          onPlayAgain={play} onBack={back} onHome={home} width={resultWidth} sizes={resultSizes} />;
       }
     }
   };
 
+  const phase: PairsPhase = screen.kind;
+
   return {
+    phase,
     // The stars on the game's home tile, undefined until a board is
     // finished.
     stars: kept.progress.stars > 0 ? kept.progress.stars : undefined,

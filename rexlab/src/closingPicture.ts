@@ -41,6 +41,8 @@ function drawPictureCopy(element: Element, box: Box, marker: string): TurnFrame 
     position: "fixed", left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px`,
     maxWidth: "none", maxHeight: "none", margin: "0", zIndex: "100", objectFit: "contain", pointerEvents: "none", animation: "none", transition: "none"
   });
+  // What the copy holds is drawn as it stands, none of it entering again.
+  for (const inner of copy.querySelectorAll<HTMLElement>("*")) inner.style.animation = "none";
   const visibility = image.style.visibility;
   image.style.visibility = "hidden";
   image.ownerDocument.body.append(copy);
@@ -55,12 +57,33 @@ const PAGE_PICTURE = ".dinosaur-stage-picture";
 // The result's dinosaur, a part fitted whole in its own box.
 const RESULT_PICTURE = ".result-hero";
 
-// The page's picture as a turn resizes its stage, and the result's
-// dinosaur as a turn resizes it. Laid out in place, either would take its
-// new size at once, fitted whole in its new box, so a copy travels in a
-// box that changes with it, as the closing picture does.
+// Find the pair's welcome's cards, each sized by their row's box.
+const WELCOME_CARDS = ".pairs-hero";
+
+// A card on find the pair's board, its footprints and name sized by its
+// width.
+const BOARD_CARD = ".pair-card";
+
+// A card in sort's tray or in a basket, its picture and name sized by its
+// width.
+const SORT_CARDS = ".sort-card, .sorted-card";
+
+// A card on the skeleton choice, its picture and name sized by its width.
+const SKELETON_CHOICE = ".skeleton-choice";
+
+// A stand in the museum, its exhibit yielding to its name and button.
+const SKELETON_STAND = ".skeleton-stand";
+
+// A dinosaur on find the pair's result, its art yielding to its name.
+const FOUND_CARD = ".pairs-found-card";
+
+// The page's picture as a turn resizes its stage, the result's dinosaur,
+// the welcome's cards, a board's card, a found one and sort's cards as a
+// turn resizes them. Laid out in place, each would take its new size at once, fitted
+// in its new box, so a copy travels in a box that changes with it, as the
+// closing picture does.
 export function refitPicture(element: Element, box: Box): TurnFrame | undefined {
-  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : element.matches(RESULT_PICTURE) ? element : undefined;
+  const image = element.matches(".dinosaur-stage-art") ? element.querySelectorAll(PAGE_PICTURE)[0] : element.matches(`${RESULT_PICTURE}, ${WELCOME_CARDS}, ${BOARD_CARD}, ${FOUND_CARD}, ${SORT_CARDS}, ${SKELETON_CHOICE}, ${SKELETON_STAND}`) ? element : undefined;
   return image ? drawPictureCopy(image, box, "data-fitted-picture") : undefined;
 }
 

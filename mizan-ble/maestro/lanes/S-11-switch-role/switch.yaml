@@ -1,0 +1,19 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- assertVisible: "Lock & broadcast"
+- tapOn: "Client"
+- extendedWaitUntil:
+    visible: "Pay a nearby host"
+    timeout: 15000
+- tapOn: "Start handshake"
+- extendedWaitUntil:
+    visible: "MIZAN-CAFE asks for"
+    timeout: 15000
+- assertVisible: "123.45 Mizan"
+- tapOn: "Confirm"
+- extendedWaitUntil:
+    visible: "Paid"
+    timeout: 15000
+- assertVisible: "123.45 Mizan"

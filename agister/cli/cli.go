@@ -185,6 +185,8 @@ const usage = `usage:
   agister inspect process|workflow|agent <name> [--dir <directory>]
   agister run <workflow> [--param <name>=<value>]... [--continue <run id> | --reuse <run id>] [--dir <directory>]
   agister run --process <name> --agent <name> [--param <name>=<value>]... [--continue <run id> | --reuse <run id>] [--dir <directory>]
+  agister status [<run-id>|--last] [--json]
+  agister runs list [--json]
   agister runs export <run id> --to <directory>
 `
 
@@ -194,13 +196,14 @@ type CLI struct {
 	settings Settings
 	runner   Runner
 	runs     Runs
+	states   RunStates
 	stdout   io.Writer
 	stderr   io.Writer
 }
 
-// New gives a command line asking settings, runner and runs, printing what
+// New gives a command line asking settings, runner, runs and states, printing what
 // they give to stdout, and a bad command's usage and a failure to stderr.
-func New(settings Settings, runner Runner, runs Runs, stdout, stderr io.Writer) (*CLI, error) {
+func New(settings Settings, runner Runner, runs Runs, states RunStates, stdout, stderr io.Writer) (*CLI, error) {
 	if settings == nil {
 		return nil, errors.New("cli: no settings")
 	}
@@ -210,13 +213,16 @@ func New(settings Settings, runner Runner, runs Runs, stdout, stderr io.Writer) 
 	if runs == nil {
 		return nil, errors.New("cli: no runs")
 	}
+	if states == nil {
+		return nil, errors.New("cli: no run states")
+	}
 	if stdout == nil {
 		return nil, errors.New("cli: no stdout")
 	}
 	if stderr == nil {
 		return nil, errors.New("cli: no stderr")
 	}
-	return &CLI{settings: settings, runner: runner, runs: runs, stdout: stdout, stderr: stderr}, nil
+	return &CLI{settings: settings, runner: runner, runs: runs, states: states, stdout: stdout, stderr: stderr}, nil
 }
 
 // Run runs the command args, the program's name left out, in the working
@@ -302,6 +308,7 @@ type flags struct {
 	dir, process, agent, continued, reused, to string
 	params                                     []string
 	given                                      []givenFlag
+	last, json                                 bool
 }
 
 // givenFlag is a flag by its name, and as it was given.
@@ -343,6 +350,12 @@ func needs(flag string) string {
 // them, a flag given again replacing its value, but --param, which adds
 // one.
 func parse(args []string) (command, error) {
+	if len(args) == 1 && (args[0] == "--help" || args[0] == "-h") {
+		return command{run: func(_ *CLI, out io.Writer, _ string) (int, error) {
+			_, err := io.WriteString(out, usage)
+			return 0, err
+		}}, nil
+	}
 	var f flags
 	var words []string
 	for i := 0; i < len(args); i++ {
@@ -352,6 +365,18 @@ func parse(args []string) (command, error) {
 			continue
 		}
 		flag, value, given := strings.Cut(strings.TrimPrefix(strings.TrimPrefix(arg, "-"), "-"), "=")
+		if flag == "last" || flag == "json" {
+			if given {
+				return command{}, fmt.Errorf("%s takes no value", arg)
+			}
+			f.given = append(f.given, givenFlag{name: flag, arg: arg})
+			if flag == "last" {
+				f.last = true
+			} else {
+				f.json = true
+			}
+			continue
+		}
 		need := needs(flag)
 		if need == "" {
 			return command{}, fmt.Errorf("unknown flag %s", arg)
@@ -400,6 +425,8 @@ func parse(args []string) (command, error) {
 		}
 		cmd.run = func(c *CLI, out io.Writer, launch string) (int, error) { return c.runRequest(out, launch, request) }
 		return cmd, nil
+	case "status":
+		return parseStatus(rest, f)
 	case "runs":
 		return parseRuns(rest, f)
 	}

@@ -1,10 +1,17 @@
+import { galleryArtworkFixtures } from "./coloringFixture.ts";
+import { jawGameParts } from "./whoseJaw.ts";
+import { emptyLabyrinth } from "./support.ts";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { App, type SizeClass } from "../src/App.tsx";
-import { HOME_GAMES, type HomeGame } from "../src/HomePage.tsx";
+import { HOME_GAMES as ALL_GAMES, type HomeGame } from "../src/HomePage.tsx";
+import { readPictureDinosaurs } from "../src/dinosaurs.ts";
+import records from "../src/data/dinosaurs.json";
+import jaws from "../src/data/jaws.json";
+import { localWhoseJawProgress, localPicturePuzzleChoice, localPicturePuzzleProgress } from "../src/localProgress.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { extendPart, filterDoubleTaps, turnFrame } from "../src/root.ts";
 import type { TapInput } from "../src/tapFilter.ts";
@@ -27,6 +34,7 @@ import {
   layOutTilesRow,
   lightDevice,
   manualPictures,
+  memoryStorage,
   manualViewport,
   pageAtRest,
   seededRandom,
@@ -35,7 +43,7 @@ import {
   unsetAgeLevel
 } from "./support.ts";
 import { clickOf, filterTaps, pressAt, releaseAt, tapAt } from "./taps.ts";
-import { openWindow } from "./windowSizes.ts";
+import { openWindow, styleAt } from "./windowSizes.ts";
 
 // turn-motion.feature, on the home page, and home-portrait.feature's
 // "Turning the window keeps the open menu and the large card" beside
@@ -44,18 +52,21 @@ import { openWindow } from "./windowSizes.ts";
 // app is rendered as a browser shows it, the page's parts measured as the
 // test lays them out and their animations recorded.
 
+// Fixed swipe distances use the four-column fixture without the optional games.
+const HOME_GAMES = ALL_GAMES.filter((game) => game !== "picturePuzzle" && game !== "whoseJaw" && game !== "coloring");
+
 const GLIDE = 240;
 const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 // The parts of the home page both layouts share, `featured` on the large
 // card and every other game a tile, in the page's order.
-const partsFeaturing = (featured: HomeGame) => ["wordmark", "corner", "greeting", "featured-card", "tiles", ...HOME_GAMES.filter((game) => game !== featured).map((game) => `tile-${game}`), "more-coming"];
+const partsFeaturing = (featured: HomeGame, withOptionalGames = false) => ["wordmark", "corner", "greeting", "featured-card", "tiles", ...(withOptionalGames ? ALL_GAMES : HOME_GAMES).filter((game) => game !== featured).map((game) => `tile-${game}`), "more-coming"];
 
 // Those parts with COMPARE featured.
 const PARTS = partsFeaturing("compare");
 
 // Every part the home page may mark, whichever game it features.
-const ANY_PART = ["wordmark", "corner", "greeting", "featured-card", "tiles", ...HOME_GAMES.map((game) => `tile-${game}`), "more-coming"];
+const ANY_PART = ["wordmark", "corner", "greeting", "featured-card", "tiles", ...ALL_GAMES.map((game) => `tile-${game}`), "more-coming"];
 
 // Those that stand on the page itself, not in another part.
 const OUTER = ["wordmark", "corner", "greeting", "featured-card", "tiles"];
@@ -104,7 +115,8 @@ type OwnDrawing = { y: number; opacity: number; running: boolean };
 // The home page in a window `width` by `height` of `size`, under
 // index.html's version footer, a screen `upright` or not, `featured` on
 // its large card, its pictures loaded, its timers fired by hand, and the
-// device asking for reduced motion when `reduced`. A part is measured
+// device asking for reduced motion when `reduced`, and a layout for a
+// tall-narrow window as well when `narrow`. A part is measured
 // where the test lays it out, moved as `own` says the page's own
 // animations draw it, its frame drawn and its window widened by the
 // browser's own means, and its animations recorded; a view transition's
@@ -113,12 +125,13 @@ function openTurning(
   width: number,
   height: number,
   size: SizeClass,
-  { upright = size.startsWith("tall"), reduced = false, featured = "compare" as HomeGame, own = new Map<string, OwnDrawing>() } = {}
+  { upright = size.startsWith("tall"), reduced = false, featured = "compare" as HomeGame, own = new Map<string, OwnDrawing>(), narrow = false, withOptionalGames = false } = {}
 ) {
   openWindow(width, height);
   const viewport = manualViewport("landscape");
   viewport.resize(size, upright);
   const pictures = manualPictures();
+  const storage = memoryStorage();
   const animations: Recorded[] = [];
   const frames: Array<{ name: string; box: Box }> = [];
   const extended: Array<{ name: string; right: number; bottom: number }> = [];
@@ -138,13 +151,20 @@ function openTurning(
     return box;
   };
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(7)}
-      portraitLayouts={{ home: ["tall"] }}
+      {...(withOptionalGames && { coloring: { artworks: galleryArtworkFixtures(),
+        source: { list: async () => ({ works: [], unavailable: [], completedCount: 0, recentId: null }), reset: async () => {},
+          open: async () => { throw new Error("No work in layout fixture"); }, newWork: async () => { throw new Error("No work in layout fixture"); } },
+        painterFor: () => ({ width: 920, height: 620, render: () => {}, preview: () => {}, regionAt: () => undefined }), identity: () => "layout"
+      }, picturePuzzle: { dinosaurs: readPictureDinosaurs(records), bodyPicture: fakeBodyPicture, random: seededRandom(17),
+        choiceStore: localPicturePuzzleChoice(() => storage), progressStore: localPicturePuzzleProgress(() => storage) },
+        whoseJaw: { ...jawGameParts(), progress: localWhoseJawProgress(() => storage, jaws.map(({ id }) => id)), total: jaws.length, jawPicture: "jaw.webp", gummyPicture: "gummy.webp" } })}
+      portraitLayouts={{ home: narrow ? ["tall", "tall-narrow"] : ["tall"] }}
       viewport={viewport}
       progress={emptyProgress()}
       {...englishDevice()}
@@ -224,7 +244,7 @@ function openTurning(
   // The animations of the parts themselves, apart from their frames' and
   // the fades.
   const glides = () => animations.filter(ownGlide);
-  return { pictures, animations, frames, extended, fades, own, drawn, resize, halfWay, updateFade, endFade, waiting, paint, glides, user: userEvent.setup() };
+  return { pictures, animations, frames, extended, fades, own, drawn, resize, halfWay, updateFade, endFade, waiting, paint, glides, user: userEvent.setup({ delay: null }) };
 }
 
 const turning = () => document.documentElement.hasAttribute("data-turning");
@@ -482,15 +502,15 @@ describe("under reduced motion", () => {
 });
 
 describe("a turn keeps the tiles the child was looking at, there and back", () => {
-  // The row with COMPARE featured holds four columns 310 wide and 24
+  // The row with COMPARE featured holds five columns 310 wide and 24
   // apart, upright as in landscape at these windows: SKELETONS stands at
-  // its left edge at 334, and its end is at 718 in landscape and 548
+  // its left edge at 334, and its end is at 1052 in landscape and 882
   // upright.
   it.each([
     ['so "SKELETONS" stands exactly at its left edge', 334, 334, 334],
     ['so 60 pixels of "SKELETONS" are hidden', 334 + 60, 334, 334],
     ['so 200 of "ANCIENT REPTILES" are hidden', 200, 334, 334],
-    ["to their end", 718, 548, 718]
+    ["to their end", 1052, 882, 1052]
   ] as const)("swiped %s", (_, swiped, upright, back) => {
     const app = openTurning(1180, 820, "wide");
     const row = layOutTilesRow();
@@ -498,11 +518,26 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
 
     app.resize([820, 1180, "tall"]);
 
-    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([upright, 548]);
+    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([upright, 882]);
     act(() => app.pictures.fire(GLIDE));
     app.resize([1180, 820, "wide"]);
 
-    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([back, 718]);
+    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([back, 1052]);
+  });
+
+  // At 375 wide, on 20-pixel sides, the columns are 307 wide and 24
+  // apart: swiped 450, "SKELETONS", the second column, has 119 of its 307
+  // hidden past the row's left edge, so most of it shows, and the tall
+  // row, its columns 310 wide, keeps it at its left edge, at 334.
+  it("keeps the column swiped to from a tall-narrow window into a tall one, by the narrow row's own columns", () => {
+    const app = openTurning(375, 667, "tall-narrow", { narrow: true });
+    const row = layOutTilesRow();
+    expect(styleAt(row, [375, 667]).px("grid-auto-columns")).toBe(307);
+    swipeTiles(row, 450);
+
+    app.resize([768, 1024, "tall"]);
+
+    expect(row.scrollLeft).toBe(334);
   });
 
   it("judges where the row stands from before the motion began, through every change that cuts it short", () => {
@@ -518,19 +553,19 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
     expect(row.scrollLeft).toBe(334);
   });
 
-  // Upright in a window 1400 wide, the four columns stand 310 wide and
+  // Upright in a window 1800 wide, the five columns stand 310 wide and
   // fit, the row not scrolling.
   it.each([
     ['"SKELETONS" at its left edge', 334],
-    ["at their end", 718]
+    ["at their end", 1052]
   ] as const)("swiped with %s, stands at its start once a window it fits has settled, and there in the next", (_, swiped) => {
     const app = openTurning(1180, 820, "wide");
     const row = layOutTilesRow();
     swipeTiles(row, swiped);
 
-    app.resize([1400, 1500, "tall"]);
+    app.resize([1800, 1900, "tall"]);
 
-    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([0, -32]);
+    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([0, -98]);
     act(() => app.pictures.fire(GLIDE));
     app.resize([1180, 820, "wide"]);
 
@@ -539,16 +574,16 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
 });
 
 describe("a turn through the picture asking to turn keeps the tiles the child was looking at", () => {
-  // Upright in a window 1400 wide, the four columns fit, the row not
+  // Upright in a window 1800 wide, the five columns fit, the row not
   // scrolling, so it stands at its start, though the child left it at its
   // end before the picture showed.
   it("stands at its start once a window it fits has settled after the picture, and there in the next", () => {
     const app = openTurning(1180, 820, "wide");
     const row = layOutTilesRow();
-    swipeTiles(row, 718);
+    swipeTiles(row, 1052);
 
     app.resize([393, 852, "tall-narrow"]);
-    app.resize([1400, 1500, "tall"]);
+    app.resize([1800, 1900, "tall"]);
 
     expect([gate().hasAttribute("data-shown"), turning(), row.scrollLeft]).toEqual([false, false, 0]);
 
@@ -687,10 +722,13 @@ describe("taps and keys during the motion", () => {
 
 describe("a resize that keeps the layout", () => {
   // SKELETONS's column is the second: it stands at the row's left edge
-  // one column and its gap in, upright 310 wide, then 292 at 712.
+  // one column and its gap in, upright 310 wide, then 292 at 712; on a
+  // phone on its side, four fifths of the row short of its 16-pixel gap:
+  // 313.6 of 408 at 852, then 345.6 of 448 at 932.
   it.each([
     [[820, 1180, "tall"], [712, 1180, "tall"], 334, 316],
-    [[1440, 900, "wide"], [1440, 560, "wide-short"], 334, 334]
+    [[1440, 900, "wide"], [1440, 700, "wide"], 334, 334],
+    [[852, 393, "wide-short"], [932, 430, "wide-short"], 330, 361.6]
   ] as const)("from %j to %j moves nothing, SKELETONS still at the row's left edge", (from, to, before, after) => {
     const app = openTurning(from[0], from[1], from[2]);
     const row = layOutTilesRow();
@@ -800,18 +838,18 @@ describe("a window the screen has no layout for", () => {
 });
 
 describe("whichever game the large card features", () => {
-  it.each(HOME_GAMES)("featuring %s, each tile the row shows is marked for its own game and glides, its frame sized from its old box to its new one", (featured) => {
-    const app = openTurning(1180, 820, "wide", { featured });
-    const tiles = partsFeaturing(featured).filter((name) => name.startsWith("tile-"));
+  it.each(ALL_GAMES)("featuring %s, each tile the row shows is marked for its own game and glides, its frame sized from its old box to its new one", (featured) => {
+    const app = openTurning(1180, 820, "wide", { featured, withOptionalGames: true });
+    const tiles = partsFeaturing(featured, true).filter((name) => name.startsWith("tile-"));
 
-    expect([...document.querySelectorAll("[data-turn-part]")].map(nameOf)).toEqual(partsFeaturing(featured));
-    expect(within(tilesRow()).getAllByRole("button").map((tile) => [/\b(\w+)-tile\b/.exec(tile.className)?.[1], nameOf(tile)])).toEqual(tiles.map((name) => [name.slice("tile-".length), name]));
+    expect([...document.querySelectorAll("[data-turn-part]")].map(nameOf)).toEqual(partsFeaturing(featured, true));
+    expect(within(tilesRow()).getAllByRole("button").map((tile) => [/\b([\w-]+)-tile\b/.exec(tile.className)?.[1], nameOf(tile)])).toEqual(tiles.map((name) => [name === "tile-sandWriting" ? "sand-writing" : name === "tile-picturePuzzle" ? "picture-puzzle" : name === "tile-whoseJaw" ? "whose-jaw" : name.slice("tile-".length), name]));
 
     const before = Object.fromEntries(tiles.map((name) => [name, laidOut(name, "wide")]));
 
     app.resize([820, 1180, "tall"]);
 
-    expect(app.glides().map(({ name }) => name)).toEqual(partsFeaturing(featured));
+    expect(app.glides().map(({ name }) => name)).toEqual(partsFeaturing(featured, true));
     expect(tiles.map((name) => app.animations.find((animation) => animation.name === `frame of ${name}`)?.keyframes.map(({ width, height }) => [width, height]))).toEqual(
       tiles.map((name) => {
         const after = laidOut(name, "tall");
@@ -835,7 +873,9 @@ describe("the page's marked parts", () => {
       ["SKELETONS", "tile-skeletons"],
       ["DIG", "tile-dig"],
       ["SORT", "tile-sort"],
-      ["CARE", "tile-care"]
+      ["CARE", "tile-care"],
+      ["SAND WRITING", "tile-sandWriting"],
+      ["LABYRINTH", "tile-labyrinth"]
     ]);
   });
 });

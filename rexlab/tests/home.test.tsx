@@ -1,11 +1,13 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import { LANGUAGES } from "../src/language/language.ts";
+import { SAND } from "../src/sandWritingCanvas.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localDigProgress, localLabyrinthProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { careRecord } from "./careApp.tsx";
 import { HOME_GAMES, badgeOf, renderHomePageFeaturing } from "./homePage.tsx";
 import { TILE_COUNTS, TITLE_EMS, TITLE_TEXTS, columnGapOf, gamesWidths, linesOf, roomFor, sidesOf, tileTitles, widthOf } from "./homeTitles.ts";
@@ -56,10 +58,11 @@ function openHomePage(
   pairs = emptyPairs(),
   skeletons = emptySkeletons(),
   dig = emptyDig(),
-  featured: HomeGame = "compare"
+  featured: HomeGame = "compare",
+  labyrinth = emptyLabyrinth()
 ) {
-  render(<App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pageAtRest()} {...pictures} />);
-  return { user: userEvent.setup(), card: featuredCard() };
+  render(<App {...labyrinth} {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={progress} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...care} {...sorting} {...pairs} {...skeletons} {...dig} {...pageAtRest()} {...pictures} />);
+  return { user: userEvent.setup({ delay: null }), card: featuredCard() };
 }
 
 // The home page with COMPARE's tile in the row, the large card CARE's.
@@ -108,6 +111,7 @@ function renderHomePage(taps: number[]) {
       pairs={{ picture: fakeBodyPicture("stegosaurus"), stars: undefined }}
       skeletons={{ picture: fakeSkeletonPicture("triceratops", "skeleton"), best: undefined }}
       dig={{ picture: fakeBodyPicture("stegosaurus"), dugUp: undefined }}
+      labyrinth={{ picture: fakeBodyPicture("triceratops"), stars: undefined }}
       moreComing={fakeBodyPicture("triceratops")}
       onCompareDinosaurs={nothing}
       onCatalogue={nothing}
@@ -117,10 +121,12 @@ function renderHomePage(taps: number[]) {
       onSkeletons={nothing}
       onMuseum={nothing}
       onDig={nothing}
+      onSandWriting={nothing}
+      onLabyrinth={nothing}
     />,
     withPictures
   );
-  return { user: userEvent.setup(), card: homeTile("SORT") };
+  return { user: userEvent.setup({ delay: null }), card: homeTile("SORT") };
 }
 
 // The name of every symbol an element shows, in order.
@@ -168,7 +174,7 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("stands every other game in equal columns of two beside the large card: ANCIENT REPTILES over FIND THE PAIR, SKELETONS over DIG, SORT over CARE, then MORE COMING, last", () => {
+  it("stands every other game in equal columns of two beside the large card, with SAND WRITING after CARE and MORE COMING last", () => {
     const { card } = openHomePage();
 
     const games = card.parentElement;
@@ -177,7 +183,7 @@ describe("the home page", () => {
     expect([...(games?.children ?? [])]).toEqual([card, row]);
     // The large card takes three sevenths of the width, the tiles the rest.
     expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
-    const tiles = [...["ANCIENT REPTILES", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE"].map(homeTile), document.querySelector(".more-coming")];
+    const tiles = [...["ANCIENT REPTILES", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE", "SAND WRITING", "LABYRINTH"].map(homeTile), document.querySelector(".more-coming")];
     expect([...row.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
     // column as wide as the others and its two tiles sharing its height,
@@ -277,11 +283,12 @@ describe("the home page", () => {
     ["skeletons", "SKELETONS", "3"],
     ["dig", "DIG", "7"],
     ["sort", "SORT", "6"],
-    ["care", "CARE", "8"]
+    ["care", "CARE", "8"],
+    ["labyrinth", "LABYRINTH", "9"]
   ];
 
   it.each(HOME_WINDOWS.flatMap(([width, height]) => (["compare", "care"] as const).map((featured) => [width, height, featured] as const)))(
-    "keeps the title of every game on one line in every language in a %i by %i window, featuring %s, but FIND THE PAIR's on two at most beside its symbol, the tiles' at least 24px, MORE COMING's 20px and their counts at least 20px in the pictures' corners",
+    "keeps short titles on one line and longer titles on two at most in every language in a %i by %i window, featuring %s, with tiles at least 24px, MORE COMING 20px and counts at least 20px",
     (width, height, featured) => {
       openWindow(width, height);
       const careStorage = memoryStorage({ [PROGRESS_KEY]: careRecord({ bestScore: 8, visitsFinished: 1, friends: [] }) });
@@ -293,7 +300,8 @@ describe("the home page", () => {
         { ...emptyPairs(), pairsProgress: localPairsProgress(() => memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 120, level: 1, boardsOnLevel: 0, best: {}, found: [] }) })) },
         withSkeletons(keptSkeletons({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] })),
         { ...emptyDig(), digProgress: localDigProgress(() => memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { dig: { dug: SHIPPED_DIG.slice(0, 7).map(({ id }) => id), badges: [] } } }) })) },
-        featured
+        featured,
+        { labyrinthProgress: localLabyrinthProgress(() => memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { labyrinth: { progress: { stars: 9, roundsPlayed: 3, best: { hatchling: null, explorer: 3, paleontologist: null } } } } }) })) }
       );
       const shown = TILE_TITLES.filter(([game]) => game !== featured);
 
@@ -327,18 +335,20 @@ describe("the home page", () => {
       expect(counts.map((count) => px(getComputedStyle(count ?? document.body).fontSize) >= 20)).toEqual(tiles.map(() => true));
       expect(tiles.map((tile) => getComputedStyle(tile).position)).toEqual(tiles.map(() => "relative"));
 
-      const title = pairsTile().querySelector(".pairs-tile-title");
-      if (!title) throw new Error("No FIND THE PAIR title");
-      expect([getComputedStyle(title).whiteSpace, title.previousElementSibling?.className]).toEqual(["normal", "pairs-tile-symbol"]);
-      const size = px(getComputedStyle(title).fontSize);
-      expect(size).toBeGreaterThanOrEqual(24);
-      const room = roomFor(title, (card) => cardWidth(card, width));
-      const spacing = px(getComputedStyle(title).letterSpacing);
-      expect(
-        LANGUAGES.map((language) => linesOf(TEXTS[language].pairs, size, spacing, room)).filter(
-          (lines) => !Array.isArray(lines) || lines.length > 2 || lines.some((line) => widthOf(line, size, spacing) > room)
-        )
-      ).toEqual([]);
+      for (const [name, key, symbol] of [["FIND THE PAIR", "pairs", "pairs-tile-symbol"], ["SAND WRITING", "sandWriting", "sand-writing-tile-symbol"]] as const) {
+        const title = homeTile(name).querySelector('[class$="-tile-title"]');
+        if (!title) throw new Error(`No ${name} title`);
+        expect([getComputedStyle(title).whiteSpace, title.previousElementSibling?.className]).toEqual(["normal", symbol]);
+        const size = px(getComputedStyle(title).fontSize);
+        expect(size).toBeGreaterThanOrEqual(24);
+        const room = roomFor(title, (card) => cardWidth(card, width));
+        const spacing = px(getComputedStyle(title).letterSpacing);
+        expect(
+          LANGUAGES.map((language) => linesOf(TEXTS[language][key], size, spacing, room)).filter(
+            (lines) => !Array.isArray(lines) || lines.length > 2 || lines.some((line) => widthOf(line, size, spacing) > room)
+          )
+        ).toEqual([]);
+      }
     }
   );
 
@@ -354,6 +364,19 @@ describe("the home page", () => {
     expect(symbolsOf(tile)).toEqual(["footprints", "copy"]);
     expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("stegosaurus"), fakeBodyPicture("stegosaurus")]);
     expect(tile.querySelector(".pairs-tile-stars")).toBeNull();
+  });
+
+  it("offers sand writing as a tile of a 2, an A and a circle written in the canvas's sand, its pencil symbol beside its title", () => {
+    openHomePage();
+    const tile = homeTile("SAND WRITING");
+    expect(tile.textContent).toBe("SAND WRITING");
+    expect(symbolsOf(tile)).toEqual(["pencil"]);
+    const art = tile.querySelector(".sand-writing-tile-art");
+    if (!art) throw new Error("No sand picture on the tile");
+    expect(art.getAttribute("aria-hidden")).toBe("true");
+    // Each mark is the canvas's light lip under its darker groove.
+    const layers = [...art.querySelectorAll(".sand-writing-tile-marks > g > g")].map((layer) => [layer.getAttribute("stroke"), layer.querySelectorAll("path").length]);
+    expect(layers).toEqual([[SAND.lip, 3], [SAND.groove, 3]]);
   });
 
   it("brightens find the pair's tile under a pointer, and presses it in", async () => {
@@ -535,7 +558,7 @@ describe("the home page", () => {
   it("shows the RexLab wordmark, small, in the top-left corner", () => {
     const { card } = openHomePage();
 
-    const wordmark = screen.getByText("RexLab");
+    const wordmark = screen.getByText("RexLab").closest<HTMLElement>(".wordmark")!;
     const style = getComputedStyle(wordmark);
     expect(style.position).toBe("fixed");
     expect(style.top).toMatch(/^[\d.]+(px|rem)$/);
@@ -599,7 +622,7 @@ describe("the home page", () => {
 
   it.each(QUIZ_DOORS)("brightens the %s under a pointer", async (_, door) => {
     const card = door();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     expect(brightness(card)).toBe(1);
 
     await user.hover(card);
@@ -611,7 +634,7 @@ describe("the home page", () => {
 
   it.each(QUIZ_DOORS)("shows the %s pressed before the round opens", async (_, door) => {
     const card = door();
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
 
     await user.pointer({ keys: "[TouchA>]", target: card });
 
@@ -624,7 +647,7 @@ describe("the home page", () => {
   });
 
   it.each(QUIZ_DOORS)("starts a round of 10 questions on a tap on the %s", async (_, door) => {
-    await userEvent.setup().click(door());
+    await userEvent.setup({ delay: null }).click(door());
 
     expect(screen.getByLabelText("PROGRESS").textContent).toBe("1/10");
     expect(within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("button")).toHaveLength(2);
@@ -657,9 +680,8 @@ describe("the large card", () => {
       expect(name).toBe(name.toLocaleUpperCase("en"));
       // The same picture, drawn the same way, and the same symbols.
       expect(looks(card)).toEqual(tile);
-      // The catalogue's count is always there; every other badge only once
-      // there is a score.
-      expect(tile.badge !== null).toBe(scored || game === "catalogue");
+      // Sand writing has no score; the catalogue always has its count.
+      expect(tile.badge !== null).toBe(game !== "sandWriting" && (scored || game === "catalogue"));
       expect(within(tilesRow()).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(
         HOME_GAMES.filter(([shown]) => shown !== game).map(([, shown]) => TEXTS.en[shown])
       );
@@ -708,13 +730,24 @@ describe("the large card", () => {
   async function openedBy(featured: HomeGame, tap: (user: ReturnType<typeof userEvent.setup>) => Promise<void>) {
     const pictures = manualPictures();
     const { container, unmount } = render(
-      <App {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
+      <App {...emptyLabyrinth()} {...featuring(featured)} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
     );
-    await tap(userEvent.setup());
+    await tap(userEvent.setup({ delay: null }));
     const asked: string[] = [];
     for (let loading = pictures.loading(); loading.length > 0; loading = pictures.loading()) {
       asked.push(...loading);
       act(() => loading.forEach(pictures.finish));
+    }
+    // React generates a fresh panel id per mount; compare the references
+    // as well as the panel without depending on the generated value.
+    for (const [index, panel] of [...container.querySelectorAll("[id]")].entries()) {
+      const previous = panel.id;
+      panel.id = `panel-${index}`;
+      for (const attribute of ["aria-controls", "aria-describedby", "aria-labelledby"]) {
+        for (const element of container.querySelectorAll(`[${attribute}]`)) {
+          element.setAttribute(attribute, element.getAttribute(attribute)!.split(" ").map((id) => id === previous ? panel.id : id).join(" "));
+        }
+      }
     }
     const shown = container.innerHTML;
     unmount();
@@ -780,7 +813,7 @@ describe("the first question of a round", () => {
   // apart, both before the first one's screen change is shown.
   it("starts one round, counted once, for two taps on the large card in one moment", () => {
     const { counted, startCounter } = countedStarts();
-    render(<App {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />);
+    render(<App {...emptyLabyrinth()} {...featuring()} startCounter={startCounter} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(7)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />);
     const card = featuredCard();
 
     act(() => {

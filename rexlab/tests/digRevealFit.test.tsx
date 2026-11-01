@@ -5,19 +5,15 @@ import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
 import { NAME_EMS } from "./nameWidths.ts";
+import { WORD_EMS } from "./digRevealWords.ts";
 import { withPictures } from "./pictures.tsx";
 import { contrast, fakeBodyPicture, manualTimers, seenOn, surfaceOf } from "./support.ts";
 import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // jsdom lays nothing out. Budget the delivered CSS of the fullest reveal,
 // the 52nd creature dug up and named at the first pick, in each window,
-// using conservative widths in ems: Lexend's bold Latin face and the
-// iPad's Cyrillic face. Names and levels use the shared measures.
-const WORD_EMS: Record<string, number> = {
-  "DIG AGAIN": 6.6, HOME: 3.2, "DUG UP": 4.4, "NEW!": 3.0, "NEW BEST!": 7.2,
-  "КОПАТЬ ЕЩЁ": 7.4, ДОМОЙ: 4.1, ОТКОПАНО: 6.2, "НОВЫЙ!": 4.6, "НОВЫЙ РЕКОРД!": 10.5
-};
-
+// using conservative widths in ems from the reveal's words. Names and
+// levels use the shared measures.
 function pixels(value: string): number {
   if (value === "0" || value === "normal") return 0;
   const plain = /^([\d.]+)px$/.exec(value);

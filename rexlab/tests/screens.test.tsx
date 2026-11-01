@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, renderHook, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { addTransitionType, Profiler, startTransition } from "react";
@@ -171,10 +172,10 @@ describe("the screen changes of the app", () => {
     const shown: Array<string | null> = [];
     render(
       <Profiler id="app" onRender={() => shown.push(screen.queryByLabelText("PROGRESS")?.textContent ?? null)}>
-        <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(15)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
+        <App {...emptyLabyrinth()} {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(15)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...pictures} />
       </Profiler>
     );
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     await user.click(gameDoor("COMPARE"));
     act(() => pictures.loading().forEach(pictures.finish));
     const [first, second] = cards();
@@ -206,9 +207,9 @@ describe("the screen changes of the app", () => {
 // catalogue it is given.
 function openApp(catalogue = SHIPPED_CATALOGUE) {
   render(
-    <App {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={catalogue} bodyPicture={fakeBodyPicture} random={seededRandom(15)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />
+    <App {...emptyLabyrinth()} {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={catalogue} bodyPicture={fakeBodyPicture} random={seededRandom(15)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />
   );
-  return userEvent.setup();
+  return userEvent.setup({ delay: null });
 }
 
 // The transition types added since the last call.

@@ -94,7 +94,7 @@ func stringValue(s *string) string {
 func TestPatchPathsStayUnderTheStore(t *testing.T) {
 	t.Parallel()
 	s, _ := store(t)
-	for _, bad := range []string{"", "..", "../outside", "/outside", "a/b", `a\b`} {
+	for _, bad := range []string{"", "..", "../outside", "/outside", "a/../../b", `a\b`} {
 		if _, err := s.WritePatch("x", bad, []byte("bad")); err == nil {
 			t.Errorf("step %q accepted", bad)
 		}
@@ -102,6 +102,40 @@ func TestPatchPathsStayUnderTheStore(t *testing.T) {
 	for _, bad := range []string{"../outside", "/outside", ""} {
 		if _, err := s.Patch(bad); err == nil {
 			t.Errorf("path %q accepted", bad)
+		}
+	}
+}
+
+// Contract test: the file system, including nested patch export.
+func TestEachRepeatPassKeepsItsOwnPatch(t *testing.T) {
+	t.Parallel()
+	s, _ := store(t)
+	for _, step := range []string{"fix/1", "fix/2", "fix/2/1", "repair/unit/1"} {
+		path, err := s.WritePatch("x", step, []byte(step))
+		if err != nil || path != "x/patches/"+step+".patch" {
+			t.Fatalf("path %s, error %v", path, err)
+		}
+		patch, err := s.Patch(path)
+		if err != nil || string(patch) != step {
+			t.Fatalf("patch %q, error %v", patch, err)
+		}
+	}
+	if err := s.Write(lost("x")); err != nil {
+		t.Fatal(err)
+	}
+	out := t.TempDir()
+	if err := s.Export("x", out); err != nil {
+		t.Fatal(err)
+	}
+	for _, step := range []string{"fix/1", "fix/2", "fix/2/1", "repair/unit/1"} {
+		patch, err := os.ReadFile(filepath.Join(out, "x", "patches", step+".patch"))
+		if err != nil || string(patch) != step {
+			t.Errorf("exported %s: %q, error %v", step, patch, err)
+		}
+	}
+	for _, step := range []string{"fix/../1", "fix/1/", "fix/1/../../outside", "fix//1"} {
+		if _, err := s.WritePatch("x", step, []byte("bad")); err == nil {
+			t.Errorf("accepted %q", step)
 		}
 	}
 }

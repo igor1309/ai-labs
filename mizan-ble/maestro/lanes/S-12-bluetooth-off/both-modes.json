@@ -1,0 +1,9 @@
+{
+  "bluetooth": "off",
+  "hosts": [
+    {
+      "amount": 12345
+    }
+  ],
+  "enteredAmount": 12345
+}

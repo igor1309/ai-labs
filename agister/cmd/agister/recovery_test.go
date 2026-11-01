@@ -87,7 +87,7 @@ func TestARecoveredTurnIsAProgressLineAndAnEvent(t *testing.T) {
 		}
 	}
 	wantStale := []storedEvent{{id: "20261016T100000Z-55fd36", event: runstore.Event{At: runStart.Add(time.Minute), Step: "ask", Kind: runstore.Stale,
-		What: "no event for 1m", Recovering: true}}}
+		What: "no event for 1m", Recovering: true, Waiting: &runstore.Waiting{On: "recovery", Since: runStart.Add(time.Minute)}}}}
 	if !reflect.DeepEqual(stale, wantStale) {
 		t.Errorf("runstore was given the stale events\n%+v\nwant\n%+v", stale, wantStale)
 	}

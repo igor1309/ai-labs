@@ -100,10 +100,12 @@ type Turn struct {
 }
 
 // Report is a line a turn read: the tool call it made, where Tool is not
-// nil; a tool's result, where Result is set; else another line.
+// nil; a tool's result, where Result is set; the runtime session id from
+// thread.started, where Session is set; else another line.
 type Report struct {
-	Tool   *Tool
-	Result bool
+	Session string
+	Tool    *Tool
+	Result  bool
 }
 
 // Tool is a tool call a turn reports: the tool's name and all it was

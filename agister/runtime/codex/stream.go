@@ -58,9 +58,14 @@ type stream struct {
 // among them: only turn.completed and turn.failed decide, and codex may
 // report an error it then recovers from.
 func (s *stream) line(line string) {
+	previous := s.thread
 	tool, result := s.read(line)
+	session := ""
+	if s.thread != previous {
+		session = s.thread
+	}
 	if tool != nil || !result {
-		s.report(Report{Tool: tool})
+		s.report(Report{Tool: tool, Session: session})
 	}
 	if result {
 		s.report(Report{Result: true})

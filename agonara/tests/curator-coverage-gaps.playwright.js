@@ -443,5 +443,6 @@ function close(server) {
       }
       resolve();
     });
+    server.closeAllConnections();
   });
 }
