@@ -18,7 +18,13 @@ type pagesStoreSpy struct {
 	errs      map[string]error
 }
 
-func (s pagesStoreSpy) Runs() ([]string, error) { return nil, nil }
+func (s pagesStoreSpy) Runs() ([]string, error) {
+	var ids []string
+	for id := range s.snapshots {
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
 func (s pagesStoreSpy) Snapshot(id string) (runstore.Snapshot, error) {
 	if err := s.errs[id]; err != nil {
 		return runstore.Snapshot{}, err
@@ -29,7 +35,7 @@ func (s pagesStoreSpy) Snapshot(id string) (runstore.Snapshot, error) {
 func newPagesRunsOver(t *testing.T, store pagesStoreSpy, now time.Time, alive bool) *pagesRuns {
 	t.Helper()
 	probe := func(int) (string, bool, error) { return "start", alive, nil }
-	runs, err := newPagesRuns(store, func() time.Time { return now }, probe, 10*time.Second)
+	runs, err := newPagesRuns(store, func() time.Time { return now }, probe)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,28 +69,60 @@ func TestPagesRunMapsTheSnapshot(t *testing.T) {
 	}
 }
 
-// Scenario: A run's state is the state agister status gives.
+// Scenario: A run's state is the state agister status gives: unstarted,
+// ended, a dead owner, and a live one on either side of the stall threshold.
 func TestPagesRunStateIsStatusState(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 11, 1, 9, 0, 0, 0, time.UTC)
-	snapshot := runstore.Snapshot{Record: runstore.Record{ID: "R1", Started: now.Add(-time.Minute), Status: "running"},
-		Heartbeat: &runstore.Heartbeat{PID: 42, ProcessStart: "start", Beat: now}}
-	store := pagesStoreSpy{snapshots: map[string]runstore.Snapshot{"R1": snapshot}}
-	got, err := newPagesRunsOver(t, store, now, false).Run("R1")
-	if err != nil {
-		t.Fatal(err)
+	pending := func(age time.Duration) *time.Time { at := now.Add(-age); return &at }
+	beat := func(age time.Duration) *runstore.Heartbeat {
+		h := &runstore.Heartbeat{PID: 42, ProcessStart: "start", Beat: now}
+		if age > 0 {
+			h.PendingSince, h.PendingAgeMS = pending(age), age.Milliseconds()
+		}
+		return h
 	}
-	states, err := newRunStates(statusStoreSpy{ids: []string{"R1"}, snapshots: store.snapshots}, func() time.Time { return now },
-		func(int) (string, bool, error) { return "start", false, nil }, 10*time.Second)
-	if err != nil {
-		t.Fatal(err)
+	running := runstore.Record{ID: "20261101T085900Z-aa", Started: now.Add(-time.Minute), Status: "running"}
+	cases := []struct {
+		name     string
+		snapshot runstore.Snapshot
+		err      error
+		alive    bool
+		want     string
+	}{
+		{"unstarted", runstore.Snapshot{}, runstore.ErrNotStarted, true, "unknown"},
+		{"ended", runstore.Snapshot{Record: runstore.Record{ID: running.ID, Started: running.Started, Ended: &now, Status: "failed"}}, nil, true, "failed"},
+		{"dead owner", runstore.Snapshot{Record: running, Heartbeat: beat(0)}, nil, false, "lost"},
+		{"live, writer pending under the threshold", runstore.Snapshot{Record: running, Heartbeat: beat(stalledAfter - time.Second)}, nil, true, "running"},
+		{"live, writer pending at the threshold", runstore.Snapshot{Record: running, Heartbeat: beat(stalledAfter)}, nil, true, "writer stalled"},
 	}
-	status, err := states.States("R1", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Status != "lost" || got.Status != status[0].Status {
-		t.Fatalf("pages %q, status %q, want both lost", got.Status, status[0].Status)
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			id := running.ID
+			probe := func(int) (string, bool, error) { return "start", c.alive, nil }
+			clock := func() time.Time { return now }
+			store := pagesStoreSpy{snapshots: map[string]runstore.Snapshot{id: c.snapshot}, errs: map[string]error{id: c.err}}
+			runs, err := newPagesRuns(store, clock, probe)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := runs.Run(id)
+			if err != nil {
+				t.Fatal(err)
+			}
+			states, err := newRunStates(store, clock, probe, stalledAfter)
+			if err != nil {
+				t.Fatal(err)
+			}
+			status, err := states.States(id, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.Status != c.want || status[0].Status != c.want {
+				t.Fatalf("pages %q, status %q, want both %q", got.Status, status[0].Status, c.want)
+			}
+		})
 	}
 }
 
@@ -92,7 +130,7 @@ func TestPagesRunStateIsStatusState(t *testing.T) {
 func TestPagesRunGivesTheStoreError(t *testing.T) {
 	t.Parallel()
 	bad := errors.New("runstore: log id disagrees with folder")
-	_, err := newPagesRunsOver(t, pagesStoreSpy{errs: map[string]error{"R1": bad}}, time.Now(), true).Run("R1")
+	_, err := newPagesRunsOver(t, pagesStoreSpy{errs: map[string]error{"R1": bad}}, time.Date(2026, 11, 1, 9, 0, 0, 0, time.UTC), true).Run("R1")
 	if !errors.Is(err, bad) {
 		t.Fatalf("got %v, want %v", err, bad)
 	}
@@ -102,7 +140,7 @@ func TestPagesRunGivesTheStoreError(t *testing.T) {
 func TestPagesRunNotKeptIsNotFound(t *testing.T) {
 	t.Parallel()
 	missing := fmt.Errorf("runstore: the record of %q: %w", "R9", fs.ErrNotExist)
-	_, err := newPagesRunsOver(t, pagesStoreSpy{errs: map[string]error{"R9": missing}}, time.Now(), true).Run("R9")
+	_, err := newPagesRunsOver(t, pagesStoreSpy{errs: map[string]error{"R9": missing}}, time.Date(2026, 11, 1, 9, 0, 0, 0, time.UTC), true).Run("R9")
 	if !errors.Is(err, pages.ErrNotFound) {
 		t.Fatalf("got %v, want ErrNotFound", err)
 	}

@@ -43,12 +43,8 @@ func (s runStates) States(id string, last bool) ([]cli.RunState, error) {
 	}
 	snapshots := make([]runstore.Snapshot, 0, len(ids))
 	for _, id := range ids {
-		snapshot, err := s.store.Snapshot(id)
-		if errors.Is(err, runstore.ErrNotStarted) {
-			stamp, _, _ := strings.Cut(id, "-")
-			started, _ := time.Parse("20060102T150405Z", stamp)
-			snapshot = runstore.Snapshot{Record: runstore.Record{ID: id, Started: started}}
-		} else if err != nil {
+		snapshot, err := readSnapshot(s.store, id)
+		if err != nil {
 			return nil, err
 		}
 		snapshots = append(snapshots, snapshot)
@@ -101,6 +97,23 @@ func (s runStates) States(id string, last bool) ([]cli.RunState, error) {
 		states = append(states, state)
 	}
 	return states, nil
+}
+
+// stalledAfter is how long a live run's log may wait on its writer before
+// agister status and pages both call it stalled.
+const stalledAfter = 10 * time.Second
+
+// readSnapshot is the run id's snapshot as agister status and pages both
+// read it: a run whose log has no committed start yet is the run its id
+// names, started when its id says, with no record besides.
+func readSnapshot(store statusStore, id string) (runstore.Snapshot, error) {
+	snapshot, err := store.Snapshot(id)
+	if errors.Is(err, runstore.ErrNotStarted) {
+		stamp, _, _ := strings.Cut(id, "-")
+		started, _ := time.Parse("20060102T150405Z", stamp)
+		return runstore.Snapshot{Record: runstore.Record{ID: id, Started: started}}, nil
+	}
+	return snapshot, err
 }
 
 func newProcessProbe(kill func(int, syscall.Signal) error, token func(context.Context, int) (string, error)) (func(int) (string, bool, error), error) {

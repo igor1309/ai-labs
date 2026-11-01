@@ -287,7 +287,8 @@ const Usage = `usage: agister pages [--addr <host:port>] [--no-open]
 Serves the page of the runs kept at http://<addr>/ (default 127.0.0.1:7465)
 until stopped, and opens it in the browser unless --no-open.`
 
-// Env is what Main is given: its output, its socket and the browser.
+// Env is what Main is given, each required: its output, its socket, the
+// browser and the runs.
 type Env struct {
 	Stdout, Stderr io.Writer
 	Listen         func(network, address string) (net.Listener, error)
@@ -299,6 +300,12 @@ type Env struct {
 // Main runs agister pages with args, the words after "pages", until ctx
 // ends, and gives its exit code: 0 stopped, 1 failed, 64 usage.
 func Main(ctx context.Context, args []string, env Env) int {
+	if env.Stdout == nil || env.Stderr == nil || env.Listen == nil || env.Open == nil || env.Runs == nil {
+		if env.Stderr != nil {
+			fmt.Fprintln(env.Stderr, "agister pages: missing collaborator")
+		}
+		return 1
+	}
 	addr, open := "127.0.0.1:7465", true
 	for i := 0; i < len(args); i++ {
 		switch {
@@ -325,7 +332,7 @@ func Main(ctx context.Context, args []string, env Env) int {
 	server := &http.Server{Handler: Handler(env.Runs), ReadHeaderTimeout: 10 * time.Second}
 	url := "http://" + listener.Addr().String() + "/"
 	fmt.Fprintf(env.Stdout, "Agister pages at %s (Ctrl-C stops)\n", url)
-	if open && env.Open != nil {
+	if open {
 		if err := env.Open(url); err != nil {
 			fmt.Fprintln(env.Stderr, "agister pages: open:", err)
 		}

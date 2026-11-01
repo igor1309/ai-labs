@@ -265,7 +265,7 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	for _, turn := range turns {
 		takes[turn.contract] = turn.inputs
 	}
-	states, err := newRunStates(store, machine.clock.Now, machine.probe, 10*time.Second)
+	states, err := newRunStates(store, machine.clock.Now, machine.probe, stalledAfter)
 	if err != nil {
 		return nil, err
 	}

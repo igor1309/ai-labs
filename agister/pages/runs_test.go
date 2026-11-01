@@ -142,29 +142,35 @@ func TestRunNotKeptIsNotFound(t *testing.T) {
 	}
 }
 
-func call(status string, ms int64) pages.Call {
-	return pages.Call{Process: "review", Agent: "codex", Status: status, DurationMS: ms}
+func call(process, agent, status string, ms int64) pages.Call {
+	return pages.Call{Process: process, Agent: agent, Status: status, DurationMS: ms}
 }
 
-// Scenario: Compare tallies ended calls per process and agent.
+// Scenario: Compare tallies ended calls per process and agent, a group
+// each, by process then agent.
 func TestCompareTalliesEndedCallsPerProcessAndAgent(t *testing.T) {
 	t.Parallel()
 	usd := 0.25
-	c1 := call("completed", 10000)
+	c1 := call("review", "codex", "completed", 10000)
 	c1.Cost = &usd
-	spy := keep(pages.Run{ID: "R1", Status: "completed", Calls: []pages.Call{c1, call("completed", 30000)}},
-		pages.Run{ID: "R2", Status: "failed", Calls: []pages.Call{call("failed", 20000)}})
+	spy := keep(
+		pages.Run{ID: "R1", Status: "completed", Calls: []pages.Call{c1, call("review", "codex", "completed", 30000), call("review", "opus", "failed", 5000)}},
+		pages.Run{ID: "R2", Status: "failed", Calls: []pages.Call{call("review", "codex", "failed", 20000), call("implement", "codex", "completed", 7000)}})
 	got := decode[pages.Comparison](t, get(t, spy, "/api/runs/compare"))
-	want := []pages.Group{{Process: "review", Agent: "codex", Runs: 3, Completed: 2, PassRate: 2.0 / 3, MedianMS: 20000, TotalCost: 0.25, CostUnknown: 2}}
+	want := []pages.Group{
+		{Process: "implement", Agent: "codex", Runs: 1, Completed: 1, PassRate: 1, MedianMS: 7000, CostUnknown: 1},
+		{Process: "review", Agent: "codex", Runs: 3, Completed: 2, PassRate: 2.0 / 3, MedianMS: 20000, TotalCost: 0.25, CostUnknown: 2},
+		{Process: "review", Agent: "opus", Runs: 1, PassRate: 0, MedianMS: 5000, CostUnknown: 1},
+	}
 	if !reflect.DeepEqual(got.Groups, want) {
-		t.Fatalf("got %+v, want %+v", got.Groups, want)
+		t.Fatalf("got %+v\nwant %+v", got.Groups, want)
 	}
 }
 
 // Scenario: A call counts by its own status, not its run's.
 func TestCompareCountsACallByItsOwnStatus(t *testing.T) {
 	t.Parallel()
-	spy := keep(pages.Run{ID: "R1", Status: "interrupted", Calls: []pages.Call{call("completed", 10), call("interrupted", 20)}})
+	spy := keep(pages.Run{ID: "R1", Status: "interrupted", Calls: []pages.Call{call("review", "codex", "completed", 10), call("review", "codex", "interrupted", 20)}})
 	got := decode[pages.Comparison](t, get(t, spy, "/api/runs/compare"))
 	if len(got.Groups) != 1 || got.Groups[0].Runs != 1 || got.Groups[0].Completed != 1 {
 		t.Fatalf("got %+v, want 1 run, 1 completed", got.Groups)

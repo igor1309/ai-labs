@@ -2,6 +2,7 @@ package agister_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io/fs"
 	"maps"
@@ -272,10 +273,26 @@ func TestInstallReplacesHomesSettingsAndKeepsTheRest(t *testing.T) {
 // An install writes the launch agent that keeps agister pages serving, over
 // the binary it built, and reloads it.
 //
-// Contract test: runs install.sh in bash, with go and launchctl spies.
+// Contract test: runs install.sh in bash, with go and launchctl spies,
+// and reads the launch agent with plutil.
 func TestInstallWritesAndReloadsThePagesLaunchAgent(t *testing.T) {
 	t.Parallel()
-	user := t.TempDir()
+	for _, name := range []string{"plain", "Igor & <Team>"} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			user := filepath.Join(t.TempDir(), name)
+			if err := os.Mkdir(user, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			installsThePagesLaunchAgent(t, user)
+		})
+	}
+}
+
+// installsThePagesLaunchAgent installs with user its home, and checks the
+// launch agent written, as plutil reads it, and launchctl's calls.
+func installsThePagesLaunchAgent(t *testing.T, user string) {
+	t.Helper()
 	got := install(t, user)
 	if got.code != 0 {
 		t.Fatalf("exit %d, stderr %q", got.code, got.stderr)
@@ -286,12 +303,19 @@ func TestInstallWritesAndReloadsThePagesLaunchAgent(t *testing.T) {
 	if want := []string{"bootout " + domain + "/" + label, "bootstrap " + domain + " " + plist}; !slices.Equal(got.launchctl, want) {
 		t.Errorf("launchctl %q, want %q", got.launchctl, want)
 	}
-	data, err := os.ReadFile(plist)
+	out, err := exec.Command("plutil", "-extract", "ProgramArguments", "json", "-o", "-", plist).Output()
 	if err != nil {
 		t.Fatal(err)
 	}
-	program := "<string>" + filepath.Join(user, ".local", "bin", "agister") + "</string><string>pages</string><string>--no-open</string>"
-	if !strings.Contains(string(data), program) {
-		t.Errorf("the launch agent runs no %q:\n%s", program, data)
+	var program []string
+	if err := json.Unmarshal(out, &program); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{filepath.Join(user, ".local", "bin", "agister"), "pages", "--no-open"}; !slices.Equal(program, want) {
+		t.Errorf("the launch agent runs %q, want %q", program, want)
+	}
+	leftovers, err := filepath.Glob(filepath.Join(filepath.Dir(plist), ".*"))
+	if err != nil || len(leftovers) > 0 {
+		t.Errorf("staged files left: %q, %v", leftovers, err)
 	}
 }

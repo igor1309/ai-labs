@@ -420,6 +420,39 @@ func TestTheRunsKeptAreGivenInNameOrder(t *testing.T) {
 	}
 }
 
+// runstore.feature, "A run folder that cannot be looked into is still
+// kept": one unreadable run does not hide the others; its own read fails.
+//
+// Contract test: the operating system's filesystem and its permissions.
+func TestARunFolderThatCannotBeLookedIntoIsStillKept(t *testing.T) {
+	t.Parallel()
+	s, runs := store(t)
+	if err := s.Write(lost("b")); err != nil {
+		t.Fatal(err)
+	}
+	blocked := filepath.Join(runs, "a")
+	if err := os.Mkdir(blocked, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(blocked, 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(blocked, 0o700) })
+	if _, err := os.Stat(filepath.Join(blocked, "run.jsonl")); errors.Is(err, fs.ErrNotExist) || err == nil {
+		t.Skip("this user can look into an unsearchable folder")
+	}
+	got, err := s.Runs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"a", "b"}; !slices.Equal(got, want) {
+		t.Errorf("runs kept %q, want %q", got, want)
+	}
+	if _, err := s.Snapshot("a"); err == nil {
+		t.Error("the unsearchable run read without an error")
+	}
+}
+
 // A store whose folder is not there yet keeps no runs, and the folder is
 // not made.
 //

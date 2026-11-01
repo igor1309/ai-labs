@@ -593,7 +593,8 @@ func (s *Store) Record(id string) (Record, error) {
 }
 
 // Runs gives the ids of the runs kept, each a folder holding its log or legacy record,
-// in name order; none where the store's folder is not there yet.
+// or one that cannot be looked into, in name order; none where the store's
+// folder is not there yet.
 func (s *Store) Runs() ([]string, error) {
 	entries, err := os.ReadDir(s.folder)
 	if errors.Is(err, fs.ErrNotExist) {
@@ -614,8 +615,11 @@ func (s *Store) Runs() ([]string, error) {
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
+		// A run folder that cannot be looked into is still a run kept: its
+		// own read fails, and the others are listed.
 		if err != nil {
-			return nil, fmt.Errorf("runstore: the runs kept: %w", err)
+			ids = append(ids, entry.Name())
+			continue
 		}
 		if info.Mode().IsRegular() {
 			ids = append(ids, entry.Name())
