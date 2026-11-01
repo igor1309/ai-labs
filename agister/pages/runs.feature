@@ -43,6 +43,11 @@ Feature: Pages shows the runs kept
     When "/api/runs/compare" is read
     Then the group has 3 runs, 2 completed and a median of 20s
 
+  Scenario: A call counts by its own status, not its run's
+    Given an interrupted run with "review" calls completed and interrupted
+    When "/api/runs/compare" is read
+    Then the group has 1 run, 1 completed
+
   Scenario: A request addressed to another host is refused
     When "/api/runs" is read with the Host "evil.example"
     Then the reply is 403
