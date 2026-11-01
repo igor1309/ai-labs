@@ -155,6 +155,8 @@ async function check(browser, files, device) {
     assert.notDeepEqual(await pixel(), [239, 83, 80, 255]);
     await paint(); await press("DONE"); await page.locator(".coloring-result").waitFor(); await protection(page);
     await press("EDIT"); await page.locator(".coloring-workshop canvas").waitFor();
+    // Keyboard press does not wait for enabled state after async reopening.
+    await page.getByRole("button", { name: "UNDO", exact: true }).click({ trial: true });
     await press("UNDO"); await saved(); assert.notDeepEqual(await pixel(), [239, 83, 80, 255]);
     await paint(); await press("HOME"); await page.locator(".home").waitFor(); await protection(page);
     assert.deepEqual(errors, []);
