@@ -23,7 +23,7 @@ The sources below were checked at the named repository commit (full SHA). “Not
 
 ## Recogniser and pending-text measurements
 
-Measured 2026-10-31 on branch `audelin-lab817` with `audelin-replay`'s
+Measured 2026-10-31 on branch `audelin-lab817` (merged as `793c73c2`, #1481) with `audelin-replay`'s
 `saves.md` (Parakeet, the app's live recogniser), on the two longest
 recorded Zoom calls with speech, 554 s each:
 
@@ -57,17 +57,17 @@ alone) and was left out.
 
 ## Interval cost from the published baseline
 
-These are **calculated**, not separately run. Input is LAB-817’s 2026-10-30 measured baseline at 1,620 lines: 270 KB final file, 219 saves/min, 59 MB written/min. Calculations preserve that benchmark’s rounded units and use `3 h = 180 min`; saves/min is `60 / interval`, bytes/min is `59 MB × candidate saves/min / 219`, and call bytes are bytes/min × 180.
+These are **calculated** for the whole-file writer LAB-817 replaced; the measured cost of the shipped writer is under the owner decision below. Input is LAB-817’s 2026-10-30 measured baseline at 1,620 lines: 270 KB final file, 219 saves/min, 59 MB written/min. Calculations preserve that benchmark’s rounded units and use `3 h = 180 min`; saves/min is `60 / interval`, bytes/min is `59 MB × candidate saves/min / 219`, and call bytes are bytes/min × 180.
 
 | Interval | Most text lost on app crash / force quit | Disk written in 3 h | Saves/min vs. recogniser updates/min | Comparable-app practice | Evidence |
 |---|---:|---:|---|---|---|
-| 1 s | At most 1 s **if save cadence is met**; pending finality caveat below | ≈2.92 GB (16.2 MB/min) | 60 saves/min; real recogniser updates/min not measured. If below 60, timer saves may repeat unchanged text. | Source-checked apps range from per-final-segment checkpoints (Muesli) to post-recognition write (Amanu, MacParakeet). | Disk and saves are **inferred** by scaling LAB-817 measured whole-file baseline; loss is **inferred** from interval. |
-| 5 s | At most 5 s **if save cadence is met**; pending finality caveat below | ≈584 MB (3.23 MB/min) | 12 saves/min; real recogniser updates/min not measured. | Same observed spread. | Disk and saves **inferred** from measured baseline; loss **inferred** from interval. |
-| 30 s | At most 30 s **if save cadence is met**; pending finality caveat below | ≈117 MB (0.54 MB/min) | 2 saves/min; real recogniser updates/min not measured. | Same observed spread. | Disk and saves **inferred** from measured baseline; loss **inferred** from interval. |
+| 1 s | At most 1 s **if save cadence is met**; pending finality caveat below | ≈2.92 GB (16.2 MB/min) | 60 saves/min against at most 18 text changes/min (measured above): most saves would repeat unchanged text. | Source-checked apps range from per-final-segment checkpoints (Muesli) to post-recognition write (Amanu, MacParakeet). | Disk and saves are **inferred** by scaling LAB-817 measured whole-file baseline; loss is **inferred** from interval. |
+| 5 s | At most 5 s **if save cadence is met**; pending finality caveat below | ≈584 MB (3.23 MB/min) | 12 saves/min against at most 18 text changes/min (measured above). | Same observed spread. | Disk and saves **inferred** from measured baseline; loss **inferred** from interval. |
+| 30 s | At most 30 s **if save cadence is met**; pending finality caveat below | ≈117 MB (0.54 MB/min) | 2 saves/min against at most 18 text changes/min (measured above). | Same observed spread. | Disk and saves **inferred** from measured baseline; loss **inferred** from interval. |
 
 The issue’s 3-hour estimates (≈1.5 GB, 290 MB, 50 MB) use the rounded 6,000-line paced baseline of about 220 saves/min and 226 MB/min. This table instead scales the 1,620-line measured row to keep one directly named baseline; values differ slightly due to the source measurements and rounded KB/MB. Neither estimate accounts for actual SSD write amplification.
 
-“Most text lost” needs care: timer interval bounds the time since the latest save, but an audio recogniser can keep displayed text provisional longer than that. If a provisional word is first shown at time t and only becomes final later, it may not be in the durable transcript until finality or a stop-time flush; loss can therefore include the unsettled duration plus the save interval. The pending-age replay measurements requested above are necessary to quantify that bound. The final stop write reduces normal-stop loss to zero after it completes, but does not change the crash/force-quit case.
+“Most text lost” needs care: timer interval bounds the time since the latest save, but an audio recogniser can keep displayed text provisional longer than that. If a provisional word is first shown at time t and only becomes final later, it may not be in the durable transcript until finality or a stop-time flush; loss can therefore include the unsettled duration plus the save interval. The replay measurements above put that unsettled time at about 20 s median and 28 s at the 90th percentile on a speaking side, up to 140 s on a quiet one; the text it covers is at most 715 bytes. The final stop write reduces normal-stop loss to zero after it completes, but does not change the crash/force-quit case.
 
 ## The 136 KB paced average
 
@@ -86,7 +86,7 @@ The source survey does not identify a common industry timer: the observed design
 
 ## Measurement provenance and limits
 
-- LAB-817 baseline (issue description, measured 2026-10-30): `Benchmarks/Profile/saves.sh` on branch `audelin-lab817`, 60 s per size, fake recogniser at paced rate; 20/1,620/6,000 lines. The branch is not available in the Git refs fetched for this research. The 219 saves/min and 59 MB/min figures above are issue-reported measurements, not rerun here.
+- LAB-817 baseline (issue description, measured 2026-10-30): `Benchmarks/Profile/saves.sh`, 60 s per size, fake recogniser at paced rate; 20/1,620/6,000 lines, on the whole-file writer that LAB-817 replaced. The 219 saves/min and 59 MB/min figures above are issue-reported measurements, not rerun.
 - One-save measurement and 136 KB paced average: issue comment on LAB-817, also not rerun here.
 - Real recogniser measurements: two recorded Zoom calls of 554 s each, run through `docs/research/replay` with its `saves.md` output (see above).
 
@@ -95,9 +95,9 @@ The source survey does not identify a common industry timer: the observed design
 **5 seconds.** The owner chose it after reading this note and LAB-829's
 `transcript-save-safety.md`; recorded in LAB-817.
 
-The cost table above scales the whole-file baseline. Branch `audelin-lab817`
-keeps final text on disk and rewrites only the text after it, so it writes
-less. Measured there on 2026-10-31 with `Benchmarks/Profile/saves.sh 60`
+The cost table above scales the whole-file baseline, which no longer
+describes the app. LAB-817 (`793c73c2`, #1481) keeps final text on disk and
+rewrites only the text after it, so it writes far less. Measured there on 2026-10-31 with `Benchmarks/Profile/saves.sh 60`
 (fake recogniser, 5 s pause):
 
 | Lines | Saves per minute | Written per minute | Over 3 hours |
