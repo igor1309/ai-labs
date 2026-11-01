@@ -19,7 +19,7 @@ The AI-account tooling — `cl`, `cx`, `codex-mgr`, `ccswitch-limits` and the sh
 | Component | Type | Description |
 | --- | --- | --- |
 | `mac-health` | Scheduled checks | launchd-driven macOS health checks (memory, disk, leftovers) with a JSONL log and threshold notifications |
-| `sessions-audit` | Python scripts | Audit local Claude Code and Codex transcripts for context-expanding behavior (full/repeated reads, unfiltered builds, polling, large tool results) |
+| `sessions-audit` | Python CLI | Audit local Claude Code and Codex transcripts for context-expanding behavior (full/repeated reads, unfiltered builds, polling, large tool results), with time windows, per-project grouping and versioned JSON |
 | `wt` | CLI | Git worktree manager — one command creates a branch and its worktree folder |
 
 ## Stack
