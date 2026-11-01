@@ -24,9 +24,9 @@ Implemented by [Identity and Operations First-Slice Implementation Plan](../plan
 - HTTP route adapters, session-cookie handling, CSRF handling, rate limiting, status mapping, pagination, and redaction: [server.js](../../src/server.js)
 - Operator CLI bootstrap/status commands, stdin JSON handling, envelopes, and exit-code behavior: [cli.js](../../src/cli.js)
 - Delegated Identity command/query boundary: [identity.js](../../src/identity.js)
-- Focused HTTP API coverage for bootstrap, login, sessions, Admin routes, audit events, rate limiting, CSRF, cookies, and redaction: [http-api.test.js](../../tests/http-api.test.js)
+- Focused HTTP API coverage for bootstrap, login, sessions, Admin routes, audit events, rate limiting, CSRF, cookies, and redaction: [http-api-identity-session.test.js](../../tests/http-api-identity-session.test.js)
 - Focused CLI coverage for bootstrap status, bootstrap admin, stdin JSON, rejected output, usage errors, and secret-free arguments: [cli.test.js](../../tests/cli.test.js)
-- End-to-end executable acceptance coverage across CLI bootstrap, HTTP login/session/logout, Admin operations, CSRF, audit reads, last-Admin protection, rate limiting, and redaction: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- End-to-end executable acceptance coverage across CLI bootstrap, HTTP login/session/logout, Admin operations, CSRF, audit reads, last-Admin protection, rate limiting, and redaction: [executable-acceptance-identity-programs.test.js](../../tests/executable-acceptance-identity-programs.test.js) and [executable-acceptance-curation-operations.test.js](../../tests/executable-acceptance-curation-operations.test.js)
 
 The implemented API/CLI surface exposes Identity bootstrap status, first-Admin bootstrap, login/session/logout, Admin-only identity and credential operations, Admin authority mutation, operational-access inspection, and paginated audit reads using the shared accepted/rejected/fault envelope. It preserves the transport boundary by keeping session identifiers out of JSON responses, requiring CSRF on session-backed mutations, reading bootstrap secrets/passwords through stdin for CLI bootstrap, and leaving operational health/diagnostics details to [Operational Cross-Cutting First Slice](operational-cross-cutting-first-slice.md).
 

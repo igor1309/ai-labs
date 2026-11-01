@@ -62,9 +62,13 @@ func TestEachToolUseBlockIsReportedItsNameAndItsInput(t *testing.T) {
 	}}
 	got, reply := reports(t, spy)
 	want := []reported{
-		{report: tool("Bash", `{"command":"ls"}`), read: 1},
+		{report: claudecode.Report{Session: "s1", Tool: &claudecode.Tool{Name: "Bash", Input: `{"command":"ls"}`}}, read: 1},
 		{report: tool("Read", `{"file_path":"a.go"}`), read: 2},
 		{report: line, read: 3},
+	}
+	// The first runtime line also identifies the live session.
+	if len(want) > 0 {
+		want[0].report.Session = "s1"
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("reported %s, want %s", shown(got), shown(want))
@@ -85,6 +89,10 @@ func TestATurnWithNoToolCallReportsNothing(t *testing.T) {
 	for i := range lines {
 		want = append(want, reported{report: line, read: i + 1})
 	}
+	// The first runtime line also identifies the live session.
+	if len(want) > 0 {
+		want[0].report.Session = "s1"
+	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("reported %s, want %s", shown(got), shown(want))
 	}
@@ -101,7 +109,11 @@ func TestEveryOtherLineIsReportedAsALineAToolCallWhole(t *testing.T) {
 	got, _ := reports(t, &supervisorSpy{lines: []string{
 		initLine, toolUse(`{"type":"tool_use","name":"Write","input":` + input + `}`), userLine, doneLine,
 	}})
-	want := []reported{{report: line, read: 1}, {report: tool("Write", input), read: 2}, {report: line, read: 3}, {report: line, read: 4}}
+	want := []reported{{report: claudecode.Report{Session: "s1"}, read: 1}, {report: tool("Write", input), read: 2}, {report: line, read: 3}, {report: line, read: 4}}
+	// The first runtime line also identifies the live session.
+	if len(want) > 0 {
+		want[0].report.Session = "s1"
+	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("reported %s, want %s", shown(got), shown(want))
 	}
@@ -118,8 +130,12 @@ func TestAUserEventCarryingAToolResultReportsAToolsResult(t *testing.T) {
 		doneLine,
 	}})
 	want := []reported{
-		{report: tool("Bash", `{"command":"ls"}`), read: 1}, {report: line, read: 2}, {report: result, read: 3},
+		{report: claudecode.Report{Session: "s1", Tool: &claudecode.Tool{Name: "Bash", Input: `{"command":"ls"}`}}, read: 1}, {report: line, read: 2}, {report: result, read: 3},
 		{report: result, read: 4}, {report: result, read: 4}, {report: line, read: 5},
+	}
+	// The first runtime line also identifies the live session.
+	if len(want) > 0 {
+		want[0].report.Session = "s1"
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("reported %s, want %s", shown(got), shown(want))
@@ -133,6 +149,9 @@ func shown(reports []reported) string {
 	var parts []string
 	for _, r := range reports {
 		what := "a line"
+		if r.report.Session != "" {
+			what += " session " + r.report.Session
+		}
 		if tool := r.report.Tool; tool != nil {
 			what = fmt.Sprintf("%s %s", tool.Name, tool.Input)
 		} else if r.report.Result {

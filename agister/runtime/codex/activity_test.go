@@ -75,7 +75,7 @@ func TestCommandsAndSearchesAreReportedMessagesAreNot(t *testing.T) {
 	}}
 	got, reply := reports(t, spy)
 	want := []reported{
-		{report: line, read: 1},
+		{report: codex.Report{Session: "t1"}, read: 1},
 		{report: tool("command", "go test"), read: 2},
 		{report: line, read: 3},
 		{report: tool("web_search", "q"), read: 4},
@@ -94,7 +94,7 @@ func TestCommandsAndSearchesAreReportedMessagesAreNot(t *testing.T) {
 func TestEveryOtherLineIsReportedAsALine(t *testing.T) {
 	t.Parallel()
 	got, _ := reports(t, &supervisorSpy{lines: []string{threadLine, reasoningLine, completedLine}})
-	want := []reported{{report: line, read: 1}, {report: line, read: 2}, {report: line, read: 3}}
+	want := []reported{{report: codex.Report{Session: "t1"}, read: 1}, {report: line, read: 2}, {report: line, read: 3}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("reported %s, want %s", shown(got), shown(want))
 	}
@@ -142,6 +142,9 @@ func shown(reports []reported) string {
 	var parts []string
 	for _, r := range reports {
 		what := "a line"
+		if r.report.Session != "" {
+			what += " session " + r.report.Session
+		}
 		if tool := r.report.Tool; tool != nil {
 			what = fmt.Sprintf("%s %s", tool.Name, tool.Input)
 		} else if r.report.Result {
@@ -190,7 +193,7 @@ func TestEachToolCallIsReportedOnceByWhatItWasGiven(t *testing.T) {
 			{report: tool("web_search", `https://x.dev {"type":"open_page","url":"https://x.dev"}`), read: 1}, {report: result, read: 1}, {report: line, read: 2},
 		}},
 		{"no tool call", []string{threadLine, turnLine, errorLine, reasoningLine, message("x"), notJSONLine}, []reported{
-			{report: line, read: 1}, {report: line, read: 2}, {report: line, read: 3}, {report: line, read: 4},
+			{report: codex.Report{Session: "t1"}, read: 1}, {report: line, read: 2}, {report: line, read: 3}, {report: line, read: 4},
 			{report: line, read: 5}, {report: line, read: 6}, {report: line, read: 7},
 		}},
 	} {

@@ -1,9 +1,10 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { COUNT_SETTLE, GUST, LIFT, TREASURE_FLIGHT } from "../src/digGame.tsx";
 import { HOME_GAMES } from "../src/HomePage.tsx";
 import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
-import { App } from "../src/App.tsx";
+import { App, type PortraitLayouts } from "../src/App.tsx";
 import { localDigProgress, localFeatured, localProgress } from "../src/localProgress.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { localTheme } from "../src/localTheme.ts";
@@ -43,6 +44,7 @@ export function openDigApp({
   viewport = manualViewport("landscape"),
   visibility = manualVisibility("visible"),
   random = () => 0,
+  portraitLayouts = {},
   settingsStorage
 }: {
   storage?: MemoryStorage;
@@ -55,6 +57,7 @@ export function openDigApp({
   visibility?: ManualVisibility;
   // The app's draws, the featured game's and each round's.
   random?: Random;
+  portraitLayouts?: PortraitLayouts;
   settingsStorage?: MemoryStorage;
 } = {}) {
   const local = () => storage;
@@ -62,7 +65,7 @@ export function openDigApp({
   const ageLevels = localAgeLevel(() => settings);
   const featured = localFeatured(local, HOME_GAMES);
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
       now={() => new Date(2026, 9, 18, 9, 30)}
       featuredStore={featured}
       startCounter={featured}
@@ -70,7 +73,7 @@ export function openDigApp({
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      portraitLayouts={{}}
+      portraitLayouts={portraitLayouts}
       viewport={viewport}
       progress={localProgress(local)}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
@@ -93,12 +96,18 @@ export function openDigApp({
     />
   );
   document.documentElement.dataset.theme = theme;
-  return { user: userEvent.setup(), timers, storage, settingsStorage: settings, featured, viewport, visibility, unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), timers, storage, settingsStorage: settings, featured, viewport, visibility, unmount: view.unmount };
 }
 
-// The dig game's board, read and brushed as a test sees it.
-
-export const board = () => screen.getByRole("group", { name: TEXTS[document.documentElement.lang === "ru" ? "ru" : "en"].sand });
+// The dig game's board, read and brushed as a test sees it. It is found
+// by its class: a role query weighs every element's style, and the
+// helpers read the board at each step of a drag. A test of its own holds
+// the board to its role and name.
+export function board(): HTMLElement {
+  const found = document.querySelector<HTMLElement>(".dig-board");
+  if (!found) throw new Error("No dig board on the screen");
+  return found;
+}
 export const sandOf = () => board().querySelector(".dig-sand") ?? board();
 
 // The board laid out `width` CSS pixels wide at the page's top left, in

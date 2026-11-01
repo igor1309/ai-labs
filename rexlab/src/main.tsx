@@ -6,17 +6,22 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
 import "./app.css";
-import { appProps, filterDoubleTaps } from "./root.ts";
+import { registerWorker } from "./offline/registerWorker.ts";
+import { appProps, browserColoring, browserInput } from "./root.ts";
+import { InputArbitrationContext } from "./inputArbitration.ts";
 
 const root = document.getElementById("root");
 if (!root) {
   throw new Error("index.html has no #root element");
 }
 
-filterDoubleTaps(window);
+const input = browserInput(window);
+registerWorker(navigator, import.meta.env.PROD, (error) => console.warn("RexLab will not work offline:", error));
 
 createRoot(root).render(
   <StrictMode>
-    <App {...appProps(window)} />
+    <InputArbitrationContext value={input.arbitrate}>
+      <App {...appProps(window)} coloring={browserColoring(window)} />
+    </InputArbitrationContext>
   </StrictMode>
 );

@@ -106,4 +106,4 @@ type QuickCheckUiStatus =
 
 ## Implementation status
 
-Implemented by [Quick Check Product UI Implementation Plan](../plans/implemented/quick-check-product-ui.md), with the `/learn` shell in `agonara/src/learn-ui.js`, route wiring in `agonara/src/server.js`, HTTP shell coverage in `agonara/tests/http-api.test.js`, and browser workflow coverage in `agonara/tests/quick-check-product-ui.playwright.js`.
+Implemented by [Quick Check Product UI Implementation Plan](../plans/implemented/quick-check-product-ui.md), with the `/learn` shell in `agonara/src/learn-ui.js`, route wiring in `agonara/src/server.js`, HTTP shell coverage in `agonara/tests/http-api-quick-check-ui.test.js`, and browser workflow coverage in `agonara/tests/quick-check-product-ui.playwright.js`.

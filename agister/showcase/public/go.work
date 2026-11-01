@@ -1,0 +1,9 @@
+go 1.24
+
+toolchain go1.27.1
+
+use .
+
+replace github.com/igor1309/ai-labs/gokit => ./gokit
+
+replace github.com/igor1309/ai-labs/gokit/tree => ./gokit/tree

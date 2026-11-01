@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { matchesGlob } from "node:path";
 import test from "node:test";
+import { parse } from "../release/lib/toml.js";
 
 const repoRoot = new URL("../../", import.meta.url);
 const workflow = readFileSync(new URL(".github/workflows/ci.yml", repoRoot), "utf8");
@@ -11,6 +12,14 @@ test("ciPathFilters_shouldRunAgonaraCore_onPackageLockChanges", () => {
   const agonaraFilter = filterSection("agonara", "agonara-ci");
 
   assert.ok(agonaraFilter.includes('"agonara/package-lock.json"'));
+});
+
+test("ciPathFilters_shouldRunScreenshotTests_onAgonaraShowcaseCodeChanges", () => {
+  for (const file of ["agonara/showcase/screenshots.mjs", "agonara/showcase/screenshots.test.mjs"]) {
+    assert.equal(jobRuns("agonara-core", [file]), true, `${file} does not run agonara-core`);
+  }
+  const core = readFileSync(new URL(".github/workflows/agonara-core.yml", repoRoot), "utf8");
+  assert.match(core, /node --test agonara\/showcase\/\*\.test\.mjs/);
 });
 
 test("ciPathFilters_shouldNotTreatDashboardScriptAsSharedInfrastructure", () => {
@@ -88,8 +97,8 @@ test("ciPathFilters_shouldRunAgisterCore_onEachKindOfFileItsTestsRead", () => {
   }
 });
 
-// The files beyond their code that agonara's and noreta's tests read: a
-// change to any of them must run the project's job (LAB-220).
+// The files beyond their code that agonara's, noreta's and mizan-ble's
+// tests read: a change to any of them must run the project's job (LAB-220).
 test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => {
   const read = {
     "agonara-core": [
@@ -102,6 +111,7 @@ test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => 
       "docs/loc-dashboard.html",
     ],
     "noreta-core": ["noreta/docs/qa.md"],
+    "mizan-ble-core": ["mizan-ble/docs/design/mizan-ble.pen"],
   };
 
   for (const [job, files] of Object.entries(read)) {
@@ -114,6 +124,16 @@ test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => 
 // The projects whose tests ran in no workflow before LAB-220: each test,
 // the command its workflow runs, and the job a change to it runs.
 const auditedTests = {
+  "audelin/macos/scripts/tests/test_profile_rehearsal.py": {
+    runner: ".github/workflows/audelin-core.yml",
+    command: "python3 -I -m unittest discover -s audelin/macos/scripts/tests",
+    job: "audelin-core",
+  },
+  "audelin/macos/scripts/tests/test_summarize_trace.py": {
+    runner: ".github/workflows/audelin-core.yml",
+    command: "python3 -I -m unittest discover -s audelin/macos/scripts/tests",
+    job: "audelin-core",
+  },
   "session-digest/tests/_bootstrap.test.ts": {
     runner: ".github/workflows/session-digest-core.yml",
     command: "npm run test:session-digest",
@@ -173,6 +193,17 @@ test("ciRepoScripts_shouldRunEveryScriptsTest_onEveryChange", () => {
   }
 });
 
+test("ciReleaseValidation_shouldRun_onEveryReleaseUnitsVersionFileChange", () => {
+  const { units } = parse(readFileSync(new URL("release-units.toml", repoRoot), "utf8"));
+  assert.ok(units.length > 0);
+
+  for (const unit of units) {
+    const file = `${unit.path}/${unit.metadata}`;
+    assert.equal(matchingFilters([file]).has("release"), true, `${file} does not match the release filter`);
+    assert.equal(jobRuns("release-validation", [file]), true, `${file} does not run release-validation`);
+  }
+});
+
 test("ciReleaseValidation_shouldRunReleaseAndShowcaseTests_onShowcaseChanges", () => {
   const job = workflow.match(/\n  release-validation:\n((?:    .*\n|\n)+?)(?=\n  [\w-]+:\n)/);
   assert.ok(job, "missing release-validation job");
@@ -195,6 +226,12 @@ test("ciReleaseValidation_shouldRunReleaseAndShowcaseTests_onShowcaseChanges", (
 });
 
 for (const file of [
+  "agister/showcase/showcase.toml",
+  "agister/showcase/public/go.work",
+  "agister/showcase/public/README.md",
+  "agister/showcase/AGENTS.md",
+  "agister/scripts/check-public.sh",
+  "agister/go.mod",
   "rexlab/showcase/showcase.toml",
   "rexlab/showcase/public/LICENSE",
   "rexlab/tests/catalogueSources.test.ts",

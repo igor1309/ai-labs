@@ -12,11 +12,17 @@ Complete the current branch's PR lifecycle:
 
 1. Bring the branch up to date first: `git fetch origin`, then
    `git merge origin/trunk` (a merge, never a rebase). If it conflicts,
-   stop and report the conflicting files; do not resolve them by
-   discarding either side.
+   resolve it and go on: keep what each side meant, and never drop either
+   side's work to make the conflict go away. Then run the checks that
+   cover the conflicting files before pushing. Stop and report only when
+   the two sides contradict each other and choosing between them is a
+   product call.
 2. Push the current branch if it has unpushed commits.
 3. Create a PR with `gh pr create` and record its number and URL.
-4. Enable merge-commit auto-merge:
+4. If the branch is stacked on another unmerged PR's branch, stop after
+   step 3 and report: auto-merge waits until the PR below has merged and
+   trunk is merged into this branch. Otherwise enable merge-commit
+   auto-merge:
 
    ```sh
    gh pr merge <number> --merge --auto --delete-branch

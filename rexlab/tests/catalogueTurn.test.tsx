@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { addTransitionType, startTransition, ViewTransition, type ViewTransitionProps } from "react";
@@ -55,18 +56,27 @@ const recordedName = (element: Element) => {
   return nameOf(element);
 };
 
-function cardHeight(width: number) {
-  return (width * 200) / 317 + 14 + 1.25 * Math.min(20, 0.07 * width) + 10 + 32 + 18;
+// A card's height: its picture over its footer, which a wide-short
+// window closes up to 10 above and 12 below.
+function cardHeight(width: number, size: SizeClass) {
+  const [above, below] = size === "wide-short" ? [10, 12] : [14, 18];
+  return (width * 200) / 317 + above + 1.25 * Math.min(20, 0.07 * width) + 10 + 32 + below;
 }
+
+// The list's padding on each side: 20 in a tall-narrow or wide-short
+// window, 56 in any other.
+const sideOf = (size: SizeClass) => (size === "tall-narrow" || size === "wide-short" ? 20 : 56);
+// The list's padding below its last row: 20 in a wide-short window, 48
+// in any other.
+const endOf = (size: SizeClass) => (size === "wide-short" ? 20 : 48);
 
 function listGeometry(width: number, height: number, size: SizeClass, count = IDS.length) {
   const columns = catalogueColumns(width, size, 0, 0);
-  const card = (width - 112 - (columns - 1) * 20) / columns;
-  const row = cardHeight(card);
-  const stacked = document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement === "stacked";
-  const top = size === "tall" ? 40 + 56 + 24 + (stacked ? 124 : 56) + 28 : 124;
+  const card = (width - 2 * sideOf(size) - (columns - 1) * 20) / columns;
+  const row = cardHeight(card, size);
+  const top = size === "tall" ? 40 + 56 + 28 : size === "tall-narrow" ? 40 + 48 + 20 : size === "wide-short" ? 8 + 48 + 12 : 124;
   const listHeight = height - top;
-  return { columns, card, row, top, listHeight, scrollHeight: Math.ceil(count / columns) * row + (Math.ceil(count / columns) - 1) * 20 + 48 };
+  return { columns, card, row, top, listHeight, scrollHeight: Math.ceil(count / columns) * row + (Math.ceil(count / columns) - 1) * 20 + endOf(size) };
 }
 
 function listMetrics(list: HTMLElement, count = IDS.length) {
@@ -101,7 +111,7 @@ function expectedCardBox(id: string, list: HTMLElement, width: number, height: n
   const row = Math.floor(index / layout.columns);
   const column = index % layout.columns;
   return {
-    left: 56 + column * (layout.card + 20),
+    left: sideOf(size) + column * (layout.card + 20),
     top: layout.top + (row * (layout.row + 20) - list.scrollTop),
     width: layout.card,
     height: layout.row
@@ -117,15 +127,19 @@ function boxFor(element: Element, width: number, height: number, size: SizeClass
     return { left: box.left + 16, top: box.top + 16, width: box.width - 32, height: box.width * 200 / 317 - 32 };
   }
   const list = listGeometry(width, height, size, document.querySelectorAll(".catalogue-card").length || IDS.length);
-  if (name === "catalogue-home") return size === "tall" ? { left: 40, top: 40, width: 130, height: 56 } : { left: 56, top: 40, width: 130, height: 56 };
-  if (name === "catalogue-chips") {
-    if (size !== "tall") return { left: 200, top: 40, width: width - 256, height: 56 };
-    const arrangement = (element as HTMLElement).dataset.arrangement;
-    return { left: 56, top: 120, width: width - 112, height: arrangement === "stacked" ? 124 : 56 };
-  }
+  const narrow = size === "tall-narrow";
+  const portrait = narrow || size === "tall";
+  const target = narrow ? 48 : 56;
+  const chipGap = narrow ? 8 : 12;
+  const chipsLeft = narrow ? 20 + 48 + 8 : 56 + 130 + 24;
+  if (name === "catalogue-home") return { left: sideOf(size), top: 40, width: narrow ? 48 : 130, height: target };
+  if (name === "catalogue-chips") return portrait
+    ? { left: chipsLeft, top: 40, width: 4 * target + 3 * chipGap, height: target }
+    : { left: 200, top: 40, width: width - 256, height: 56 };
   if (name.startsWith("catalogue-chip-")) {
     const chip = element as HTMLElement;
     const food = chip.dataset.food;
+    if (portrait) return { left: chipsLeft + ["all", "meat", "plants", "both"].indexOf(food ?? "") * (target + chipGap), top: 40, width: target, height: target };
     const group = chip.closest<HTMLElement>(".food-chips");
     const arrangement = group?.dataset.arrangement;
     const rowWidth = width - 112;
@@ -143,7 +157,7 @@ function boxFor(element: Element, width: number, height: number, size: SizeClass
     const index = IDS.indexOf(name.slice("catalogue-card-".length));
     const row = Math.floor(index / list.columns);
     const column = index % list.columns;
-    return { left: 56 + column * (list.card + 20), top: list.top + (row * (list.row + 20) - ((element.closest(".catalogue-grid") as HTMLElement | null)?.scrollTop ?? 0)), width: list.card, height: list.row };
+    return { left: sideOf(size) + column * (list.card + 20), top: list.top + (row * (list.row + 20) - ((element.closest(".catalogue-grid") as HTMLElement | null)?.scrollTop ?? 0)), width: list.card, height: list.row };
   }
   return { left: 0, top: 0, width: 1, height: 1 };
 }
@@ -187,7 +201,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   const shared = recordedSharedPictures();
   let clock = 0;
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -237,7 +251,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
     />
   );
   act(() => pictures.finishAll());
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   // The native transition paints above the document until a viewport
   // change cancels it, independently of the app's turn animations.
   let nativeDrawing: HTMLElement | undefined;
@@ -506,7 +520,7 @@ describe("catalogue turn styles", () => {
 });
 
 describe("catalogue's shared turn", () => {
-  it("glides HOME, chips, list and all cards together, with MEAT still chosen and 26 cards", async () => {
+  it("keeps HOME still while chips, list and all 26 MEAT cards glide", async () => {
     const app = openCatalogue();
     await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
     await app.user.click(screen.getByRole("button", { name: "MEAT" }));
@@ -516,6 +530,8 @@ describe("catalogue's shared turn", () => {
     const meat = SHIPPED_CATALOGUE.filter(({ diet }) => diet === "meat").map(({ id }) => id);
     const before = new Map(meat.map((id) => [id, app.measure(card(id))]));
     const listBefore = app.measure(app.grid());
+    const home = screen.getByRole("button", { name: TEXTS.en.home });
+    const homeBefore = app.measure(home);
     app.resize([820, 1180, "tall"]);
 
     expect(document.documentElement.dataset.size).toBe("tall");
@@ -544,8 +560,9 @@ describe("catalogue's shared turn", () => {
     expect(still.every((id) => app.measure(card(id)).left === 56 && app.measure(card(id)).top === listNow.top)).toBe(true);
     expect(still.length).toBeLessThanOrEqual(1);
     expect(chips?.dataset.arrangement).toBe("spaced");
+    // HOME keeps the same box beside the filters in both layouts.
+    expect(app.measure(home)).toEqual(homeBefore);
     expect([...new Set(app.animations.filter(own).map(({ name }) => name))]).toEqual([
-      "catalogue-home",
       "catalogue-chips",
       "catalogue-chip-all",
       "catalogue-chip-meat",
@@ -665,6 +682,36 @@ describe("catalogue's shared turn", () => {
     const back = app.grid();
     expect(back.scrollTop).toBeCloseTo(scroll === 99999 ? back.scrollHeight - back.clientHeight : rowScroll(backId, 1180, 820, "wide"));
     if (scroll === 99999) expectWholeInList(back, backId);
+    app.settle();
+  });
+
+  it.each([
+    ["Gallimimus", "gallimimus"],
+    ["Parasaurolophus", "parasaurolophus"]
+  ] as const)("keeps the row of %s at its top turning an iPhone from landscape upright and back, one card to a row upright", async (_, id) => {
+    const app = openCatalogue(852, 393, { portraitLayouts: { catalogue: ["tall", "tall-narrow"] } });
+    app.resize([852, 393, "wide-short"]);
+    app.settle();
+    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    const list = app.grid();
+    listMetrics(list);
+    list.scrollTop = rowScroll(id, 852, 393, "wide-short");
+    fireEvent.scroll(list);
+
+    // Upright, the first card of that row, three to a row on its side,
+    // stands at the top.
+    const { columns } = listGeometry(852, 393, "wide-short");
+    const first = IDS[Math.floor(IDS.indexOf(id) / columns) * columns]!;
+    app.resize([393, 852, "tall-narrow"]);
+    const upright = app.grid();
+    expect(upright.style.getPropertyValue("--columns")).toBe("1");
+    expect(upright.scrollTop).toBeCloseTo(rowScroll(first, 393, 852, "tall-narrow"));
+    expect(cardIn(upright, first).getBoundingClientRect().top).toBeCloseTo(upright.getBoundingClientRect().top);
+    app.settle();
+
+    app.resize([852, 393, "wide-short"]);
+    const back = app.grid();
+    expect(back.scrollTop).toBeCloseTo(rowScroll(id, 852, 393, "wide-short"));
     app.settle();
   });
 
@@ -809,14 +856,15 @@ describe("catalogue's shared turn", () => {
     const moving = new Set(app.animations.filter(({ cancelled }) => !cancelled).filter(own).map(({ name }) => name));
     expect(moving.size > 0).toBe(glides);
     if (glides) {
-      expect(moving).toEqual(new Set(["catalogue-chips", "catalogue-chip-meat", "catalogue-chip-plants", "catalogue-chip-both", "catalogue-list", ...IDS.map((id) => `catalogue-card-${id}`)]));
+      // Fixed portrait symbols stay beside HOME as the card columns resize.
+      expect(moving).toEqual(new Set(["catalogue-list", ...IDS.map((id) => `catalogue-card-${id}`)]));
     } else {
       expect(moving).toEqual(new Set());
     }
-    expect(app.measure(list).top).toBe(from[0] === 700 ? beforeTop - 68 : beforeTop);
+    expect(app.measure(list).top).toBe(beforeTop);
     if (glides) {
       const glide = app.animations.find(({ name, cancelled }) => name === "catalogue-list" && !cancelled)!;
-      expect(glide.keyframes.map(({ translate }) => translate)).toEqual([`0px ${from[0] === 700 ? 68 : 0}px`, "0px 0px"]);
+      expect(glide.keyframes.map(({ translate }) => translate)).toEqual(["0px 0px", "0px 0px"]);
     }
     expect(app.fades).toHaveLength(0);
     expect(app.grid().scrollTop).toBeCloseTo(rowScroll("gallimimus", to[0], to[1], "tall"));

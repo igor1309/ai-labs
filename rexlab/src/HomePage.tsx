@@ -1,4 +1,4 @@
-import { Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Scale, Shapes, Star, Sun, Trophy, type LucideIcon } from "lucide-react";
+import { Route, Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Pencil, Puzzle, Scale, Shapes, Star, Sun, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
 import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -7,8 +7,10 @@ import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
+import { PicturePuzzlePicture } from "./PicturePuzzlePicture.tsx";
+import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
-import { TILE_COLUMN, TILE_GAP, tileColumnWidth } from "./tileColumns.ts";
+import { NARROW_ROW_START, ROW_START, SHORT_TILE_GAP, TILE_COLUMN, TILE_GAP, shortTileColumn, tileColumnWidth } from "./tileColumns.ts";
 import { useKeptRow, type LayoutKeeping } from "./useKeptRow.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
@@ -17,14 +19,14 @@ const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light:
 const BRAND = "RexLab";
 
 // The games the home page offers, each on a tile of its own.
-export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig";
+export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "skeletons" | "dig" | "sandWriting" | "labyrinth" | "picturePuzzle" | "whoseJaw" | "coloring";
 
 // The games in their tiles' order, which never changes.
-export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care"];
+export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth", "picturePuzzle", "whoseJaw", "coloring"];
 
 // What a game's tile shows in its picture's corner: a number beside its
 // symbol.
-type Badge = { symbol: LucideIcon; value: number };
+type Badge = { symbol: LucideIcon; value: number | string };
 
 // The window's width and its changes.
 export type WindowWidth = {
@@ -44,8 +46,12 @@ export type HomePageProps = {
   // The window, whose width the tiles' columns follow upright.
   viewport: WindowWidth;
   // Whether the window stands upright, where the tiles' columns narrow
-  // with its width.
+  // with its width, and whether it is narrow too, as an iPhone upright,
+  // where the page's sides are narrower, and whether it is short, as an
+  // iPhone on its side, where the columns are a share of the row's width.
   upright: boolean;
+  narrow?: boolean;
+  short?: boolean;
   // Where the page keeps where the tiles' row was swiped to, through each
   // change of its layout.
   layoutKeeping: LayoutKeeping;
@@ -73,8 +79,13 @@ export type HomePageProps = {
   // The dig game's tile: the dinosaur on it and how many dinosaurs have
   // been dug up, undefined until one has.
   dig: { picture: string; dugUp: number | undefined };
+  // Its tile and featured card share the collection across all levels.
+  whoseJaw?: { picture: string; collected: number; total: number; onOpen: () => void } | undefined;
+  coloring?: { picture: string; completed: number | null | undefined; onOpen: () => void } | undefined;
+  picturePuzzle?: { picture: string; collected: number; onOpen: () => void } | undefined;
   // The dinosaur whose shape stands on the tile of the games still to
   // come.
+  labyrinth: { picture: string; stars: number | undefined };
   moreComing: string;
   onCompareDinosaurs: () => void;
   onCatalogue: () => void;
@@ -85,6 +96,8 @@ export type HomePageProps = {
   // The skeleton game's museum, opened straight from the home page.
   onMuseum: () => void;
   onDig: () => void;
+  onSandWriting: () => void;
+  onLabyrinth: () => void;
 };
 
 type Menu = "language" | "theme" | "ageLevel";
@@ -99,6 +112,8 @@ export function HomePage({
   startTimer,
   viewport,
   upright,
+  narrow = false,
+  short = false,
   layoutKeeping,
   featured,
   faceOff,
@@ -109,7 +124,11 @@ export function HomePage({
   pairs,
   skeletons,
   dig,
+  labyrinth,
   moreComing,
+  picturePuzzle,
+  whoseJaw,
+  coloring,
   onCompareDinosaurs,
   onCatalogue,
   onCare,
@@ -117,7 +136,9 @@ export function HomePage({
   onPairs,
   onSkeletons,
   onMuseum,
-  onDig
+  onDig,
+  onSandWriting,
+  onLabyrinth
 }: HomePageProps) {
   const text = TEXTS[language];
   const windowWidth = useSyncExternalStore(viewport.subscribe, viewport.width);
@@ -131,7 +152,8 @@ export function HomePage({
   const ThemeSymbol = THEME_SYMBOLS[theme];
   // Each game's own parts, which its tile and the large card both show,
   // so the two never tell the child different things.
-  const games: Record<HomeGame, { name: string; symbol: LucideIcon; picture: ReactNode; badge: Badge | undefined; onOpen: () => void }> = {
+  type GameEntry = { name: string; symbol: LucideIcon; picture: ReactNode; badge: Badge | undefined; onOpen: () => void };
+  const games: Record<Exclude<HomeGame, "picturePuzzle" | "whoseJaw" | "coloring">, GameEntry> & { picturePuzzle: GameEntry | undefined; whoseJaw: GameEntry | undefined; coloring: GameEntry | undefined } = {
     compare: {
       name: text.quizCard,
       symbol: Scale,
@@ -180,6 +202,38 @@ export function HomePage({
       picture: <Picture className="dig-tile-picture" src={dig.picture} alt="" width={800} height={600} />,
       badge: dig.dugUp === undefined ? undefined : { symbol: Star, value: dig.dugUp },
       onOpen: onDig
+    },
+    coloring: coloring && {
+      name: text.coloring, symbol: Pencil,
+      picture: <Picture className="coloring-tile-picture" src={coloring.picture} alt="" width={800} height={600} />,
+      badge: coloring.completed === undefined ? undefined : coloring.completed === null ? { symbol: TriangleAlert, value: "?" } : { symbol: Star, value: coloring.completed },
+      onOpen: coloring.onOpen
+    },
+    whoseJaw: whoseJaw && {
+      name: text.whoseJaw, symbol: Landmark,
+      picture: <Picture className="whose-jaw-tile-picture" src={whoseJaw.picture} alt="" width={600} height={450} />,
+      badge: { symbol: Landmark, value: `${whoseJaw.collected}/${whoseJaw.total}` }, onOpen: whoseJaw.onOpen
+    },
+    picturePuzzle: picturePuzzle && {
+      name: text.picturePuzzle,
+      symbol: Puzzle,
+      picture: <span className="picture-puzzle-tile-art"><PicturePuzzlePicture src={picturePuzzle.picture} /></span>,
+      badge: { symbol: Star, value: `${picturePuzzle.collected}/3` },
+      onOpen: picturePuzzle.onOpen
+    },
+    labyrinth: {
+      name: text.labyrinth,
+      symbol: Route,
+      picture: <Picture className="labyrinth-tile-picture" src={labyrinth.picture} alt="" width={800} height={600} />,
+      badge: labyrinth.stars === undefined ? undefined : { symbol: Star, value: labyrinth.stars },
+      onOpen: onLabyrinth
+    },
+    sandWriting: {
+      name: text.sandWriting,
+      symbol: Pencil,
+      picture: <SandWritingPicture />,
+      badge: undefined,
+      onOpen: onSandWriting
     }
   };
   // Each game's tile. The large card's game has none in the row, so no
@@ -273,14 +327,61 @@ export function HomePage({
         </span>
         <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
       </Button>
+    ),
+    coloring: games.coloring && (
+      <Button key="coloring" className="card coloring-tile" data-turn-part="tile-coloring" aria-label={games.coloring.name} onClick={games.coloring.onOpen}>
+        {games.coloring.picture}
+        <span className="coloring-tile-row"><span className="coloring-tile-symbol" aria-hidden="true"><Pencil size={20} /></span><span>{games.coloring.name}</span></span>
+        <BadgeChip badge={games.coloring.badge} className="coloring-tile-count" size={18} />
+      </Button>
+    ),
+    whoseJaw: games.whoseJaw && (
+      <Button key="whoseJaw" className="card whose-jaw-tile" data-turn-part="tile-whoseJaw" aria-label={games.whoseJaw.name} onClick={games.whoseJaw.onOpen}>
+        {games.whoseJaw.picture}
+        <span className="whose-jaw-tile-row"><span aria-hidden="true">🦷</span><span>{games.whoseJaw.name}</span></span>
+        <BadgeChip badge={games.whoseJaw.badge} className="whose-jaw-tile-count" size={18} />
+      </Button>
+    ),
+    picturePuzzle: games.picturePuzzle && (
+      <Button key="picturePuzzle" className="card picture-puzzle-tile" data-turn-part="tile-picturePuzzle" aria-label={games.picturePuzzle.name} onClick={games.picturePuzzle.onOpen}>
+        {games.picturePuzzle.picture}
+        <span className="picture-puzzle-tile-row">
+          <span className="picture-puzzle-tile-symbol" aria-hidden="true"><Puzzle size={20} /></span>
+          <span className="picture-puzzle-tile-title">{games.picturePuzzle.name}</span>
+        </span>
+        <BadgeChip badge={games.picturePuzzle.badge} className="picture-puzzle-tile-count" size={18} />
+      </Button>
+    ),
+    labyrinth: (
+      <Button key="labyrinth" className="card labyrinth-tile" data-turn-part="tile-labyrinth" aria-label={games.labyrinth.name} onClick={games.labyrinth.onOpen}>
+        {games.labyrinth.picture}
+        <span className="labyrinth-tile-row">
+          <span className="labyrinth-tile-symbol" aria-hidden="true"><Route size={20} /></span>
+          <span className="labyrinth-tile-title">{games.labyrinth.name}</span>
+        </span>
+        <BadgeChip badge={games.labyrinth.badge} className="labyrinth-tile-best" size={18} />
+      </Button>
+    ),
+    sandWriting: (
+      <Button key="sandWriting" className="card sand-writing-tile" data-turn-part="tile-sandWriting" aria-label={games.sandWriting.name} onClick={games.sandWriting.onOpen}>
+        {games.sandWriting.picture}
+        <span className="sand-writing-tile-row">
+          <span className="sand-writing-tile-symbol" aria-hidden="true">
+            <Pencil size={20} />
+          </span>
+          <span className="sand-writing-tile-title">{games.sandWriting.name}</span>
+        </span>
+      </Button>
     )
   };
-  const shown = HOME_GAMES.filter((game) => game !== featured);
+  const featuredGame = (featured === "picturePuzzle" && !picturePuzzle) || (featured === "whoseJaw" && !whoseJaw) || (featured === "coloring" && !coloring) ? "compare" : featured;
+  const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined) && (game !== "coloring" || coloring !== undefined));
   // The tiles and the games still to come, in columns of two.
   const columns = Math.ceil((shown.length + 1) / 2);
-  const column = upright ? tileColumnWidth(windowWidth, columns) : TILE_COLUMN;
-  const tilesRow = useKeptRow(layoutKeeping, { column, gap: TILE_GAP });
-  const today = games[featured];
+  const rowStart = narrow ? NARROW_ROW_START : ROW_START;
+  const column = upright ? tileColumnWidth(windowWidth, columns, rowStart) : TILE_COLUMN;
+  const tilesRow = useKeptRow(layoutKeeping, short ? { column: shortTileColumn, gap: SHORT_TILE_GAP } : { column, gap: TILE_GAP });
+  const today = games[featuredGame] ?? games.compare;
   const FeaturedSymbol = today.symbol;
   // Each part both layouts share is marked, so it glides to its place in
   // the other as the window turns; a tile's name holds its game, so it
@@ -295,10 +396,8 @@ export function HomePage({
         <div className="stratum stratum-3" data-turn-fade="" />
       </div>
       <p className="wordmark" data-turn-part="wordmark">
-        <span className="wordmark-mark" aria-hidden="true">
-          <Footprints size={18} />
-        </span>
-        {BRAND}
+        <span className="wordmark-mark" aria-hidden="true" />
+        <span className="narrow-hidden">{BRAND}</span>
       </p>
       {/* The corner holds the museum, for the child, beside the menus for
           parents. An open menu's backdrop is stacked here too, over the
@@ -311,7 +410,7 @@ export function HomePage({
         {openMenu && <div className="menu-backdrop" onClick={() => setOpenMenu(undefined)} />}
         <Button className="card home-museum" onClick={onMuseum}>
           <Landmark size={24} aria-hidden="true" />
-          {text.museum}
+          <span className="narrow-hidden">{text.museum}</span>
         </Button>
         {/* The menus are for parents: small, in the soft ink and out of the
             way in the top-right corner, and only here, never during a round. */}
@@ -370,7 +469,7 @@ export function HomePage({
             the row. It stays as the tiles scroll. */}
         <Button
           className="card featured-card"
-          data-game={featured}
+          data-game={featuredGame}
           data-turn-part="featured-card"
           aria-label={today.name}
           onClick={today.onOpen}
@@ -395,7 +494,7 @@ export function HomePage({
           ref={tilesRow.ref}
           className="games-tiles"
           data-turn-part="tiles"
-          style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns)}px` } as CSSProperties}
+          style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns, rowStart)}px` } as CSSProperties}
           onScroll={tilesRow.onScroll}
         >
           {shown.map((game) => tiles[game])}

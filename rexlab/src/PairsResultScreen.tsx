@@ -7,6 +7,7 @@ import { afterResultAnimations } from "./resultAnimation.ts";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
+import { pairsResultType, PORTRAIT_PAIRS_RESULT, type PairsResultSizes } from "./pairsResultLayout.ts";
 import { Picture } from "./Picture.tsx";
 
 export type PairsCelebration = keyof Texts["celebrations"];
@@ -39,12 +40,25 @@ export type PairsResultScreenProps = {
   // Back to the game's welcome screen.
   onBack: () => void;
   onHome: () => void;
+  // The width the result stands in upright, one for the window; landscape
+  // sizes it itself.
+  width?: number;
+  // The sizes it stands by: an iPhone's in a tall-narrow window.
+  sizes?: PairsResultSizes;
 };
 
 // Custom properties the stylesheet staggers by.
 const motion = (properties: Record<`--${string}`, number>) => properties as CSSProperties;
 
-export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onBack, onHome }: PairsResultScreenProps) {
+// The tallest a card may stand upright and the actions' type, as the
+// custom properties the stylesheet reads.
+function typeStyle(width: number | undefined, count: number, sizes: PairsResultSizes): CSSProperties {
+  if (width === undefined) return {};
+  const type = pairsResultType(width, count, sizes);
+  return { "--card-maximum": `${type.cardMaximum}px`, "--action-size": `${type.action}px` } as CSSProperties;
+}
+
+export function PairsResultScreen({ language, pals, tries, stars, best, beaten, celebration, levelUp, offer, onPlayAgain, onBack, onHome, width, sizes = PORTRAIT_PAIRS_RESULT }: PairsResultScreenProps) {
   const gateShown = useGateShown();
   const text = TEXTS[language];
   const CelebrationSymbol = celebration && CELEBRATION_SYMBOLS[celebration];
@@ -67,14 +81,16 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
   useEffect(() => {
     if (!gateShown && offerPhase === "gone") result.current?.querySelector<HTMLButtonElement>(".play-again-button")?.focus();
   }, [offerPhase, gateShown]);
+  // Each dinosaur, each reward and the actions are the parts a turn
+  // glides.
   return (
     <>
-      <main ref={result} inert={blocked} className="result pairs-result" data-large={pals.length > 6 || undefined}>
+      <main ref={result} inert={blocked} className="result pairs-result" data-large={pals.length > 6 || undefined} style={typeStyle(width, pals.length, sizes)}>
         {(celebration || levelUp) && <Festivity />}
         <div className="stratum result-stratum" aria-hidden="true" />
         <ul className="pairs-found" aria-label={text.creatures} data-count={pals.length} style={motion({ "--found-rows": Math.ceil(pals.length / 3) })}>
           {pals.map(({ id, name, picture, newlyFound }, index) => (
-            <li key={id} className="pairs-found-card" style={motion({ "--card": index })}>
+            <li key={id} className="pairs-found-card" data-turn-part={`pairs-found-${index}`} style={motion({ "--card": index })}>
               <span className="pairs-found-art">
                 <Picture className="pairs-found-picture" src={picture} alt="" width={800} height={600} />
               </span>
@@ -82,7 +98,7 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
               {newlyFound && (
                 <span className="pairs-new-badge">
                   <Sparkles size={20} aria-hidden="true" />
-                  {text.newlyFound}
+                  <span className="narrow-hidden">{text.newlyFound}</span>
                 </span>
               )}
             </li>
@@ -92,13 +108,13 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
           {(celebration || levelUp) && (
             <div className="pairs-badges">
               {celebration && CelebrationSymbol && (
-                <p className="celebration" role="status" aria-label={text.celebrations[celebration].label}>
+                <p className="celebration" data-turn-part="pairs-celebration" role="status" aria-label={text.celebrations[celebration].label}>
                   <CelebrationSymbol size={30} aria-hidden="true" />
                   <span className="celebration-text">{text.celebrations[celebration].text}</span>
                 </p>
               )}
               {levelUp && (
-                <p className="pairs-level-up" role="status" aria-label={text.newLevel(levelUp.level)}>
+                <p className="pairs-level-up" data-turn-part="pairs-level-up" role="status" aria-label={text.newLevel(levelUp.level)}>
                   <ChartNoAxesColumnIncreasing size={34} aria-hidden="true" />
                   {levelUp.level}
                   {/* The next level's board, a small card for each card. */}
@@ -111,20 +127,20 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
               )}
             </div>
           )}
-          <p className="pairs-result-tries" aria-label={text.tries}>
+          <p className="pairs-result-tries" data-turn-part="pairs-tries" aria-label={text.tries}>
             <span className="pairs-result-tries-value">{tries}</span>
             <Hand className="pairs-result-hand" size={96} aria-hidden="true" />
           </p>
           {/* The board's star flies into the stars earned. */}
-          <p className="pairs-result-stars" aria-label={text.starsEarned}>
+          <p className="pairs-result-stars" data-turn-part="pairs-stars" aria-label={text.starsEarned}>
             <span className="pairs-result-star" aria-hidden="true">
               ★
             </span>
             {stars}
           </p>
-          <h1 className="result-title">{text.wellDone}</h1>
+          <h1 className="result-title" data-turn-part="pairs-title">{text.wellDone}</h1>
           {best !== undefined && (
-            <p className="best-score" aria-label={text.bestScore}>
+            <p className="best-score" data-turn-part="pairs-best" aria-label={text.bestScore}>
               <Trophy size={22} aria-hidden="true" />
               {text.best}
               {beaten !== undefined && (
@@ -136,7 +152,7 @@ export function PairsResultScreen({ language, pals, tries, stars, best, beaten, 
               <span className="best-score-value">{best}</span>
             </p>
           )}
-          <nav className="result-actions">
+          <nav className="result-actions" data-turn-part="pairs-actions">
             <Button className="play-again-button" disabled={blocked} onClick={onPlayAgain}>
               <RotateCcw size={28} aria-hidden="true" />
               {text.playAgain}

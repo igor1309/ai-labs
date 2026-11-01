@@ -78,10 +78,10 @@ Feature: Sort dinosaurs: dragging cards into baskets
     Then I am on the home page without being asked to confirm
     And the round is not recorded
 
-  Scenario: Portrait asks to turn sideways
+  Scenario: A narrow upright window asks to turn sideways
     Given I have sorted 3 cards, one of them after a wrong drop
-    When I turn the iPad to portrait
+    When the window turns upright and narrower than 600 CSS pixels, as an iPhone's does
     Then I see a picture asking to turn sideways
-    When I turn the iPad back to landscape
+    When the window turns back to landscape
     Then the 3 cards are still in their baskets
     And the wrong drop still counts

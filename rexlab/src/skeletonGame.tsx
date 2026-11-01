@@ -38,10 +38,10 @@ import { startLevel, type LevelChoice, type OfferedLevels } from "./startLevel.t
 
 export type { SkeletonPicture } from "./presentation.ts";
 
-// Whether the child is away from the game, as when the app is hidden or
-// the iPad is in portrait, and its changes.
+// Whether the child is away from the game on a screen, as when the app is
+// hidden or the window shows that screen no layout, and its changes.
 export type Presence = {
-  isAway(): boolean;
+  isAway(phase: SkeletonPhase): boolean;
   subscribe(onChange: () => void): () => void;
 };
 
@@ -116,6 +116,9 @@ export const REVEAL: Record<"motion" | "reduced", number> = { motion: 1500, redu
 // look until it is left. A mystery skeleton's puzzle holds the dinosaurs
 // it is guessed from once finished, and its guess the dinosaurs guessed
 // wrong so far.
+// The game's screens, each named as the gate reads it.
+export type SkeletonPhase = SkeletonScreen["kind"];
+
 type SkeletonScreen =
   | { kind: "choice" }
   | { kind: "puzzle"; puzzle: Puzzle; scatter: boolean; look: Look; mystery: readonly Kin[] | undefined }
@@ -141,7 +144,7 @@ export function useSkeletonGame(
   onStart: () => void
 ) {
   const { screen, go, set } = useScreens<SkeletonScreen>({ kind: "choice" }, transitionFor);
-  const away = useSyncExternalStore(presence.subscribe, presence.isAway);
+  const away = useSyncExternalStore(presence.subscribe, () => presence.isAway(screen.kind));
   const puzzle = screen.kind === "puzzle" ? screen.puzzle : undefined;
   // Progress is read once, as the app opens. When it cannot be read there
   // is no best to compare with, but stars earned meanwhile are still kept
@@ -371,7 +374,7 @@ export function useSkeletonGame(
     set({ kind: "museum" });
   };
 
-  const content = (language: Language) => {
+  const content = (language: Language, onJawShelf?: () => void) => {
     switch (screen.kind) {
       case "choice":
         return (
@@ -426,6 +429,7 @@ export function useSkeletonGame(
       case "museum":
         return (
           <SkeletonMuseumScreen
+            onJawShelf={onJawShelf}
             language={language}
             {...presentSkeletonMuseum(museumOf(kept, skeletons), language, skeletonPicture)}
             onBuild={choose}
@@ -437,5 +441,5 @@ export function useSkeletonGame(
     }
   };
 
-  return { content, best, openMuseum };
+  return { content, best, openMuseum, phase: screen.kind };
 }

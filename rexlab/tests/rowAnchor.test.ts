@@ -34,6 +34,16 @@ describe("where the row of tiles stands", () => {
     expect(scrollIn(LANDSCAPE, anchorIn(UPRIGHT, upright))).toBe(back);
   });
 
+  it("works a share column out of the row's own width", () => {
+    // A row 316 wide whose columns are four fifths of it short of a
+    // 16-pixel gap, 240 each: 140 into it, the second column shows more
+    // than half of itself, where 310-wide columns would show less.
+    const share = { column: (width: number) => (width - 16) * 0.8, gap: 16 };
+    const row = { width: 316, scrollWidth: 4 * 240 + 3 * 16 };
+    expect([110, 140].map((scroll) => rowAnchor({ scroll, ...row }, share))).toEqual([0, 1]);
+    expect(anchoredScroll(1, row, share)).toBe(256);
+  });
+
   it("stands at the leftmost column showing at least half of itself, past any gap", () => {
     expect([155, 156, 310, 320, 334 + 154, 334 + 155, 334 + 156].map((scroll) => anchorIn(LANDSCAPE, scroll))).toEqual([0, 1, 1, 1, 1, 1, 2]);
   });

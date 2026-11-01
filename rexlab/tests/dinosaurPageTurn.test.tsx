@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
@@ -95,6 +96,36 @@ function pageBox(element: Element, scrollbar: number): Box {
     };
     return boxes[name]!;
   }
+  if (document.documentElement.dataset.size === "tall-narrow") {
+    // On 20-pixel sides: the picture across the stage over its row of ←
+    // and →, the facts one over the other, the words' height made up.
+    const words = width - 40 - scrollbar;
+    const top = -document.documentElement.scrollTop;
+    const picture = { width: words - 40, height: ((words - 40) * 3) / 4 };
+    const stage = { left: 20, top: top + 124, width: words, height: 20 + picture.height + 16 + 72 + 20 };
+    const steps = stage.top + 20 + picture.height + 16;
+    const note = keptLines(words, true).note * 16.5;
+    const wordsTop = stage.top + stage.height + 32;
+    const wordsHeight = 900;
+    const aboutHeight = wordsHeight - 24 - note;
+    const factTop = wordsTop + aboutHeight - 256;
+    const boxes: Record<string, Box> = {
+      "dinosaur-bar": { left: 20, top: top + 40, width: words, height: 56 },
+      "dinosaur-catalogue": { left: 20, top: top + 40, width: 56, height: 56 },
+      "dinosaur-position": { left: 20 + words - 80, top: top + 56, width: 80, height: 25 },
+      "dinosaur-stage": stage,
+      "dinosaur-glow": { left: 20 + 0.17 * words, top: stage.top + 0.06 * stage.height, width: 0.66 * words, height: 0.66 * words },
+      "dinosaur-picture": { left: 40, top: stage.top + 20, ...picture },
+      "dinosaur-previous": { left: 40, top: steps, width: 72, height: 72 },
+      "dinosaur-next": { left: words - 72, top: steps, width: 72, height: 72 },
+      "dinosaur-words": { left: 20, top: wordsTop, width: words, height: wordsHeight },
+      "dinosaur-about": { left: 20, top: wordsTop, width: words, height: aboutHeight },
+      "dinosaur-size": { left: 20, top: factTop, width: words, height: 120 },
+      "dinosaur-mass": { left: 20, top: factTop + 136, width: words, height: 120 },
+      "dinosaur-note": { left: 20, top: wordsTop + wordsHeight - note, width: words, height: note }
+    };
+    return boxes[name]!;
+  }
   const inner = width - 112;
   const bodyHeight = height - 172;
   const stageWidth = ((inner - 40) * 760) / 1288;
@@ -139,7 +170,7 @@ function measureFor(scrollbar: () => number) {
 
 async function openPage(from: Window, { id = "baryonyx", language = "en", reduced = false, scrollbar = 0, list = false, slide = true }: { id?: string; language?: Language; reduced?: boolean; scrollbar?: number; list?: boolean; slide?: boolean } = {}) {
   openWindow(from[0], from[1]);
-  const viewport = { ...manualViewport(from[2] === "tall" ? "portrait" : "landscape"), scrollbarWidth: () => scrollbar };
+  const viewport = { ...manualViewport(from[2] === "tall" || from[2] === "tall-narrow" ? "portrait" : "landscape"), scrollbarWidth: () => scrollbar };
   const pictures = manualPictures();
   const animations: Recorded[] = [];
   const captured = () => ({ size: document.documentElement.dataset.size, lines: pageLines(), scroll: document.documentElement.scrollTop });
@@ -148,13 +179,13 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
   let clock = 0;
   onTestFinished(() => void (document.documentElement.scrollTop = 0));
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(11)}
-      portraitLayouts={{ home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"] }}
+      portraitLayouts={{ home: ["tall"], catalogue: ["tall"], dinosaur: ["tall", "tall-narrow"] }}
       viewport={viewport}
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
@@ -185,7 +216,7 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
     />
   );
   act(() => pictures.finishAll());
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
   act(() => pictures.finishAll());
   const card = document.querySelector<HTMLElement>(`.catalogue-card[data-id="${id}"]`)!;
@@ -196,7 +227,7 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
   const resize = (to: Window, room = scrollbar) => {
     scrollbar = room;
     openWindow(to[0], to[1]);
-    act(() => viewport.resize(to[2], to[2] === "tall"));
+    act(() => viewport.resize(to[2], to[2] === "tall" || to[2] === "tall-narrow"));
   };
   // Every part's box as the page now lays it out.
   const boxes = () => new Map([...document.querySelectorAll("[data-turn-part]")].filter((element) => element.closest(".dinosaur-page")).map((element) => [nameOf(element), measure(element)]));
@@ -286,6 +317,25 @@ describe("a dinosaur's page turning", () => {
       app.settle();
       expect(app.turning()).toBe(false);
       expect(document.querySelectorAll("[data-turn-frame]")).toHaveLength(0);
+    }
+  });
+
+  it("glides every part to the narrow upright page of Baryonyx as an iPhone turns upright, and back", async () => {
+    const app = await openPage([852, 393, "wide-short"]);
+    const [next, about] = [screen.getByRole("button", { name: TEXTS.en.nextDinosaur }), part("dinosaur-about")];
+    for (const to of [[393, 852, "tall-narrow"], [852, 393, "wide-short"]] as const) {
+      const before = app.boxes();
+      app.animations.length = 0;
+      app.resize(to);
+      expect(document.documentElement.dataset.size).toBe(to[2]);
+      expect(document.querySelector(".orientation-gate")?.hasAttribute("data-shown")).toBe(false);
+      // The button narrows to its book and widens back, so every part
+      // moves or changes size.
+      expect(expectGlides(app, before)).toEqual(new Set(PAGE_PARTS));
+      expect([app.turning(), app.fades]).toEqual([true, []]);
+      expect([heading(), screen.getByRole("button", { name: TEXTS.en.nextDinosaur }), part("dinosaur-about")]).toEqual(["BARYONYX", next, about]);
+      app.settle();
+      expect(app.turning()).toBe(false);
     }
   });
 

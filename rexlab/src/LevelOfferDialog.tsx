@@ -1,5 +1,5 @@
 import { Check, X } from "lucide-react";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 import type { AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
@@ -17,7 +17,8 @@ export type LevelOfferProps = {
   startTimer: StartTimer;
 };
 
-export function LevelOfferDialog({ language, offer, leaving, onShown, onAnswer, onGone }: {
+export function LevelOfferDialog({ controls, language, offer, leaving, onShown, onAnswer, onGone }: {
+  controls?: ReactNode;
   language: Language;
   offer: LevelOfferProps;
   leaving: boolean;
@@ -38,7 +39,7 @@ export function LevelOfferDialog({ language, offer, leaving, onShown, onAnswer, 
       shown.current = true;
       callbacks.current.onShown();
     }
-    overlay.current?.querySelector<HTMLButtonElement>("button")?.focus();
+    overlay.current?.querySelector<HTMLButtonElement>(".pairs-offer-yes")?.focus();
   }, [gateShown]);
   useEffect(() => {
     if (gateShown || !leaving || !overlay.current) return;
@@ -53,10 +54,11 @@ export function LevelOfferDialog({ language, offer, leaving, onShown, onAnswer, 
           if (event.key !== "Tab") return;
           const buttons = overlay.current?.querySelectorAll<HTMLButtonElement>("button");
           const first = buttons?.[0];
-          const last = buttons?.[1];
+          const last = buttons?.[buttons.length - 1];
           if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
           if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
         }}>
+        {controls}
         <span className="pairs-offer-picture" aria-hidden="true">{AGE_LEVEL_PICTURES[offer.level]}</span>
         <h2 id={title} className="pairs-offer-question">{text.levelOffer.question(text.ageLevels[offer.level].name)}</h2>
         <div className="pairs-offer-answers">

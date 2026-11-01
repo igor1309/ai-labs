@@ -1,6 +1,7 @@
 import { ArrowLeft, BookOpen, Brush, House, type LucideIcon } from "lucide-react";
 import type { CSSProperties, ReactNode, Ref } from "react";
 import { Button } from "./Button.tsx";
+import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 
@@ -25,31 +26,44 @@ export function DigBar({
 }) {
   const text = TEXTS[language];
   const words = title ?? text.dig;
+  const lines = twoLines(words);
   return (
     <header className="dig-bar">
       {onHome && (
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
+          <span className="upright-hidden">{text.home}</span>
         </Button>
       )}
       {onBack && (
         <Button className="home-button" onClick={onBack}>
           <ArrowLeft size={24} aria-hidden="true" />
-          {text.back}
+          <span className="upright-hidden">{text.back}</span>
         </Button>
       )}
       <h1 className="dig-title">
         <span className="dig-mark" aria-hidden="true">
           <Mark size={28} />
         </span>
-        <span className="dig-title-words" style={{ "--letters": words.length } as CSSProperties}>
+        <span className="dig-title-words" style={{ "--letters": words.length, "--line-letters": Math.max(...lines.map((line) => line.length)), "--lines": lines.length } as CSSProperties}>
           {words}
         </span>
       </h1>
       {children}
     </header>
   );
+}
+
+// A title split where its longer line is shortest, so where it may take
+// two lines, as on a phone, it can be as large as that line allows.
+export function twoLines(words: string): string[] {
+  const parts = words.split(" ");
+  let best = [words];
+  for (let at = 1; at < parts.length; at++) {
+    const lines = [parts.slice(0, at).join(" "), parts.slice(at).join(" ")];
+    if (Math.max(...lines.map((line) => line.length)) < Math.max(...best.map((line) => line.length))) best = lines;
+  }
+  return best;
 }
 
 // The picker of DIG's two brushes, before the FIELD GUIDE: each button a
@@ -70,6 +84,53 @@ export function BrushPicker({ language, wide, disabled, onWide }: {
           <span className="dig-brush-dot" data-wide={option || undefined} aria-hidden="true" />
         </Button>
       ))}
+    </span>
+  );
+}
+
+// On a phone the brushes are a menu opened from the title's brush: its
+// button the brush beside the picked one's dot, each choice its dot and
+// its name. A tap outside closes it and does nothing else, so it never
+// brushes the sand.
+export function BrushMenu({ language, wide, disabled, open, onOpen, onClose, onWide, startTimer }: {
+  language: Language;
+  wide: boolean;
+  disabled?: boolean;
+  open: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onWide: (wide: boolean) => void;
+  startTimer: ParentMenuProps<string>["startTimer"];
+}) {
+  const text = TEXTS[language];
+  return (
+    <span className="dig-brush-menu">
+      {open && <span className="menu-backdrop" onClick={onClose} />}
+      <ParentMenu
+        label={text.brushMenu}
+        button={
+          <>
+            <Brush size={24} />
+            <span className="dig-brush-dot" data-wide={wide || undefined} />
+          </>
+        }
+        choices={(["brush", "wide"] as const).map((option) => ({
+          value: option,
+          name: option === "wide" ? text.wideBrush : text.brush,
+          symbol: (
+            <span className="dig-brush-slot" aria-hidden="true">
+              <span className="dig-brush-dot" data-wide={option === "wide" || undefined} />
+            </span>
+          )
+        }))}
+        chosen={wide ? "wide" : "brush"}
+        open={open && !disabled}
+        disabled={disabled}
+        onOpen={onOpen}
+        onClose={onClose}
+        onChoose={(option) => onWide(option === "wide")}
+        startTimer={startTimer}
+      />
     </span>
   );
 }

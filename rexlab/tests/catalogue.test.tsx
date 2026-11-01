@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -46,7 +47,7 @@ function openApp({
   const languages = memoryStorage();
   const themes = memoryStorage();
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={catalogue}
@@ -70,7 +71,7 @@ function openApp({
       {...pageAtRest()}
     />
   );
-  return userEvent.setup();
+  return userEvent.setup({ delay: null });
 }
 
 const entry = (id: string): CatalogueEntry => {

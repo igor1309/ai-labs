@@ -27,6 +27,7 @@ import { ownedTimers, type OwnedTimers, type StartTimer } from "./ownedTimers.ts
 import { presentCareResult, presentFriend, presentVisit } from "./presentation.ts";
 import { SCREEN_CHANGE, useScreens } from "./screens.ts";
 import { VisitScreen, type CareItem } from "./VisitScreen.tsx";
+import type { LayoutKeeping } from "./useKeptRow.ts";
 
 export type CareProgressStore = {
   // The care progress kept so far, or undefined when it cannot be read at
@@ -71,6 +72,7 @@ type CareScreen =
   | { kind: "visit"; visit: Visit; leaving: boolean }
   | { kind: "result"; result: CareResult }
   | { kind: "friends" };
+export type CarePhase = CareScreen["kind"];
 
 // A reaction plays inside the visit, which changes at once; every other
 // change is the plain screen change.
@@ -84,7 +86,10 @@ export function transitionFor(from: CareScreen, to: CareScreen): string | undefi
 export function useCareGame(
   { visitors, careProgress, bodyPicture, itemPicture, random, startTimer, reducedMotion }: CareGameProps,
   onHome: () => void,
-  onStart: () => void
+  onStart: () => void,
+  // How FRIENDS keeps its list's place through a turn, and its columns
+  // as the page now lays them out.
+  friendsLayout: { keeping: LayoutKeeping; columns: () => number }
 ) {
   const { screen, go, set } = useScreens<CareScreen>({ kind: "welcome" }, transitionFor);
   // Progress is read once, as the app opens. When it cannot be read there
@@ -235,6 +240,8 @@ export function useCareGame(
             onNewVisitor={newVisitor}
             onBack={() => go({ kind: "welcome" })}
             onHome={home}
+            layoutKeeping={friendsLayout.keeping}
+            columns={friendsLayout.columns}
           />
         );
     }
@@ -249,6 +256,8 @@ export function useCareGame(
       leave();
       set({ kind: "welcome" });
     },
-    content
+    content,
+    // The screen shown, for the window's layout.
+    phase: screen.kind
   };
 }

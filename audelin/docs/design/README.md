@@ -2,7 +2,8 @@
 
 The design lives in one file, [visual-language.pen](visual-language.pen).
 This page indexes it: the locked design system, the components, and where
-each frame sits. The app it draws is specified in [../mvp.md](../mvp.md). How
+each frame sits. The app it draws is specified, as far as it is yet, in
+[../spec/](../spec/). How
 to open, edit and save the file through the pencil MCP is in the repo's
 `AGENTS.md` § Designing in pen.dev.
 
@@ -73,6 +74,18 @@ Each colour has a light and a dark value on the theme axis `mode`.
 | Radius | `radius-bar` 2, `radius-control` 6, `radius-card` 10, `radius-panel` 16 |
 | Spacing | `space-2`, `-4`, `-6`, `-8`, `-12`, `-16`, `-24`, `-40` |
 
+The app's tokens are generated from [tokens.json](tokens.json), a snapshot of
+this file's variables. A token change in the design ships in the same commit
+as the refreshed snapshot and the regenerated Swift:
+
+1. Through the pencil MCP, run `execute` on this file with
+   `Print(JSON.stringify(GetVariables()))`.
+2. Write the printed JSON to `tokens.json` with a 2-space indent and a final
+   newline, so the diff shows only the changed tokens.
+3. In `audelin/macos`, run `python3 -I scripts/generate-tokens.py`. It writes
+   `Sources/GlassLedger/GlassLedger+Tokens.swift`; `--check` exits 1 when
+   that file is stale.
+
 ## Components
 
 The frame "Glass Ledger — components" holds them, with a dark mirror built
@@ -98,7 +111,7 @@ from instances.
 | Calls row, /Hover | `yFtkD`, `uMMD6` | `Date`, `Title`, `Duration`, `Audio`, `Dot`, pin; Hover adds the row tint and shows Delete (a Button/Destructive in the error tint) |
 | Settings row | `W8h2bZ` | `Name`; replace `Control` with the row's control |
 | Live panel | `c0qJn` | The glass panel shell; replace `Body` with the header, banners and log |
-| Added late | `HIqfu` | `Late label`; the group of minutes filled in after the live model arrived |
+| Added late | `HIqfu` | `Late label`; the group of minutes filled in after live text is switched on mid-call |
 | Checkbox/On, /Off | `ufHXu`, `zhXsW` | `Label` |
 | Sheet | `w9b9LL` | Scrim with a centred Alert; set x, y and size to the window under the title bar, and override the Alert through `Alert/<id>` |
 
@@ -113,14 +126,15 @@ Current screens:
 
 | Screen | States |
 |---|---|
-| 1 — First-launch setup | This Mac, nothing chosen; fresh Mac, live model downloading |
-| 2 — Launch blocker | Model missing; downloading |
-| 3 — Live panel states | Not recording; recording; live model downloading; live text off; text filled in after it arrives; settling; selection survives appends; sent to bb with each card step |
+| 1 — First-launch setup | This Mac, nothing chosen; fresh Mac, models downloading and recording blocked |
+| 2 — Launch blocker | Model missing; model downloading; both block recording |
+| 3 — Live panel states | Not recording; recording; getting ready, recording while the models load; live text off; live text switched off mid-call, with the text so far kept; text filled in after live text is switched on; settling; selections held, each let go on its own; sent to bb with each card step |
 | 4 — Calls list | Hover; confirm delete; renaming inline |
-| 5 — Call after it ends | Waiting for the final-pass model; final pass running; failed; summary pending; done; renaming the title |
+| 5 — Call after it ends | Final pass running; failed; summary pending; done; renaming the title |
 | 6 — Settings | Release build; debug build; confirm move; moving; move failed; during a recording |
 | 7 — Menu bar item | Waiting for a call; recording started by the call; recording without live text |
-| 8 — Errors | No call audio; no microphone; disk full |
+| 8 — Errors | No call audio; no microphone; disk full; call silent (written but zeros while the user talks) |
+| 9 — App icon | Three frames: the ledger icon (not chosen); "two tracks", the chosen flat design (owner, 2026-10-26); and its Liquid Glass edition, whose Icon Composer layers (me, them, rec) are exported to `macos/AppIcon/Audelin.icon` |
 
 Earlier frames are in git history: the four proposals and the brief at
 d5542163, the original Screens 1–8 at 32626465, v2 at dbd22607, v3 at

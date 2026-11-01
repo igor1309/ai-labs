@@ -11,107 +11,135 @@ single v1 spec (`spec-001-v1.md`, deleted 2026-10-22), which grew past
 1,100 lines because it was written for no observer and mixed contracts,
 mechanics, invented values and test lists.
 
-## The tree
+## Spec folders
 
-One folder per component, under `audelin/docs/spec/`. A component is one
-responsibility with one observer: the user for the top level and the UI
-components, the client that calls it for everything else. Each folder
-holds a `SPEC.md` and a `QA.md`, and nothing else.
-
-```text
-spec/                        the user: journeys across the app, and references
-  menu-bar/                  the user: the menu's status and commands (Screen 7)
-  switches/                  the user: the two checkmarks, in the menu and Settings
-  auto-record/               the user: when recordings start and stop on their own
-  call-titles/               the user: what a call is titled, and renaming it
-  debug-menu/                the user of a debug build: test triggers
-  quit/                      the user: quitting without losing a call
-  live-panel/                the user: the panel window and its header (Screen 3)
-  live-text-states/          the user: live text waiting, off, switched mid-call
-  error-banners/             the user: capture or disk failed, what still records (Screen 8)
-  text-banners/              the user: live text failed while the call records
-  transcript-view/           the user: reading the call in the panel
-  transcript-gaps/           the user: time a side was not captured
-  selection/                 the user: a selection while the text changes
-  calls-list/                the user: finding and opening calls (Screen 4)
-  call-rename/               the user: renaming a call, in the app or Finder
-  call-delete/               the user: deleting a call
-  call-screen/               the user (Screen 5, v1 part)
-  setup-screen/              the user: first launch (Screen 1)
-  launch-check/              the user: a missing model or folder at launch (Screen 2)
-  settings-window/           the user: what Settings shows (Screen 6)
-  calls-folder-change/       the user: moving the calls folder (Screen 6)
-  recording-session/         live-panel, menu-bar, quit: start, stop, keep the audio
-  recording-faults/          error-banners: capture or disk failing mid-call
-  live-recognition/          transcript-view, transcript-gaps, live-text-states, text-banners:
-                             text from the audio as the call goes on
-  catch-up/                  call-screen, calls-list, call-delete, quit: completing text later
-  late-text/                 live-text-states, transcript-view, call-screen: minutes added later
-  call-watcher/              auto-recorder, recording-session: call apps on the microphone
-  auto-recorder/             auto-record, calls-folder-change: recordings for calls
-  calls-catalogue/           calls-list, call-screen, call-rename: the calls and their state
-  call-changes/              call-rename, call-delete: rename, delete
-  folder-move/               calls-folder-change: move the calls folder
-  setup/                     setup-screen, launch-check: first run, launch check
-  live-model/                setup-screen, launch-check, settings-window, live-text-states: the model
-  preferences/               switches, settings-window: switches, chunk size
-  call-folder-names/         calls-catalogue, call-changes, recording-session
-  activity-gate/             recording-session, auto-recorder, catch-up, call-changes, folder-move
-  stabilizer/                live-recognition, catch-up: words to committed segments
-  transcript/                live-recognition, calls-catalogue: text from segments
-  mic-capture/  system-audio-capture/  recorder/  fluid-audio-asr/
-  call-detector/  call-store/  segment-log/  settings-store/  model-store/
-                             the Core whose port each implements
-```
-
-The components live in [ADR-001](adr-001-v1-architecture.md)'s modules; a
-module may hold several. The app target composes and has no spec.
+One folder per component, under `audelin/docs/spec/`, named after the
+component. The architecture decides what the components are and what they
+are called; this process only specifies them. A component has one
+responsibility and one observer: the user for the top level and the UI
+components, the client that calls it for everything else. Each folder holds
+a `SPEC.md` and a `QA.md`, and nothing else.
 
 **A spec over 100 lines is a design defect,** not a writing one: the
-component does too much. Stop, split it by responsibility, and update this
-tree before writing on (owner, 2026-10-22).
+component does too much. Stop, and split the component in the architecture
+before writing on (owner, 2026-10-22).
 
 ## SPEC.md
 
 - **One observer**, named before the first scenario. The top level is
   written for the user; every other spec for its client.
 - **Gherkin only:** one `Feature`, scenarios `S-<n> <name>` with ids never
-  renumbered or reused, and `Given`/`When`/`Then` steps of one line each.
+  renumbered or reused once committed, and `Given`/`When`/`Then` steps of one line each.
 - **`Then` is a capability** the observer gains or loses: what it can see or
   do. Never a state, an event or an effect.
 - **One scenario, one case.** A step that reads "A or B" is two scenarios.
 - **No types, fields, file layouts or values** in a scenario. Interfaces
-  live in code; how modules compose lives in ADR-001.
+  live in code.
 - **No duplication across levels.** A spec references the spec that owns a
   behaviour instead of restating it. The top level states what the user can
   do across the app and refers to the UI specs for what each screen offers.
-- **Oracle:** [mvp.md](mvp.md), [the design](design/README.md), ADR-001 and
-  the owner's rulings, plus the client's spec for a component. Every
-  scenario traces to it.
-- **Gaps are the agent's to close, not the owner's.** Where the oracle is
-  silent or ambiguous — a threshold, a limit, a title, a choice between two
-  readings — the agent researches it (the docs, the platform, comparable
-  apps), has Codex challenge its proposal, decides and writes the scenario.
+- **Oracle:** for the user spec, [the design](design/README.md) and the
+  owner's rulings; for a component, also the user spec and its client's
+  spec. Every scenario traces to it.
+- **[mvp.md](mvp.md) is no oracle.** It is the product vision, true when
+  it was written: never grounds for a scenario, a detail or a technical
+  choice, and never cited in `## Decided`. A wish in it counts only once
+  the owner rules it again or a spec takes it on its own grounds; so do
+  the rulings recorded only in it (owner, 2026-10-23).
+- **Gaps and technical choices are the agent's, not the owner's.** Where
+  the oracle is silent or ambiguous — a threshold, a limit, a title, a
+  choice between two readings, how a thing is built — the agent researches
+  it (the docs, the platform, comparable apps), has Codex challenge its
+  proposal, decides and writes the scenario.
   Each such decision is one line in `## Decided`, above the scenarios, with
   its grounds, so the owner can overturn it. A gap is never handed to the
   owner as an open question (owner, 2026-10-22).
+- **The shape comes from [ARCHITECTURE.md](../ARCHITECTURE.md),** not from
+  another app. Before drafting, check the component against its rules: it
+  owns the interfaces it depends on and names no other component, only an
+  adapter touches the outside world, only the root wires, and retries and
+  logging are decorators at the root (owner, 2026-10-22: "amanu is not an
+  oracle, my approach is").
+- **Prior art is evidence, read before a decision.** Read how the open-source
+  apps in `docs/research/` do it, from their source, for facts about the
+  platform and its failures: what an API does, what broke and why. Cite
+  them in the line. They never decide a component's structure or wiring,
+  and a departure from them needs evidence, not a preference (owner,
+  2026-10-22: "do grounding first").
+- **Every `## Decided` line is challenged by Codex** before the spec is
+  committed, including lines added to a spec already done. Repeat until a
+  round finds nothing new.
+- **A number cites the run that measured it** (`docs/research/tests.md`),
+  or it is a decision with its own grounds.
+- **Every wait and failure the user can see is a scenario:** loading,
+  catching up, a missing track. Model loading was found only in a live
+  trial (2026-10-22).
 
 ## QA.md
 
 One row per scenario, headed by its id and name from `SPEC.md`: how the
-scenario is driven and what evidence proves it. Cores are driven through
-fake ports and recorded fixtures, adapters for real on this Mac, and the
-user spec on a real call. A row has evidence or reads Missing. Verdicts go
-to run reports, never into `QA.md`.
+scenario is driven and what evidence proves it. Components that are not
+adapters are driven through
+fake ports and recorded fixtures, adapters for real on this Mac or through
+a fake of their system binding (§ Building), and the user spec on a real
+call. A row has evidence or reads Missing. Verdicts go
+to run reports, never into `QA.md`. A row's drive must be able to fail its
+scenario: it reads back the sound, word or text the `Then` promises, not a
+call that was made.
 
 ## Building
+
+Every change to behaviour goes the same way, a fix to a component already
+built included: spec change, brief, `agister run implement_tested`, then
+`code_review`, then one commit for its findings. A hand-built change skips
+the red runs, and its review finds the missing tests afterwards (six on
+2026-10-22).
+
+A review runs on a detached worktree at the candidate commit, and nothing
+is committed to the reviewed branch while it runs. Start builders with
+`scripts/build-step.sh` and reviews with `scripts/review-step.sh`, never by
+hand. The first checks the brief's parts and adds `scripts/brief-rules.md`,
+so no builder edits another target after an unrelated test times out. The
+second merges trunk first, so no review reports trunk's newer work as
+removed (each happened three times on 2026-10-27). A brief's `## Open` reads
+exactly "None."; a rule for the builder goes in Intent.
+
+Gate a step with `scripts/gate-step.sh` and land it with
+`scripts/land-step.sh <issue> <title>`, never with a hand-written chain:
+on 2026-10-27 such chains waited for lines never printed, wrote to a
+`/tmp` that was cleared, and landed branches behind trunk.
+
+A test orders concurrent work only by handshakes on events: a gate, a
+received snapshot, an awaited call. A `TaskExecutor` preference does not
+reach a plain `Task { }`, so it fixes no order (LAB-684, 2026-10-28).
+
+Never wait for CI. Once a step passes its gate, the next step branches from
+that step's branch and its builder starts at once; its PR goes up after
+the earlier one lands, and a fix CI asks for is merged forward (owner,
+2026-10-27). Only a step whose predecessor is still in review waits.
+
+A run left unattended goes through `scripts/agister-retry.sh`: it runs again
+only after a rate limit, stops on any other end, and prints a line per try
+for a watcher. Capacity is agister's to wait out, in the run's session. A run that completes without committing is
+read, not run again: the build's own sandbox may fail what the test step
+passes (2026-10-23).
+
+A hands-on trial, such as a preview app, states before it runs what it can
+and cannot show: the live text preview heard only the microphone, which
+was said after the trial.
 
 Code is built test-first: each test is run red before the code exists,
 failing on its assertion rather than a compile error (the API is stubbed
 first), and the red run is shown with the green one (owner, 2026-10-22).
 
 An adapter is tested against the real thing it wraps, in temp places only,
-never the user's own folders: a Trash test uses a disk image's Trash. A Core
+never the user's own folders: a Trash test uses a disk image's Trash. When
+the real thing is hardware or system state (audio devices, permissions,
+sleep), the adapter is a thin binding over the system API plus the
+translation it owns, and the translation is tested through a fake of the
+binding. Apple's frameworks are never the thing under test, and no row needs
+hardware the owner does not have; the binding is proven by the user spec on
+a real call (owner, 2026-10-22). A Core
 is tested with fakes of its ports and a fake clock. No test proves that
 something did not happen by sleeping; it asserts the state that says so
 (owner, 2026-10-22).
@@ -120,7 +148,8 @@ something did not happen by sleeping; it asserts the state that says so
 
 1. Top-down: the user spec first, then each UI component, each Core and each adapter.
    A component's scenarios are exactly what its client needs to keep its own
-   scenarios.
+   scenarios. A spec whose client has none yet traces each of its needs to
+   the user spec and names the missing client, and that client is next.
 2. Each spec is reviewed against its oracle and its client's spec only:
    observer, capabilities, traceability in both directions (every scenario
    traces to the oracle; every behaviour the oracle names is a scenario, a

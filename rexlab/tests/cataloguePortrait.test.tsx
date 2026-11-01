@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
@@ -5,8 +6,9 @@ import { App, type PortraitLayouts } from "../src/App.tsx";
 import type { ChipWidths } from "../src/FoodChips.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { emChipWidths, laidOutWidth, manualChipWidths } from "./chipWidths.ts";
-import { NAME_EMS } from "./nameWidths.ts";
+import { emChipWidths, manualChipWidths } from "./chipWidths.ts";
+import { expectCompactControls } from "./compactCatalogueControls.ts";
+import { LANDSCAPE_NAME, cardDetails, cardName } from "./catalogueCards.ts";
 import { appStylesheet, type SafeArea } from "./stylesheet.ts";
 import {
   SHIPPED_CATALOGUE,
@@ -39,9 +41,9 @@ import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 const PORTRAIT_LAYOUTS: PortraitLayouts = { home: ["tall"], catalogue: ["tall"] };
 
 // "The list stands upright": each window, its cards in a row, each card's
-// width, and the rows the chips stand in.
+// width, and the single row of food symbols.
 const UPRIGHT = [
-  [600, 800, 2, 234, "two"],
+  [600, 800, 2, 234, "one row"],
   [744, 1133, 2, 306, "one row"],
   [768, 1024, 2, 318, "one row"],
   [810, 1080, 3, 219, "one row"],
@@ -51,7 +53,7 @@ const UPRIGHT = [
 ] as const;
 
 // "Every word fits the tall windows": the language, the window's width,
-// 1000 tall, and how the chips stand.
+// 1000 tall, and the measured arrangement the symbol row must tolerate.
 const WORDS: ReadonlyArray<readonly [Language, number, "stacked" | "closed" | "spaced"]> = [
   ["en", 600, "stacked"],
   ["ru", 600, "stacked"],
@@ -60,12 +62,6 @@ const WORDS: ReadonlyArray<readonly [Language, number, "stacked" | "closed" | "s
   ["ru", 744, "closed"],
   ["ru", 820, "spaced"]
 ];
-
-// Each arrangement's spacing: a food chip's padding before its symbols
-// and after its count, the gap between its parts, and the gap between
-// chips. Two by two keeps the landscape spacing.
-const LANDSCAPE_SPACING = { before: 20, after: 10, between: 10, apart: 12 };
-const SPACING = { spaced: LANDSCAPE_SPACING, stacked: LANDSCAPE_SPACING, closed: { before: 14, after: 8, between: 8, apart: 8 } };
 
 // An iPad mini upright, catalogue-portrait.feature's "Safe areas stay
 // clear upright": its rounded corners under the status bar, and its home
@@ -97,9 +93,9 @@ async function openList(
   { language = "en", viewport = manualViewport("portrait"), chipWidths = emChipWidths() }: { language?: Language; viewport?: ManualViewport; chipWidths?: ChipWidths } = {}
 ) {
   openWindow(width, height);
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -139,8 +135,8 @@ function sized(element: Element, size: WindowSize, expected: Record<string, stri
 }
 
 // The upright list as the browser lays it out from the stylesheet: the
-// screen a column of the bar and the list, the bar a column of "HOME"
-// and the chips' row, and the list a grid of `--columns` equal columns
+// screen a column of the bar and the list, the bar a row of HOME
+// and the food symbols, and the list a grid of `--columns` equal columns
 // inside its padding and its scrollbar, where one takes room: as wide as
 // the list's box is wider than its client area. A size set any other way
 // fails here, since these sums would not see it.
@@ -153,9 +149,9 @@ function uprightList(size: WindowSize, language: Language = "en") {
   expect([...main.children]).toEqual([bar, list]);
   expect([...bar.children]).toEqual([home, chipGroup(language)]);
   sized(main, size, { display: "flex", "flex-direction": "column" });
-  sized(bar, size, { display: "flex", "flex-direction": "column", "align-items": "flex-start", "padding-top": "0px", "padding-bottom": "0px" });
+  sized(bar, size, { display: "flex", "flex-direction": "row", "align-items": "center", "padding-top": "0px", "padding-bottom": "0px" });
   sized(home, size, { "margin-top": "0px", "margin-left": "0px", "align-self": "auto" });
-  sized(chipGroup(language), size, { "align-self": "stretch", "margin-top": "0px", "margin-left": "0px", "margin-right": "0px" });
+  sized(chipGroup(language), size, { "align-self": "auto", "margin-top": "0px", "margin-left": "0px", "margin-right": "0px" });
   sized(list, size, { display: "grid", "grid-template-columns": "repeat(var(--columns), minmax(0, 1fr))", "padding-top": "0px", "margin-top": "0px" });
   const [mainStyle, barStyle, listStyle] = [main, bar, list].map((element) => getComputedStyle(element));
   if (!mainStyle || !barStyle || !listStyle) throw new Error("No style for the list");
@@ -163,18 +159,13 @@ function uprightList(size: WindowSize, language: Language = "en") {
   const gap = styleAt(list, size).columnGap();
   const inside = width - px(mainStyle.paddingLeft) - px(mainStyle.paddingRight);
   const scrollbar = list.offsetWidth - list.clientWidth;
-  const chipBounds = chipLayout(inside - px(barStyle.paddingLeft) - px(barStyle.paddingRight), size, language);
-  const chipTop = px(mainStyle.paddingTop) + styleAt(home, size).px("height") + styleAt(bar, size).rowGap();
-  const chipBottom = chipTop + chipBounds.height;
-  const cardsTop = chipBottom + styleAt(main, size).rowGap();
-  expect(chipBounds.bounds.every(({ top, bottom }) => top >= 0 && bottom <= chipBounds.height)).toBe(true);
-  expect(chipBottom).toBe(chipTop + (chipGroup(language).dataset.arrangement === "stacked" ? 124 : 56));
-  expect(cardsTop - (chipTop + chipBounds.bounds.at(-1)!.bottom)).toBe(28);
+  const controls = expectCompactControls(size, language);
+  const cardsTop = px(mainStyle.paddingTop) + controls.height + styleAt(main, size).rowGap();
   expect(cardsTop).toBeLessThan(size[1]);
   return {
     home: { left: px(mainStyle.paddingLeft) + px(barStyle.paddingLeft), top: px(mainStyle.paddingTop) },
-    // How far under HOME the chips stand, and the cards under the chips.
-    chipsUnder: styleAt(bar, size).rowGap(),
+    // The gap beside HOME, and the cards under the controls.
+    chipsBeside: styleAt(bar, size).rowGap(),
     cardsUnder: styleAt(main, size).rowGap(),
     chipRow: inside - px(barStyle.paddingLeft) - px(barStyle.paddingRight),
     columns,
@@ -182,184 +173,16 @@ function uprightList(size: WindowSize, language: Language = "en") {
   };
 }
 
-// The chips as the stylesheet lays them out on a row `row` wide: the rows
-// they stand in, by their names, each row's gap and least width, every
-// food chip's spacing, and "ALL"'s box. Each food chip is at least as
-// wide as its padding, its parts and the gaps between them, and grows
-// into what its row leaves.
-function chipLayout(row: number, size: WindowSize, language: Language = "en", measuredWidth = laidOutWidth) {
-  const group = chipGroup(language);
-  const stacked = styleAt(group, size).value("flex-direction") === "column";
-  const rows = stacked ? [...group.children].map((each) => ({ holder: each, chips: [...each.children] })) : [{ holder: group, chips: [...group.querySelectorAll(".food-chip")] }];
-  if (!stacked) expect([...group.children].map((each) => getComputedStyle(each).display)).toEqual(["contents", "contents"]);
-  else sized(group, size, { display: "flex" });
-  const least = (chip: Element) => {
-    const face = part(".food-chip-face", chip);
-    const style = styleAt(face, size);
-    if (chip.getAttribute("data-food") === "all") return style.px("width");
-    sized(chip, size, { "flex-grow": "1", "flex-shrink": "0", "flex-basis": "auto" });
-    sized(face, size, { "flex-grow": "1", "justify-content": "center", "box-sizing": "border-box" });
-    const parts = [".food-chip-symbols", ".food-chip-word", ".food-chip-count"].map((selector) => measuredWidth(part(selector, face)));
-    return style.px("padding-left") + parts.reduce((sum, width) => sum + width, 0) + style.columnGap() * (parts.length - 1) + style.px("padding-right");
-  };
-  const food = [...group.querySelectorAll(".food-chip:not([data-food='all'])")];
-  const spacing = food.map((chip) => {
-    const style = styleAt(part(".food-chip-face", chip), size);
-    return { before: style.px("padding-left"), after: style.px("padding-right"), between: style.columnGap() };
-  });
-  const bounds = rows.reduce<Array<{ top: number; bottom: number }>>((result, { holder, chips }) => {
-    const top = result.length === 0 ? 0 : result.at(-1)!.bottom + styleAt(group, size).rowGap();
-    const chipHeight = Math.max(...chips.map((chip) => styleAt(chip, size).px("height")));
-    const rowHeight = stacked && styleAt(holder, size).value("height") && styleAt(holder, size).value("height") !== "auto" ? styleAt(holder, size).px("height") : chipHeight;
-    expect(chipHeight).toBe(56);
-    expect(rowHeight).toBeGreaterThanOrEqual(chipHeight);
-    result.push({ top, bottom: top + rowHeight });
-    return result;
-  }, []);
-  const declaredHeight = styleAt(group, size).value("height");
-  const height = declaredHeight && declaredHeight !== "auto" ? styleAt(group, size).px("height") : bounds.at(-1)!.bottom;
-  expect(bounds.every(({ top, bottom }) => top >= 0 && bottom <= height)).toBe(true);
-  const all = part(".food-chip[data-food='all']", group);
-  const allFace = getComputedStyle(part(".food-chip-face", all));
-  return {
-    height, bounds,
-    rows: rows.map(({ chips }) => chips.map((chip) => chip.getAttribute("aria-label"))),
-    rowGap: stacked ? styleAt(group, size).rowGap() : 0,
-    apart: rows.map(({ holder }) => styleAt(holder, size).columnGap()),
-    overflowing: rows.flatMap(({ holder, chips }) => {
-      const needed = chips.reduce((sum, chip) => sum + least(chip), 0) + styleAt(holder, size).columnGap() * (chips.length - 1);
-      return needed <= row ? [] : [`${chips.map((chip) => chip.getAttribute("aria-label")).join(" ")}: ${needed.toFixed(1)}px in ${row}px`];
-    }),
-    spacing,
-    all: { width: px(allFace.width), padding: allFace.padding, height: px(getComputedStyle(all).height), radius: getComputedStyle(all).borderRadius, grows: getComputedStyle(all).flexGrow }
-  };
-}
-
-// The value a property of `element` takes in a card `cardWidth` wide, the
-// card's container rules applied: jsdom applies none.
-function inCard(element: Element, cardWidth: number, property: string) {
-  let found = getComputedStyle(element).getPropertyValue(property);
-  for (const sheet of document.styleSheets) {
-    for (const rule of sheet.cssRules) {
-      if (!(rule instanceof CSSContainerRule)) continue;
-      const [, most] = /^\(max-width: (\d+)px\)$/.exec(rule.conditionText) ?? [];
-      if (most === undefined) throw new Error(`No sum for @container ${rule.conditionText}`);
-      if (cardWidth > Number(most)) continue;
-      for (const inner of rule.cssRules) {
-        if (inner instanceof CSSStyleRule && element.matches(inner.selectorText)) found = inner.style.getPropertyValue(property) || found;
-      }
-    }
-  }
-  return found;
-}
-
-// A card's name in a card `cardWidth` wide: its size, by its share of the
-// card's width, and how much wider than its room it is, if at all.
-function cardName(card: Element, cardWidth: number) {
-  const name = part(".catalogue-name", card);
-  const footer = part(".catalogue-footer", card);
-  expect(getComputedStyle(card).containerType).toBe("inline-size");
-  const fontSize = getComputedStyle(name).fontSize;
-  const [, most, share] = /^min\(([\d.]+)px, ([\d.]+)cqi\)$/.exec(fontSize) ?? [];
-  if (most === undefined || share === undefined) throw new Error(`A name ${fontSize} in size`);
-  const size = Math.min(Number(most), (Number(share) / 100) * cardWidth);
-  const words = name.textContent ?? "";
-  const ems = NAME_EMS[words];
-  if (ems === undefined) throw new Error(`No width in ems for ${words}`);
-  const [start, end = start] = inCard(footer, cardWidth, "padding-inline").split(" ").map(px);
-  const room = cardWidth - (start ?? 0) - (end ?? 0);
-  return { words, size, over: ems * size - room, wraps: getComputedStyle(name).whiteSpace !== "nowrap" };
-}
-
-// The size of the names on a 1024 by 768 landscape iPad, four cards to a
-// row, each 213 wide.
-const LANDSCAPE_NAME = Math.min(20, 0.07 * 213);
-
-// jsdom lays nothing out, so the width of each character a card's height
-// and weight are written in is given here in ems of its semibold face,
-// rounded up: Lexend's for the digits and the Latin units, and for the
-// Cyrillic units, which Lexend has no letters for, the width of a system
-// face with a tenth added for the iPad's own. A value is as wide as its
-// characters together: kerning, left out, only narrows it. A character
-// missing here fails the test that reads it.
-const DETAIL_EMS: Record<string, number> = {
-  "0": 0.66,
-  "1": 0.55,
-  "2": 0.55,
-  "3": 0.58,
-  "4": 0.65,
-  "5": 0.59,
-  "6": 0.58,
-  "7": 0.55,
-  "8": 0.6,
-  "9": 0.57,
-  ".": 0.25,
-  ",": 0.29,
-  " ": 0.31,
-  M: 0.88,
-  K: 0.74,
-  G: 0.78,
-  T: 0.63,
-  М: 0.95,
-  К: 0.73,
-  Г: 0.6,
-  Т: 0.67
-};
-
-const detailWidth = (words: string, fontSize: number) =>
-  [...words].reduce((sum, character) => {
-    const ems = DETAIL_EMS[character];
-    if (ems === undefined) throw new Error(`No width in ems for ${character} in ${words}`);
-    return sum + ems * fontSize;
-  }, 0);
-
-// A gap in a card `cardWidth` wide: jsdom works out its longhand only
-// where the CSS sets it, and the shorthand gives it otherwise.
-function gapInCard(element: Element, cardWidth: number) {
-  const set = inCard(element, cardWidth, "column-gap");
-  return px(set && set !== "normal" ? set : (inCard(element, cardWidth, "gap").split(" ").at(-1) ?? ""));
-}
-
-// The symbols shown in `element`, side by side at their size and gap.
-function symbolsWidth(element: Element, cardWidth: number) {
-  const shown = [...element.querySelectorAll("svg")].filter((symbol) => inCard(symbol, cardWidth, "display") !== "none");
-  return { count: shown.length, width: shown.reduce((sum, symbol) => sum + px(symbol.getAttribute("width") ?? ""), 0) };
-}
-
-// A card's height, weight and food tag in a card `cardWidth` wide, its
-// container rules applied: how much wider their row is than the room the
-// footer's padding leaves, if at all. Each chip is its padding, its
-// symbol where it shows one, and its words, its parts apart by its gap;
-// the food tag is its symbols inside its face's padding.
-function cardDetails(card: Element, cardWidth: number) {
-  const footer = part(".catalogue-footer", card);
-  const row = part(".catalogue-chips", card);
-  const [start, end = start] = inCard(footer, cardWidth, "padding-inline").split(" ").map(px);
-  const padded = (element: Element) => px(inCard(element, cardWidth, "padding-left")) + px(inCard(element, cardWidth, "padding-right"));
-  const chips = [...row.querySelectorAll(".catalogue-chip")].map((chip) => {
-    const symbols = symbolsWidth(chip, cardWidth);
-    const words = detailWidth(chip.textContent ?? "", px(inCard(chip, cardWidth, "font-size")));
-    return padded(chip) + symbols.width + words + gapInCard(chip, cardWidth) * symbols.count;
-  });
-  const face = part(".diet-tag-face", row);
-  const tagSymbols = part(".diet-tag-symbols", face);
-  const symbols = symbolsWidth(tagSymbols, cardWidth);
-  const tag = padded(face) + symbols.width + gapInCard(tagSymbols, cardWidth) * (symbols.count - 1);
-  const parts = [...chips, tag];
-  const needed = parts.reduce((sum, width) => sum + width, 0) + gapInCard(row, cardWidth) * (parts.length - 1);
-  return { name: card.getAttribute("aria-label"), over: needed - (cardWidth - (start ?? 0) - (end ?? 0)) };
-}
-
 describe("the list of every dinosaur upright", () => {
   it.each(UPRIGHT)(
-    "in a %i by %i window shows no picture asking to turn, HOME alone at the top left, the chips under it, and the 52 cards %i to a row, each %i wide, the chips in %s",
-    async (width, height, columns, card, rows) => {
+    "in a %i by %i window shows no picture asking to turn, HOME beside the food symbols, and the 52 cards %i to a row, each %i wide, the chips in %s",
+    async (width, height, columns, card) => {
       await openList(width, height);
       const layout = uprightList([width, height]);
 
       expect([document.documentElement.dataset.size, gateShown()]).toEqual(["tall", false]);
-      expect([layout.home, layout.chipsUnder, layout.cardsUnder]).toEqual([{ left: 56, top: 40 }, 24, 28]);
-      expect(chipLayout(layout.chipRow, [width, height]).rows.length).toBe(rows === "two" ? 2 : 1);
+      expect([layout.home, layout.chipsBeside, layout.cardsUnder]).toEqual([{ left: 56, top: 40 }, 24, 28]);
+      expectCompactControls([width, height]);
       expect(layout.columns).toBe(columns);
       expect(Math.abs(layout.card - card)).toBeLessThanOrEqual(1);
       expect(cards().map((each) => each.getAttribute("aria-label"))).toEqual(SHIPPED_CATALOGUE.map(({ name }) => name.en));
@@ -405,7 +228,7 @@ describe("the list of every dinosaur upright", () => {
   });
 });
 
-describe("every word upright", () => {
+describe("compact controls upright", () => {
   it.each([
     [40, "spaced", 82, "closed"],
     [82, "closed", 122, "stacked"],
@@ -419,7 +242,7 @@ describe("every word upright", () => {
     const row = uprightList(size).chipRow;
     expect(row).toBe(632);
     expect(chipGroup().dataset.arrangement).toBe(from);
-    expect(chipLayout(row, size, "en", widths.width).overflowing).toEqual([]);
+    expectCompactControls(size);
 
     widths.set(contents(after));
     expect(chipGroup().dataset.arrangement).toBe(from);
@@ -427,31 +250,17 @@ describe("every word upright", () => {
 
     expect([window.innerWidth, window.innerHeight]).toEqual(size);
     expect(chipGroup().dataset.arrangement).toBe(to);
-    const shown = chipLayout(row, size, "en", widths.width);
-    expect(shown.rows.length).toBe(to === "stacked" ? 2 : 1);
-    expect(shown.overflowing).toEqual([]);
+    expectCompactControls(size);
     expect(chips().every((chip) => getComputedStyle(chip).whiteSpace === "nowrap")).toBe(true);
   });
 
-  it.each(WORDS)("fits in %s in a %i by 1000 window, the chips %s, at their landscape look, and every card's name on one line as large as in landscape", async (language, width, arrangement) => {
+  it.each(WORDS)("fits symbols in %s in a %i by 1000 window regardless of the measured %s arrangement, and keeps every card name as large as in landscape", async (language, width, arrangement) => {
     await openList(width, 1000, { language });
     const size: WindowSize = [width, 1000];
     const layout = uprightList(size, language);
-    const chipsShown = chipLayout(layout.chipRow, size, language);
-    const { before, after, between, apart } = SPACING[arrangement];
-
     expect(chipGroup(language).dataset.arrangement).toBe(arrangement);
-    const [all, meat, plants, both] = [TEXTS[language].everyFood, ...(["meat", "plants", "both"] as const).map((food) => TEXTS[language].diets[food])];
-    expect(chipsShown.rows).toEqual(arrangement === "stacked" ? [[all, meat], [plants, both]] : [[all, meat, plants, both]]);
-    expect([chipsShown.rowGap, chipsShown.apart]).toEqual(arrangement === "stacked" ? [12, [12, 12]] : [0, [apart]]);
-    expect(chipsShown.spacing).toEqual([0, 1, 2].map(() => ({ before, after, between })));
-    expect(chipsShown.overflowing).toEqual([]);
-    // "ALL" is round, its symbol alone, and grows into no row.
-    expect(chipsShown.all).toEqual({ width: 56, padding: "0px", height: 56, radius: "28px", grows: "0" });
-    expect(chips(language).map((chip) => [getComputedStyle(chip).height, getComputedStyle(chip).fontSize, getComputedStyle(chip).whiteSpace])).toEqual(chips(language).map(() => ["56px", "20px", "nowrap"]));
-    expect([...chipGroup(language).querySelectorAll(".food-chip-count")].map((count) => getComputedStyle(count).fontSize)).toEqual(["17px", "17px", "17px"]);
-    // "BOTH"'s two symbols keep their 2 pixels apart.
-    expect(styleAt(part(".food-chip[data-food='both'] .food-chip-symbols"), size).columnGap()).toBe(2);
+    // Portrait symbols replace the word-and-count spacing in every arrangement.
+    expectCompactControls(size, language);
 
     // The names' widths in ems are rounded up, and sizes hold to within
     // a pixel.
@@ -476,27 +285,35 @@ describe("every word upright", () => {
     expect(details.filter(({ over }) => over > 0).map(({ name }) => name)).toEqual([]);
   });
 
-  it("closes the chips up as the window narrows and spaces them again as it widens", async () => {
+  it("keeps one symbol row as measured arrangements change with the window width", async () => {
     const { viewport } = await openList(820, 1180);
     expect(chipGroup().dataset.arrangement).toBe("spaced");
 
     openWindow(744, 1133);
     act(() => viewport.resize("tall", true));
     expect(chipGroup().dataset.arrangement).toBe("closed");
+    expectCompactControls([744, 1133]);
 
     openWindow(600, 800);
     act(() => viewport.resize("tall", true));
     expect(chipGroup().dataset.arrangement).toBe("stacked");
+    expectCompactControls([600, 800]);
 
     openWindow(820, 1180);
     act(() => viewport.resize("tall", true));
     expect(chipGroup().dataset.arrangement).toBe("spaced");
   });
 
-  it("keeps the chips beside HOME in landscape, with no arrangement of their own", async () => {
-    await openList(1024, 768, { viewport: manualViewport("landscape") });
+  it.each(["en", "ru"] as const)("keeps words, counts and landscape spacing beside HOME in %s", async (language) => {
+    await openList(1024, 768, { language, viewport: manualViewport("landscape") });
 
-    expect([document.documentElement.dataset.size, chipGroup().hasAttribute("data-arrangement")]).toEqual(["wide", false]);
+    expect([document.documentElement.dataset.size, chipGroup(language).hasAttribute("data-arrangement")]).toEqual(["wide", false]);
+    for (const label of chipGroup(language).querySelectorAll(".food-chip-word, .food-chip-count")) expect(getComputedStyle(label).display).not.toBe("none");
+    for (const face of chipGroup(language).querySelectorAll(".food-chip:not([data-food=all]) .food-chip-face")) {
+      const style = styleAt(face, [1024, 768]);
+      expect([style.px("padding-left"), style.px("padding-right"), style.columnGap()]).toEqual([20, 10, 10]);
+    }
+    expect(getComputedStyle(part(".catalogue-home-word")).display).not.toBe("none");
     expect(getComputedStyle(part(".catalogue-bar")).flexDirection || "row").toBe("row");
   });
 });
@@ -609,7 +426,7 @@ describe("the list upright, used", () => {
     // The screen as its flex column lays it out: the bar at the top, at
     // its height, and the list growing into what is left over the
     // screen's bottom padding, less its own margins.
-    const barHeight = 56 + styleAt(part(".catalogue-bar"), [744, 1133]).rowGap() + 56;
+    const barHeight = expectCompactControls([744, 1133]).height;
     const listTop = px(main.paddingTop) + barHeight + styleAt(part(".catalogue"), [744, 1133]).rowGap() + px(listStyle.marginTop);
     const listBottom = 1133 - px(main.paddingBottom) - px(listStyle.marginBottom);
     const rowHeight = (card * 200) / 317 + 14 + 1.25 * Math.min(20, 0.07 * card) + 10 + 32 + 18;

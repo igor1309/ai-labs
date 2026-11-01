@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io/fs"
@@ -375,7 +376,7 @@ func (s *runtimesSpy) runtimes() runtimes {
 // watches its signals or draws randomness fails the test.
 func idleHost(t *testing.T) host {
 	clock := clocktest.NewClock(time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC))
-	return host{ctx: context.Background(), clock: clock, timer: clock.Timer,
+	return host{probe: unexpectedProbe(t), ctx: context.Background(), clock: clock, timer: clock.Timer,
 		signals: func() (<-chan os.Signal, func()) {
 			t.Error("a run watched the signals, want none run")
 			return nil, func() {}
@@ -681,9 +682,15 @@ func (s *storeSpy) at(folder string) (homeRuns, error) {
 	return s, nil
 }
 
+func (s *storeSpy) Begin(record runstore.Record) error { return s.Write(record) }
+
 func (s *storeSpy) Write(record runstore.Record) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.writeLocked(record)
+}
+
+func (s *storeSpy) writeLocked(record runstore.Record) error {
 	s.definitionWritesAtRecord = append(s.definitionWritesAtRecord, len(s.definitionWrites))
 	record.Calls = slices.Clone(record.Calls)
 	for _, call := range record.Calls {
@@ -746,6 +753,28 @@ func (s *storeSpy) Append(id string, event runstore.Event) error {
 	s.events = append(s.events, storedEvent{id: id, event: event})
 	if s.failAppend {
 		return errFull
+	}
+	switch event.Kind {
+	case runstore.InputResolved, runstore.CallEnded, runstore.ChildStarted, runstore.ChildEnded:
+		// Fold captured facts through the real reader so budget and record
+		// assertions see the store's public view without a second reducer.
+		record := s.kept[id]
+		var data bytes.Buffer
+		writer, err := runstore.NewLogWriter(func(b []byte, _ bool) error { _, err := data.Write(b); return err })
+		if err != nil {
+			return err
+		}
+		if err := writer.Append(runstore.Event{Kind: runstore.RunStarted, Record: &record}); err != nil {
+			return err
+		}
+		if err := writer.Append(event); err != nil {
+			return err
+		}
+		record, err = runstore.Fold(&data)
+		if err != nil {
+			return err
+		}
+		return s.writeLocked(record)
 	}
 	return nil
 }
@@ -823,3 +852,18 @@ func (s *callsSpy) told() []endedCall {
 }
 
 func noDailyBudget() (*call.DailyBudget, []string) { return nil, nil }
+
+func (s *callsSpy) Prepared(ended endedCall)                 {}
+func (s *callsSpy) Observed(step string, report call.Report) {}
+
+func (s *storeSpy) Snapshot(id string) (runstore.Snapshot, error) {
+	r, err := s.Record(id)
+	return runstore.Snapshot{Record: r}, err
+}
+
+func unexpectedProbe(t *testing.T) func(int) (string, bool, error) {
+	return func(pid int) (string, bool, error) {
+		t.Errorf("unexpected process probe for %d", pid)
+		return "", false, errors.New("unexpected probe")
+	}
+}

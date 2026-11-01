@@ -6,8 +6,7 @@ Feature: Compare dinosaurs quiz: the result in a tall window
   stars, "WELL DONE!", the best score, the level switch and the
   actions, "PLAY AGAIN" and "HOME" side by side. The rest is as
   compare-dinosaurs-result.feature and compare-dinosaurs-level-switch.feature
-  tell. A tall-narrow window keeps the picture asking to turn or widen
-  (window-shape.feature).
+  tell. A tall-narrow window has its own upright result.
 
   The result's padding (32), the gaps between its parts (16), the
   celebration, "WELL DONE!", the best score and the actions keep their
