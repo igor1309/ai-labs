@@ -5,7 +5,7 @@ import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useGateShown } from "./OrientationGate.tsx";
-import { BrushPicker, DigBar, FieldGuideButton } from "./DigBar.tsx";
+import { BrushMenu, BrushPicker, DigBar, FieldGuideButton } from "./DigBar.tsx";
 import { Picture, PictureImage, usePicture, type PictureLook } from "./Picture.tsx";
 import type { StartTimer } from "./ownedTimers.ts";
 
@@ -108,6 +108,8 @@ export type DigBoardScreenProps = {
   onBrush: (mark: SandMark) => void;
   onPick?: (id: string) => void;
   onWide: (wide: boolean) => void;
+  // Times the phone's brush menu out as it closes.
+  menuTimer: StartTimer;
   onHome: () => void;
   onFieldGuide?: (() => void) | undefined;
 };
@@ -263,11 +265,13 @@ export function DigBoardScreen({
   onBrush,
   onPick,
   onWide,
+  menuTimer,
   onHome,
   onFieldGuide
 }: DigBoardScreenProps) {
   const gateShown = useGateShown();
   const text = TEXTS[language];
+  const [brushMenu, setBrushMenu] = useState(false);
   const chipStar = useRef<SVGSVGElement>(null);
   const [flight, setFlight] = useState<CSSProperties>({});
   const book = useRef<SVGSVGElement>(null);
@@ -467,6 +471,8 @@ export function DigBoardScreen({
       <div className="stratum stratum-1" aria-hidden="true" />
       <DigBar language={language} title={questionShown ? text.whoIsIt : text.dig} onHome={onHome}>
         <BrushPicker language={language} wide={wide} disabled={blown} onWide={onWide} />
+        <BrushMenu language={language} wide={wide} disabled={blown} open={brushMenu} onOpen={() => setBrushMenu(true)} onClose={() => setBrushMenu(false)}
+          onWide={onWide} startTimer={menuTimer} />
         <FieldGuideButton language={language} count={treasures} motion={grains} bookRef={book} onFieldGuide={onFieldGuide}
           landed={treasureFlight?.phase === "landed" ? (treasureFlight.fresh ? "new" : "again") : undefined} />
         {dugUp !== undefined && (
@@ -558,7 +564,7 @@ export function DigBoardScreen({
                   style={{ opacity: choicesShown }} disabled={!questionShown || blown || card.rejected} tabIndex={questionShown ? undefined : -1}
                   aria-label={`${text.whoIsIt}: ${card.name.toLocaleUpperCase(language)}${card.correct ? `: ${text.digChoice.right}` : card.rejected ? `: ${text.digChoice.tryAnother}` : ""}`} onClick={() => onPick?.(card.id)}>
                   <Picture className="dig-choice-picture" src={card.picture} alt="" width={800} height={600} />
-                  <span className="dig-choice-name" style={{ "--letters": card.name.length } as CSSProperties}>{card.name.toLocaleUpperCase(language)}</span>
+                  <ChoiceName name={card.name.toLocaleUpperCase(language)} />
                   {card.correct && <span className="dig-choice-mark dig-choice-mark-correct" aria-hidden="true">✓</span>}
                   {card.rejected && <span className="dig-choice-mark dig-choice-mark-rejected" aria-hidden="true">↻ {text.digChoice.tryAnother}</span>}
                 </Button>}
@@ -568,5 +574,33 @@ export function DigBoardScreen({
         </div>}
       </div>
     </main>
+  );
+}
+
+// The longest name a phone's card holds on one line at 12 pixels.
+export const ONE_LINE_LETTERS = 14;
+// The roots a long name breaks before, the dinosaur's "lizard" first.
+const ROOTS = ["SAURUS", "ЗАВР", "LOPHUS", "RHYNCHUS"];
+
+// A long name broken in two before its root, the first line ending in a
+// hyphen; a name that fits, or has no root to break before, is one line.
+export function nameLines(name: string): string[] {
+  if (name.length <= ONE_LINE_LETTERS) return [name];
+  for (const root of ROOTS) {
+    const at = name.lastIndexOf(root);
+    if (at >= 3) return [`${name.slice(0, at)}-`, name.slice(at)];
+  }
+  return [name];
+}
+
+// A choice's name, sized by its whole length where it is one line, and,
+// on a phone, by its longer line, broken before its root.
+function ChoiceName({ name }: { name: string }) {
+  const lines = nameLines(name);
+  const [head, tail] = lines;
+  return (
+    <span className="dig-choice-name" style={{ "--letters": name.length, "--line-letters": Math.max(...lines.map((line) => line.length)) } as CSSProperties}>
+      {tail === undefined ? name : <>{head?.slice(0, -1)}<span className="dig-choice-hyphen">-</span><br className="dig-choice-break" />{tail}</>}
+    </span>
   );
 }

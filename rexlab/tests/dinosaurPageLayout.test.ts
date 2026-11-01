@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dinosaurPageGeometry, dinosaurWordsWidth, keptLines } from "../src/dinosaurPageLayout.ts";
+import { dinosaurPageGeometry, dinosaurWordsWidth, keptLines, NARROW_PAGE } from "../src/dinosaurPageLayout.ts";
 
 describe("a portrait dinosaur page's word bands", () => {
   it.each([
@@ -15,11 +15,30 @@ describe("a portrait dinosaur page's word bands", () => {
   });
 
   it.each([
+    [280, { description: 8, note: 8 }],
+    [294, { description: 8, note: 7 }],
+    [295, { description: 7, note: 7 }],
+    [311, { description: 6, note: 6 }],
+    [335, { description: 6, note: 6 }],
+    [357, { description: 5, note: 6 }],
+    [403, { description: 5, note: 5 }],
+    [429, { description: 4, note: 5 }],
+    [448, { description: 4, note: 4 }],
+    [559, { description: 4, note: 4 }]
+  ])("keeps %j lines at %i pixels on a narrow page", (width, expected) => {
+    expect(keptLines(width, true)).toEqual(expected);
+  });
+
+  it.each([
     [600, 0, 0, 0, 488],
     [600, 0, 0, 16, 472],
     [744, 19, 13, 0, 600]
   ])("takes side insets, padding and scrollbar from a %i pixel window", (windowWidth, left, right, scrollbar, expected) => {
     expect(dinosaurWordsWidth(windowWidth, left, right, scrollbar)).toBe(expected);
+  });
+
+  it("takes a narrow page's 20-pixel sides", () => {
+    expect([dinosaurWordsWidth(320, 0, 0, 0, NARROW_PAGE.sidePadding), dinosaurWordsWidth(393, 0, 0, 0, NARROW_PAGE.sidePadding)]).toEqual([280, 353]);
   });
 });
 

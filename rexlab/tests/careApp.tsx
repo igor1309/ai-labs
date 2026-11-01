@@ -1,6 +1,7 @@
+import { emptyLabyrinth } from "./support.ts";
 import { render, screen } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { App, type AppProps } from "../src/App.tsx";
+import { App, type AppProps, type PortraitLayouts } from "../src/App.tsx";
 import type { CareProgress, Item, Random, Visitor } from "../src/care/index.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
@@ -40,6 +41,7 @@ export type CareAppOptions<C extends Clock> = {
   clock?: C;
   reducedMotion?: boolean;
   viewport?: ManualViewport;
+  portraitLayouts?: PortraitLayouts;
   deviceLanguage?: string;
 };
 
@@ -52,16 +54,17 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
   clock = manualTimers() as unknown as C,
   reducedMotion = false,
   viewport = manualViewport("landscape"),
+  portraitLayouts = {},
   deviceLanguage = "en-GB"
 }: CareAppOptions<C> = {}) {
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      portraitLayouts={{}}
+      portraitLayouts={portraitLayouts}
       viewport={viewport}
       progress={localProgress(() => storage)}
       deviceLanguage={deviceLanguage}
@@ -85,7 +88,7 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
     />
   );
   loadShownPictures(clock);
-  return { user: userEvent.setup(), clock, storage, unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), clock, storage, unmount: view.unmount };
 }
 
 export function shipped(id: string): Visitor {

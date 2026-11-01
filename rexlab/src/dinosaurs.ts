@@ -3,6 +3,7 @@ import type { Visitor } from "./care/index.ts";
 import { isDiet, isGroup, MEASURES, type CatalogueEntry, type Group, type Measure } from "./catalogue.ts";
 import { LANGUAGES, type Language } from "./language/language.ts";
 import type { Pal } from "./pairs/index.ts";
+import { PICTURE_DINOSAURS, type PictureDinosaur } from "./picturePuzzle/index.ts";
 import type { Dinosaur } from "./quiz/index.ts";
 import { BODY_AREAS, type BodyArea, type Cut, type Distractor, type Place, type Skeleton } from "./skeletons/index.ts";
 import type { Dinosaur as Sortable } from "./sorting/index.ts";
@@ -30,6 +31,14 @@ export type DinosaurRecord = {
 };
 
 const SIZE_FIELDS = { height: "heightMeters", wingspan: "wingspanMeters", length: "lengthMeters" } as const;
+
+export function readPictureDinosaurs(records: ReadonlyArray<Pick<DinosaurRecord, "id" | "name">>): PictureDinosaur[] {
+  return PICTURE_DINOSAURS.map((id) => {
+    const record = records.find((each) => each.id === id);
+    if (!record || !isInEveryLanguage(record.name)) throw new Error(`No localized picture dinosaur ${id}`);
+    return { id, name: { en: record.name.en, ru: record.name.ru } };
+  });
+}
 
 const MEASURE_ORDER = Object.keys(SIZE_FIELDS) as Measure[];
 

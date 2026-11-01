@@ -242,6 +242,17 @@
     --card-shadow: rgba(79, 209, 197, 0.2);
   }
 
+  /* Mizan BLE — host orange and client blue on dark */
+  .card.mizan-ble {
+    --card-bg: #17181c;
+    --card-border: rgba(79, 107, 240, 0.28);
+    --card-text: #e6e7ea;
+    --card-muted: #9a9ca3;
+    --card-accent: #4f6bf0;
+    --card-accent-bar: linear-gradient(90deg, #e8692f, #4f6bf0);
+    --card-shadow: rgba(79, 107, 240, 0.2);
+  }
+
   /* Cairana — calm teal on dark */
   .card.cairana {
     --card-bg: #0e1213;
@@ -364,6 +375,12 @@
         <p class="card-title">Audelin</p>
         <p class="card-desc">Local macOS companion for calls — smooth, selectable live transcript of Russian calls with English terms; explains a selected term. Design and architecture stage.</p>
         <p class="card-path">audelin/index.html</p>
+      </a>
+
+      <a class="card mizan-ble" href="mizan-ble/index.html">
+        <p class="card-title">Mizan BLE</p>
+        <p class="card-desc">Pay in Mizan between an iPad host and an iPhone client over Bluetooth LE — one app, two modes, mocked payment. Proof of concept, planning stage.</p>
+        <p class="card-path">mizan-ble/index.html</p>
       </a>
 
       <a class="card cairana" href="cairana/index.html">

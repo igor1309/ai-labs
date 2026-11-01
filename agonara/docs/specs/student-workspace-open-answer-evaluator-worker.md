@@ -24,7 +24,7 @@ Implemented by [Student Workspace Open-Answer Evaluator Worker Implementation Pl
 - Worker command and policy/provider boundary: [student-workspace.js](../../src/student-workspace.js)
 - Worker and Student Workspace domain coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
 - Backup/restore raw-artifact coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
-- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- Executable acceptance coverage: [executable-acceptance-corpus-navigation.test.js](../../tests/executable-acceptance-corpus-navigation.test.js)
 
 The implemented worker supports single-job and claim-next execution, Student Workspace-owned job claiming, policy and provider-adapter resolution, provider request redaction, output validation, budget checks, redacted evidence recording, leased completion/failure, retry and terminal failure handling, duplicate-safe final evaluation, and raw-artifact exclusion from summaries, logs, backup, and restore. It does not implement public evaluator mutation routes, durable queues, external provider calls by itself, raw artifact persistence, human-review queues, UI, mastery/progress surfaces, deployment topology, or infrastructure ports.
 

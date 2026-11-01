@@ -1,9 +1,10 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, onTestFinished } from "vitest";
 import type { AgeLevelSetting } from "../src/ageLevel.ts";
 import { App, type PortraitLayouts, type Viewport } from "../src/App.tsx";
-import { compareResultGeometry, compareResultType, compareResultWidth, PORTRAIT_RESULT } from "../src/compareResultLayout.ts";
+import { compareResultGeometry, compareResultType, compareResultWidth, NARROW_RESULT, PORTRAIT_RESULT, type ResultSizes } from "../src/compareResultLayout.ts";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { correctOf } from "../src/quiz/round.ts";
@@ -49,17 +50,17 @@ const gateShown = () => part(".orientation-gate").hasAttribute("data-shown");
 const levelSwitch = (language: Language = "en") => screen.getByRole("group", { name: TEXTS[language].ageLevelSwitch });
 
 async function openResult(size: WindowSize, {
-  language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets), ageLevel
-}: { language?: Language; insets?: SafeArea; viewport?: Viewport; ageLevel?: AgeLevelSetting } = {}) {
+  language = "en", insets = NO_SAFE_AREA, viewport = manualViewport("portrait", insets), ageLevel, layouts = PORTRAIT_LAYOUTS
+}: { language?: Language; insets?: SafeArea; viewport?: Viewport; ageLevel?: AgeLevelSetting; layouts?: PortraitLayouts } = {}) {
   openWindow(...size);
-  const user = userEvent.setup();
-  render(<App
+  const user = userEvent.setup({ delay: null });
+  render(<App {...emptyLabyrinth()}
     {...featuring()}
     dinosaurs={SHIPPED_DINOSAURS}
     catalogue={SHIPPED_CATALOGUE}
     bodyPicture={fakeBodyPicture}
     random={seededRandom(11)}
-    portraitLayouts={PORTRAIT_LAYOUTS}
+    portraitLayouts={layouts}
     viewport={viewport}
     progress={EARLIER_BEST}
     deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
@@ -87,25 +88,24 @@ const shownType = () => {
   return { star: style.getPropertyValue("--star-size"), levelName: style.getPropertyValue("--level-name-size"), heroMaximum: style.getPropertyValue("--hero-maximum") };
 };
 const px = (size: number) => `${size}px`;
-const typeOf = (width: number) => {
-  const type = compareResultType(width);
+const typeOf = (width: number, sizes: ResultSizes = PORTRAIT_RESULT) => {
+  const type = compareResultType(width, sizes);
   return { star: px(type.star), levelName: px(type.levelName), heroMaximum: px(type.heroMaximum) };
 };
 
 // The CSS contracts under which the geometry's sums hold. jsdom does not
 // lay out boxes, so every structural assumption is checked here, and the
 // column the geometry stacks is summed from the stylesheet.
-function uprightRules(size: WindowSize, width: number) {
-  const sizes = PORTRAIT_RESULT;
+function uprightRules(size: WindowSize, width: number, sizes: ResultSizes = PORTRAIT_RESULT) {
   const at = (selector: string) => styleAt(part(selector), size);
   const result = at(".result");
   expect([...part(".result").children].map((element) => element.className)).toEqual(["festivity", "stratum result-stratum", "picture result-hero", "result-content"]);
   expect([result.value("display"), result.value("flex-direction"), result.value("align-items"), result.value("justify-content"), result.rowGap()]).toEqual(["flex", "column", "center", "center", sizes.heroGap]);
-  expect([result.px("padding-top"), result.px("padding-bottom"), result.px("padding-left"), result.px("padding-right"), result.value("box-sizing")]).toEqual([32, 32, 32, 32, "border-box"]);
+  expect([result.px("padding-top"), result.px("padding-bottom"), result.px("padding-left"), result.px("padding-right"), result.value("box-sizing")]).toEqual([sizes.padding, sizes.padding, sizes.padding, sizes.padding, "border-box"]);
   expect([result.px("min-height"), result.value("height"), result.value("overflow")]).toEqual([size[1], "auto", "hidden"]);
   // The sizes for the window, as the geometry gives them.
-  expect(shownType()).toEqual(typeOf(width));
-  const type = compareResultType(width);
+  expect(shownType()).toEqual(typeOf(width, sizes));
+  const type = compareResultType(width, sizes);
   const hero = at(".result-hero");
   expect([hero.value("flex-grow"), hero.value("flex-shrink"), hero.value("flex-basis"), hero.value("align-self"), hero.value("object-fit")]).toEqual(["1", "0", "0px", "stretch", "contain"]);
   expect([hero.px("min-height"), hero.px("max-height")]).toEqual([sizes.heroMinimum, type.heroMaximum]);
@@ -114,7 +114,7 @@ function uprightRules(size: WindowSize, width: number) {
   expect([content.value("display"), content.value("flex-direction"), content.value("align-items"), content.value("align-self"), content.rowGap()]).toEqual(["flex", "column", "center", "stretch", sizes.gap]);
   // The score's share of the window's height, as jsdom resolves it.
   const score = at(".result-score-value").px("font-size");
-  expect(score).toBeCloseTo(compareResultGeometry(size[0], size[1], 0, 0).score, 6);
+  expect(score).toBeCloseTo(compareResultGeometry(size[0], size[1], 0, 0, 0, sizes).score, 6);
   expect(at(".result-score").value("line-height")).toBe("1");
   const stars = at(".result-stars");
   expect([stars.px("font-size"), stars.value("line-height"), stars.columnGap()]).toEqual([type.star, "1", sizes.starGap]);
@@ -135,11 +135,16 @@ function uprightRules(size: WindowSize, width: number) {
   }
   const actions = at(".result-actions");
   const buttons = [...part(".result-actions").children].map((button) => styleAt(button, size).px("height"));
-  expect(new Set(buttons)).toEqual(new Set([72]));
+  const button = sizes === NARROW_RESULT ? 64 : 72;
+  expect(new Set(buttons)).toEqual(new Set([button]));
+  // Side by side, or in a tall-narrow window one above the other.
+  const stacked = actions.value("flex-direction") === "column";
+  expect(stacked).toBe(sizes === NARROW_RESULT);
+  const actionsHeight = stacked ? buttons.length * button + (buttons.length - 1) * actions.rowGap() : button;
   const column = at(".celebration").px("height") + score + stars.px("font-size") + title.px("font-size") * Number(title.value("line-height"))
     + at(".best-score").px("height") + levelSwitch.px("padding-top") + levelSwitch.px("padding-bottom") + sizes.level
-    + actions.px("padding-top") + 72 + 6 * content.rowGap();
-  expect(column).toBeCloseTo(compareResultGeometry(size[0], size[1], 0, 0, size[0] - 64 - width).column, 6);
+    + actions.px("padding-top") + actionsHeight + 6 * content.rowGap();
+  expect(column).toBeCloseTo(compareResultGeometry(size[0], size[1], 0, 0, size[0] - 2 * sizes.padding - width, sizes).column, 6);
   expect(result.px("padding-top") + result.px("padding-bottom") + result.rowGap()).toBe(2 * sizes.padding + sizes.heroGap);
 }
 
@@ -222,5 +227,43 @@ describe("the compare quiz's result upright", () => {
     expect([part(".result-content").lastElementChild, part(".result-content")]).toEqual([part(".result-actions"), part(".result").lastElementChild]);
     expect(getComputedStyle(document.body).margin).toBe("0px");
     expect(gateShown()).toBe(false);
+  });
+});
+
+// The result in a tall-narrow window: an iPhone upright.
+const NARROW_LAYOUTS: PortraitLayouts = { ...PORTRAIT_LAYOUTS, home: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"] };
+const narrowViewport = () => {
+  const viewport = manualViewport("portrait");
+  viewport.resize("tall-narrow", true);
+  return viewport;
+};
+
+// Each phone's window, its dinosaur's height and whether the screen scrolls.
+const PHONES = [
+  [320, 568, 120, true],
+  [375, 667, 120, true],
+  [393, 759, 143, false],
+  [393, 852, 225, false],
+  [430, 932, 292, false]
+] as const;
+
+describe("the compare quiz's result in a tall-narrow window", () => {
+  it.each(PHONES)("stands upright at %i by %i, its dinosaur %i tall, scrolling %s", async (width, height, dinosaur, scrolls) => {
+    await openResult([width, height], { viewport: narrowViewport(), layouts: NARROW_LAYOUTS });
+    expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall-narrow", false, false]);
+    expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
+    const geometry = compareResultGeometry(width, height, 0, 0, 0, NARROW_RESULT);
+    expect(Math.abs(geometry.hero.height - dinosaur)).toBeLessThanOrEqual(1);
+    expect(geometry.scrolls).toBe(scrolls);
+    uprightRules([width, height], compareResultWidth(width, 0, 0, 0, NARROW_RESULT), NARROW_RESULT);
+  });
+
+  it("shows each level as its picture alone, its name still read out, the chosen level marked", async () => {
+    await openResult([393, 852], { viewport: narrowViewport(), layouts: NARROW_LAYOUTS, ageLevel: { level: "hatchling", revision: "picked" } });
+    for (const level of within(levelSwitch()).getAllByRole("button")) {
+      expect(styleAt(part(".level-switch-name", level), [393, 852]).value("position")).toBe("absolute");
+      expect(styleAt(level, [393, 852]).px("height")).toBe(PORTRAIT_RESULT.level);
+    }
+    expect(within(levelSwitch()).getByRole("button", { pressed: true, name: TEXTS.en.ageLevels.hatchling.name })).toBeDefined();
   });
 });

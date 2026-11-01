@@ -1,85 +1,102 @@
----
-date: 2026-10-22
-model: claude-opus-5-5
-description: "System audio capture — the call's sound from the Mac's output, as the recording session's capture port"
----
+# System audio capture
 
-# System audio capture — spec
-
-## Oracle
-
-Its client's specs: [recording-session](../recording-session/SPEC.md) and
-[recording-faults](../recording-faults/SPEC.md);
-[ADR-001](../../adr-001-v1-architecture.md) decisions 3, 5 and 10.
+Observer: the client that captures the processes it names and reads what
+they play, through an interface it owns. An adapter over a Core Audio tap.
 
 ## Decided
 
-Gaps closed by the agent (2026-10-22); the owner may overturn any.
-
-1. It captures everything the Mac plays, not one app (S-1): a browser call
-   plays through helper processes, and the user takes calls on headphones
-   with nothing else playing.
-2. A change of output device is an interruption with a start and end (S-6),
-   as ADR-001 decision 5 sets for any device change.
-3. It reports a fault with its time and kind, and never ends the process
-   (S-2–S-5), as mic capture does.
-4. Audio is taken unprocessed: no gain, compression or noise reduction
-   (S-9), as mvp.md § Technical rules sets.
-
-## Observer
-
-The capture port's client: the recording session, which records the «они»
-track.
-
-## Behaviour
+- A process tap, which needs no screen recording ([why](../../research/system-audio.md)).
+- The client names the processes to hear, or those to leave out ("all but"
+  also hears later ones); a tap takes both, and leaves playback unmuted
+  (`CATapDescription`, Amanu `SystemAudioRecorder.swift:209-213`).
+- The tap's mono mix at the device's rate, mixed by Core Audio: the
+  recognisers read mono. The device starts when told, auto-start off: it
+  waits for a tapped process to play, and hung Zoom 60 s (Muesli #600).
+- A tap delivers samples without a break, zeros while nothing plays, while
+  the process is frozen and after it quits (measured on this Mac,
+  [system-audio.md](../../research/system-audio.md#measured-on-this-mac)),
+  so a piece needs no time of its own and a quiet tap is not a failure. A
+  denied permission gives silence. Permission evidence comes from a separate
+  muted own-process reception probe that plays its own stimulus before a
+  recording starts; this capture never judges access from quiet call audio.
 
 ```gherkin
-Feature: A client captures the call's sound
+Feature: Hearing the processes a client names
 
-  Scenario: S-1 The call's sound
-    Given the system audio permission is granted
-    When the client starts capture while an app plays sound
-    Then the client can get that sound on the session clock it shares with the microphone
+  Scenario: S-1 A named process is heard
+    Given a capture of the processes I named
+    When one of them plays
+    Then I can read what it played
 
-  Scenario: S-2 No permission
-    Given the system audio permission is refused
-    When the client starts capture
-    Then the client can learn that capture was refused for want of permission
+  Scenario: S-2 Newly named processes are heard in the same capture
+    Given a capture of the processes I named
+    When I name another process and it plays
+    Then I can read what it played from the same capture
 
-  Scenario: S-3 Permission withdrawn
-    Given capture is running
-    When the system audio permission is withdrawn
-    Then the client can learn that capture was lost for want of permission, and when
+  Scenario: S-5 A new output device keeps the sound heard
+    Given a capture of the processes I named
+    When the user switches to another output device
+    Then I can read what they play at the new device's rate
 
-  Scenario: S-4 Capture fails
-    Given capture is running
-    When the macOS audio service restarts
-    Then the client can learn that capture was lost because the audio service failed, and when
+  Scenario: S-6 A capture that cannot start fails
+    Given the system will not let a capture start
+    When I start it
+    Then I can tell it failed
 
-  Scenario: S-5 The Mac sleeps
-    Given capture is running
-    When the Mac sleeps and wakes
-    Then the client can learn of the interruption by sleep with its start and end
-    And the client can get sound again after the wake
+  Scenario: S-7 A capture the system stops fails
+    Given a capture that is running
+    When the system stops it
+    Then I can tell it failed
 
-  Scenario: S-6 The output device changes
-    Given capture is running
-    When the output device changes
-    Then the client can learn of the interruption with its start and end
-    And the client can get sound again after it
+  Scenario: S-8 A failed capture keeps what it heard
+    Given a capture that heard sound
+    When the system stops it
+    Then I can read all it heard before
 
-  Scenario: S-7 Stop
-    Given capture is running
-    When the client stops capture
-    Then the client can get no sound after the stop returns
+  Scenario: S-9 Stopping ends the capture
+    Given a capture that is running
+    When I stop it
+    Then I can read the end of the audio
 
-  Scenario: S-8 Capture cannot start
-    Given the system audio permission is granted and the macOS audio service is down
-    When the client starts capture
-    Then the client can learn that capture failed to start, and why
+  Scenario: S-10 A capture can follow a stopped one
+    Given a capture I stopped
+    When I start another
+    Then I can read what the named processes play
 
-  Scenario: S-9 The sound is not processed
-    Given the system audio permission is granted
-    When the client captures a steady tone
-    Then the client can get it unprocessed
+  Scenario: S-11 A capture that heard nothing ends cleanly
+    Given a capture that has heard nothing
+    When I stop it
+    Then I can read the end of the audio
+
+  Scenario: S-12 A process I did not name is left out
+    Given a capture of the processes I named
+    When another process plays
+    Then I cannot read that sound
+
+  Scenario: S-13 A process I left out is not heard
+    Given a capture of every process but the ones I left out
+    When one I left out plays
+    Then I cannot read that sound
+
+  Scenario: S-14 A process that starts later is heard
+    Given a capture of every process but the ones I left out
+    When a process that started later plays
+    Then I can read what it played
+
+  Scenario: S-15 A naming the system refuses keeps the old one
+    Given a capture of the processes I named
+    When the system refuses a new naming
+    Then I can tell it was refused and still read what the first processes play
+
+  Scenario: S-17 Sound is read without muting it
+    Given a capture of the processes I named
+    When one of them plays
+    Then I can read its sound without muting its playback
 ```
+
+S-3, S-4 and S-16 are retired: a tap leaves no gaps. Not capture's:
+choosing and listing processes (call app processes, Core Audio processes);
+naming again, retries after a failure or sleep, and a watchdog for audio
+that stops (the client and root decorators); echo cancellation, which kills
+a tap (MacParakeet); permission evidence (the reception probe); telling the user (the panel);
+the file (a decorator). It knows nothing of recognition.

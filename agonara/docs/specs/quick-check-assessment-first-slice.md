@@ -26,7 +26,7 @@ Implemented by [Quick-Check Assessment First Slice Implementation Plan](../plans
 - Student Workspace attempt coverage: [student-workspace.test.js](../../tests/student-workspace.test.js)
 - Storage coverage: [storage.test.js](../../tests/storage.test.js)
 - Backup/restore coverage: [backup-restore.test.js](../../tests/backup-restore.test.js)
-- Executable acceptance coverage: [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
+- Executable acceptance coverage: [executable-acceptance-corpus-navigation.test.js](../../tests/executable-acceptance-corpus-navigation.test.js)
 
 The implemented first slice supports Program Curator quick-check candidate lifecycle, accepted single-select quick-check revisions with protected answer keys, student-safe delivery projections, internal answer-key resolution after Student authorization, immutable Student Workspace attempts, scoped idempotency, owner-only attempt reads, answer-key redaction, adjacent-domain non-mutation checks, backup/restore preservation, and malformed graph rejection. This first-slice implementation did not introduce HTTP routes, UI, CLI commands, option randomization, multi-select checks, learner-state interpretation, grading, analytics, provider calls, evaluator workers, queues, or human review behavior; later HTTP and learner-state surfaces are specified separately by [Quick Check Assessment API](quick-check-assessment-api.md) and [Learner-State Interpretation](learner-state-interpretation.md).
 

@@ -1,0 +1,30 @@
+{
+  "hosts": [
+    {
+      "name": "A",
+      "readings": [
+        {
+          "time": 0,
+          "rssi": -40
+        },
+        {
+          "time": 1,
+          "rssi": -40
+        }
+      ]
+    },
+    {
+      "name": "B",
+      "readings": [
+        {
+          "time": 0,
+          "rssi": -42
+        },
+        {
+          "time": 1,
+          "rssi": -42
+        }
+      ]
+    }
+  ]
+}

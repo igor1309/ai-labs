@@ -40,7 +40,7 @@ Feature: Documents gives a workflow
                 next: {review: {from: steps.repair.outputs}}
                 until: {all: {in: {from: state.review.findings}, where: {present: {from: item.fixed}}}}
                 max: 3
-              outputs: {summary: {from: steps.fix.outputs.review}}
+              outputs: {summary: {from: steps.fix.outputs.state.review}}
             - name: done
               process: summarize
               agent: claude-opus

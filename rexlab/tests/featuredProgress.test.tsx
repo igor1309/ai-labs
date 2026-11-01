@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -57,7 +58,7 @@ function openApp<C extends PictureClock = ManualTimers>(
 ) {
   const featured = localFeatured(() => storage, HOME_GAMES);
   render(
-    <App
+    <App {...emptyLabyrinth()}
       now={() => NOW}
       featuredStore={featured}
       startCounter={startCounter ?? featured}
@@ -91,7 +92,7 @@ function openApp<C extends PictureClock = ManualTimers>(
       {...clock}
     />
   );
-  return { user: userEvent.setup(), clock, storage, featured };
+  return { user: userEvent.setup({ delay: null }), clock, storage, featured };
 }
 
 type Opened = ReturnType<typeof openApp<ManualTimers>>;

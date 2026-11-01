@@ -104,7 +104,7 @@ export function DinosaurPage({ ref, pictureTransition, language, dinosaur: { id,
       <header className="dinosaur-bar" data-turn-part="dinosaur-bar">
         <Button className="home-button" data-turn-part="dinosaur-catalogue" onClick={onBack}>
           <BookOpen size={24} aria-hidden="true" />
-          {text.catalogue}
+          <span className="narrow-hidden">{text.catalogue}</span>
         </Button>
         <p className="dinosaur-position" data-turn-part="dinosaur-position" aria-label={text.position}>
           {number} / {total}

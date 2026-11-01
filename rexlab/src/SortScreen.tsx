@@ -6,6 +6,7 @@ import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
 import { basketLayout } from "./basketLayout.ts";
+import { PORTRAIT_SORT, sortBoardStyle, type SortSizes } from "./sortBoardLayout.ts";
 
 export type Basket = keyof Texts["baskets"];
 
@@ -52,6 +53,11 @@ export type SortScreenProps = {
   onDrop: (id: string, basket: Basket) => void;
   onHome: () => void;
   onSeeResult: () => void;
+  // The width the board stands in upright, one for the window; landscape
+  // sizes its tray and baskets itself.
+  width?: number;
+  // The sizes it stands by: an iPhone's in a tall-narrow window.
+  sizes?: SortSizes;
 };
 
 // A card held by a finger, a pen or the mouse, and how far it has moved.
@@ -60,7 +66,7 @@ type Hold = { pointerId: number; id: string; x: number; y: number; dx: number; d
 // Where a dragged card was let go, from its place, to slide back from.
 type Return = { dx: number; dy: number; count: number };
 
-export function SortScreen({ language, tray, baskets, sorted, total, glow, onDrop, onHome, onSeeResult }: SortScreenProps) {
+export function SortScreen({ language, tray, baskets, sorted, total, glow, onDrop, onHome, onSeeResult, width, sizes = PORTRAIT_SORT }: SortScreenProps) {
   const gateShown = useGateShown();
   const text = TEXTS[language];
   const [held, setHeld] = useState<Hold>();
@@ -160,12 +166,17 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
   return (
     // A tap anywhere else, such as an empty slot or the space between,
     // puts the picked card down.
-    <main className="sort" data-rows={rows} onClick={() => setPicked(undefined)}>
+    <main
+      className="sort"
+      data-rows={rows}
+      style={width === undefined ? undefined : (sortBoardStyle(width, tray.length, baskets.length, sizes) as CSSProperties)}
+      onClick={() => setPicked(undefined)}
+    >
       <div className="stratum stratum-1" aria-hidden="true" />
       <header className="sort-bar">
         <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
+          <span className="narrow-hidden">{text.home}</span>
         </Button>
         {/* One step per card, filled as each lands: no numbers. */}
         <span className="steps" aria-hidden="true">
@@ -187,11 +198,13 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
             const back = returns[card.id];
             const moving = held?.id === card.id && held.dragging ? held : undefined;
             // A card let go is drawn anew where it was let go, so it slides
-            // back from there each time.
+            // back from there each time. Each card is a part a turn glides,
+            // named by its dinosaur.
             return (
               <Button
                 key={`${card.id}-${back?.count ?? 0}`}
                 className="sort-card"
+                data-turn-part={`sort-card-${card.id}`}
                 aria-label={card.name}
                 aria-pressed={picked === card.id}
                 data-picked={picked === card.id || undefined}
@@ -234,6 +247,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
           <Button
             key={basket}
             className="basket"
+            data-turn-part={`basket-${basket}`}
             aria-label={text.baskets[basket]}
             data-over={over === basket || undefined}
             style={{ "--basket": place } as CSSProperties}
@@ -250,7 +264,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
               <span className="basket-mark" data-basket={basket} aria-hidden="true">
                 <BasketSymbol basket={basket} size={30} />
               </span>
-              <span className="basket-name">{text.baskets[basket]}</span>
+              <span className="basket-name narrow-hidden">{text.baskets[basket]}</span>
             </span>
             <BasketCards cards={cards} language={language} correct={text.marks.correct} />
           </Button>
@@ -307,7 +321,7 @@ function BasketCards({ cards, language, correct }: { cards: readonly SortedCardV
 
 function SortedCard({ card, language, correct }: { card: SortedCardView; language: Language; correct: string }) {
   return (
-    <span className="sorted-card">
+    <span className="sorted-card" data-turn-part={`sorted-card-${card.id}`}>
       <span className="sorted-art">
         <Picture className="sorted-picture" src={card.picture} alt={card.name} width={800} height={600} />
         <span className="sorted-check" role="img" aria-label={correct}>

@@ -38,6 +38,7 @@ jobs:
 
       - name: Project into a clean staging tree
         run: |
+          status=0
           node agonara/scripts/project-public-skills.mjs \
             --upstream-sha "$GITHUB_SHA" \
             --skills-dir agonara/skills \
@@ -45,8 +46,9 @@ jobs:
             --assets agonara/publish-assets \
             --openapi agonara/docs/api/openapi.yml \
             --out staging \
-            --report report.json
+            --report report.json || status=$?
           cat report.json
+          exit "$status"
 
       - name: Guard history, commit payload, and publish pinned tag
         working-directory: agonara-skills-public

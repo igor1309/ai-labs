@@ -4,8 +4,9 @@ import { HOME_GAMES } from "../src/HomePage.tsx";
 import { AGE_LEVEL_KEY } from "../src/localAgeLevel.ts";
 import { LANGUAGE_KEY } from "../src/localLanguage.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
+import { JAW_AUDIO_KEY } from "../src/localJawAudio.ts";
 import { THEME_KEY } from "../src/localTheme.ts";
-import { TURN_TIMING, appProps, drawnOpacity, extendPart, filterDoubleTaps, pageAnimations, turnFrame } from "../src/root.ts";
+import { TURN_TIMING, appProps, browserColoring, browserInput, drawnOpacity, extendPart, pageAnimations, turnFrame } from "../src/root.ts";
 import { browserDocument, manualScreenOrientation, manualWindow, mediaQueries, memoryStorage, pictureBrowser, quizSaved, rootInsets } from "./support.ts";
 
 const PORTRAIT = "(orientation: portrait)";
@@ -61,6 +62,47 @@ const record = (bestScore: number, roundsPlayed: number) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed } } });
 
 describe("the app in a browser", () => {
+  it("wires the picture dinosaurs, artwork and persistent level and collection beside existing games", () => {
+    const local = memoryStorage({ [PROGRESS_KEY]: record(6, 3) });
+    const given = browser({ local });
+    const props = appProps(given);
+    const game = props.picturePuzzle!;
+    expect(game.dinosaurs.map(({ id }) => id)).toEqual(["tyrannosaurus", "triceratops", "stegosaurus"]);
+    for (const { id } of game.dinosaurs) expect(game.bodyPicture(id)).toBe(props.bodyPicture(id));
+    game.choiceStore.saveLevel({ level: "paleontologist", revision: "parent" });
+    expect(game.progressStore.save({ earned: ["stegosaurus"], completed: { hatchling: [], explorer: ["stegosaurus"], paleontologist: [] } })).toBe(true);
+    const reloaded = appProps(given);
+    expect(reloaded.picturePuzzle!.choiceStore.load()).toEqual({ earned: ["stegosaurus"], levelChoice: { level: "paleontologist", revision: "parent" } });
+    expect(reloaded.picturePuzzle!.progressStore.load()).toEqual({ historyReadable: true, entryPresent: true, progress: { earned: ["stegosaurus"], completed: { hatchling: [], explorer: ["stegosaurus"], paleontologist: [] } } });
+    expect(reloaded.progress.load()).toEqual(quizSaved(6, 3));
+    for (const phase of ["choice", "puzzle", "result"] as const) expect(reloaded.portraitLayouts[`picturePuzzle-${phase}`]).toBeUndefined();
+  });
+
+  it("wires Whose Jaw welcome to shipped art, the 16-place collection and persistent choices", () => {
+    const local = memoryStorage({ [PROGRESS_KEY]: record(6, 3) });
+    const given = browser({ local });
+    const game = appProps(given).whoseJaw!;
+    expect(game.audioStore.load()).toBeUndefined();
+    game.audioStore.save(true);
+    expect(local.items.get(JAW_AUDIO_KEY)).toBe("true");
+    expect(appProps(given).whoseJaw!.audioStore.load()).toBe(true);
+    game.audioStore.save(false);
+    expect(appProps(given).whoseJaw!.audioStore.load()).toBe(false);
+    expect(game.total).toBe(16);
+    expect(game.jaws).toHaveLength(16);
+    for (const jaw of game.jaws) {
+      expect(game.jawFor(jaw.id)).toContain(`assets/jaws/${jaw.id}.webp`);
+      expect(game.gummyFor(jaw.id)).toContain(`assets/dinos/${jaw.id}/gummy.webp`);
+      expect(game.mouthFor(jaw.id).width).toBeGreaterThan(0);
+    }
+    for (const diet of ["meat", "plants"] as const) expect(game.foodFor(diet)).toContain(`assets/care/${diet}.webp`);
+    expect(game.jawPicture).toContain("assets/jaws/tyrannosaurus.webp");
+    expect(game.gummyPicture).toContain("assets/dinos/tyrannosaurus/gummy.webp");
+    game.progress.saveLevel({ level: "hatchling", revision: "parent" });
+    expect(appProps(given).whoseJaw!.progress.load()?.levelChoice).toEqual({ level: "hatchling", revision: "parent" });
+    expect(appProps(given).progress.load()).toEqual(quizSaved(6, 3));
+  });
+
   // The words of a dinosaur's page leave out a scrollbar that takes room:
   // the window's width less its root's, which an overlay scrollbar leaves
   // whole.
@@ -139,6 +181,20 @@ describe("the app in a browser", () => {
       games: { "compare-dinosaurs": { bestScore: 6, roundsPlayed: 3 }, "dinosaur-care": { bestScore: 7, visitsFinished: 3, friends: ["triceratops"] } }
     });
     expect(appProps(given).careProgress.load()).toEqual({ bestScore: 7, visitsFinished: 3, friends: ["triceratops"] });
+  });
+
+  it("keeps labyrinth rewards, levels and offers in shared local storage and reloads them", () => {
+    const given = browser({ local: memoryStorage({ [PROGRESS_KEY]: record(6, 3) }) });
+    const saved = {
+      progress: { stars: 6, roundsPlayed: 2, best: { hatchling: 3, explorer: 3, paleontologist: null } },
+      levelChoice: { level: "hatchling" as const, revision: "parent" },
+      offer: { level: "hatchling" as const, strong: 1, declined: ["explorer" as const] }
+    };
+    appProps(given).labyrinthProgress.save(saved);
+    expect(appProps(given).labyrinthProgress.load()).toEqual(saved);
+    expect(appProps(given).progress.load()).toEqual(quizSaved(6, 3));
+    expect(JSON.parse(given.localStorage.items.get(PROGRESS_KEY)!).games.labyrinth).toEqual(saved);
+    expect([...given.sessionStorage.items]).toEqual([]);
   });
 
   it("keeps the sorting game's progress beside the quiz's in local storage", () => {
@@ -300,8 +356,8 @@ describe("the app in a browser", () => {
     expect(appProps(browser({ language })).deviceLanguage).toBe(language);
   });
 
-  it("gives the home page, catalogue, dinosaur page and the compare quiz's question and result a portrait layout, for a tall window only", () => {
-    expect(appProps(browser()).portraitLayouts).toEqual({ home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"], "compare-question": ["tall"], "compare-result": ["tall"] });
+  it("gives the home page, catalogue, dinosaur page, compare quiz's question and result, find the pair's welcome, board and result, sort's board and result, the skeleton choice, museum, puzzle, guess and result, every DIG and care screen and sand writing for both portrait sizes", () => {
+    expect(appProps(browser()).portraitLayouts).toEqual({ "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], "whoseJaw-result": ["tall", "tall-narrow"], coloring: ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] });
   });
 
   it("wires the window media queries and the screen's own orientation into one viewport", () => {
@@ -500,15 +556,45 @@ describe("the double-tap filter in a browser", () => {
   // The window, with a handler of the app's registered after the filter.
   function page() {
     const target = new EventTarget();
-    const stop = filterDoubleTaps(target);
+    const { arbitrate, stop } = browserInput(target);
     const handled: string[] = [];
     for (const type of ["pointerdown", "pointermove", "pointerup", "pointercancel", "click"]) target.addEventListener(type, () => handled.push(type));
     const send = (event: Event) => {
       target.dispatchEvent(event);
       return event.defaultPrevented;
     };
-    return { stop, handled, send };
+    return { arbitrate, stop, handled, send };
   }
+
+  it.each(["contextmenu", "selectstart"])("cancels native %s without changing the tap window or swallowing app handlers", (type) => {
+    const { handled, send, stop } = page();
+    const target = new EventTarget();
+    const input = browserInput(target);
+    const delivered: boolean[] = [];
+    target.addEventListener(type, event => delivered.push(event.defaultPrevented));
+    expect(target.dispatchEvent(new Event(type, { cancelable: true }))).toBe(false);
+    expect(delivered).toEqual([true]);
+    input.stop();
+    expect(target.dispatchEvent(new Event(type, { cancelable: true }))).toBe(true);
+    expect(delivered).toEqual([true, false]);
+
+    expect(send(browserEvent(type, {}))).toBe(true);
+    expect(send(touch("pointerdown", 0))).toBe(false);
+    expect(send(touch("pointerup", 50))).toBe(false);
+    expect(send(browserEvent(type, {}))).toBe(true);
+    expect(send(touch("pointerdown", 250))).toBe(true);
+    expect(send(touch("pointercancel", 300))).toBe(true);
+    expect(send(browserEvent(type, {}))).toBe(true);
+    expect(send(touch("pointerdown", 350))).toBe(false);
+    expect(handled).toEqual(["pointerdown", "pointerup", "pointerdown"]);
+    stop();
+  });
+
+  it.each(["touchstart", "touchmove", "touchend", "wheel", "keydown"])("leaves %s defaults available", (type) => {
+    const { send, stop } = page();
+    expect(send(browserEvent(type, {}))).toBe(false);
+    stop();
+  });
 
   it("reads each touch by its event's own time and place, and keeps what it swallows from every handler", () => {
     const { handled, send } = page();
@@ -529,10 +615,35 @@ describe("the double-tap filter in a browser", () => {
   });
 
   it("filters nothing once taken away", () => {
-    const { stop, handled, send } = page();
+    const { arbitrate, stop, handled, send } = page();
+    arbitrate(event => { event.preventDefault(); event.stopImmediatePropagation(); });
     stop();
     [touch("pointerdown", 0), touch("pointerup", 50), touch("pointerdown", 250)].forEach(send);
 
     expect(handled).toEqual(["pointerdown", "pointerup", "pointerdown"]);
+  });
+
+  it("removes a screen's contact rejection while keeping shared double-tap safety", () => {
+    const { arbitrate, handled, send } = page();
+    const leave = arbitrate(event => { event.preventDefault(); event.stopImmediatePropagation(); });
+    expect(send(touch("pointerdown", 0))).toBe(true);
+    expect(handled).toEqual([]);
+    leave();
+    const first = [touch("pointerdown", 1000), touch("pointerup", 1050), browserEvent("click", { detail: 1 })].map(send);
+    const second = [touch("pointerdown", 1200), touch("pointerup", 1250), browserEvent("click", { detail: 1 })].map(send);
+    expect([first, second]).toEqual([[false, false, false], [true, true, true]]);
+    expect(handled).toEqual(["pointerdown", "pointerup", "click"]);
+  });
+});
+
+describe("coloring identities on a local HTTP preview", () => {
+  it("creates distinct UUIDs when randomUUID is unavailable without opening storage", () => {
+    let seed = 0;
+    const crypto = {
+      getRandomValues: (bytes: Uint8Array) => { bytes.fill(++seed); return bytes; }
+    } as Crypto;
+    const coloring = browserColoring({ document: {} as Document, indexedDB: {} as IDBFactory, crypto });
+    expect(coloring.identity()).toBe("01010101-0101-4101-8101-010101010101");
+    expect(coloring.identity()).toBe("02020202-0202-4202-8202-020202020202");
   });
 });

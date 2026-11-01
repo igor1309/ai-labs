@@ -1,0 +1,94 @@
+// swift-tools-version: 6.2
+import PackageDescription
+
+// The app runs on iOS; macOS is here so the tests run with `swift test`.
+let package = Package(
+    name: "MizanBLE",
+    platforms: [.iOS(.v26), .macOS(.v26)],
+    products: [
+        .library(name: "HostRadio", targets: ["HostRadio"]),
+        .library(name: "ClientRadio", targets: ["ClientRadio"]),
+        .library(name: "ClientReview", targets: ["ClientReview"]),
+        .library(name: "AmountEntry", targets: ["AmountEntry"]),
+        .library(name: "HostBroadcast", targets: ["HostBroadcast"]),
+        .library(name: "TimeoutNotice", targets: ["TimeoutNotice"]),
+        .library(name: "ClientConnect", targets: ["ClientConnect"]),
+        .library(name: "ClientPayment", targets: ["ClientPayment"]),
+        .library(name: "ClientFind", targets: ["ClientFind"]),
+        .library(name: "HostPayment", targets: ["HostPayment"]),
+        .library(name: "DesignSystem", targets: ["DesignSystem"]),
+        .library(name: "HostUI", targets: ["HostUI"]),
+        .library(name: "ModeSwitchUI", targets: ["ModeSwitchUI"]),
+        .library(name: "SettingsUI", targets: ["SettingsUI"]),
+        .library(name: "ClientUI", targets: ["ClientUI"]),
+        .library(name: "ClientPaymentUI", targets: ["ClientPaymentUI"]),
+        .library(name: "Settings", targets: ["Settings"]),
+        .library(name: "Preferences", targets: ["Preferences"]),
+        .library(name: "SystemClock", targets: ["SystemClock"]),
+        .library(name: "MessageCodec", targets: ["MessageCodec"]),
+        .library(name: "SessionCrypto", targets: ["SessionCrypto"]),
+        .library(name: "HostPicker", targets: ["HostPicker"]),
+        .library(name: "HostChoice", targets: ["HostChoice"]),
+    ],
+    dependencies: [
+        // Test-only: the screen snapshots in UISnapshotTests.
+        .package(url: "https://github.com/pointfreeco/swift-snapshot-testing", from: "1.18.0"),
+    ],
+    targets: [
+        .target(name: "HostRadio"),
+        .testTarget(name: "HostRadioTests", dependencies: ["HostRadio"]),
+        .target(name: "ClientRadio"),
+        .testTarget(name: "ClientRadioTests", dependencies: ["ClientRadio"]),
+        .target(name: "ClientReview"),
+        .testTarget(name: "ClientReviewTests", dependencies: ["ClientReview"]),
+        .target(name: "HostPayment"),
+        .testTarget(name: "HostPaymentTests", dependencies: ["HostPayment"]),
+        .target(name: "AmountEntry"),
+        .testTarget(name: "AmountEntryTests", dependencies: ["AmountEntry"]),
+        .target(name: "HostBroadcast"),
+        .testTarget(name: "HostBroadcastTests", dependencies: ["HostBroadcast"]),
+        .target(name: "TimeoutNotice"),
+        .testTarget(name: "TimeoutNoticeTests", dependencies: ["TimeoutNotice"]),
+        .target(name: "ClientConnect"),
+        .testTarget(name: "ClientConnectTests", dependencies: ["ClientConnect"]),
+        .target(name: "ClientPayment"),
+        .testTarget(name: "ClientPaymentTests", dependencies: ["ClientPayment"]),
+        .target(name: "ClientFind"),
+        .testTarget(name: "ClientFindTests", dependencies: ["ClientFind"]),
+        .target(name: "HostUI", dependencies: ["DesignSystem"]),
+        .target(name: "ModeSwitchUI", dependencies: ["DesignSystem"]),
+        .target(name: "SettingsUI", dependencies: ["DesignSystem"]),
+        .target(name: "ClientUI", dependencies: ["DesignSystem"]),
+        .target(name: "ClientPaymentUI", dependencies: ["DesignSystem"]),
+        .target(name: "Settings"),
+        .testTarget(name: "SettingsTests", dependencies: ["Settings"]),
+        .target(name: "Preferences"),
+        .testTarget(name: "PreferencesTests", dependencies: ["Preferences"]),
+        .target(name: "SystemClock"),
+        .testTarget(name: "SystemClockTests", dependencies: ["SystemClock"]),
+        .target(name: "MessageCodec"),
+        .testTarget(name: "MessageCodecTests", dependencies: ["MessageCodec"]),
+        .target(name: "SessionCrypto"),
+        .testTarget(name: "SessionCryptoTests", dependencies: ["SessionCrypto"]),
+        .target(name: "HostPicker"),
+        .testTarget(name: "HostPickerTests", dependencies: ["HostPicker"]),
+        .target(name: "HostChoice"),
+        .testTarget(name: "HostChoiceTests", dependencies: ["HostChoice"]),
+        .target(
+            name: "DesignSystem",
+            resources: [.copy("Resources/Fonts")]
+        ),
+        .testTarget(
+            name: "UISnapshotTests",
+            dependencies: [
+                "HostUI", "ClientUI", "ClientPaymentUI", "SettingsUI", "DesignSystem",
+                .product(name: "SnapshotTesting", package: "swift-snapshot-testing"),
+            ],
+            exclude: ["__Snapshots__"]
+        ),
+        .testTarget(
+            name: "DesignSystemTests",
+            dependencies: ["DesignSystem"]
+        ),
+    ]
+)

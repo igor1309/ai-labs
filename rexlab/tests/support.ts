@@ -12,7 +12,7 @@ import { readDig, type DigFile } from "../src/dig/index.ts";
 import { readCatalogue, readDinosaurs, readPals, readSkeletons, readSortables, readVisitors } from "../src/dinosaurs.ts";
 import { localAgeLevel } from "../src/localAgeLevel.ts";
 import { localLanguage } from "../src/localLanguage.ts";
-import { localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
+import { localLabyrinthProgress, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress, type KeyValueStorage } from "../src/localProgress.ts";
 import { localTheme } from "../src/localTheme.ts";
 import { SIDE_INSETS } from "../src/mediaViewport.ts";
 import type { StartTimer } from "../src/ownedTimers.ts";
@@ -25,6 +25,7 @@ import { attributeOf, correctOf, QUESTION_KINDS, ROUND_LENGTH, type Question } f
 import { TEXTS } from "../src/language/texts.ts";
 import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
+import { shortTileColumn } from "../src/tileColumns.ts";
 import type { LayoutKeeping } from "../src/useKeptRow.ts";
 import { styleAt } from "./windowSizes.ts";
 
@@ -89,6 +90,8 @@ export type ManualPictures = PictureClock & {
   timers(): number[];
   // Fires every running timer of `ms`.
   fire(ms: number): void;
+  // Advances the injected clock, delivering timers in deadline order.
+  advance(ms: number): void;
   // Fires every timer of `ms` stopped before it fired, as one whose stop
   // came too late.
   deliverStopped(ms: number): void;
@@ -96,8 +99,9 @@ export type ManualPictures = PictureClock & {
 
 // Pictures that load and a timer that fires only when the test says.
 export function manualPictures(): ManualPictures {
+  let now = 0;
   const loading: Array<{ url: string; done: (outcome: "loaded" | "failed") => void }> = [];
-  const timers: Array<{ ms: number; fire: () => void }> = [];
+  const timers: Array<{ ms: number; due: number; fire: () => void }> = [];
   const stopped: Array<{ ms: number; fire: () => void }> = [];
   const drop = <T>(list: T[], item: T) => list.splice(list.indexOf(item), 1);
   const end = (url: string, outcome: "loaded" | "failed") => {
@@ -112,7 +116,7 @@ export function manualPictures(): ManualPictures {
         loading.push({ url, done });
       },
       (ms, fire) => {
-        const timer = { ms, fire };
+        const timer = { ms, due: now + ms, fire };
         timers.push(timer);
         return () => {
           if (!timers.includes(timer)) return;
@@ -133,6 +137,17 @@ export function manualPictures(): ManualPictures {
         drop(timers, timer);
         timer.fire();
       }
+    },
+    advance: (ms) => {
+      const end = now + ms;
+      for (;;) {
+        const timer = timers.filter(({ due }) => due <= end).sort((a, b) => a.due - b.due)[0];
+        if (!timer) break;
+        now = timer.due;
+        drop(timers, timer);
+        timer.fire();
+      }
+      now = end;
     },
     deliverStopped: (ms) => {
       for (const timer of stopped.filter((timer) => timer.ms === ms)) {
@@ -186,6 +201,7 @@ export type ManualTimers = PictureClock & {
   timers(): number[];
   // Fires every running timer of `ms`.
   fire(ms: number): void;
+  advance(ms: number): void;
   // Fires every timer of `ms` stopped before it fired, as one whose stop
   // came too late.
   deliverStopped(ms: number): void;
@@ -201,6 +217,7 @@ export function manualTimers(): ManualTimers {
     ...pictureClock((_url, done) => done("loaded"), pictures.startTimer),
     timers: pictures.timers,
     fire: pictures.fire,
+    advance: pictures.advance,
     deliverStopped: pictures.deliverStopped,
     settle: () => {
       for (let ms = pictures.timers()[0]; ms !== undefined; ms = pictures.timers()[0]) pictures.fire(ms);
@@ -268,6 +285,10 @@ export function sortingBy(property: Property, dinosaurs: readonly Sortable[] = S
 export type ManualViewport = Viewport & {
   turn(to: "portrait" | "landscape"): void;
   resize(size: SizeClass, upright: boolean): void;
+};
+
+export const PORTRAIT_LAYOUTS: AppProps["portraitLayouts"] = {
+  home: ["tall"], catalogue: ["tall"], dinosaur: ["tall"], sandWriting: ["tall", "tall-narrow"]
 };
 
 // Window and screen changes are independent and only happen on request.
@@ -474,6 +495,11 @@ export function emptySkeletons(): Pick<AppProps, "skeletons" | "skeletonPicture"
 // The dig game for tests that are not about it: every shipped dinosaur
 // may be dug up, none dug up yet, saving works, and the sand is never
 // drawn, jsdom having no canvas.
+export function emptyLabyrinth(): Pick<AppProps, "labyrinthProgress"> {
+  const storage = memoryStorage();
+  return { labyrinthProgress: localLabyrinthProgress(() => storage) };
+}
+
 export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "sandContext"> {
   const storage = memoryStorage();
   return { digDinosaurs: SHIPPED_DIG, digProgress: localDigProgress(() => storage), sandContext: () => null };
@@ -757,6 +783,17 @@ export function words(element: HTMLElement): string {
   return copy.textContent?.trim() ?? "";
 }
 
+// The element `selector` finds, for a helper that only locates a part
+// the screen is known to show. A role query weighs every element's style
+// against the whole stylesheet, so a helper called at each step of play
+// finds its part this way, and a test of the screen's own holds the part
+// to its role and name.
+export function part<T extends Element = HTMLElement>(selector: string, within: ParentNode = document): T {
+  const found = within.querySelector<T>(selector);
+  if (!found) throw new Error(`No ${selector} on the screen`);
+  return found;
+}
+
 // The home page's row of tiles.
 export function tilesRow(): HTMLElement {
   const row = document.querySelector<HTMLElement>(".games-tiles");
@@ -767,17 +804,21 @@ export function tilesRow(): HTMLElement {
 // The home page's row of tiles laid out as a browser would, which jsdom
 // does not: upright it runs from the page's 56-pixel padding to the
 // window's right edge, and in landscape it takes four sevenths of what
-// the page's 56-pixel sides and the large card's 28-pixel gap leave. Its
-// columns, of two each, are as wide and as far apart as the stylesheet
-// sets them in the test's window. A tile's frame, drawn under it as it
-// glides, takes no place in them.
+// the page's 56-pixel sides and the large card's 28-pixel gap leave, or,
+// in a wide-short window, half of what its 20-pixel sides and 16-pixel
+// gap leave with the right side it reaches into. Its columns, of two each, are as wide
+// and as far apart as the stylesheet sets them in the test's window, a
+// share of the row's width in a wide-short one. A tile's frame, drawn
+// under it as it glides, takes no place in them.
 export function layOutTilesRow(): HTMLElement {
   const row = tilesRow();
+  const size = () => document.documentElement.dataset.size;
   const style = () => styleAt(row, [window.innerWidth, window.innerHeight]);
-  const width = () => (document.documentElement.dataset.size === "tall" ? window.innerWidth - 56 : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
+  const width = () => (size() === "tall" ? window.innerWidth - 56 : size() === "tall-narrow" ? window.innerWidth - 20 : size() === "wide-short" ? Math.round((window.innerWidth - 40 - 16 + 20) / 2) : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
+  const column = () => (size() === "wide-short" ? shortTileColumn(width()) : style().px("grid-auto-columns"));
   const scrollWidth = () => {
     const columns = Math.ceil([...row.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);
-    return columns * style().px("grid-auto-columns") + (columns - 1) * style().columnGap();
+    return Math.round(columns * column() + (columns - 1) * style().columnGap());
   };
   Object.defineProperties(row, { clientWidth: { get: width }, scrollWidth: { get: scrollWidth } });
   return row;

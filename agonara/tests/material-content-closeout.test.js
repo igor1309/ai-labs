@@ -20,7 +20,7 @@ test("materialContentCloseout_shouldTraceIntentToImplementedSpecPlanCodeAndTests
       hasCorpus: int03Row.includes("../../src/corpus.js"),
       hasServer: int03Row.includes("../../src/server.js"),
       hasLearnUi: int03Row.includes("../../src/learn-ui.js"),
-      hasHttpTests: int03Row.includes("../../tests/http-api.test.js"),
+      hasHttpTests: int03Row.includes("../../tests/http-api-material-content.test.js"),
       hasBrowserTests: int03Row.includes("../../tests/topic-concept-material-navigation.playwright.js"),
     },
     {

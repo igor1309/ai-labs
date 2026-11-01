@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { addTransitionType } from "react";
@@ -39,8 +40,8 @@ async function openPage(size: WindowSize, {
 }: { language?: Language; id?: string; insets?: SafeArea; viewport?: Viewport } = {}) {
   openWindow(...size);
   const pictures = recordedSharedPictures();
-  const user = userEvent.setup();
-  render(<App
+  const user = userEvent.setup({ delay: null });
+  render(<App {...emptyLabyrinth()}
     {...featuring()}
     dinosaurs={SHIPPED_DINOSAURS}
     catalogue={SHIPPED_CATALOGUE}
@@ -242,18 +243,6 @@ describe("the app's dinosaur page upright", () => {
     expect(vi.mocked(HTMLElement.prototype.scrollIntoView).mock.contexts).toEqual([card]);
     expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
     expect([document.documentElement.dataset.size, gateShown(), list.hasAttribute("data-rise"), getComputedStyle(list).getPropertyValue("--columns")]).toEqual(["tall", false, false, "3"]);
-  });
-
-  it("fades the turn picture over the page as a tall window narrows", async () => {
-    const viewport = manualViewport("portrait");
-    await openPage([820, 1180], { id: "triceratops", viewport });
-    const page = part(".dinosaur-page");
-    openWindow(393, 852);
-    act(() => viewport.resize("tall-narrow", true));
-    expect([gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual([true, true]);
-    expect(screen.getByRole("img", { name: TEXTS.en.turnSideways })).toBeDefined();
-    expect(part(".dinosaur-page")).toBe(page);
-    expect(getComputedStyle(part(".orientation-gate")).animation).toMatch(/^fade-in /);
   });
 
   it("keeps the landscape structure and type with no gate", async () => {

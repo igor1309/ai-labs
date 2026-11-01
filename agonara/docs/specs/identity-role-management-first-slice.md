@@ -26,8 +26,8 @@ Implemented by [Identity and Operations First-Slice Implementation Plan](../plan
 - Focused domain and invariant coverage: [identity.test.js](../../tests/identity.test.js)
 - Persistence invariant coverage: [storage.test.js](../../tests/storage.test.js)
 - Backup/restore coverage for Identity, credentials, Admin authority, audit state, no-session restore, and last-Admin restore rejection: [backup-restore.test.js](../../tests/backup-restore.test.js)
-- HTTP, CLI, and end-to-end acceptance coverage: [http-api.test.js](../../tests/http-api.test.js), [cli.test.js](../../tests/cli.test.js), and [executable-acceptance.test.js](../../tests/executable-acceptance.test.js)
-- Minimum Admin UI surface implementation and route/render coverage: [admin-ui.js](../../src/admin-ui.js), [server.js](../../src/server.js), [http-api.test.js](../../tests/http-api.test.js), and [admin-operations-ui-board.md](../plans/implemented/admin-operations-ui-board.md)
+- HTTP, CLI, and end-to-end acceptance coverage: [http-api-identity-session.test.js](../../tests/http-api-identity-session.test.js), [cli.test.js](../../tests/cli.test.js), and [executable-acceptance-identity-programs.test.js](../../tests/executable-acceptance-identity-programs.test.js)
+- Minimum Admin UI surface implementation and route/render coverage: [admin-ui.js](../../src/admin-ui.js), [server.js](../../src/server.js), [http-api-identity-session.test.js](../../tests/http-api-identity-session.test.js), and [admin-operations-ui-board.md](../plans/implemented/admin-operations-ui-board.md)
 
 The implemented slice supports first-Admin bootstrap, local-password authentication, opaque server-managed sessions, Admin-only identity and credential operations, last-effective-Admin protection, auditability, operational access inspection, backup/restore of identity state without active-session restoration, and the required private Admin UI board. It preserves the v0.0.1 boundary by leaving MFA, passkeys, OIDC, SSO, self-service recovery, multi-tenant authorization, Program resource permissions, Student authority, and Program Curator authority outside Identity & Role Management.
 

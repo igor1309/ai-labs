@@ -34,7 +34,7 @@ export function LevelSwitch({ language, level, onLevel, disabled = false, part }
           <span className="level-switch-picture" aria-hidden="true">
             {AGE_LEVEL_PICTURES[each]}
           </span>
-          <span className="level-switch-name">{text.ageLevels[each].name}</span>
+          <span className="level-switch-name narrow-hidden">{text.ageLevels[each].name}</span>
         </Button>
       ))}
     </div>

@@ -10,7 +10,7 @@ import { droppedOn, presentBoard } from "../src/presentation.ts";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { useSortingGame, type SortingGameProps } from "../src/sortingGame.tsx";
 import { boardState, drop, startBoard, type CardState, type Sorting } from "../src/sorting/index.ts";
-import { SHIPPED_SORTABLES, fakeBodyPicture, manualViewport, memoryStorage, seededRandom, type ManualPictures, type MemoryStorage } from "./support.ts";
+import { SHIPPED_SORTABLES, fakeBodyPicture, manualViewport, memoryStorage, part, seededRandom, type ManualPictures, type MemoryStorage } from "./support.ts";
 import { withManualPictures, withPictures } from "./pictures.tsx";
 
 // The board as the app will hold it: the sorting in state above the
@@ -90,12 +90,15 @@ export const latest = ({ seen }: OpenBoard): Sorting => {
   return sorting;
 };
 
-export const tray = (language: Language = "en") => screen.getByRole("group", { name: TEXTS[language].creatures });
+// The tray, its cards and the baskets, by their class and turn part, or
+// by their role and name in `language` where a test gives one.
+export const tray = (language?: Language) => (language === undefined ? part(".sort-tray") : screen.getByRole("group", { name: TEXTS[language].creatures }));
 
-export const trayCard = (card: CardState, language: Language = "en") =>
-  within(tray(language)).getByRole("button", { name: card.dinosaur.name[language] });
+export const trayCard = (card: CardState, language?: Language) =>
+  language === undefined ? part(`[data-turn-part="sort-card-${card.dinosaur.id}"]`, tray()) : within(tray(language)).getByRole("button", { name: card.dinosaur.name[language] });
 
-export const basketButton = (basket: Basket, language: Language = "en") => screen.getByRole("button", { name: TEXTS[language].baskets[basket] });
+export const basketButton = (basket: Basket, language?: Language) =>
+  language === undefined ? part(`[data-turn-part="basket-${basket}"]`) : screen.getByRole("button", { name: TEXTS[language].baskets[basket] });
 
 // The other basket of the board's two.
 export const otherBasket = (sorting: Sorting, basket: Basket): Basket => {
@@ -156,9 +159,11 @@ function Game({
   const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
   const game = useSortingGame(props, { level: "hatchling", revision: null }, onHome, () => {});
   owner.start = game.start;
+  // The gate covers every upright window here, so the board's upright
+  // width and the result's sizes are never read.
   return (
     <OrientationGate shown={size.startsWith("tall")} screenUpright={viewport.isScreenUpright()} language={language}>
-      {game.content(language)}
+      {game.content(language, 0, { star: 0, levelName: 0, heroMaximum: 0 })}
     </OrientationGate>
   );
 }
@@ -190,7 +195,7 @@ export function openSortingGame({ storage = memoryStorage(), seed = 1, language 
   const random = seededRandom(seed);
   let last: Sorting | undefined;
   const nextBoard = () => (last = startBoard(SHIPPED_SORTABLES, "hatchling", random, last));
-  return { user: userEvent.setup(), storage, homes, nextBoard, unmount };
+  return { user: userEvent.setup({ delay: null }), storage, homes, nextBoard, unmount };
 }
 
 // Sorts the first `count` cards of `sorting` by taps, a card then a

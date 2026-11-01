@@ -1,0 +1,110 @@
+--- a/node_modules/jsdom/lib/jsdom/living/css/StyleSheet-impl.js
++++ b/node_modules/jsdom/lib/jsdom/living/css/StyleSheet-impl.js
+@@ -20,6 +20,7 @@
+   }
+ 
+   _invalidateStyleCache() {
++    this._ruleIndex = null;
+     if (this.parentStyleSheet) {
+       this.parentStyleSheet._invalidateStyleCache();
+     } else if (this.ownerNode) {
+--- a/node_modules/jsdom/lib/jsdom/living/css/helpers/computed-style.js
++++ b/node_modules/jsdom/lib/jsdom/living/css/helpers/computed-style.js
+@@ -148,16 +148,94 @@
+   return candidateStyles;
+ }
+ 
++// A sheet's style rules, bucketed by the id, class or tag their selector
++// subjects require, so an element is only tested against rules that name
++// something it has. Built once per sheet, dropped when the sheet changes.
++// An imported sheet fills in when it loads, without telling its parent, so
++// it is kept as one entry and walked whole at each collection.
++function ruleIndexOf(sheetImpl, elementImpl) {
++  if (sheetImpl._ruleIndex) {
++    return sheetImpl._ruleIndex;
++  }
++  const domSelector = elementImpl._ownerDocument._getDOMSelector();
++  const xml = elementImpl._ownerDocument.contentType !== "text/html";
++  const index = { byId: new Map(), byClass: new Map(), byTag: new Map(), any: [] };
++  let order = 0;
++  const add = (map, key, entry) => {
++    const list = map.get(key);
++    if (list) {
++      if (list[list.length - 1] !== entry) list.push(entry);
++    } else {
++      map.set(key, [entry]);
++    }
++  };
++  const walk = (parentImpl, media) => {
++    for (const ruleImpl of parentImpl.cssRules._list) {
++      if (CSSImportRule.isImpl(ruleImpl)) {
++        index.any.push({ imported: ruleImpl, media, order: order++ });
++      } else if (CSSMediaRule.isImpl(ruleImpl)) {
++        walk(ruleImpl, [...media, ruleImpl.media]);
++      } else if (CSSStyleRule.isImpl(ruleImpl)) {
++        ruleImpl._selectorSubjects ??= domSelector.extractSubjects(ruleImpl.selectorText, xml);
++        const entry = { rule: ruleImpl, media, order: order++ };
++        const subjects = ruleImpl._selectorSubjects;
++        if (subjects.length === 0) {
++          index.any.push(entry);
++          continue;
++        }
++        for (const keys of subjects) {
++          if (keys.id) add(index.byId, keys.id, entry);
++          else if (keys.className) add(index.byClass, keys.className, entry);
++          else if (keys.tag) add(index.byTag, keys.tag.toLowerCase(), entry);
++          else if (index.any[index.any.length - 1] !== entry) index.any.push(entry);
++        }
++      }
++    }
++  };
++  walk(sheetImpl, []);
++  sheetImpl._ruleIndex = index;
++  return index;
++}
++
++function collectCandidateStylesFrom(sheetImpl, elementImpl, candidateStyles) {
++  const index = ruleIndexOf(sheetImpl, elementImpl);
++  const entries = new Set(index.any);
++  const id = elementImpl.getAttributeNS(null, "id");
++  if (id) for (const entry of index.byId.get(id) ?? []) entries.add(entry);
++  const { classList } = elementImpl;
++  classList._syncWithElement();
++  for (const name of classList._tokenSet._items) for (const entry of index.byClass.get(name) ?? []) entries.add(entry);
++  for (const entry of index.byTag.get(elementImpl._localName.toLowerCase()) ?? []) entries.add(entry);
++  const mediaMatches = new Map();
++  const inMedia = (media) => {
++    let result = mediaMatches.get(media);
++    if (result === undefined) mediaMatches.set(media, (result = evaluateMediaList(media._list)));
++    return result;
++  };
++  for (const entry of [...entries].sort((a, b) => a.order - b.order)) {
++    if (!entry.media.every(inMedia)) {
++      continue;
++    }
++    if (entry.imported) {
++      if (entry.imported.styleSheet !== null && inMedia(entry.imported.media)) {
++        collectCandidateStylesWalking(entry.imported.styleSheet, elementImpl, candidateStyles);
++      }
++    } else if (ruleMightMatchElement(entry.rule, elementImpl)) {
++      candidateStyles.push({ rule: entry.rule, matched: null, specificity: null });
++    }
++  }
++}
++
+ // `parentImpl` is a style sheet or a grouping rule; both expose `cssRules`.
+-function collectCandidateStylesFrom(parentImpl, elementImpl, candidateStyles) {
++function collectCandidateStylesWalking(parentImpl, elementImpl, candidateStyles) {
+   for (const ruleImpl of parentImpl.cssRules._list) {
+     if (CSSImportRule.isImpl(ruleImpl)) {
+       if (ruleImpl.styleSheet !== null && evaluateMediaList(ruleImpl.media._list)) {
+-        collectCandidateStylesFrom(ruleImpl.styleSheet, elementImpl, candidateStyles);
++        collectCandidateStylesWalking(ruleImpl.styleSheet, elementImpl, candidateStyles);
+       }
+     } else if (CSSMediaRule.isImpl(ruleImpl)) {
+       if (evaluateMediaList(ruleImpl.media._list)) {
+-        collectCandidateStylesFrom(ruleImpl, elementImpl, candidateStyles);
++        collectCandidateStylesWalking(ruleImpl, elementImpl, candidateStyles);
+       }
+     } else if (CSSStyleRule.isImpl(ruleImpl) && ruleMightMatchElement(ruleImpl, elementImpl)) {
+       candidateStyles.push({ rule: ruleImpl, matched: null, specificity: null });

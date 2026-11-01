@@ -11,11 +11,10 @@ Feature: Check refuses what a run does not run yet
     And "agister run w" refuses with the same line, and nothing runs
 
     Examples:
-      | holding                                          | line                                                                      |
-      | the branch "b", whose default is a step of "say" | the workflow "w": the item "b", a branch, is not run yet                  |
-      | the repeat "r", whose body is a step of "say"    | the workflow "w": the item "r", a repeat, is not run yet                  |
-      | the step "s" of "say" on the agent "pi-m3"       | the step "s": the runtime "pi"'s turn is not run yet                      |
-      | the input "d" from the source "git.diff"         | the workflow "w": the input "d" from the source "git.diff" is not run yet |
+      | holding                                    | line                                                                      |
+      | the parallel "p" holding the repeat "c"    | the workflow "w": the item "c", a repeat, is not run yet                  |
+      | the step "s" of "say" on the agent "pi-m3" | the step "s": the runtime "pi"'s turn is not run yet                      |
+      | the input "d" from the source "git.diff"   | the workflow "w": the input "d" from the source "git.diff" is not run yet |
 
   Scenario: A workflow a run runs is not refused for it
     Given the workflow "w" of the steps "a" and "b", each of "say" on
@@ -38,8 +37,7 @@ Feature: Check refuses what a run does not run yet
       yet", refusing "say", "w1" and "w2"
 
   Scenario: Inspect shows a workflow a run does not run yet as refused
-    Given the workflow "w" holds the branch "b", whose default is a step
-      of "say"
+    Given the workflow "w" holds the parallel "p", holding the repeat "c"
     When "agister inspect workflow w" runs
     Then it shows the refusal, with the line "the workflow "w": the item
-      "b", a branch, is not run yet", and no plan
+      "c", a repeat, is not run yet", and no plan

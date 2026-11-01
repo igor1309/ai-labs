@@ -1,0 +1,16 @@
+{
+  "parts": [
+    {
+      "name": "host",
+      "device": "iPad",
+      "expected": [
+        {
+          "category": "hostBroadcast",
+          "phase": "advertising seconds=90"
+        }
+      ],
+      "flow": "host.yaml",
+      "settings": "host.json"
+    }
+  ]
+}

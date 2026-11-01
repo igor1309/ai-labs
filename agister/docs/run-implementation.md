@@ -994,10 +994,14 @@ other classes; codex a `turn.failed` whose message says "at capacity",
 before its other classes.
 
 **`core/call`** retries a turn that ends by a reply of the class
-`capacity`, while the call has made fewer than four turns of that end:
+`capacity`, while the call has made fewer than five turns of that end:
 it waits on its timer, 30 seconds after the first such turn, one minute
-after the second and three minutes after the third, then makes that
-turn again as it was given, its message and all, in the session it reported, else in the session it was given. A
+after the second, three minutes after the third and five after the
+fourth. A turn that reported a session is followed by a turn in that
+session, its message "Go on.", the turn's model, effort, options,
+instruction and schema as they were; one that reported none has not
+reached the model, and is made again as it was given, its message and
+all, in the session it was given. A
 capacity turn that reported a session other than the one it resumed is
 not retried: it fails the call, `runtime_error`, as any turn that
 strayed does. No wait starts where the call's context has ended, or
@@ -1007,7 +1011,7 @@ A retry spends none of the step's recovery, and what follows it follows
 it as it would any turn, a recovery turn included. The call's cost,
 usage and session are its turns', as a recovered call's are. A call
 whose last turn is at capacity, not retried, fails, `capacity`, its
-reason the turn's, after "<n> of 4 turns at capacity: ". Its report grows a
+reason the turn's, after "<n> of 5 turns at capacity: ". Its report grows a
 turn at capacity: its reason, and the wait before its retry, none where
 none follows.
 
@@ -1027,7 +1031,7 @@ and records an event:
 
 An agent may set `fallback = "claude-opus"`. Resolve refuses a fallback
 that is missing, names itself, or cannot run the step's process, naming
-the agent file. Once the primary's four capacity turns are spent,
+the agent file. Once the primary's five capacity turns are spent,
 `core/call` makes the same process and inputs fresh on the fallback,
 within the remaining time and cost limits and daily budget. Every other
 failure class ends the call. The fallback retries capacity by the same
@@ -1060,10 +1064,19 @@ Decisions, each with its reason:
 - The policy is core's, not a setting: the owner chose one policy for
   every runtime, on by default; a process's own attempts and backoff
   wait until one needs them.
-- A retry resumes with the step's own message, not a message of its
-  own: the session holds the work done, and the task given again is
-  what a message telling it to go on would say, from settings Agister
-  already has.
+- A retry in a session the turn reported is told "Go on.", not given
+  the step's message again (owner, 2026-10-23, LAB-496): the session
+  holds the task and the work done toward it, and the task given twice
+  invites the model to start over. The message is core's, not a
+  setting, as the policy is.
+- A session a turn reported holds its message: codex writes the user's
+  message into the thread's rollout before it asks the model, and
+  claude-code writes it into its transcript before its first request, so
+  a turn at capacity that reported a session, fresh or resumed, leaves
+  the task in it, and "Go on." is read after it.
+- Waits of 30 seconds, one, three and five minutes (owner, 2026-10-23):
+  a call kept waiting in its session keeps its work, where a caller's
+  rerun later starts it over.
 - The wait is fixed, not drawn at random: the load is the provider's,
   which the few calls of a run retrying together do not change, and the
   owner chose one policy.
@@ -1603,3 +1616,193 @@ Decisions, each with its reason:
 - The contract stays `codex/2`, as `claude-code/3` stayed for Claude's
   cost (LAB-336): the settings' runtime documents name it, and what a
   call is given is unchanged.
+
+## Branch and repeat
+
+A workflow's branches and repeats run: Audelin's repair loop, a test
+step on bash whose failure goes back to the builder's session until the
+tests pass, at most three times.
+
+**`core/workflow`** runs an item that is a step, a parallel, a branch or
+a repeat, wherever it is: in the workflow's steps, an arm of a branch,
+or a repeat's body.
+
+- A **condition** is pure: it reads params, inputs, a repeat's state, the
+  outputs of items that have ended and, in an `all` or `any`, the
+  query's item. `equals` holds where the value read is the literal's: a
+  number equals a number of the same value, a string a string, a
+  boolean a boolean; a string never equals a number, and a param or an
+  input is a string. `present` holds where the reference reads a value.
+  A reference that reads nothing makes `equals`, `all` and `any` false.
+  `all` of an empty list holds, `any` of one does not, and either of
+  what is not a list does not hold. `and`, `or` and `not` compose.
+- A **branch** reads each arm's condition in order, and runs the first
+  that holds, or else its default; no other arm runs. Its outputs are
+  the arm's output mapping, read once the arm has completed; an arm
+  that does not complete ends the branch, and the run, as a step in
+  sequence does.
+- A **repeat** binds its state from its `state`, then runs its body;
+  after each pass that completes it binds its next state from `next`,
+  reading the pass's outputs and the state before it, a name `next`
+  does not bind keeping its value; a body sees the state of the repeats
+  around it, its own over theirs; and then reads
+  `until`: where it holds, or where the body has run `max` times, the
+  repeat ends, else the next pass starts. The condition is never read
+  before the first pass. A body item that does not complete ends the
+  repeat, and the run. Its outputs are `{"state": {...}, "stopped":
+  "until" | "max", "passes": n}`: the last state, why it stopped, and
+  how many passes ran. A body reads the outputs of its own pass, each
+  item those of the items before it, as in a sequence; what follows the
+  repeat reads only its outputs. A state value keeps the type it was
+  bound with: from a param a text, from an exit code a number; bound to
+  a text, a number is given as its JSON.
+- A step in a repeat's body is called, and told to the events, by its
+  **name and pass**, `<step>/<pass>`, outer passes first where repeats
+  nest (`fix/2/1`); elsewhere by its name. A branch or repeat inside a
+  repeat's body is told to the events the same way (`inner/2`). The
+  caller, the events, the record, progress and reuse take that name as
+  they take a step's.
+- The **events port** grows three: a branch's arm taken, with each
+  condition read before it, whether it held and the values it read; a
+  pass's end, with the state it bound; and a repeat's stop, why and
+  after how many passes.
+- Cost, usage, warnings and sessions count every call made, each pass's
+  too; a session continued in a body goes on from its latest call
+  as any continued session does, so each pass continues the one
+  before.
+
+**The composition** builds core's items from resolve's, every arm and
+body step planned as a step in sequence is: every step is planned,
+those of arms a run may not take too. `notRunOf` no longer names a
+branch or a repeat; it still names a workflow item wherever it is, an
+item of a parallel that is not a step, a field read within a parallel's
+outputs, a step's session read as a value, and an item named as a pass
+is, ending in `/<n>`, whose call id a pass could share. `agister check`
+follows, as it shares that list. A call's id is
+`<run id>/<step>/<pass>` in a repeat; its progress lines name it so;
+three lines more: `· <branch>: took <arm>`,
+`· <repeat>: ended pass <n>`, `· <repeat>: stopped <why> after <n> passes`.
+`events.jsonl` gains the kinds `branch`, `pass` and `stopped`:
+
+```json
+{"at": "", "step": "fix", "kind": "branch", "arm": "repair",
+ "conditions": [{"arm": "passed", "holds": false,
+   "read": {"steps.test.outputs.exit_code": 1}}]}
+{"at": "", "step": "repair", "kind": "pass", "pass": 1,
+ "state": {"code": 0, "tail": ""}}
+{"at": "", "step": "repair", "kind": "stopped", "stopped": "until",
+ "passes": 1}
+```
+
+A reuse takes a call of the same name and pass, so a later
+pass's call is never taken for an earlier one.
+
+Decisions, each with its reason:
+
+- A pass is in the step's name, not a field of its own: the caller,
+  events, record, progress and reuse already key on the name, and none
+  needs a change of shape.
+- A repeat's state sits under `state` in its outputs, beside `stopped`
+  and `passes`: a state may be named anything, and nothing it is named
+  shadows them.
+- The condition's values are kept in `events.jsonl`, not the record:
+  the record keeps calls, and the branch's facts are of no call. The
+  run must still record them, and `events.jsonl` sits in the run's
+  directory beside the record.
+- A branch's and a repeat's events name it under the `step` key, as a
+  parallel's do: a reader of `events.jsonl` finds every item by one key.
+- Conditions stay the starting set (equals, present, all, any, and,
+  or, not); settings already type them.
+- A workflow item stayed not run here; "A workflow as an item" runs it.
+
+## A workflow as an item
+
+A workflow item runs, in a sequence and in a parallel: home's
+`code_review`, its tests lens the workflow `tests_debate`, a draft and
+a private debate with a critic, in the slot the lens's one step held.
+
+**`core/workflow`** runs an item that is a workflow wherever an item
+runs, a parallel's children included.
+
+- The item's **boundary** is the workflow's own: its params bound from
+  the item's bindings, read in the caller's scope, a param not bound
+  taking its default; its inputs resolved over those params, once,
+  before its first step, by the resolver the composition built for its
+  workflow and gave its item. Its steps read that boundary and the outputs
+  and sessions of its own items, never the caller's; the caller reads
+  only the item's outputs, as an item's in sequence.
+- Its **outputs** are its output mapping, read once its steps have
+  completed. A workflow whose one output is named `output` gives that
+  value whole; any other gives the mapping. A step of it that does not
+  complete ends the item, as it ends a run.
+- A step inside is called, and told to the events, by the **item's
+  name, then its own**, `<item>/<step>`, a pass after it where it is in
+  a repeat (`tests/revise/1`); a branch or repeat inside is told the
+  same way (`tests/debate`). Its declared name to the caller is
+  `<item>/<step>`, so the composition's plan tells it from a caller's
+  step of the same name.
+- In a **parallel**, a workflow item runs its steps in sequence beside
+  the parallel's other children, counting as one toward `max`. Its slot
+  is `{"status", "class", "output"}` as a step's: the item's outputs
+  where it completed, else null, its class the failing step's.
+- Its calls' cost, usage, warnings and sessions count in the run's, as
+  a step's in sequence; each call keeps its own limits and the daily
+  budget, as any call does. No budget of the run's resets at the item:
+  the day's budget is the composition's, kept per call, so a call
+  inside an item meets it as a call outside does.
+- It is a **child run**. The events port grows one kind, a child run's
+  start, with its params and inputs as bound, and its end, with its
+  status, class and output; the record keeps each under `children`,
+  by the id `<run id>/<item>`: the item, its workflow, its parent's
+  id, its params and inputs as bound, its status, class and output.
+  Its calls stay in the run's `calls`, by their names.
+
+**Resolve** reads an item of a workflow whose one output is `output` as
+that value: a field read from the item's outputs is not checked against
+the workflow's output names, as a step's fields are not;
+`steps.<item>.outputs.output` is refused. A workflow of other outputs is
+read through their names, as now.
+
+**The composition** plans a workflow item's steps as it plans any step,
+each under its `<item>/<step>` name, and gives core the workflow's
+resolver of params and inputs, as it gives the run's. `notRunOf` no
+longer names a workflow item; a parallel's branch or repeat stays not
+run. `agister check` follows, as it shares that list.
+
+**Home** adds `tests_debate`, the processes `review_critique` and
+`review_revise`, the prompts `code-review-critic` and
+`code-review-revise`, and the schema `critique`; `code_review`'s tests
+slot names the workflow `tests_debate`. Its debate takes the critique
+before the repeat and, in the repeat's body, the revision before the
+next critique, so a later critique that converges ends it with no
+revision after it; a first critique that converges still gets one
+revision, which returns the review as it stands, as a branch would
+need a step for its arm that does nothing. The judge's process, prompt and
+input do not change.
+
+This section runs what "Branch and repeat" left not run: a workflow
+item.
+
+Decisions, each with its reason:
+
+- An item's own inputs resolve when it starts, not with the parallel's
+  shared inputs: they are its own, over params only it binds. A caller
+  that needs one snapshot binds its resolved revisions into the item's
+  params, as `code_review` does.
+- No workflow budget is added: none exists yet for a run; the item's
+  calls are bounded as every call is. One comes with a run's budget.
+- The one output named `output` is given whole, as a step requested
+  alone makes its workflow's: a lens that is a workflow fills
+  its slot with a review, as a lens that is a step does; a mapping
+  around it would change what the join reads.
+- The item is run by core, not spread into the caller's plan by the
+  composition: a caller has no access inside a child, and a spread plan
+  would let a caller's reference reach inside.
+- The child run is told through the events port, not a record port of
+  core's: core writes no record; the composition keeps records from
+  what the events tell, as it does a call's.
+- A parallel's branch and repeat stay not run: nothing needs one yet;
+  a workflow item gives either a slot.
+- Resolve already checks an item's bindings against its workflow's
+  params, refuses a cycle of named workflows, and refuses a caller's
+  read of an item's session or of a step inside it; none changes.

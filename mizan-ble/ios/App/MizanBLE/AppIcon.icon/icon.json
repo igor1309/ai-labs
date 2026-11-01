@@ -1,0 +1,59 @@
+{
+  "fill": {
+    "linear-gradient": [
+      "srgb:0.12549,0.13725,0.16471,1.00000",
+      "srgb:0.06667,0.07451,0.09020,1.00000"
+    ],
+    "orientation": {
+      "start": {
+        "x": 0.5,
+        "y": 0
+      },
+      "stop": {
+        "x": 0.5,
+        "y": 1
+      }
+    }
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "sign.png",
+          "name": "sign"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.8
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    },
+    {
+      "layers": [
+        {
+          "image-name": "client.png",
+          "name": "client"
+        },
+        {
+          "image-name": "host.png",
+          "name": "host"
+        }
+      ],
+      "shadow": {
+        "kind": "layer-color",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.3
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": "shared"
+  }
+}

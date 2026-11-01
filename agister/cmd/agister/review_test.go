@@ -42,14 +42,20 @@ func reviewResult(process string) map[string]any {
 // as shipped; git giving "/r" HEAD "c1", clean, naming "origin/trunk" and
 // "c0" the commit "c0", "HEAD" and "c1" the commit "c1", and "a.go"
 // changed from "c0" to "c1"; the file "/r/g.md" holding a goal; and
-// claude-code completing the judge with a judgement.
+// claude-code completing the critics with convergence and the judge with a judgement.
 func newReviewFixture(t *testing.T) *runFixture {
 	t.Helper()
 	f := newRunFixture(t, shippedHome(t), nil)
+	f.holding.content = "t1"
 	f.sources.commits = map[string]string{"origin/trunk": "c0", "c0": "c0", "HEAD": "c1", "c1": "c1"}
 	f.sources.changed = map[string][]string{"c0..c1": {"a.go"}}
 	f.sources.files = map[string]string{"/r/g.md": goalBrief}
-	f.runtimes.claude.answer = claudeReply(claudecode.Reply{Output: []byte(judgement)})
+	f.runtimes.claude.answer = func(ctx context.Context, turn claudecode.Turn) (claudecode.Result, error) {
+		if strings.Contains(turn.Message, f.settings["/u/.agister/prompts/code-review-critic.md"]) {
+			return claudeReply(claudecode.Reply{Output: []byte(`{"verdict":"converged","challenges":[]}`)})(ctx, turn)
+		}
+		return claudeReply(claudecode.Reply{Output: []byte(judgement)})(ctx, turn)
+	}
 	return f
 }
 
@@ -64,6 +70,9 @@ func unboundReviews(f *runFixture) {
 // of its prompt in the message, failing t where it is not one review's.
 func processOf(t *testing.T, settings map[string]string, turn codex.Turn) string {
 	t.Helper()
+	if strings.Contains(turn.Message, settings["/u/.agister/prompts/code-review-revise.md"]) {
+		return "review_revise"
+	}
 	var found []string
 	for _, review := range reviews {
 		prompt := settings["/u/.agister/prompts/code-review-"+review.step+".md"]
@@ -79,25 +88,35 @@ func processOf(t *testing.T, settings map[string]string, turn codex.Turn) string
 }
 
 // completesReview answers a review's turn with a review result naming its
-// process.
+// process; a revision keeps the tests review and its session.
 func completesReview(t *testing.T, settings map[string]string, turn codex.Turn) (codex.Result, error) {
-	output, err := json.Marshal(reviewResult(processOf(t, settings, turn)))
+	process := processOf(t, settings, turn)
+	if process == "review_revise" {
+		process = "tests_review"
+	}
+	output, err := json.Marshal(reviewResult(process))
 	if err != nil {
 		return codex.Result{}, err
 	}
-	return codex.Result{Reply: &codex.Reply{Output: output}}, nil
+	return codex.Result{Reply: &codex.Reply{Output: output, Session: "review-" + process}}, nil
 }
 
 // judgedText is the judge's input "reviews", as its message gives it.
 func judgedText(t *testing.T, f *runFixture) string {
 	t.Helper()
-	ran := f.runtimes.claude.ran()
-	if len(ran) != 1 {
-		t.Fatalf("claude-code ran %d turns, want the judge's", len(ran))
+	var judges []claudecode.Turn
+	for _, turn := range f.runtimes.claude.ran() {
+		if strings.Contains(turn.Message, "## reviews\n\n") {
+			judges = append(judges, turn)
+		}
 	}
-	_, section, ok := strings.Cut(ran[0].Message, "## reviews\n\n")
+	if len(judges) != 1 {
+		t.Fatalf("claude-code made %d judge turns, want one", len(judges))
+	}
+	judge := judges[0]
+	_, section, ok := strings.Cut(judge.Message, "## reviews\n\n")
 	if !ok {
-		t.Fatalf("the judge's message %q, want its input reviews", ran[0].Message)
+		t.Fatalf("the judge's message %q, want its input reviews", judge.Message)
 	}
 	section, _, _ = strings.Cut(section, "\n")
 	return section
@@ -112,6 +131,89 @@ func judged(t *testing.T, f *runFixture) []any {
 		t.Fatalf("the judge's input reviews %q: %v", section, err)
 	}
 	return got
+}
+
+// Contract test: home's shipped code_review and its private tests debate.
+func TestShippedCodeReviewGivesTheJudgeOnlyTheFinalTestsRevision(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name      string
+		passes    int
+		converges bool
+	}{{"first revision", 1, true}, {"second revision", 2, true}, {"pass limit", 2, false}} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			f := newReviewFixture(t)
+			revision, critique := 0, 0
+			f.runtimes.codex.answer = func(_ context.Context, turn codex.Turn) (codex.Result, error) {
+				process := processOf(t, f.settings, turn)
+				label := process
+				if process == "tests_review" {
+					label = "tests-draft"
+				} else if process == "review_revise" {
+					revision++
+					label = fmt.Sprintf("tests-revision-%d", revision)
+				}
+				data, err := json.Marshal(reviewResult(label))
+				session := turn.Session
+				if session == "" {
+					session = "review-" + process
+				}
+				return codex.Result{Reply: &codex.Reply{Output: data, Session: session}}, err
+			}
+			critiques := map[string]any{}
+			f.runtimes.claude.answer = func(_ context.Context, turn claudecode.Turn) (claudecode.Result, error) {
+				if !strings.Contains(turn.Message, f.settings["/u/.agister/prompts/code-review-critic.md"]) {
+					return claudecode.Result{Reply: &claudecode.Reply{Output: []byte(judgement)}}, nil
+				}
+				verdict, status := "another_round", "open"
+				if c.converges && critique == c.passes {
+					verdict, status = "converged", "settled"
+				}
+				label := fmt.Sprintf("critique-%d", critique)
+				answer := map[string]any{"verdict": verdict, "challenges": []any{map[string]any{
+					"id": label, "finding": nil, "challenge": label, "evidence": label, "settled_by": label, "status": status,
+				}}}
+				critiques[label] = answer
+				critique++
+				data, err := json.Marshal(answer)
+				return claudecode.Result{Reply: &claudecode.Reply{Output: data}}, err
+			}
+			got := f.run(t, "/r", "run", "code_review", "--param", "goal=g.md")
+			if got.code != 0 || got.stderr != "" || revision != c.passes || critique != c.passes+1 {
+				t.Fatalf("run %+v, revisions %d, critiques %d", got, revision, critique)
+			}
+			var want []any
+			for _, review := range reviews {
+				label := review.process
+				if review.step == "tests" {
+					label = fmt.Sprintf("tests-revision-%d", c.passes)
+				}
+				want = append(want, map[string]any{"status": "completed", "class": nil, "output": reviewResult(label)})
+			}
+			if given := judged(t, f); !reflect.DeepEqual(given, want) {
+				t.Fatalf("judge received %v, want %v", given, want)
+			}
+			calls := itemCalls(f.store.last(t))
+			assertInput := func(step, input string, want any) {
+				t.Helper()
+				var given any
+				if err := json.Unmarshal([]byte(recordedInput(t, calls[step], input)), &given); err != nil {
+					t.Fatal(err)
+				}
+				if !reflect.DeepEqual(given, want) {
+					t.Errorf("%s input %s = %v, want %v", step, input, given, want)
+				}
+			}
+			assertInput("tests/critique", "review", reviewResult("tests-draft"))
+			for pass := 1; pass <= c.passes; pass++ {
+				prior := critiques[fmt.Sprintf("critique-%d", pass-1)]
+				assertInput(fmt.Sprintf("tests/revise/%d", pass), "critique", prior)
+				assertInput(fmt.Sprintf("tests/recheck/%d", pass), "critique", prior)
+				assertInput(fmt.Sprintf("tests/recheck/%d", pass), "review", reviewResult(fmt.Sprintf("tests-revision-%d", pass)))
+			}
+		})
+	}
 }
 
 // review.feature, "Five reviews side by side, then the judge": each turn
@@ -131,6 +233,9 @@ func TestFiveReviewsSideBySideThenTheJudge(t *testing.T) {
 	var mu sync.Mutex
 	held := map[string][2]int{}
 	f.runtimes.codex.answer = func(_ context.Context, turn codex.Turn) (codex.Result, error) {
+		if turn.Session != "" {
+			return completesReview(t, f.settings, turn)
+		}
 		started.Done()
 		started.Wait()
 		_, alone, shared := f.holding.locks()
@@ -164,8 +269,9 @@ func TestFiveReviewsSideBySideThenTheJudge(t *testing.T) {
 	if reviews := judged(t, f); !reflect.DeepEqual(reviews, entries) {
 		t.Errorf("the judge's reviews\n%v\nwant\n%v", reviews, entries)
 	}
-	if asked, alone, shared := f.holding.locks(); len(asked) != len(reviews)+1 || alone != 0 || shared != 0 {
-		t.Errorf("locks asked %+v, %d held alone, %d shared after the run; want six, none held", asked, alone, shared)
+	// The tests lens adds a critique, revision and recheck to the five reviews.
+	if asked, alone, shared := f.holding.locks(); len(asked) != len(reviews)+4 || alone != 0 || shared != 0 {
+		t.Errorf("locks asked %+v, %d held alone, %d shared after the run; want nine, none held", asked, alone, shared)
 	}
 	var judge any
 	if err := json.Unmarshal([]byte(judgement), &judge); err != nil {
@@ -231,12 +337,23 @@ func TestProgressLinesOfReviewsSideBySideAreEachWhole(t *testing.T) {
 	}
 	want := map[string][]string{"judge": {"· judge: started on claude-opus\n", "· judge: ended completed in 0s\n"}}
 	for _, review := range reviews {
-		want[review.step] = []string{
-			fmt.Sprintf("· %s: started on codex-sol-61\n", review.step),
-			fmt.Sprintf("· %s: Bash ls\n", review.step),
-			fmt.Sprintf("· %s: ended completed in 0s\n", review.step),
+		step := review.step
+		if step == "tests" {
+			step = "tests/draft"
+		}
+		want[step] = []string{
+			fmt.Sprintf("· %s: started on codex-sol-61\n", step),
+			fmt.Sprintf("· %s: Bash ls\n", step),
+			fmt.Sprintf("· %s: ended completed in 0s\n", step),
 		}
 	}
+	for _, step := range []string{"tests/revise/1"} {
+		want[step] = []string{fmt.Sprintf("· %s: started on codex-sol-61\n", step), fmt.Sprintf("· %s: Bash ls\n", step), fmt.Sprintf("· %s: ended completed in 0s\n", step)}
+	}
+	for _, step := range []string{"tests/critique", "tests/recheck/1"} {
+		want[step] = []string{fmt.Sprintf("· %s: started on claude-opus\n", step), fmt.Sprintf("· %s: ended completed in 0s\n", step)}
+	}
+	want["tests/debate"] = []string{"· tests/debate: ended pass 1\n", "· tests/debate: stopped until after 1 passes\n"}
 	if !reflect.DeepEqual(of, want) {
 		t.Errorf("progress\n%s\nwant each step's own lines, whole, in order:\n%q", got.progress, want)
 	}

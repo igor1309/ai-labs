@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -56,7 +57,7 @@ const HATCHLING = { load: () => ({ level: "hatchling" as const, revision: null }
 
 function openApp(storage: MemoryStorage, seed = 21) {
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -77,7 +78,7 @@ function openApp(storage: MemoryStorage, seed = 21) {
       {...loadedPictures()}
     />
   );
-  return userEvent.setup();
+  return userEvent.setup({ delay: null });
 }
 
 // Starts a round and answers its first `count` questions, the first

@@ -1,5 +1,12 @@
 # Log
 
+## 2026-10-26
+
+- The agent skills are published to the public `igor1309/agonara-skills` repo. LAB-596.
+- The public README no longer says the operator CLI uses the HTTP API; it only checks and creates the first Admin. LAB-595.
+- `/learn` shows whether a Quick Check attempt matched the answer key. LAB-530.
+- `/learn` wraps long lines in the material reader, so a long material no longer pushes the student navigation past the page edge. LAB-530.
+
 ## 2026-07-01
 
 - **Implemented the public-skills projection (spec R1–R12).** Built the deterministic
