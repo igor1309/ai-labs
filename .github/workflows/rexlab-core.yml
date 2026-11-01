@@ -62,6 +62,7 @@ jobs:
           - coloringResult
           - coloringFlow
           - nativeTouch
+          - browserChrome
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -79,9 +80,14 @@ jobs:
         working-directory: rexlab
         run: npm ci
 
-      - name: Install Chromium
+      - name: Install browser engine
         working-directory: rexlab
-        run: npx playwright install --with-deps chromium
+        run: |
+          if [ "${{ matrix.script }}" = "browserChrome" ]; then
+            npx playwright install --with-deps webkit
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       - name: Run browser contract
         working-directory: rexlab
