@@ -53,6 +53,7 @@
 .coloring-gallery button:focus-visible { outline: 3px solid var(--fm-amber); outline-offset: 2px; }
 .coloring-gallery svg { flex-shrink: 0; width: 24px; height: 24px; }
 .gallery-header, .gallery-actions, .gallery-count, .gallery-actions > span { display: flex; align-items: center; gap: 8px; }
+.gallery-actions { align-items: stretch; }
 .gallery-header { flex-shrink: 0; }
 .gallery-header h1 { display: flex; align-items: center; gap: 8px; flex: 1; margin: 0; font-size: clamp(20px, 3vw, 28px); }
 .gallery-count { color: var(--fm-amber); font-size: 22px; font-weight: 800; }
