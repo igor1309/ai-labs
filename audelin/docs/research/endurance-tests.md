@@ -224,7 +224,7 @@ Guards, passing on trunk:
 The log now builds only the rows from the first that changed, edits its
 text from there, and lays out only the height it shows when the text
 fills it. `TranscriptLogLoadTests` holds an update to the newest of 800
-entries within 3x one with 20, and a row count shows such an update
+or 6,000 entries within 3x one with 20, and a row count shows such an update
 builds one row (LAB-771).
 
 Still open (LAB-767): the panel's model cost per update still grows with
