@@ -61,11 +61,11 @@ const { chromium } = require("playwright");
           return { top: r.top, bottom: r.bottom, width: r.width, left: r.left, right: r.right,
             clipped: button.scrollHeight > button.clientHeight + 1 };
         }));
-        assert.equal(bounds.length, 4);
+        assert.equal(bounds.length, 5);
         for (const b of bounds) {
           const context = JSON.stringify({ width, height, language, bounds });
-          assert(Math.abs(b.top - bounds[0].top) < 1, context);
-          assert(Math.abs(b.bottom - bounds[0].bottom) < 1, context);
+          const row = bounds.filter(other => Math.abs(other.top - b.top) < 1);
+          assert(row.every(other => Math.abs(other.bottom - b.bottom) < 1), context);
           assert(b.bottom - b.top >= 60 && b.width >= 60, context);
           assert(b.left >= 0 && b.right <= width + 1 && b.bottom <= height, context);
           assert(!b.clipped, context);
