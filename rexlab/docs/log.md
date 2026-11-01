@@ -1,6 +1,12 @@
 # rexlab — Change Log
 
+## 2026-11-01
+
+- LAB-825: Ankylosaurus coloring has new curved armor, cheek horns, sturdy feet and prehistoric scenery, with larger regions for Hatchling and extra armor and landscape details for Explorer and Paleontologist. Saved drawings retain their original artwork.
+
 ## 2026-10-31
+
+- LAB-825: Coloring adds Ankylosaurus at every age level, with broad armor panels, short legs and a club tail. Its drawings join the shared gallery and star collection and stay editable after reopening.
 
 - LAB-799: Landscape colouring keeps a single narrow column of 48px controls centered below the system safe area and removes the idle save prompt; save failures keep a visible retry action.
 - LAB-824: Stegosaurus gains a richer prehistoric coloring scene for Explorer and Paleontologist, with patterned back plates, body markings and scenery. Hatchling keeps the simple drawing, and saved works retain their original artwork across age changes.

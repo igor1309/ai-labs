@@ -172,8 +172,8 @@ const { chromium } = require("playwright");
 
     // Layout contracts use the actual Home route for all age choices and every
     // phone/tablet orientation, language and theme, without a screen harness.
-    for (const [width, height] of [[1024, 768], [768, 1024], [390, 844], [844, 390], [320, 568], [568, 320]]) {
-      for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) for (const creature of ["stegosaurus", "triceratops"]) {
+    for (const [width, height] of [[1180, 820], [1024, 768], [768, 1024], [390, 844], [844, 390], [320, 568], [568, 320]]) {
+      for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) for (const creature of ["stegosaurus", "triceratops", "ankylosaurus"]) {
         const level = ["hatchling", "explorer", "paleontologist"][(width + (language === "en" ? 0 : 1) + (theme === "light" ? 0 : 1)) % 3];
         const c = await browser.newContext({ viewport: { width, height }, reducedMotion: "reduce", serviceWorkers: "block" });
         const p = await c.newPage(); p.setDefaultTimeout(15000);
@@ -192,6 +192,12 @@ const { chromium } = require("playwright");
             });
             const details = JSON.stringify({ width, height, language, theme, level, creature, layout });
             assert.deepEqual(layout.scroll, [width, height], details);
+            const overflowingLabels = await p.locator(".gallery-new > span").evaluateAll(labels => labels.filter(label => {
+              const button = label.closest("button").getBoundingClientRect(), range = document.createRange();
+              range.selectNodeContents(label);
+              return [...range.getClientRects()].some(b => b.x < button.x - 1 || b.y < button.y - 1 || b.right > button.right + 1 || b.bottom > button.bottom + 1);
+            }).map(label => label.textContent));
+            assert.deepEqual(overflowingLabels, [], details);
             for (const b of layout.boxes) {
               assert(b.x >= -1 && b.y >= -1 && b.x + b.w <= width + 1 && b.y + b.h <= height + 1, details);
               if (b.tag === "BUTTON") { assert(b.w >= (b.rail ? 48 : 60) && b.h >= (b.rail ? 48 : 60), details); assert.equal(b.text, b.text.toUpperCase()); }
@@ -201,8 +207,8 @@ const { chromium } = require("playwright");
             }
           };
           await checkLayout();
-          assert.equal(await p.locator(".gallery-new").count(), 2);
-          await p.getByRole("button", { name: creature === "stegosaurus" ? (language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК") : (language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС"), exact: true }).press("Enter");
+          assert.equal(await p.locator(".gallery-new").count(), 3);
+          await p.getByRole("button", { name: creature === "stegosaurus" ? (language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК") : creature === "triceratops" ? (language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС") : (language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР"), exact: true }).press("Enter");
           await p.locator(".coloring-workshop").waitFor(); await checkLayout();
           for (const [label, option, count] of language === "en" ? [["COLOR", "BLUE", 13], ["SIZE", "BRUSH LARGE", 4]] : [["ЦВЕТ", "ГОЛУБОЙ", 13], ["РАЗМЕР", "КИСТЬ БОЛЬШОЙ", 4]]) {
             await p.getByRole("button", { name: label, exact: true }).press("Enter");
@@ -211,9 +217,7 @@ const { chromium } = require("playwright");
           }
           await p.getByRole("button", { name: language === "en" ? "FILL" : "ЗАЛИВКА", exact: true }).press("Enter");
           const box = await p.locator("canvas").boundingBox();
-          const [x, y, region, geometry] = creature === "stegosaurus"
-            ? level === "hatchling" ? [420, 330, "body", "stegosaurus-production-1"] : [440, 396, "flank", "stegosaurus-explorer-1"]
-            : level === "hatchling" ? [280, 360, "body", "triceratops-production-1"] : [424, 370, "flank", "triceratops-explorer-1"];
+          const [x, y, region, geometry] = creature === "stegosaurus" ? (level === "hatchling" ? [420, 330, "body", "stegosaurus-production-1"] : [440, 396, "flank", "stegosaurus-explorer-1"]) : creature === "ankylosaurus" ? (level === "hatchling" ? [467, 407, "scute-10", "ankylosaurus-hatchling-2"] : [534, 331, "scute-10", "ankylosaurus-explorer-1"]) : level === "hatchling" ? [280, 360, "body", "triceratops-production-1"] : [424, 370, "flank", "triceratops-explorer-1"];
           await p.mouse.click(box.x + box.width * x / 920, box.y + box.height * y / 620);
           await p.waitForFunction(() => /^(SAVED|СОХРАНЕНО)$/.test(document.querySelector(".coloring-save")?.textContent));
           const documents = await p.evaluate(async () => {
@@ -230,6 +234,7 @@ const { chromium } = require("playwright");
           await p.locator(".coloring-result").waitFor(); await checkLayout();
           assert.equal(await p.locator("canvas").evaluate(e => getComputedStyle(e).animationName), "fade-in");
           assert.equal(await p.evaluate(() => JSON.parse(localStorage.getItem("rexlab-age-level")).level), level);
+          await p.getByRole("button", { name: language === "en" ? "EDIT" : "ЕЩЁ РИСОВАТЬ", exact: true }).evaluate(e => Promise.all(document.getAnimations().map(a => a.finished)));
           const edit = await p.getByRole("button", { name: language === "en" ? "EDIT" : "ЕЩЁ РИСОВАТЬ", exact: true }).boundingBox();
           await p.mouse.dblclick(edit.x + edit.width / 2, edit.y + edit.height / 2, { delay: 30 });
           await p.locator(".coloring-workshop").waitFor();
@@ -237,7 +242,7 @@ const { chromium } = require("playwright");
         } finally { await c.close(); }
       }
     }
-    console.log("PASS coloring flow: production Home/counts/starts, offline reload, draw/restore/reedit, independent rewards, storage retry/loss, rotation, double taps and 48 creature/device/language/theme layouts with age-selected artwork");
+    console.log("PASS coloring flow: production Home/counts/starts, offline reload, draw/restore/reedit, independent rewards, storage retry/loss, rotation, double taps and 84 creature/device/language/theme layouts with age-selected artwork");
   } finally {
     try { await browser?.close(); }
     finally {
