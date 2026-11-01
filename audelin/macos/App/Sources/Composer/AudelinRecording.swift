@@ -1,74 +1,30 @@
-import AVFoundation
 import CallAudioAccess
 import CoreAudioProcesses
 import Foundation
 import Lifecycle
 import LiveText
-import struct MicrophoneCapture.AudioPiece
-import ParakeetRecognizer
 import Preferences
 import Recording
 import Synchronization
-import struct SystemAudioCapture.AudioPiece
-import enum SystemAudioCapture.ProcessSelection
 
 /// Retains the application's connected recording, detector and model load.
-public final class AudelinRecording: Sendable {
+final class AudelinRecording: Sendable {
 
-    public let inputs: RecordingInputs
-    public let panel: AudelinPanel
-    public let detectionFailures: AsyncStream<any Error>
+    let inputs: RecordingInputs
+    let panel: AudelinPanel
+    let detectionFailures: AsyncStream<any Error>
     private let conditions: RecordingConditions
     private let delivery: ApplicationDelivery
 
-    public convenience init(
-        preferences: PreferencesStore,
-        access: AccessPolicy,
-        makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
-        makeRecording: @escaping MakeRecordingModel,
-        makeSession: @escaping MakeSessionModel
-    ) async throws {
-
-        await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
-        try await self.init(
-            preferences: preferences, access: access,
-            processes: CoreAudioProcesses(binding: CoreAudioBinding(), clock: ContinuousCallClock()),
-            now: { Date() }, timeZone: { .current },
-            startMicrophone: startProductionMicrophone, startCall: startProductionCallAudio,
-            recognizerSource: { try await ParakeetRecognizer() }, missingModels: productionMissingModels,
-            makeConditions: { composeRecordingConditions(recording: $0, callsURL: $1, access: access) },
-            startModel: { startLiveModelLoading() }, panel: AudelinPanel(makeReading: makeReading),
-            makeRecording: makeRecording, makeSession: makeSession
-        )
-        // Reading the status never asks; without this request macOS never prompts.
-        AVCaptureDevice.requestAccess(for: .audio) { [conditions] _ in Task { await conditions.refresh() } }
-    }
-
     init(
-        preferences: PreferencesStore, access: AccessPolicy, processes: CoreAudioProcesses,
-        now: @escaping @Sendable () -> Date, timeZone: @escaping @Sendable () -> TimeZone,
-        startMicrophone: @escaping @Sendable () async throws -> StartedCapture<MicrophoneCapture.AudioPiece>,
-        startCall: @escaping @Sendable (SystemAudioCapture.ProcessSelection) async throws -> StartedCapture<SystemAudioCapture.AudioPiece>,
-        recognizerSource: @escaping @Sendable () async throws -> any Recognizer,
-        missingModels: @escaping @Sendable () -> [String],
-        makeConditions: (RecordingInputs, URL) -> RecordingConditions,
-        startModel: () -> Task<Void, any Error>,
-        panel: AudelinPanel,
-        makeRecording: MakeRecordingModel,
-        makeSession: @escaping MakeSessionModel
+        preferences: PreferencesStore, boundary: ComposerBoundary, processes: CoreAudioProcesses,
+        panel: AudelinPanel
     ) async throws {
 
         let app = RecordingCallApp()
         self.panel = panel
         let (recording, conditions) = await composeRecordingWithPreferences(
-            preferences: preferences, access: access,
-            makePieces: composeRecordingPieces(
-                preferences: preferences, callApp: app, processes: processes,
-                now: now, timeZone: timeZone, startMicrophone: startMicrophone,
-                startCall: startCall, recognizerSource: recognizerSource, missingModels: missingModels
-            ),
-            makeConditions: makeConditions, panel: panel, makeModel: makeRecording,
-            makeSession: makeSession
+            preferences: preferences, callApp: app, processes: processes, boundary: boundary, panel: panel
         )
         let inputs = recording
         self.inputs = inputs
@@ -76,17 +32,21 @@ public final class AudelinRecording: Sendable {
         await conditions.refresh()
         let calls: CallRecordingSubscription
         do {
-            calls = try await composeCalls(processes, to: inputs, conditions: conditions, startedApp: { app.started($0) })
+            calls = try await composeCalls(processes, to: inputs, conditions: conditions, startedApp: { app.started($0) }, sink: boundary.log)
         } catch {
             await processes.stop()
             Task { await inputs.end() }
             throw error
         }
         detectionFailures = calls.failures
-        delivery = ApplicationDelivery(processes: processes, calls: calls, model: startModel())
+        delivery = ApplicationDelivery(processes: processes, calls: calls, model: boundary.recognizers.startLoading())
+        Task {
+            await boundary.microphonePermission.request()
+            await conditions.refresh()
+        }
     }
 
-    public func lifecycle(terminate: @escaping @Sendable () async -> Void) -> LifecycleEffectHandler {
+    func lifecycle(terminate: @escaping @Sendable () async -> Void) -> LifecycleEffectHandler {
 
         LifecycleEffectHandler(delivery: delivery, recording: ApplicationRecording(recording: inputs), terminate: terminate)
     }

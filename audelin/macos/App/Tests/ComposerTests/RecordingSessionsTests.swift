@@ -1,328 +1,217 @@
+import BlockingTestWork
+import CoreAudioProcesses
 import Foundation
+import Preferences
 import Recording
-import Session
+import SessionRehearsal
+import Synchronization
 import Testing
-@testable import Audelin
 @testable import Composer
 
+/// What each Recording id gets from `RecordingSessions`. Recording never ends
+/// an id before it begins it through the menu, so these go in at the adapter's
+/// own entry, on the boundary an application composes it with.
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingSessionsTests {
 
-    @Test func sessionHealthMapsToFaultsOnce() async throws {
+    @Test func anEndBeforeItsBeginReturnsEndedWithoutBuildingASession() async throws {
 
-        let cases: [(SessionEvent, RecordingFault?)] = [
-            (.pieceFailed(.access(.microphone), error: "lost"), .microphone),
-            (.pieceFailed(.capture(.microphone), error: "lost"), .microphone),
-            (.accessChanged(.microphone, available: false), .microphone),
-            (.pieceFailed(.access(.call), error: "lost"), .callAudio),
-            (.pieceFailed(.capture(.call), error: "lost"), .callAudio),
-            (.accessChanged(.call, available: false), .callAudio),
-            (.pieceFailed(.track(.microphone), error: "full"), .diskFull),
-            (.pieceFailed(.track(.call), error: "full"), .diskFull),
-            (.pieceFailed(.folder, error: "lost"), nil),
-            (.pieceFailed(.processes, error: "lost"), nil),
-            (.pieceFailed(.transcript, error: "lost"), nil),
-            (.pieceFailed(.callText, error: "lost"), nil),
-        ]
-        for (event, fault) in cases {
-            try await withSessionRig(connect: disconnected) { rig, _ in
-                let connection = RecordingConnection()
-                let adapter = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                                                report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
-                #expect(await adapter.begin(id: 17) == .ready)
-                await connection.session.send(event)
-                await connection.session.send(event)
-                await adapter.end(id: 17)
-                #expect(connection.faults == fault.map { [.init(id: 17, report: .failed($0))] } ?? [], "\(event)")
+        try await withSessions { rig in
+            await rig.sessions.end(id: 5)
+            #expect(await rig.sessions.begin(id: 5) == .ended)
+            #expect(rig.microphones.count == 0)
+
+            // Only that id is spent: the next begins, and the same id's next begin too.
+            #expect(await rig.sessions.begin(id: 6) == .ready)
+            #expect(rig.microphones.count == 1)
+            await rig.sessions.end(id: 6)
+            #expect(await rig.sessions.begin(id: 5) == .ready)
+            #expect(rig.microphones.count == 2)
+            await rig.sessions.end(id: 5)
+        }
+    }
+
+    @Test func endingAnUnknownOrFinishedIdReturnsWithoutBuilding() async throws {
+
+        try await withSessions { rig in
+            await rig.sessions.end(id: 99)
+            #expect(rig.microphones.count == 0)
+            #expect(await rig.sessions.begin(id: 1) == .ready)
+            await rig.sessions.end(id: 1)
+            let stops = rig.microphones.stops
+            await rig.sessions.end(id: 1)
+            #expect(rig.microphones.count == 1)
+            #expect(rig.microphones.stops == stops)
+        }
+    }
+
+    @Test func repeatingABeginAnswersFromTheSameSession() async throws {
+
+        try await withSessions { rig in
+            #expect(await rig.sessions.begin(id: 12) == .ready)
+            #expect(await rig.sessions.begin(id: 12) == .ready)
+            #expect(rig.microphones.count == 1)
+            await rig.sessions.end(id: 12)
+        }
+    }
+
+    @Test func cannotRecordIsReportedOnce() async throws {
+
+        try await withSessions { rig in
+            #expect(await rig.sessions.begin(id: 7) == .ready)
+            rig.microphones.capture(0).end(throwing: ScriptFailure.failed)
+            rig.calls.capture(0).end(throwing: ScriptFailure.failed)
+            await rig.reports.wait(for: .init(id: 7, report: .cannotRecord("no track can record")))
+            await rig.sessions.end(id: 7)
+            #expect(rig.reports.all.filter { if case .cannotRecord = $0.report { true } else { false } }
+                    == [.init(id: 7, report: .cannotRecord("no track can record"))])
+            let faults = rig.reports.all.filter { if case .failed = $0.report { true } else { false } }
+            #expect(faults.count == 2)
+            #expect(faults.contains(.init(id: 7, report: .failed(.microphone))))
+            #expect(faults.contains(.init(id: 7, report: .failed(.callAudio))))
+        }
+    }
+
+    @Test func aFaultIsReportedOncePerSessionNotOncePerActor() async throws {
+
+        try await withSessions { rig in
+            for (index, id) in [UInt64(21), 34].enumerated() {
+                #expect(await rig.sessions.begin(id: id) == .ready)
+                rig.microphones.capture(index).end(throwing: ScriptFailure.failed)
+                await rig.reports.wait(for: .init(id: id, report: .failed(.microphone)))
+                await rig.sessions.end(id: id)
             }
+            #expect(rig.reports.all.filter { if case .failed = $0.report { true } else { false } } == [
+                .init(id: 21, report: .failed(.microphone)), .init(id: 34, report: .failed(.microphone)),
+            ])
         }
     }
 
-    @Test func faultsBeforeReadyAreDeliveredAfterReady() async throws {
+    @Test func overlappingSessionsKeepTheirReportsAndSwitchesToThemselves() async throws {
 
-        let started = Signal(), release = Signal()
-        defer { started.end(); release.end() }
-        try await withSessionRig(connect: disconnected, beforeMicrophoneStartReturns: {
-            started.send(); await release.next()
-        }) { rig, _ in
-            let connection = RecordingConnection()
-            let adapter = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
-            let begin = Task { await adapter.begin(id: 18) }
-            await started.next()
-            await connection.session.send(.pieceFailed(.track(.microphone), error: "full"))
-            _ = try await connection.session.state { $0.health(of: .track(.microphone)) == .failed("full") }
-            release.end()
-            #expect(await begin.value == .ready)
-            await connection.session.send(.pieceFailed(.track(.call), error: "also full"))
-            await adapter.end(id: 18)
-            #expect(connection.faults == [.init(id: 18, report: .failed(.diskFull))])
-        }
-    }
+        try await withSessions { rig in
+            #expect(await rig.sessions.begin(id: 1) == .ready)
+            await rig.panel.send(.switchLiveTextOn)
+            await rig.log.wait { wants($0, id: 1) }
 
-    @Test func faultsAreDeduplicatedPerSession() async throws {
+            #expect(await rig.sessions.begin(id: 2) == .ready)
+            rig.microphones.capture(0).end(throwing: ScriptFailure.failed)
+            await rig.reports.wait(for: .init(id: 1, report: .failed(.microphone)))
+            #expect(!rig.log.entries.all.contains { wants($0, id: 2) })
+            #expect(!rig.reports.all.contains(.init(id: 2, report: .failed(.microphone))))
 
-        try await withSessionRig(connect: disconnected) { first, _ in
-            try await withSessionRig(connect: disconnected) { second, _ in
-                let reports = RecordingConnection(), firstConnection = RecordingConnection(), secondConnection = RecordingConnection()
-                let adapter = RecordingSessions(makePieces: { $0 == 21 ? first.pieces : second.pieces }, liveText: { false },
-                                                report: reports.report, connect: { pieces, session in
-                    if pieces === first.pieces { return firstConnection.connect(pieces, session) }
-                    return secondConnection.connect(pieces, session)
-                }, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
-                for (id, connection): (UInt64, RecordingConnection) in [(21, firstConnection), (34, secondConnection)] {
-                    #expect(await adapter.begin(id: id) == .ready)
-                    await connection.session.send(.accessChanged(.microphone, available: false))
-                    await connection.session.send(.pieceFailed(.capture(.microphone), error: "lost"))
-                    await adapter.end(id: id)
-                }
-                #expect(reports.faults == [.init(id: 21, report: .failed(.microphone)), .init(id: 34, report: .failed(.microphone))])
-            }
-        }
-    }
-
-    @Test func readyUsesOneFactoryAndTheLiveTextPreference() async throws {
-
-        try await withSessionRig(connect: disconnected) { rig, _ in
-            let connection = RecordingConnection()
-            let ids = Values<UInt64>()
-            let adapter = RecordingSessions(makePieces: { id in ids.append(id); return rig.pieces },
-                                            liveText: { true }, report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
-            #expect(await adapter.begin(id: 12) == .ready)
-            #expect(await adapter.begin(id: 12) == .ready)
-            #expect(ids.all == [12])
-            _ = try await connection.session.state { $0.wantedLiveText }
-            let text = try #require(await rig.pieces.text)
-            #expect(await text.state.status != .off)
-            await adapter.end(id: 12)
-            let ended = try await connection.session.state { $0.phase == .ended }
-            #expect(ended.phase == .ended)
-            #expect(ended.microphoneTrack == .closed)
-            #expect(ended.callTrack == .closed)
-            #expect(ended.transcript == .closed)
-            #expect(await text.state.status == .finished)
-            #expect(rig.microphone.stops.all == [true])
-            #expect(rig.call.stops.all == [true])
-            #expect(connection.joined.all == [true])
-            #expect(connection.reports.all == [.init(id: 12, report: .callCreated(id: "1970.01.01-0000"))])
-        }
-    }
-
-    @Test func cannotRecordIsTheBeginResult() async throws {
-
-        let started = Signal(), release = Signal()
-        defer { started.end(); release.end() }
-        try await withSessionRig(connect: disconnected, beforeMicrophoneStartReturns: {
-            started.send(); await release.next()
-        }) { rig, _ in
-            let connection = RecordingConnection()
-            let adapter = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
-            let begin = Task { await adapter.begin(id: 3) }
-            await started.next()
-            await rig.pieces.news.continuation.yield(.pieceFailed(.folder, error: "unavailable"))
-            #expect(await begin.value == .cannotRecord("folder: unavailable"))
-            let end = Task { await adapter.end(id: 3) }
-            _ = try await connection.session.state { $0.phase == .ending }
-            release.end()
-            await end.value
-            #expect(connection.reports.all == [.init(id: 3, report: .callCreated(id: "1970.01.01-0000"))])
-            #expect(connection.joined.all == [true])
-        }
-    }
-
-    @Test func laterCannotRecordIsReportedOnce() async throws {
-
-        try await withSessionRig(connect: disconnected) { rig, _ in
-            let connection = RecordingConnection()
-            let adapter = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
-            #expect(await adapter.begin(id: 7) == .ready)
-            rig.microphone.source.continuation.finish(throwing: ScriptFailure.failed)
-            rig.call.source.continuation.finish(throwing: ScriptFailure.failed)
-            await connection.waitForReport(.init(id: 7, report: .failed(.microphone)))
-            await rig.pieces.news.continuation.yield(.pieceFailed(.transcript, error: "unavailable"))
-            _ = try await connection.session.state { $0.health(of: .transcript) == .failed("unavailable") }
-            await connection.waitForReport(.init(id: 7, report: .cannotRecord("no track can record")))
-            await adapter.end(id: 7)
-            // Capture faults can arrive in either order from the independent streams.
-            #expect(connection.faults.count == 2)
-            #expect(connection.faults.contains(.init(id: 7, report: .failed(.microphone))))
-            #expect(connection.faults.contains(.init(id: 7, report: .failed(.callAudio))))
-            #expect(connection.reports.all.filter { if case .failed = $0.report { false } else { true } }
-                    == [.init(id: 7, report: .callCreated(id: "1970.01.01-0000")),
-                        .init(id: 7, report: .cannotRecord("no track can record"))])
-            #expect(connection.joined.all == [true])
-        }
-    }
-
-    @Test func endDuringBringUpWaitsForThePendingCapture() async throws {
-
-        let started = Signal(), release = Signal()
-        defer { started.end(); release.end() }
-        try await withSessionRig(connect: disconnected, beforeMicrophoneStartReturns: {
-            started.send(); await release.next()
-        }) { rig, _ in
-            let connection = RecordingConnection()
-            let adapter = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
-            let begin = Task { await adapter.begin(id: 4) }
-            await started.next()
-            let end = Task { await adapter.end(id: 4) }
-            _ = try await connection.session.state { $0.phase == .ending }
-            #expect(rig.microphone.stops.all.isEmpty)
-            release.end()
-            #expect(await begin.value == .ended)
-            await end.value
-            _ = try await connection.session.state { $0.phase == .ended }
-            #expect(rig.microphone.stops.all == [true])
-            #expect(rig.call.starts.all.isEmpty)
-            #expect(connection.joined.all == [true])
-            #expect(connection.reports.all == [.init(id: 4, report: .callCreated(id: "1970.01.01-0000"))])
-        }
-    }
-
-    @Test func recordingWiringForwardsLaterFailureAndEndsTheSession() async throws {
-
-        try await withSessionRig(connect: disconnected) { rig, folder in
-            let recording = await composeRecording(initial: .init(missing: []), access: testAccessPolicy(), makePieces: { _ in rig.pieces }, liveText: { false }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
-            await recording.send(.userStart)
-            _ = try await recordingState(recording) { $0.phase == .recording }
-            let text = try #require(await rig.pieces.text)
-            #expect(await text.state.status == .off)
-            rig.microphone.source.continuation.finish(throwing: ScriptFailure.failed)
-            rig.call.source.continuation.finish(throwing: ScriptFailure.failed)
-            let ended = try await recordingState(recording) { $0.phase == .idle }
-            #expect(ended.cannotRecord == "no track can record")
-            #expect(ended.session == nil)
-            #expect(try await recordedSamples(folder.appendingPathComponent("microphone.caf")) == [0.25, -0.5])
-            #expect(try await recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5])
-            await recording.end()
-        }
-    }
-
-    @Test func endingUnknownAndAlreadyEndedIdsReturnsWithoutBuilding() async throws {
-
-        try await withSessionRig(connect: disconnected) { rig, _ in
-            let connection = RecordingConnection(), ids = Values<UInt64>()
-            let adapter = RecordingSessions(makePieces: { id in ids.append(id); return rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
-            await adapter.end(id: 99)
-            #expect(ids.all.isEmpty)
-            #expect(await adapter.begin(id: 8) == .ready)
-            await adapter.end(id: 8)
-            #expect(connection.cancelled.all == [true])
-            await adapter.end(id: 8)
-            #expect(ids.all == [8])
-            #expect(connection.joined.all == [true])
-            #expect(connection.reports.all == [.init(id: 8, report: .callCreated(id: "1970.01.01-0000"))])
-        }
-    }
-
-    @Test func anEndBeforeItsBeginLeavesNothingRecording() async throws {
-
-        try await withSessionRig(connect: disconnected) { rig, _ in
-            let connection = RecordingConnection(), ids = Values<UInt64>()
-            let adapter = RecordingSessions(makePieces: { id in ids.append(id); return rig.pieces }, liveText: { false },
-                                            report: connection.report, connect: connection.connect, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
-            await adapter.end(id: 5)
-            #expect(await adapter.begin(id: 5) == .ended)
-            #expect(ids.all.isEmpty)
-            #expect(connection.sessions.all.isEmpty)
-            #expect(await adapter.begin(id: 6) == .ready)
-            await adapter.end(id: 6)
-            #expect(ids.all == [6])
-        }
-    }
-
-    @Test func sessionsAndUnexpectedEndReportsStayWithTheirIds() async throws {
-
-        try await withSessionRig(connect: disconnected) { first, _ in
-            try await withSessionRig(connect: disconnected) { second, _ in
-                let reports = RecordingConnection(), firstConnection = RecordingConnection(), secondConnection = RecordingConnection()
-                let adapter = RecordingSessions(makePieces: { $0 == 21 ? first.pieces : second.pieces }, liveText: { false },
-                                                report: reports.report, connect: { pieces, session in
-                    if pieces === first.pieces { return firstConnection.connect(pieces, session) }
-                    return secondConnection.connect(pieces, session)
-                }, sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: makeSession)
-                #expect(await adapter.begin(id: 21) == .ready)
-                #expect(await adapter.begin(id: 34) == .ready)
-                await firstConnection.session.send(.end)
-                await reports.waitForReport(.init(id: 21, report: .ended))
-                await adapter.end(id: 21)
-                #expect(reports.reports.all == [.init(id: 21, report: .callCreated(id: "1970.01.01-0000")),
-                                                .init(id: 34, report: .callCreated(id: "1970.01.01-0000")),
-                                                .init(id: 21, report: .ended)])
-                let secondNow = try await secondConnection.session.current()
-                #expect(secondNow.phase == .recording)
-                #expect(second.microphone.stops.all.isEmpty)
-                #expect(second.call.stops.all.isEmpty)
-                await adapter.end(id: 34)
-                #expect(firstConnection.joined.all == [true])
-                #expect(secondConnection.joined.all == [true])
-                #expect(second.microphone.stops.all == [true])
-                #expect(second.call.stops.all == [true])
-                #expect(reports.reports.all == [.init(id: 21, report: .callCreated(id: "1970.01.01-0000")),
-                                                .init(id: 34, report: .callCreated(id: "1970.01.01-0000")),
-                                                .init(id: 21, report: .ended)])
-            }
+            // The panel follows the session begun last, whichever ends first.
+            await rig.panel.send(.switchLiveTextOn)
+            await rig.log.wait { wants($0, id: 2) }
+            rig.microphones.capture(1).end(throwing: ScriptFailure.failed)
+            await rig.reports.wait(for: .init(id: 2, report: .failed(.microphone)))
+            await rig.sessions.end(id: 1)
+            await rig.sessions.end(id: 2)
+            #expect(rig.reports.all.filter { if case .failed = $0.report { true } else { false } } == [
+                .init(id: 1, report: .failed(.microphone)), .init(id: 2, report: .failed(.microphone)),
+            ])
         }
     }
 }
 
-private func disconnected(_: SessionPieces, _: SessionInputs) -> Task<Void, Never> { Task {} }
+/// The same through the menu: a session that follows another owns its switch.
+@MainActor
+@Suite(.timeLimit(.minutes(1)))
+struct FollowingSessionsTests {
 
-private struct SessionReport: Equatable, Sendable {
+    @Test func theLiveTextSwitchReachesOnlyTheSessionNowRecording() async throws {
 
+        try await withComposition(preferences: { .init(automaticRecording: false, liveText: false, callsFolder: $0) }) { rig in
+            try await rig.start()
+            try await rig.stop()
+            try await rig.start()
+            await rig.menu.sendPanel(.switchLiveTextOn)
+            await rig.log.wait { wants($0, id: 2) }
+            #expect(!rig.log.entries.all.contains { wants($0, id: 1) })
+            try await rig.stop()
+            await rig.menu.sendPanel(.switchLiveTextOn)
+            #expect(rig.log.entries.all.filter { wants($0, id: 3) }.isEmpty)
+        }
+    }
+}
+
+private func wants(_ entry: LogEntry, id: UInt64) -> Bool {
+
+    entry.message.hasPrefix("state id=\(id) ") && entry.message.contains(" wantedLiveText=true ")
+}
+
+private struct Reported: Equatable, Sendable {
     let id: UInt64
     let report: RecordingSessionReport
 }
 
-private final class RecordingConnection: Sendable {
-
-    let sessions = Values<SessionInputs>()
-    let reports = Values<SessionReport>()
-    let reported = Signal()
-    let joined = Values<Bool>()
-    let cancelled = Values<Bool>()
-
-    var session: SessionInputs { sessions.all[0] }
-
-    var faults: [SessionReport] { reports.all.filter { if case .failed = $0.report { true } else { false } } }
-
-    func report(_ id: UInt64, _ report: RecordingSessionReport) {
-
-        reports.append(.init(id: id, report: report))
-        reported.send()
+private final class Reports: Sendable {
+    private let stored = Values<Reported>()
+    private let arrival = Signal()
+    var all: [Reported] { stored.all }
+    func append(_ value: Reported) { stored.append(value); arrival.send() }
+    func wait(for value: Reported) async {
+        for await _ in arrival.stream where stored.all.contains(value) { return }
     }
+    func end() { arrival.end() }
+}
 
-    func waitForReport(_ expected: SessionReport) async {
-        while !reports.all.contains(expected) { await reported.next() }
-    }
-
-    func connect(_ pieces: SessionPieces, _ session: SessionInputs) -> Task<Void, Never> {
-
-        sessions.append(session)
-        let subscription = subscribe(pieces, to: session)
-        return Task {
-            await withTaskCancellationHandler {
-                await subscription.value
-                // Stay alive until cancelled, so only the adapter's cancel can end this.
-                let (held, _) = AsyncStream<Void>.makeStream()
-                for await _ in held {}
-                joined.append(true)
-            } onCancel: {
-                cancelled.append(true)
-                subscription.cancel()
-            }
-        }
+/// Counts every capture made, and keeps each so a test can end it.
+private final class Captures: Sendable {
+    private let made = Values<CaptureScript<CaptureBuffer>>()
+    private let stopped = Mutex(0)
+    var count: Int { made.all.count }
+    var stops: Int { stopped.withLock { $0 } }
+    func capture(_ index: Int) -> AsyncThrowingStream<CaptureBuffer, any Error>.Continuation { made.all[index].source.continuation }
+    func start() throws -> StartedCapture<CaptureBuffer> {
+        let script = CaptureScript<CaptureBuffer>(first: .init(samples: [0.25], sampleRate: 48_000), last: .init(samples: [0.5], sampleRate: 48_000), fails: false)
+        made.append(script)
+        let started = try script.start()
+        return StartedCapture(stream: started.stream, stop: {
+            self.stopped.withLock { $0 += 1 }
+            try await started.stop()
+        })
     }
 }
 
-private func recordingState(_ recording: RecordingInputs, where matches: (RecordingState) -> Bool) async throws -> RecordingState {
+private extension AsyncThrowingStream<CaptureBuffer, any Error>.Continuation {
+    func end(throwing error: any Error) { finish(throwing: error) }
+}
 
-    for await state in await recording.states() {
-        if matches(state) { return state }
+private struct SessionsRig: Sendable {
+    let sessions: RecordingSessions
+    let panel: AudelinPanel
+    let microphones: Captures
+    let calls: Captures
+    let reports: Reports
+    let log: FixtureLog
+}
+
+private func withSessions(_ body: @Sendable (SessionsRig) async throws -> Void) async throws {
+
+    try await withComposeFolder { root in
+        let microphones = Captures(), calls = Captures(), reports = Reports(), log = FixtureLog(), clock = FixtureClock()
+        defer { reports.end(); clock.finish() }
+        var boundary = rehearsalBoundary(capturePersistence: .recorded,
+            microphone: { try microphones.start() }, call: { _ in try calls.start() },
+            mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
+            now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals)
+        boundary.time = clock.time
+        boundary.log = log
+        boundary.processes = FixtureProcesses(binding: CallBinding(fails: false))
+        let url = root.appendingPathComponent("preferences.json")
+        let preferences = try await offPool {
+            let store = PreferencesStore(fileURL: url)
+            try store.write(Preferences(liveText: false, callsFolder: root))
+            return store
+        }
+        let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
+        let app = RecordingCallApp()
+        app.started("us.zoom.xos")
+        let panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log, intervals: testIntervals)
+        let sessions = RecordingSessions(preferences: preferences, callApp: app, processes: processes, boundary: boundary,
+                                         report: { id, report in reports.append(.init(id: id, report: report)) }, panel: panel)
+        try await body(SessionsRig(sessions: sessions, panel: panel, microphones: microphones, calls: calls, reports: reports, log: log))
+        await processes.stop()
     }
-    throw ScriptFailure.failed
 }

@@ -6,5 +6,5 @@ import class TranscriptWriting.TranscriptWriting
 
 typealias SideReader = SideText
 typealias FillReader = FillIn
-public typealias CallReader = CallText
+typealias CallReader = CallText
 typealias WritingReader = TranscriptWriting<State>

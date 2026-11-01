@@ -1,11 +1,10 @@
 import Dispatch
-import AVFoundation
 import Foundation
 import Recording
 import Synchronization
 import CallAudioAccess
 
-public final class RecordingConditions: Sendable {
+final class RecordingConditions: Sendable {
 
     private let checks: [(RecordingCondition, @Sendable () -> Bool)]
     private let send: @Sendable (RecordingEvent) async -> Void
@@ -16,39 +15,19 @@ public final class RecordingConditions: Sendable {
     // The checks read the disk and access status, which block, so they run here.
     private let checking = DispatchQueue(label: "audelin.RecordingConditions")
 
-    public convenience init(
-        recording: RecordingInputs,
-        microphoneAccess: @escaping @Sendable () -> Bool,
-        callsFolder: @escaping @Sendable () -> Bool,
-        room: @escaping @Sendable () -> Bool,
-        access: AccessPolicy
-    ) {
-
-        self.init(
-            send: recording.send,
-            microphoneAccess: microphoneAccess,
-            callsFolder: callsFolder, room: room, sink: SystemLogSink(), access: access
-        )
-    }
-
-    // The delivery seam exposes events that Recording may reduce without a state change.
-    init(
-        send: @escaping @Sendable (RecordingEvent) async -> Void,
-        microphoneAccess: @escaping @Sendable () -> Bool,
-        callsFolder: @escaping @Sendable () -> Bool,
-        room: @escaping @Sendable () -> Bool,
-        sink: any LogSink,
-        access: AccessPolicy
-    ) {
-
+    init(recording: RecordingInputs, callsURL: URL, boundary: ComposerBoundary) {
+        let access = accessPolicy(boundary.access)
+        let send = recording.send
+        let sink = boundary.log
         self.access = access
         self.send = { event in
             logCondition(event, sink: sink)
             await send(event)
         }
         checks = [
-            (.microphoneAccess, microphoneAccess),
-            (.callsFolder, callsFolder), (.room, room),
+            (.microphoneAccess, { boundary.microphonePermission.authorized() }),
+            (.callsFolder, { isCallsDirectory(callsURL) && FileManager.default.isWritableFile(atPath: callsURL.path) }),
+            (.room, { callsFolderHasRoom(at: callsURL, availableCapacity: { boundary.capacity.available(at: $0) }) }),
         ]
         observation.withLock { $0 = Task { [weak self] in
             for await _ in await access.states() {
@@ -57,7 +36,7 @@ public final class RecordingConditions: Sendable {
         } }
     }
 
-    public func refresh() async {
+    func refresh() async {
         _ = await access.refresh()
         await turn.take()
         let checks = checks
@@ -132,24 +111,12 @@ private final class Turn: Sendable {
     }
 }
 
-public func composeRecordingConditions(recording: RecordingInputs, callsURL: URL, access: AccessPolicy) -> RecordingConditions {
+func composeRecordingConditions(recording: RecordingInputs, callsURL: URL, boundary: ComposerBoundary) -> RecordingConditions {
 
-    RecordingConditions(
-        recording: recording,
-        microphoneAccess: { AVCaptureDevice.authorizationStatus(for: .audio) == .authorized },
-        callsFolder: {
-            isCallsDirectory(callsURL) && FileManager.default.isWritableFile(atPath: callsURL.path)
-        },
-        room: {
-            callsFolderHasRoom(at: callsURL, availableCapacity: { url in
-                try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-                    .volumeAvailableCapacityForImportantUsage
-            })
-        }, access: access
-    )
+    RecordingConditions(recording: recording, callsURL: callsURL, boundary: boundary)
 }
 
-func callsFolderHasRoom(at url: URL, availableCapacity: @Sendable (URL) -> Int64?) -> Bool {
+private func callsFolderHasRoom(at url: URL, availableCapacity: @Sendable (URL) -> Int64?) -> Bool {
 
     guard isCallsDirectory(url), let bytes = availableCapacity(url) else { return false }
     return bytes >= 30 * 1_000_000_000
@@ -161,7 +128,7 @@ private func isCallsDirectory(_ url: URL) -> Bool {
     return FileManager.default.fileExists(atPath: url.path, isDirectory: &directory) && directory.boolValue
 }
 
-func logCondition(_ event: RecordingEvent, sink: any LogSink) {
+private func logCondition(_ event: RecordingEvent, sink: any LogSink) {
 
     if case let .conditionChanged(condition, available) = event {
         sink.write(.init(category: .conditions, message: "condition=\(condition) available=\(available)"))

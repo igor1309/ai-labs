@@ -1,6 +1,5 @@
 import AppKit
 @testable import Audelin
-@testable import Composer
 import PanelUI
 import Preferences
 import Recording
@@ -10,34 +9,6 @@ import Testing
 struct FloatingPanelTests {
 
     @Test func windowDriverCarriesConfigurationVisibilityCloseAndFrames() async throws {
-
-        let recording = AsyncStream<RecordingState>.makeStream()
-        let failures = AsyncStream<any Error>.makeStream()
-        let states = AsyncStream<PanelState>.makeStream()
-        var events: [PanelEvent] = []
-        let model = await AudelinMenu(storage: WindowPreferences(), makeApplication: {
-            MenuApplication(states: { recording.stream }, failures: failures.stream,
-                send: { _ in Issue.record("Content binding does not send recording events") },
-                quit: { Issue.record("Content binding does not quit") },
-                panelStates: { states.stream }, sendPanel: { events.append($0) })
-        }, openFolder: { _ in Issue.record("Content binding does not open folders") },
-            openURL: { _ in Issue.record("Content binding does not open URLs") },
-            terminate: { Issue.record("Content binding does not terminate") }, didDeliver: {},
-            sink: WindowLogSpy(), presentPanel: { _ in Issue.record("Content binding does not change visibility") },
-            sleep: { _ in Issue.record("Content binding does not start a hide delay") })
-        let initial = panelContentBinding(model)
-        #expect(initial.state == PanelState(recording: .off, log: .empty))
-        let state = PanelState(recording: .on(elapsed: "00:02"), log: .liveTextOff(kept: nil))
-        states.continuation.yield(state)
-        recording.continuation.finish()
-        failures.continuation.finish()
-        states.continuation.finish()
-        await model.waitForObservers()
-        let updated = panelContentBinding(model)
-        #expect(updated.state == state)
-        #expect(initial.state == PanelState(recording: .off, log: .empty))
-        await updated.event(.jumpToLive).value
-        #expect(events == [.jumpToLive])
 
         let screen = NSRect(x: -1440, y: 24, width: 1440, height: 876)
         let initialFrame = NSRect(x: 0, y: 0, width: 360, height: 588)
@@ -147,13 +118,4 @@ private final class WindowSpy: PanelWindowDriver {
 
     func orderFrontRegardless() { visibility.append(true) }
     func orderOut(_ sender: Any?) { visibility.append(false) }
-}
-
-private struct WindowPreferences: PreferenceSettingsStorage {
-    func read() -> Preferences { .init() }
-    func write(_ preferences: Preferences) throws { Issue.record("Window actions do not write preferences") }
-}
-
-private struct WindowLogSpy: LogSink {
-    func write(_ entry: LogEntry) {}
 }

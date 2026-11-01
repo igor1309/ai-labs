@@ -1,21 +1,16 @@
 import struct CallText.State
 import LiveText
-import os
 import Reading
 
 /// A fresh ID for each call keeps overlapping hearings and writes distinct.
-struct ProfileIntervals: Sendable {
+public struct ProfileIntervals: Sendable {
 
-    let begin: @Sendable (StaticString) -> @Sendable () -> Void
+    public let begin: @Sendable (StaticString) -> @Sendable () -> Void
 
-    static let system: Self = {
-        let log = OSLog(subsystem: "dev.igor1309.audelin", category: .pointsOfInterest)
-        return Self { name in
-            let id = OSSignpostID(log: log)
-            os_signpost(.begin, log: log, name: name, signpostID: id)
-            return { os_signpost(.end, log: log, name: name, signpostID: id) }
-        }
-    }()
+    public init(begin: @escaping @Sendable (StaticString) -> @Sendable () -> Void) {
+        self.begin = begin
+    }
+
 }
 
 struct SignpostedPanelUpdate: Sendable {

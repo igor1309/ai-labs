@@ -1,7 +1,10 @@
 @testable import CallText
 import Foundation
+import LiveText
 import PanelUI
 import Reading
+import SessionRehearsal
+import Synchronization
 import Testing
 @testable import Composer
 
@@ -23,15 +26,30 @@ struct PanelLoadTests {
         // The quickest of three runs each, so a busy machine slows neither side alone.
         var early = Double.infinity, late = Double.infinity
         for _ in 0..<3 {
-            early = min(early, try await secondsPerState(entries: 20))
-            late = min(late, try await secondsPerState(entries: 1_620))
+            early = min(early, try await secondsPerUpdate(entries: 20))
+            late = min(late, try await secondsPerUpdate(entries: 1_620))
         }
         let busy = Int(late * Self.todaysRate * 100)
-        let line = report("\(early * 1000) ms a state early, \(late * 1000) ms late; "
+        let line = report("\(early * 1000) ms an update early, \(late * 1000) ms late; "
             + "at today's rate the model alone would keep the main actor \(busy)% busy late")
         FileHandle.standardError.write(Data(line.utf8))
-        FileHandle.standardError.write(Data(report("late, per step: \(steps(entries: 1_620))").utf8))
         #expect(late / early <= 3, "a state late in a long call costs the panel \(late / early)x one early")
+    }
+
+    /// The panel's own steps apart from the session around them.
+    @Test func eachStepOfATextStateCostsAboutTheSameLateAsEarly() {
+
+        var early = Double.infinity, late = Double.infinity
+        for _ in 0..<3 {
+            early = min(early, seconds(steps(entries: 20).reduce(.zero, +)))
+            late = min(late, seconds(steps(entries: 1_620).reduce(.zero, +)))
+        }
+        let names = ["mapping the text", "reducing", "comparing reading states", "mapping the panel", "comparing panel states"]
+        let perStep = zip(names, steps(entries: 1_620)).map { name, time in
+            "\(name) \(String(format: "%.2f", seconds(time) * 1000 / Double(Self.states - 1))) ms"
+        }
+        FileHandle.standardError.write(Data(report("late, per step: \(perStep.joined(separator: ", "))").utf8))
+        #expect(late / early <= 3, "the steps of a state late in a long call cost \(late / early)x one early")
     }
 
     @Test func loadReportNamesTheCompiledBuild() {
@@ -47,7 +65,7 @@ struct PanelLoadTests {
     }
 
     /// Where a state's time goes: each step the panel takes, timed apart.
-    private func steps(entries count: Int) -> String {
+    private func steps(entries count: Int) -> [Duration] {
 
         let feed = feed(entries: count)
         var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
@@ -70,11 +88,7 @@ struct PanelLoadTests {
             times[4] += clock.measure { _ = next == shown }
             shown = next!
         }
-        let names = ["mapping the text", "reducing", "comparing reading states", "mapping the panel", "comparing panel states"]
-        return zip(names, times).map { name, time in
-            let ms = (Double(time.components.seconds) + Double(time.components.attoseconds) / 1e18) * 1000 / Double(feed.count - 1)
-            return "\(name) \(String(format: "%.2f", ms)) ms"
-        }.joined(separator: ", ")
+        return times
     }
 
     /// States that each carry the whole call's `entries` with its last one
@@ -99,35 +113,92 @@ struct PanelLoadTests {
         return feed
     }
 
-    /// Feeds the panel `feed(entries:)` and times until it shows the last, per state.
-    private func secondsPerState(entries count: Int) async throws -> Double {
+    /// Feeds a composed session `entries` of speech at once, then one revision
+    /// of the last at a time, and gives the mean of the panel's own updates
+    /// after the first; the way from microphone to panel is the session's.
+    @MainActor
+    private func secondsPerUpdate(entries count: Int) async throws -> Double {
 
-        let states = Self.states
-        let feed = feed(entries: count)
+        let words = (0..<20).map { "word\($0)" }
+        var history: [Word] = []
+        for index in 0..<count - 1 {
+            let begins = Double(index) * 6
+            history += words.enumerated().map { Word($1, start: begins + Double($0) * 0.2, end: begins + Double($0) * 0.2 + 0.1) }
+            history.append(Word("end.", start: begins + 4, end: begins + 5))
+        }
+        let start = Double(count) * 6
+        let revision = { (step: Int) in Hearing(words: [Word("w\(step)", start: start, end: start + 0.1 + Double(step) / Self.todaysRate)], from: start) }
+        let recognizer = ScriptRecognizer(
+            hearings: [.success(Hearing(words: history + [Word("w0", start: start, end: start + 0.1)], finalThrough: start - 1))]
+                + (1..<Self.states).map { .success(revision($0)) },
+            endings: [.success(Hearing(words: []))]
+        )
+        let microphone = FedCapture(), call = FedCapture()
+        defer { microphone.end(); call.end() }
+        let updates = PanelUpdateTimes()
+        var mean = 0.0
+        try await withComposition(recognizers: (recognizer, QuietRecognizer(through: start + 60)), configure: { boundary in
+            boundary.capturePersistence = .transient
+            boundary.intervals = updates.intervals
+            boundary.microphone = FixtureMicrophone { microphone.started }
+            boundary.callAudio = FixtureCallAudio { _ in call.started }
+        }) { rig in
+            try await rig.start()
+            call.send(Array(repeating: 0, count: Int(start + 60) * 50), rate: 50)
+            var shown = await rig.menu.panelStates().makeAsyncIterator()
+            // Only the last row and the tail's size: reading all the rows would itself grow with the call.
+            func waitFor(_ pending: String) async {
+                while let state = await shown.next() {
+                    if case let .lines(lines) = state.log, lines.rows.tail.count < 20,
+                       case let .entry(entry) = lines.rows.last, entry.pending == pending { return }
+                }
+            }
+            // The call is already there and settled: only the states after it are the cost of a late state.
+            microphone.send([0])
+            await waitFor("w0")
+            updates.reset()
+            for step in 1..<Self.states {
+                microphone.send([0])
+                await waitFor("w\(step)")
+            }
+            mean = updates.mean
+            try await rig.stop()
+        }
+        return mean
+    }
+}
 
-        let clock = ReadingClockSpy()
-        let panel = clock.panel()
-        let input = AsyncStream<State>.makeStream()
-        let subscription = await panel.begin(id: 1, text: input.stream, enableLiveText: {})
-        await subscription.recordingChanged(.on(elapsed: 0))
-        var shown = await panel.states().makeAsyncIterator()
+private func seconds(_ duration: Duration) -> Double {
+    Double(duration.components.seconds) + Double(duration.components.attoseconds) / 1e18
+}
 
-        func waitFor(_ pending: String) async {
-            while let state = await shown.next() {
-                if case let .lines(lines) = state.log, case let .entry(entry) = lines.rows.last, entry.pending == pending { return }
+/// Times the composition's `PanelUpdate` intervals as they end.
+private final class PanelUpdateTimes: Sendable {
+
+    private let measured = Mutex((total: 0.0, count: 0))
+
+    var intervals: ProfileIntervals {
+        ProfileIntervals { name in
+            guard String(describing: name) == "PanelUpdate" else { return {} }
+            let began = ContinuousClock.now
+            return {
+                let elapsed = seconds(ContinuousClock.now - began)
+                self.measured.withLock { $0.total += elapsed; $0.count += 1 }
             }
         }
-        // The call is already there: only the states after it are the cost of a late state.
-        input.continuation.yield(feed[0])
-        await waitFor("w0")
-        let began = ContinuousClock.now
-        for state in feed.dropFirst() { input.continuation.yield(state) }
-        await waitFor("w\(states - 1)")
-        let elapsed = ContinuousClock.now - began
-
-        input.continuation.finish()
-        await panel.end(id: 1)
-        await subscription.end()
-        return (Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18) / Double(states - 1)
     }
+
+    var mean: Double { measured.withLock { $0.count == 0 ? 0 : $0.total / Double($0.count) } }
+
+    func reset() { measured.withLock { $0 = (0, 0) } }
+}
+
+/// The other side of the call: it says it heard no word through the whole
+/// call, which is what lets the first side's rows settle.
+private struct QuietRecognizer: Recognizer {
+
+    let through: Double
+
+    func hear(_ chunk: AudioChunk) async throws -> Hearing { Hearing(words: [], noWordBefore: through) }
+    func finish() async throws -> Hearing { Hearing(words: []) }
 }
