@@ -59,7 +59,7 @@ async function check(browser, files, device) {
     const cancel = () => page.evaluate(() => window.dispatchEvent(new PointerEvent("pointercancel", { pointerId: 1, bubbles: true })));
     await home();
     await protection(page);
-    assert.equal(await page.locator("body").evaluate(e => getComputedStyle(e).touchAction), "manipulation");
+    assert.equal(await page.locator("body").evaluate(e => getComputedStyle(e).touchAction), "pan-x pan-y");
     assert(!await page.locator('meta[name="viewport"]').getAttribute("content").then(value => /user-scalable\s*=\s*no|maximum-scale\s*=\s*1(?:\D|$)/.test(value)));
 
     // A nested Home scroller must still accept a native finger swipe.
