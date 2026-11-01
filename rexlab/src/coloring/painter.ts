@@ -1,5 +1,5 @@
 import { BASE_COLOR, type Action, type PaintInspection, type Point } from "./index.ts";
-import { DETAILS, HEIGHT, REGIONS, VECTOR_SCALE, WIDTH, type VectorShape } from "./geometry.ts";
+import { STEGOSAURUS, HEIGHT, VECTOR_SCALE, WIDTH, type Geometry, type VectorShape } from "./geometry.ts";
 
 const INK = "#091e40";
 type Stroke = Extract<Action, { kind: "stroke" }>;
@@ -72,9 +72,9 @@ function addStroke(path: Path2D, action: Stroke, primitives: Set<string>, from =
   }
 }
 
-export function createPainter(makeCanvas: () => HTMLCanvasElement) {
-  const regions = REGIONS.map(region => ({ ...region, shape: vector(region) }));
-  const details = DETAILS.map(detail => ({ ...detail, shape: vector(detail) }));
+export function createPainter(makeCanvas: () => HTMLCanvasElement, geometry: Geometry = STEGOSAURUS) {
+  const regions = geometry.regions.map(region => ({ ...region, shape: vector(region) }));
+  const details = geometry.details.map(detail => ({ ...detail, shape: vector(detail) }));
   const byId = new Map(regions.map(region => [region.id, region]));
   function ancestors(region: typeof regions[number]): Path2D[] {
     if (!region.parent) return [];

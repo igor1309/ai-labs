@@ -4,11 +4,23 @@ import LiveText
 
 public actor TrackText {
 
+    public struct Update: Equatable, Sendable {
+
+        public let final: [Text]
+        public let tail: [Text]
+        /// No text still to come starts before this.
+        public var noTextBefore: Double? = nil
+
+        /// The downstream text stores still consume whole-call snapshots.
+        public var all: [Text] { final + tail }
+    }
+
     public enum Failure: Error, Equatable {
 
         case notPrepared
         case updateFailed
         case updatesEnded
+        case updateGap
     }
 
     private struct Source: AudioSource {
@@ -25,7 +37,6 @@ public actor TrackText {
         let task: Task<Void, Never>
         let requests: AsyncStream<Reply>.Continuation
         let reading: Task<Void, Never>
-        let executor: (any TaskExecutor)?
 
         @discardableResult
         func stop() -> Task<Void, Never> {
@@ -34,18 +45,18 @@ public actor TrackText {
             requests.finish()
             reading.cancel()
             task.cancel()
-            return Task(executorPreference: executor) { await live.stop() }
+            return Task { @concurrent in await live.stop() }
         }
     }
 
     private actor Reply {
 
         private var completed = false
-        private var result: Segments?
-        private var waiting: [Int: AsyncStream<Segments>.Continuation] = [:]
+        private var result: LiveText.Update?
+        private var waiting: [Int: AsyncStream<LiveText.Update>.Continuation] = [:]
         private var nextID = 0
 
-        func complete(_ update: Segments?) {
+        func complete(_ update: LiveText.Update?) {
 
             result = update
             completed = true
@@ -56,12 +67,12 @@ public actor TrackText {
             waiting.removeAll()
         }
 
-        func update() async -> Segments? {
+        func update() async -> LiveText.Update? {
 
             if completed { return result }
             let id = nextID
             nextID += 1
-            let reply = AsyncStream<Segments>.makeStream()
+            let reply = AsyncStream<LiveText.Update>.makeStream()
             waiting[id] = reply.continuation
             defer { waiting[id] = nil }
             var iterator = reply.stream.makeAsyncIterator()
@@ -109,30 +120,17 @@ public actor TrackText {
     }
 
     private let recognizerSource: @Sendable () async throws -> any Recognizer
-    private let executor: (any TaskExecutor)?
     private var loading: (reply: RecognizerReply, task: Task<Void, Never>)?
     private var listening: Listening?
     private var accepted: Accepted?
-
-    public init(recognizer: any Recognizer) {
-
-        self.init(recognizer: recognizer, executor: nil)
-    }
-
-    init(recognizer: any Recognizer, executor: (any TaskExecutor)?) {
-
-        self.init(recognizerSource: { recognizer }, executor: executor)
-    }
+    private var finalText: [Text] = []
+    private var tail: [Text] = []
+    private var noTextBefore: Double?
+    private var appliedReply: Reply?
 
     public init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer) {
 
-        self.init(recognizerSource: recognizerSource, executor: nil)
-    }
-
-    init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer, executor: (any TaskExecutor)?) {
-
         self.recognizerSource = recognizerSource
-        self.executor = executor
     }
 
     public func prepare() async throws {
@@ -143,7 +141,7 @@ public actor TrackText {
             let reply = RecognizerReply(), source = recognizerSource
             // A cancelled prepare ends only its wait; another prepare can use
             // the same load even when the source does not honor cancellation.
-            let task = Task(executorPreference: executor) {
+            let task = Task { @concurrent in
                 do { await reply.complete(.success(try await source())) }
                 catch { await reply.complete(.failure(error)) }
             }
@@ -152,13 +150,16 @@ public actor TrackText {
         let recognizer = try await loading!.reply.recognizer()
         try Task.checkCancellation()
         guard listening == nil else { return }
+        finalText = []
+        tail = []
+        appliedReply = nil
         let live = LiveText(recognizer: recognizer)
         let source = AsyncStream<AudioChunk>.makeStream()
-        let task = Task(executorPreference: executor) { await live.listen(to: Source(stream: source.stream)) }
+        let task = Task { @concurrent in await live.listen(to: Source(stream: source.stream)) }
         let requests = AsyncStream<Reply>.makeStream()
         // The session owns replies; cancelling a caller leaves its accepted
         // interval and update available when side text replays that interval.
-        let reading = Task(executorPreference: executor) {
+        let reading = Task { @concurrent in
             var updates = live.updates.makeAsyncIterator()
             for await reply in requests.stream {
                 await reply.complete(await updates.next())
@@ -166,17 +167,17 @@ public actor TrackText {
         }
         listening = Listening(
             live: live, source: source.continuation, task: task,
-            requests: requests.continuation, reading: reading, executor: executor
+            requests: requests.continuation, reading: reading
         )
     }
 
-    public func hear(_ audio: Audio) async throws -> [Text] {
+    public func hear(_ audio: Audio) async throws -> Update {
 
         try Task.checkCancellation()
         guard let listening else { throw Failure.notPrepared }
         var lower = 0
         if let accepted {
-            let text = try await nextUpdate(accepted.reply, through: accepted.audio.end)
+            let text = try await nextUpdate(accepted.reply)
             lower = Int(min(Double(audio.samples.count), max(
                 0, ((accepted.audio.end - audio.start) * audio.sampleRate).rounded()
             )))
@@ -190,10 +191,10 @@ public actor TrackText {
         accepted = Accepted(audio: unheard, reply: reply)
         listening.requests.yield(reply)
         listening.source.yield(AudioChunk(samples: unheard.samples, sampleRate: unheard.sampleRate))
-        return try await nextUpdate(reply, through: unheard.end)
+        return try await nextUpdate(reply)
     }
 
-    public func finish() async throws -> [Text] {
+    public func finish() async throws -> Update {
 
         try Task.checkCancellation()
         guard let session = listening else { throw Failure.notPrepared }
@@ -202,11 +203,11 @@ public actor TrackText {
         return try await withTaskCancellationHandler {
             do {
                 if let accepted {
-                    _ = try await nextUpdate(accepted.reply, through: accepted.audio.end)
+                    _ = try await nextUpdate(accepted.reply)
                 }
                 let reply = Reply()
                 session.requests.yield(reply)
-                let text = try await nextUpdate(reply, through: accepted?.audio.end ?? 0)
+                let text = try await nextUpdate(reply)
                 session.requests.finish()
                 await session.reading.value
                 await session.task.value
@@ -233,7 +234,7 @@ public actor TrackText {
         await session.task.value
     }
 
-    private func nextUpdate(_ reply: Reply, through end: Double) async throws -> [Text] {
+    private func nextUpdate(_ reply: Reply) async throws -> Update {
 
         guard let session = listening else { throw Failure.notPrepared }
         let update = await reply.update()
@@ -241,7 +242,24 @@ public actor TrackText {
         do {
             guard let update else { throw Failure.updatesEnded }
             guard update.ending != .failed else { throw Failure.updateFailed }
-            return Self.text(from: update.all, through: end)
+            // An accepted interval is read again before the next one and
+            // after a cancelled wait. Its delta must be applied only once.
+            if appliedReply !== reply {
+                guard update.from == finalText.count,
+                      update.finalCount >= update.from,
+                      update.finalCount <= update.from + update.segments.count else {
+                    throw Failure.updateGap
+                }
+                let mapped = update.segments.enumerated().map { index, segment in
+                    Self.text(segment, index + 1 < update.segments.count ? update.segments[index + 1].start : update.end)
+                }
+                let newlyFinal = update.finalCount - update.from
+                if newlyFinal > 0 { finalText.append(contentsOf: mapped.prefix(newlyFinal)) }
+                tail = Array(mapped.dropFirst(newlyFinal))
+                noTextBefore = update.noWordBefore
+                appliedReply = reply
+            }
+            return Update(final: finalText, tail: tail, noTextBefore: noTextBefore)
         } catch {
             session.stop()
             await session.reading.value
@@ -258,14 +276,16 @@ public actor TrackText {
         listening?.stop()
     }
 
+    /// A segment runs to the next one's start, and the last to `end`.
     public static func text(from segments: [Segments.Segment], through end: Double) -> [Text] {
 
         segments.enumerated().map { index, segment in
-            Text(
-                id: segment.id, start: segment.start,
-                end: index + 1 < segments.count ? segments[index + 1].start : end,
-                settled: segment.settled, pending: segment.pending
-            )
+            text(segment, index + 1 < segments.count ? segments[index + 1].start : end)
         }
+    }
+
+    private static func text(_ segment: Segments.Segment, _ end: Double) -> Text {
+
+        Text(id: segment.id, start: segment.start, end: end, settled: segment.settled, pending: segment.pending)
     }
 }

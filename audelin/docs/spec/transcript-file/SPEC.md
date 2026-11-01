@@ -13,16 +13,25 @@ disk.
   concrete pieces (ARCHITECTURE rule 4), so it writes call text's state
   through the transcript file's own interface; no component owns a port
   for writing, as with the track file.
-- **Each write replaces the whole text,** because call text revises what
-  it has shown (pending text settles, segments are redone); appending
-  would keep the words it took back.
-- **A replacement is all or nothing:** written beside the file, flushed,
-  then renamed over it, as Amanu writes its session files
-  (`durableWrite`). A crash or a failed write leaves the last whole text,
-  never part of one, and a failed write ends nothing: the next update
-  writes the whole text again. This holds when the app stops; surviving a
-  system crash or power loss is not this adapter's (Apple: a returned
-  `fsync` does not promise it).
+- **Final text stays, what follows it is rewritten.** Call text revises
+  what it has shown (pending text settles, segments are redone), so
+  appending alone would keep the words it took back. It never revises or
+  moves an entry it has made final, though, so once the file holds a
+  final entry a write cuts the file back to its final text and writes
+  only what follows. Until then, and when there is no text, a write
+  replaces the whole file. A save late in a long call then writes about
+  as much as one early in it, not the whole call.
+- **A whole replacement is all or nothing:** written beside the file,
+  flushed, then renamed over it, as Amanu writes its session files
+  (`durableWrite`). A crash or a failed replacement leaves the last whole
+  text, never part of one.
+- **A rewrite keeps every final entry whole:** the file is cut back only
+  to text it already holds, and the rest is written and flushed after
+  that. A crash or a failed rewrite can lose or cut only the text after
+  the final entries. A failed write ends nothing: the next one replaces
+  the whole file. This holds when the app stops; surviving a system crash
+  or power loss is not this adapter's (Apple: a returned `fsync` does not
+  promise it).
 - **Markdown the user reads, one part per segment in call text's order,**
   each marked mine or theirs with its start in call time, as Amanu keeps
   `transcript.md`. Text call text filled in after live text was switched
@@ -36,8 +45,8 @@ disk.
   so a second recording cannot erase a kept call. An open that fails
   leaves no file, so it never blocks the next one.
 - **Closing writes no text and ends writing:** the last write is the
-  call's transcript, and with every write whole there is nothing left to
-  do, so a close cannot fail.
+  call's transcript, and with every write complete when it returns there
+  is nothing left to do, so a close cannot fail.
 
 ```gherkin
 Feature: Keeping a call's transcript on disk
@@ -69,7 +78,7 @@ Feature: Keeping a call's transcript on disk
 
   Scenario: S-6 A crash keeps the last whole text
     Given a transcript text was written to
-    When the app stops in the middle of a write
+    When the app stops in the middle of replacing it whole
     Then the user can read the last text whose write returned, or the new one, whole
 
   Scenario: S-7 A transcript that cannot be opened fails
@@ -95,4 +104,19 @@ Feature: Keeping a call's transcript on disk
     Given a transcript I opened
     When I write no text
     Then the user can read that no text was heard
+
+  Scenario: S-12 Final text stays and only what follows is written
+    Given a transcript holding final text
+    When I write the call's text
+    Then the user can read it whole, and only the text after the final text was written
+
+  Scenario: S-13 A crash while rewriting keeps every final entry
+    Given a transcript holding final text
+    When the app stops in the middle of rewriting what follows it
+    Then the user can read every final entry whole
+
+  Scenario: S-14 A failed rewrite keeps every final entry
+    Given a transcript holding final text
+    When a rewrite fails
+    Then I can tell it failed, the user can read every final entry whole, and the next write replaces the file whole
 ```

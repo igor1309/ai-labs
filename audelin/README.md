@@ -11,6 +11,13 @@ The live panel and settings UI are not connected yet.
 Build: `cd audelin/macos && sh scripts/bundle.sh`.
 Run: `open .build/Audelin.app` from `audelin/macos`.
 Logs: `log stream --predicate 'subsystem == "dev.igor1309.audelin"'`.
+Profile: from `audelin/macos`, `scripts/profile-rehearsal.sh capture --capture-after 120 --capture-for 30 --minutes 20 --speed 1`
+records only that wall-clock window and summarizes CPU, hangs and signpost intervals in `macos/profiles/`.
+Endurance: `scripts/profile-rehearsal.sh endurance --minutes 180 --speed 1` runs without Instruments and keeps only the rehearsal report.
+Recognisers are fakes: lag is pipeline backlog, and speeds above 1× measure saturation.
+
+Optimized load tests: from `audelin/macos`, run `swift build --build-tests -Xswiftc -O`,
+then `sh ../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`.
 
 | Path | What it holds |
 |---|---|

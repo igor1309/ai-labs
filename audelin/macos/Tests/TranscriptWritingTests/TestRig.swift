@@ -43,49 +43,99 @@ final class Gate: Sendable {
     }
 }
 
-/// Drains runnable work before assertions about work still held by a fake.
-final class TestExecutor: TaskExecutor {
+/// Pauses between writes that last until the test ends them or the writer cancels them.
+final class Pauses: Sendable {
 
-    private let jobs = Mutex<[UnownedJob]>([])
-    private let events = AsyncStream<Void>.makeStream()
-    private let completed = Mutex(false)
-
-    func notify() { events.continuation.yield(()) }
-
-    func enqueue(_ job: consuming ExecutorJob) {
-
-        let job = UnownedJob(job)
-        jobs.withLock { $0.append(job) }
-        notify()
+    private struct State {
+        var started = 0
+        var cancelled = 0
+        var waiting: CheckedContinuation<Void, Never>?
     }
 
-    func complete() {
+    private let state = Mutex(State())
+    private let changed: @Sendable () -> Void
 
-        completed.withLock { $0 = true }
-        events.continuation.finish()
-    }
+    init(changed: @escaping @Sendable () -> Void) { self.changed = changed }
 
-    func run() {
+    var started: Int { state.withLock { $0.started } }
+    var cancelled: Int { state.withLock { $0.cancelled } }
+    var waiting: Bool { state.withLock { $0.waiting != nil } }
 
-        while let job = jobs.withLock({ $0.isEmpty ? nil : $0.removeFirst() }) {
-            job.runSynchronously(on: asUnownedTaskExecutor())
+    func pause() async {
+
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                let resume = state.withLock { state in
+                    state.started += 1
+                    if Task.isCancelled { return true }
+                    state.waiting = continuation
+                    return false
+                }
+                changed()
+                if resume { continuation.resume() }
+            }
+        } onCancel: {
+            let waiting = state.withLock { state in
+                state.cancelled += 1
+                defer { state.waiting = nil }
+                return state.waiting
+            }
+            waiting?.resume()
+            changed()
         }
     }
 
-    func run(until condition: () -> Bool) async {
+    /// Ends the pause in progress.
+    func end() {
 
-        var iterator = events.stream.makeAsyncIterator()
-        while !condition() && !completed.withLock({ $0 }) {
-            run()
-            if !condition(), await iterator.next() == nil { break }
+        let waiting = state.withLock { state in
+            defer { state.waiting = nil }
+            return state.waiting
         }
-        run()
+        waiting?.resume()
+        changed()
+    }
+}
+
+/// Wakes a waiting test each time a fake reports a change, so it can check what the fakes recorded.
+final class Changes: Sendable {
+
+    private struct State {
+        var version = 0
+        var waiters: [CheckedContinuation<Void, Never>] = []
     }
 
-    func finish() async {
+    private let state = Mutex(State())
 
-        for await _ in events.stream { run() }
-        run()
+    func notify() {
+
+        let waiters = state.withLock { state in
+            state.version += 1
+            defer { state.waiters.removeAll() }
+            return state.waiters
+        }
+        for waiter in waiters { waiter.resume() }
+    }
+
+    /// Returns once the condition holds, checking it after every change; a cancelled test stops waiting.
+    func until(_ condition: () -> Bool) async {
+
+        while !Task.isCancelled {
+            let seen = state.withLock { $0.version }
+            if condition() { return }
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { continuation in
+                    let resume = state.withLock {
+                        if $0.version != seen || Task.isCancelled { return true }
+                        $0.waiters.append(continuation)
+                        return false
+                    }
+                    if resume { continuation.resume() }
+                }
+            } onCancel: {
+                notify()
+            }
+        }
     }
 }
 
@@ -268,38 +318,40 @@ struct Run {
     private let commands = AsyncStream<Bool>.makeStream()
 
     init(
-        executor: TestExecutor, enabled: Bool, holds: [String: Gate],
+        changes: Changes, enabled: Bool, holds: [String: Gate],
         startGate: Gate? = nil, stopGate: Gate? = nil,
         startText: String? = nil, lastText: String? = nil,
         failures: [String: WriteFailure] = [:], reportGate: Gate? = nil,
-        hasTranscript: Bool = true
+        hasTranscript: Bool = true, pauses: Pauses? = nil
     ) {
 
         call = FakeCallText(
             startGate: startGate, stopGate: stopGate, startText: startText,
             lastText: lastText, switchText: { $0 ? "live text on" : "live text off" },
-            changed: executor.notify
+            changed: changes.notify
         )
-        transcript = FakeTranscript(holds: holds, failures: failures, changed: executor.notify)
-        report = FakeFailureReport(events: events, gate: reportGate, changed: executor.notify)
-        subject = TranscriptWriting(callText: call, transcript: hasTranscript ? transcript : nil, failureReport: report)
-        task = Task(executorPreference: executor) { [commands, observed, subject, events] in
+        transcript = FakeTranscript(holds: holds, failures: failures, changed: changes.notify)
+        report = FakeFailureReport(events: events, gate: reportGate, changed: changes.notify)
+        subject = TranscriptWriting(
+            callText: call, transcript: hasTranscript ? transcript : nil, failureReport: report,
+            pause: { await pauses?.pause() }
+        )
+        task = Task { [commands, observed, subject, events] in
             let reader = Task {
                 for await text in subject.updates {
                     observed.receive(text)
-                    executor.notify()
+                    changes.notify()
                 }
             }
             await subject.start(enabled: enabled)
             observed.didStart()
-            executor.notify()
+            changes.notify()
             for await enabled in commands.stream { await subject.setEnabled(enabled) }
             await subject.stop()
             events.record(.stopReturned(1))
             observed.didStop()
-            executor.notify()
+            changes.notify()
             await reader.value
-            executor.complete()
         }
     }
 

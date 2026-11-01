@@ -3,11 +3,18 @@ import { ArrowLeft, Home, Images, LockKeyhole, Paintbrush, Pencil, Plus, RotateC
 import { Button } from "./Button.tsx";
 import type { ColoringGallerySession, GalleryWork } from "./coloringGallery.ts";
 import type { Language } from "./language/language.ts";
+import { ColoringArtworkPreview, type ArtworkPreview } from "./ColoringArtworkPreview.tsx";
 import "./coloringGallery.css";
 
+export type GalleryArtwork = Readonly<{
+  version: string;
+  names: Readonly<{ en: string; ru: string }>;
+  preview: ArtworkPreview;
+}>;
+
 const words = {
-  en: { title: "MY ART", home: "HOME", new: "NEW WORK", continue: "CONTINUE", edit: "PAINT", view: "VIEW", draft: "DRAFT", completed: "COMPLETED", dinosaur: "STEGOSAURUS", empty: "LET’S PAINT A DINOSAUR!", loading: "LOADING", warning: "SOME ART COULDN’T BE LOADED", unavailable: "UNAVAILABLE", retry: "RETRY", recovery: "PARENT RECOVERY", reset: "RESET COLORING", cancel: "CANCEL", close: "BACK", loss: "Resetting deletes all coloring works and earned coloring stars on this device. Other games and settings are kept.", resetError: "COULDN’T RESET", readOnly: "VIEW ONLY" },
-  ru: { title: "МОИ РАБОТЫ", home: "ДОМОЙ", new: "НОВЫЙ РИСУНОК", continue: "ПРОДОЛЖИТЬ", edit: "РИСОВАТЬ", view: "СМОТРЕТЬ", draft: "ЧЕРНОВИК", completed: "ГОТОВО", dinosaur: "СТЕГОЗАВР", empty: "ДАВАЙ РАСКРАСИМ ДИНОЗАВРА!", loading: "ЗАГРУЖАЕМ", warning: "НЕ ВСЕ РИСУНКИ ЗАГРУЗИЛИСЬ", unavailable: "НЕДОСТУПНО", retry: "ПОВТОРИТЬ", recovery: "ДЛЯ РОДИТЕЛЕЙ", reset: "СБРОСИТЬ РАСКРАСКИ", cancel: "ОТМЕНА", close: "НАЗАД", loss: "Сброс удалит все раскраски и заработанные за них звёзды на этом устройстве. Другие игры и настройки сохранятся.", resetError: "НЕ УДАЛОСЬ СБРОСИТЬ", readOnly: "ТОЛЬКО ПРОСМОТР" }
+  en: { title: "MY ART", home: "HOME", new: "NEW WORK", continue: "CONTINUE", edit: "PAINT", view: "VIEW", draft: "DRAFT", completed: "COMPLETED", empty: "LET’S PAINT A DINOSAUR!", loading: "LOADING", warning: "SOME ART COULDN’T BE LOADED", unavailable: "UNAVAILABLE", retry: "RETRY", recovery: "PARENT RECOVERY", reset: "RESET COLORING", cancel: "CANCEL", close: "BACK", loss: "Resetting deletes all coloring works and earned coloring stars on this device. Other games and settings are kept.", resetError: "COULDN’T RESET", readOnly: "VIEW ONLY" },
+  ru: { title: "МОИ РАБОТЫ", home: "ДОМОЙ", new: "НОВЫЙ РИСУНОК", continue: "ПРОДОЛЖИТЬ", edit: "РИСОВАТЬ", view: "СМОТРЕТЬ", draft: "ЧЕРНОВИК", completed: "ГОТОВО", empty: "ДАВАЙ РАСКРАСИМ ДИНОЗАВРА!", loading: "ЗАГРУЖАЕМ", warning: "НЕ ВСЕ РИСУНКИ ЗАГРУЗИЛИСЬ", unavailable: "НЕДОСТУПНО", retry: "ПОВТОРИТЬ", recovery: "ДЛЯ РОДИТЕЛЕЙ", reset: "СБРОСИТЬ РАСКРАСКИ", cancel: "ОТМЕНА", close: "НАЗАД", loss: "Сброс удалит все раскраски и заработанные за них звёзды на этом устройстве. Другие игры и настройки сохранятся.", resetError: "НЕ УДАЛОСЬ СБРОСИТЬ", readOnly: "ТОЛЬКО ПРОСМОТР" }
 };
 function SavedThumbnail({ record, label, unavailable }: { record: GalleryWork; label: string; unavailable?: () => void }) {
   const [image, setImage] = useState<{ blob: Blob; url: string } | null>(null);
@@ -27,9 +34,10 @@ function containFocus(event: KeyboardEvent<HTMLDivElement>) {
   const edge = event.shiftKey ? buttons[0] : buttons.at(-1);
   if (document.activeElement === edge) { event.preventDefault(); (event.shiftKey ? buttons.at(-1) : buttons[0])?.focus(); }
 }
-export function ColoringGalleryScreen({ session, language, home }: { session: ColoringGallerySession; language: Language; home(): void }) {
+export function ColoringGalleryScreen({ session, language, home, artworks, offeredVersions }: { session: ColoringGallerySession; language: Language; home(): void; artworks: readonly GalleryArtwork[]; offeredVersions?: readonly string[] | undefined }) {
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
   const text = words[language];
+  const dinosaurName = (version: string) => artworks.find(entry => entry.version === version)?.names[language] ?? artworks[0]!.names[language];
   const [failedImages, setFailedImages] = useState<ReadonlyMap<string, Blob>>(new Map());
   const retry = () => { setFailedImages(new Map()); void session.load(); };
   const collection = state.collection;
@@ -43,7 +51,11 @@ export function ColoringGalleryScreen({ session, language, home }: { session: Co
       {collection?.completedCount !== null && collection && <span className="gallery-count" aria-label={`${text.completed}: ${collection.completedCount}`}><Star aria-hidden="true" />{collection.completedCount}</span>}
     </header>
     <div className="gallery-actions" inert={modal}>
-      <Button className="gallery-new" disabled={state.busy || readOnly} onClick={() => void session.enter()}><Plus aria-hidden="true" /><Paintbrush aria-hidden="true" />{text.new}</Button>
+      {artworks.filter(artwork => !offeredVersions || offeredVersions.includes(artwork.version)).map((artwork, index) => <Button className="gallery-new" key={artwork.version}
+        aria-label={index === 0 ? text.new : artwork.names[language]} disabled={state.busy || readOnly}
+        onClick={() => void session.enter(undefined, index === 0 && !offeredVersions ? undefined : artwork.version)}>
+        <ColoringArtworkPreview preview={artwork.preview} /><span><Plus aria-hidden="true" />{artwork.names[language]}</span>
+      </Button>)}
       {readOnly && collection && <span><LockKeyhole aria-hidden="true" />{text.readOnly}</span>}
     </div>
     <div className="gallery-notices" inert={modal}>
@@ -58,7 +70,7 @@ export function ColoringGalleryScreen({ session, language, home }: { session: Co
       {collection?.works.map((record, index) => {
         const failed = failedImages.get(record.document.id) === record.thumbnail;
         return <article className="gallery-card" key={record.document.id} data-work-id={record.document.id}>
-          <div className="gallery-thumbnail">{failed ? <TriangleAlert aria-hidden="true" /> : <SavedThumbnail record={record} label={`${text.dinosaur} · ${index + 1}`} unavailable={() => setFailedImages(current => new Map(current).set(record.document.id, record.thumbnail))} />}</div>
+          <div className="gallery-thumbnail">{failed ? <TriangleAlert aria-hidden="true" /> : <SavedThumbnail record={record} label={`${dinosaurName(record.document.geometry)} · ${index + 1}`} unavailable={() => setFailedImages(current => new Map(current).set(record.document.id, record.thumbnail))} />}</div>
           <h2>{failed ? <TriangleAlert aria-hidden="true" /> : record.document.completed ? <Star className="gallery-earned-star" aria-label="★" fill="currentColor" /> : <Pencil aria-hidden="true" />}{failed ? text.unavailable : record.document.completed ? text.completed : text.draft} · {index + 1}</h2>
           <Button disabled={state.busy} onClick={() => failed ? retry() : readOnly ? session.view(record) : void session.enter(record.document.id)}>
             {failed ? <RotateCcw aria-hidden="true" /> : readOnly ? <Images aria-hidden="true" /> : <Paintbrush aria-hidden="true" />}
@@ -83,7 +95,7 @@ export function ColoringGalleryScreen({ session, language, home }: { session: Co
         <Button onClick={home}><Home aria-hidden="true" />{text.home}</Button>
       </> : state.viewing && <>
         <h2><LockKeyhole aria-hidden="true" />{text.readOnly}</h2>
-        <div className="gallery-thumbnail"><SavedThumbnail record={state.viewing} label={text.dinosaur} /></div>
+        <div className="gallery-thumbnail"><SavedThumbnail record={state.viewing} label={dinosaurName(state.viewing.document.geometry)} /></div>
         <Button autoFocus onClick={session.closeView}><ArrowLeft aria-hidden="true" />{text.close}</Button>
         <Button onClick={home}><Home aria-hidden="true" />{text.home}</Button>
       </>}

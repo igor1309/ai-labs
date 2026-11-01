@@ -65,7 +65,7 @@ extension SessionPieces {
         // Both sides take their offset immediately before starting RecordedCapture,
         // before LiveAudio can accept its first piece on its local zero-based timeline.
         let offset = monotonicNow() - timeOrigin
-        let statistics = Task(executorPreference: executor) {
+        let statistics = Task { @concurrent in
             for await piece in measurements {
                 switch side {
                 case .call:
@@ -84,7 +84,7 @@ extension SessionPieces {
         }
         do {
             try await recorded.start()
-            let failures = Task(executorPreference: executor) {
+            let failures = Task { @concurrent in
                 var stopFailure: (any Error)?
                 for await failure in recorded.failures {
                     switch failure {

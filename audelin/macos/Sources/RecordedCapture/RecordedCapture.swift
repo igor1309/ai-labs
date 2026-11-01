@@ -7,7 +7,6 @@ public actor RecordedCapture {
 
     private let capture: any Capture
     private let track: any Track
-    private let executor: (any TaskExecutor)?
     private let beforeInput: @Sendable () async -> Void
     private let news: AsyncStream<Failure>.Continuation
     private let pending = AsyncStream<AudioPiece>.makeStream()
@@ -23,19 +22,17 @@ public actor RecordedCapture {
 
     public init(capture: any Capture, track: any Track) {
 
-        self.init(capture: capture, track: track, executor: nil)
+        self.init(capture: capture, track: track, beforeInput: {})
     }
 
     init(
         capture: any Capture,
         track: any Track,
-        beforeInput: @escaping @Sendable () async -> Void = {},
-        executor: (any TaskExecutor)?
+        beforeInput: @escaping @Sendable () async -> Void
     ) {
 
         self.capture = capture
         self.track = track
-        self.executor = executor
         self.beforeInput = beforeInput
         let events = AsyncStream<Failure>.makeStream()
         failures = events.stream
@@ -47,7 +44,7 @@ public actor RecordedCapture {
 
         guard !attempted else { throw LifecycleError.alreadyStarted }
         attempted = true
-        let task = Task(executorPreference: executor) { try await self.begin() }
+        let task = Task { @concurrent in try await self.begin() }
         starting = task
         try await task.value
     }
@@ -58,7 +55,7 @@ public actor RecordedCapture {
 
         if let stopping { return try await stopping.value }
         attempted = true
-        let task = Task(executorPreference: executor) { try await self.end() }
+        let task = Task { @concurrent in try await self.end() }
         stopping = task
         try await task.value
     }
@@ -78,7 +75,7 @@ public actor RecordedCapture {
         started = true
         let track = track, pending = pending.stream
         // These unbounded streams keep capture delivery independent of disk speed.
-        writing = Task(executorPreference: executor) { [weak self] in
+        writing = Task { @concurrent [weak self] in
             do {
                 for await piece in pending {
                     try await track.write(piece.samples, sampleRate: piece.sampleRate)
@@ -88,7 +85,7 @@ public actor RecordedCapture {
             }
         }
         let beforeInput = beforeInput
-        receiving = Task(executorPreference: executor) { [weak self] in
+        receiving = Task { @concurrent [weak self] in
             await beforeInput()
             do {
                 for try await piece in stream {
@@ -138,7 +135,7 @@ public actor RecordedCapture {
 
         if let captureStop { return try await captureStop.value }
         let capture = capture
-        let task = Task(executorPreference: executor) { [weak self] in
+        let task = Task { @concurrent [weak self] in
             do {
                 try await capture.stop()
             } catch {

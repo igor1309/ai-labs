@@ -389,7 +389,8 @@ export function browserColoring(browser: Pick<Window, "indexedDB" | "document" |
       open: (...args: Parameters<ReturnType<typeof coloringWorkshopRoot>["open"]>) => get().open(...args),
       newWork: (...args: Parameters<ReturnType<typeof coloringWorkshopRoot>["newWork"]>) => get().newWork(...args)
     },
-    get painter() { return get().painter; },
+    get artworks() { return get().artworks; },
+    painterFor: (geometry: string) => get().painterFor(geometry),
     identity: () => {
       // getRandomValues also works on local HTTP previews opened from an iPad.
       const bytes = browser.crypto.getRandomValues(new Uint8Array(16));

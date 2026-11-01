@@ -23,13 +23,22 @@ struct SessionPiecesDefaultsTests {
                 last: .init(samples: [-0.125], sampleRate: 48_000), fails: false
             )
             defer { microphone.end(); call.end() }
-            let mine = SessionRecognizer(name: "mine"), theirs = SessionRecognizer(name: "theirs")
+            let profiling = ProfileIntervalSpy(), writes = Values<Bool>()
+            let mine = SessionRecognizer(name: "mine", onHear: { #expect(profiling.active("Hearing") > 0) })
+            let theirs = SessionRecognizer(name: "theirs", onHear: { #expect(profiling.active("Hearing") > 0) })
             let pieces = SessionPieces(
                 folder: CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: 0) }, timeZone: TimeZone(secondsFromGMT: 0)!),
                 processes: CallAppProcesses(app: "meeting", list: SessionProcessList(answer: .success([]))),
                 startMicrophone: { try microphone.start() },
                 startCall: { _ in try call.start() },
-                microphoneRecognizer: mine, callRecognizer: theirs, missingModels: { [] }
+                microphoneRecognizerSource: { mine }, callRecognizerSource: { theirs }, missingModels: { [] },
+                openTranscript: { url in
+                    ControlledTranscript(base: try await SessionPieces.defaultOpenTranscript(url), beforeWrite: { _ in
+                        #expect(profiling.active("TranscriptWrite") == 1)
+                        writes.append(true)
+                    })
+                },
+                captureLogSink: SystemLogSink(), intervals: profiling.intervals
             )
             do {
                 let folder = try await pieces.create()
@@ -66,6 +75,12 @@ struct SessionPiecesDefaultsTests {
                 #expect(await theirs.chunks.flatMap(\.samples) == [-0.25, 0.5, -0.125])
                 #expect(await mine.finishes == 1)
                 #expect(await theirs.finishes == 1)
+                let hearings = await mine.chunks.count + theirs.chunks.count
+                #expect(profiling.began.all.filter { $0 == "Hearing" }.count == hearings)
+                #expect(profiling.ended.all.filter { $0 == "Hearing" }.count == hearings)
+                #expect(!writes.all.isEmpty)
+                #expect(profiling.began.all.filter { $0 == "TranscriptWrite" }.count == writes.all.count)
+                #expect(profiling.ended.all.filter { $0 == "TranscriptWrite" }.count == writes.all.count)
                 let destination = URL(fileURLWithPath: folder.id)
                 #expect(try await recordedSamples(destination.appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.125])
                 #expect(try await recordedSamples(destination.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])

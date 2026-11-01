@@ -30,6 +30,8 @@ let package = Package(
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "Session", targets: ["Session"]),
+        // Not shipped: the rehearsal's fake call, for the benchmarks package.
+        .library(name: "SessionRehearsal", targets: ["SessionRehearsal"]),
         .library(name: "SideText", targets: ["SideText"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
@@ -42,6 +44,7 @@ let package = Package(
         .package(url: "https://github.com/igor1309/swift-imrx", from: "1.1.0"),
     ],
     targets: [
+        .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
         .target(name: "Calls"),
         .target(name: "Recordings"),
         .target(name: "CallsListUI", dependencies: ["GlassLedger"]),
@@ -50,7 +53,7 @@ let package = Package(
         .testTarget(name: "CallsListUITests", dependencies: ["CallsListUI"]),
         .target(name: "CallAudioProbe"),
         .target(name: "CallAudioAccess"),
-        .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe"]),
+        .testTarget(name: "CallAudioProbeTests", dependencies: ["CallAudioProbe", "BlockingTestWork"]),
         .testTarget(name: "CallAudioAccessTests", dependencies: ["CallAudioAccess"]),
         .executableTarget(
             name: "Audelin",
@@ -58,6 +61,19 @@ let package = Package(
                 "Compose", "Recordings", "CallsListUI", "CallAudioAccess", "CallAudioProbe", "Lifecycle", "MenuBar", "Preferences", "PanelUI", "Reading", "Recording", "Session",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
+        ),
+        // Not shipped: a long synthetic call through the real session and panel, to profile.
+        .executableTarget(
+            name: "AudelinRehearsal",
+            dependencies: [
+                "Compose", "PanelUI", "Reading", "Recording", "Session", "SessionRehearsal", "CallFolder", "CallAppProcesses",
+                "LiveText", "MicrophoneCapture", "SystemAudioCapture",
+                .product(name: "IMRxObservation", package: "swift-imrx"),
+            ]
+        ),
+        .target(
+            name: "SessionRehearsal",
+            dependencies: ["Compose", "LiveText", "Reading", "Session", .product(name: "IMRxObservation", package: "swift-imrx")]
         ),
         .target(
             name: "AudioConversion"
@@ -69,11 +85,12 @@ let package = Package(
             name: "CallFolder"
         ),
         .target(
-            name: "CallText"
+            name: "CallText",
+            dependencies: ["SplitRows"]
         ),
         .target(
             name: "Compose",
-            dependencies: ["Calls", "Recordings", "CallsListUI", "CallAudioAccess", "MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI"]
+            dependencies: ["Calls", "Recordings", "CallsListUI", "CallAudioAccess", "MenuBar", "Lifecycle", "LiveAudio", "RecordedCapture", "CallFolder", "CallAppProcesses", "CoreAudioProcesses", "Preferences", "Recording", "Session", "CallText", "SideText", "FillIn", "LiveText", "ParakeetRecognizer", "TrackFile", "TranscriptFile", "TranscriptWriting", "MicrophoneCapture", "SystemAudioCapture", "Reading", "PanelUI", "SplitRows"]
         ),
         .target(
             name: "CoreAudioProcesses"
@@ -114,7 +131,7 @@ let package = Package(
         ),
         .target(
             name: "PanelUI",
-            dependencies: ["GlassLedger"]
+            dependencies: ["GlassLedger", "SplitRows"]
         ),
         .target(
             name: "ParakeetRecognizer",
@@ -132,7 +149,11 @@ let package = Package(
             name: "RecordedCapture"
         ),
         .target(
-            name: "Reading"
+            name: "Reading",
+            dependencies: ["SplitRows"]
+        ),
+        .target(
+            name: "SplitRows"
         ),
         .target(
             name: "Recording"
@@ -164,6 +185,14 @@ let package = Package(
         .target(
             name: "TranscriptWriting"
         ),
+        // A call through the app's composition that the compose tests kill mid-save.
+        .executableTarget(
+            name: "SessionCrashWriter",
+            dependencies: [
+                "Compose", "PanelUI", "SessionRehearsal", "CallFolder", "CallAppProcesses", "CallText",
+                "MicrophoneCapture", "SystemAudioCapture", "RecordedCapture", "TranscriptFile",
+            ]
+        ),
         .executableTarget(
             name: "TranscriptFileCrashWriter",
             dependencies: ["TranscriptFile"]
@@ -194,12 +223,13 @@ let package = Package(
         ),
         .testTarget(
             name: "CallTextTests",
-            dependencies: ["CallText"]
+            dependencies: ["CallText", "SplitRows"]
         ),
         .testTarget(
             name: "ComposeTests",
             dependencies: [
-                "Compose", "Audelin", "CallAudioAccess", "Lifecycle", "Recording", "BlockingTestWork",
+                "Compose", "Audelin", "CallAudioAccess", "Lifecycle", "Recording", "BlockingTestWork", "SessionRehearsal",
+                "SessionCrashWriter",
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),

@@ -1,10 +1,12 @@
+import { coloringVersionsFor } from "../src/coloringWorkshopRoot.ts";
+import { ARTWORKS } from "../src/coloring/artworks.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ColoringGalleryScreen } from "../src/ColoringGalleryScreen.tsx";
 import { coloringGallery, type GalleryCollection } from "../src/coloringGallery.ts";
 import type { ColoringWorkshopSession } from "../src/coloringWorkshop.ts";
 import type { Language } from "../src/language/language.ts";
-import { coloringFixture } from "./coloringFixture.ts";
+import { coloringFixture, galleryArtworkFixtures } from "./coloringFixture.ts";
 
 beforeEach(() => {
   let id = 0;
@@ -19,9 +21,10 @@ function fixture(language: Language = "en") {
   const source = { list: vi.fn(async () => collection), reset: vi.fn(async () => {}), open: vi.fn(async () => ({} as ColoringWorkshopSession)), newWork: vi.fn(async () => ({} as ColoringWorkshopSession)) };
   const home = vi.fn(), workshop = vi.fn(), countStart = vi.fn();
   const session = coloringGallery({ source, identity: () => "fresh", workshop, countStart, navigate: vi.fn() });
-  const view = render(<ColoringGalleryScreen session={session} language={language} home={home} />);
+  const artworks = galleryArtworkFixtures();
+  const view = render(<ColoringGalleryScreen artworks={artworks} session={session} language={language} home={home} />);
   const load = async () => { await act(async () => { await session.load(); }); };
-  return { ...view, source, home, session, load, red, blue, collection, countStart, workshop };
+  return { ...view, artworks, source, home, session, load, red, blue, collection, countStart, workshop };
 }
 it.each(["en", "ru"] as Language[])("shows separate saved thumbnails, statuses, one earned star and the recent continue in %s", async language => {
   const f = fixture(language); await f.load();
@@ -123,4 +126,69 @@ it("offers recovery when no reward history can be read, keeping an unsuccessful 
   await act(async () => fireEvent.click(screen.getByRole("button", { name: "RESET COLORING" })));
   expect(within(screen.getByRole("dialog")).getByRole("alert").textContent).toContain("COULDN’T RESET");
   expect(f.source.newWork).not.toHaveBeenCalled(); expect(f.source.open).not.toHaveBeenCalled();
+});
+
+
+it.each(["en", "ru"] as Language[])("offers matching original creature previews and starts Triceratops in %s", async language => {
+  const f = fixture(language); await f.load();
+  const name = language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС";
+  const button = screen.getByRole("button", { name });
+  expect(button.textContent).toContain(name);
+  expect(f.artworks[1]!.preview.render).toHaveBeenLastCalledWith(button.querySelector("canvas"));
+  expect(button.querySelector("canvas")!.width).toBe(276);
+  expect(button.querySelector("canvas")!.height).toBe(186);
+  const stegosaurus = screen.getByRole("button", { name: language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК" });
+  expect(stegosaurus.textContent).toContain(language === "en" ? "STEGOSAURUS" : "СТЕГОЗАВР");
+  expect(f.artworks[0]!.preview.render).toHaveBeenLastCalledWith(stegosaurus.querySelector("canvas"));
+  await act(async () => fireEvent.click(button));
+  expect(f.source.newWork).toHaveBeenCalledExactlyOnceWith("fresh", expect.any(Function), "triceratops-production-1");
+  expect(f.countStart).toHaveBeenCalledTimes(1);
+});
+
+
+it.each(["en", "ru"] as Language[])("keeps saved creature names and editing across all age choices in %s", async language => {
+  for (const level of ["hatchling", "explorer", "paleontologist"] as const) for (const { geometry, names } of ARTWORKS) {
+    const version = geometry.artwork.version;
+    const works = ARTWORKS.map(({ geometry }) => {
+      const { model, dot, thumbnail } = coloringFixture(geometry.artwork);
+      return { document: model.append(model.newWork(geometry.artwork.version), dot), thumbnail: thumbnail() };
+    });
+    const source = { list: async () => ({ works, unavailable: [], completedCount: 0, recentId: null }), reset: vi.fn(), open: vi.fn(async () => ({} as ColoringWorkshopSession)), newWork: vi.fn() };
+    const session = coloringGallery({ source, identity: vi.fn(), workshop: vi.fn(), countStart: vi.fn(), navigate: vi.fn() });
+    await session.load();
+    const artworks = ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names }));
+    const view = render(<ColoringGalleryScreen artworks={artworks} offeredVersions={coloringVersionsFor(level)} session={session} language={language} home={vi.fn()} />);
+    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС" })).toHaveLength(1);
+    const name = names[language];
+    const card = view.container.querySelector(`[data-work-id="${version}"]`)! as HTMLElement;
+    const number = ARTWORKS.findIndex(entry => entry.geometry.artwork.version === version) + 1;
+    expect(within(card).getByAltText(`${name} · ${number}`)).toBeTruthy();
+    await act(async () => fireEvent.click(within(card).getByRole("button")));
+    expect(source.open).toHaveBeenCalledExactlyOnceWith(version, expect.any(Function));
+    view.unmount();
+  }
+});
+
+it.each(["en", "ru"] as Language[])("matches Stegosaurus previews, localized labels and new-work selection at every age in %s", async language => {
+  for (const level of ["hatchling", "explorer", "paleontologist"] as const) {
+    const source = { list: async () => ({ works: [], unavailable: [], completedCount: 0, recentId: null }), reset: vi.fn(), open: vi.fn(), newWork: vi.fn(async () => ({} as ColoringWorkshopSession)) };
+    const countStart = vi.fn();
+    const session = coloringGallery({ source, identity: () => "fresh", workshop: vi.fn(), countStart, navigate: vi.fn() });
+    await session.load();
+    const artworks = ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names }));
+    const view = render(<ColoringGalleryScreen artworks={artworks} offeredVersions={coloringVersionsFor(level)} session={session} language={language} home={vi.fn()} />);
+    const version = level === "hatchling" ? "stegosaurus-production-1" : "stegosaurus-explorer-1";
+    const selected = artworks.find(artwork => artwork.version === version)!;
+    const button = screen.getByRole("button", { name: language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК" });
+    expect(button.textContent).toContain(language === "en" ? "STEGOSAURUS" : "СТЕГОЗАВР");
+    expect(selected.preview.render).toHaveBeenLastCalledWith(button.querySelector("canvas"));
+    const other = artworks.find(artwork => artwork.names.en === "STEGOSAURUS" && artwork.version !== version)!;
+    expect(other.preview.render).not.toHaveBeenCalled();
+    expect(view.container.querySelectorAll(".gallery-new")).toHaveLength(2);
+    await act(async () => fireEvent.click(button));
+    expect(source.newWork).toHaveBeenCalledExactlyOnceWith("fresh", expect.any(Function), version);
+    expect(countStart).toHaveBeenCalledTimes(1);
+    view.unmount();
+  }
 });

@@ -94,18 +94,24 @@ struct NemotronRecognizerTests {
         #expect(hearing.from == 0.2)
     }
 
-    @Test func decodingStaysOnTheRecognizersQueueAcrossSuspension() async throws {
+    @Test func blockedRecognizersOutnumberingThePoolAllKeepDecodingAcrossSuspension() async throws {
 
-        let decoder = QueueCheckingDecoder()
-        let recognizer = NemotronRecognizer(decoder: decoder)
-        recognizer.queue.setSpecific(key: recognizerQueue, value: ())
+        let feeding = SuspendingBarriers(), finishing = SuspendingBarriers()
+        let recognizers = (0..<feeding.before.count).map { _ in
+            NemotronRecognizer(decoder: BarrierDecoder(feeding: feeding, finishing: finishing))
+        }
 
-        _ = try await recognizer.hear(silence(1.12))
-        _ = try await recognizer.finish()
+        try await withThrowingTaskGroup { group in
+            for recognizer in recognizers { group.addTask { _ = try await recognizer.hear(silence(1.12)) } }
+            try await group.waitForAll()
+        }
+        #expect(feeding.met)
 
-        let checks = await decoder.onQueue
-        #expect(checks.count >= 4)
-        #expect(checks.allSatisfy { $0 })
+        try await withThrowingTaskGroup { group in
+            for recognizer in recognizers { group.addTask { _ = try await recognizer.finish() } }
+            try await group.waitForAll()
+        }
+        #expect(finishing.met)
     }
 
     @Test func aWordFollowedByAnotherIsFinal() async throws {
@@ -328,12 +334,16 @@ struct NemotronRecognizerTests {
         AudioChunk(samples: .init(repeating: 0, count: Int((seconds * 16_000).rounded())), sampleRate: 16_000)
     }
 
-    private func listen(_ recognizer: NemotronRecognizer, to chunks: [AudioChunk]) async -> [Segments] {
+    private func listen(_ recognizer: NemotronRecognizer, to chunks: [AudioChunk]) async -> [SegmentSnapshot] {
 
         let live = LiveText(recognizer: recognizer)
         let collecting = Task {
-            var updates: [Segments] = []
-            for await update in live.updates { updates.append(update) }
+            var updates: [SegmentSnapshot] = []
+            var all: [Segments.Segment] = []
+            for await update in live.updates {
+                all.replaceSubrange(update.from..., with: update.segments)
+                updates.append((all: all, ending: update.ending))
+            }
             return updates
         }
         await live.listen(to: Chunks(chunks: chunks))
@@ -409,35 +419,43 @@ private actor ControlledModelLoad {
     }
 }
 
-/// Replies with cumulative snapshots once enough audio has arrived.
-private nonisolated(unsafe) let recognizerQueue = DispatchSpecificKey<Void>()
+/// A barrier on each side of a suspension.
+private struct SuspendingBarriers {
 
-/// Records whether each feed and finish runs on the recognizer's queue, before and after it suspends.
-private actor QueueCheckingDecoder: TokenDecoder {
+    let before = ThreadBarrier()
+    let after = ThreadBarrier()
+
+    var met: Bool { before.met && after.met }
+
+    func pass() async {
+
+        before.arrive()
+        await Task.yield()
+        after.arrive()
+    }
+}
+
+/// Blocks whichever thread the recognizer runs it on; it has no isolation of its own.
+private struct BarrierDecoder: TokenDecoder {
 
     let chunk = 1.12
-    private(set) var onQueue: [Bool] = []
+    let feeding: SuspendingBarriers
+    let finishing: SuspendingBarriers
 
     func feed(_ samples: [Float]) async throws -> [DecodedToken] {
 
-        await check()
+        await feeding.pass()
         return []
     }
 
     func finish() async throws -> [DecodedToken] {
 
-        await check()
+        await finishing.pass()
         return []
-    }
-
-    private func check() async {
-
-        onQueue.append(DispatchQueue.getSpecific(key: recognizerQueue) != nil)
-        await Task.yield()
-        onQueue.append(DispatchQueue.getSpecific(key: recognizerQueue) != nil)
     }
 }
 
+/// Replies with cumulative snapshots once enough audio has arrived.
 private actor ScriptedDecoder: TokenDecoder {
 
     struct Failed: Error {}
@@ -492,3 +510,5 @@ private struct Chunks: AudioSource {
         return stream
     }
 }
+
+private typealias SegmentSnapshot = (all: [Segments.Segment], ending: Segments.Ending?)

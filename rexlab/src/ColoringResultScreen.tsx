@@ -9,11 +9,12 @@ import type { Language } from "./language/language.ts";
 import "./coloringResult.css";
 
 const words = {
-  en: { title: "YOUR STEGOSAURUS!", picture: "YOUR PAINTED STEGOSAURUS", earned: "+1 STAR", existing: "YOUR STAR", collection: "COLLECTION", best: "EXPLORER BEST", edit: "EDIT", gallery: "GALLERY", new: "NEW WORK", home: "HOME", error: "COULDN’T OPEN · TRY EDIT AGAIN" },
-  ru: { title: "ТВОЙ СТЕГОЗАВР!", picture: "ТВОЙ РАСКРАШЕННЫЙ СТЕГОЗАВР", earned: "+1 ЗВЕЗДА", existing: "ЗВЕЗДА УЖЕ ТВОЯ", collection: "КОЛЛЕКЦИЯ", best: "РЕКОРД ИССЛЕДОВАТЕЛЯ", edit: "ЕЩЁ РИСОВАТЬ", gallery: "ГАЛЕРЕЯ", new: "НОВЫЙ РИСУНОК", home: "ДОМОЙ", error: "НЕ УДАЛОСЬ ОТКРЫТЬ · ПОПРОБУЙ ЕЩЁ" }
+  en: { earned: "+1 STAR", existing: "YOUR STAR", collection: "COLLECTION", best: "EXPLORER BEST", edit: "EDIT", gallery: "GALLERY", new: "NEW WORK", home: "HOME", error: "COULDN’T OPEN · TRY EDIT AGAIN" },
+  ru: { earned: "+1 ЗВЕЗДА", existing: "ЗВЕЗДА УЖЕ ТВОЯ", collection: "КОЛЛЕКЦИЯ", best: "РЕКОРД ИССЛЕДОВАТЕЛЯ", edit: "ЕЩЁ РИСОВАТЬ", gallery: "ГАЛЕРЕЯ", new: "НОВЫЙ РИСУНОК", home: "ДОМОЙ", error: "НЕ УДАЛОСЬ ОТКРЫТЬ · ПОПРОБУЙ ЕЩЁ" }
 };
 export type ColoringResultScreenProps = {
   work: Work;
+  dinosaur?: string | undefined;
   completion: Completion;
   painter: { width: number; height: number; render(canvas: HTMLCanvasElement, actions: readonly Action[]): void };
   language: Language;
@@ -22,9 +23,11 @@ export type ColoringResultScreenProps = {
   choose(action: ResultAction): void;
 };
 
-export function ColoringResultScreen({ work, completion, painter, language, busy, error, choose }: ColoringResultScreenProps) {
+export function ColoringResultScreen({ work, completion, painter, language, busy, error, choose, dinosaur }: ColoringResultScreenProps) {
   const canvas = useRef<HTMLCanvasElement>(null);
-  const text = words[language];
+  const name = dinosaur ?? (language === "en" ? "STEGOSAURUS" : "СТЕГОЗАВР");
+  const text = { ...words[language], title: language === "en" ? `YOUR ${name}!` : `ТВОЙ ${name}!`,
+    picture: language === "en" ? `YOUR PAINTED ${name}` : `ТВОЙ РАСКРАШЕННЫЙ ${name}` };
   useLayoutEffect(() => { if (canvas.current) painter.render(canvas.current, work.actions); }, [painter, work]);
   return <section className="coloring-result" lang={language} aria-label={text.title} aria-busy={busy}>
     <header className="coloring-result-header">

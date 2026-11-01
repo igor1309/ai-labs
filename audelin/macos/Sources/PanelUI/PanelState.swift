@@ -1,3 +1,4 @@
+import SplitRows
 /// Everything the live panel shows, ready to render.
 ///
 /// Times and labels arrive formatted: the panel draws them as given.
@@ -42,7 +43,7 @@ public extension PanelState {
     struct Lines: Equatable, Sendable {
 
         /// The log in call order: a late group sits where its minutes were.
-        public var rows: [Row]
+        public var rows: SplitRows<Row>
         /// Selections the reader holds, oldest first.
         public var holds: [Held]
         /// Lines that arrived below while the reader is scrolled up.
@@ -52,7 +53,7 @@ public extension PanelState {
         public var followsLive: Bool
 
         public init(
-            rows: [Row],
+            rows: SplitRows<Row>,
             holds: [Held] = [],
             newBelow: Int = 0,
             followsLive: Bool = true
@@ -70,7 +71,7 @@ public extension PanelState {
             newBelow: Int = 0,
             followsLive: Bool = true
         ) {
-            self.init(rows: entries.map(Row.entry), holds: holds, newBelow: newBelow, followsLive: followsLive)
+            self.init(rows: .init(tail: entries.map(Row.entry)), holds: holds, newBelow: newBelow, followsLive: followsLive)
         }
 
         /// Every entry, late ones included, in call order.

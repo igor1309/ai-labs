@@ -15,23 +15,15 @@ actor RecordedInput: RecordedCapture.Capture {
 
     private let capture: any LiveAudio.Capture
     private let beforeInput: @Sendable () async -> Void
-    private let executor: (any TaskExecutor)?
     private var translating: Task<Void, Never>?
-
-    init(capture: any LiveAudio.Capture) {
-
-        self.init(capture: capture, executor: nil)
-    }
 
     init(
         capture: any LiveAudio.Capture,
-        beforeInput: @escaping @Sendable () async -> Void = {},
-        executor: (any TaskExecutor)?
+        beforeInput: @escaping @Sendable () async -> Void = {}
     ) {
 
         self.capture = capture
         self.beforeInput = beforeInput
-        self.executor = executor
     }
 
     func start() async throws -> AsyncThrowingStream<RecordedCapture.AudioPiece, any Error> {
@@ -39,7 +31,7 @@ actor RecordedInput: RecordedCapture.Capture {
         let stream = try await capture.start()
         let output = AsyncThrowingStream<RecordedCapture.AudioPiece, any Error>.makeStream()
         let beforeInput = beforeInput
-        let translating = Task(executorPreference: executor) {
+        let translating = Task { @concurrent in
             await beforeInput()
             do {
                 for try await piece in stream {

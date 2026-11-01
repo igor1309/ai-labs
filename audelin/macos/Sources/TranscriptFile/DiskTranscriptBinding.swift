@@ -5,6 +5,8 @@ import Foundation
 package protocol TranscriptFileBinding: Sendable {
 
     func create(at url: URL) throws -> any TranscriptFileHandle
+    /// Opens an existing file, never through a symlink, so each write lands at its end.
+    func open(at url: URL) throws -> any TranscriptFileHandle
     func rename(from source: URL, to target: URL) throws
     func remove(at url: URL)
 }
@@ -12,6 +14,7 @@ package protocol TranscriptFileBinding: Sendable {
 package protocol TranscriptFileHandle: Sendable {
 
     func write(_ data: Data) throws
+    func truncate(to length: Int) throws
     func flush() throws
 }
 
@@ -28,6 +31,14 @@ package struct DiskTranscriptBinding: TranscriptFileBinding {
 
         guard url.isFileURL else { throw POSIXError(.EINVAL) }
         let descriptor = Darwin.open(url.path, O_CREAT | O_EXCL | O_NOFOLLOW | O_WRONLY | O_CLOEXEC, 0o600)
+        guard descriptor >= 0 else { throw currentError() }
+        return DiskTranscriptHandle(descriptor: descriptor, sync: sync)
+    }
+
+    package func open(at url: URL) throws -> any TranscriptFileHandle {
+
+        guard url.isFileURL else { throw POSIXError(.EINVAL) }
+        let descriptor = Darwin.open(url.path, O_APPEND | O_NOFOLLOW | O_WRONLY | O_CLOEXEC)
         guard descriptor >= 0 else { throw currentError() }
         return DiskTranscriptHandle(descriptor: descriptor, sync: sync)
     }
@@ -66,6 +77,14 @@ private final class DiskTranscriptHandle: TranscriptFileHandle {
                 guard size > 0 else { throw POSIXError(.EIO) }
                 done += size
             }
+        }
+    }
+
+    func truncate(to length: Int) throws {
+
+        while ftruncate(descriptor, off_t(length)) != 0 {
+            if errno == EINTR { continue }
+            throw currentError()
         }
     }
 

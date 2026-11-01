@@ -13,6 +13,7 @@ under the working name wisper.
 | [../mvp.md](../mvp.md) | The product vision as first written: not grounds for any spec or technical choice |
 | [adr-001-v1-architecture.md](../adr-001-v1-architecture.md) | v1 architecture: one modular app, record first, ports and adapters |
 | [system-audio.md](system-audio.md) | How open-source Mac recorders capture the call's audio (process tap vs ScreenCaptureKit), and what Audelin takes |
+| [transcript-save-safety.md](transcript-save-safety.md) | Crash safety and flush choices for a growing transcript, with app source survey and save/flush microbenchmarks |
 | [chat-khakhalev-2026-10-21.md](chat-khakhalev-2026-10-21.md) | Chat survey of meeting recorders and pipelines (Granola, Gristmill, others) |
 | [naming-prompt.md](naming-prompt.md) | Prompt for brainstorming the app's name |
 | [naming-prompt-round-2.md](naming-prompt-round-2.md) | Second naming round, built on `prompts/` |
@@ -20,6 +21,7 @@ under the working name wisper.
 | [audelin-naming-brief.md](../audelin-naming-brief.md) | The chosen name: Audelin, CLI `audelin`, data in `~/.audelin` |
 | [audelin-availability-check.md](audelin-availability-check.md) | Collision search and score for Audelin; GitHub and App Store not yet confirmed directly |
 | [endurance-tests.md](endurance-tests.md) | How to test a 3-hour call and a loaded Mac without waiting 3 hours: growth per unit of work, test tiers, what others do |
+| [transcript-save-interval.md](transcript-save-interval.md) | How often to save the transcript: other apps, cost of 1, 5 and 30 s; owner chose 5 s (2026-10-31) |
 | [replay/](replay/) | `audelin-replay`: recorded call tracks through Audelin's recognisers and Live text, with word delays and how much live text changes |
 | [spike/](spike/) | CLIs that run a recording through Parakeet v3: the sliding window, and Audelin's own windows (`audelin-windows`, with the stabilizer's fixtures) |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |

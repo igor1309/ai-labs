@@ -12,7 +12,7 @@ export type GallerySource = {
   list(): Promise<GalleryCollection>;
   reset(): Promise<void>;
   open(id: string, navigate: (navigation: WorkshopNavigation) => void): Promise<ColoringWorkshopSession>;
-  newWork(id: string, navigate: (navigation: WorkshopNavigation) => void): Promise<ColoringWorkshopSession>;
+  newWork(id: string, navigate: (navigation: WorkshopNavigation) => void, geometry?: string): Promise<ColoringWorkshopSession>;
 };
 type Dependencies = {
   source: GallerySource;
@@ -39,25 +39,25 @@ export function coloringGallery({ source, identity, countStart, workshop, naviga
     state = { ...state, ...changes };
     listeners.forEach(listener => listener());
   };
-  async function load(create = false) {
+  async function load(create: boolean | string = false) {
     const current = ++visit;
     update({ busy: true });
     try {
       const collection = await source.list();
       if (current !== visit) return;
       update({ collection, busy: false, warning: collection.completedCount === null || collection.unavailable.length > 0 });
-      if (create) await enter();
+      if (create) await enter(undefined, typeof create === "string" ? create : undefined);
     } catch {
       if (current === visit) update({ busy: false, warning: true });
     }
   }
-  async function enter(id?: string) {
+  async function enter(id?: string, geometry?: string) {
     if (departed || state.busy || state.recovery || state.viewing || state.collection?.completedCount == null) return;
     if (id !== undefined && !state.collection.works.some(record => record.document.id === id)) return;
     const current = visit;
     update({ busy: true });
     try {
-      const session = id === undefined ? await source.newWork(identity(), navigate) : await source.open(id, navigate);
+      const session = id === undefined ? (geometry === undefined ? await source.newWork(identity(), navigate) : await source.newWork(identity(), navigate, geometry)) : await source.open(id, navigate);
       if (current !== visit) return;
       if (id === undefined) countStart();
       departed = true;
