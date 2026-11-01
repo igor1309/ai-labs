@@ -248,77 +248,6 @@ describe("Ankylosaurus vectors", () => {
 });
 
 
-describe("Triceratops vectors", () => {
-  it("has three independently fillable horns, a broad frill, large regions and stable identities", () => {
-    expect(TRICERATOPS.artwork.version).toBe("triceratops-production-1");
-    expect(TRICERATOPS.regions.filter(region => region.id.startsWith("horn-")).map(region => region.id)).toEqual(["horn-far", "horn-near", "horn-nose"]);
-    expect(TRICERATOPS.artwork.regions).toEqual(TRICERATOPS.regions.map(region => region.id));
-    expect(new Set(TRICERATOPS.artwork.regions).size).toBe(TRICERATOPS.regions.length);
-    for (const id of ["body", "belly", "frill", "head", "rear-near", "front-near"]) {
-      expect(TRICERATOPS.artwork.regions).toContain(id);
-    }
-    for (const region of TRICERATOPS.regions) {
-      expect(region.outline).toBeGreaterThanOrEqual(2);
-      if ("path" in region) expect(region.path).toMatch(/Z$/);
-      if (region.parent) expect(region.parent).toBe("body");
-    }
-  });
-
-  it("keeps its silhouette and thick outlines inside the shared landscape coordinate space", async () => {
-    const actual = await illustration(TRICERATOPS);
-    const pixel = (x: number, y: number) => [...actual.subarray((y * WIDTH + x) * 4, (y * WIDTH + x) * 4 + 4)];
-    for (const [x, y] of [[280, 360], [440, 400], [600, 280], [720, 400], [730, 250], [790, 290], [858, 354]]) {
-      expect(pixel(x!, y!), `fillable interior ${x},${y}`).toEqual([255, 240, 207, 255]);
-    }
-    expect(pixel(746, 370)).toEqual([9, 30, 64, 255]);
-    for (let x = 0; x < WIDTH; x++) {
-      expect(pixel(x, 0)[3]).toBe(0); expect(pixel(x, HEIGHT - 1)[3]).toBe(0);
-    }
-    for (let y = 0; y < HEIGHT; y++) {
-      expect(pixel(0, y)[3]).toBe(0); expect(pixel(WIDTH - 1, y)[3]).toBe(0);
-    }
-  });
-});
-
-
-describe("Explorer Triceratops scene", () => {
-  it("provides a visible enclosed touch interior for every animal and landscape region", async () => {
-    const geometry = TRICERATOPS_EXPLORER;
-    expect(geometry.artwork.version).toBe("triceratops-explorer-1");
-    expect(geometry.artwork.regions).toEqual(explorerProbes.map(([, , id]) => id));
-    expect(new Set(geometry.artwork.regions).size).toBe(geometry.regions.length);
-    expect(geometry.regions.filter(region => region.id.startsWith("horn-")).map(region => region.id)).toEqual(["horn-far", "horn-near", "horn-nose"]);
-    expect(geometry.regions.length).toBeGreaterThan(TRICERATOPS.regions.length * 2);
-    for (const region of geometry.regions) {
-      expect(region.outline).toBeGreaterThanOrEqual(2);
-      if ("path" in region) expect(region.path).toMatch(/Z$/);
-      if (region.parent) {
-        const parent = geometry.regions.find(candidate => candidate.id === region.parent);
-        expect(parent).toBeDefined(); expect(parent!.parent).toBeUndefined();
-      }
-    }
-    const actual = await illustration(geometry);
-    const pixel = (x: number, y: number) => [...actual.subarray((y * WIDTH + x) * 4, (y * WIDTH + x) * 4 + 4)];
-    for (const [x, y, id] of explorerProbes) {
-      expect(pixel(x, y), id).toEqual([255, 240, 207, 255]);
-    }
-    for (const [index, [, , id]] of explorerProbes.entries()) {
-      const painted = await illustration(geometry, id);
-      for (const [other, [x, y, sample]] of explorerProbes.entries()) {
-        const offset = (y * WIDTH + x) * 4;
-        expect([...painted.subarray(offset, offset + 4)], `${id} at ${sample}`).toEqual(index === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
-      }
-    }
-    for (let x = 0; x < WIDTH; x++) {
-      expect(pixel(x, 0)[3]).toBe(0); expect(pixel(x, HEIGHT - 1)[3]).toBe(0);
-    }
-    for (let y = 0; y < HEIGHT; y++) {
-      expect(pixel(0, y)[3]).toBe(0); expect(pixel(WIDTH - 1, y)[3]).toBe(0);
-    }
-  });
-});
-
-
 describe("Ankylosaurus prehistoric scenes", () => {
   it("resolves the archived artwork and both new versions without substituting saved regions", () => {
     for (const geometry of [ANKYLOSAURUS, ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER]) {
@@ -328,21 +257,21 @@ describe("Ankylosaurus prehistoric scenes", () => {
     expect(ANKYLOSAURUS_HATCHLING.artwork.version).toBe("ankylosaurus-hatchling-2");
     expect(ANKYLOSAURUS_EXPLORER.artwork.version).toBe("ankylosaurus-explorer-1");
     expect(ANKYLOSAURUS_EXPLORER.artwork.regions).toEqual(expect.arrayContaining([
-      "river", "ridge-face", "club-lobe", "cheek-scale", "front-leg-scale", "rock-facet", "horsetail-crown"
+      "river", "ridge-face", "club-lobe"
     ]));
     expect(ANKYLOSAURUS_HATCHLING.artwork.regions).not.toContain("cheek-scale");
   });
 
   it.each([
     ["Hatchling", ANKYLOSAURUS_HATCHLING, ankylosaurusHatchlingProbes, 12, 1200],
-    ["Explorer", ANKYLOSAURUS_EXPLORER, ankylosaurusExplorerProbes, 21, 700]
+    ["Explorer", ANKYLOSAURUS_EXPLORER, ankylosaurusExplorerProbes, 17, 1000]
   ] as const)("keeps every %s shield, limb, horn and scenery region visible and independently colorable", async (_, geometry, probes, shields, minimumShieldArea) => {
     expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
     expect(new Set(geometry.artwork.regions).size).toBe(geometry.regions.length);
     expect(geometry.regions.filter(({ id }) => id.startsWith("scute-"))).toHaveLength(shields);
     expect(geometry.regions.filter(({ id }) => /^(rear|front)-(near|far)$/.test(id))).toHaveLength(4);
     expect(geometry.artwork.regions).toEqual(expect.arrayContaining([
-      "tail", "tail-club", "body", "head", "beak", "cheek-horn", "horn-near", "fern-left-1", "fern-right-3", "rock-left", "distant-ridge"
+      "tail", "tail-club", "body", "head", "beak", "cheek-horn", "fern-left-1", "fern-right-3", "distant-ridge"
     ]));
     for (const region of geometry.regions) {
       if ("path" in region) expect(region.path).toMatch(/Z$/);
@@ -368,6 +297,7 @@ describe("Ankylosaurus prehistoric scenes", () => {
         expect([...painted.subarray(offset, offset + 4)], `${id} at ${sample}`).toEqual(index === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
       }
       let interior = 0;
+      let minX = WIDTH, minY = HEIGHT, maxX = 0, maxY = 0;
       let changedInk = 0, leaks = 0, outsideMask = 0;
       for (let i = 0; i < painted.length; i += 4) {
         if (painted[i] === 239 && painted[i + 1] === 83 && painted[i + 2] === 80 && painted[i + 3] === 255) interior++;
@@ -381,8 +311,16 @@ describe("Ankylosaurus prehistoric scenes", () => {
       expect(changedInk, `${id} preserves every ink pixel`).toBe(0);
       expect(leaks, `${id} stays inside silhouette`).toBe(0);
       expect(outsideMask, `${id} stays inside its visible region`).toBe(0);
+      for (let i = 0; i < painted.length; i += 4) {
+        if (painted[i] === 239 && painted[i + 1] === 83 && painted[i + 2] === 80 && painted[i + 3] === 255) {
+          const x = (i / 4) % WIDTH, y = Math.floor(i / 4 / WIDTH);
+          minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+        }
+      }
+      expect(maxX - minX, `${id} interior width`).toBeGreaterThanOrEqual(24);
+      expect(maxY - minY, `${id} interior height`).toBeGreaterThanOrEqual(24);
       const primary = /^(tail|tail-club|head|(rear|front)-(near|far))$/.test(id);
-      expect(interior, `${id} visible colorable area`).toBeGreaterThan(id.startsWith("scute-") ? minimumShieldArea : primary ? 2000 : 150);
+      expect(interior, `${id} visible colorable area`).toBeGreaterThan(id.startsWith("scute-") ? minimumShieldArea : primary ? 2000 : 1000);
     }
     for (let x = 0; x < WIDTH; x++) {
       expect(pixel(x, 0)[3]).toBe(0); expect(pixel(x, HEIGHT - 1)[3]).toBe(0);

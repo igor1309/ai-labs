@@ -107,7 +107,7 @@ it.each([4, null])("shows no warning while Home history is pending, then shows i
 });
 
 
-it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("offers the %s Triceratops through App without a third artwork choice", async level => {
+it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("offers the %s Triceratops through App alongside the other two creature choices", async level => {
   const f = fixture({ level }); await act(async () => {});
   await f.click("COLOR A DINOSAUR");
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(3);

@@ -118,9 +118,15 @@ function scene(rich: boolean): Geometry {
     line("M416 132 L424 132 M417 145 L425 145 M417 158 L424 158 M416 170 L424 170 M419 138 Q403 133 401 124 M423 138 Q435 133 438 125 M420 151 Q405 148 400 140 M423 151 Q435 148 441 140 M419 165 Q405 162 401 154 M423 165 Q438 162 441 153", 1.2),
     line("M151 188 Q151 191 154 192 M155 195 L157 197 M316 185 L319 188 M310 180 L312 182 M141 199 L144 202 M240 234 L243 235 M251 235 L254 235 M263 235 L266 234 M350 275 L355 267 L363 268 M46 70 Q59 73 71 70 M299 51 Q310 54 319 52", 1)
   );
+  // Small accents remain visible as protected linework rather than tiny fill targets.
+  const decorative = new Set(rich
+    ? ["hip-spike", "shoulder-spike", "scute-1", "scute-6", "scute-20", "scute-21", "brow-armor", "horn-near", "cheek-scale", "rear-leg-scale", "front-leg-scale", "tail-plate", "rock-left", "rock-facet", "pebble-1", "pebble-2", "horsetail-stem", "horsetail-crown"]
+    : ["hip-spike", "shoulder-spike", "brow-armor", "horn-near"]);
+  const paintable = regions.filter(({ id }) => !decorative.has(id));
+  details.push(...regions.filter(({ id }) => decorative.has(id)).map(({ id: _id, parent: _parent, outline, ...shape }) => ({ ...shape, stroke: ink, strokeWidth: outline })));
   return {
-    artwork: Object.freeze({ version: rich ? "ankylosaurus-explorer-1" : "ankylosaurus-hatchling-2", regions: Object.freeze(regions.map(({ id }) => id)) }),
-    regions, details
+    artwork: Object.freeze({ version: rich ? "ankylosaurus-explorer-1" : "ankylosaurus-hatchling-2", regions: Object.freeze(paintable.map(({ id }) => id)) }),
+    regions: paintable, details
   };
 }
 
