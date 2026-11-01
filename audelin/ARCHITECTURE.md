@@ -17,10 +17,11 @@ designing, specifying or building anything.
 3. **Each component owns its types.** There is no shared domain module.
    Components with similar types keep their own, and the composition root
    translates between them.
-4. **Only the composition root knows concrete pieces.** It builds every
-   component and adapter and decides what answers each interface. It
-   decides nothing else: coordination that decides anything is a state
-   machine with its own tests, and the root only builds and subscribes
-   (`docs/app-shape.md`).
+4. **The composition root is a responsibility, and can span several modules.**
+   It decides which components are wired and what answers each interface:
+   a fake, a stub or the real framework. A composer owns the interfaces at
+   its boundary and imports whatever it keeps inside. Coordination that
+   decides anything is a state machine with its own tests; composition only
+   builds and subscribes.
 5. **Cross-cutting concerns are decorators at the root.** Logging, metrics
    and retries wrap interfaces in the composition root. No component logs.

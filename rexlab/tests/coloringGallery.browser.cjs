@@ -363,7 +363,7 @@ const { chromium } = require("playwright");
     // Explorer replaces the new-work Triceratops choice, while every saved
     // geometry stays editable and keeps its localized name at either level.
     await mount({ level: "explorer" });
-    assert.equal(await page.locator(".gallery-new").count(), 4);
+    assert.equal(await page.locator(".gallery-new").count(), 5);
     assert.equal(await page.getByRole("button", { name: "TRICERATOPS", exact: true }).count(), 1);
     await page.locator(`[data-work-id="${tric.id}"] button`).press("Enter");
     await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
@@ -396,7 +396,7 @@ const { chromium } = require("playwright");
     assert.deepEqual(await thumbnailPixel(rich.id, 602, 206), [239, 83, 80, 255]);
     assert.deepEqual(await thumbnailPixel(rich.id, 424, 370), [66, 165, 245, 255]);
     await page.reload(); await mount({ level: "hatchling", language: "ru" });
-    assert.equal(await page.locator(".gallery-new").count(), 4);
+    assert.equal(await page.locator(".gallery-new").count(), 5);
     assert.equal(await page.locator(`[data-work-id="${rich.id}"] img`).getAttribute("alt"), "ТРИЦЕРАТОПС · 1");
     await page.locator(`[data-work-id="${rich.id}"] button`).press("Enter");
     await page.locator('canvas[aria-label="ТРИЦЕРАТОПС"]').waitFor();
@@ -412,7 +412,7 @@ const { chromium } = require("playwright");
         await page.setViewportSize(viewport);
         for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
           await mount({ level, language, theme });
-          assert.equal(await page.locator(".gallery-new").count(), 4);
+          assert.equal(await page.locator(".gallery-new").count(), 5);
           const name = language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС";
           await press(name); await page.locator(`canvas[aria-label="${name}"]`).waitFor();
           const box = await page.locator("canvas").boundingBox();
@@ -513,7 +513,7 @@ const { chromium } = require("playwright");
       const [x, y, region] = level === "hatchling" ? [420, 330, "body"] : [440, 396, "flank"];
       const [otherX, otherY, otherRegion] = level === "hatchling" ? [326, 135, "plate-2"] : [460, 178, "plate-panel-4"];
       await mount({ level });
-      assert.equal(await page.locator(".gallery-new").count(), 4);
+      assert.equal(await page.locator(".gallery-new").count(), 5);
       assert(await page.locator(".gallery-new").first().locator("canvas").evaluate((canvas, version) => {
         const expected = window.gallery.painterFor(version).canvas(canvas.width, canvas.height);
         window.gallery.painterFor(version).render(expected, []);
@@ -693,7 +693,7 @@ const { chromium } = require("playwright");
         for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
           await mount({ level, language, theme });
           const name = language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР";
-          assert.equal(await page.locator(".gallery-new").count(), 4);
+          assert.equal(await page.locator(".gallery-new").count(), 5);
           assert.equal(await page.getByRole("button", { name, exact: true }).count(), 1);
           await page.locator(`[data-work-id="${anky.id}"] button`).press("Enter");
           await page.locator(`canvas[aria-label="${name}"]`).waitFor();
@@ -806,7 +806,7 @@ const { chromium } = require("playwright");
           await mount({ level, language, theme });
           const name = language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР";
           const version = level === "hatchling" ? "ankylosaurus-hatchling-2" : "ankylosaurus-explorer-1";
-          assert.equal(await page.locator(".gallery-new").count(), 4);
+          assert.equal(await page.locator(".gallery-new").count(), 5);
           assert.equal(await page.getByRole("button", { name, exact: true }).count(), 1);
           await press(name); await page.locator(".coloring-workshop canvas").waitFor();
           assert.equal(await page.locator("canvas").evaluate((c, version) => {

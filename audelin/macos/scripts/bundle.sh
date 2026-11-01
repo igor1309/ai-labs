@@ -2,11 +2,11 @@
 # Run from audelin/macos to build the menu bar app.
 set -eu
 
-swift build -c release --product Audelin
+swift build --package-path App -c release --product Audelin
 app=.build/Audelin.app
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-bin=$(swift build -c release --show-bin-path)
+bin=$(swift build --package-path App -c release --show-bin-path)
 cp "$bin/Audelin" "$app/Contents/MacOS/Audelin"
 cp -R "$bin/Audelin_GlassLedger.bundle" "$app/Contents/Resources/"
 cat > "$app/Contents/Info.plist" <<'PLIST'
@@ -30,13 +30,13 @@ PLIST
 
 partial=$(mktemp)
 trap 'rm -f "$partial"' EXIT
-xcrun actool AppIcon/Audelin.icon --compile "$app/Contents/Resources" \
+xcrun actool App/AppIcon/Audelin.icon --compile "$app/Contents/Resources" \
     --app-icon Audelin --platform macosx --minimum-deployment-target 26.0 \
     --output-partial-info-plist "$partial"
 for key in CFBundleIconName CFBundleIconFile; do
     value=$(/usr/libexec/PlistBuddy -c "Print :$key" "$partial")
     /usr/libexec/PlistBuddy -c "Add :$key string $value" "$app/Contents/Info.plist"
 done
-codesign --force --options runtime --entitlements Audelin.entitlements \
+codesign --force --options runtime --entitlements App/Audelin.entitlements \
     --sign "${AUDELIN_SIGN_IDENTITY:-Apple Development: Igor Malyarov (W78EER96YQ)}" "$app"
 echo "$app"

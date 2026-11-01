@@ -1,6 +1,6 @@
 import CallAppProcesses
 import CallFolder
-import Compose
+import Composer
 import Foundation
 import struct MicrophoneCapture.AudioPiece
 import TranscriptFile

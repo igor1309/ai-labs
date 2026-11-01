@@ -1,3 +1,4 @@
+import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER } from "./coloring/mosasaurusScene.ts";
 import { TREX_HATCHLING, TREX_EXPLORER } from "./coloring/trexScene.ts";
 import { ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER } from "./coloring/ankylosaurusScene.ts";
 import type { AgeLevel } from "./ageLevel.ts";
@@ -73,6 +74,7 @@ export function coloringVersionsFor(level: AgeLevel): readonly string[] {
     level === "hatchling" ? ARTWORK.version : STEGOSAURUS_EXPLORER.artwork.version,
     (level === "hatchling" ? TRICERATOPS : TRICERATOPS_EXPLORER).artwork.version,
     (level === "hatchling" ? ANKYLOSAURUS_HATCHLING : ANKYLOSAURUS_EXPLORER).artwork.version,
-    (level === "hatchling" ? TREX_HATCHLING : TREX_EXPLORER).artwork.version
+    (level === "hatchling" ? TREX_HATCHLING : TREX_EXPLORER).artwork.version,
+    (level === "hatchling" ? MOSASAURUS_HATCHLING : MOSASAURUS_EXPLORER).artwork.version
   ];
 }

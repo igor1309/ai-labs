@@ -16,7 +16,7 @@ its own sandbox inside it), with nothing heavy alongside. Every tool takes `-h`.
 |---|---|---|
 | Did this commit help, against an earlier one? | `./measure.sh BASE TIP` | about 25 min, plus builds |
 | Quick: this code against the saved base | `./compare.sh` | under a minute once built |
-| Do the app's tests pass, optimized? | `./test-optimized.sh` | a few minutes |
+| Do both packages' tests pass, optimized? | `./test-optimized.sh` | a few minutes |
 | Which step grows, one commit only | `Profile/growth.sh TAG [OLD]` | about 5–12 min |
 | The same with the other side silent or gone quiet | `SILENT=1 Profile/growth.sh TAG`, `QUIET=1 Profile/growth.sh TAG` | about 5–12 min |
 | Which frames grow, between two finished runs | `cd Profile && python3 -I frames.py TAG-20 TAG-6000 45` | seconds |
@@ -24,7 +24,10 @@ its own sandbox inside it), with nothing heavy alongside. Every tool takes `-h`.
 | Does a real recogniser keep up late in a call? | `./speech.sh TAG [SECONDS]` | about 15 min |
 
 Use these rather than typing the commands. `Profile/` is its own package, built
-against the checkout.
+against the checkout. All three benchmark packages use `Composer` and
+`SessionRehearsal` from `../App` (the nested packages use `../../App`),
+and component products from `macos`. These harnesses require that App package;
+measure older commits with the benchmark tools from their package layout.
 
 ## Comparing two commits
 

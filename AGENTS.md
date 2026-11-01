@@ -103,8 +103,9 @@ composes it.
   doer observes the state, does the work once and sends the result back as
   an event.
 - No module imports swift-imrx or any state machine, and none wraps or
-  re-implements one. Only an app (a main app or a preview app) imports
-  swift-imrx. It composes each instance from the generic model, the tested
+  re-implements one. Only an app (a main app or a preview app), or in Audelin
+  its composer package, imports swift-imrx. It composes each instance from
+  the generic model, the tested
   reducer and the tested effect handler or doer. A sync model stays on the
   actor that made it; callers elsewhere `await` the hop.
 - Each reducer state test is paired with an effect test for the same
