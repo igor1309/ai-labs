@@ -215,10 +215,11 @@ export function filterDoubleTaps(target: Pick<EventTarget, "addEventListener" | 
 // Register this once, before mounting screens, so capture order is stable.
 export function browserInput(target: Pick<EventTarget, "addEventListener" | "removeEventListener">, filter = tapFilter()) {
   // Cancel native selection/menu actions, not the contacts that scroll,
-  // draw or activate controls. These events never enter the tap policy.
-  const nativeActions = ["contextmenu", "selectstart"];
+  // draw or activate controls. Safari gesture events cover native pinch zoom.
+  // These events never enter the tap policy.
+  const nativeActions = ["contextmenu", "selectstart", "gesturestart", "gesturechange"];
   const preventNativeAction = (event: Event) => event.preventDefault();
-  nativeActions.forEach(type => target.addEventListener(type, preventNativeAction, { capture: true }));
+  nativeActions.forEach(type => target.addEventListener(type, preventNativeAction, { capture: true, passive: false }));
   const guards = new Set<(event: Event) => void>();
   const arbitrate: InputArbitration = guard => {
     guards.add(guard);

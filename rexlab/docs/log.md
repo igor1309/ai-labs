@@ -2,6 +2,8 @@
 
 ## 2026-11-01
 
+- LAB-891: All pages block pinch and double-tap zoom while preserving scrolling and game input.
+
 - LAB-825: Ankylosaurus coloring has new curved armor, cheek horns, sturdy feet and prehistoric scenery, with larger regions for Hatchling and extra armor and landscape details for Explorer and Paleontologist. Saved drawings retain their original artwork.
 
 ## 2026-10-31
