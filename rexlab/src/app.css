@@ -576,10 +576,10 @@ body {
 }
 
 /* Selection and callouts steal a child's repeated taps or held finger.
-   Apply to descendants too: nested scrollers must keep panning and pinch
-   zoom, while game surfaces can override manipulation with their own rules. */
+   Keep scrolling but block zoom on descendants and nested scrollers too;
+   game surfaces can set their own touch rules. */
 :where(html, body, body *) {
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
