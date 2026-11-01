@@ -181,3 +181,18 @@ Feature: Coloring full flow and durable progress
       | Hatchling      | trex-hatchling-1         |
       | Explorer       | trex-explorer-1          |
       | Paleontologist | trex-explorer-1          |
+
+  Scenario Outline: Mosasaurus age variants and saved drawings
+    Given the global age setting is <level>
+    When I choose Mosasaurus from the coloring gallery
+    Then the workshop opens <geometry> with matching preview and localized name
+    When I paint, save and reopen this work after changing the global age setting
+    Then its original geometry, paint, undo history, thumbnail and earned star are retained
+    And returning to the gallery offers the Mosasaurus for the current global age level
+    And existing creatures and their saved works, including T-Rex, remain unchanged
+
+    Examples:
+      | level          | geometry               |
+      | Hatchling      | mosasaurus-hatchling-1 |
+      | Explorer       | mosasaurus-explorer-1  |
+      | Paleontologist | mosasaurus-explorer-1  |

@@ -208,7 +208,7 @@ const { chromium } = require("playwright");
             }
           };
           await checkLayout();
-          assert.equal(await p.locator(".gallery-new").count(), 4);
+          assert.equal(await p.locator(".gallery-new").count(), 5);
           await p.getByRole("button", { name: creature === "stegosaurus" ? (language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК") : creature === "triceratops" ? (language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС") : creature === "ankylosaurus" ? (language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР") : (language === "en" ? "T-REX" : "ТИРАННОЗАВР"), exact: true }).press("Enter");
           await p.locator(".coloring-workshop").waitFor(); await checkLayout();
           for (const [label, option, count] of language === "en" ? [["COLOR", "BLUE", 13], ["SIZE", "BRUSH LARGE", 4]] : [["ЦВЕТ", "ГОЛУБОЙ", 13], ["РАЗМЕР", "КИСТЬ БОЛЬШОЙ", 4]]) {
