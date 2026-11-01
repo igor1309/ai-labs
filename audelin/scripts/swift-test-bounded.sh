@@ -20,7 +20,7 @@ trap 'rm -f "$events"' EXIT
 # swift test starts its test runner in a process group of its own, so the
 # limit kills every process below the run, not a group. perl is on every
 # macOS.
-perl -e '
+SWIFT_BACKTRACE=enable=yes perl -e '
   my ($limit, @cmd) = @ARGV;
   sub tree {
     my %children;
@@ -42,7 +42,7 @@ perl -e '
   waitpid($pid, 0);
   alarm(0);
   exit($? & 127 ? 128 + ($? & 127) : $? >> 8);
-' "$limit" env SWIFT_BACKTRACE=enable=yes swift test --skip-build \
+' "$limit" swift test --skip-build \
   --event-stream-output-path "$events" --event-stream-version 0 "$@"
 code=$?
 

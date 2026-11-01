@@ -15,13 +15,20 @@ mkdir -p "$probe"
 name=$(git rev-parse --abbrev-ref HEAD) || exit 2
 cd "$(git rev-parse --show-toplevel)/audelin/macos" || exit 2
 
-swift build --build-tests > "$probe/$name-build.txt" 2>&1 \
-    || { echo "FAIL build: $probe/$name-build.txt"; exit 1; }
-echo "build ok"
-AUDELIN_REQUIRE_DEVICES=1 ../scripts/swift-test-bounded.sh 120 --skip-build > "$probe/$name-test.txt" 2>&1
-status=$?
-tail -1 "$probe/$name-test.txt"
-[ $status = 0 ] || { echo "FAIL test: $probe/$name-test.txt"; exit 1; }
+for package in . App; do
+    label=core
+    [ "$package" = . ] || label=app
+    (
+        cd "$package" || exit 2
+        swift build --build-tests > "$probe/$name-$label-build.txt" 2>&1 \
+            || { echo "FAIL $label build: $probe/$name-$label-build.txt"; exit 1; }
+        echo "$label build ok"
+        AUDELIN_REQUIRE_DEVICES=1 sh "$(git rev-parse --show-toplevel)/audelin/scripts/swift-test-bounded.sh" 120 --skip-build > "$probe/$name-$label-test.txt" 2>&1
+        status=$?
+        tail -1 "$probe/$name-$label-test.txt"
+        [ $status = 0 ] || { echo "FAIL $label test: $probe/$name-$label-test.txt"; exit 1; }
+    ) || exit 1
+done
 AUDELIN_SIGN_IDENTITY=- sh scripts/bundle.sh > "$probe/$name-bundle.txt" 2>&1 \
     || { echo "FAIL bundle: $probe/$name-bundle.txt"; exit 1; }
 echo "bundle ok"

@@ -229,6 +229,9 @@ def record(tool, args):
                 result = self.run_script("capture", "--capture-after", "60", "--capture-for", str(length), *workload)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 calls = self.recorded()
+                self.assertEqual([args for name, args in calls if name == "swift"], [
+                    ["build", "--package-path", "App", "-c", "release", "--product", "AudelinRehearsal"],
+                    ["build", "--package-path", "App", "-c", "release", "--show-bin-path"]])
                 self.assertIn(["sleep", ["60"]], calls)
                 self.assertEqual([args for name, args in calls if name == "app"], [
                     workload + ["--recordings-dir", (self.root / "media-path").read_text(),

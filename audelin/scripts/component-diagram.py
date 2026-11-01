@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes docs/live-text.drawio from the package's targets and their dependencies.
+"""Writes docs/live-text.drawio from both packages' targets and their dependencies.
 
 Run from audelin/: python3 scripts/component-diagram.py [SwiftPM flags]
 Arrows come from `swift package dump-package`; each target's lane and line come
@@ -21,16 +21,20 @@ LANES = {
     "text": ("Live text", "#bef264", 40, 530, 820, 300, 3),
     "capture": ("Capture and processes", "#fb923c", 900, 530, 440, 300, 2),
     "storage": ("Storage", "#a78bfa", 1380, 530, 460, 390, 2),
-    "external": ("Platform and packages", "#94a3b8", 40, 960, 1800, 120, 4),
+    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 960, 1800, 140, 4),
+    "external": ("Platform and packages", "#94a3b8", 40, 1120, 1800, 120, 4),
 }
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
     "BlockingTestWork": ("external", "test helper: dispatches blocking work", 3),
+    "AudelinRehearsal": ("tools", "synthetic call through the shipped composition", 0),
+    "SessionRehearsal": ("tools", "synthetic recogniser", 1),
+    "SessionCrashWriter": ("tools", "test helper: call killed mid-save", 2),
     "Audelin": ("compose", "launches recording, menu and panel", 0),
     "RecordedCapture": ("compose", "records one capture to its track", 3),
     "LiveAudio": ("compose", "hears and reads one capture,\nkeeps its time", 4),
-    "Compose": ("compose", "wires one recording's pieces\nbehind Session's ports", 1),
+    "Composer": ("compose", "wires one recording's pieces\nbehind Session's ports", 1),
     "Reading": ("compose", "decides what the panel shows", 2),
     "CallsListUI": ("ui", "lists, opens, renames and deletes calls", 4),
     "Recordings": ("machines", "confirms and serialises call actions", 5),
@@ -56,6 +60,7 @@ TARGETS = {
     "NemotronRecognizer": ("text", "Nemotron 3.5, streaming", 3),
     "ParakeetRecognizer": ("text", "Parakeet v3 in its own windows", 4),
     "SideText": ("text", "one side's text,\nswitches and fills in", 8),
+    "SplitRows": ("text", "splits transcript rows for display", 9),
     "FillIn": ("text", "readies one side's live text,\nfills in its missed audio", 5),
     "ModelLoading": ("text", "shares one model load", 7),
     "AudioConversion": ("text", "sample-rate conversion\nkeeping filter state", 6),
@@ -109,18 +114,21 @@ def box_style(colour, dashed=False, bold=False):
 def main():
     root = Path(__file__).resolve().parent.parent
     targets, externals = package(root / "macos")
+    app_targets, app_externals = package(root / "macos" / "App")
+    targets.update(app_targets)
+    externals = (externals | app_externals) - targets.keys()
     unknown = sorted(set(targets) - set(TARGETS))
     gone = sorted(set(TARGETS) - set(targets))
     if unknown or gone:
         sys.exit(f"update TARGETS: not drawn {unknown}, no longer in the package {gone}")
 
     cells = [
-        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1150),
+        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1310),
         cell("title", "Audelin", "text;html=1;align=left;verticalAlign=middle;fontSize=28;fontColor=#f8fafc;fontStyle=1;", "canvas", 40, 24, 400, 40),
-        cell("subtitle", "components as built — generated from Package.swift by scripts/component-diagram.py",
+        cell("subtitle", "components as built — generated from both package manifests by scripts/component-diagram.py",
              "text;html=1;align=left;verticalAlign=middle;fontSize=15;fontColor=#94a3b8;", "canvas", 42, 66, 900, 26),
         cell("legend", "solid box: a target · dashed box: planned · arrow: depends on",
-             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1100, 900, 26),
+             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1270, 900, 26),
     ]
     for lane, (title, colour, x, y, w, h, _) in LANES.items():
         cells.append(cell(f"lane-{lane}", title,
@@ -135,7 +143,7 @@ def main():
         cells.append(cell(id, f"{label}\n{line}", box_style(colour, dashed, bold), f"lane-{lane}", bx, by, BOX_W, BOX_H))
 
     for name, (lane, line, n) in TARGETS.items():
-        place(lane, n, name, name, line, bold=name == "Compose")
+        place(lane, n, name, name, line, bold=name == "Composer")
     for lane, label, line, n in PLANNED:
         place(lane, n, "planned-" + label, label, line, dashed=True)
     for lane, label, line, n in STANDING:
@@ -159,9 +167,9 @@ def main():
 
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<mxfile host="drawio"><diagram id="audelin-live" name="Components"><mxGraphModel dx="1880" dy="1150" '
+        '<mxfile host="drawio"><diagram id="audelin-live" name="Components"><mxGraphModel dx="1880" dy="1310" '
         'grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" '
-        'pageWidth="1880" pageHeight="1150" background="#252525" math="0" shadow="0"><root>\n'
+        'pageWidth="1880" pageHeight="1310" background="#252525" math="0" shadow="0"><root>\n'
         '<mxCell id="0"/>\n<mxCell id="1" parent="0"/>\n' + "\n".join(cells) + "\n</root></mxGraphModel></diagram></mxfile>\n"
     )
     (root / "docs" / "live-text.drawio").write_text(xml)

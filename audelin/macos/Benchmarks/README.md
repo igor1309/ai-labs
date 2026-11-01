@@ -24,7 +24,10 @@ its own sandbox inside it), with nothing heavy alongside. Every tool takes `-h`.
 | Does a real recogniser keep up late in a call? | `./speech.sh TAG [SECONDS]` | about 15 min |
 
 Use these rather than typing the commands. `Profile/` is its own package, built
-against the checkout.
+against the checkout. All three benchmark packages use `Composer` and
+`SessionRehearsal` from `../App` (the nested packages use `../../App`),
+and component products from `macos`. These harnesses require that App package;
+measure older commits with the benchmark tools from their package layout.
 
 ## Comparing two commits
 

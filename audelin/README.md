@@ -9,6 +9,8 @@ Status: the menu bar app records detected calls using stored preferences.
 The live panel and settings UI are not connected yet.
 
 Build: `cd audelin/macos && sh scripts/bundle.sh`.
+Components: `macos/`; composer, app, rehearsal and their integration tests: `macos/App/`.
+Build and test each package from its directory with `swift build --build-tests` and `swift test`.
 Run: `open .build/Audelin.app` from `audelin/macos`.
 Logs: `log stream --predicate 'subsystem == "dev.igor1309.audelin"'`.
 Profile: from `audelin/macos`, `scripts/profile-rehearsal.sh capture --capture-after 120 --capture-for 30 --minutes 20 --speed 1`
@@ -16,8 +18,8 @@ records only that wall-clock window and summarizes CPU, hangs and signpost inter
 Endurance: `scripts/profile-rehearsal.sh endurance --minutes 180 --speed 1` runs without Instruments and keeps only the rehearsal report.
 Recognisers are fakes: lag is pipeline backlog, and speeds above 1× measure saturation.
 
-Optimized load tests: from `audelin/macos`, run `swift build --build-tests -Xswiftc -O`,
-then `sh ../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`.
+Optimized load tests: from `audelin/macos/App`, run `swift build --build-tests -Xswiftc -O`,
+then `sh ../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`.
 
 | Path | What it holds |
 |---|---|
