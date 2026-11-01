@@ -556,9 +556,9 @@ describe("the home page", () => {
   });
 
   it.each(["light", "dark"])("keeps the app icon visible in %s mode", (theme) => {
+    openHomePage();
     document.documentElement.dataset.theme = theme;
     try {
-      openHomePage();
       expect(getComputedStyle(document.querySelector(".wordmark-mark")!).backgroundImage).toContain("/icons/icon-180.png");
     } finally {
       delete document.documentElement.dataset.theme;
