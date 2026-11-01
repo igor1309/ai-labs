@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 
+- LAB-799: Landscape colouring keeps a single narrow column of 48px controls centered below the system safe area and removes the idle save prompt; save failures keep a visible retry action.
 - LAB-824: Stegosaurus gains a richer prehistoric coloring scene for Explorer and Paleontologist, with patterned back plates, body markings and scenery. Hatchling keeps the simple drawing, and saved works retain their original artwork across age changes.
 
 - LAB-823: Coloring adds Triceratops alongside Stegosaurus: simple artwork for Hatchling and a richer prehistoric scene for Explorer and Paleontologist. Saved drawings keep their original artwork across age changes, with a shared star collection.
