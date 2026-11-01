@@ -1,4 +1,4 @@
-import { ANKYLOSAURUS } from "./coloring/ankylosaurus.ts";
+import { ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER } from "./coloring/ankylosaurusScene.ts";
 import type { AgeLevel } from "./ageLevel.ts";
 import { TRICERATOPS } from "./coloring/triceratops.ts";
 import { TRICERATOPS_EXPLORER } from "./coloring/triceratopsExplorer.ts";
@@ -70,6 +70,7 @@ export function coloringWorkshopRoot(factory: Pick<IDBFactory, "open">, document
 export function coloringVersionsFor(level: AgeLevel): readonly string[] {
   return [
     level === "hatchling" ? ARTWORK.version : STEGOSAURUS_EXPLORER.artwork.version,
-    (level === "hatchling" ? TRICERATOPS : TRICERATOPS_EXPLORER).artwork.version, ANKYLOSAURUS.artwork.version
+    (level === "hatchling" ? TRICERATOPS : TRICERATOPS_EXPLORER).artwork.version,
+    (level === "hatchling" ? ANKYLOSAURUS_HATCHLING : ANKYLOSAURUS_EXPLORER).artwork.version
   ];
 }

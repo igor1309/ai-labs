@@ -143,9 +143,10 @@ it.each([
   await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
   expect(screen.getByRole("button", { name }).textContent).toContain(name);
   await f.click(name);
-  expect(f.active().getSnapshot().work.geometry).toBe("ankylosaurus-production-1");
+  const version = level === "hatchling" ? "ankylosaurus-hatchling-2" : "ankylosaurus-explorer-1";
+  expect(f.active().getSnapshot().work.geometry).toBe(version);
   expect(screen.getByLabelText(name).tagName).toBe("CANVAS");
-  expect(f.source.newWork).toHaveBeenCalledExactlyOnceWith("work-1", expect.any(Function), "ankylosaurus-production-1");
+  expect(f.source.newWork).toHaveBeenCalledExactlyOnceWith("work-1", expect.any(Function), version);
   expect(f.countStart).toHaveBeenCalledTimes(1);
   expect(f.saveAge).not.toHaveBeenCalled();
 });

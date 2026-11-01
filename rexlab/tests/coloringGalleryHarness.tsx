@@ -1,3 +1,4 @@
+export { ankylosaurusHatchlingProbes, ankylosaurusExplorerProbes } from "./ankylosaurusSceneProbes.ts";
 export { ankylosaurusProbes } from "./ankylosaurusProbes.ts";
 export { explorerProbes } from "./triceratopsExplorerProbes.ts";
 export { stegosaurusExplorerProbes } from "./stegosaurusExplorerProbes.ts";
@@ -76,7 +77,7 @@ export async function mount(options: { language?: Language; level?: AgeLevel; th
 }
 export const counts = () => ({ starts, homes });
 export const list = () => resources.list();
-export const newWork = (id: string) => resources.newWork(id, () => {});
+export const newWork = (id: string, geometry?: string) => resources.newWork(id, () => {}, geometry);
 export const painter = () => resources.painter;
 export const painterFor = (geometry: string) => resources.painterFor(geometry);
 export const reset = () => resources.reset();

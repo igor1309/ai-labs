@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-01
+
+- LAB-825: Ankylosaurus coloring has new curved armor, cheek horns, sturdy feet and prehistoric scenery, with larger regions for Hatchling and extra armor and landscape details for Explorer and Paleontologist. Saved drawings retain their original artwork.
+
 ## 2026-10-31
 
 - LAB-825: Coloring adds Ankylosaurus at every age level, with broad armor panels, short legs and a club tail. Its drawings join the shared gallery and star collection and stay editable after reopening.

@@ -1,3 +1,4 @@
+import { ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER } from "./ankylosaurusScene.ts";
 import { ANKYLOSAURUS } from "./ankylosaurus.ts";
 import { TRICERATOPS_EXPLORER } from "./triceratopsExplorer.ts";
 import { STEGOSAURUS_EXPLORER } from "./stegosaurusExplorer.ts";
@@ -9,6 +10,9 @@ export const ARTWORKS = [
   { geometry: TRICERATOPS, names: { en: "TRICERATOPS", ru: "ТРИЦЕРАТОПС" } },
   { geometry: STEGOSAURUS_EXPLORER, names: { en: "STEGOSAURUS", ru: "СТЕГОЗАВР" } },
   { geometry: TRICERATOPS_EXPLORER, names: { en: "TRICERATOPS", ru: "ТРИЦЕРАТОПС" } },
+  { geometry: ANKYLOSAURUS_HATCHLING, names: { en: "ANKYLOSAURUS", ru: "АНКИЛОЗАВР" } },
+  { geometry: ANKYLOSAURUS_EXPLORER, names: { en: "ANKYLOSAURUS", ru: "АНКИЛОЗАВР" } },
+  // Saved journals still resolve this version; new selections use the age variants.
   { geometry: ANKYLOSAURUS, names: { en: "ANKYLOSAURUS", ru: "АНКИЛОЗАВР" } }
 ] as const;
 

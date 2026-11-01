@@ -42,6 +42,6 @@ it.each([
   ["hatchling", "stegosaurus-production-1", "triceratops-production-1"],
   ["explorer", "stegosaurus-explorer-1", "triceratops-explorer-1"],
   ["paleontologist", "stegosaurus-explorer-1", "triceratops-explorer-1"]
-] as const)("offers age-appropriate Stegosaurus and Triceratops for %s", (level, stegosaurus, triceratops) => {
-  expect(coloringVersionsFor(level)).toEqual([stegosaurus, triceratops, "ankylosaurus-production-1"]);
+] as const)("offers age-appropriate creatures and excludes the archived Ankylosaurus for %s", (level, stegosaurus, triceratops) => {
+  expect(coloringVersionsFor(level)).toEqual([stegosaurus, triceratops, level === "hatchling" ? "ankylosaurus-hatchling-2" : "ankylosaurus-explorer-1"]);
 });
