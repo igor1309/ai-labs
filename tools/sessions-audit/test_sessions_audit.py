@@ -627,3 +627,12 @@ def test_multi_session_aggregates(tmp_path):
         "parse_errors": 1, "score": 30,
         "tokens": {"input": 102, "cached": 196, "cache_creation": 29, "output": 73, "reasoning": 9},
     }
+
+
+@pytest.mark.parametrize("flag", ["--since", "--until"])
+@pytest.mark.parametrize("value", ["0001-01-01", "9999-12-31"])
+def test_when_at_the_calendar_limits_is_a_usage_error(tmp_path, capsys, flag, value):
+    with pytest.raises(SystemExit) as e:
+        core.main(["claude", "--claude-root", str(tmp_path), flag, value])
+    assert e.value.code == 2
+    assert "invalid date/datetime" in capsys.readouterr().err

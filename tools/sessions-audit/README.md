@@ -6,7 +6,7 @@ description: "Audit local Claude Code and Codex session transcripts for context-
 
 # sessions-audit
 
-A small Python tool that scans local agent transcripts and counts behaviors that bloat context: full-file reads, re-reads with no edit in between, unfiltered builds, polling, duplicate skill loads, subagent fan-out, and large tool results. It prints a summary per agent, ranks the sessions with the most of these behaviors, can group sessions by project, and emits a versioned JSON document that `claude-insights` reads.
+A small Python tool that scans local agent transcripts and counts behaviors that bloat context: full-file reads, re-reads with no edit in between, unfiltered builds, polling, duplicate skill loads, subagent fan-out, and large tool results. It prints a summary per agent, ranks the sessions with the most of these behaviors, can group sessions by project, and emits a versioned JSON document for downstream tools.
 
 Requires only the Python 3 standard library (`pytest` is used for the tests only).
 
@@ -74,6 +74,7 @@ Flags:
 - `--days N`: only transcripts modified in the last N days (since = now − N×24h). N must be ≥ 0; a negative or out-of-range N is a usage error (exit code 2).
 - `--since WHEN`: only transcripts modified at or after WHEN. Mutually exclusive with `--days`.
 - `--until WHEN`: only transcripts modified strictly before WHEN (exclusive upper bound).
+- A `WHEN` that is malformed or too close to the limits of the calendar to convert is a usage error (exit code 2).
 - `--top N`: how many of the highest-scoring sessions (and projects, with `--by-project`) to print (default 15). Does not limit JSON.
 - `--large-result-chars N`: size threshold for a "large" result (default 20,000).
 - `--by-project`: group sessions by project (see below).
@@ -120,7 +121,7 @@ python3 audit_codex_sessions.py --home ~/.codex --active-only --top 5
 
 ## JSON schema (v1)
 
-`--json` prints one object. This is the contract `claude-insights` reads.
+`--json` prints one object. This is the contract for tools that read the output.
 
 ```
 {

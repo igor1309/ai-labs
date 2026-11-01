@@ -210,7 +210,7 @@ class Tracker:
 # Time window
 
 
-def parse_when(value: str, now: datetime | None = None) -> datetime:
+def parse_when(value: str) -> datetime:
     """Parse `YYYY-MM-DD` (local midnight) or ISO 8601 (naive = local time)."""
     value = value.strip()
     try:
@@ -219,10 +219,12 @@ def parse_when(value: str, now: datetime | None = None) -> datetime:
             dt = datetime(d.year, d.month, d.day)
         else:
             dt = datetime.fromisoformat(value.replace("Z", "+00:00") if value.endswith("Z") else value)
-    except ValueError as e:
-        raise argparse.ArgumentTypeError(f"invalid date/datetime {value!r}: expected YYYY-MM-DD or ISO 8601") from e
-    if dt.tzinfo is None:
-        dt = dt.astimezone()  # interpret naive as local time
+        if dt.tzinfo is None:
+            dt = dt.astimezone()  # interpret naive as local time
+        dt.astimezone(timezone.utc)  # the JSON window needs it in UTC
+        dt.timestamp()  # the filter compares against it
+    except (ValueError, OverflowError, OSError) as e:
+        raise argparse.ArgumentTypeError(f"invalid date/datetime {value!r}: expected YYYY-MM-DD or ISO 8601 in a representable range") from e
     return dt
 
 
