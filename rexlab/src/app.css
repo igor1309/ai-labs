@@ -527,6 +527,7 @@ body:has(.sand-writing-screen) #version {
    fixed parts at the window's edges add them to their offsets. */
 html,
 body {
+  background-color: #f2efe8;
   overscroll-behavior: none;
 }
 
@@ -12008,6 +12009,7 @@ html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span
   color-scheme: dark;
 }
 
+html[data-theme="dark"],
 [data-theme="dark"] body {
   background: #0f1320;
   color: #ece8de;
@@ -12026,7 +12028,7 @@ html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span
 }
 
 [data-theme="dark"] .wordmark-mark {
-  background: #2c3b66;
+  background-color: #2c3b66;
 }
 
 [data-theme="dark"] .parent-menus {
