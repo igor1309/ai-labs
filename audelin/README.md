@@ -18,8 +18,8 @@ records only that wall-clock window and summarizes CPU, hangs and signpost inter
 Endurance: `scripts/profile-rehearsal.sh endurance --minutes 180 --speed 1` runs without Instruments and keeps only the rehearsal report.
 Recognisers are fakes: lag is pipeline backlog, and speeds above 1× measure saturation.
 
-Optimized load tests: from `audelin/macos/App`, run `swift build --build-tests -Xswiftc -O`,
-then `sh ../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`.
+Optimized load tests: from each of `audelin/macos` and `audelin/macos/App`, run `swift build --build-tests -Xswiftc -O`,
+then, in the same directory, `audelin/scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`.
 
 | Path | What it holds |
 |---|---|

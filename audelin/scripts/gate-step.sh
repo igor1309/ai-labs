@@ -12,7 +12,9 @@
 
 probe=${AUDELIN_PROBE:-$HOME/Library/Caches/audelin-probe}
 mkdir -p "$probe"
-name=$(git rev-parse --abbrev-ref HEAD) || exit 2
+branch=$(git rev-parse --abbrev-ref HEAD) || exit 2
+# A branch name can hold a slash; the logs are flat files in the probe folder.
+name=$(printf %s "$branch" | tr / -)
 cd "$(git rev-parse --show-toplevel)/audelin/macos" || exit 2
 
 for package in . App; do
