@@ -21,6 +21,3 @@ struct SessionInputs: Sendable {
         self.end = end
     }
 }
-
-/// Makes one Session's model from its effect handler.
-typealias MakeSessionModel = @Sendable (_ handler: SessionEffectHandler) async -> SessionInputs

@@ -1,39 +1,29 @@
+import Preferences
+import CoreAudioProcesses
 import Foundation
 import Recording
 import CallAudioAccess
 import Synchronization
 
-/// Makes Recording's model from its initial state and Session; `log` receives every new state.
-typealias MakeRecordingModel = @Sendable (
-    _ initial: RecordingState, _ session: any RecordingSession, _ log: @escaping @Sendable (RecordingState) -> Void,
-    _ callAudioReady: @escaping @Sendable () async -> Bool,
-    _ callAudioReleased: @escaping @Sendable () async -> Void
-) async -> RecordingInputs
-
 func composeRecording(
-    initial: RecordingState = .init(),
-    access: AccessPolicy,
-    makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
-    liveText: @escaping @Sendable () -> Bool,
-    sink: any LogSink,
-    timeZone: @escaping @Sendable () -> TimeZone,
-    panel: AudelinPanel,
-    makeModel: MakeRecordingModel,
-    makeSession: @escaping MakeSessionModel
+    preferences: PreferencesStore, callApp: RecordingCallApp, processes: CoreAudioProcesses,
+    boundary: ComposerBoundary, panel: AudelinPanel
 ) async -> RecordingInputs {
-
+    let initial = RecordingState(automatic: preferences.read().automaticRecording)
+    let access = accessPolicy(boundary.access)
+    let sink = boundary.log
     // Ending Recording clears the report path, which otherwise keeps the model alive through its Session.
     let destination = Mutex<RecordingInputs?>(nil)
-    let sessions = RecordingSessions(makePieces: makePieces, liveText: liveText, report: { id, report in
+    let sessions = RecordingSessions(preferences: preferences, callApp: callApp, processes: processes, boundary: boundary, report: { id, report in
         guard let recording = destination.withLock({ $0 }) else { return }
         await recording.send(.sessionReported(id: id, report))
-    }, connect: subscribe, sink: sink, timeZone: timeZone, panel: panel, makeSession: makeSession)
+    }, panel: panel)
     let log = { @Sendable state in StateLog(sink: sink).recording(state) }
     log(initial)
-    let model = await makeModel(initial, LoggingRecordingSession(base: sessions, sink: sink), log, {
+    let model = await makeRecording(initial: initial, session: LoggingRecordingSession(base: sessions, sink: sink), log: log, callAudioReady: {
         guard await access.refresh() else { return false }
         return await access.reserve()
-    }, { await access.release() })
+    }, callAudioReleased: { await access.release() })
     let recording = RecordingInputs(send: model.send, state: model.state, states: model.states, end: {
         destination.withLock { $0 = nil }
         await model.end()

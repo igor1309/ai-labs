@@ -4,18 +4,19 @@ import struct CallText.State
 import Darwin
 import Foundation
 import LiveText
-import Reading
+import PanelUI
 import Session
 import SessionRehearsal
 import Synchronization
 import Testing
-@testable import Composer
+import Composer
 
 /// A long call in compressed time through the composed session: both tracks
 /// recorded to their files, Live text on, the transcript written, with a
 /// recogniser that speaks in sentences. Two minutes of audio by default;
 /// AUDELIN_ENDURANCE_MINUTES sets a longer call, such as 180.
 @Suite(.timeLimit(.minutes(60)))
+@MainActor
 struct SessionEnduranceTests {
 
     static let minutes = ProcessInfo.processInfo.environment["AUDELIN_ENDURANCE_MINUTES"].flatMap(Double.init) ?? 2
@@ -27,25 +28,27 @@ struct SessionEnduranceTests {
         let seconds = Self.minutes * 60
         let mine = SpeakingRecognizer(name: "mine", sentence: 8, pause: 4, offset: 0)
         let theirs = SpeakingRecognizer(name: "theirs", sentence: 10, pause: 5, offset: 6)
-        try await withSessionRig(recognizers: (mine, theirs)) { rig, folder in
+        try await withComposition(recognizers: (mine, theirs), configure: { $0.processes = FixtureProcesses(binding: CallBinding(fails: false)) }) { rig in
+            let folder = rig.folder("1970.01.01-0000 Zoom")
             // The panel reads every text state, as the app's does; unread, they would pile up.
-            let text = await rig.pieces.readingText()
+            let text = await rig.menu.panelStates()
             let shown = Shown()
             let reader = Task {
                 var states = 0, repeats = 0
-                var previous: State?
-                var reading = ReadingState()
+                var previous: PanelState?
                 for await state in text {
-                    reading = ReadingReducer.reduce(reading, .textUpdated(readingText(state))).0
-                    if case let .lines(lines) = reading.log { shown.set(lines.entries) }
+                    if case let .lines(lines) = state.log {
+                        shown.set(lines.entries)
+                    }
+                    if state.recording == .off && states > 0 { break }
                     states += 1
                     if state == previous { repeats += 1 }
                     previous = state
                 }
                 return (states, repeats)
             }
-            await rig.session.send(.begin(liveText: true))
-            _ = try await rig.state { $0.phase == .recording }
+            _ = try await rig.state { $0.callOn }
+            try await rig.start()
 
             let started = ContinuousClock.now
             var window = started
@@ -78,16 +81,18 @@ struct SessionEnduranceTests {
             }
             log("fed \(Int(seconds / 60)) min in \(ContinuousClock.now - started)")
 
-            await rig.session.send(.end)
-            let ended = try await rig.state { $0.phase == .ended }
-            await rig.subscription.value
+            try await rig.stop()
+            let ended = try await rig.state { $0.phase == .idle }
             let (textStates, repeats) = await reader.value
             log("panel read \(textStates) text states, \(repeats) the same as the one before")
             // The text changes as words arrive, a few times a second on each side.
             #expect(repeats == 0)
             #expect(Double(textStates) / seconds <= 10)
-            log("ended in \(ContinuousClock.now - started); failures \(ended.failures), footprint \(footprintMiB()) MiB")
-            #expect(ended.failures.isEmpty)
+            log("ended in \(ContinuousClock.now - started); failures \(ended.faults), footprint \(footprintMiB()) MiB")
+            #expect(ended.faults.isEmpty)
+            let finalSession = try #require(rig.log.entries.all.last { $0.category == .session && $0.message.hasPrefix("state ") })
+            #expect(finalSession.message.contains("phase=ended"))
+            #expect(finalSession.error == nil)
 
             // The rig's scripted captures add one piece at start and one at stop.
             #expect(try await frames(folder.appendingPathComponent("microphone.caf")) == micSent + 3)
@@ -119,9 +124,9 @@ struct SessionEnduranceTests {
 /// The panel's entries as last shown.
 final class Shown: Sendable {
 
-    private let entries = Mutex<[ReadingState.Entry]>([])
+    private let entries = Mutex<[PanelState.Entry]>([])
 
-    func set(_ new: [ReadingState.Entry]) { entries.withLock { $0 = new } }
+    func set(_ new: [PanelState.Entry]) { entries.withLock { $0 = new } }
 
     var allWords: [String] { entries.withLock { $0 }.flatMap { tokens($0.settled + " " + $0.pending) } }
     var recentWords: [String] { entries.withLock { $0.suffix(4) }.flatMap { tokens($0.settled + " " + $0.pending) } }
@@ -135,7 +140,7 @@ func tokens(_ text: String) -> [String] {
 /// Waits for a condition, failing with what it waited for once a slow
 /// machine would long have met it, so a lost piece fails here, not at the
 /// package's time limit.
-func waitUntil(_ what: String, seconds: Double = 20, _ condition: () async -> Bool) async throws {
+func waitUntil(_ what: String, seconds: Double = 20, isolation: isolated (any Actor)? = #isolation, _ condition: () async -> Bool) async throws {
 
     let deadline = ContinuousClock.now + .seconds(seconds)
     while !(await condition()) {

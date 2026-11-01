@@ -15,40 +15,19 @@ final class RecordingConditions: Sendable {
     // The checks read the disk and access status, which block, so they run here.
     private let checking = DispatchQueue(label: "audelin.RecordingConditions")
 
-    convenience init(
-        recording: RecordingInputs,
-        microphoneAccess: @escaping @Sendable () -> Bool,
-        callsFolder: @escaping @Sendable () -> Bool,
-        room: @escaping @Sendable () -> Bool,
-        access: AccessPolicy,
-        sink: any LogSink
-    ) {
-
-        self.init(
-            send: recording.send,
-            microphoneAccess: microphoneAccess,
-            callsFolder: callsFolder, room: room, sink: sink, access: access
-        )
-    }
-
-    // The delivery seam exposes events that Recording may reduce without a state change.
-    init(
-        send: @escaping @Sendable (RecordingEvent) async -> Void,
-        microphoneAccess: @escaping @Sendable () -> Bool,
-        callsFolder: @escaping @Sendable () -> Bool,
-        room: @escaping @Sendable () -> Bool,
-        sink: any LogSink,
-        access: AccessPolicy
-    ) {
-
+    init(recording: RecordingInputs, callsURL: URL, boundary: ComposerBoundary) {
+        let access = accessPolicy(boundary.access)
+        let send = recording.send
+        let sink = boundary.log
         self.access = access
         self.send = { event in
             logCondition(event, sink: sink)
             await send(event)
         }
         checks = [
-            (.microphoneAccess, microphoneAccess),
-            (.callsFolder, callsFolder), (.room, room),
+            (.microphoneAccess, { boundary.microphonePermission.authorized() }),
+            (.callsFolder, { isCallsDirectory(callsURL) && FileManager.default.isWritableFile(atPath: callsURL.path) }),
+            (.room, { callsFolderHasRoom(at: callsURL, availableCapacity: { boundary.capacity.available(at: $0) }) }),
         ]
         observation.withLock { $0 = Task { [weak self] in
             for await _ in await access.states() {
@@ -134,19 +113,10 @@ private final class Turn: Sendable {
 
 func composeRecordingConditions(recording: RecordingInputs, callsURL: URL, boundary: ComposerBoundary) -> RecordingConditions {
 
-    RecordingConditions(
-        recording: recording,
-        microphoneAccess: { boundary.microphonePermission.authorized() },
-        callsFolder: {
-            isCallsDirectory(callsURL) && FileManager.default.isWritableFile(atPath: callsURL.path)
-        },
-        room: {
-            callsFolderHasRoom(at: callsURL, availableCapacity: { boundary.capacity.available(at: $0) })
-        }, access: accessPolicy(boundary.access), sink: boundary.log
-    )
+    RecordingConditions(recording: recording, callsURL: callsURL, boundary: boundary)
 }
 
-func callsFolderHasRoom(at url: URL, availableCapacity: @Sendable (URL) -> Int64?) -> Bool {
+private func callsFolderHasRoom(at url: URL, availableCapacity: @Sendable (URL) -> Int64?) -> Bool {
 
     guard isCallsDirectory(url), let bytes = availableCapacity(url) else { return false }
     return bytes >= 30 * 1_000_000_000
@@ -158,7 +128,7 @@ private func isCallsDirectory(_ url: URL) -> Bool {
     return FileManager.default.fileExists(atPath: url.path, isDirectory: &directory) && directory.boolValue
 }
 
-func logCondition(_ event: RecordingEvent, sink: any LogSink) {
+private func logCondition(_ event: RecordingEvent, sink: any LogSink) {
 
     if case let .conditionChanged(condition, available) = event {
         sink.write(.init(category: .conditions, message: "condition=\(condition) available=\(available)"))

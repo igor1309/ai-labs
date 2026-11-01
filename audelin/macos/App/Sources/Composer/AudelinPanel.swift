@@ -22,7 +22,6 @@ struct ReadingInputs: Sendable {
 /// The current recording's panel state and its reading actions.
 actor AudelinPanel {
 
-    private let makeReading: @MainActor @Sendable () -> ReadingInputs
     private let now: @Sendable () -> Double
     private let ticks: @Sendable () -> AsyncStream<Void>
     private let intervals: ProfileIntervals
@@ -34,12 +33,10 @@ actor AudelinPanel {
     private var nextSubscriber: UInt64 = 0
 
     init(
-        makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
         now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink,
         intervals: ProfileIntervals
     ) {
 
-        self.makeReading = makeReading
         self.now = now
         self.ticks = ticks
         self.sink = sink

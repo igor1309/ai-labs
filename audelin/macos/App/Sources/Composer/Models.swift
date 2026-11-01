@@ -88,10 +88,10 @@ actor SessionModel {
     private var ended: SessionState?
     private let feed = StateFeed<SessionState>()
 
-    func start(handler: SessionEffectHandler, initial: SessionState = .init()) {
+    func start(handler: SessionEffectHandler) {
 
         let feed = feed
-        model = ObservableModel(initialState: initial, reduce: { state, event in
+        model = ObservableModel(initialState: SessionState(), reduce: { state, event in
             guard !feed.finished else { return (state, nil) }
             let (next, effect) = SessionReducer.reduce(state, event)
             if next != state { feed.publish(next) }
@@ -136,4 +136,3 @@ func makeRecordings(handler: RecordingsEffectHandler) -> RecordingsInputs {
                                 handleEffect: { handleRecordingsEffect(handler, $0) })
     return RecordingsInputs(state: { model.state }, send: { model.event($0) })
 }
-

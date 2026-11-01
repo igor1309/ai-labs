@@ -3,13 +3,9 @@ import CallFolder
 import struct CallText.State
 import Dispatch
 import Foundation
-import LiveAudio
-import LiveText
-import protocol RecordedCapture.Track
 import Session
 import TrackFile
 import TranscriptFile
-import protocol TranscriptWriting.CallText
 
 /// Owns one recording's concrete pieces and exposes their distinct Session roles.
 actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCallText {
@@ -40,27 +36,12 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     let folder: CallFolder
     let folderTitle: String?
     let processes: CallAppProcesses
-    let startMicrophone: @Sendable () async throws -> StartedCapture<CaptureBuffer>
-    let startCall: @Sendable (CaptureSelection) async throws -> StartedCapture<CaptureBuffer>
-    let microphoneRecognizerSource: @Sendable () async throws -> any Recognizer
-    let callRecognizerSource: @Sendable () async throws -> any Recognizer
-    let missingModels: @Sendable () -> [String]
-    let monotonicNow: @Sendable () -> Double
+    let boundary: ComposerBoundary
     let timeOrigin: Double
-    let intervals: ProfileIntervals
-    let captureLogSink: any LogSink
-    let openTrackFile: @Sendable (URL) async throws -> TrackFile
-    let recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track
-    let closeTrackFile: @Sendable (SessionSide, TrackFile) async throws -> Void
-    let makeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio
-    let openTranscriptFile: @Sendable (URL) async throws -> any SessionTranscriptFile
-    let makeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State>
-    let sleep: @Sendable (Duration) async throws -> Void
     var made: CallFolder.Made?
     var selections: [String: CaptureSelection] = [:]
     var sides: [SessionSide: Side]
     var transcriptFile: (any SessionTranscriptFile)?
-    var text: CallReader?
     var writing: WritingReader?
     private var readingOutput: NewestText?
     private var readingObservation: Task<Void, Never>?
@@ -73,57 +54,15 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         return output.stream
     }
 
-    static let defaultRecordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = { _, track in CaptureTrack(track: track) }
-    static let defaultCloseTrack: @Sendable (SessionSide, TrackFile) async throws -> Void = { _, track in try await track.close() }
-    static let defaultMakeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = { _, capture in LiveCaptureAudio(capture: capture) }
-    static let defaultOpenTranscript: @Sendable (URL) async throws -> any SessionTranscriptFile = { try await WritingTranscript(file: TranscriptFile(url: $0)) }
-    static let defaultMakeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = { WritingCallText(text: $0) }
-
-    /// A long call's transcript is saved at most this often, and at once when its text stops,
-    /// so the disk is not rewritten on every word (owner, 2026-10-31,
-    /// `docs/research/transcript-save-interval.md`).
+    /// A long call's transcript is saved at most this often, and at once when its text stops.
     static let transcriptInterval: Duration = .seconds(5)
 
-    init(
-        folder: CallFolder,
-        folderTitle: String? = nil,
-        processes: CallAppProcesses,
-        startMicrophone: @escaping @Sendable () async throws -> StartedCapture<CaptureBuffer>,
-        startCall: @escaping @Sendable (CaptureSelection) async throws -> StartedCapture<CaptureBuffer>,
-        microphoneRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
-        callRecognizerSource: @escaping @Sendable () async throws -> any Recognizer,
-        missingModels: @escaping @Sendable () -> [String],
-        monotonicNow: @escaping @Sendable () -> Double,
-        openTrack: @escaping @Sendable (URL) async throws -> TrackFile = { try await TrackFile(url: $0) },
-        recordingTrack: @escaping @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track = SessionPieces.defaultRecordingTrack,
-        closeTrack: @escaping @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack,
-        makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
-        openTranscript: @escaping @Sendable (URL) async throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
-        makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText,
-        captureLogSink: any LogSink,
-        intervals: ProfileIntervals,
-        sleep: @escaping @Sendable (Duration) async throws -> Void
-    ) {
-
+    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary) {
         self.folder = folder
         self.folderTitle = folderTitle
         self.processes = processes
-        self.startMicrophone = startMicrophone
-        self.startCall = startCall
-        self.microphoneRecognizerSource = microphoneRecognizerSource
-        self.callRecognizerSource = callRecognizerSource
-        self.monotonicNow = monotonicNow
-        self.timeOrigin = monotonicNow()
-        self.missingModels = missingModels
-        self.intervals = intervals
-        self.captureLogSink = captureLogSink
-        self.openTrackFile = openTrack
-        self.recordingTrack = recordingTrack
-        self.closeTrackFile = closeTrack
-        self.makeCaptureAudio = makeCaptureAudio
-        self.openTranscriptFile = openTranscript
-        self.makeCallText = makeCallText
-        self.sleep = sleep
+        self.boundary = boundary
+        self.timeOrigin = boundary.time.monotonicNow()
         let continuation = news.continuation
         transcriptFailures = TranscriptFailureReport(deliver: { continuation.yield($0) })
         sides = Dictionary(uniqueKeysWithValues: [SessionSide.microphone, .call].map { side in
@@ -133,8 +72,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
     // Checking the model files reads the disk, so it runs on this actor's queue.
     func missing() -> [String] {
-
-        missingModels()
+        boundary.recognizers.missingModels()
     }
 
     func create() throws -> SessionCallFolder {
@@ -164,7 +102,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func openTrack(_ side: SessionSide, in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        sides[side]?.track = try await openTrackFile(side == .microphone ? made.microphoneURL : made.callURL)
+        sides[side]?.track = try await TrackFile(url: side == .microphone ? made.microphoneURL : made.callURL)
     }
 
     func closeTrack(_ side: SessionSide) async throws {
@@ -172,13 +110,13 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         let destination = sides[side]!
         // Without a capture, closing the track is the audio source's end.
         defer { if !destination.audio.hasCapture { destination.audio.finish() } }
-        if let track = destination.track { try await closeTrackFile(side, track) }
+        if let track = destination.track { try await track.close() }
     }
 
     func openTranscript(in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        transcriptFile = try await openTranscriptFile(made.transcriptURL)
+        transcriptFile = try await WritingTranscript(file: TranscriptFile(url: made.transcriptURL))
     }
 
     func closeTranscript() async throws {
@@ -189,19 +127,18 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
     func start(enabled: Bool) async throws {
 
-        guard let microphone = track(.microphone, recognizerSource: microphoneRecognizerSource) else {
+        guard let microphone = track(.microphone, side: .microphone) else {
             throw Failure.unavailableTrack(.microphone)
         }
-        guard let call = track(.call, recognizerSource: callRecognizerSource) else {
+        guard let call = track(.call, side: .call) else {
             throw Failure.unavailableTrack(.call)
         }
         let text = CallReader(microphone: microphone, call: call)
-        self.text = text
         let writing = WritingReader(
-            callText: makeCallText(text),
-            transcript: transcriptFile.map { TranscriptDestination(file: SignpostedTranscriptFile(base: $0, intervals: intervals)) },
+            callText: WritingCallText(text: text),
+            transcript: transcriptFile.map { TranscriptDestination(file: SignpostedTranscriptFile(base: $0, intervals: boundary.intervals)) },
             failureReport: transcriptFailures,
-            pause: { [sleep] in try await sleep(SessionPieces.transcriptInterval) }
+            pause: { [boundary] in try await boundary.time.sleep(SessionPieces.transcriptInterval) }
         )
         self.writing = writing
         if let output = readingOutput {
@@ -224,11 +161,11 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         await readingObservation?.value
     }
 
-    private func track(_ side: SessionSide, recognizerSource: @escaping @Sendable () async throws -> any Recognizer) -> CallSide? {
+    private func track(_ sessionSide: SessionSide, side: ComposerSide) -> CallSide? {
 
-        guard let destination = sides[side], let file = destination.track else { return nil }
-        let intervals = intervals
-        let adapter = TrackText(recognizerSource: { SignpostedRecognizer(base: try await recognizerSource(), intervals: intervals) })
+        guard let destination = sides[sessionSide], let file = destination.track else { return nil }
+        let boundary = boundary
+        let adapter = TrackText(recognizerSource: { SignpostedRecognizer(base: BoundaryRecognizer(base: try await boundary.recognizers.recognizer(for: side)), intervals: boundary.intervals) })
         return CallSide(audio: destination.audio, text: adapter, written: WrittenTrack(track: file), sampleRate: TrackFile.sampleRate)
     }
 }

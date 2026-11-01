@@ -1,3 +1,5 @@
+import Preferences
+import CoreAudioProcesses
 import Calls
 import Foundation
 import Recording
@@ -31,8 +33,6 @@ actor RecordingSessions: RecordingSession {
     private let makePieces: @Sendable (UInt64) -> SessionPieces
     private let liveText: @Sendable () -> Bool
     private let report: @Sendable (UInt64, RecordingSessionReport) async -> Void
-    private let connect: @Sendable (SessionPieces, SessionInputs) -> Task<Void, Never>
-    private let makeSession: MakeSessionModel
     private let timeZone: @Sendable () -> TimeZone
     private let sink: any LogSink
     private var running: [UInt64: Running] = [:]
@@ -40,24 +40,18 @@ actor RecordingSessions: RecordingSession {
     private var endedBeforeBegin: Set<UInt64> = []
 
     init(
-        makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
-        liveText: @escaping @Sendable () -> Bool,
+        preferences: PreferencesStore, callApp: RecordingCallApp, processes: CoreAudioProcesses,
+        boundary: ComposerBoundary,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) async -> Void,
-        connect: @escaping @Sendable (SessionPieces, SessionInputs) -> Task<Void, Never>,
-        sink: any LogSink,
-        timeZone: @escaping @Sendable () -> TimeZone,
-        panel: AudelinPanel,
-        makeSession: @escaping MakeSessionModel
+        panel: AudelinPanel
     ) {
-
-        self.timeZone = timeZone
+        self.timeZone = boundary.time.timeZone
         self.panel = panel
-        self.makePieces = makePieces
-        self.liveText = liveText
+        self.makePieces = composeRecordingPieces(preferences: preferences, callApp: callApp,
+                                                 processes: processes, boundary: boundary)
+        self.liveText = { preferences.read().liveText }
         self.report = report
-        self.connect = connect
-        self.sink = sink
-        self.makeSession = makeSession
+        self.sink = boundary.log
     }
 
     func begin(id: UInt64) async -> RecordingSessionReport {
@@ -65,12 +59,11 @@ actor RecordingSessions: RecordingSession {
         if endedBeforeBegin.remove(id) != nil { return .ended }
         if running[id] == nil {
             let pieces = makePieces(id)
-            let handler = pieces.handler(sink: sink)
-            let session = Task { [makeSession] in await makeSession(handler) }
+            let handler = pieces.handler()
+            let session = Task { await makeSession(handler: handler) }
             let enabled = liveText()
-            let connect = connect
             let subscription = Task {
-                let forwarding = connect(pieces, await session.value)
+                let forwarding = subscribe(pieces, to: await session.value)
                 await withTaskCancellationHandler { await forwarding.value } onCancel: { forwarding.cancel() }
             }
             running[id] = Running(session: session, subscription: subscription)

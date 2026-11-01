@@ -4,8 +4,6 @@ import protocol CallAppProcesses.ProcessList
 import CallFolder
 import class CoreAudioProcesses.CoreAudioProcesses
 import Foundation
-import LiveText
-import protocol RecordedCapture.Track
 import Preferences
 import Synchronization
 
@@ -37,17 +35,7 @@ func composeRecordingPieces(
             processes: CallAppProcesses(app: app ?? "", list: RecordingProcessList(
                 source: processes, appKnown: app != nil
             )),
-            startMicrophone: { try await boundary.microphone.start() }, startCall: { try await boundary.callAudio.start($0) },
-            microphoneRecognizerSource: { BoundaryRecognizer(base: try await boundary.recognizers.recognizer(for: .microphone)) },
-            callRecognizerSource: { BoundaryRecognizer(base: try await boundary.recognizers.recognizer(for: .call)) },
-            missingModels: { boundary.recognizers.missingModels() }, monotonicNow: boundary.time.monotonicNow,
-            recordingTrack: { _, file in
-                switch boundary.capturePersistence {
-                case .recorded: CaptureTrack(track: file)
-                case .transient: TransientTrack()
-                }
-            },
-            captureLogSink: boundary.log, intervals: boundary.intervals, sleep: boundary.time.sleep
+            boundary: boundary
         )
     }
 }
@@ -69,8 +57,4 @@ private struct RecordingProcessList: ProcessList {
             )
         }
     }
-}
-
-private struct TransientTrack: Track {
-    func write(_ samples: [Float], sampleRate: Double) async throws {}
 }

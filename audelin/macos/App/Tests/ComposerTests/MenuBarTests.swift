@@ -1,4 +1,4 @@
-@testable import Composer
+import Composer
 import CoreAudioProcesses
 import Foundation
 import Observation

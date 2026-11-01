@@ -24,13 +24,7 @@ final class AudelinRecording: Sendable {
         let app = RecordingCallApp()
         self.panel = panel
         let (recording, conditions) = await composeRecordingWithPreferences(
-            preferences: preferences, access: accessPolicy(boundary.access),
-            makePieces: composeRecordingPieces(
-                preferences: preferences, callApp: app, processes: processes,
-                boundary: boundary
-            ),
-            makeConditions: { composeRecordingConditions(recording: $0, callsURL: $1, boundary: boundary) },
-            panel: panel, sink: boundary.log, timeZone: boundary.time.timeZone, makeModel: makeRecording, makeSession: { await makeSession(handler: $0) }
+            preferences: preferences, callApp: app, processes: processes, boundary: boundary, panel: panel
         )
         let inputs = recording
         self.inputs = inputs

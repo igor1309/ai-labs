@@ -47,15 +47,8 @@ extension SessionPieces {
 
     nonisolated func handler() -> SessionEffectHandler {
 
-        handler(sink: captureLogSink)
-    }
-}
-
-extension SessionPieces {
-
-    nonisolated func handler(sink: any LogSink) -> SessionEffectHandler {
-
-        SessionEffectHandler(
+        let sink = boundary.log
+        return SessionEffectHandler(
             models: LoggingModels(base: self, sink: sink),
             folder: LoggingFolder(base: self, log: .init(sink: sink, name: "folder")),
             processes: LoggingProcesses(base: self, log: .init(sink: sink, name: "processes")),

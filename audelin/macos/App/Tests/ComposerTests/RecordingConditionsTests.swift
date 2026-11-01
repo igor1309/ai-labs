@@ -1,219 +1,76 @@
-import CoreAudioProcesses
+import BlockingTestWork
+import Composer
 import Foundation
 import Recording
 import Synchronization
 import Testing
-@testable import Composer
 
+@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingConditionsTests {
-
-    @Test func firstRefreshSendsEveryCondition() async {
-
-        let rig = ConditionsRig(missing: [.callAudioAccess, .room])
-        await rig.checker.refresh()
-        // Access publishes independently of the synchronous condition reads.
-        let expected: [RecordingEvent] = [
-            .conditionChanged(.microphoneAccess, available: true),
-            .conditionChanged(.callAudioAccess, available: false),
-            .conditionChanged(.callsFolder, available: true),
-            .conditionChanged(.room, available: false),
-        ]
-        #expect(rig.events.all.count == expected.count)
-        #expect(expected.allSatisfy { rig.events.all.contains($0) })
-        #expect(rig.reads.all == [.microphoneAccess, .callsFolder, .room])
-    }
-
-    @Test func unchangedRefreshReadsAllAndSendsNothing() async {
-
-        let rig = ConditionsRig()
-        await rig.checker.refresh()
-        let first = rig.events.all
-        await rig.checker.refresh()
-        #expect(rig.events.all == first)
-        #expect(rig.reads.all == [.microphoneAccess, .callsFolder, .room, .microphoneAccess, .callsFolder, .room])
-    }
-
-    @Test func oneChangeSendsOnlyThatCondition() async {
-
-        for condition in RecordingCondition.allCases {
-            let rig = ConditionsRig()
-            await rig.checker.refresh()
-            let first = rig.events.all
-            rig.available.set(condition, false)
-            await rig.checker.refresh()
-            #expect(rig.events.all == first + [.conditionChanged(condition, available: false)])
+    @Test(arguments: [nil, Int64(0), 29_999_999_999, 30_000_000_000, 30_000_000_001])
+    func roomRequiresAtLeastThirtyDecimalGigabytes(bytes: Int64?) async throws {
+        let reads = Values<URL>()
+        try await withComposition(configure: { boundary in
+            boundary.capacity = FixtureCapacity(read: { url in reads.append(url); return bytes })
+        }) { rig in
+            let state = try await rig.state { $0.phase == .idle }
+            #expect(state.missing.contains(.room) == (bytes == nil || bytes! < 30_000_000_000))
+            #expect(state.missing.subtracting([.room]).isEmpty)
+            #expect(!reads.all.isEmpty && reads.all.allSatisfy { $0 == rig.root })
         }
-    }
-
-    @Test func returningConditionIsSentAsAvailable() async {
-
-        for condition in RecordingCondition.allCases {
-            let rig = ConditionsRig(missing: [condition])
-            await rig.checker.refresh()
-            let first = rig.events.all
-            rig.available.set(condition, true)
-            await rig.checker.refresh()
-            #expect(rig.events.all == first + [.conditionChanged(condition, available: true)])
-        }
-    }
-
-    @Test func refreshRunsBeforeEachCallStartReachesRecording() async throws {
-
-        let session = ConditionsSession()
-        let recording = await composedRecording(session: session, initial: .init(automatic: true))
-        let allowed = Mutex(true)
-        let refreshes = Values<Bool>()
-        let checker = RecordingConditions(
-            recording: recording, microphoneAccess: { allowed.withLock { $0 } },
-            callsFolder: { true }, room: { true }, access: testAccessPolicy()
-        )
-        let source = AsyncThrowingStream<CallEvent, any Error>.makeStream()
-        let forwarding = CallRecordingSubscription(calls: source.stream, recording: recording, beforeCallStarted: {
-            refreshes.append(true)
-            await checker.refresh()
-        })
-        defer { source.continuation.finish() }
-        source.continuation.yield(.started(app: "meeting"))
-        for await state in await recording.states() {
-            if state.callOn {
-                #expect(state.missing.isEmpty)
-                #expect(state.session == .init(id: 1, origin: .call))
-                break
-            }
-        }
-        source.continuation.yield(.ended(app: "meeting"))
-        for await state in await recording.states() {
-            if state.phase == .idle && !state.callOn { break }
-        }
-        allowed.withLock { $0 = false }
-        source.continuation.yield(.started(app: "next meeting"))
-        for await state in await recording.states() {
-            if state.callOn {
-                #expect(state.missing == [.microphoneAccess])
-                #expect(state.phase == .idle)
-                #expect(state.session == nil)
-                break
-            }
-        }
-        source.continuation.finish()
-        await forwarding.wait()
-        #expect(refreshes.all == [true, true])
-        let ended = await recording.state()
-        #expect(!ended.callOn)
-
-        // A new detector starts with the last unavailable value still in Recording.
-        allowed.withLock { $0 = true }
-        let processes = CoreAudioProcesses(binding: ConditionsCallBinding(), clock: ConditionsCallClock())
-        let composed = try await composeCalls(processes, to: recording, conditions: checker)
-        for await state in await recording.states() {
-            if state.callOn {
-                #expect(state.missing.isEmpty)
-                #expect(state.session == .init(id: 2, origin: .call))
-                break
-            }
-        }
-        await processes.stop()
-        await composed.wait()
-        for await state in await recording.states() {
-            if state.phase == .idle && !state.callOn { break }
-        }
-        await recording.end()
     }
 
     @Test func missingFolderHasNoRoomWithoutReadingCapacity() async throws {
-
-        try await withComposeFolder { root in
-            let reads = Values<URL>()
-            let missing = root.appendingPathComponent("missing")
-            let room = callsFolderHasRoom(at: missing, availableCapacity: { url in
-                reads.append(url)
-                return 30_000_000_000
-            })
-            #expect(!room)
+        let reads = Values<URL>()
+        try await withComposition(preferences: { .init(automaticRecording: false, callsFolder: $0.appendingPathComponent("missing")) },
+            configure: { boundary in boundary.capacity = FixtureCapacity(read: { reads.append($0); return Int64.max }) }) { rig in
+            let state = try await rig.state { $0.phase == .idle }
+            #expect(state.missing == [.callsFolder, .room])
             #expect(reads.all.isEmpty)
+            await rig.menu.perform(.start)
+            #expect(rig.microphone.starts.all.isEmpty && rig.call.starts.all.isEmpty)
         }
     }
 
-    @Test func roomRequiresAtLeastThirtyDecimalGigabytes() async throws {
-
-        try await withComposeFolder { folder in
-            for (bytes, expected): (Int64?, Bool) in [
-                (nil, false), (0, false), (29_999_999_999, false),
-                (30_000_000_000, true), (30_000_000_001, true),
-            ] {
-                let room = callsFolderHasRoom(at: folder, availableCapacity: { url in
-                    #expect(url == folder)
-                    return bytes
-                })
-                #expect(room == expected)
+    @Test func refreshSendsChangesOnceAndRestoresAvailableConditions() async throws {
+        let permission = Mutex(true), room = Mutex(true)
+        let binding = CallBinding(fails: false, input: false)
+        let deadlines = Values<@Sendable () -> Void>(), scheduled = Signal()
+        defer { scheduled.end() }
+        try await withComposition(configure: { boundary in
+            boundary.processes = FixtureProcesses(binding: binding)
+            let time = boundary.time
+            boundary.time = ComposerTime(now: time.now, timeZone: time.timeZone,
+                monotonicNow: time.monotonicNow, sleep: time.sleep, after: { _, fire in
+                    deadlines.append(fire); scheduled.send(); return BoundaryCancellation {}
+                }, ticks: time.ticks)
+            boundary.microphonePermission = FixturePermission(status: { permission.withLock { $0 } }, prompt: {})
+            boundary.capacity = FixtureCapacity(read: { _ in room.withLock { $0 } ? Int64.max : 0 })
+        }) { rig in
+            await rig.log.wait { $0.category == .conditions && $0.message == "condition=room available=true" }
+            permission.withLock { $0 = false }; room.withLock { $0 = false }
+            binding.setInput(true)
+            _ = try await rig.state { $0.callOn && $0.missing == [.microphoneAccess, .room] }
+            let blocked = rig.log.entries.all.filter { $0.category == .conditions && $0.message.hasSuffix("available=false") }
+            #expect(blocked.map(\.message) == ["condition=microphoneAccess available=false", "condition=room available=false"])
+            #expect(rig.microphone.starts.all.isEmpty)
+            binding.setInput(false)
+            await scheduled.next()
+            for fire in deadlines.all { fire() }
+            _ = try await rig.state { !$0.callOn }
+            permission.withLock { $0 = true }; room.withLock { $0 = true }
+            binding.setInput(true)
+            _ = try await rig.state { $0.callOn && $0.missing.isEmpty }
+            let logs = rig.log.entries.all.filter { $0.category == .conditions }
+            for condition in ["microphoneAccess", "room"] {
+                #expect(logs.filter { $0.message.hasPrefix("condition=\(condition) ") }.map(\.message) == [
+                    "condition=\(condition) available=true", "condition=\(condition) available=false", "condition=\(condition) available=true",
+                ])
+            }
+            for condition in ["callAudioAccess", "callsFolder"] {
+                #expect(logs.filter { $0.message.hasPrefix("condition=\(condition) ") }.map(\.message) == ["condition=\(condition) available=true"])
             }
         }
-    }
-}
-
-private struct ConditionsRig {
-
-    let available: ConditionsAvailability
-    let events = Values<RecordingEvent>()
-    let reads = Values<RecordingCondition>()
-    let checker: RecordingConditions
-
-    init(missing: Set<RecordingCondition> = []) {
-        available = ConditionsAvailability(missing: missing)
-        let available = available, reads = reads
-        let read: @Sendable (RecordingCondition) -> Bool = { condition in
-            reads.append(condition)
-            return available.get(condition)
-        }
-        checker = RecordingConditions(
-            send: events.append,
-            microphoneAccess: { read(.microphoneAccess) }, callsFolder: { read(.callsFolder) }, room: { read(.room) }, sink: TestLogSink(), access: testAccessPolicy(available: { available.get(.callAudioAccess) })
-        )
-    }
-}
-
-private final class ConditionsAvailability: Sendable {
-
-    private let values: Mutex<[RecordingCondition: Bool]>
-
-    init(missing: Set<RecordingCondition>) {
-        values = Mutex(Dictionary(uniqueKeysWithValues: RecordingCondition.allCases.map { ($0, !missing.contains($0)) }))
-    }
-
-    func set(_ condition: RecordingCondition, _ available: Bool) {
-
-        values.withLock { $0[condition] = available }
-    }
-
-    func get(_ condition: RecordingCondition) -> Bool {
-
-        values.withLock { $0[condition] == true }
-    }
-}
-
-private struct ConditionsSession: RecordingSession {
-
-    func begin(id: UInt64) async -> RecordingSessionReport { .ready }
-    func end(id: UInt64) async {}
-}
-
-private struct ConditionsCallBinding: ProcessBinding {
-
-    func processObjects() throws -> [ProcessObject] { [1] }
-    func pid(of object: ProcessObject) -> Int32? { 42 }
-    func bundleID(of object: ProcessObject) -> String? { "us.zoom.xos" }
-    func name(of object: ProcessObject) -> String { "meeting" }
-    func isRunningInput(_ object: ProcessObject) -> Bool { true }
-    func onProcessListChange(_ changed: @escaping @Sendable () -> Void) throws -> Cancellation { Cancellation {} }
-    func onProcessChange(_ object: ProcessObject, _ changed: @escaping @Sendable () -> Void) throws -> Cancellation { Cancellation {} }
-}
-
-private struct ConditionsCallClock: CallClock {
-
-    func after(_ delay: Duration, _ fire: @escaping @Sendable () -> Void) -> Cancellation {
-
-        Issue.record("A continuously active call must not schedule an end")
-        return Cancellation {}
     }
 }

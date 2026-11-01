@@ -1,89 +1,40 @@
 import BlockingTestWork
+import Composer
 import Foundation
 import Preferences
-import Recording
 import Testing
-@testable import Audelin
-@testable import Composer
 
+@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct PreferencesCompositionTests {
-
-    @Test func recordingStartsWithStoredAutomatic() async throws {
-
-        try await withComposeFolder { root in
-            let store = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
-            for automatic in [false, true] {
-                let folder = root.appendingPathComponent("calls-\(automatic)")
-                // Only the stored folder of the second pass exists.
-                if automatic { try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) } }
-                try store.write(Preferences(automaticRecording: automatic, callsFolder: folder))
-                let (recording, conditions) = await composeRecordingWithPreferences(preferences: store, access: testAccessPolicy(), makePieces: { _ in
-                    preconditionFailure("An idle recording must not build a session")
-                }, makeConditions: testConditions, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
-                // Access can publish during construction; the stored automatic choice is already reduced.
-                let initial = await recording.state()
-                #expect(initial.automatic == automatic)
-                #expect(initial.phase == .idle)
-                #expect(initial.missing.subtracting([.callAudioAccess]) == Set(RecordingCondition.allCases).subtracting([.callAudioAccess]))
-                await conditions.refresh()
-                // A snapshot reads after every event already sent is reduced.
-                #expect(await recording.state().missing.contains(.callsFolder) != automatic)
-                await recording.end()
-            }
+    @Test(arguments: [false, true])
+    func recordingStartsWithStoredAutomatic(automatic: Bool) async throws {
+        try await withComposition(preferences: { .init(automaticRecording: automatic, callsFolder: $0) }) { rig in
+            let initial = try await rig.state { $0.phase == .idle }
+            #expect(initial.automatic == automatic)
+            #expect(initial.missing.isEmpty)
+            #expect(rig.microphone.starts.all.isEmpty && rig.call.starts.all.isEmpty)
+            await rig.menu.perform(.setAutomatic(!automatic))
+            let changed = try await rig.state { $0.automatic == !automatic }
+            #expect(changed.phase == .idle)
+            let url = rig.root.appendingPathComponent("preferences.json")
+            #expect(await offPool { PreferencesStore(fileURL: url).read().automaticRecording } == !automatic)
         }
     }
 
     @Test func liveTextReadsTheChangedPreferenceForTheNextSession() async throws {
-
-        try await withSessionRig(connect: { _, _ in Task {} }) { first, _ in
-            try await withSessionRig(connect: { _, _ in Task {} }) { second, _ in
-                try await withComposeFolder { root in
-                    let store = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
-                    var preferences = Preferences(liveText: false, callsFolder: root)
-                    try store.write(preferences)
-                    let (recording, _) = await composeRecordingWithPreferences(
-                        preferences: store, access: testAccessPolicy(), makePieces: { $0 == 1 ? first.pieces : second.pieces },
-                        makeConditions: testConditions, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession
-                    )
-                    for condition in RecordingCondition.allCases {
-                        await recording.send(.conditionChanged(condition, available: true))
-                    }
-                    do {
-                        for (rig, enabled) in [(first, false), (second, true)] {
-                            preferences.liveText = enabled
-                            try store.write(preferences)
-                            await recording.send(.userStart)
-                            try await waitForPhase(.recording, in: recording)
-                            let text = try #require(await rig.pieces.text)
-                            #expect(await (text.state.status != .off) == enabled)
-                            await recording.send(.userStop)
-                            try await waitForPhase(.idle, in: recording)
-                        }
-                        await recording.end()
-                    } catch {
-                        await recording.send(.userStop)
-                        try? await waitForPhase(.idle, in: recording)
-                        await recording.end()
-                        throw error
-                    }
-                }
-            }
+        try await withComposition(preferences: { .init(automaticRecording: false, liveText: false, callsFolder: $0) }) { rig in
+            try await rig.start()
+            _ = try await rig.panel { if case .liveTextOff = $0.log { true } else { false } }
+            #expect(await rig.mine.chunks.isEmpty)
+            try await rig.stop()
+            await rig.menu.perform(.setLiveText(true))
+            try await rig.start()
+            await rig.mine.heard.next(); await rig.theirs.heard.next()
+            _ = try await rig.panel { if case let .lines(lines) = $0.log { lines.entries.count == 2 } else { false } }
+            try await rig.stop()
+            #expect(await rig.mine.chunks.flatMap(\.samples) == [0.25, -0.5, 0.125])
+            #expect(await rig.theirs.chunks.flatMap(\.samples) == [-0.25, 0.5, -0.125])
         }
     }
-}
-
-private func waitForPhase(_ phase: RecordingState.Phase, in recording: RecordingInputs) async throws {
-
-    for await state in await recording.states() {
-        try Task.checkCancellation()
-        if state.phase == phase { return }
-    }
-    throw ScriptFailure.failed
-}
-
-private func testConditions(recording: RecordingInputs, callsURL: URL) -> RecordingConditions {
-    RecordingConditions(recording: recording, microphoneAccess: { true }, callsFolder: {
-        FileManager.default.fileExists(atPath: callsURL.path)
-    }, room: { true }, access: testAccessPolicy())
 }

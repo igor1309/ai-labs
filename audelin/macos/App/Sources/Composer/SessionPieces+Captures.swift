@@ -25,7 +25,7 @@ extension SessionPieces {
 
     func startMicrophoneCapture() async throws {
 
-        let capture = CaptureAdapter(begin: startMicrophone, unpack: {
+        let capture = CaptureAdapter(begin: { [boundary] in try await boundary.microphone.start() }, unpack: {
             CapturedPiece(samples: $0.samples, sampleRate: $0.sampleRate)
         })
         try await startCapture(capture, side: .microphone)
@@ -41,8 +41,8 @@ extension SessionPieces {
         case .everyAppButAudelin:
             resolved = .allExcept([getpid()])
         }
-        let startCall = startCall
-        let capture = CaptureAdapter(begin: { try await startCall(resolved) }, unpack: {
+        let boundary = boundary
+        let capture = CaptureAdapter(begin: { try await boundary.callAudio.start(resolved) }, unpack: {
             CapturedPiece(samples: $0.samples, sampleRate: $0.sampleRate)
         })
         try await startCapture(capture, side: .call)
@@ -56,14 +56,19 @@ extension SessionPieces {
     private func startCapture<Piece>(_ capture: CaptureAdapter<Piece>, side: SessionSide) async throws {
 
         guard let track = sides[side]?.track else { throw Failure.unavailableTrack(side) }
-        let live = LiveAudio(capture: LoggingCapture(base: capture, sink: captureLogSink, side: String(describing: side)))
-        let recorded = RecordedCapture(capture: RecordedInput(capture: live), track: recordingTrack(side, track))
-        sides[side]?.audio.attach(makeCaptureAudio(side, live))
+        let live = LiveAudio(capture: LoggingCapture(base: capture, sink: boundary.log, side: String(describing: side)))
+        let destination: any Track
+        switch boundary.capturePersistence {
+        case .recorded: destination = CaptureTrack(track: track)
+        case .transient: destination = TransientTrack()
+        }
+        let recorded = RecordedCapture(capture: RecordedInput(capture: live), track: destination)
+        sides[side]?.audio.attach(LiveCaptureAudio(capture: live))
         let measurements = await live.statistics()
         let news = news.continuation
         // Both sides take their offset immediately before starting RecordedCapture,
         // before LiveAudio can accept its first piece on its local zero-based timeline.
-        let offset = monotonicNow() - timeOrigin
+        let offset = boundary.time.monotonicNow() - timeOrigin
         let statistics = Task { @concurrent in
             for await piece in measurements {
                 switch side {
@@ -111,4 +116,8 @@ extension SessionPieces {
             throw error
         }
     }
+}
+
+private struct TransientTrack: Track {
+    func write(_ samples: [Float], sampleRate: Double) async throws {}
 }

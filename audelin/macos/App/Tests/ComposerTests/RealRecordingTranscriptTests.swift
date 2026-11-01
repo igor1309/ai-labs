@@ -7,7 +7,7 @@ import PanelUI
 import Preferences
 import Testing
 @testable import Audelin
-@testable import Composer
+import Composer
 
 private let recordingSkipReason: String? = {
     // A hosted CI runner's microphone capture never ends (PR 1262), and it may
