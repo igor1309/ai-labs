@@ -13,6 +13,10 @@ permissions:
 
 jobs:
   core:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -36,8 +40,49 @@ jobs:
 
       - name: Run tests
         working-directory: rexlab
-        run: npm test
+        run: npm test -- --shard=${{ matrix.shard }}/4
 
       - name: Build
         working-directory: rexlab
         run: npm run build
+
+  # Each browser contract owns its server/build lifecycle. Keep their budgets
+  # independent of unit shards and of the other browser contracts.
+  browser:
+    strategy:
+      fail-fast: false
+      matrix:
+        script:
+          - whoseJawBoardLandscape
+          - coloringProbe
+          - coloringPainter
+          - coloringWorkshop
+          - coloringDrawing
+          - coloringGallery
+          - coloringResult
+          - coloringFlow
+          - nativeTouch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: Install dependencies
+        working-directory: rexlab
+        run: npm ci
+
+      - name: Install Chromium
+        working-directory: rexlab
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser contract
+        working-directory: rexlab
+        run: node tests/${{ matrix.script }}.browser.cjs

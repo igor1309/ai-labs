@@ -5,14 +5,29 @@ Feature: Skeleton assembly: the museum and rebuilding
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, whose four pieces these scenarios count
 
   Scenario: An empty museum shows what the child can build
     Given I have never finished a skeleton
     When I open "MUSEUM"
-    Then I see a museum hall with three empty stands showing the silhouettes and names of the skeletons still to build
+    Then I see a museum hall with five empty stands, three above and two centred below, showing the silhouettes and names of the skeletons still to build
     And my collection score is "0/3" beside a star symbol
     And each empty stand offers building its dinosaur with a bone picture
     And I see "BUILD ANOTHER" and "HOME" with their symbols
+
+  Scenario Outline: The hall fits its stands, each button on its own
+    Given the app is in <language> and uses either theme
+    And I have finished Tyrannosaurus and started rebuilding Triceratops
+    When I open "MUSEUM" in a landscape window from 1024 by 768 up
+    Then each stand's "BUILD" or "BUILD AGAIN" button stands on its own under its exhibit, on no card
+    And the hall leaves as much room under the buttons as above the names
+    And nothing is cut off, in the row of three or the two centred below
+    And the Triceratops exhibit and its button keep their amber dashed ring
+
+    Examples:
+      | language |
+      | English  |
+      | Russian  |
 
   Scenario: A finished skeleton has its own exhibit
     Given I have finished Triceratops but neither of the other skeletons
@@ -43,8 +58,15 @@ Feature: Skeleton assembly: the museum and rebuilding
   Scenario: A quick double tap rebuilds only once
     Given Tyrannosaurus is displayed on its earned stand
     When I tap its "REBUILD" button twice quickly
-    Then one scatter and one fresh Tyrannosaurus puzzle start
+    Then one scatter and one fresh Tyrannosaurus puzzle start at once, whatever its pictures are doing
+    And it is counted as one puzzle started
     And its star and stand stay earned exactly once
+
+  Scenario: Two stands tapped at the same moment start one puzzle
+    Given Tyrannosaurus is displayed on its earned stand and Stegosaurus's stand is empty
+    When I tap Tyrannosaurus's "REBUILD" and, in the same moment, Stegosaurus's "BUILD"
+    Then one fresh Tyrannosaurus puzzle starts at once, counted as one puzzle started
+    And only Tyrannosaurus's stand changes, as a stand awaiting rebuilding
 
   Scenario: A stand awaiting rebuilding keeps its earned identity
     Given I have started rebuilding Triceratops but have not finished it

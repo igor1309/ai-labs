@@ -42,9 +42,10 @@ func TestTheMessageIsEachInputThenEachDocumentInSections(t *testing.T) {
 		Documents:   []call.Named{{Name: "prompt", Text: "p"}},
 	}, discard)
 	want := []call.Turn{{
-		Prompt: "## goal\n\ng\n\n## brief\n\n```\na\nb\n```\n\n## prompt\n\np",
-		Dir:    "/r",
-		Env:    []string{"PATH=/bin", "A=1"},
+		SessionCostBefore: dollars(0),
+		Prompt:            "## goal\n\ng\n\n## brief\n\n```\na\nb\n```\n\n## prompt\n\np",
+		Dir:               "/r",
+		Env:               []string{"PATH=/bin", "A=1"},
 	}}
 	if !reflect.DeepEqual(spy.given, want) {
 		t.Errorf("turns\n got %+v\nwant %+v", spy.given, want)
@@ -82,7 +83,8 @@ func TestTheTurnIsGivenWhatTheStepGivesOfTheModel(t *testing.T) {
 		Instruction: "i", Model: "opus", Effort: "high", Options: []string{"Read", "Grep"}, Schema: []byte("s"),
 	}, discard)
 	want := []call.Turn{{
-		Dir: "/r", Instruction: "i", Model: "opus", Effort: "high", Options: []string{"Read", "Grep"}, Schema: []byte("s"),
+		SessionCostBefore: dollars(0),
+		Dir:               "/r", Instruction: "i", Model: "opus", Effort: "high", Options: []string{"Read", "Grep"}, Schema: []byte("s"),
 	}}
 	if !reflect.DeepEqual(spy.given, want) {
 		t.Errorf("turns\n got %+v\nwant %+v", spy.given, want)

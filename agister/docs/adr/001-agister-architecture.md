@@ -13,7 +13,7 @@ description: "ADR-001: Agister's architecture: what it is, its parts, their depe
   another, and the invariants every part keeps
 - **Decision type:** Architecture
 - **Amended by:** ADR-011 (2026-10-15), ADR-012 (2026-10-15), ADR-013
-  (2026-10-15)
+  (2026-10-15), ADR-014 (2026-10-20)
 - **Revised:** 2026-10-16, settings, by the owner: `settings/check`
   declares a third port, a document's fields with their sources, for
   inspect
@@ -143,8 +143,9 @@ Every part keeps these.
 8. **Calls are independent.** Concurrent calls share only
    settings, which they read, records, each writing its own, and the
    worktree, through its hold. The exceptions are deliberate: a
-   continuation resumes an earlier call's session, and a binding gives a
-   child an earlier result of its own run.
+   continuation resumes an earlier call's session, a binding gives a
+   child an earlier result of its own run, and a reuse takes an earlier
+   run's completed call where all it was given is the same.
 9. **Agister is built to be changed.** The smallest design that does the
    work. A case is handled when it is met, not foreseen. A part that is
    hard to change is wrong, however much it covers.
@@ -213,7 +214,8 @@ read as lost (invariant 7).
 2. The composition asks settings to resolve; a failure goes to stderr and no run
    is recorded.
 3. For `--continue`, the composition checks the continuation against the
-   session's latest call and takes its session.
+   session's latest call and takes its session; for `--reuse`, it
+   checks the run named, and takes its matching calls as the steps come.
 4. Core gets the resolved settings and the request, drives a runtime wrapper
    for each call through its protocol (an adapter maps between them), and streams events;
    the composition places the run and `runstore` persists it.

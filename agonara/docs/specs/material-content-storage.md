@@ -35,7 +35,7 @@ Primary implementation and verification:
   projection signal), with coverage in [Corpus tests](../../tests/corpus.test.js) and
   [executable acceptance](../../tests/corpus-executable-acceptance.test.js).
 - [HTTP routes](../../src/server.js) and [contract](../../src/http-contract.js), with coverage in
-  [HTTP API tests](../../tests/http-api.test.js) and [OpenAPI contract tests](../../tests/openapi-contract.test.js).
+  [http-api-material-content.test.js](../../tests/http-api-material-content.test.js) and [OpenAPI contract tests](../../tests/openapi-contract.test.js).
 - [`/learn` reader and curator content UI](../../src/learn-ui.js), with browser coverage in
   [navigation Playwright tests](../../tests/topic-concept-material-navigation.playwright.js).
 

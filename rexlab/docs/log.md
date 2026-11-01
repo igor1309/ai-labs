@@ -1,22 +1,220 @@
 # rexlab — Change Log
 
+## 2026-11-01
+
+- LAB-825: Ankylosaurus coloring has new curved armor, cheek horns, sturdy feet and prehistoric scenery, with larger regions for Hatchling and extra armor and landscape details for Explorer and Paleontologist. Saved drawings retain their original artwork.
+
+## 2026-10-31
+
+- LAB-825: Coloring adds Ankylosaurus at every age level, with broad armor panels, short legs and a club tail. Its drawings join the shared gallery and star collection and stay editable after reopening.
+
+- LAB-799: Landscape colouring keeps a single narrow column of 48px controls centered below the system safe area and removes the idle save prompt; save failures keep a visible retry action.
+- LAB-824: Stegosaurus gains a richer prehistoric coloring scene for Explorer and Paleontologist, with patterned back plates, body markings and scenery. Hatchling keeps the simple drawing, and saved works retain their original artwork across age changes.
+
+- LAB-823: Coloring adds Triceratops alongside Stegosaurus: simple artwork for Hatchling and a richer prehistoric scene for Explorer and Paleontologist. Saved drawings keep their original artwork across age changes, with a shared star collection.
+- LAB-822: A game index brings current activities, difficulty, rewards and replay approaches together, distinguishing planned modes and prototypes.
+
+- LAB-820: Shared touch protection suppresses selection and long-press menus throughout RexLab while preserving scrolling, pinch zoom and game input.
+- LAB-799: Landscape colouring gives the dinosaur a full-height canvas, with coloured navigation icons and drawing tools in separate leading groups and temporary colour/size pickers.
+
+- LAB-805: New coloring works open on local HTTP previews used for iPad testing.
+
+## 2026-10-30
+
+- Coloring probe fill regions have Russian/English names and plate/spike groups; the combined body region explicitly includes legs and tail (LAB-801).
+- LAB-804: Coloring opens from Home with completed-work counts on its tile and featured card; phone brush sizes have their own chooser.
+
+- Coloring strokes update once per display frame without replaying saved brush history for every pen sample (LAB-803).
+
+- A saved coloring result brings the child's own dinosaur alive and awards one star per work, with a durable collection best and editable history (LAB-803).
+
+- Coloring gallery lists independent drafts and completed works, continues the latest saved edit and keeps unreadable history visible (LAB-803).
+
+- The coloring workshop offers clipped painting, compact tools and ordered autosave with retry and confirmed loss handling in English and Russian, both themes and orientations (LAB-803).
+
+- Coloring works now have an editable action history and atomic local storage that preserves unreadable records and earned status (LAB-803).
+
+- An isolated Stegosaurus coloring probe offers editable paint, persistent undo, independent works and animation; desktop browser checks and payload measurements are recorded; physical iPad acceptance remains pending (LAB-801).
+
+## 2026-10-28
+
+- WHOSE JAW? groups landscape choices near the title and gives the jaw a larger, closely fitted tray; short landscape places it beside the choices (LAB-705).
+
+- WHOSE JAW? remembers mute across visits and gives the jaw and dinosaur more space with compact welcome actions (LAB-705).
+
+- WHOSE JAW? keeps correct-answer messages until NEXT, selects matching narration voices, and uses larger portrait cards and a balanced welcome (LAB-705).
+
+- WHOSE JAW? offers five jaw puzzles at three levels, tap/drag/keyboard controls, hints, stars, personal bests and next-level invitations (LAB-705).
+- Collected jaws fill a sixteen-slot museum shelf with dinosaur pictures, spoken facts and playful chomps in English and Russian (LAB-705).
+
+- A first picture puzzle on readable storage celebrates FIRST BEST, while corrupt or lost known history keeps the finishing reward without a best claim (LAB-669).
+- Picture puzzles celebrate later collection bests after recovered progress saves successfully; the recovery round still earns its star without claiming a historical best (LAB-669).
+- Picture puzzles offer Tyrannosaurus, Triceratops and Stegosaurus with 12, 24 or 36 pieces and a remembered difficulty choice (LAB-669).
+- Picture puzzle pieces can be dragged, tapped or placed with the keyboard, with a four-piece tray, hints and a full-picture preview (LAB-669).
+- Finished pictures reveal a dinosaur fact and a round star, save a shared collection, and celebrate new collection bests independently at each difficulty (LAB-669).
+- The picture puzzle is available from its own home tile and featured card, both showing the shared collection (LAB-669).
+- LABYRINTH generates fresh random mazes at all three levels, with long wrong turns and no repeated board on replay (LAB-668).
+- LABYRINTH opens from its tile or featured card, rewards every reunion with three saved stars and keeps the child's level choice; hints leave rewards whole and restart the next-level offer streak (LAB-668).
+
+## 2026-10-26
+
+- DIG's FIELD GUIDE fits an iPhone on its side: its five treasure cards under a short bar, in one row, or three over two in Russian, every name whole (LAB-589).
+- DIG's reveal fits an iPhone on its side: the dinosaur dug up on the left, its name, DUG UP, the level switch and DIG AGAIN beside HOME beside it, nothing cut off (LAB-588).
+
+## 2026-10-25
+
+- DIG's WHO IS IT? fits an iPhone on its side: the sand on the left and the choices stacked beside it, every name in its card (LAB-587).
+- DIG's board at Hatchling fits an iPhone on its side: a short bar of HOME, the brushes and the FIELD GUIDE over the sand, as tall as the window allows (LAB-586).
+- Find the pair's offer of the next level fits an iPhone on its side instead of running off the screen (LAB-584).
+- Find the pair's result fits an iPhone on its side: the dinosaurs found beside the tries, the stars and the actions, nothing cut off (LAB-582).
+- The home page on an upright iPhone: RexLab's mark is the app's T-Rex icon instead of the footprints that count the catalogue, and it, the museum and the parents' menus stand at one 60-pixel height on one line (LAB-583).
+- Find the pair's welcome fits an iPhone on its side: the cards beside the title, the level switch and PLAY, nothing cut off (LAB-581).
+- Find the pair's board fits an iPhone on its side: a short bar, and every board's cards side by side without scrolling (LAB-580).
+- The compare quiz's result, and the sorting game's, fits an iPhone on its side instead of clipping: the dinosaur stands beside the score, the level switch and PLAY AGAIN beside HOME (LAB-576).
+- A compare quiz question fits an iPhone on its side instead of clipping: the two dinosaurs stand whole side by side under one short bar, NEXT beside the prompt (LAB-575).
+- DIG on an upright iPhone: HOME, the brush menu and the FIELD GUIDE are one family, each 48 tall with the same corners and frame; WHO IS IT?'s dinosaurs are small cards twice as wide as tall, two to a row, so the sand above them grows to the full width (LAB-578).
+- A dinosaur's page fits an iPhone on its side instead of clipping: the picture and the words stand side by side under one short bar, the words scrolling where they are longer than the height (LAB-540).
+- The catalogue fits an iPhone on its side instead of clipping: HOME and the food symbols share one short bar, and the cards, two or three to a row, stand whole in the height below it (LAB-539).
+- DIG fits an upright iPhone: its bar is one row, the title's brush opens a menu of the two brushes, the dinosaur count leaves the board, and WHO IS IT?'s dinosaurs stand two to a row as near-square cards under the sand (LAB-542).
+- The home page fits an iPhone on its side instead of clipping: RexLab, the greeting and the parents' corner share one short bar, and the large card and two rows of tiles fill the height below it, every word fitting in English and Russian. A landscape window under 568 wide, narrower than any phone on its side, now shows every screen's upright phone layout (LAB-533).
+
+## 2026-10-24
+
+- RexLab can be added to the home screen as an app: it opens full screen under its T-Rex icon and plays without Wi-Fi once opened online; a new release shows on the next launch online (LAB-276).
+- Care plays whole upright on an iPhone instead of asking to turn, and with it every RexLab screen stands upright on a phone. A visit puts the needs on a row under HOME and the hearts and gives its five items as pictures in one row; FRIENDS keeps two cards to a row with names on up to three lines; the result keeps its eight hearts on one row over NEW VISITOR, FRIENDS and HOME (LAB-515).
+- DIG plays whole upright on an iPhone instead of asking to turn. The board puts the brushes, the FIELD GUIDE and DUG UP on a second row under HOME and the title, and WHO IS IT? lists its names one over another under the sand. The FIELD GUIDE shows its five finds as rows, and on a short phone the reveal scrolls rather than shrink the dinosaur (LAB-504).
+- Skeleton assembly plays whole upright on an iPhone instead of asking to turn. The choice and the museum go two to a row, the puzzle board spans the screen over its tray, the guess stacks its names as rows beside their pictures, and BUILD ANOTHER and MUSEUM each fit one line from 320 wide in English and Russian. On a short phone the guess and the result scroll (LAB-498).
+- Sort plays whole upright on an iPhone instead of asking to turn. The board has HOME as its house, a smaller prompt, the tray's cards 8 apart and down to 72 wide, and the baskets side by side, each showing its mark alone. The result is laid out as the compare quiz's on a phone (LAB-528).
+- Find the pair plays whole upright on an iPhone instead of asking to turn. The welcome has smaller chips and PLAY and HOME as its house. The board has cards down to 56 wide, BACK and HOME as their symbols, and found cards showing the dinosaur alone. The result has PLAY AGAIN over BACK and HOME and NEW as its sparkle. Every word fits in English and Russian from 320 wide (LAB-526).
+- The compare quiz's result stands upright on an iPhone instead of asking to turn: 20-pixel padding, the level switch as its three pictures, PLAY AGAIN over HOME across the column, and the offer of a level fitted to the phone, every word fitting in English and Russian from 320 wide. The compare quiz now plays whole upright on an iPhone (LAB-525).
+- A compare quiz question stands upright on an iPhone instead of asking to turn: 20-pixel sides, HOME as its house beside the steps, and the two cards one above the other with less room between the parts, so they fit a phone's height with every prompt and name in English and Russian on one line from 320 wide. (LAB-525).
+- The portrait catalogue keeps HOME and all four food filters in one row, with food symbols alone and no sideways scrolling; on phones HOME is its symbol too (LAB-521).
+- A dinosaur's page stands upright on an iPhone instead of asking to turn: 20-pixel sides, the catalogue button as its book, the picture across the stage with ← and → under it, the facts one over the other and a smaller description, every word fitting in English and Russian from 320 wide. With the home page and the catalogue, the museum now reads whole upright on an iPhone (LAB-522).
+- The catalogue stands upright on an iPhone instead of asking to turn: 20-pixel sides, HOME over the food chips in one row that scrolls sideways, and the cards one to a row with their names at full size, every word fitting in English and Russian from 320 wide; turning keeps the list's place (LAB-521).
+- The home page stands upright on an iPhone instead of asking to turn: 20-pixel sides, RexLab and the museum as their symbols so the corner keeps one line, a smaller greeting and large card, and the tiles' row with the next column peeking in, every word fitting in English and Russian from 320 wide (LAB-520).
+- Care's result stands upright in a tall window instead of asking to turn: the visitor over the score and the hearts in one row, and NEW VISITOR, FRIENDS and HOME stacked across the width, every word fitting in English and Russian. Care now plays whole upright, and in a tall window no screen asks to turn any more (LAB-514).
+- Care's FRIENDS stands upright in a tall window instead of asking to turn: the cards two to a row under NEW VISITOR across the width, BACK and HOME as their symbols, and the nest and NEW VISITOR in the middle with no friends yet, every word fitting in English and Russian. The result still asks to turn (LAB-513).
+- A care visit stands upright in a tall window instead of asking to turn: the needs and hearts across the top under HOME as its symbol, the visitor on a tall stage, its name over the need's bubble, and the five items in one row under it, every name and word fitting in English and Russian; turning mid-visit keeps the visit. FRIENDS and the result still ask to turn (LAB-512).
+- Care's welcome stands upright in a tall window instead of asking to turn: NEW VISITOR over FRIENDS across the width, under a one-row bar with HOME as its symbol, every word fitting in English and Russian. A visit, FRIENDS and the result still ask to turn (LAB-511).
+
+## 2026-10-23
+
+- DIG's FIELD GUIDE stands upright in a tall window instead of asking to turn: its five cards in rows of two, the last centred, under a one-row bar with HOME and BACK as their symbols, every name fitting in English and Russian. DIG now plays whole upright (LAB-503).
+- DIG's reveal stands upright in a tall window instead of asking to turn: the dinosaur dug up over its name, DUG UP and the level switch, DIG AGAIN over HOME, every word fitting in English and Russian; the offer of the next level comes upright. The field guide still asks to turn (LAB-502).
+- DIG's WHO IS IT? at Explorer and Paleontologist stands upright in a tall window: the sand as wide as the screen, its three or four cards side by side under it, the sand keeping its place and size through the round, every name fitting in English and Russian. The reveal and the field guide still ask to turn (LAB-501).
+- DIG's board at Hatchling stands upright in a tall window instead of asking to turn: the sand as wide as the screen under a one-row bar, HOME as its symbol; a brush stroke never scrolls or swipes the page. A board that asks WHO IS IT?, the reveal and the field guide still ask to turn (LAB-500).
+- Build a skeleton's result stands upright in a tall window instead of asking to turn: the finished skeleton over its reward, BUILD ANOTHER over MUSEUM, every word fitting in English and Russian; turning the iPad glides them to their new places. Build a skeleton now plays whole upright (LAB-494).
+- Build a skeleton's mystery guess stands upright in a tall window instead of asking to turn: the finished skeleton as wide as the screen over the three dinosaurs' cards side by side, the clue below them, every name fitting in English and Russian. Turning the iPad glides the skeleton and cards to their new places; the result still asks to turn (LAB-493).
+- Build a skeleton's puzzle stands upright in a tall window instead of asking to turn: the board as wide as the screen over the tray of bones, under a one-row bar with BACK, HOME and MUSEUM as their symbols; bones fit as they do sideways. Turning the iPad glides the board and tray to their new places; the guess and result still ask to turn (LAB-492).
+- Build a skeleton's museum stands upright in a tall window instead of asking to turn: its stands in rows of two under a one-row bar, HOME and BUILD ANOTHER as their symbols, every word fitting in English and Russian. Turning the iPad glides the stands to their new places (LAB-491).
+- Build a skeleton's choice stands upright in a tall window instead of asking to turn: the skeletons in rows of two under a one-row bar, HOME and MUSEUM as their symbols, every word fitting in English and Russian. Turning the iPad glides the cards to their new places; the puzzle still asks to turn (LAB-490).
+- Sort's result stands upright in a tall window instead of asking to turn, as the compare quiz's result does, every word fitting in English and Russian; turning the iPad glides it to its new layout. Sort now plays whole upright (LAB-489).
+- Sort's board stands upright in a tall window instead of asking to turn: the bar, the prompt, the tray and the baskets one under another, the tray's cards in two rows as large as the window allows and never under 120 wide, the baskets side by side with their marks above their names, every basket word fitting in English and Russian. Turning the iPad glides the cards and baskets to their new places; the result still asks to turn (LAB-488).
+- Find the pair's result stands upright in a tall window instead of asking to turn: the board's dinosaurs on top, then the rewards, the tries, WELL DONE!, the best and PLAY AGAIN, BACK and HOME in one centred column, every word fitting in English and Russian, and the offer of the next level comes upright. Turning the iPad glides the result to its new layout without its cards rising in again. Find the pair now plays whole upright (LAB-487).
+- Find the pair's board stands upright in a tall window instead of asking to turn: the grid turns on its side under a one-row bar, BACK and HOME as their symbols, its cards as large as the window allows and never under the board's smallest, the screen scrolling where the window is too short. Turning the iPad glides every card to its new place, and play goes on; the result still asks to turn (LAB-486).
+- Find the pair's welcome stands upright in a tall window instead of asking to turn: the cards on top, then the title, the chips, the level switch and PLAY in one centred column, every word fitting in English and Russian. Turning the iPad glides the welcome to its new layout; the board and the result still ask to turn (LAB-485).
+- SAND WRITING, a new Home tile showing a 2, an A and a circle in sand, opens a full-screen sand canvas in either orientation, with fine 2/4/8-pixel Pencil tips, Home as an icon, and clear inside the tip picker. Marks stay as drawn, with no recognition, score or timer, and survive resizing without page scrolling (LAB-470).
+
+## 2026-10-22
+
+- The compare quiz's result stands upright in a tall window instead of asking to turn: the cheering dinosaur on top, then the rewards, the level switch and PLAY AGAIN and HOME in one column, every word fitting in English and Russian, and the offer of another level fits a tall window. Turning the iPad glides the result to its new layout without counting the score up again (LAB-480).
+- A question of the compare quiz stands upright in a tall window instead of asking to turn: the two cards one above the other, VS on their seam, the values inside the pictures, every prompt and name fitting in English and Russian. Turning the iPad glides it to its new layout; the quiz's result still asks to turn (LAB-479).
+- DIG's choice cards ease in with the digging: they start to show at 10% dug, faint at first and fuller as the question nears, so they no longer pop in (LAB-483).
+- DIG’s Explorer and Paleontologist choices now emerge with the digging: invisible through 25%, fading linearly to full visibility at 75% as the “?” cards fade away. Picking still unlocks at 75%, with the same fade under reduced motion (LAB-468).
+- A dinosaur's page stands upright in a tall window instead of asking to turn: the picture on a full-width stage with the arrows beside it, the words under it, the name as large as fits, every word fitting in English and Russian, and the page's parts staying put from one creature to the next. Turning the iPad glides the bar, the picture and the words to their new places, and a picture growing from its card lands in the turned stage (LAB-377).
+- DIG has two brushes: a picker on its bar, before the FIELD GUIDE, chooses the brush or a wide brush twice as big (96 CSS pixels at Hatchling, 72 above). DIG opens with the brush, and the pick stays through rounds, levels and the FIELD GUIDE until the child goes home (LAB-398).
+- The catalogue stands upright in a tall window: fewer cards to a row rather than smaller names (two on an iPad mini, three on an iPad Air, four on a 13-inch iPad), the food chips on a row of their own under HOME, fitting in Russian, and the cards rising in row by row. Turning the iPad glides HOME, the chips and every card to their new places, keeping the row the child was looking at; a picture shrinking back into its card as the iPad turns lands in the card's new place (LAB-376).
+
+## 2026-10-21
+
+- Explorer and Paleontologist compare rounds now mix WHO IS LONGER? with their other questions, using the creatures' lengths (LAB-394).
+- Paleontologist compare rounds now mix WHO IS SHORTER? with heavier, taller and lighter questions, with the dinosaur with the smaller hip height winning (LAB-392).
+- Paleontologist compare rounds now mix WHO IS LIGHTER? with heavier and taller questions, with the lighter dinosaur winning (LAB-391).
+- The compare quiz's result screen has the level switch above PLAY AGAIN, as sorting's does, and each level keeps its own best, which the COMPARE tile shows for the level the quiz plays; every level still asks today's questions, and a best saved before is Hatchling's (LAB-390).
+- The skeleton game has a mystery skeleton: once a skeleton has its star, a "?" tile after the dinosaurs builds one already built with its name hidden, then asks WHOSE SKELETON IS IT? from three dinosaurs; a wrong guess boings, rests aside and gives a clue, such as LOOK AT ITS THREE HORNS!, and the right one reveals the dinosaur. It earns no new star (LAB-284).
+- The skeleton game comes alive: a bone picked up, fitted or missed is heard, a missed bone wobbles back, a fitted skull snaps its jaw and a tail swishes, and the finished skeleton stomps and roars before its body shows. Explorer's pieces are no longer coloured by body area and Paleontologist's no longer arrive turned, so bones are placed by their shape (LAB-389).
+- Turning the iPad, or resizing a window between landscape and portrait, glides the home page to its other layout instead of jumping: RexLab, the corner, the greeting, the large card and the tiles move to their new places together while the rest fades in; under reduced motion it only fades. The tiles keep the column the child was looking at, an open parents' menu stays open, and taps wait until the motion settles (LAB-375).
+- A hatch and grow care prototype for a playtest replaces the care mission one, at `/prototypes/care-hatch.html`, with all three age levels: a Hatchling raises one baby that shows its wants on itself, an Explorer raises plant- and meat-eating twins, and a Paleontologist raises a trio, reads each one's diet from its teeth and keeps them in a field notebook (LAB-387).
+- Three Russian descriptions read correctly: Allosaurus, Mamenchisaurus and Maiasaura (LAB-384).
+- Find the pair at Paleontologist deals from 26 skeletons, two of each look-alike group that has two dinosaurs or more, so a board after another repeats at most one of its dinosaurs, not nine (LAB-386).
+- Find the pair at Paleontologist pairs each dinosaur's picture with its whole skeleton, dealing the dinosaurs that have one, one of each look-alike group; Hatchling and Explorer keep their silhouettes (LAB-301).
+- On the upright home page the large card shows its whole picture on a tall card too: FIND THE PAIR's cards and DIG's sand no longer run off its sides (LAB-327).
+- The home page stands upright on an iPad in portrait, in Split View or Stage Manager, and in a tall Mac window: the corner and greeting on top, the large card across the width, and under it the row of tiles running to the right edge with the next column peeking in; turning the window keeps an open parents' menu and the large card and puts the tiles back at their start. Other screens, and the home page on an upright iPhone, still ask to turn sideways (LAB-327).
+- Ten flying and sea reptiles join the catalogue, COMPARE, SORT, FIND THE PAIR and DIG: Quetzalcoatlus, Pteranodon, Rhamphorhynchus, Dimorphodon and Pterodactylus; Mosasaurus, Elasmosaurus, Kronosaurus, Plesiosaurus and Ophthalmosaurus, each page opening NOT A DINOSAUR. DIG tells them by a wing or a flipper, and its treasure name now takes the dark theme's amber (LAB-381, LAB-383).
+- The catalogue is ANCIENT REPTILES / ДРЕВНИЕ ЯЩЕРЫ and is ready for creatures that are not dinosaurs: a flying or sea reptile's page names its group over its name and gives its wingspan or length, laid along an arrow on its card; COMPARE weighs them but never asks which is taller, CARE never has them visit, and a weight under a kilogram reads in grams. SORT's prompt is SORT THEM ALL / РАЗЛОЖИ ВСЕХ and DIG's last card EVERYONE DUG UP / ВСЕ ОТКОПАНЫ (LAB-380).
+
+## 2026-10-20
+
+- DIG's Explorer and Paleontologist choice cards show each dinosaur's name in capitals beneath its picture, in the chosen language, and expose the same name to screen readers (LAB-378).
+- The home page's tiles put SORT and CARE last: ALL DINOSAURS over FIND THE PAIR, SKELETONS over DIG, then SORT over CARE, before MORE COMING; the day's featured game is still drawn in tile order (LAB-373).
+- DIG's brush shows no ring under the finger; the sand clearing under it and its grains are the brush. DIG's home tile shows its sand picture with rounded corners, as the cards around it (LAB-370, LAB-372).
+- RexLab lays out by the window's shape: a screen without a portrait layout, every screen for now, shows a turn-sideways picture in a portrait window ("MAKE THE WINDOW WIDER" when the screen is already sideways, as on a Mac), with a parents' footnote that portrait is on its way, and the game waits behind it (LAB-326).
+- Every landscape screen fits from a 1024×670 window to a large Mac display, its content at most 1440 wide and centred, clear of rounded corners, a notch and a home indicator; the page no longer pulls to refresh or bounces, and buttons brighten under a mouse or trackpad with a hand cursor, never after a finger (LAB-326).
+- After BACK from DIG's FIELD GUIDE, the brush clears sand again and the round goes on to its question, help and gust, even when help's wait ticked as the page opened. The brush's ring springs in under the finger, follows it on a soft spring and shrinks away as it lifts, and its grains toss out on an arc, overshoot a little and settle as they fade; under reduced motion the ring just shows and there are no grains (LAB-369).
+- DIG keeps a found treasure visible at its sandy spot with its name, then carries it along a straight amber trail to the FIELD GUIDE; the longer flight ends with a clear collection pulse, and reduced motion keeps the named find for a short fade before the count updates (LAB-366).
+- About one DIG round in three hides a treasure beside the dinosaur: a shell, tooth or amber, more rarely an egg nest or a golden fossil. Brushed clear, it glows, hops and flies into the 📖 FIELD GUIDE on DIG's bar, whose page shows each kind found with its count and an outline for those still to find (LAB-362).
+- In DIG's Explorer and Paleontologist rounds the board stands still beside a column of empty "?" cards from the first stroke, one per choice, and at 75% each card turns over into a dinosaur, 60 ms apart; under reduced motion they fade in (LAB-364).
+- Made DIG's choice pictures grayscale before an answer so their colour cannot give them away. A wrong pick shows a gentle TRY ANOTHER badge and is out of play while the other cards stay active; the right card reveals its colour with a green border and check, including with reduced motion (LAB-367).
+- DIG's board drops in, slides aside for the question and gusts the sand away; the dinosaur lifts with a warm glow and sends its first star into DUG UP, then glides into the reveal as its rewards and buttons arrive one after another, with short fades under reduced motion (LAB-361).
+- A skeleton puzzle's board keeps its outline's shape, as large as fits beside the tray, at any window size; the tray's spots are square, at least 48 by 48, each bone large in its spot, and all fit in the tray in as many columns as they need (LAB-351).
+- A turned piece's turn mark is a little dimmer in both themes, still clear as a symbol (LAB-352).
+- In the museum, BUILD and BUILD AGAIN stand on their own under the exhibit, with no card behind them; the hall leaves as much room under the buttons as above the names, and nothing is cut off (LAB-353).
+- A sort basket's cards wrap into rows, apart and inside the basket; names show at 14px where they fit with the picture, otherwise the picture fills the card with no name strip and keeps its accessible name (LAB-355).
+- DIG's brush crumbles the sand: each hollow has a ragged edge, a pale lip of grains and the sand's shadow, over a bed of darker damp sand instead of the page, and a telling part shines once with a ring and a star as it first shows; under reduced motion the sand just clears (LAB-360).
+- DIG is a mystery round: the board starts as all sand with no cards, and at Explorer and Paleontologist, once three quarters of the dinosaur show, WHO IS IT? offers it and its closest look-alikes, 3 or 4, beside the board; brushing goes on, a wrong pick fades, the right one brings the gust, and a first pick earns the 🦴 badge. Hatchling's gust waits for 95%, and help thins a spot after ten quiet seconds at every level (LAB-359).
+- At Paleontologist, Triceratops's tray holds a Spinosaurus sail among the other dinosaurs' bones, three in all (LAB-334).
+- DIG's tile shows a dinosaur half under sand and the dinosaurs dug up; DIG can be the featured game, starts at the age level, and after three strong rounds offers the next level, as find the pair does (LAB-341, LAB-343).
+- DIG at Paleontologist hides the dinosaur's name: three clues come one at a time, then the child names it from three body pictures, the other two each lacking a telling clue; naming it at the first pick earns its 🦴 badge, shown on its DUG UP card from then on (LAB-344).
+- DIG at Explorer shows three find cards, each a close-up of a detail on the dinosaur, ticked with a star as the child brushes it clear in any order; after ten quiet seconds the next detail shows through the sand, and the gust comes once all three are found (LAB-343).
+- DIG's reveal names the dinosaur with a star on its DUG UP card, out of all 42, with the best-score celebrations, a 🏆 once all are dug up, and the level switch above DIG AGAIN; the dinosaurs dug up and the child's level choice are kept (LAB-341).
+- A new game, DIG: its tile, the last of the games, starts a round at once, where the child brushes sand off a dinosaur's body picture with a finger until a gust blows the last of it away and names the dinosaur (LAB-341).
+- The skeleton game has five dinosaurs: Brachiosaurus and Spinosaurus join, each cut at every level with its own fact and other dinosaurs' bones at Paleontologist. The choice and the museum lay them out three above and two centred below, and the collection counts to five (LAB-334).
+
+## 2026-10-19
+
+- Find the pair and the skeleton game have a BACK button beside HOME: from a board or its result back to Find the pair's welcome screen, and from a puzzle back to the choice of dinosaurs (LAB-345).
+- The home page no longer repeats today's featured game as a small tile: the large card stands in its place, and the other tiles keep their order (LAB-348).
+- The catalogue list is one row of HOME and the food chips, with no title or count: ALL is a filter symbol alone, a card's food tag is its colour and symbols without the word, a card's chips stay on one line, and the list runs to the screen's edge so its scrollbar shows there (LAB-350).
+- The catalogue and dinosaur page no longer show the found stamp over dinosaur artwork (LAB-347).
+- Skeleton help at Explorer and Paleontologist waits while the child is busy: a touch or turn of any piece hides it and counts again, and it then helps the piece last handled instead of lighting up another; Hatchling's help is unchanged (LAB-346).
+- A care mission prototype for a playtest, apart from the game, at `/prototypes/care-mission.html`: a tyrannosaurus, a triceratops and a gallimimus come in turn to an empty bowl, lean to a food they eat or turn away from one they don't, drink water, and can be served their meal (LAB-281).
+- Skeletons at Explorer and Paleontologist no longer give a bone's place away: the tray is shuffled for each puzzle and a held bone's home is outlined only at Hatchling. Their pieces now follow the drawn bones instead of straight cuts, a tray of five or more spots shows two columns, a touch on another piece clears the line about another dinosaur's bone, and a long press or quick taps on a piece no longer open the iPad's picture menu (LAB-323).
+- A skeleton built at Explorer or Paleontologist without help's last step earns that level's badge, shown on the reveal and kept for good on its museum stand (LAB-319).
+- At Paleontologist about one skeleton piece in three arrives turned; a tap turns it a quarter, and it fits only the right way up (LAB-318).
+- Skeletons at Paleontologist play their ten to twelve bones on the skeleton's silhouette alone, with two or three bones of the other dinosaurs in the tray, which fit nowhere and are named once dropped, then leave once the skeleton is built (LAB-317).
+- Skeletons at Paleontologist are cut into ten to twelve plain bones from the same skeleton pictures (LAB-316).
+- Skeletons at Explorer and Paleontologist help in steps, ten seconds apart, until a bone fits: the bone's body region on the outline, then a faint ghost at its home, then the bone moving towards its home and back, fading instead under reduced motion; Hatchling keeps its one glow (LAB-315).
+- Skeletons at Explorer colour each bone and its empty slot by body area, head to tail, in both themes, as a cue to where it goes; Hatchling stays plain (LAB-314).
+- Skeletons at Explorer are cut into six to eight bones along the body, from the same skeleton pictures (LAB-313).
+- Skeletons play at each age level: a level switch on the selection screen starts at the age level and keeps the child's choice until a parent picks a different level; for now every level builds Hatchling's four pieces, and stars stay one per skeleton (LAB-312).
+- Sorting plays all three age levels, with 6, 8 or 10 cards and the extra baskets, remembers the child’s level choice, and keeps a best for each level (LAB-295).
+- Skeletons no longer wait for pictures: a puzzle starts at once, each bone fitted the same while its picture shimmers or is missing, and the result shows once the skeleton has held, the body fading in whenever it loads; nothing in the app waits for a picture any more (LAB-308).
+- Find the pair offers the next age level after three strong boards in a row, or five after NOT NOW; YES keeps that level for the game and leaves the parents' setting alone (LAB-293).
+
 ## 2026-10-18
 
-- Answered the skeleton game's code review (LAB-270): BUILD ANOTHER now cancels a rebuild still loading, so it can no longer knock the skeleton down or take over the choice; tests now save progress through the app's real storage and read it back, carry a helped puzzle through to its full reward, and check that the four shipped pieces at their places rebuild the whole skeleton picture (reading the pictures with `sharp`, a new dev dependency).
-- Finished the skeleton game's full flow (LAB-270): a stand awaiting a rebuild is saved and survives reopening, a saved best can never exceed the stars earned, the Russian buttons read СОБРАТЬ ДРУГОЙ and СОБРАТЬ ЗАНОВО as the spec says, and a test with measured font widths keeps every skeleton button's words on one line at 1024px. The skeleton features lose `@next`; the read-aloud scenarios wait for LAB-275.
-- Added the SKELETONS tile to the home page's row, just before MORE COMING (LAB-270): the Triceratops skeleton, a bone symbol and, once a star is earned, the best collection score with a trophy; it opens the choice of dinosaurs, and tests now reach the game through it instead of `App`'s `opening`, which is gone.
-- Built the skeleton museum (LAB-270), opened by MUSEUM from the choice, the board and the reveal: one stand per dinosaur with its built skeleton, star and REBUILD, a faint silhouette with BUILD, or, while a rebuild waits, the silhouette with its star and CONTINUE. REBUILD scatters the bones to the tray and starts afresh once per double tap; finishing it shows the reveal with the star already earned and puts the skeleton back, with no new star. Which stands wait for a rebuild is kept for the session until the progress step.
-- Built the skeleton game's reveal (LAB-270): when the last bone fits, the dinosaur's star and the collection's best are saved once, then its body picture fades in exactly over the skeleton, with its name, one short fact in English or Russian, the star and FIRST or NEW BEST; BUILD ANOTHER returns to the choice, which now shows each finished dinosaur's star and the best. A missing picture still reveals after a second. Read-aloud waits for LAB-275.
-- Built building a skeleton on its board (LAB-270): a child drags each piece from the tray, one finger at a time; it snaps into its own place within reach and floats back from anywhere else, in any order, and a cancelled drag or turning to portrait returns it. After ten seconds at the puzzle with no fit, the next piece and its slot glow amber, counted only while the app is visible and in landscape. HOME leaves the puzzle and starts the next visit at the choice of dinosaurs.
-- Built the skeleton game's choice screen (LAB-270): three dinosaurs with their pictures and large capital names, MUSEUM and HOME; a card opens its board, with the faint outline, four slots and the four pieces in the tray, once the pictures load, one puzzle per double tap and none after leaving. No home tile leads there yet, so tests open the app on the game through `App`'s `opening`. The skeletons and their pieces are checked at startup.
-- Corrected `AGENTS.md` on the design file: `design/rexlab.pen` is JSON, not encrypted, so branches that add frames merge by appending them to trunk's file, and only a change to an existing frame waits for another branch's.
-- Added the skeleton game's pictures (LAB-270): each of the three skeletons in `src/assets/skeletons/<id>/skeleton.webp`, traced from its body picture in the same 800×600 framing, and its skull, spine, legs and tail cut along the bones as pictures with alpha beside it; `src/data/skeletons.json` gives each piece's place in that frame.
-- Stood the home page's other games in equal columns beside COMPARE (LAB-287): COMPARE keeps three sevenths of the width, and the tiles stand in a row of 310px columns, two to a column, ALL DINOSAURS over CARE, SORT over FIND THE PAIR, then MORE COMING, a faded Triceratops's shape over a lock, a picture rather than a button. The row scrolls sideways under the finger while COMPARE stays, and the next column peeks in at the edge, at least 32px of it on every iPad from 1024 to 1376px wide; the design's 330px columns would leave no peek at 1366px. Every title stays on one line, FIND THE PAIR's on two at most, with the counts in the pictures' corners. Specified in `docs/features/home-tiles.feature`.
-- Designed the skeleton game in `design/rexlab.pen` (LAB-270): the home page with COMPARE fixed and the other tiles in a row that scrolls sideways, SKELETONS and MORE COMING last, shown at rest and scrolled to the end; choosing one of three dinosaurs; building a T. rex on its faint outline with the spine being dragged, and with help glowing on the tail's slot and piece after waiting; the reveal, with the body picture fading in over the skeleton, the fact beside a speaker symbol, a star and a new best of 2/3; the museum with two built skeletons to REBUILD and an unbuilt Stegosaurus silhouette to BUILD; the Triceratops bones scattering on a rebuild; and a dark build. The three skeletons are traced from their dinosaurs' body pictures in the same pose and 800×600 framing, so the body fades in exactly over its skeleton, in `design/images/skeleton-*.webp`; the T. rex and Triceratops pieces are cut along their bones as pictures with alpha, `skeleton-<dinosaur>-<piece>.webp`, and sit at their home places on the outline.
-- Added choosing dinosaurs by their food in ALL DINOSAURS (LAB-279): four chips under the title, ALL, MEAT, PLANTS and BOTH, look like the food tags, each with its symbols, its word and how many it shows (42, 16, 23 and 3). A chip not chosen is a card with its symbols in the tag's colour; the chosen one is filled with the colour and lifted by a shadow. A chip shows only its dinosaurs, in the list's order, rising in as a new list. The count beside the title follows it, "2 / 16" once one shown is found, and a page's ← and → go round the dinosaurs shown, its place counted among them. The food chosen is kept going to a page and back, and ALL DINOSAURS opens on ALL from home. In Russian the chips read ВСЕ, МЯСО, РАСТЕНИЯ and ВСЁ, and the home tile now reads just ВСЕ, short enough for a tile among many, while the catalogue keeps its title ВСЕ ДИНОЗАВРЫ. Specified in `docs/features/catalogue-food-filter.feature`.
-- Designed the catalogue's food chips in `design/rexlab.pen` (LAB-279): ALL DINOSAURS in the light theme with MEAT chosen and 2 of 16 found, in the dark theme with BOTH chosen, and a dinosaur page at "1 / 16" among the meat-eaters.
-- Fixed the sorting game's review findings (LAB-272): a board SORT started, still waiting for its pictures, is dropped when the child opens COMPARE, CARE, ALL DINOSAURS or FIND THE PAIR, so it never opens over their screen; the quiz, care and sorting each own their scoring types and are given the best-score rule by the app; the drawn score's `--score` is tested for every score a board can end with; and every trait and diet value read for sorting is tested, each shipped dinosaur against its record
-- Put SORT over FIND THE PAIR in the home page's third column (LAB-272), merging find the pair (LAB-280): the columns stay at 3 : 2 : 2, MORE COMING is gone, and the FIND THE PAIR tile is as tall as SORT, its three cards sized by the tile's height and its title beside its symbol
+- Sorting no longer waits for pictures: a round starts at once, each card named over its picture's shimmer until it fades in, and sorted the same while its picture loads or is missing (LAB-307).
+- Care and find the pair no longer wait for pictures: a visit and a board start at once, each picture shimmering until it fades in; a turned card shows its dinosaur's name until its picture shows, and a missing picture shows footprints (LAB-306).
+- Find the pair plays at each age level: Hatchling keeps today's climb, Explorer deals 9 pairs and Paleontologist 12, each a picture to its silhouette, and each level keeps its own best (LAB-296).
+- A level switch on find the pair's welcome screen starts at the age level and keeps the child's choice until a parent picks a different level (LAB-296).
+- Reduced motion holds on every screen again: a card, a step or a sorting card only fades, where later rules had made it move (LAB-296).
+- The catalogue, the compare game and the home page no longer wait for pictures: a screen opens at once, each picture shimmering in its place until it fades in, and a picture that fails or takes over 8 seconds shows footprints instead (LAB-304).
+- A double tap counts as one tap everywhere: the second tap of a quick pair on one spot is swallowed, so it never presses anything on the next screen; keys are not filtered (LAB-303).
+- Tap safety is split into parts that land one by one, screen state and animation first; leaving a game now stops its pending timers at once (LAB-298).
+- A parents' menu picks the age level, Hatchling, Explorer or Paleontologist, kept on this device; a new install starts at Explorer, and no game reads it yet (LAB-291).
+- The language, theme and age level menus animate in and out, and their ✓ reads in the light theme (LAB-291).
+- The tap safety rule is written down in `docs/tap-safety.md`: a double tap does what one tap does, and never presses anything on the next screen (LAB-297).
+- MUSEUM on the home page opens the skeleton museum (LAB-290).
+- Heights are hip heights, worked out from peer-reviewed leg-bone measurements, and masses are live body mass (LAB-263); the rules and each dinosaur's working are in `docs/sources.md`.
+- The testing approach is written down in `docs/mvp-infrastructure.md`, section 8 (LAB-264).
+- Age levels Hatchling, Explorer and Paleontologist are defined in `docs/age-levels.md` (LAB-292).
+- The home page features one game a day in a large card, favouring the games started least; CARE reads ЗАБОТА in Russian (LAB-286).
+- Nine masses and one height now lie inside the trusted sources' range (LAB-288).
+- Apatosaurus's Russian description is corrected, and a screen reader names the version footer in the chosen language (LAB-289).
+- New game SKELETONS: build a dinosaur's skeleton from its bones, earn its star, and rebuild it in the museum (LAB-270).
+- The home page's other games stand in equal columns beside COMPARE (LAB-287).
+- ALL DINOSAURS can show only the meat-eaters, the plant-eaters or those that eat both (LAB-279).
+- SORT stands over FIND THE PAIR on the home page, and a sorting board that loads late no longer opens over another game (LAB-272, LAB-280).
 
 ## 2026-10-17
 

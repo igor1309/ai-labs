@@ -1,0 +1,29 @@
+appId: foliotell.FolioTell
+---
+- launchApp:
+    stopApp: true
+- waitForAnimationToEnd:
+    timeout: 2000
+- runFlow:
+    when:
+      notVisible: "Alice.*"
+    commands:
+      - tapOn: "Browse"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      visible: "iCloud Drive"
+    commands:
+      - tapOn: "On My iPhone"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- runFlow:
+    when:
+      notVisible: "Alice.*"
+    commands:
+      - tapOn:
+          point: "19%, 52%"
+      - waitForAnimationToEnd:
+          timeout: 2000
+- assertVisible: "Alice.*"

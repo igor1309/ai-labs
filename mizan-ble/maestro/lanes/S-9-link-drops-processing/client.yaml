@@ -1,0 +1,20 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Pay a nearby host"
+    timeout: 15000
+- tapOn: "Start handshake"
+- extendedWaitUntil:
+    visible: "MIZAN-CAFE asks for"
+    timeout: 15000
+- assertVisible: "123.45 Mizan"
+- tapOn: "Confirm"
+- extendedWaitUntil:
+    visible: "Waiting for host"
+    timeout: 15000
+- extendedWaitUntil:
+    visible: "Result unknown"
+    timeout: 15000
+- assertVisible: "The link to MIZAN-CAFE was lost before a result arrived. Check with the host before paying again."

@@ -8,13 +8,14 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strconv"
 	"strings"
 )
 
 // Facts are the wrapper's contract and what it can do: check output
 // against a schema, resume a session, take skills, take a model, the
-// efforts it accepts, report tool calls and tool commands, and how it
-// takes a call's inputs.
+// efforts it accepts, report tool calls and tool commands, take a
+// budget, report a cost, and how it takes a call's inputs.
 type Facts struct {
 	Contract     string
 	Schema       bool
@@ -24,6 +25,8 @@ type Facts struct {
 	Efforts      []string
 	ToolCalls    bool
 	ToolCommands bool
+	Budget       bool
+	Cost         bool
 	Inputs       Inputs
 }
 
@@ -82,23 +85,28 @@ type Stream struct {
 // "KEY=value"; the instruction, the model and the effort, each empty where
 // not given; the options, the tools the turn may use; the schema its
 // output is checked against, nil where none is given; and the session it
-// resumes, "" for none.
+// resumes, "" for none. SessionCostBefore is its earlier cost in US
+// dollars, nil where unknown; Budget is the turn's budget, nil for none.
 type Turn struct {
-	Message     string
-	Dir         string
-	Env         []string
-	Instruction string
-	Model       string
-	Effort      string
-	Options     []string
-	Schema      []byte
-	Session     string
+	Message           string
+	Dir               string
+	Env               []string
+	Instruction       string
+	Model             string
+	Effort            string
+	Options           []string
+	Schema            []byte
+	Session           string
+	SessionCostBefore *float64
+	Budget            *float64
 }
 
 // Report is a line a turn read: the tool call it made, where Tool is not
-// nil; else another line.
+// nil; a tool's result, where Result is set; else another line.
 type Report struct {
-	Tool *Tool
+	Session string
+	Tool    *Tool
+	Result  bool
 }
 
 // Tool is a tool call a turn reports: the tool's name and all it was
@@ -107,25 +115,30 @@ type Tool struct {
 	Name, Input string
 }
 
-// Result is how a turn's program ended, and its reply: none where a signal
-// ended it.
+// Result is how a turn's program ended; the session its stream named, read
+// as it came, so that a turn a signal ended gives it too, "" for none; and
+// its reply: none where a signal ended it.
 type Result struct {
-	Ended Ended
-	Reply *Reply
+	Ended   Ended
+	Session string
+	Reply   *Reply
 }
 
 // Reply is what the runtime reported of a turn: its text, its structured
-// output, nil for none, its session, its cost in US dollars and its usage,
-// each nil where not reported, and its failure class and reason, empty
-// where it reports none.
+// output, nil for none, its session, its turn's own cost in US dollars,
+// nil where unknown, its usage, and its session's cost after it, nil where
+// unknown; whose price the cost is, "claude-code" where it is known; and
+// its failure class and reason, empty where it reports none.
 type Reply struct {
-	Text    string
-	Output  []byte
-	Session string
-	Cost    *float64
-	Usage   Usage
-	Failure Class
-	Reason  string
+	Text        string
+	Output      []byte
+	Session     string
+	Cost        *float64
+	SessionCost *float64
+	CostSource  string
+	Usage       Usage
+	Failure     Class
+	Reason      string
 }
 
 // Usage is the tokens a turn used, each nil where not reported.
@@ -137,6 +150,8 @@ type Usage struct {
 type Class string
 
 const (
+	BudgetExhausted Class = "budget_exhausted"
+	Capacity        Class = "capacity"
 	RateLimited     Class = "rate_limited"
 	Auth            Class = "auth"
 	ContextOverflow Class = "context_overflow"
@@ -173,6 +188,8 @@ func (*Wrapper) Facts() Facts {
 		Efforts:      []string{"low", "medium", "high", "xhigh", "max"},
 		ToolCalls:    true,
 		ToolCommands: true,
+		Budget:       true,
+		Cost:         true,
 		Inputs:       InMessage,
 	}
 }
@@ -181,7 +198,8 @@ func (*Wrapper) Facts() Facts {
 // the message on stdin, through the supervisor, and gives how the program
 // ended and the reply its stream-json gives; each line is given to report
 // as it is read: each tool_use block of it, or the line where it has none.
-// A turn given no report is an error before
+// The session is the one the first line naming one names, the reply's
+// too. A turn given no report is an error before
 // anything starts. A supervisor's error is the turn's, its error that the
 // program could not start included.
 func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Result, error) {
@@ -196,9 +214,19 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 		return Result{}, err
 	}
 	if ended.Signal != "" {
-		return Result{Ended: ended}, nil
+		return Result{Ended: ended, Session: read.session}, nil
 	}
-	return Result{Ended: ended, Reply: read.reply(ended, len(turn.Schema) > 0)}, nil
+	reply := read.reply(ended, len(turn.Schema) > 0)
+	before := turn.SessionCostBefore
+	if turn.Session == "" {
+		before = new(float64)
+	}
+	reply.SessionCost, reply.Cost = reply.Cost, nil
+	if before != nil && reply.SessionCost != nil && *reply.SessionCost >= *before {
+		cost := *reply.SessionCost - *before
+		reply.Cost, reply.CostSource = &cost, "claude-code"
+	}
+	return Result{Ended: ended, Session: read.session, Reply: reply}, nil
 }
 
 // arguments are claude's for turn, contract claude-code/3: the tools are
@@ -221,6 +249,9 @@ func arguments(turn Turn) []string {
 	}
 	if turn.Effort != "" {
 		args = append(args, "--effort", turn.Effort)
+	}
+	if turn.Budget != nil {
+		args = append(args, "--max-budget-usd", strconv.FormatFloat(*turn.Budget, 'f', -1, 64))
 	}
 	if turn.Instruction != "" {
 		args = append(args, "--append-system-prompt", turn.Instruction)

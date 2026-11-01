@@ -1,8 +1,8 @@
 // Command agister is the composition root (ADR-001, rule 3): it connects
 // layout, documents, resolve, check and core to files, git, the runtime
 // wrappers and the machine Agister runs on, through the adapters beside
-// it, and answers cli's settings from check and its run from resolve and
-// core.
+// it, and answers cli's settings from check, its run from resolve and
+// core, and its runs from runstore.
 package main
 
 import (
@@ -94,14 +94,22 @@ func connect(ctx context.Context, user string, stdout, stderr io.Writer) (*cli.C
 	if err != nil {
 		return nil, err
 	}
-	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals(), random: rand.Reader}
+	probe, err := newProcessProbe(syscall.Kill, group.Token)
+	if err != nil {
+		return nil, err
+	}
+	machine := host{ctx: ctx, environ: os.Environ(), clock: wallClock{}, timer: wallTimer, signals: cancellationSignals(), random: rand.Reader, probe: probe}
 	inputsFrom := sourcing{texts: f, paths: f, commits: g, changes: g}
 	return build(user, f, fs, roots, wrappers, schemaValidator{}, inputsFrom, holding{facts: g, locks: f}, runsAt, machine, stdout, stderr)
 }
 
 // runsAt is runstore over folder.
-func runsAt(folder string) (runStore, error) {
-	store, err := runstore.New(folder)
+func runsAt(folder string) (homeRuns, error) {
+	probe, err := newProcessProbe(syscall.Kill, group.Token)
+	if err != nil {
+		return nil, err
+	}
+	store, err := runstore.NewLive(folder, runstore.Liveness{PID: os.Getpid(), Probe: probe, Now: wallClock{}.Now, Timer: wallTimer, Interval: time.Second})
 	if err != nil {
 		return nil, err
 	}
@@ -200,8 +208,8 @@ type piWrapper interface {
 // wrapper's facts, the turns of runtimes' bash, claude-code and codex, its
 // runs on machine, a call's output checked by validator, its inputs read
 // through inputsFrom, and the call admitted and held through held's facts
-// and locks, its runs kept by the store storeAt gives for home's "runs",
-// for the user whose home directory is user: home's folder is
+// and locks, its runs kept, and exported, by the store storeAt gives for
+// home's "runs", for the user whose home directory is user: home's folder is
 // homeFolder's, and the lock files are under lockFolder's. A run's result
 // is printed to stdout, and its progress, as it goes, to stderr.
 func build(user string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, runtimes runtimes, validator call.Validator, inputsFrom sourcing, held holding, storeAt runStoreAt, machine host, stdout, stderr io.Writer) (*cli.CLI, error) {
@@ -228,9 +236,9 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	}
 	bashFacts, claudeFacts, codexFacts := b.Facts(), claude.Facts(), cx.Facts()
 	turns := []turn{
-		{contract: bashFacts.Contract, inputs: bashInputs(bashFacts.Inputs), runtime: bashTurns},
-		{contract: claudeFacts.Contract, inputs: claudeCodeInputs(claudeFacts.Inputs), runtime: claudeTurns},
-		{contract: codexFacts.Contract, inputs: codexInputs(codexFacts.Inputs), runtime: codexTurns},
+		{contract: bashFacts.Contract, inputs: bashInputs(bashFacts.Inputs), cost: bashFacts.Cost, runtime: bashTurns},
+		{contract: claudeFacts.Contract, inputs: claudeCodeInputs(claudeFacts.Inputs), cost: claudeFacts.Cost, runtime: claudeTurns},
+		{contract: codexFacts.Contract, inputs: codexInputs(codexFacts.Inputs), cost: codexFacts.Cost, runtime: codexTurns},
 	}
 	home := homeFolder(user, machine.environ)
 	events, err := newProgress(stderr)
@@ -249,7 +257,15 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	if err != nil {
 		return nil, err
 	}
-	return newCommandLine(home, links, fs, roots, wrappers, runner, stdout, stderr)
+	takes := map[string]call.Inputs{}
+	for _, turn := range turns {
+		takes[turn.contract] = turn.inputs
+	}
+	states, err := newRunStates(store, machine.clock.Now, machine.probe, 10*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	return newCommandLine(home, links, fs, roots, wrappers, runner, store, states, stdout, stderr, takes)
 }
 
 // homeFolder is home's folder (ADR-002, rule 2): AGISTER_HOME where
@@ -271,12 +287,12 @@ func homeFolder(user string, environ []string) string {
 // newChecker is check over the settings of home's folder and the launch
 // directory, read once: every answer of every part comes from the one
 // snapshot layout gives.
-func newChecker(home, launch string, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers) (*check.Checker, error) {
+func newChecker(home, launch string, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, runTakes map[string]call.Inputs) (*check.Checker, error) {
 	read, err := readSettings(home, launch, fs, roots, wrappers)
 	if err != nil {
 		return nil, err
 	}
-	resolves, err := newCheckResolve(read.resolver, read.source, read.snapshot.Layers)
+	resolves, err := newCheckResolve(read.resolver, read.source, read.snapshot.Layers, read.documents, runTakes)
 	if err != nil {
 		return nil, err
 	}

@@ -1,7 +1,12 @@
 import { Check, createLucideIcon, Drumstick, Feather, Footprints, House, Leaf, Shapes, Trophy } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { Button } from "./Button.tsx";
+import { useGateShown } from "./OrientationGate.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS, type Texts } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
+import { basketLayout } from "./basketLayout.ts";
+import { PORTRAIT_SORT, sortBoardStyle, type SortSizes } from "./sortBoardLayout.ts";
 
 export type Basket = keyof Texts["baskets"];
 
@@ -11,6 +16,10 @@ const Horn = createLucideIcon("horn", [["path", { d: "M5 20C5 12 11 5 19 3C14 7 
 // How far a finger moves a card before it is dragged rather than tapped,
 // in pixels.
 const DRAG_START = 8;
+
+// The most cards the tray lays out in one row; more go in two rows of
+// equal length, so eight cards on a 1024-wide screen still read.
+const ROW_CARDS = 6;
 
 export type SortCardView = {
   id: string;
@@ -34,7 +43,8 @@ export type SortScreenProps = {
   // The tray's places, in order: a card still to sort, or null where a
   // sorted card was, so the other cards never move.
   tray: ReadonlyArray<SortCardView | null>;
-  baskets: readonly [BasketView, BasketView];
+  // Two baskets, or three where the level adds one.
+  baskets: readonly [BasketView, BasketView] | readonly [BasketView, BasketView, BasketView];
   sorted: number;
   total: number;
   // The right basket of the last wrong drop, which glows for a moment;
@@ -43,6 +53,11 @@ export type SortScreenProps = {
   onDrop: (id: string, basket: Basket) => void;
   onHome: () => void;
   onSeeResult: () => void;
+  // The width the board stands in upright, one for the window; landscape
+  // sizes its tray and baskets itself.
+  width?: number;
+  // The sizes it stands by: an iPhone's in a tall-narrow window.
+  sizes?: SortSizes;
 };
 
 // A card held by a finger, a pen or the mouse, and how far it has moved.
@@ -51,7 +66,8 @@ type Hold = { pointerId: number; id: string; x: number; y: number; dx: number; d
 // Where a dragged card was let go, from its place, to slide back from.
 type Return = { dx: number; dy: number; count: number };
 
-export function SortScreen({ language, tray, baskets, sorted, total, glow, onDrop, onHome, onSeeResult }: SortScreenProps) {
+export function SortScreen({ language, tray, baskets, sorted, total, glow, onDrop, onHome, onSeeResult, width, sizes = PORTRAIT_SORT }: SortScreenProps) {
+  const gateShown = useGateShown();
   const text = TEXTS[language];
   const [held, setHeld] = useState<Hold>();
   const [picked, setPicked] = useState<string>();
@@ -63,11 +79,19 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
   // A drag has just ended, so the click it ends with is not a tap.
   const dragged = useRef(false);
   const basketElements = useRef(new Map<Basket, HTMLElement>());
+  const rows = tray.length > ROW_CARDS ? 2 : 1;
 
   const holdCard = (next: Hold | undefined) => {
     hold.current = next;
     setHeld(next);
   };
+
+  useLayoutEffect(() => {
+    if (!gateShown) return;
+    holdCard(undefined);
+    setPicked(undefined);
+    setOver(undefined);
+  }, [gateShown]);
 
   // A dragged card is over the basket its pointer is over.
   const basketAt = (x: number, y: number) =>
@@ -142,13 +166,18 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
   return (
     // A tap anywhere else, such as an empty slot or the space between,
     // puts the picked card down.
-    <main className="sort" onClick={() => setPicked(undefined)}>
+    <main
+      className="sort"
+      data-rows={rows}
+      style={width === undefined ? undefined : (sortBoardStyle(width, tray.length, baskets.length, sizes) as CSSProperties)}
+      onClick={() => setPicked(undefined)}
+    >
       <div className="stratum stratum-1" aria-hidden="true" />
       <header className="sort-bar">
-        <button type="button" className="home-button" onClick={onHome}>
+        <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
-        </button>
+          <span className="narrow-hidden">{text.home}</span>
+        </Button>
         {/* One step per card, filled as each lands: no numbers. */}
         <span className="steps" aria-hidden="true">
           {Array.from({ length: total }, (_, at) => (
@@ -163,18 +192,19 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
         {text.sortPrompt}
       </h1>
       <div className="sort-tray-area">
-        <div className="sort-tray" role="group" aria-label={text.dinosaurs}>
+        <div className="sort-tray" role="group" aria-label={text.creatures} style={{ "--columns": Math.ceil(tray.length / rows) } as CSSProperties}>
           {tray.map((card, place) => {
             if (!card) return <span key={`slot-${place}`} className="sort-slot" />;
             const back = returns[card.id];
             const moving = held?.id === card.id && held.dragging ? held : undefined;
             // A card let go is drawn anew where it was let go, so it slides
-            // back from there each time.
+            // back from there each time. Each card is a part a turn glides,
+            // named by its dinosaur.
             return (
-              <button
+              <Button
                 key={`${card.id}-${back?.count ?? 0}`}
-                type="button"
                 className="sort-card"
+                data-turn-part={`sort-card-${card.id}`}
                 aria-label={card.name}
                 aria-pressed={picked === card.id}
                 data-picked={picked === card.id || undefined}
@@ -191,7 +221,7 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
                 onClick={tapCard(card.id)}
               >
                 <span className="sort-art">
-                  <img className="sort-picture" src={card.picture} alt={card.name} width={800} height={600} draggable={false} />
+                  <Picture className="sort-picture" src={card.picture} alt={card.name} width={800} height={600} />
                   {card.hint && (
                     <span className="sort-hint" data-basket={card.hint} role="img" aria-label={text.baskets[card.hint]}>
                       <BasketSymbol basket={card.hint} size={22} />
@@ -201,23 +231,23 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
                 <span className="sort-footer">
                   <Name name={card.name} language={language} className="sort-name" />
                 </span>
-              </button>
+              </Button>
             );
           })}
         </div>
         {sorted === total && (
-          <button type="button" className="next-button sort-finish" onClick={onSeeResult}>
+          <Button className="next-button sort-finish" onClick={onSeeResult}>
             <Trophy size={28} aria-hidden="true" />
             {text.seeResult}
-          </button>
+          </Button>
         )}
       </div>
-      <div className="baskets">
+      <div className="baskets" data-count={baskets.length}>
         {baskets.map(({ basket, cards }, place) => (
-          <button
+          <Button
             key={basket}
-            type="button"
             className="basket"
+            data-turn-part={`basket-${basket}`}
             aria-label={text.baskets[basket]}
             data-over={over === basket || undefined}
             style={{ "--basket": place } as CSSProperties}
@@ -234,32 +264,79 @@ export function SortScreen({ language, tray, baskets, sorted, total, glow, onDro
               <span className="basket-mark" data-basket={basket} aria-hidden="true">
                 <BasketSymbol basket={basket} size={30} />
               </span>
-              <span className="basket-name">{text.baskets[basket]}</span>
+              <span className="basket-name narrow-hidden">{text.baskets[basket]}</span>
             </span>
-            <span className="basket-cards">
-              {cards.map((card) => (
-                <span key={card.id} className="sorted-card">
-                  <span className="sorted-art">
-                    <img className="sorted-picture" src={card.picture} alt={card.name} width={800} height={600} draggable={false} />
-                    <span className="sorted-check" role="img" aria-label={text.marks.correct}>
-                      <Check size={20} strokeWidth={3} />
-                    </span>
-                  </span>
-                  <span className="sorted-footer">
-                    <Name name={card.name} language={language} className="sorted-name" />
-                  </span>
-                </span>
-              ))}
-            </span>
-          </button>
+            <BasketCards cards={cards} language={language} correct={text.marks.correct} />
+          </Button>
         ))}
       </div>
     </main>
   );
 }
 
-// A name on one line, as large as fits its card: the stylesheet shrinks it
-// by its number of letters.
+function BasketCards({ cards, language, correct }: { cards: readonly SortedCardView[]; language: Language; correct: string }) {
+  const box = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    const element = box.current;
+    if (!element) return;
+    const strips = [...element.querySelectorAll<HTMLElement>(".sorted-footer")];
+    const fit = () => {
+      const style = getComputedStyle(element);
+      const layout = basketLayout({
+        width: element.clientWidth,
+        height: element.clientHeight,
+        count: cards.length,
+        gap: Number.parseFloat(style.gap) || 0,
+        // The spare pixel covers the DOM's integer layout measurements.
+        nameWidth: Math.max(0, ...strips.map((strip) => strip.offsetWidth)) + 1,
+        nameHeight: Math.max(0, ...strips.map((strip) => strip.offsetHeight)) + 1,
+        pictureAspect: 800 / 600,
+        picturePadding: Number.parseFloat(style.getPropertyValue("--named-art-padding")) || 0
+      });
+      element.style.setProperty("--columns", String(layout.columns));
+      for (const card of element.children) card.toggleAttribute("data-name-fits", layout.namesShown);
+    };
+    fit();
+    // The strip keeps its natural size even when hidden, so a font or
+    // language change can make the name fit again without a window resize.
+    const observer = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(fit);
+    observer?.observe(element);
+    strips.forEach((strip) => observer?.observe(strip));
+    window.addEventListener("resize", fit);
+    document.fonts?.addEventListener("loadingdone", fit);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", fit);
+      document.fonts?.removeEventListener("loadingdone", fit);
+    };
+  }, [cards, language]);
+
+  return (
+    <span ref={box} className="basket-cards">
+      {cards.map((card) => <SortedCard key={card.id} card={card} language={language} correct={correct} />)}
+    </span>
+  );
+}
+
+function SortedCard({ card, language, correct }: { card: SortedCardView; language: Language; correct: string }) {
+  return (
+    <span className="sorted-card" data-turn-part={`sorted-card-${card.id}`}>
+      <span className="sorted-art">
+        <Picture className="sorted-picture" src={card.picture} alt={card.name} width={800} height={600} />
+        <span className="sorted-check" role="img" aria-label={correct}>
+          <Check size={20} strokeWidth={3} />
+        </span>
+      </span>
+      <span className="sorted-footer">
+        <Name name={card.name} language={language} className="sorted-name" />
+      </span>
+    </span>
+  );
+}
+
+// A capitalised name on one line; tray cards budget its width by its
+// number of letters, while sorted cards show it only at 14px.
 function Name({ name, language, className }: { name: string; language: Language; className: string }) {
   return (
     <span className={className} style={{ "--letters": name.length } as CSSProperties}>
@@ -269,8 +346,9 @@ function Name({ name, language, className }: { name: string; language: Language;
 }
 
 // Each basket's symbol, as the design draws it: the number of legs beside
-// footprints, a big or a small footprint for size, and a horn or a
-// feather crossed out for none.
+// footprints, a big or a small footprint for size, a horn or a feather
+// crossed out for none, and for the third basket a leaf with a drumstick,
+// both leg counts, or a feather with a question mark.
 function BasketSymbol({ basket, size }: { basket: Basket; size: number }) {
   const cross = <path className="cross" d="m2 2 20 20" />;
   switch (basket) {
@@ -298,5 +376,26 @@ function BasketSymbol({ basket, size }: { basket: Basket; size: number }) {
       return <Feather size={size} />;
     case "no-feathers":
       return <Feather size={size}>{cross}</Feather>;
+    case "both":
+      return (
+        <>
+          <Leaf size={Math.round(size * 0.75)} />
+          <Drumstick size={Math.round(size * 0.75)} />
+        </>
+      );
+    case "two-or-four":
+      return (
+        <>
+          <span className="legs-count">2 4</span>
+          <Footprints size={size} />
+        </>
+      );
+    case "not-known-yet":
+      return (
+        <>
+          <Feather size={size} />
+          <span className="mark-question">?</span>
+        </>
+      );
   }
 }

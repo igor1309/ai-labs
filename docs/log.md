@@ -1,5 +1,44 @@
 # Log
 
+## 2026-10-27
+
+- Mizan BLE: land the new product (proof of concept for paying in Mizan
+  between two iOS devices over Bluetooth LE, planning stage). Moved the draft
+  plan to `mizan-ble/docs/poc.md` and added `mizan-ble/README.md`,
+  `mizan-ble/docs/log.md` and `mizan-ble/index.html`; registered it in
+  `scripts/loc-dashboard.sh`, `docs/loc-dashboard.html`, the README
+  Components table and the `index.html` and `docs/products.html` landing
+  pages. No release unit or CI yet.
+
+## 2026-10-25
+
+- ALI: land the new product (AI Learning Agent, concept stage; working
+  name). Added `ali/README.md` and `ali/docs/` (concept, vision, application
+  answers, activity log); registered it in `scripts/loc-dashboard.sh`,
+  `docs/loc-dashboard.html`, the README Components table and an unlinked
+  `docs/products.html` card. No landing page, release unit or CI yet.
+
+## 2026-10-22
+
+- Projects can export an allowlisted public snapshot with privacy scans and checks,
+  then sync an existing GitHub repo. RexLab has showcase settings and an MIT licence (LAB-461).
+- FolioTell has showcase settings, a public README with screenshots and an MIT
+  licence, for a public repo of its iOS app (LAB-462).
+
+## 2026-10-21
+
+- Audelin: land the new product (local macOS companion for calls, design and
+  architecture stage). Added `audelin/README.md`, `audelin/docs/log.md` and
+  `audelin/index.html`; registered it in `scripts/loc-dashboard.sh`,
+  `docs/loc-dashboard.html`, the README Components table and the `index.html`
+  and `docs/products.html` landing pages. No release unit or CI yet.
+
+## 2026-10-18
+
+- `scripts/watch-pr.sh` no longer waits forever: it stops on a check queued 15
+  minutes with no runner, and on checks still pending after 90 minutes. Right
+  after a push it no longer passes on the previous commit's checks (LAB-305).
+
 ## 2026-09-20
 
 - Moved the AI-account tooling out of this repo into `inventory/tools/`: `cl`,

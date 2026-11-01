@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/files"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
@@ -190,9 +191,27 @@ func homeAndRepository() layout.Folders {
 	return layout.Folders{Home: "/u/.agister", Repository: "/r/.agister", Project: "/r/a/.agister"}
 }
 
+type emptyRunDocuments struct{}
+
+func (emptyRunDocuments) Files(documents.Kind, string) ([]documents.File, []documents.Problem) {
+	return nil, nil
+}
+func (emptyRunDocuments) Workflow(string) (documents.WorkflowDefinition, []documents.Problem) {
+	return documents.WorkflowDefinition{}, nil
+}
+func (emptyRunDocuments) Process(string) (documents.ProcessDefinition, []documents.Problem) {
+	return documents.ProcessDefinition{}, nil
+}
+func (emptyRunDocuments) Brief(string) (documents.BriefDefinition, []documents.Problem) {
+	return documents.BriefDefinition{}, nil
+}
+func (emptyRunDocuments) Blob(documents.Kind, string) (documents.Blob, []documents.Problem) {
+	return documents.Blob{}, nil
+}
+
 func checkResolveOf(t *testing.T, resolver resolver, source declared) *checkResolve {
 	t.Helper()
-	c, err := newCheckResolve(resolver, source, homeAndRepository())
+	c, err := newCheckResolve(resolver, source, homeAndRepository(), emptyRunDocuments{}, map[string]call.Inputs{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +330,7 @@ func TestOneCommandReadsTheSettingsOnce(t *testing.T) {
 		"/r/.agister/blocks.yaml":      "- {agent: gone, reason: old}\n",
 	}
 	filesystem := newFilesystemSpy(settings)
-	checker, err := newChecker("/u/.agister", "/r", filesystem, rootSpy{root: "/r"}, wrappersSpy{"bash/1": {}})
+	checker, err := newChecker("/u/.agister", "/r", filesystem, rootSpy{root: "/r"}, wrappersSpy{"bash/1": {Message: true}}, map[string]call.Inputs{"bash/1": call.InMessage})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -400,8 +419,34 @@ func TestCapabilitiesAreEveryOneOfResolvesFacts(t *testing.T) {
 			fields = append(fields, field.Name)
 		}
 	}
-	if !slices.Equal(fields, capabilities()) {
-		t.Errorf("resolve's capabilities %q, want %q", fields, capabilities())
+	want := append(capabilities(), "Message")
+	if !slices.Equal(fields, want) {
+		t.Errorf("resolve's capabilities %q, want %q", fields, want)
+	}
+}
+
+// Message support is derived from each wrapper's input delivery, rather
+// than from its name or its other capabilities.
+func TestMessageCapabilityFollowsTheWrappersInputDelivery(t *testing.T) {
+	t.Parallel()
+	for _, message := range []bool{false, true} {
+		t.Run(fmt.Sprint(message), func(t *testing.T) {
+			t.Parallel()
+			claude, codexInput, piInput, bashInput := claudecode.InEnvironment, codex.InEnvironment, pi.InEnvironment, bash.InEnvironment
+			if message {
+				claude, codexInput, piInput, bashInput = claudecode.InMessage, codex.InMessage, pi.InMessage, bash.InMessage
+			}
+			for _, wrapper := range []wrapperFacts{
+				claudeCodeFacts(claudeCodeSpy{claudecode.Facts{Inputs: claude}}),
+				codexFacts(codexSpy{codex.Facts{Inputs: codexInput}}),
+				piFacts(piSpy{pi.Facts{Inputs: piInput}}),
+				bashFacts(bashSpy{bash.Facts{Inputs: bashInput}}),
+			} {
+				if _, got := wrapper(); !reflect.DeepEqual(got, resolve.Facts{Message: message}) {
+					t.Errorf("facts %+v, want only Message %t", got, message)
+				}
+			}
+		})
 	}
 }
 
@@ -700,6 +745,7 @@ func TestDocumentsAreGivenLayoutsSnapshot(t *testing.T) {
 	home := &layout.Source{Path: "/u/.agister/agents/a.toml", Bytes: []byte("a")}
 	project := &layout.Source{Path: "/r/a/.agister/agents/a.toml", Bytes: []byte("b")}
 	blocks := &layout.Source{Path: "/r/.agister/blocks.yaml", Bytes: []byte("c")}
+	budget := &layout.Source{Path: "/u/.agister/budget.yaml", Bytes: []byte("daily: {cost: 20}")}
 	got := documentsSnapshot(layout.Snapshot{
 		Documents: map[layout.Kind]map[string]layout.Document{
 			layout.Agent: {"a": {Sources: layout.Sources{Home: home, Project: project}}},
@@ -708,6 +754,7 @@ func TestDocumentsAreGivenLayoutsSnapshot(t *testing.T) {
 			}}},
 		},
 		Blocks: blocks,
+		Budget: budget,
 	})
 	want := documents.Snapshot{
 		Documents: map[documents.Kind]map[string]documents.Document{
@@ -718,6 +765,7 @@ func TestDocumentsAreGivenLayoutsSnapshot(t *testing.T) {
 			documents.Prompt: {"pr": {Problems: []documents.Problem{{Path: "/r/.agister/prompts/pr.txt", Message: `a prompt is a ".md" file`}}}},
 		},
 		Blocks: &documents.Source{Path: blocks.Path, Bytes: blocks.Bytes},
+		Budget: &documents.Source{Path: budget.Path, Bytes: budget.Bytes},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("documents' snapshot\n got %+v\nwant %+v", got, want)

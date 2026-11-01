@@ -62,6 +62,31 @@ func TestARequestMayContinueARun(t *testing.T) {
 	}
 }
 
+// run.feature, "A request may reuse a run": with params and --dir too,
+// the last --reuse given the one.
+func TestARequestMayReuseARun(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		args   string
+		run    cli.Request
+		launch string
+	}{
+		{"run w --reuse R1", cli.Request{Workflow: "w", Reuse: "R1"}, "/work"},
+		{"run --process p --agent a --reuse R1", cli.Request{Process: "p", Agent: "a", Reuse: "R1"}, "/work"},
+		{"--reuse=R0 run w --param a=1 --dir /d --reuse R1", cli.Request{Workflow: "w", Params: map[string]string{"a": "1"}, Reuse: "R1"}, "/d"},
+	}
+	for _, c := range cases {
+		t.Run(c.args, func(t *testing.T) {
+			t.Parallel()
+			spy := &portSpy{result: cli.Result{Status: cli.RunCompleted}}
+			run(t, spy, strings.Fields(c.args)...)
+			if want := []request{{op: "run", launch: c.launch, run: c.run}}; !reflect.DeepEqual(spy.requests, want) {
+				t.Errorf("requests %+v, want %+v", spy.requests, want)
+			}
+		})
+	}
+}
+
 // run.feature, "The result is printed as JSON, and the exit code says
 // whether the run completed". The run's id, a cost, each count of usage, 0
 // included, a session and a reason the run reports are printed as they
@@ -237,8 +262,8 @@ func TestARefusalIsPrintedToStderrAndExits1(t *testing.T) {
 
 // run.feature, "A bad run command prints its usage and exits 2". So do an
 // agent with no process, a param with no name or given twice, a run flag
-// with no value, a run flag on another command, and --continue with no
-// request.
+// with no value, a run flag on another command, --continue or --reuse
+// with no request, and --reuse with --continue in either order.
 func TestABadRunCommandPrintsItsUsageAndExits2(t *testing.T) {
 	t.Parallel()
 	cases := []string{
@@ -256,8 +281,14 @@ func TestABadRunCommandPrintsItsUsageAndExits2(t *testing.T) {
 		"run w --continue",
 		"run --continue R1",
 		"run --agent a --continue R1",
+		"run w --reuse",
+		"run --reuse R1",
+		"run w --continue R1 --reuse R2",
+		"run w --reuse R1 --continue R2",
+		"run --process p --agent a --continue R1 --reuse R2",
 		"check --param a=1",
 		"check --continue R1",
+		"check --reuse R1",
 		"inspect agents --agent a",
 	}
 	for _, args := range cases {
@@ -268,7 +299,7 @@ func TestABadRunCommandPrintsItsUsageAndExits2(t *testing.T) {
 			if got.code != 2 {
 				t.Errorf("exit %d, want 2", got.code)
 			}
-			if !strings.Contains(got.stderr, "\n  agister run <workflow> [--param <name>=<value>]... [--continue <run id>] [--dir <directory>]\n") {
+			if !strings.Contains(got.stderr, "\n  agister run <workflow> [--param <name>=<value>]... [--continue <run id> | --reuse <run id>] [--dir <directory>]\n") {
 				t.Errorf("stderr %q, want the usage", got.stderr)
 			}
 			if got.stdout != "" {

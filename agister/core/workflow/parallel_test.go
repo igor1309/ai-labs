@@ -3,11 +3,13 @@ package workflow_test
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 
 	"github.com/igor1309/ai-labs/agister/core/workflow"
 )
@@ -314,5 +316,147 @@ func TestAParallelThatCannotBeBoundIsRefused(t *testing.T) {
 				t.Errorf("asked %q, want %q", f.trail, c.called)
 			}
 		})
+	}
+}
+
+// bounded is the parallel name of steps, at most max of them at once.
+func bounded(name string, max int, steps ...workflow.Step) workflow.Step {
+	return workflow.Step{Name: name, Parallel: steps, Max: max}
+}
+
+// assertParallelBound holds every admitted call until the scheduler is
+// quiescent on channels, checks the active set, then releases one slot.
+// Buffered entry reports let an extra call reach its own release barrier.
+func assertParallelBound(t *testing.T, limit int) {
+	t.Helper()
+	synctest.Test(t, func(t *testing.T) {
+		names := []string{"a", "b", "c", "d", "e"}
+		entered := make(chan string, len(names))
+		releases := map[string]chan struct{}{}
+		answers := map[string]func() workflow.Result{}
+		var steps []workflow.Step
+		for _, name := range names {
+			release := make(chan struct{})
+			releases[name] = release
+			answers[name] = func() workflow.Result {
+				entered <- name
+				<-release
+				return completes(0)()
+			}
+			steps = append(steps, workflow.Step{Name: name})
+		}
+		t.Cleanup(func() {
+			for _, release := range releases {
+				close(release)
+			}
+		})
+		f := newFixture(t, workflow.Boundary{}, answers)
+		done := make(chan workflow.Result, 1)
+		go func() {
+			done <- f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{
+				bounded("p", limit, steps...),
+			}}, nil)
+		}()
+		active := map[string]bool{}
+		for i, name := range names {
+			synctest.Wait()
+			for len(entered) > 0 {
+				active[<-entered] = true
+			}
+			got := slices.Sorted(maps.Keys(active))
+			want := names[i:min(i+limit, len(names))]
+			if !slices.Equal(got, want) {
+				t.Fatalf("after %d releases, active %q, want %q with max %d", i, got, want, limit)
+			}
+			close(releases[name])
+			delete(releases, name)
+			delete(active, name)
+		}
+		if got := <-done; got.Status != workflow.Completed {
+			t.Errorf("ended %q, class %q; want completed", got.Status, got.Class)
+		}
+		if limit == 1 && !slices.Equal(f.trail, trail{"resolve", "a", "b", "c", "d", "e"}) {
+			t.Errorf("called %q, want declaration order", f.trail)
+		}
+	})
+}
+
+// parallel.feature, "With max 1, a parallel's steps run one at a time, in
+// order".
+func TestWithMax1AParallelsStepsRunOneAtATimeInOrder(t *testing.T) {
+	t.Parallel()
+	assertParallelBound(t, 1)
+}
+
+// parallel.feature, "With max 2, two steps run at once, never three".
+func TestWithMax2TwoStepsRunAtOnceNeverThree(t *testing.T) {
+	t.Parallel()
+	assertParallelBound(t, 2)
+}
+
+// parallel.feature, "With max 1, a step that does not complete does not
+// stop the next".
+func TestWithMax1AStepThatDoesNotCompleteDoesNotStopTheNext(t *testing.T) {
+	t.Parallel()
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
+		"a": func() workflow.Result {
+			return workflow.Result{Status: workflow.Failed, Class: "capacity", Reason: "r"}
+		},
+		"b": func() workflow.Result {
+			return workflow.Result{Status: workflow.Completed, Output: map[string]any{"v": 2}}
+		},
+		"c": func() workflow.Result { return workflow.Result{Status: workflow.Interrupted, Class: "timeout"} },
+		"j": completes(0),
+	})
+	got := f.runner.Run(context.Background(), workflow.Workflow{Steps: []workflow.Step{
+		bounded("p", 1, workflow.Step{Name: "a"}, workflow.Step{Name: "b"}, workflow.Step{Name: "c"}),
+		{Name: "j", Bindings: []workflow.Binding{bind("all", outputs("p", ""))}},
+	}}, nil)
+	if want := (trail{"resolve", "a", "b", "c", "j"}); !slices.Equal(f.trail, want) || got.Status != workflow.Completed {
+		t.Errorf("asked %q, ended %q; want %q, completed", f.trail, got.Status, want)
+	}
+	var all any
+	if err := json.Unmarshal([]byte(f.caller.bound["j"]["all"]), &all); err != nil {
+		t.Fatalf("all %q: %v", f.caller.bound["j"]["all"], err)
+	}
+	want := []any{
+		map[string]any{"status": "failed", "class": "capacity", "output": nil},
+		map[string]any{"status": "completed", "class": nil, "output": map[string]any{"v": float64(2)}},
+		map[string]any{"status": "interrupted", "class": "timeout", "output": nil},
+	}
+	if !reflect.DeepEqual(all, want) {
+		t.Errorf("all\n got %v\nwant %v", all, want)
+	}
+}
+
+// parallel.feature, "With max 1, a cancelled run calls no further step":
+// "b", not called, spends nothing, so the run's cost stays known.
+func TestWithMax1ACancelledRunCallsNoFurtherStep(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	started := make(chan struct{})
+	f := newFixture(t, workflow.Boundary{}, map[string]func() workflow.Result{
+		"a": func() workflow.Result {
+			close(started)
+			<-ctx.Done()
+			return workflow.Result{Status: workflow.Interrupted, Class: workflow.Cancelled, Cost: new(float64)}
+		},
+	})
+	done := make(chan workflow.Result)
+	go func() {
+		done <- f.runner.Run(ctx, workflow.Workflow{Steps: []workflow.Step{
+			bounded("p", 1, workflow.Step{Name: "a"}, workflow.Step{Name: "b"}),
+			{Name: "j"},
+		}}, nil)
+	}()
+	<-started
+	cancel()
+	got := <-done
+	if want := (trail{"resolve", "a"}); !slices.Equal(f.trail, want) {
+		t.Errorf("asked %q, want %q", f.trail, want)
+	}
+	if got.Status != workflow.Interrupted || got.Class != workflow.Cancelled || got.Cost == nil {
+		t.Errorf("ended %q, class %q, cost %v; want interrupted, cancelled, a known cost", got.Status, got.Class, got.Cost)
 	}
 }

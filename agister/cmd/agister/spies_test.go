@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io/fs"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/igor1309/ai-labs/agister/core/admit"
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/runstore"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
@@ -35,15 +37,17 @@ type typed[T any] struct {
 // and the blocks its test gives, and nothing else. A document it is asked
 // for that its test does not answer fails the test.
 type documentsSpy struct {
-	t             *testing.T
-	workflows     map[string]typed[documents.WorkflowDefinition]
-	processes     map[string]typed[documents.ProcessDefinition]
-	agents        map[string]typed[documents.AgentDefinition]
-	runtimes      map[string]typed[documents.RuntimeDefinition]
-	briefs        map[string]typed[documents.BriefDefinition]
-	blobs         map[documents.Kind]map[string][]documents.Problem
-	blocks        []documents.Field[documents.Block]
-	blockProblems []documents.Problem
+	t              *testing.T
+	workflows      map[string]typed[documents.WorkflowDefinition]
+	processes      map[string]typed[documents.ProcessDefinition]
+	agents         map[string]typed[documents.AgentDefinition]
+	runtimes       map[string]typed[documents.RuntimeDefinition]
+	briefs         map[string]typed[documents.BriefDefinition]
+	blobs          map[documents.Kind]map[string][]documents.Problem
+	blocks         []documents.Field[documents.Block]
+	blockProblems  []documents.Problem
+	budget         documents.Field[float64]
+	budgetProblems []documents.Problem
 }
 
 func newDocumentsSpy(t *testing.T) *documentsSpy {
@@ -97,6 +101,10 @@ func (s *documentsSpy) Blob(kind documents.Kind, name string) (documents.Blob, [
 
 func (s *documentsSpy) Blocks() ([]documents.Field[documents.Block], []documents.Problem) {
 	return slices.Clone(s.blocks), slices.Clone(s.blockProblems)
+}
+
+func (s *documentsSpy) Budget() (documents.Field[float64], []documents.Problem) {
+	return s.budget, slices.Clone(s.budgetProblems)
 }
 
 // sourceOf is the source over spy and the layout snapshot, failing t
@@ -368,7 +376,7 @@ func (s *runtimesSpy) runtimes() runtimes {
 // watches its signals or draws randomness fails the test.
 func idleHost(t *testing.T) host {
 	clock := clocktest.NewClock(time.Date(2026, 10, 16, 10, 0, 0, 0, time.UTC))
-	return host{ctx: context.Background(), clock: clock, timer: clock.Timer,
+	return host{probe: unexpectedProbe(t), ctx: context.Background(), clock: clock, timer: clock.Timer,
 		signals: func() (<-chan os.Signal, func()) {
 			t.Error("a run watched the signals, want none run")
 			return nil, func() {}
@@ -478,19 +486,34 @@ func (s *sourcesSpy) sourcing() sourcing {
 
 // holdingSpy is a spy of what a run admits and holds a worktree through:
 // git's HEAD, cleanness and content of root, as its test gives them, any
-// other directory an error; and files' locks, each taken unless its test
-// gives lockErr, as Lock's error. It keeps each lock asked, and how many
-// are held now, alone or shared. It is safe for concurrent use.
+// other directory an error, the content each of contents in turn, the last
+// repeated, where its test gives them; and files' locks, each taken unless
+// its test gives lockErr, as Lock's error. It keeps each lock asked, and
+// how many are held now, alone or shared. It is safe for concurrent use;
+// its test sets its fields before the run, and changes the worktree
+// meanwhile through write.
 type holdingSpy struct {
-	root    string
-	head    string
-	clean   bool
-	content string
-	lockErr error
-	mu      sync.Mutex
-	asked   []lockAsked
-	alone   int
-	shared  int
+	root         string
+	head         string
+	clean        bool
+	content      string
+	contents     []string
+	patch        string
+	changesErr   error
+	contentErr   error
+	changesAsked []string
+	lockErr      error
+	mu           sync.Mutex
+	asked        []lockAsked
+	alone        int
+	shared       int
+}
+
+// write leaves the worktree's content content, no longer HEAD's.
+func (s *holdingSpy) write(content string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.content, s.clean = content, false
 }
 
 // lockAsked is a lock asked of files: its file, and whether alone.
@@ -500,6 +523,8 @@ type lockAsked struct {
 }
 
 func (s *holdingSpy) Head(_ context.Context, dir string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if dir != s.root {
 		return "", errors.New("git spy: no worktree " + dir)
 	}
@@ -507,6 +532,8 @@ func (s *holdingSpy) Head(_ context.Context, dir string) (string, error) {
 }
 
 func (s *holdingSpy) Clean(_ context.Context, dir string) (bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if dir != s.root {
 		return false, errors.New("git spy: no worktree " + dir)
 	}
@@ -514,10 +541,31 @@ func (s *holdingSpy) Clean(_ context.Context, dir string) (bool, error) {
 }
 
 func (s *holdingSpy) Content(_ context.Context, dir string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if dir != s.root {
 		return "", errors.New("git spy: no worktree " + dir)
 	}
+	if s.contentErr != nil {
+		return "", s.contentErr
+	}
+	if len(s.contents) > 0 {
+		s.content = s.contents[0]
+		if len(s.contents) > 1 {
+			s.contents = s.contents[1:]
+		}
+	}
 	return s.content, nil
+}
+
+func (s *holdingSpy) Changes(_ context.Context, dir, commit, content string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.changesAsked = append(s.changesAsked, dir+" "+commit+" "+content)
+	if dir != s.root {
+		return "", errors.New("git spy: no worktree " + dir)
+	}
+	return s.patch, s.changesErr
 }
 
 func (s *holdingSpy) Lock(file string, alone bool) (func() error, error) {
@@ -583,19 +631,39 @@ func (s *admissionSpy) asked() []admit.Request {
 }
 
 // storeSpy is a spy of runstore: it keeps the folder each store is asked
-// for, each record written and each event appended, in order, with the
-// run's id. The write its test numbers in failWrite, from 1, fails with
-// errFull, and so does every append where failAppend is set. The runs it
-// gives as kept are those of kept, by id, and no other: a record written
-// is not read back. It is safe for concurrent use.
+// for, each record written, each event appended, with the run's id, and
+// each run exported, with its folder, in order. The write its test numbers
+// in failWrite, from 1, fails with errFull, and so does every append where
+// failAppend is set; every export fails with failExport, where it is set.
+// The runs it gives as kept are those of kept, by id, and no other: a
+// record written is not read back. It is safe for concurrent use.
 type storeSpy struct {
-	failWrite  int
-	failAppend bool
-	kept       map[string]runstore.Record
-	mu         sync.Mutex
-	folders    []string
-	records    []runstore.Record
-	events     []storedEvent
+	failDefinition           map[string]error
+	definitionWrites         []storedDefinition
+	definitionWritesAtRecord []int
+	failWrite                int
+	failAppend               bool
+	failExport               error
+	failPatch                error
+	patches                  map[string]string
+	patchWrites              []string
+	patchesMissingAtWrite    []string
+	kept                     map[string]runstore.Record
+	readIDs                  []string
+	listed                   int
+	failRuns                 error
+	failRecord               map[string]error
+	mu                       sync.Mutex
+	folders                  []string
+	records                  []runstore.Record
+	events                   []storedEvent
+	exports                  []storedExport
+}
+
+// storedExport is a run exported, by its id, and the folder it was
+// exported to.
+type storedExport struct {
+	id, folder string
 }
 
 // storedEvent is an event appended, and the id of its run.
@@ -607,22 +675,76 @@ type storedEvent struct {
 // errFull is the failure of a write or an append the store's test fails.
 var errFull = errors.New("disk full")
 
-func (s *storeSpy) at(folder string) (runStore, error) {
+func (s *storeSpy) at(folder string) (homeRuns, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.folders = append(s.folders, folder)
 	return s, nil
 }
 
+func (s *storeSpy) Begin(record runstore.Record) error { return s.Write(record) }
+
 func (s *storeSpy) Write(record runstore.Record) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.writeLocked(record)
+}
+
+func (s *storeSpy) writeLocked(record runstore.Record) error {
+	s.definitionWritesAtRecord = append(s.definitionWritesAtRecord, len(s.definitionWrites))
 	record.Calls = slices.Clone(record.Calls)
+	for _, call := range record.Calls {
+		if call.Patch != nil {
+			if _, ok := s.patches[*call.Patch]; !ok {
+				s.patchesMissingAtWrite = append(s.patchesMissingAtWrite, *call.Patch)
+			}
+		}
+	}
 	s.records = append(s.records, record)
 	if len(s.records) == s.failWrite {
 		return errFull
 	}
+	if s.kept == nil {
+		s.kept = map[string]runstore.Record{}
+	}
+	s.kept[record.ID] = record
 	return nil
+}
+
+type storedDefinition struct {
+	id, digest, data string
+}
+
+func (s *storeSpy) WriteDefinition(id, digest string, data []byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.definitionWrites = append(s.definitionWrites, storedDefinition{id: id, digest: digest, data: string(data)})
+	return s.failDefinition[digest]
+}
+
+func (s *storeSpy) WritePatch(id, step string, patch []byte) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	path := id + "/patches/" + step + ".patch"
+	s.patchWrites = append(s.patchWrites, path)
+	if s.failPatch != nil {
+		return "", s.failPatch
+	}
+	if s.patches == nil {
+		s.patches = map[string]string{}
+	}
+	s.patches[path] = string(patch)
+	return path, nil
+}
+
+func (s *storeSpy) Patch(path string) ([]byte, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	patch, ok := s.patches[path]
+	if !ok {
+		return nil, fs.ErrNotExist
+	}
+	return []byte(patch), nil
 }
 
 func (s *storeSpy) Append(id string, event runstore.Event) error {
@@ -632,14 +754,58 @@ func (s *storeSpy) Append(id string, event runstore.Event) error {
 	if s.failAppend {
 		return errFull
 	}
+	switch event.Kind {
+	case runstore.InputResolved, runstore.CallEnded, runstore.ChildStarted, runstore.ChildEnded:
+		// Fold captured facts through the real reader so budget and record
+		// assertions see the store's public view without a second reducer.
+		record := s.kept[id]
+		var data bytes.Buffer
+		writer, err := runstore.NewLogWriter(func(b []byte, _ bool) error { _, err := data.Write(b); return err })
+		if err != nil {
+			return err
+		}
+		if err := writer.Append(runstore.Event{Kind: runstore.RunStarted, Record: &record}); err != nil {
+			return err
+		}
+		if err := writer.Append(event); err != nil {
+			return err
+		}
+		record, err = runstore.Fold(&data)
+		if err != nil {
+			return err
+		}
+		return s.writeLocked(record)
+	}
 	return nil
 }
 
+func (s *storeSpy) Export(id, folder string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.exports = append(s.exports, storedExport{id: id, folder: folder})
+	return s.failExport
+}
+
+func (s *storeSpy) exported() []storedExport {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.exports)
+}
+
 func (s *storeSpy) Runs() ([]string, error) {
-	return slices.Sorted(maps.Keys(s.kept)), nil
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.listed++
+	return slices.Sorted(maps.Keys(s.kept)), s.failRuns
 }
 
 func (s *storeSpy) Record(id string) (runstore.Record, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.readIDs = append(s.readIDs, id)
+	if err := s.failRecord[id]; err != nil {
+		return runstore.Record{}, err
+	}
 	record, ok := s.kept[id]
 	if !ok {
 		return runstore.Record{}, &fs.PathError{Op: "open", Path: id + "/record.json", Err: fs.ErrNotExist}
@@ -683,4 +849,21 @@ func (s *callsSpy) told() []endedCall {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return slices.Clone(s.ended)
+}
+
+func noDailyBudget() (*call.DailyBudget, []string) { return nil, nil }
+
+func (s *callsSpy) Prepared(ended endedCall)                 {}
+func (s *callsSpy) Observed(step string, report call.Report) {}
+
+func (s *storeSpy) Snapshot(id string) (runstore.Snapshot, error) {
+	r, err := s.Record(id)
+	return runstore.Snapshot{Record: r}, err
+}
+
+func unexpectedProbe(t *testing.T) func(int) (string, bool, error) {
+	return func(pid int) (string, bool, error) {
+		t.Errorf("unexpected process probe for %d", pid)
+		return "", false, errors.New("unexpected probe")
+	}
 }

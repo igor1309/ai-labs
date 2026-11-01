@@ -1,8 +1,9 @@
 import { DoorOpen, Footprints, Heart, HeartHandshake, House, Trophy } from "lucide-react";
 import type { CSSProperties } from "react";
+import { Button } from "./Button.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
-import { usePointerState } from "./usePointerState.ts";
+import { Picture } from "./Picture.tsx";
 
 // The friends' faces on the FRIENDS card: two rows of three.
 const FACES = 6;
@@ -25,16 +26,14 @@ export type CareWelcomeScreenProps = {
 
 export function CareWelcomeScreen({ language, best, total, visitorPicture, friendCount, friendPictures, onNewVisitor, onFriends, onHome }: CareWelcomeScreenProps) {
   const text = TEXTS[language];
-  const visitorPointer = usePointerState();
-  const friendsPointer = usePointerState();
   const faces = Array.from({ length: FACES }, (_, at) => friendPictures[at]);
   return (
     <main className="care-welcome">
       <header className="care-bar">
-        <button type="button" className="home-button" onClick={onHome}>
+        <Button className="home-button" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
-        </button>
+          <span className="upright-hidden">{text.home}</span>
+        </Button>
         <h1 className="care-title">
           <span className="care-mark" aria-hidden="true">
             <Heart size={28} />
@@ -49,10 +48,10 @@ export function CareWelcomeScreen({ language, best, total, visitorPicture, frien
         )}
       </header>
       <div className="care-choices">
-        <button type="button" className="card new-visitor-card" aria-label={text.newVisitor} onClick={onNewVisitor} {...visitorPointer}>
+        <Button className="card new-visitor-card" aria-label={text.newVisitor} data-turn-part="care-new-visitor" onClick={onNewVisitor}>
           <span className="new-visitor-art" aria-hidden="true">
             <span className="new-visitor-glow" />
-            <img className="new-visitor-picture" src={visitorPicture} alt="" draggable={false} />
+            <Picture className="new-visitor-picture" src={visitorPicture} alt="" width={800} height={600} />
             <span className="knock-bubble">
               <DoorOpen size={56} />
             </span>
@@ -63,12 +62,12 @@ export function CareWelcomeScreen({ language, best, total, visitorPicture, frien
             </span>
             <span className="new-visitor-title">{text.newVisitor}</span>
           </span>
-        </button>
-        <button type="button" className="card friends-card" aria-label={text.friends} onClick={onFriends} {...friendsPointer}>
+        </Button>
+        <Button className="card friends-card" aria-label={text.friends} data-turn-part="care-friends" onClick={onFriends}>
           <span className="friend-faces" aria-hidden="true">
             {faces.map((picture, at) => (
               <span key={at} className="friend-face" style={{ "--face": at } as CSSProperties}>
-                {picture !== undefined && <img className="friend-face-picture" src={picture} alt="" draggable={false} />}
+                {picture !== undefined && <Picture className="friend-face-picture" src={picture} alt="" width={800} height={600} />}
               </span>
             ))}
           </span>
@@ -82,7 +81,7 @@ export function CareWelcomeScreen({ language, best, total, visitorPicture, frien
               {friendCount}
             </span>
           </span>
-        </button>
+        </Button>
       </div>
     </main>
   );

@@ -1,7 +1,8 @@
-# runstore, a wrapper (docs/run-implementation.md, "Records" and
-# "Continuation"; ADR-001, "Runs"): runs kept under a folder, each a folder
-# of its id. Contract tests against real files, in a temporary folder
-# (ADR-009, rule 3).
+# runstore, a wrapper (docs/run-implementation.md, "Records",
+# "Continuation", "Runs", "A call's changes", "Definitions" and "A
+# definition's bytes"; ADR-001, "Runs"): runs kept under a folder, each
+# a folder of its id.
+# Contract tests against real files, in a temporary folder (ADR-009, rule 3).
 
 Feature: runstore keeps runs
 
@@ -33,3 +34,54 @@ Feature: runstore keeps runs
     When the runs kept are asked
     Then they are "20261016T090000Z-0a0b0c", then
       "20261017T071618Z-55fd36"
+
+  Scenario Outline: A run is exported, its files copied under its id
+    Given the run "x" kept, <kept>
+    When "x" is exported to "out", <out>
+    Then "out/x" holds <holds>, each as kept
+
+    Examples:
+      | kept                                                | out                         | holds                               |
+      | its record and events written                       | not yet made                | "record.json" and "events.jsonl"    |
+      | its record alone written                            | not yet made                | "record.json" alone                 |
+      | its record and a patch written                      | not yet made                | "record.json" and "patches/a.patch" |
+      | its record and the bytes of the digest "d1" written | not yet made                | "record.json" and "definitions/d1"  |
+      | its record and events written                       | "out/x" an older copy of it | "record.json" and "events.jsonl"    |
+
+  Scenario: A run not kept is not exported
+    When "x" is exported to "out", no run "x" kept
+    Then it gives an error, and "out" holds nothing
+
+  Scenario: A call's patch is written whole under its run
+    Given runstore over the folder "runs"
+    When the patch "p1" of the step "a" of the run "x" is written, then
+      "p2"
+    Then it gives "x/patches/a.patch", and "runs/x/patches" holds
+      "a.patch" alone, "p2" whole
+
+  Scenario: A patch is given back by its path
+    Given the patch "p1" of the step "a" of the run "x" written
+    When the patch "x/patches/a.patch" is asked
+    Then it gives "p1"
+
+  Scenario: A call's definitions are written and given back
+    Given runstore over the folder "runs"
+    When the record of the run "x" is written, its call "a" holding the
+      process "p", its home file "/h/p.yaml", digest "d1"
+    Then "runs/x/record.json"'s call holds "definitions": the kind
+      "process", the name "p" and that file, given back by "x"
+
+  Scenario: A definition's bytes are written whole by their digest
+    Given runstore over the folder "runs"
+    When the bytes "b1" of the digest "d1" of the run "x" are written,
+      then again
+    Then "runs/x/definitions" holds "d1" alone, "b1" whole
+
+  Scenario: A call made again on its fallback keeps its primary
+    Given runstore over the folder "runs"
+    When the record of the run "x" is written, its call "a" on
+      "claude-opus", made again on it after "codex-sol-61" ended at
+      capacity
+    Then "runs/x/record.json"'s call holds the agent "claude-opus" and
+      "primary": the agent "codex-sol-61" and its result, given back by
+      "x"; a call with no primary holds "primary": null

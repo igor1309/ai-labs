@@ -1,9 +1,11 @@
 import { act, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { PIECES, type Piece } from "../src/skeletons/index.ts";
 import { SNAP } from "../src/SkeletonPuzzleScreen.tsx";
 import {
   AWAY,
+  PIECES,
+  placeOf,
+  type Piece,
   BOARD_AT,
   board,
   cancel,
@@ -55,14 +57,14 @@ describe("picking up a bone", () => {
 
   it("draws the piece pressed under the finger at its size on the board, the right way up, and moves it with the finger alone", async () => {
     await openPuzzle("TYRANNOSAURUS");
-    const { width, height } = TYRANNOSAURUS.places.spine;
+    const { width, height } = placeOf(TYRANNOSAURUS, "spine");
     const scale = BOARD_AT.width / TYRANNOSAURUS.frame.width;
 
     pickUp("spine");
     moveTo({ clientX: 500, clientY: 300 });
 
     const piece = lifted();
-    expect([piece?.getAttribute("src"), piece?.getAttribute("data-piece")]).toEqual(["/skeletons/tyrannosaurus/spine.webp", "spine"]);
+    expect([piece?.querySelector("img")?.getAttribute("src"), piece?.getAttribute("data-piece")]).toEqual(["/skeletons/tyrannosaurus/spine.webp", "spine"]);
     expect([piece?.style.width, piece?.style.height, piece?.style.translate]).toEqual([
       `${width * scale}px`,
       `${height * scale}px`,
@@ -76,8 +78,8 @@ describe("picking up a bone", () => {
     // The other pieces keep their spots; the one held leaves its own empty
     // to the eye, in place.
     expect(trayPieces()).toEqual(ALL);
-    expect(spots().map((spot) => spot.querySelector("img")?.hasAttribute("data-held"))).toEqual([false, true, false, false]);
-    expect(getComputedStyle(spotOf("spine").querySelector("img") ?? document.body).opacity).toBe("0");
+    expect(spots().map((spot) => spot.querySelector(".skeleton-piece")?.hasAttribute("data-held"))).toEqual([false, true, false, false]);
+    expect(getComputedStyle(spotOf("spine").querySelector(".skeleton-piece") ?? document.body).opacity).toBe("0");
     expect(slotOf("spine").hasAttribute("data-target")).toBe(true);
     expect(fittedPieces()).toEqual([]);
   });
@@ -117,9 +119,10 @@ describe("dropping a bone", () => {
 
     dragTo("skull", homeOf(TYRANNOSAURUS, "skull", 36, 24));
 
-    const skull = slotOf("skull").querySelector("img");
+    // The bone moves on its picture's wrapper.
+    const skull = slotOf("skull").querySelector<HTMLElement>(".skeleton-fitted");
     const from = (axis: string) => parseFloat(skull?.style.getPropertyValue(`--from-${axis}`) ?? "");
-    expect([skull?.getAttribute("alt"), skull?.hasAttribute("data-snapped"), from("x"), from("y")]).toEqual(["SKULL", true, expect.closeTo(36, 6), expect.closeTo(24, 6)]);
+    expect([skull?.querySelector("img")?.getAttribute("alt"), skull?.hasAttribute("data-snapped"), from("x"), from("y")]).toEqual(["SKULL", true, expect.closeTo(36, 6), expect.closeTo(24, 6)]);
     // The fitted piece fills its slot exactly.
     expect([getComputedStyle(skull ?? document.body).width, getComputedStyle(skull ?? document.body).height]).toEqual(["100%", "100%"]);
     expect(trayPieces()).toEqual(["SPINE", "LEGS", "TAIL"]);
@@ -144,7 +147,7 @@ describe("dropping a bone", () => {
 
     dragTo("skull", legs);
 
-    const skull = spotOf("skull").querySelector("img");
+    const skull = spotOf("skull").querySelector<HTMLElement>(".skeleton-piece");
     const { left, top, width, height } = spotOf("skull").getBoundingClientRect();
     expect([skull?.hasAttribute("data-returning"), skull?.style.getPropertyValue("--from-x"), skull?.style.getPropertyValue("--from-y")]).toEqual([
       true,
@@ -171,7 +174,7 @@ describe("dropping a bone", () => {
 
     expect(fittedPieces()).toEqual(["skull", "legs"]);
     expect(trayPieces()).toEqual(["SPINE", "TAIL"]);
-    expect(spotOf("tail").querySelector("img")?.hasAttribute("data-returning")).toBe(true);
+    expect(spotOf("tail").querySelector(".skeleton-piece")?.hasAttribute("data-returning")).toBe(true);
     expect(fittedChip()).toBe("2/4");
   });
 
@@ -255,19 +258,19 @@ describe("an interrupted drag", () => {
   });
 
   it("pauses in portrait behind the picture asking to turn the iPad, cancelling the drag, and resumes as it was", async () => {
-    const { orientation, storage } = await openPuzzle("TYRANNOSAURUS");
+    const { viewport, storage } = await openPuzzle("TYRANNOSAURUS");
     fit(TYRANNOSAURUS, "skull");
     fit(TYRANNOSAURUS, "tail");
     pickUp("legs");
     moveTo(homeOf(TYRANNOSAURUS, "legs"));
 
-    act(() => orientation.turn("portrait"));
+    act(() => viewport.turn("portrait"));
 
-    expect(screen.getByRole("img", { name: "TURN THE IPAD SIDEWAYS" })).toBeDefined();
+    expect(screen.getByRole("img", { name: "TURN SIDEWAYS" })).toBeDefined();
     expect([screen.queryByRole("group", { name: "SKELETON" }), screen.queryAllByRole("button"), lifted()]).toEqual([null, [], null]);
     release(homeOf(TYRANNOSAURUS, "legs"));
 
-    act(() => orientation.turn("landscape"));
+    act(() => viewport.turn("landscape"));
     layOutPuzzle();
 
     expect(fittedPieces()).toEqual(["skull", "tail"]);

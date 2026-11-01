@@ -1,33 +1,36 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
+import type { Viewport } from "../src/App.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localSortingProgress } from "../src/localProgress.ts";
-import { OrientationGate, type Orientation } from "../src/OrientationGate.tsx";
+import { OrientationGate } from "../src/OrientationGate.tsx";
 import { droppedOn, presentBoard } from "../src/presentation.ts";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { useSortingGame, type SortingGameProps } from "../src/sortingGame.tsx";
-import { boardState, drop, startBoard, type CardState, type Sorting, type SortingProgress } from "../src/sorting/index.ts";
-import { SHIPPED_SORTABLES, fakeBodyPicture, loadedPictures, manualOrientation, memoryStorage, seededRandom, type MemoryStorage } from "./support.ts";
+import { boardState, drop, startBoard, type CardState, type Sorting } from "../src/sorting/index.ts";
+import { SHIPPED_SORTABLES, fakeBodyPicture, manualViewport, memoryStorage, part, seededRandom, type ManualPictures, type MemoryStorage } from "./support.ts";
+import { withManualPictures, withPictures } from "./pictures.tsx";
 
 // The board as the app will hold it: the sorting in state above the
-// orientation gate, each drop played through the sorting game.
+// viewport gate, each drop played through the sorting game.
 function Board({
   start,
   language,
-  orientation,
+  viewport,
   seen,
   onHome,
   onSeeResult
 }: {
   start: Sorting;
   language: Language;
-  orientation: Orientation;
+  viewport: Viewport;
   seen: Sorting[];
   onHome: () => void;
   onSeeResult: () => void;
 }) {
+  const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
   const [sorting, setSorting] = useState(start);
   const onDrop = useCallback(
     (id: string, basket: Basket) =>
@@ -39,7 +42,7 @@ function Board({
     [seen]
   );
   return (
-    <OrientationGate orientation={orientation} language={language}>
+    <OrientationGate shown={size.startsWith("tall")} screenUpright={viewport.isScreenUpright()} language={language}>
       <SortScreen
         language={language}
         {...presentBoard(boardState(sorting), language, fakeBodyPicture)}
@@ -52,7 +55,7 @@ function Board({
 }
 
 export type OpenBoard = {
-  orientation: ReturnType<typeof manualOrientation>;
+  viewport: ReturnType<typeof manualViewport>;
   // Each sorting the board has played, in order.
   seen: Sorting[];
   homes: number[];
@@ -60,8 +63,10 @@ export type OpenBoard = {
   unmount: () => void;
 };
 
-export function openBoard(start: Sorting, language: Language = "en"): OpenBoard {
-  const orientation = manualOrientation("landscape");
+// The board on its own, its pictures loaded the moment they are asked for
+// unless `pictures` loads them.
+export function openBoard(start: Sorting, language: Language = "en", pictures?: ManualPictures): OpenBoard {
+  const viewport = manualViewport("landscape");
   const seen = [start];
   const homes: number[] = [];
   const results: number[] = [];
@@ -69,13 +74,14 @@ export function openBoard(start: Sorting, language: Language = "en"): OpenBoard 
     <Board
       start={start}
       language={language}
-      orientation={orientation}
+      viewport={viewport}
       seen={seen}
       onHome={() => homes.push(1)}
       onSeeResult={() => results.push(1)}
-    />
+    />,
+    pictures ? withManualPictures(pictures) : withPictures
   );
-  return { orientation, seen, homes, results, unmount };
+  return { viewport, seen, homes, results, unmount };
 }
 
 export const latest = ({ seen }: OpenBoard): Sorting => {
@@ -84,12 +90,15 @@ export const latest = ({ seen }: OpenBoard): Sorting => {
   return sorting;
 };
 
-export const tray = (language: Language = "en") => screen.getByRole("group", { name: TEXTS[language].dinosaurs });
+// The tray, its cards and the baskets, by their class and turn part, or
+// by their role and name in `language` where a test gives one.
+export const tray = (language?: Language) => (language === undefined ? part(".sort-tray") : screen.getByRole("group", { name: TEXTS[language].creatures }));
 
-export const trayCard = (card: CardState, language: Language = "en") =>
-  within(tray(language)).getByRole("button", { name: card.dinosaur.name[language] });
+export const trayCard = (card: CardState, language?: Language) =>
+  language === undefined ? part(`[data-turn-part="sort-card-${card.dinosaur.id}"]`, tray()) : within(tray(language)).getByRole("button", { name: card.dinosaur.name[language] });
 
-export const basketButton = (basket: Basket, language: Language = "en") => screen.getByRole("button", { name: TEXTS[language].baskets[basket] });
+export const basketButton = (basket: Basket, language?: Language) =>
+  language === undefined ? part(`[data-turn-part="basket-${basket}"]`) : screen.getByRole("button", { name: TEXTS[language].baskets[basket] });
 
 // The other basket of the board's two.
 export const otherBasket = (sorting: Sorting, basket: Basket): Basket => {
@@ -98,10 +107,12 @@ export const otherBasket = (sorting: Sorting, basket: Basket): Basket => {
 };
 
 // Where things are on the iPad's screen: jsdom lays nothing out, so each
-// basket is given its place, side by side under the tray.
+// basket is given its place, side by side under the tray. A third basket
+// has the place beyond the two's.
 export const BASKET_PLACES = [
   { left: 56, right: 664, top: 420, bottom: 852 },
-  { left: 688, right: 1384, top: 420, bottom: 852 }
+  { left: 688, right: 1384, top: 420, bottom: 852 },
+  { left: 1408, right: 2000, top: 420, bottom: 852 }
 ] as const;
 
 export const CARD_AT = { clientX: 200, clientY: 300 };
@@ -130,26 +141,29 @@ export async function dragTo(user: UserEvent, card: HTMLElement, to: { clientX: 
   ]);
 }
 
-// The sorting game as the app will hold it: above the orientation gate,
+// The sorting game as the app will hold it: above the viewport gate,
 // started by its owner, who is told when the child goes home.
 function Game({
   props,
   language,
-  orientation,
+  viewport,
   owner,
   onHome
 }: {
   props: SortingGameProps;
   language: Language;
-  orientation: Orientation;
+  viewport: Viewport;
   owner: { start?: () => void };
   onHome: () => void;
 }) {
-  const game = useSortingGame(props, onHome);
+  const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
+  const game = useSortingGame(props, { level: "hatchling", revision: null }, onHome, () => {});
   owner.start = game.start;
+  // The gate covers every upright window here, so the board's upright
+  // width and the result's sizes are never read.
   return (
-    <OrientationGate orientation={orientation} language={language}>
-      {game.content(language)}
+    <OrientationGate shown={size.startsWith("tall")} screenUpright={viewport.isScreenUpright()} language={language}>
+      {game.content(language, 0, { star: 0, levelName: 0, heroMaximum: 0 })}
     </OrientationGate>
   );
 }
@@ -174,15 +188,14 @@ export function openSortingGame({ storage = memoryStorage(), seed = 1, language 
     sortables: SHIPPED_SORTABLES,
     sortingProgress: localSortingProgress(() => storage),
     bodyPicture: fakeBodyPicture,
-    random: seededRandom(seed),
-    ...loadedPictures()
+    random: seededRandom(seed)
   };
-  const { unmount } = render(<Game props={props} language={language} orientation={manualOrientation("landscape")} owner={owner} onHome={() => homes.push(1)} />);
+  const { unmount } = render(<Game props={props} language={language} viewport={manualViewport("landscape")} owner={owner} onHome={() => homes.push(1)} />, withPictures);
   act(() => owner.start?.());
   const random = seededRandom(seed);
   let last: Sorting | undefined;
-  const nextBoard = () => (last = startBoard(SHIPPED_SORTABLES, random, last));
-  return { user: userEvent.setup(), storage, homes, nextBoard, unmount };
+  const nextBoard = () => (last = startBoard(SHIPPED_SORTABLES, "hatchling", random, last));
+  return { user: userEvent.setup({ delay: null }), storage, homes, nextBoard, unmount };
 }
 
 // Sorts the first `count` cards of `sorting` by taps, a card then a
@@ -209,7 +222,7 @@ export async function finishBoard(user: UserEvent, sorting: Sorting, right: numb
 
 // A stored record with the sorting game's entry, and the other games'
 // entries given.
-export const sortingRecord = (entry: SortingProgress | unknown, games: Record<string, unknown> = {}) =>
+export const sortingRecord = (entry: unknown, games: Record<string, unknown> = {}) =>
   JSON.stringify({ schemaVersion: 1, games: { ...games, "sort-dinosaurs": entry } });
 
 // The stored record now, undefined while none is.
@@ -221,17 +234,17 @@ export function storedRecord(storage: MemoryStorage): { schemaVersion: unknown; 
 // The baskets of the board on screen, in order, by their names.
 export const basketsShown = () => [...document.querySelectorAll(".basket")].map((basket) => basket.getAttribute("aria-label"));
 
-// Sorts every card on the tray by taps, as a child who tries the first
-// basket and, after a miss, the other one: each card of the second basket
-// misses once. `look` is called after each drop.
+// Sorts every card on the tray by taps, trying baskets in order until
+// the card lands. `look` is called after each drop.
 export async function sortByTrying(user: UserEvent, language: Language = "en", look: () => void = () => {}) {
-  const [first, second] = [...document.querySelectorAll<HTMLElement>(".basket")];
+  const baskets = [...document.querySelectorAll<HTMLElement>(".basket")];
+  const [first, second] = baskets;
   if (!first || !second) throw new Error("The board has no two baskets");
   const names = within(tray(language))
     .getAllByRole("button")
     .map((card) => card.getAttribute("aria-label") ?? "");
   for (const name of names) {
-    for (const basket of [first, second]) {
+    for (const basket of baskets) {
       const card = within(tray(language)).queryByRole("button", { name });
       if (!card) break;
       await user.click(card);

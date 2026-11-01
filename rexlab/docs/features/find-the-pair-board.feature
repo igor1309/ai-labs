@@ -1,6 +1,9 @@
 Feature: Find the pair: turning cards
   Two cards are open at most. A match stays open; a miss turns back
   with no "wrong" mark, so trying is never punished.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
@@ -8,7 +11,7 @@ Feature: Find the pair: turning cards
 
   Scenario: Tapping a face-down card turns it over
     When I tap a face-down card
-    Then it flips over to show its dinosaur's picture or silhouette
+    Then it flips over to show its dinosaur's picture, silhouette or skeleton
     And it shows a pressed state before it flips
 
   Scenario: An open card cannot be turned back by tapping
@@ -59,19 +62,21 @@ Feature: Find the pair: turning cards
     Then I am on the home page without being asked to confirm
     And that board earns no star, no level step and no found dinosaurs
 
+  Scenario: Back leaves a board for the game's welcome screen
+    Given I am partway through a board, with one card open
+    Then the board's bar shows "BACK" with an arrow symbol, before "HOME"
+    When I tap "BACK"
+    Then I see the game's welcome screen with its level switch, without being asked to confirm
+    And that board earns no star, no level step and no found dinosaurs
+    And its open card does not turn back over later
+
   Scenario: Portrait pauses a board without changing it
     Given I am partway through a board, with one card open
     When I turn the iPad to portrait
-    Then I see a picture asking me to turn the iPad sideways
+    Then I see a picture asking me to turn sideways
     And I cannot turn a card behind that picture
     When I turn the iPad back to landscape
     Then I see the same cards, open and face down as before, and the same tries
-
-  Scenario: A missing picture still lets the board be played
-    Given the picture of Stegosaurus cannot be loaded
-    When I turn over a Stegosaurus card
-    Then I see a dinosaur symbol and "STEGOSAURUS" on the card
-    And its silhouette card, if any, shows the same symbol and name
 
   Scenario: Cards turn smoothly or fade
     When I turn over cards, find a pair and miss a pair

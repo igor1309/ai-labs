@@ -1,6 +1,7 @@
+import { emptyLabyrinth } from "./support.ts";
 import { render, screen } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { App, type AppProps } from "../src/App.tsx";
+import { App, type AppProps, type PortraitLayouts } from "../src/App.tsx";
 import type { CareProgress, Item, Random, Visitor } from "../src/care/index.ts";
 import { localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localCareProgress, localPairsProgress, localProgress, localSortingProgress } from "../src/localProgress.ts";
@@ -11,18 +12,25 @@ import {
   SHIPPED_PALS,
   SHIPPED_SORTABLES,
   SHIPPED_VISITORS,
+  emptyDig,
   emptySkeletons,
   fakeBodyPicture,
   fakeItemPicture,
+  featuring,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   manualTimers,
   memoryStorage,
-  type ManualOrientation,
-  type MemoryStorage
+  pageAtRest,
+  unreadVersion,
+  type ManualViewport,
+  type MemoryStorage,
+  unsetAgeLevel,
+  loadShownPictures,
+  type PictureClock
 } from "./support.ts";
 
-type Clock = Pick<AppProps, "loadPicture" | "startTimer">;
+type Clock = PictureClock;
 
 export type CareAppOptions<C extends Clock> = {
   // Where progress, the language and the theme are kept: one storage, as
@@ -32,7 +40,8 @@ export type CareAppOptions<C extends Clock> = {
   random?: Random;
   clock?: C;
   reducedMotion?: boolean;
-  orientation?: ManualOrientation;
+  viewport?: ManualViewport;
+  portraitLayouts?: PortraitLayouts;
   deviceLanguage?: string;
 };
 
@@ -44,34 +53,42 @@ export function openCareApp<C extends Clock = ReturnType<typeof manualTimers>>({
   random = () => 0,
   clock = manualTimers() as unknown as C,
   reducedMotion = false,
-  orientation = manualOrientation("landscape"),
+  viewport = manualViewport("landscape"),
+  portraitLayouts = {},
   deviceLanguage = "en-GB"
 }: CareAppOptions<C> = {}) {
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      orientation={orientation}
+      portraitLayouts={portraitLayouts}
+      viewport={viewport}
       progress={localProgress(() => storage)}
       deviceLanguage={deviceLanguage}
       languageStore={localLanguage(() => storage)}
+      nameVersion={unreadVersion}
       appearance={manualAppearance("light")}
       themeStore={localTheme(() => storage)}
+      {...unsetAgeLevel()}
       visitors={visitors}
       careProgress={localCareProgress(() => storage)}
       itemPicture={fakeItemPicture}
       pals={SHIPPED_PALS}
       pairsProgress={localPairsProgress(() => storage)}
       {...emptySkeletons()}
+      {...emptyDig()}
+      {...pageAtRest()}
       reducedMotion={() => reducedMotion}
       sortables={SHIPPED_SORTABLES}
       sortingProgress={localSortingProgress(() => storage)}
       {...clock}
     />
   );
-  return { user: userEvent.setup(), clock, storage, unmount: view.unmount };
+  loadShownPictures(clock);
+  return { user: userEvent.setup({ delay: null }), clock, storage, unmount: view.unmount };
 }
 
 export function shipped(id: string): Visitor {
@@ -108,8 +125,8 @@ export const heartsShown = () => screen.getByLabelText("HEARTS").textContent;
 
 export const needStates = () => [...document.querySelectorAll(".need")].map((need) => need.getAttribute("data-state"));
 
-// What the need's bubble pictures, by its pictures' names.
-export const bubbleShows = () => [...document.querySelectorAll(".need-bubble .bubble-picture")].map((picture) => picture.getAttribute("data-item"));
+// What the need's bubble pictures, by its loaded pictures' names.
+export const bubbleShows = () => [...document.querySelectorAll(".need-bubble .bubble-picture")].map((picture) => /^\/care\/(.+)\.webp$/.exec(picture.getAttribute("src") ?? "")?.[1] ?? null);
 
 export const scoreShown = () => screen.getByLabelText("SCORE").textContent;
 

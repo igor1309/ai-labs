@@ -52,37 +52,53 @@ type stream struct {
 	failed      *string
 }
 
-// line reads one JSON event, and reports the tool call it makes, or the
-// line where it makes none. A line that is not an event the wrapper reads
-// tells nothing more, an error event among them: only turn.completed and
-// turn.failed decide, and codex may report an error it then recovers from.
+// line reads one JSON event, and reports the tool call it makes, then the
+// tool's result it gives, or the line where it gives neither. A line that
+// is not an event the wrapper reads tells nothing more, an error event
+// among them: only turn.completed and turn.failed decide, and codex may
+// report an error it then recovers from.
 func (s *stream) line(line string) {
-	s.report(Report{Tool: s.read(line)})
+	previous := s.thread
+	tool, result := s.read(line)
+	session := ""
+	if s.thread != previous {
+		session = s.thread
+	}
+	if tool != nil || !result {
+		s.report(Report{Tool: tool, Session: session})
+	}
+	if result {
+		s.report(Report{Result: true})
+	}
 }
 
 // read reads one JSON event, and gives the tool call it makes, nil for
-// none.
-func (s *stream) read(line string) (tool *Tool) {
+// none, and whether it is a tool's result: the completion of a tool item
+// the wrapper reports.
+func (s *stream) read(line string) (tool *Tool, result bool) {
 	var e event
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
-		return nil
+		return nil, false
 	}
 	switch e.Type {
 	case "thread.started":
 		s.thread = e.ThreadID
 	case "item.started":
-		return s.started(e.Item)
+		return s.started(e.Item), false
 	case "item.completed":
 		switch e.Item.Type {
 		case "agent_message":
 			s.lastMessage = e.Item.Text
+		case "command_execution", "file_change", "mcp_tool_call":
+			result = true
 		case "web_search":
 			// A search not reported as it started is reported here, by
-			// what its completed item gives.
+			// what its completed item gives, as called and done at once.
 			if !s.searches[e.Item.ID] {
 				tool = &Tool{Name: "web_search", Input: search(e.Item)}
 			}
 			delete(s.searches, e.Item.ID)
+			result = true
 		}
 	case "turn.completed":
 		s.completed = true
@@ -92,7 +108,7 @@ func (s *stream) read(line string) (tool *Tool) {
 	case "turn.failed":
 		s.failed = &e.Error.Message
 	}
-	return tool
+	return tool, result
 }
 
 // started is the tool call an item starts, where it is one the wrapper
@@ -177,7 +193,8 @@ func output(message string) ([]byte, Class, string) {
 }
 
 // class is a failed turn's class, by its message's words: codex reports
-// a failure as text alone.
+// a failure as text alone. A model at capacity comes first: it is the one
+// failure core retries.
 func class(message string) Class {
 	words := strings.ToLower(message)
 	has := func(found ...string) bool {
@@ -189,6 +206,8 @@ func class(message string) Class {
 		return false
 	}
 	switch {
+	case has("at capacity"):
+		return Capacity
 	case has("rate limit", "usage limit", "429"):
 		return RateLimited
 	case has("unauthorized", "401", "login"):

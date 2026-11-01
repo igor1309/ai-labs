@@ -117,8 +117,220 @@ func heldNames(t *testing.T) int {
 func TestShippedSettingsCheckClean(t *testing.T) {
 	t.Parallel()
 	got := compose(t, nil, "check")
-	if want := (ran{stdout: fmt.Sprintf("%d resolve, 0 refused\n", heldNames(t))}); got != want {
+	// The fallback plans include Bash, whose grants exceed read-only reviews.
+	var warnings strings.Builder
+	for _, w := range []struct {
+		name      string
+		processes []string
+	}{
+		{"adr_review", []string{"adr_review_codex"}},
+		{"code_review", []string{"architecture_review", "tests_review", "adversarial_review", "clarity_review", "intent_review"}},
+	} {
+		for i, process := range w.processes {
+			// The tests slot is a workflow; its own call plans follow below.
+			if w.name == "code_review" && i == 1 {
+				continue
+			}
+			for _, extra := range []string{"repository.write", "repository.history.write", "network", "host.write"} {
+				fmt.Fprintf(&warnings, "warning: /u/.agister/workflows/%s.yaml:%d steps[0].parallel.steps[%d]: its plan on its fallback \"claude-opus\" grants %q beyond what its process %q allows\n  with workflow %s\n", w.name, 16+i, i, extra, process, w.name)
+			}
+		}
+	}
+	for _, step := range []struct {
+		place, process, how string
+		line                int
+	}{
+		{"steps[0]", "tests_review", " on its fallback \"claude-opus\"", 10},
+		{"steps[1]", "review_critique", "", 11},
+		{"steps[2].repeat.steps[0]", "review_revise", " on its fallback \"claude-opus\"", 16},
+		{"steps[2].repeat.steps[1]", "review_critique", "", 17},
+	} {
+		for _, extra := range []string{"repository.write", "repository.history.write", "network", "host.write"} {
+			fmt.Fprintf(&warnings, "warning: /u/.agister/workflows/tests_debate.yaml:%d %s: its plan%s grants %q beyond what its process %q allows\n  with workflow code_review, workflow tests_debate\n", step.line, step.place, step.how, extra, step.process)
+		}
+	}
+	if want := (ran{stdout: warnings.String() + fmt.Sprintf("%d resolve, 0 refused\n", heldNames(t))}); got != want {
 		t.Errorf("ran %+v, want %+v", got, want)
+	}
+}
+
+// check.feature, "A workflow a run refuses before it starts, check refuses".
+// The same line must come from the check composition and the run planner.
+func TestCheckAndRunShareEveryWorkflowNotRunLine(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, workflow, line string
+	}{
+		{"parallel repeat", `schema: agister.workflow/v1alpha1
+steps:
+ - name: p
+   parallel:
+    - name: c
+      repeat:
+       state: {}
+       next: {}
+       steps:
+        - {name: s, process: say, agent: bash, inputs: {what: hi}}
+       until: {equals: [{from: steps.s.outputs.exit_code}, 0]}
+       max: 2
+`, `the workflow "w": the item "c", a repeat, is not run yet`},
+		{"runtime turn", `schema: agister.workflow/v1alpha1
+steps:
+  - {name: s, process: say, agent: pi-m3, inputs: {what: hi}}
+`, `the step "s": the runtime "pi"'s turn is not run yet`},
+		{"workflow input from git.diff", `schema: agister.workflow/v1alpha1
+inputs:
+  d: {source: git.diff}
+steps:
+  - {name: s, process: say, agent: bash, inputs: {what: hi}}
+`, `the workflow "w": the input "d" from the source "git.diff" is not run yet`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			settings := map[string]string{
+				"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, "", ""),
+				"/u/.agister/prompts/say.md":     `echo "$what"`,
+				"/u/.agister/workflows/w.yaml":   c.workflow,
+				"/u/.agister/workflows/v.yaml":   pairWorkflow,
+			}
+			checked := compose(t, settings, "check")
+			if checked.code != 1 || checked.stderr != "" || !strings.Contains(checked.stdout, "/u/.agister/workflows/w.yaml: "+c.line) {
+				t.Fatalf("check ran %+v, want refusal at workflow file containing %q", checked, c.line)
+			}
+			allSettings := shippedHome(t)
+			maps.Copy(allSettings, settings)
+			run := asBuilt(t, allSettings, "run", "w")
+			wantRun := "agister: the run is refused, and nothing runs:\n  " + c.line + "\n"
+			if run.stderr != wantRun || run.code != 1 || run.stdout != "" {
+				t.Fatalf("run ran %+v, want stderr %q", run, wantRun)
+			}
+		})
+	}
+}
+
+// check.feature, "A workflow a run runs is not refused for it".
+func TestCheckDoesNotRefuseAWorkflowItsRunCanRun(t *testing.T) {
+	t.Parallel()
+	settings := map[string]string{
+		"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, "", ""),
+		"/u/.agister/prompts/say.md":     `echo "$what"`,
+		"/u/.agister/workflows/w.yaml": `schema: agister.workflow/v1alpha1
+steps:
+  - {name: a, process: say, agent: bash, inputs: {what: hi}}
+  - {name: b, process: say, agent: bash, inputs: {what: hi}}
+`,
+	}
+	got := compose(t, settings, "check")
+	if got.code != 0 || strings.Contains(got.stdout, "\n  refuses ") {
+		t.Fatalf("check ran %+v, want no refusal", got)
+	}
+}
+
+// check.feature, "A process's line is the process's, reported once" and
+// "A process asked for alone is refused for a source a run does not take".
+func TestCheckReportsAnUnpluggedProcessSourceOnce(t *testing.T) {
+	t.Parallel()
+	settings := map[string]string{
+		"/u/.agister/processes/say.yaml": `schema: agister.process/v1alpha1
+prompt: say
+inputs:
+  d: {source: git.diff}
+`,
+		"/u/.agister/prompts/say.md": `echo hi`,
+		"/u/.agister/workflows/w1.yaml": `schema: agister.workflow/v1alpha1
+steps:
+  - {name: s, process: say, agent: bash}
+`,
+		"/u/.agister/workflows/w2.yaml": `schema: agister.workflow/v1alpha1
+steps:
+  - {name: s, process: say, agent: bash}
+`,
+	}
+	got := compose(t, settings, "check")
+	want := `the process "say": the input "d" from the source "git.diff" is not run yet`
+	if got.code != 1 || !strings.Contains(got.stdout, "/u/.agister/processes/say.yaml: "+want) || !strings.Contains(got.stdout, "refuses workflow w1, workflow w2, process say") {
+		t.Fatalf("check ran %+v, want one process finding containing %q", got, want)
+	}
+	if strings.Count(got.stdout, want) != 1 {
+		t.Errorf("process refusal appeared %d times, want once; stdout %q", strings.Count(got.stdout, want), got.stdout)
+	}
+}
+
+// settings/check's check.feature, "A fault met again adds the problems it
+// did not have", as composed: the process "p" is refused through the
+// workflow on bash for its source alone, and through the one on
+// claude-opus for its document-name input too, which a later workflow
+// adds.
+func TestCheckReportsAProcessDocumentNameProblemFromEitherWorkflowOrder(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name, first, second string
+	}{
+		{"bash then message", "bash", "claude-opus"},
+		{"message then bash", "claude-opus", "bash"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			settings := map[string]string{
+				"/u/.agister/processes/p.yaml": `schema: agister.process/v1alpha1
+prompt: say
+params:
+  prompt: {}
+inputs:
+  prompt: {source: param, name: prompt}
+  d: {source: git.diff}
+`,
+				"/u/.agister/prompts/say.md": `echo hi`,
+				"/u/.agister/workflows/w1.yaml": fmt.Sprintf(`schema: agister.workflow/v1alpha1
+steps:
+  - {name: s, process: p, agent: %s, inputs: {prompt: hi}}
+`, c.first),
+				"/u/.agister/workflows/w2.yaml": fmt.Sprintf(`schema: agister.workflow/v1alpha1
+steps:
+  - {name: s, process: p, agent: %s, inputs: {prompt: hi}}
+`, c.second),
+			}
+			got := compose(t, settings, "check")
+			source := `the process "p": the input "d" from the source "git.diff" is not run yet`
+			name := `the process "p": the input "prompt", a document's name, is not run yet`
+			if got.code != 1 || !strings.Contains(got.stdout, "refuses workflow w1, workflow w2, process p") {
+				t.Fatalf("check ran %+v, want the process p refusing w1, w2 and p", got)
+			}
+			for _, want := range []string{source, name} {
+				if strings.Count(got.stdout, "/u/.agister/processes/p.yaml: "+want) != 1 {
+					t.Errorf("want %q once at p's file; stdout %q", want, got.stdout)
+				}
+			}
+		})
+	}
+}
+
+// check.feature, "Inspect shows a workflow a run does not run yet as
+// refused", with no plan beside the refusal.
+func TestInspectShowsTheWorkflowNotRunRefusalWithoutAPlan(t *testing.T) {
+	t.Parallel()
+	settings := map[string]string{
+		"/u/.agister/processes/say.yaml": fmt.Sprintf(sayProcess, "", ""),
+		"/u/.agister/prompts/say.md":     `echo "$what"`,
+		"/u/.agister/workflows/v.yaml":   pairWorkflow,
+		"/u/.agister/workflows/w.yaml": `schema: agister.workflow/v1alpha1
+steps:
+  - name: p
+    parallel:
+      - name: c
+        repeat:
+          state: {}
+          next: {}
+          steps:
+            - {name: s, process: say, agent: bash, inputs: {what: hi}}
+          until: {equals: [{from: steps.s.outputs.exit_code}, 0]}
+          max: 2
+`,
+	}
+	got := compose(t, settings, "inspect", "workflow", "w")
+	if got.code != 0 || !strings.Contains(got.stdout, `the workflow "w": the item "c", a repeat, is not run yet`) || strings.Contains(got.stdout, "plan of ") {
+		t.Fatalf("inspect ran %+v, want refusal and no plan", got)
 	}
 }
 
@@ -130,12 +342,12 @@ func TestAMissingRuntimeIsReportedWithWhatItRefuses(t *testing.T) {
 	got := compose(t, map[string]string{"/r/.agister/agents/claude-opus.toml": "runtime = \"gone\"\n"}, "check")
 	want := `runtime gone
   no layer holds the runtime "gone"
-  refuses workflow adr_review, workflow code_review, agent claude-opus
+  refuses workflow adr_review, workflow code_review, workflow tests_debate, agent claude-opus, agent codex-sol-61
 `
 	if !strings.HasPrefix(got.stdout, want) {
 		t.Errorf("stdout\n%s\nwant it to start\n%s", got.stdout, want)
 	}
-	counted(t, got.stdout, heldNames(t)-3, 3)
+	counted(t, got.stdout, heldNames(t)-5, 5)
 	if got.stderr != "" || got.code != 1 {
 		t.Errorf("stderr %q, exit %d; want none, 1", got.stderr, got.code)
 	}
@@ -206,10 +418,13 @@ func TestAStepsPlanComesThroughTheSourceAndTheFacts(t *testing.T) {
 		if line == "refused" {
 			t.Errorf("the workflow is refused:\n%s", got.stdout)
 		}
-		if rest, ok := strings.CutPrefix(line, "plan of code_review "); ok {
+		if strings.HasPrefix(line, "plan of ") {
+			place = ""
+		}
+		if rest, ok := strings.CutPrefix(line, "plan of "); ok {
 			step, what, _ := strings.Cut(rest, ": ")
-			_, runtime, _ := strings.Cut(what, ", runtime ")
-			place = step
+			agent, runtime, _ := strings.Cut(what, ", runtime ")
+			place = step + ": " + agent
 			plans[place] = plan{runtime: runtime}
 			continue
 		}
@@ -219,9 +434,30 @@ func TestAStepsPlanComesThroughTheSourceAndTheFacts(t *testing.T) {
 			plans[place] = p
 		}
 	}
-	want := map[string]plan{"steps[1]": {runtime: "claude-code"}}
+	want := map[string]plan{"code_review steps[1]: process review_judge, agent claude-opus": {runtime: "claude-code"}}
 	for i := range 5 {
-		want[fmt.Sprintf("steps[0].parallel[%d]", i)] = plan{runtime: "codex", options: "read-only"}
+		// The tests slot exposes the child workflow's plans below.
+		if i == 1 {
+			continue
+		}
+		prefix := fmt.Sprintf("code_review steps[0].parallel.steps[%d]: process %s, agent ", i, reviews[i].process)
+		want[prefix+"codex-sol-61"] = plan{runtime: "codex", options: "read-only"}
+		want[prefix+"claude-opus"] = plan{runtime: "claude-code", options: "Glob, Bash"}
+	}
+	for _, step := range []struct {
+		place, process string
+		codex          bool
+	}{
+		{"steps[0]", "tests_review", true},
+		{"steps[1]", "review_critique", false},
+		{"steps[2].repeat.steps[0]", "review_revise", true},
+		{"steps[2].repeat.steps[1]", "review_critique", false},
+	} {
+		prefix := "tests_debate " + step.place + ": process " + step.process + ", agent "
+		if step.codex {
+			want[prefix+"codex-sol-61"] = plan{runtime: "codex", options: "read-only"}
+		}
+		want[prefix+"claude-opus"] = plan{runtime: "claude-code", options: "Glob, Bash"}
 	}
 	if !maps.Equal(plans, want) {
 		t.Errorf("plans %+v, want %+v", plans, want)

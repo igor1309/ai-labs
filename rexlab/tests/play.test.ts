@@ -19,7 +19,7 @@ function answerAll(play: Play, pick: (question: Question, index: number) => stri
 
 describe("a play", () => {
   it.each(SEEDS)("counts the larger dinosaur as correct and the smaller as wrong (seed %i)", (seed) => {
-    const play = startPlay(generateRound(SHIPPED_DINOSAURS, seededRandom(seed)));
+    const play = startPlay(generateRound(SHIPPED_DINOSAURS, seededRandom(seed)), "hatchling");
 
     expect(score(answerAll(play, (question) => largerOf(question).id))).toBe(10);
     expect(score(answerAll(play, (question) => smallerOf(question).id))).toBe(0);
@@ -27,7 +27,7 @@ describe("a play", () => {
   });
 
   it("keeps only the first choice of a question", () => {
-    const play = startPlay(generateRound(SHIPPED_DINOSAURS, seededRandom(1)));
+    const play = startPlay(generateRound(SHIPPED_DINOSAURS, seededRandom(1)), "hatchling");
     const question = currentQuestion(play);
 
     const answered = choose(play, smallerOf(question).id);
@@ -38,7 +38,7 @@ describe("a play", () => {
   });
 
   it("moves on only from an answered question", () => {
-    const play = startPlay(generateRound(SHIPPED_DINOSAURS, seededRandom(2)));
+    const play = startPlay(generateRound(SHIPPED_DINOSAURS, seededRandom(2)), "hatchling");
 
     expect(next(play)).toBe(play);
 
@@ -49,7 +49,7 @@ describe("a play", () => {
   });
 
   it("never moves past the last question", () => {
-    const finished = answerAll(startPlay(generateRound(SHIPPED_DINOSAURS, seededRandom(3))), (question) => question.left.id);
+    const finished = answerAll(startPlay(generateRound(SHIPPED_DINOSAURS, seededRandom(3)), "hatchling"), (question) => question.left.id);
 
     expect(finished.index).toBe(9);
     expect(isLastQuestion(finished)).toBe(true);

@@ -1,8 +1,9 @@
 Feature: Skeleton assembly: choosing a dinosaur
   A child builds a dinosaur from large bone pieces, then keeps it in a
-  museum. The MVP uses the first difficulty level: a full outline and
-  four pieces, already the right way up. Digging, rotation, mystery
-  skeletons and odd bones belong to later levels.
+  museum. These scenarios are its Hatchling mode: a full outline and
+  four pieces, already the right way up (skeleton-assembly-levels.feature).
+  The mystery skeleton is skeleton-assembly-mystery.feature, and other
+  dinosaurs' bones in the tray skeleton-assembly-paleontologist.feature.
 
   Background:
     Given an iPad in landscape
@@ -15,13 +16,16 @@ Feature: Skeleton assembly: choosing a dinosaur
     Then I see the dinosaur selection screen
     And I see "MUSEUM" with a museum symbol and "HOME" with a house symbol
 
-  Scenario: Three different body shapes are available from the start
+  Scenario: Five different body shapes are available from the start
     Given I am on the skeleton selection screen for the first time
     Then I can choose each of these dinosaurs without unlocking it
       | dinosaur      | distinguishing shape           |
       | Tyrannosaurus | large skull and two large legs |
       | Triceratops   | horned skull and four legs     |
       | Stegosaurus   | small skull and plated back    |
+      | Brachiosaurus | long neck and long front legs  |
+      | Spinosaurus   | long snout and tall back sail  |
+    And the choices stand three above and two centred below
     And each choice has its own dinosaur picture and name in large capitals
     And each card and button has a touch target of at least 48 by 48 CSS pixels
 
@@ -38,8 +42,14 @@ Feature: Skeleton assembly: choosing a dinosaur
   Scenario: A quick double tap starts one puzzle
     Given I am on the skeleton selection screen
     When I tap Tyrannosaurus twice quickly
-    Then one Tyrannosaurus puzzle starts with four unplaced pieces
+    Then one Tyrannosaurus puzzle starts at once, whatever its pictures are doing, with four unplaced pieces
+    And it is counted as one puzzle started
     And no star or museum exhibit is earned yet
+
+  Scenario: Two choices tapped at the same moment start one puzzle
+    Given I am on the skeleton selection screen
+    When I tap Tyrannosaurus and, in the same moment, Triceratops
+    Then one Tyrannosaurus puzzle starts at once, counted as one puzzle started
 
   Scenario Outline: Skeleton screens use the chosen language
     Given the app is in <language>
@@ -71,3 +81,12 @@ Feature: Skeleton assembly: choosing a dinosaur
       | theme |
       | light |
       | dark  |
+
+  Scenario: Back leaves a puzzle for the choice of dinosaurs
+    Given a skeleton puzzle is unfinished
+    Then its bar shows "BACK" with an arrow symbol, before "HOME"
+    And the dinosaur's whole name still fits beside them
+    When I tap "BACK"
+    Then I see the dinosaur selection screen without being asked to confirm
+    And the unfinished puzzle is not counted as complete
+    And its help no longer counts towards a hint

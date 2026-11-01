@@ -1,5 +1,7 @@
 Feature: Sort dinosaurs: dragging cards into baskets
   A wrong drop slides back with a hint; a card is right when its first drop on a basket is.
+  Its rounds are Hatchling rounds of six cards; every level plays alike
+  (sort-dinosaurs-levels.feature).
 
   Background:
     Given an iPad in landscape
@@ -40,7 +42,7 @@ Feature: Sort dinosaurs: dragging cards into baskets
     Then the card is dropped on that basket, as if dragged there
 
   Scenario Outline: Touching the board with a card picked up, or none
-    Given <state>
+    Given <state>, the last tap half a second or more ago
     When I <action>
     Then <outcome>
 
@@ -76,10 +78,10 @@ Feature: Sort dinosaurs: dragging cards into baskets
     Then I am on the home page without being asked to confirm
     And the round is not recorded
 
-  Scenario: Portrait asks to turn the iPad
+  Scenario: A narrow upright window asks to turn sideways
     Given I have sorted 3 cards, one of them after a wrong drop
-    When I turn the iPad to portrait
-    Then I see a picture asking to turn the iPad sideways
-    When I turn the iPad back to landscape
+    When the window turns upright and narrower than 600 CSS pixels, as an iPhone's does
+    Then I see a picture asking to turn sideways
+    When the window turns back to landscape
     Then the 3 cards are still in their baskets
     And the wrong drop still counts

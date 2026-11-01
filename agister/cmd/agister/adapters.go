@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/igor1309/ai-labs/agister/cli"
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/files"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
@@ -86,7 +87,7 @@ func documentsSnapshot(snapshot layout.Snapshot) documents.Snapshot {
 		}
 		return &documents.Source{Path: s.Path, Bytes: s.Bytes}
 	}
-	mapped := documents.Snapshot{Documents: map[documents.Kind]map[string]documents.Document{}, Blocks: source(snapshot.Blocks)}
+	mapped := documents.Snapshot{Documents: map[documents.Kind]map[string]documents.Document{}, Blocks: source(snapshot.Blocks), Budget: source(snapshot.Budget)}
 	for kind, named := range snapshot.Documents {
 		k := layoutKind(kind).documents
 		mapped.Documents[k] = map[string]documents.Document{}
@@ -161,7 +162,7 @@ func claudeCodeFacts(wrapper interface{ Facts() claudecode.Facts }) wrapperFacts
 	return func() (string, resolve.Facts) {
 		f := wrapper.Facts()
 		return f.Contract, resolve.Facts{Schema: f.Schema, Session: f.Session, Skills: f.Skills, Model: f.Model,
-			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands}
+			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands, Message: f.Inputs == claudecode.InMessage}
 	}
 }
 
@@ -169,7 +170,7 @@ func codexFacts(wrapper interface{ Facts() codex.Facts }) wrapperFacts {
 	return func() (string, resolve.Facts) {
 		f := wrapper.Facts()
 		return f.Contract, resolve.Facts{Schema: f.Schema, Session: f.Session, Skills: f.Skills, Model: f.Model,
-			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands}
+			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands, Message: f.Inputs == codex.InMessage}
 	}
 }
 
@@ -177,7 +178,7 @@ func piFacts(wrapper interface{ Facts() pi.Facts }) wrapperFacts {
 	return func() (string, resolve.Facts) {
 		f := wrapper.Facts()
 		return f.Contract, resolve.Facts{Schema: f.Schema, Session: f.Session, Skills: f.Skills, Model: f.Model,
-			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands}
+			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands, Message: f.Inputs == pi.InMessage}
 	}
 }
 
@@ -185,7 +186,7 @@ func bashFacts(wrapper interface{ Facts() bash.Facts }) wrapperFacts {
 	return func() (string, resolve.Facts) {
 		f := wrapper.Facts()
 		return f.Contract, resolve.Facts{Schema: f.Schema, Session: f.Session, Skills: f.Skills, Model: f.Model,
-			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands}
+			Efforts: f.Efforts, ToolCalls: f.ToolCalls, ToolCommands: f.ToolCommands, Message: f.Inputs == bash.InMessage}
 	}
 }
 
@@ -310,16 +311,24 @@ type checkResolve struct {
 	resolver resolver
 	source   declared
 	layers   layout.Folders
+	docs     runDocuments
+	takes    map[string]call.Inputs
 }
 
-func newCheckResolve(resolver resolver, source declared, layers layout.Folders) (*checkResolve, error) {
+func newCheckResolve(resolver resolver, source declared, layers layout.Folders, docs runDocuments, takes map[string]call.Inputs) (*checkResolve, error) {
 	if resolver == nil {
 		return nil, errors.New("check resolve: no resolver")
 	}
 	if source == nil {
 		return nil, errors.New("check resolve: no source")
 	}
-	return &checkResolve{resolver: resolver, source: source, layers: layers}, nil
+	if docs == nil {
+		return nil, errors.New("check resolve: no documents")
+	}
+	if takes == nil {
+		return nil, errors.New("check resolve: no takes")
+	}
+	return &checkResolve{resolver: resolver, source: source, layers: layers, docs: docs, takes: takes}, nil
 }
 
 func (c *checkResolve) Resolve(document check.Reference) (check.Resolved, []check.Fault) {
@@ -346,6 +355,48 @@ func (c *checkResolve) Resolve(document check.Reference) (check.Resolved, []chec
 				f.Block = &check.Block{Reason: block.Reason, Source: c.sourceOf(block.Origin)}
 			}
 			mapped = append(mapped, f)
+		}
+		return check.Resolved{}, mapped
+	}
+	var lines []notRunLine
+	var err error
+	switch {
+	case kind == resolve.KindWorkflow && resolved.Workflow != nil:
+		lines, err = notRunOf(document.Name, *resolved.Workflow, resolved, c.docs, c.takes)
+	case kind == resolve.KindProcess:
+		lines, err = notRunProcessOf(document.Name, c.docs)
+	}
+	if err != nil {
+		return check.Resolved{}, []check.Fault{{
+			Chain:    []check.Link{{Kind: document.Kind, Name: document.Name}},
+			Problems: []check.Problem{{Source: check.Source{File: c.documentFile(resolve.Reference{Kind: kind, Name: document.Name})}, Message: err.Error()}},
+		}}
+	}
+	if len(lines) > 0 {
+		type synthetic struct {
+			document check.Reference
+			file     string
+			problems []check.Problem
+		}
+		var grouped []synthetic
+		indices := map[check.Reference]int{}
+		for _, line := range lines {
+			owner := check.Reference{Kind: kindOf(line.document.Kind).check, Name: line.document.Name}
+			i, ok := indices[owner]
+			if !ok {
+				i = len(grouped)
+				indices[owner] = i
+				grouped = append(grouped, synthetic{document: owner, file: c.documentFile(line.document)})
+			}
+			grouped[i].problems = append(grouped[i].problems, check.Problem{Source: check.Source{File: grouped[i].file}, Message: line.text})
+		}
+		mapped := make([]check.Fault, 0, len(grouped))
+		for _, fault := range grouped {
+			chain := []check.Link{{Kind: document.Kind, Name: document.Name}}
+			if fault.document != (check.Reference{Kind: document.Kind, Name: document.Name}) {
+				chain = append(chain, check.Link{Kind: fault.document.Kind, Name: fault.document.Name})
+			}
+			mapped = append(mapped, check.Fault{Chain: chain, Problems: fault.problems})
 		}
 		return check.Resolved{}, mapped
 	}
@@ -377,6 +428,14 @@ func (c *checkResolve) problems(problems []resolve.Problem) []check.Problem {
 
 func (c *checkResolve) sourceOf(origin resolve.Origin) check.Source {
 	return check.Source{File: origin.Path, Line: origin.Line, Layer: layerOf(c.layers, origin.Path)}
+}
+
+func (c *checkResolve) documentFile(document resolve.Reference) string {
+	files, _ := c.docs.Files(kindOf(document.Kind).documents, document.Name)
+	if len(files) > 0 {
+		return files[0].Path
+	}
+	return ""
 }
 
 // trees is what check's fields asks of documents: a document's tree, as

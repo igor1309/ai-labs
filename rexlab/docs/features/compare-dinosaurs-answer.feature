@@ -17,7 +17,7 @@ Feature: Compare dinosaurs quiz: answering a question
     Examples:
       | prompt          | attribute | larger        | smaller      |
       | WHO IS HEAVIER? | mass      | Triceratops   | Velociraptor |
-      | WHO IS TALLER?  | height    | Brachiosaurus | Triceratops  |
+      | WHO IS TALLER?  | height    | Brachiosaurus | Stegosaurus  |
 
   Scenario Outline: A wrong answer shows the right one
     Given the question "<prompt>" about <larger> and <smaller>
@@ -31,7 +31,7 @@ Feature: Compare dinosaurs quiz: answering a question
     Examples:
       | prompt          | attribute | larger        | smaller      |
       | WHO IS HEAVIER? | mass      | Triceratops   | Velociraptor |
-      | WHO IS TALLER?  | height    | Brachiosaurus | Triceratops  |
+      | WHO IS TALLER?  | height    | Brachiosaurus | Stegosaurus  |
 
   Scenario: A dinosaur card shows it is pressed
     When I press a dinosaur card
@@ -70,18 +70,16 @@ Feature: Compare dinosaurs quiz: answering a question
     Then I see the progress "4/10"
     And the new question shows no values yet
 
-  Scenario: The next question waits for its pictures
+  Scenario: The next question opens at once
     Given I have answered question 3
     And the pictures of question 4 are still loading
     When I tap "NEXT"
-    Then question 3 stays on screen
-    And when the pictures have loaded I see the progress "4/10"
+    Then I see the progress "4/10" at once, its pictures shimmering
 
-  Scenario: A slow or broken picture does not stop the round
-    Given I have answered question 3
-    And a picture of question 4 fails to load, or takes longer than a second
-    When I tap "NEXT"
-    Then I see the progress "4/10" within a second
+  Scenario: Each question but the last loads the next one's pictures ahead
+    When I am on question 1 of a round
+    Then the pictures of question 2 start loading
+    And on question 10 no more pictures load ahead
 
   Scenario: A quick double tap on Next skips nothing
     Given I have answered question 3

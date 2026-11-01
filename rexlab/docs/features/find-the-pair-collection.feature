@@ -2,6 +2,9 @@ Feature: Find the pair: dinosaurs found in the catalogue
   Every dinosaur matched on a finished board is found, and the
   catalogue shows which dinosaurs the child has found so far, so the
   game fills the book of all dinosaurs.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
@@ -18,18 +21,11 @@ Feature: Find the pair: dinosaurs found in the catalogue
     Then Triceratops is still found once
     And it has no "NEW" badge on that result
 
-  Scenario: The catalogue shows found dinosaurs
+  Scenario: The catalogue does not mark found dinosaurs
     Given I have found Triceratops and Stegosaurus
-    When I open "ALL DINOSAURS"
-    Then I see the count "2 / 42" with a two-cards symbol beside the title
-    And the cards of Triceratops and Stegosaurus have a found stamp with a two-cards symbol
-    And no other card has a found stamp
-    And the page of Triceratops shows the same stamp
-
-  Scenario: The catalogue shows no count before anything is found
-    Given I have never finished a board
-    When I open "ALL DINOSAURS"
-    Then I see no found count and no found stamps
+    When I open "ANCIENT REPTILES"
+    Then I see no count of the found and no found stamp over any card's artwork
+    And the page of Triceratops has no found stamp either
 
   Scenario: A board left halfway finds nothing
     Given I have found Triceratops

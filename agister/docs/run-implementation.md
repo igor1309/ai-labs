@@ -99,11 +99,12 @@ process's prompt, the text of the prompt document; its time limit is its
 process's; its warnings its plan's. It runs in the root of the git
 worktree that holds the launch directory (ADR-004, rule 1); outside one,
 the request is refused. What this slice does not run is refused before
-anything runs, naming it: a step on a runtime with no turn yet; an item
-that is not a step; an input from a source other than `param`, or with a
-brief form; a workspace's revision, clean, or read-write access; a
-staleness limit; a process's instruction or guidance on bash. Each is
-named, in the order the request's documents give them. A recovery on
+anything runs, naming it: each item, source, runtime's turn, input and
+read of a parallel's outputs the sections below have not yet made run,
+as the run's list of them gives it. Each is
+named, in the order the request's documents give them; `agister check`
+refuses a workflow for the same lines (settings-implementation, "Check";
+LAB-465). A recovery on
 bash is resolve's refusal (ADR-012, rule 3). The program's environment
 is Agister's own, then the process's, then the inputs. SIGINT or SIGTERM
 to Agister cancels the run: the call's program and its group are ended,
@@ -298,9 +299,11 @@ Decisions, each with its reason:
   settle. The wrappers report the session now, so the record can keep
   it.
 - Codex's cost waits: the archive priced a thread through `ccusage`, a
-  second program; an unknown cost is honest meanwhile (ADR-012, rule 5).
+  second program; an unknown cost is honest meanwhile (ADR-012, rule
+  5). ("Codex's cost" brings it.)
 - A cost limit is refused, not kept: core ends no call at its cost yet,
-  and codex reports none to end it by.
+  and codex reports none to end it by. ("A call's cost" keeps it, on
+  what a runtime reports.)
 - No version warning yet (ADR-003, rule 8), nor the model the runtime
   reports: both are to be read from the turn, never probed, and come
   with the record, which keeps what the turn reported.
@@ -497,20 +500,20 @@ Decisions, each with its reason:
 
 A workflow whose items include a parallel of steps runs: home's
 `code_review`, as `agister run code_review --param goal=<path>`, its
-five reviews on codex side by side, then its judge. What the archive
-also did, keeping a record of the run and its calls, waits
-(`backlog/run-path.md`).
+five reviews on codex one at a time (`max: 1`), then its judge.
+Every call and its end are kept in the run's record ("Records").
 
-**`core/workflow`** runs a parallel (ADR-011, rule 2): it calls each
-of its steps at once, each with its own bindings, each step's start,
-tool calls and end told to the events by its own name. Once all have
+**`core/workflow`** runs a parallel (ADR-011, rule 2; ADR-012, rule 8):
+it calls its steps at once, or at most `max` at a time, each with its own
+bindings, each step's start, tool calls and end told to the events by its own name. Once all have
 ended, the parallel completes, its outputs a list in declaration
 order of each step's `{"status", "class", "output"}`: the class null
 where none, the output null where the step did not complete. A step
-that did not complete does not end the run: the join after it reads
-what there is, and a run whose last item is a parallel completes, its
-reason none. When the run is
-cancelled, the parallel ends it once all its steps have ended,
+that did not complete does not stop the next. If at least one completed,
+the join reads every outcome; a run whose last item is that parallel
+completes, its reason none. If none completed, no join starts: the run
+fails with the first node's class and a reason naming the parallel.
+When the run is cancelled, the parallel ends it once all its steps have ended,
 interrupted, `cancelled`. Each step's cost, usage, warnings and
 session count as a step's in sequence; warnings in declaration order.
 The caller port is called from many goroutines at once, and the events
@@ -604,7 +607,9 @@ Decisions, each with its reason:
 
 - Not yet in the record: the definitions with their digests, the
   inputs, the permission plan, a pinned call's patch (ADR-004, rule 4);
-  the continuation needs none of them.
+  the continuation needs none of them. ("Runs" adds the inputs, "A
+  call's changes" the HEAD a call left and its patch, "Definitions"
+  the definitions, "A call's plan" the permission plan.)
 - A record starts `lost` and is rewritten as calls end: a run that dies
   reads as lost, never as running (invariant 7), its ended calls kept,
   with no reaper.
@@ -621,7 +626,8 @@ Decisions, each with its reason:
 `agister run ... --continue <run id>` continues the session of an
 earlier one-step run's call (ADR-001, rule 5; ADR-004, rule 5; ADR-012,
 rule 1): the work goes on in the same worktree, in the same session.
-A binding that continues a session inside a run is not run yet.
+A step inside a run continues one by a binding ("A binding continuing
+a session").
 
 **`cli`** takes `--continue <run id>` with either form of request; the
 request carries it.
@@ -653,8 +659,8 @@ exit 1, nothing run and nothing recorded:
    a call whose session is that one.
 4. The agent of the request's one step is that call's; the root of the
    worktree holding the launch directory is that call's root; the
-   root's HEAD is that call's, and its content is the content that
-   call recorded, not empty.
+   root's HEAD is the one that call left, and its content is the
+   content that call recorded, not empty.
 5. The prompt `continuation` resolves.
 
 In its mapping to core, the composition gives the step's call the
@@ -679,7 +685,8 @@ Decisions, each with its reason:
 - The latest call is found by reading the records newest first: there
   are few, and no index is kept.
 - A resumed codex turn's usage is the thread's, as codex reports it
-  (ADR-001, invariant 3), its earlier turns counted.
+  (ADR-001, invariant 3), its earlier turns counted. (Since "Codex's
+  cost" it is the turn's own, the thread's before taken off.)
 - A continued call is given its process's inputs and documents as any
   call is: the step is the same one, the session knows the rest.
 - Run ids sort by time to the second: two runs of one session in one
@@ -688,3 +695,1114 @@ Decisions, each with its reason:
   longer resumes them is a settings change a later run meets.
 - A name an input shares with `continuation` is not refused: no
   process names one so.
+
+## Recovery
+
+A stale turn with a resume left is followed by a recovery turn in its
+session (ADR-006, rules 3 to 5), where it used to end the call.
+
+**claude-code and codex** give the session their stream reported for
+a turn a signal ended too, read as it came: claude-code's from its
+first line that names one, codex's from `thread.started`.
+
+**`core/call`**'s runtime protocol grows: a turn's end carries the
+session its runtime reported outside the reply, so a turn a signal ended
+gives it too. Core/call takes a step's recovery: its budget of resumes,
+none by default, and its instruction. When a turn goes stale, the call
+has a resume left, the turn's session is known, and the same thing has
+not gone stale before in this call, the call makes a recovery turn: the
+turn as the step gives it, but in that session, its message the
+instruction, a blank line, then what went stale; watched anew, under the
+call's one time limit. Otherwise the call ends as a stale turn ends it
+(rule 2). What follows a recovery turn follows it as it would any turn,
+another recovery included. A recovery turn that reports a session other
+than the one it resumed fails the call, `runtime_error`, as a
+continuation's does. The call's cost and usage are its turns', summed,
+each unknown where any turn reported none (ADR-001, invariant 3), as a
+turn a stale end cut short does; its session the last a turn reported,
+however it ended. A caller that cancels as a turn goes stale ends the
+call interrupted, `cancelled`, with no recovery turn. Its report grows:
+besides a tool call, a stale turn, what went stale and whether a
+recovery turn follows.
+
+**A tool command is timed until its result**, no longer until the next
+line: claude-code prints lines while a command runs, a rate limit event
+and a task started, so its `tool_command` limit never fired. Each
+wrapper reports a tool's result as it reads it: claude-code's a user
+event carrying a `tool_result`, codex's an `item.completed` of a tool
+item it reports, a search reported only as it completes reported
+called and done. The report port, from wrapper to core/call to the
+watch, grows that kind. The watch ends a command's wait at a result
+or at the next tool call; any line still restarts `no_event`.
+
+**`core/workflow`** gives a call's stale report to its events port,
+which grows a stale event, by the step's name, as it gives a tool
+call. **`runstore`**'s event grows the kind `stale`, with `what` and
+`recovering`.
+
+**The composition** gives core a process's recovery, no longer
+refusing it on a model. A stale turn is a progress line, `· <step>:
+stale: <what>`, with `; recovering` where a recovery turn follows, and
+an event:
+
+```json
+{"at": "", "step": "a", "kind": "stale", "what": "", "recovering": true}
+```
+
+**home**'s `implement` gets a recovery of one resume, its instruction
+"Your last turn was ended: it stopped making progress, as said below.
+Its work is in the worktree. Go on with the task another way."
+
+Decisions, each with its reason:
+
+- The record keeps a stale turn as an event, not in `record.json`:
+  events are the run's history, and the result's shape does not change
+  (rule 5).
+- "The same thing" is the same words of what went stale: the same
+  words make the same message, which tells the agent nothing new
+  (rule 4). The watch names a tool, not what it was given, so two
+  hung `Bash` commands are one thing; with home's one resume, it does
+  not matter.
+- No cost is left to check: no cost limit is run yet. ("A call's
+  cost" stops none: a stale turn spends nothing of it.)
+- End to end, a turn made stale in seconds, by a tool command limit
+  of a few seconds and a prompt that sleeps, proves that each runtime
+  resumes a session whose program was ended mid-tool.
+- A command's wait ends at the first result, not its own by id: one
+  command at a time is how both runtimes run in practice; claude-code's
+  parallel calls end it early, best effort.
+
+## Runs
+
+A run's record holds what its calls were given, and `agister runs
+export` copies a run out (ADR-001, invariant 6 and "Runs"; ADR-010,
+rule 4): what `scripts/agister-gate`, the archive's last user, will
+read of a review run once it moves to this Agister.
+
+**The composition** records the inputs it resolves. The record's
+`inputs` are the workflow's, as resolved at its boundary, in the order
+the workflow declares them; a request
+naming a step has none. Each call's `inputs` are its process's, as
+resolved for its call, in the order the process declares them; a call
+whose inputs were refused has none, and so has a run whose workflow's
+were; none is `[]`. Each input is its name, its value whole, and its
+identity. The run's inputs are in every write after they are resolved,
+a call's in the write as it ends:
+
+```json
+{"inputs": [{"name": "goal", "value": "", "identity": "<sha-256>"}],
+ "calls": [{"id": "", "inputs": [{"name": "", "value": "",
+   "identity": ""}]}]}
+```
+
+The join's input is its call's like any other: the judge's `reviews`,
+the reviews' outputs as it was given them.
+
+**`runstore`** exports a run: its `record.json`, and its
+`events.jsonl` where it has one, copied into a folder of the run's id
+under the folder it is given, each made where missing; a copy already
+there is written over, as the gate exports a run twice. A run not
+kept is an error, and nothing is copied.
+
+**`cli`** gets `agister runs export <run id> --to <dir>`, on a port of
+its own, the composition's from runstore under home's `runs`; a
+relative `--to` is joined to the directory cli is given, as `--dir`
+is. It prints
+nothing and exits 0; a failure goes to stderr, exit 1; a command not
+whole prints its usage, exit 2.
+
+Decisions, each with its reason:
+
+- Values are kept in `record.json`, however long: ADR-010, rule 4
+  asks the bytes kept, and one file keeps them; no artifact folder,
+  not as ADR-001's table of parts gives `core/inputs` one. A value
+  that is not UTF-8 is kept changed, its identity the original's: a
+  risk taken, inputs are text.
+- Not yet in the record: the definitions with their digests, the
+  process's environment, the permission plan, a pinned call's patch
+  (ADR-004, rule 4). No reader needs them yet. ("A call's changes"
+  adds the patch, "Definitions" the definitions, "A call's plan" the
+  environment and the permission plan.)
+- No `runs list` or `runs show`: the gate exports, and the record is a
+  file to read.
+- A run still being written exports as its files are at the copy: a
+  record is written whole, so it reads as the record then; an event
+  line may be cut. Best effort.
+- `scripts/agister-gate` stays on the archive: moving it is its own
+  slice, which reads this record. (Since "Retiring the archive": the
+  gate is deleted; `runs export` is a person's.)
+
+## Retiring the archive
+
+This Agister becomes the installed `agister`, its home `~/.agister`;
+the archive's binary and home are set aside. Its users move:
+`rexlab/AGENTS.md` to this Agister's commands, and
+`scripts/agister-gate` is removed, the loop's scripts doing its work.
+
+**`scripts/agister-gate`** is deleted, with what names it: the step
+`Gate` of `agister-core`, its path in `ci.yml`'s `agister` filter, its
+row in `.github/workflows/README.md`, and its entry in
+`scripts/tests/ci-workflow-paths.test.js`.
+
+**`rexlab/AGENTS.md`** names this Agister's forms,
+`agister/home/brief-forms`, and its commands: `agister run --process
+implement --agent claude-opus --dir rexlab --param brief=<step>`, and
+`agister run code_review --dir rexlab --param goal=<goal>`, with no
+`--json`; it reads the result's `.status`, `.class` and `.reason`, an
+implementation's `.output.output.checks`, `.summary`, `.notes` and
+`.open`, a review's `.output.judgement`, and shows the workflow with
+`agister inspect workflow code_review --dir rexlab`.
+
+**`scripts/loop/install.sh`** builds the binary to
+`~/.local/bin/agister` and writes home's settings, as shipped, into
+`~/.agister`: each folder and file `agister/home` has replaced whole,
+what it replaces first moved under `~/.agister/backups/<UTC time>/`;
+what home has besides, `runs` and `locks` among it, untouched. It
+refuses, changing nothing, while `~/.agister/briefs`, the archive's,
+is there. It stands in for `settings/home` (ADR-008), not yet built.
+A Go test runs it with `HOME` a temporary folder: refused with
+`briefs` there; settings replaced, the old kept under `backups`, and
+`runs` and `locks` kept. The loop's scripts run `agister`, with no
+`AGISTER_HOME`; this branch's own rounds run trunk's scripts, on
+`agister-next`, until the merge.
+
+**The hold's lock** stays under `~/.agister/locks`, whatever
+`AGISTER_HOME` says: runs on any home share the user's worktrees.
+`hold.go`'s comments and `hold.feature`'s scenario say so, no longer
+naming the archive.
+
+**Once, after the merge**, before the first install: `~/.agister` is
+moved to `~/.agister-archive`; `~/.agister-next`'s runs, where any,
+to the new `~/.agister/runs` after the first install;
+`~/.local/bin/agister`, `~/.local/bin/agister-next` and
+`~/.agister-next` are removed. The
+archive is rebuilt from `agister/archive` where ever needed, run with
+`AGISTER_HOME=~/.agister-archive`.
+
+`agister/README.md`, `agister/AGENTS.md` and `docs/process.md` say
+so, keep "edit `agister/home`, not home's copy", and no longer name
+`agister-next` or the archive's home.
+
+Decisions, each with its reason:
+
+- The gate is deleted, not moved: the loop's scripts implement and
+  review on this Agister; its advisor step and unattended fix rounds
+  are given up. `runs export` stays, for a person to copy a run.
+- rexlab's implement loses the archive's verification, its tests run
+  with up to 3 repairs: rexlab's agent runs `rexlab/scripts/test.sh`
+  itself, as its AGENTS.md already says. The `.agister/verifies`
+  files stay, unread, the archive's settings.
+- The archive's home is moved aside, not installed over: its 4,000
+  runs share this Agister's id and file names in another schema, and
+  a continuation reads every run kept.
+- The archive's binary is removed, not renamed: on the path, run
+  without `AGISTER_HOME`, it would read this home.
+- install.sh, not `settings/home`, writes home's settings until that
+  is built (ADR-008, rule 1); its backups keep each write undoable
+  (rule 2), by moving them back.
+- A folder or file `agister/home` drops stays in `~/.agister` until
+  removed by hand: a rename is rare.
+- `agister/archive` stays, as reference, unbuilt.
+
+## Reuse
+
+`agister run ... --reuse <run id>` runs a request again, taking an
+earlier run's completed calls where nothing they were given has changed
+(ADR-001, invariant 8 and "Starting a run"; LAB-252): a review whose
+judge failed, its five reviews completed, runs the judge alone.
+
+**`cli`** takes `--reuse <run id>` with either form of request; the
+request carries it. `--reuse` with `--continue` prints the usage, exit
+2.
+
+**`core/workflow`** tells a step's start when its caller says the call
+starts, no longer before calling it: the caller's report grows
+`Started`, and `Reused`, the id of a call it took in place of making
+one. Core gives either to its events port, which grows `Reused`, and
+tells a step's end only after its start.
+
+**The composition**, once settings resolve and before the record is
+first written, checks a reuse, each failure a refusal on stderr, exit
+1, nothing run and nothing recorded:
+
+1. The run named is kept.
+2. Its request is this one's: the same workflow, or the same process
+   and agent.
+
+Each step's call, once its inputs resolve and before it is admitted, is
+taken from the earlier run when that run holds a call of the same step
+that completed, of the same process and agent, given inputs of the same
+names, in the same order, with the same identities, under the same
+definitions ("Definitions"), and the worktree is
+as that call left it: the root of the worktree holding the launch
+directory is its root, the root's HEAD the one it left and its content
+its content, not empty. A call taken is not admitted and not made: it
+reports `Reused`, and its result to core is the earlier call's as
+recorded, but for its cost, zero, and its usage, every count unknown,
+which a sum skips: this run spent none. Any other call reports
+`Started`, its inputs refused or not, and is made as it would be. The
+record's request names the run reused, `"reuse"`; a call taken is
+recorded as its earlier entry, cost and usage included, its id this
+run's, its `"continues"` null, with `"reuses"`, the earlier call's id
+(its permissions and environment this call's, "A call's plan"):
+
+```json
+{"request": {"reuse": "<run id>"},
+ "calls": [{"id": "<run id>/<step>", "reuses": "<run id>/<step>"}]}
+```
+
+A call taken is a progress line, `· <step>: reused <call id>`, and an
+event, runstore's kind `reused`, in place of its start and end:
+
+```json
+{"at": "", "step": "a", "kind": "reused", "call": "<call id>"}
+```
+
+A continuation's latest call (Continuation, check 3) is a call made,
+never one with `"reuses"`, searched for back past the run named where
+its call was reused: a session goes on from where it last ran.
+
+Decisions, each with its reason:
+
+- Not the checkpointing and resumption ADR-011 leaves out: a reuse is
+  a new run, every step run through core as any run's; it only takes
+  recorded results, and keeps no state between runs.
+- A call is matched by what it was given, not by the earlier run's
+  status: a run that failed, or was lost, gives the calls it completed.
+- The worktree is compared at each call, not once at the start: a step
+  that writes changes what the steps after it read.
+- A call that failed is never taken: a failure is what a run again is
+  for.
+- The settings a call ran under are compared as "Definitions" gives
+  them.
+- Each call's cost and usage count once (ADR-011, rule 6) in a run's
+  result: a run's are what it spent; a call taken keeps the earlier
+  ones in its entry, which a sum over records skips.
+- One run is reused, not a chain: a run that reused gives its calls,
+  taken ones included, as recorded.
+
+## Capacity
+
+A turn that fails because the runtime's model is at capacity is retried
+in the call, no longer the call's end (ADR-004, rule 8; LAB-249): a
+review loses no node to it, and an implement run keeps its session.
+
+**claude-code and codex** class it `capacity`, which joins core's
+closed set of classes (ADR-001, invariant 3): claude-code a failed
+result of the status 529, or "overloaded" in its words, before its
+other classes; codex a `turn.failed` whose message says "at capacity",
+before its other classes.
+
+**`core/call`** retries a turn that ends by a reply of the class
+`capacity`, while the call has made fewer than five turns of that end:
+it waits on its timer, 30 seconds after the first such turn, one minute
+after the second, three minutes after the third and five after the
+fourth. A turn that reported a session is followed by a turn in that
+session, its message "Go on.", the turn's model, effort, options,
+instruction and schema as they were; one that reported none has not
+reached the model, and is made again as it was given, its message and
+all, in the session it was given. A
+capacity turn that reported a session other than the one it resumed is
+not retried: it fails the call, `runtime_error`, as any turn that
+strayed does. No wait starts where the call's context has ended, or
+where its time limit, read on its clock, leaves no more than the wait; a
+wait the caller's context ends ends the call interrupted, `cancelled`.
+A retry spends none of the step's recovery, and what follows it follows
+it as it would any turn, a recovery turn included. The call's cost,
+usage and session are its turns', as a recovered call's are. A call
+whose last turn is at capacity, not retried, fails, `capacity`, its
+reason the turn's, after "<n> of 5 turns at capacity: ". Its report grows a
+turn at capacity: its reason, and the wait before its retry, none where
+none follows.
+
+**`core/workflow`** gives a call's capacity report to its events port,
+which grows a capacity event, by the step's name, as it gives a stale
+one. **`runstore`**'s event grows the kind `capacity`, with `reason`
+and `retrying`.
+
+**The composition** prints a turn at capacity as a progress line,
+`· <step>: at capacity; retrying in <wait>`, the wait as the progress
+prints a duration, or `· <step>: at capacity` where no retry follows,
+and records an event:
+
+```json
+{"at": "", "step": "a", "kind": "capacity", "reason": "", "retrying": true}
+```
+
+An agent may set `fallback = "claude-opus"`. Resolve refuses a fallback
+that is missing, names itself, or cannot run the step's process, naming
+the agent file. Once the primary's five capacity turns are spent,
+`core/call` makes the same process and inputs fresh on the fallback,
+within the remaining time and cost limits and daily budget. Every other
+failure class ends the call. The fallback retries capacity by the same
+schedule, then ends the call; its own fallback is never used.
+
+The composition reports `· <step>: falling back to <agent>` and records
+an event of kind `fallback` naming that agent. The call's record names
+the answering agent and its plan, and keeps `primary`, the primary's
+agent, plan and failed result. The result warns which agent answered and
+why it fell back. Timing, cost, usage and warnings cover both attempts;
+the session and output belong to the fallback. Capacity events keep all
+the failed turns in order.
+
+A call made again on the fallback is read by its step's agent, its
+primary's. A reuse takes it for a step on that agent and records it as
+it was made: on the fallback, its primary kept, each plan this run's.
+A continuation (Continuation, check 3) counts it as a call of its
+primary's session too, on the primary's agent and with its session
+cost: the primary's turns went on in that session.
+
+A parallel may use `parallel: {max: 1, steps: [...]}` to run its nodes
+one at a time; a positive `max` bounds concurrency, and omitting it runs
+all nodes at once. The list form `parallel: [...]` still works. A failed
+node does not stop the next. The join waits for all nodes and receives
+every outcome in declaration order if at least one completed. Home's
+`code_review` and `adr_review` workflows set `max: 1`.
+
+Decisions, each with its reason:
+
+- The policy is core's, not a setting: the owner chose one policy for
+  every runtime, on by default; a process's own attempts and backoff
+  wait until one needs them.
+- A retry in a session the turn reported is told "Go on.", not given
+  the step's message again (owner, 2026-10-23, LAB-496): the session
+  holds the task and the work done toward it, and the task given twice
+  invites the model to start over. The message is core's, not a
+  setting, as the policy is.
+- A session a turn reported holds its message: codex writes the user's
+  message into the thread's rollout before it asks the model, and
+  claude-code writes it into its transcript before its first request, so
+  a turn at capacity that reported a session, fresh or resumed, leaves
+  the task in it, and "Go on." is read after it.
+- Waits of 30 seconds, one, three and five minutes (owner, 2026-10-23):
+  a call kept waiting in its session keeps its work, where a caller's
+  rerun later starts it over.
+- The wait is fixed, not drawn at random: the load is the provider's,
+  which the few calls of a run retrying together do not change, and the
+  owner chose one policy.
+- A wait the time limit would cut is not started: the call ends at
+  capacity, its cause, not at a timeout a caller would answer by raising
+  the limit.
+- Each turn at capacity is an event, not an entry in `record.json`, as
+  a stale turn is: events are the run's history. The event keeps
+  whether a retry follows, not its wait: the wait is the policy's, by
+  the turn's place, and the next event's time shows it.
+- A codex turn that failed reports no usage, so a retried codex call's
+  usage is unknown: unknown, never zero (ADR-001, invariant 3).
+- Reported cost and the daily budget bound retries and fallback. An
+  unknown cost spends nothing, as for any call.
+
+## A binding continuing a session
+
+A step of a workflow continues an earlier step's session, `session:
+{from: steps.<item>.session}` (ADR-001, rule 5; ADR-004, rule 5;
+ADR-011, rule 3; LAB-309): a summary goes on in the session of the
+judge that read the reviews. It is no longer refused as not run yet.
+
+**`settings/resolve`** refuses a step continuing the session of a step
+on another agent: a session belongs to its runtime, and one agent is
+the plainest same runtime, as a continuation's is. It refuses two steps
+of one parallel continuing one session, each followed back through the
+steps it continues to the first: two turns at once in one session are
+not run.
+
+**`core/workflow`**'s step names the step whose session it continues,
+"" for none. The run gives its caller the session that step's call
+reported, read from its results; where it reported none, the run is
+refused, its reason `the step "<item>" reported no session`, the step
+not called. Its caller port grows the session a step continues, "" for
+none.
+
+**`core/admit`**'s request grows the worktree a call continuing a
+session must find: the HEAD and the content the session's latest call
+left, as admit told them. Checked after the pin and
+before the hold, a HEAD left not empty and not the worktree's now
+refuses the call, `HEAD is "<now>", not the session's latest call's
+"<head>"`; a content not the worktree's now, or either left empty,
+refuses it, `the worktree is not as the session's latest call left it`.
+
+**The composition** keeps, for the run, each session's latest call: its
+id and the end HEAD and content admit told at its end. A step's call
+continuing a session is given that session, the prompt `continuation`
+first among its documents, as a continuation's is, and admit the facts
+its latest call left, no clean worktree asked: the check takes its
+place; the record's call continues that call's id. A step that continues
+a session, or whose session a step of the workflow continues, is made,
+never taken by a reuse. Where the prompt `continuation` does not
+resolve, the run is refused before its record is first written, as a
+continuation's is.
+
+Decisions, each with its reason:
+
+- The session's latest call is the run's own: the binding reads a step
+  of this run, and only this run's calls go on in it meanwhile. A call
+  of another run in that session meanwhile is a risk taken: the caller
+  does not run two writers in one worktree (ADR-004, rule 6).
+- Admission checks the worktree, as ADR-001's table of parts says, not
+  the composition, as a continuation's: here the facts are the run's
+  own, kept in memory, and the hold is taken right after.
+- Two steps of a parallel in one session are refused by settings, not
+  at run time: a check there holds whatever the turns' timing.
+- A step of a session's chain is never taken by a reuse: what a
+  session held is not compared, and a session the earlier run went on
+  in has moved past the call a reuse would take.
+- The step is given its process's inputs and documents as any call is,
+  as a continued call is.
+
+## A call's changes
+
+Every call records, at its end, the HEAD it left besides its content,
+and a call that pinned its revision its changes from that revision as a
+patch (ADR-004, rule 4; LAB-320). A session goes on from where its
+latest call left the worktree, a commit included: an implement step that
+commits is continued by the step after it.
+
+**`git`** gives the changes between a commit and a tree, as `git diff
+--binary` gives them: a patch that applies to the commit, binary files
+included.
+
+**`core/admit`** tells, of an admitted call, the HEAD at its end too,
+read with its content, before the hold is released; empty where it
+cannot be read. Of a call admitted with a pin it tells the patch too:
+its worktree port, which grows the changes from a commit to a content,
+asked from the pinned commit to the content the call left, under the
+hold; or why there is none, the content not read or the changes not
+given. A call continuing a session is checked against the HEAD its
+latest call left, no longer the one it was admitted at.
+
+**`runstore`**'s call grows `"end_head"`, the HEAD it left, and
+`"patch"`, null for none, else the path of its patch under the runs
+folder, `<run id>/patches/<step>.patch`. It writes a call's patch whole,
+as it writes a record, gives one back by its path, and a run exported
+takes its patches. A refused call's `"end_head"` is empty, as its
+`"head"` and `"content"` are.
+
+**The composition** answers admit's changes from `git`, and writes the
+patch admit told before the call's entry; an empty change is an empty
+patch. A pinned call's patch that admit could not give, or runstore
+could not write, is a warning in the result, as a record's later write
+is, the entry's `"patch"` null. A call taken by a reuse has the earlier
+entry's patch written again under this run, its `"patch"` this run's:
+an export holds what its record names. Wherever a call is compared with
+the HEAD an earlier one left, a continuation, a session's latest call in
+a run and a reuse, the HEAD is its `"end_head"`, else, where its entry
+has no such field, a record from before, its `"head"`.
+
+```json
+{"calls": [{"head": "<admitted>", "end_head": "<left>", "content": "",
+  "patch": "<run id>/patches/<step>.patch"}]}
+```
+
+Decisions, each with its reason:
+
+- A patch is a file beside the record, not in it: the record is
+  written whole as each call ends, and a patch can be large.
+- The patch runs from the pinned commit to the content the call left,
+  commits included: what the call changed from what it was given,
+  whatever it committed on the way.
+- The patch is admit's to tell, through its port: core knows no git,
+  and the patch is an answer to its ports (ADR-004, "Consequences").
+  It is asked under the hold, as the content is: one git diff of two
+  objects, short beside the call.
+- An unpinned call keeps no patch: it was given no revision to diff
+  from (ADR-004, rule 4).
+- A record from before is read with its `"head"` as the HEAD it left,
+  as runs then were checked; the record is read, never rewritten.
+
+## Definitions
+
+Each call's record names the settings it was made from: every file of
+every document its plan read, by layer, path and SHA-256 digest
+(ADR-001, invariant 6; LAB-321). A reuse takes a call only where they
+are the same: a prompt or schema changed since is run again.
+
+**`settings/documents`** gives a document's files: for a tree, each
+layer's file that composes it, nearest first, then the files of the
+document it extends, the same way; for a blob, the nearest layer's file
+alone, the one whose bytes it is. Each file is its layer, `home`,
+`repository` or `project`, its path and the SHA-256 digest of its
+bytes, as lowercase hex. A document with problems gives its problems,
+no files.
+
+**`runstore`**'s call grows `"definitions"`: each document, its kind,
+name and files, in order of kind, then name. The request grows
+`"definitions"` the same way: the documents the workflow's plan reads
+outside its steps, the workflow's own and each brief its inputs are
+checked against; `[]` for a step requested alone.
+
+**The composition**, as it plans a step's call, gathers its documents:
+its process, its agent and the agent's runtime; and each prompt, schema
+and brief its plan reads, the prompt `continuation` included where the
+call continues a session. Each call's entry, refused or made, records
+them; the run's request records its workflow's:
+
+```json
+{"calls": [{"definitions": [{"kind": "process", "name": "implement",
+  "files": [{"layer": "home", "path": "", "digest": ""}]}]}],
+ "request": {"definitions": []}}
+```
+
+A reuse takes a call only where the earlier entry's `"definitions"` are
+this call's, file for file; an entry with none, a record from before,
+is never taken. A call taken keeps the earlier entry's definitions, as
+it keeps the rest of that entry (but its permissions and environment,
+"A call's plan").
+
+Decisions, each with its reason:
+
+- The files, not the composed definitions: a digest of each file is
+  what was read, and the record does not keep a second decoding of
+  settings that may change.
+- Paths and digests in the record, the bytes beside it ("A
+  definition's bytes"): the record stays small to read.
+- `"digest"`, as a stream's: one name for a SHA-256 in the record.
+- The documents a plan read, not every document of the snapshot: a
+  change to a process another step runs is no reason to run this one
+  again.
+- A record from before is never reused: what it ran under is not known.
+- The workflow's files are the run's, not each call's: a reuse does
+  not compare them, as a change to another step is no reason to run
+  this one again; each call's own documents say what it ran under.
+
+## A definition's bytes
+
+A run keeps the bytes of each definition file its record names, beside
+the record, so the record says what a call was given, not only that it
+changed (ADR-001, invariant 6; LAB-322).
+
+**`settings/documents`** gives each file of a document with its bytes,
+the caller's own, beside its layer, path and digest.
+
+**`runstore`** writes a definition's bytes whole, as it writes a record,
+under its run's folder by their digest, `<run id>/definitions/<digest>`,
+and a run exported takes them. Bytes written again under the same digest
+leave one file. A digest that is not a plain file name is refused, as a
+patch's step is.
+
+**The composition** writes the bytes of each file of a run's request,
+before the record is first written, and of each file of a call's
+definitions, before the entry that names them, refused or made. Each
+digest is written once in a run, its write tried once. A call taken by a
+reuse ran under this call's definitions, so its bytes are this run's
+snapshot's, written the same way. Bytes runstore could not write are a
+warning in the result, as a patch not written is, naming the path of the
+first file of that digest; the record is kept. The record gains no
+field: a file's bytes are at its run's `definitions/<digest>`.
+
+Decisions, each with its reason:
+
+- By digest, not by kind and name: the same file read by every step is
+  kept once, and the path follows from what the record holds.
+- No field naming the bytes: the digest names them; a reader joins the
+  run's folder and `definitions/` to it.
+- A write that fails is a warning, not a refusal: the call's work is
+  worth more than its settings' copy. Unlike a patch's, the call's entry
+  does not show the gap: it names a digest with no file, the run's
+  result's warning the sign.
+- A write tried once: no write has been met that fails and then works;
+  a retry would leave a warning for bytes since kept.
+- No reader in runstore: nothing in a run reads the bytes back; a
+  reuse writes them from this run's snapshot.
+
+## A call's plan
+
+Each call's entry records the permission plan resolve made for its
+step and the environment its process set, so the record holds the rest
+of what Agister gave a call (ADR-001, invariant 6; ADR-003, rule 4;
+LAB-324).
+
+**`runstore`**'s call grows `"permissions"`, the six lists of
+`resolve.Plan` for its step, under the same meanings: the options taken
+(`"options"`) and the permissions required, allowed, granted, granted
+beyond the allowed (`"extra"`) and withheld, each `[]` for none; and
+`"environment"`, each variable the process sets, its name and its value
+whole, in the order the process declares them, `[]` for none. An entry
+from before, with neither field, is read as having none.
+
+```json
+{"calls": [{"permissions": {"options": [], "required": [],
+   "allowed": [], "granted": [], "extra": [], "withheld": []},
+  "environment": [{"name": "", "value": ""}]}]}
+```
+
+**The composition** records a call's permissions from its step's plan,
+on every entry, refused or made; and its environment as resolved for
+its call, as its inputs are: a call whose inputs were refused has none.
+A reuse takes a call only where the earlier entry's `"environment"` is
+this call's, variable for variable; an entry with no such field is
+taken only where this call's is `[]`. A call taken records this call's
+permissions and environment: its definitions are this call's, file for
+file, so its plan is the same.
+
+Decisions, each with its reason:
+
+- The plan as resolve made it, not as a runtime's flags: the flags are
+  the runtime's words, and the plan is what Agister decided.
+- Values whole, as inputs are: a value is a definition's text, an
+  input's or a param's, each already in the record.
+- The environment compared by a reuse: a variable may read a param,
+  which a reuse does not otherwise compare; the program would be given
+  another value.
+- A call taken records this call's plan, not the earlier entry's: an
+  entry from before has none, and would record a call given nothing.
+- The environment a call inherits from its caller is neither recorded
+  nor compared: it may hold secrets, it is the caller's (ADR-004), and
+  whoever reuses chose the run and the shell it runs from.
+
+## A call's cost
+
+A call is kept to its process's cost limit, on what its runtime
+reports, and each turn counts its own cost, a resumed turn included
+(ADR-001, invariant 3; ADR-004, rule 7; ADR-012, rule 5; LAB-336).
+
+Claude reports a resumed session's cost to date as a turn's
+`total_cost_usd`, the session's earlier turns counted again; its usage
+is the turn's own. Its `--max-budget-usd` bounds what this program
+spends, checked between model requests, the session's earlier cost not
+counted. Both were seen live, on Haiku, 2026-10-19. Until now a call
+summed what its turns reported, so a call with a retry at capacity
+that resumed its session, or a continuation, recorded too much.
+
+**`runtime/claudecode`**'s turn is given the session's cost before it,
+zero for a turn given no session, and a budget, none where not given.
+Its reply's cost is the reported cost less the session's before,
+unknown where that is unknown or the report is less; it also gives the
+session's cost, the reported cost whole. A budget is passed as
+`--max-budget-usd`, after the effort's argument. A result of the
+subtype `error_max_budget_usd` is the class `budget_exhausted`. Its
+facts say it takes a budget; codex's and bash's say they do not.
+
+**`core/call`**'s step is given its cost limit, none where not given,
+and the cost of the session it continues before the call. Each turn is
+given the session's cost before it: the step's for the call's first
+turn, and for each later turn the session's cost the turn before it
+gave, unknown where it gave none, as a stale turn, ended by a signal,
+gives none. Each turn under a limit is given as its budget the limit
+less the call's known cost so far: a turn whose cost is unknown spends
+none of it. No retry at capacity starts once the call's known cost has
+reached the limit; the call ends failed, `budget_exhausted`, its reason
+"the cost limit <limit> is spent: <cost>", and the report of the turn
+at capacity has no retry. A recovery turn follows a stale turn, which
+spends nothing, so the limit stops none. A turn the runtime ended at
+its budget ends the call failed, `budget_exhausted`, its reason the
+runtime's. The call's result gives the session's cost its last turn
+reported, none where that turn reported none.
+
+**`runstore`**'s call result grows `"session_cost"`, the session's cost
+the call's last turn reported, `null` where it is unknown. An entry from
+before, with no such field, is read as `null`.
+
+```json
+{"calls": [{"result": {"cost": 0.5, "session_cost": 1.25}}]}
+```
+
+**The composition** gives a step its process's cost limit. On a runtime
+whose facts do not take a budget (whose facts report no cost, since
+"Codex's cost") the limit spends nothing, and the call
+is given the warning "the runtime <runtime> reports no cost: the cost
+limit <limit> spends nothing". A call continuing a session, by
+`--continue` or a binding, is given the `"session_cost"` of the
+session's latest call, the call its worktree is checked against;
+unknown where that entry has none. Each entry records its call's
+session cost; a call taken by a reuse records the earlier entry's.
+
+Decisions, each with its reason:
+
+- The wrapper takes the session's cost before, and core carries it: the
+  meaning of `total_cost_usd` is Claude's, which only the wrapper knows,
+  as it alone knows the provider's words for capacity.
+- The session's cost before a continuation from the record: no other
+  part knows what the session cost before this call. An entry from
+  before leaves one call's cost unknown, never too much (ADR-001,
+  invariant 3); the next call reads the session's cost it records.
+- The budget is the limit less the call's known cost, not less the
+  session's: `--max-budget-usd` counts this program's spend only, and
+  an unknown cost spends nothing (ADR-001, invariant 3). A stale turn's
+  spend is not counted, so a recovered call may pass its limit by it.
+- A call may spend past its limit by a model request: Claude checks the
+  budget between requests. Agister kills no turn for its cost.
+- `budget_exhausted` for a spent cost limit, as the archive had it: the
+  class says the call spent its budget, its reason which; a repeated
+  tool call keeps the class.
+- A limit on codex or bash runs, spending nothing, as ADR-004, rule 7
+  has it, with a warning, so a limit that bounds nothing is not silent.
+  Codex's cost through `ccusage` stays in the backlog. (It came in
+  "Codex's cost": a limit on codex spends what it reports.)
+- The facts are the wrapper's, read by the composition as it reads how a
+  runtime takes its inputs.
+
+## A daily budget
+
+Home may set a daily budget: what Agister's calls may spend in a day,
+across runs, on what their runtimes report. A call does not start once
+the day's spend has reached it, and a turn is given no more than is
+left of it (ADR-014; ADR-001, invariant 3; LAB-356).
+
+**`settings/layout`** reads home's folder's `budget.yaml`, as it reads
+the repository's `blocks.yaml`: its path and its bytes. A `budget.yaml`
+in the repository's or a project's folder is a problem of its file: "a
+budget belongs to the home folder alone"; one that cannot be read, a
+problem of the home layer naming its path and the read's error.
+
+**`settings/documents`** types it, decoded in YAML: a map whose one
+field `daily` is a map whose one field `cost` is an amount in US
+dollars, more than zero, required. A field no budget knows, a `cost`
+not a number more than zero, or a root not a map is a problem of no
+document, at its line, as a blocks file's is; an empty file is no
+budget.
+
+```yaml
+daily:
+  cost: 20
+```
+
+`agister check` reports its problems with layout's, and `agister run`
+refuses on them, as on any problem of no document.
+
+**`core/call`**'s step is given the day's budget and what the day has
+spent before the call, none where home sets no budget. What is left of
+the day is the budget less the day's spend and the call's known cost
+so far. A call whose day has spent the budget as it starts takes no
+turn, on any runtime: it ends failed, `budget_exhausted`, its reason
+"the daily budget <budget> is spent: <spend>". Each turn is given as its
+budget the least of what is left of
+its cost limit and of the day; a runtime that takes none ignores it.
+No retry at capacity, nor recovery turn, starts once the day's spend
+and the call's known cost reach the budget; the call ends failed,
+`budget_exhausted`, its reason "the daily budget <budget> is spent:
+<spend>", the spend the day's and the call's, the turn at capacity's
+report has no retry and the stale turn's is not recovering. Where both
+the limit and the day are spent, the limit's reason is given.
+
+**The composition** reads the day's spend before each call it makes,
+after a reuse is ruled out and before the call is admitted, and gives
+its step the budget and the spend: the sum of
+the known costs of the calls whose `timing.started` is on the day, by
+the host's clock and its time zone, from midnight, kept in home's runs;
+a call taken by a reuse, or of an unknown cost, spends nothing. Only the
+runs whose id is from midnight of the day before or later are read, the
+run's own among them, its ended calls recorded. A run or a list of runs
+that cannot be read spends nothing, and the call is given the warning
+"the runs could not be read: <error>; they spend nothing of the day".
+It refuses no call itself: a call on a spent day is admitted and made,
+core/call failing it with no turn taken, and is recorded as any call
+core ends; a run of it ends failed, as a failed step ends it. A call
+taken by a reuse is taken on a spent day: it makes nothing.
+
+Decisions, each with its reason:
+
+- A file in home's folder, not a kind: there is one budget, the
+  owner's, and no document refers to it by name. Home alone (ADR-014,
+  rule 1).
+- A call counts on the day it started, by the host's clock in its time
+  zone: the owner's day, as the owner reads it. A run's id is UTC and
+  its calls may start later, so the runs from the day before are read
+  too; a run that started before the day before is not read, and its
+  calls spend nothing of the day.
+- Spend read from the records, not kept apart: the record already holds
+  each call's cost, and it is what the owner would add up.
+- An unknown or reused cost spends nothing (ADR-001, invariant 3): a
+  reused call spent on the day it was made. Records that cannot be
+  read spend nothing as well, with a warning: one bad record must not
+  stop every run.
+- The check in core/call, not the composition: only what core emits is
+  recorded (ADR-001, rule 4). The call is admitted first, its worktree
+  held for no turn: a refusal before admission would be the
+  composition's.
+- Every call stops on a spent day, a call on codex or bash too, though
+  it spends nothing of it (codex spends what it reports, since "Codex's
+  cost"): the day is spent, as a run starts no child
+  once its budget is spent (ADR-001, `core/workflow`).
+- Read before each call, not each run: a workflow's later steps stop
+  once its earlier ones spent the day.
+- Best effort: runs that start together, or the steps of a parallel,
+  may all pass the check; each turn is still given what was left, and
+  nothing locks across calls.
+- A call already running is not ended for the day: Agister kills no
+  turn for its cost.
+
+## Codex's cost
+
+A turn on codex reports its cost, read through `ccusage`, so a cost
+limit and the daily budget spend it; a resumed turn's usage is its own;
+and a call's record names its cost's source (ADR-001, invariant 3;
+ADR-004, rule 7; LAB-357).
+
+Codex reports no cost. Its `turn.completed` usage on a resumed thread is
+the thread's to date: a first turn's input of 17,587 tokens, cached
+12,544, then 38,225, cached 29,952, for a resumed one, which ccusage's
+thread then matched, its input 8,273 and cache reads 29,952 (seen live,
+2026-10-20). `ccusage codex session --json -O --id <thread>` prices a
+thread from its rollout, which a resume appends to: one JSON object,
+over many lines, whose `totalCost` is the thread's to date, its tokens
+too, each model's marked `isFallback` where priced as another's; it
+reads the `CODEX_HOME` it is given, and exits 1 for a thread it does
+not find (ccusage 20.0.31, the same day). Its `inputTokens` leaves out
+the cached tokens codex's input counts. `-O` prices from the table
+ccusage ships, with no network.
+
+**`runtime/codex`**'s turn is followed, where it gives a reply and its
+thread, by a lookup of the thread's cost; a resumed turn is preceded
+by one as well. A lookup runs `ccusage codex session --json -O --id
+<thread>` through the supervisor, in the turn's directory with its
+environment, and reads its stdout's lines, joined, as one JSON object.
+Its reply's cost is the thread's cost after the turn less before it,
+zero before for a turn that resumes none; it also gives the session's
+cost, the thread's cost after, and the cost's source, "ccusage". A
+resumed turn's usage is the reported usage less the thread's before,
+codex's input counting ccusage's input and cache reads; a count
+ccusage does not give is unknown. A lookup that does not start, is
+ended by a signal, exits other than 0, gives no JSON object with a
+number `totalCost`, or prices any model as a fallback is unknown: the
+cost after unknown leaves the cost and the session's cost unknown, the
+cost before unknown the cost and a resumed turn's usage. A cost or a
+token count less than zero is unknown. A reply whose cost is unknown
+gives why: "ccusage could not price the thread <thread>: <reason>",
+the reason the lookup's error, its exit and stderr's tail, "no
+totalCost", "the model <model> is priced as a fallback", or "the cost
+fell from <before> to <after>". A lookup's lines go to no report: the
+turn has ended. A call ended during the lookup before a resumed turn
+starts no codex: the turn gives the call's error. A turn a signal
+ended, or with no thread, has no lookup. Its facts say it reports a
+cost, as claude-code's do, and
+bash's that it does not. claude-code's reply gives the source
+"claude-code" where it gives a cost.
+
+**`core/call`**'s reply carries the cost's source and why the cost is
+unknown. A call's result gives the source of its turns' costs, none
+where its cost is unknown; each reply's why is a warning of the call,
+in the order its turns gave them.
+
+**`runstore`**'s call result grows `"cost_source"`, `null` where the
+cost is unknown; an entry from before, with no such field, is read as
+`null`.
+
+```json
+{"calls": [{"result": {"cost": 0.25, "cost_source": "ccusage"}}]}
+```
+
+**The composition** maps codex's reply's cost, session's cost, source
+and why onto the call's reply. The warning on a cost limit, "the
+runtime <runtime> reports no cost: the cost limit <limit> spends
+nothing", is given on a runtime whose facts report no cost, bash, and
+no longer on one that takes no budget: a limit on codex is kept, its
+turns given no budget, the call stopped at capacity once its known
+cost reaches it, as on claude-code.
+
+Decisions, each with its reason:
+
+- The wrapper looks the thread up before a resumed turn, not given the
+  cost before by core: the usage before is wanted as well, and only
+  ccusage holds it; the thread's own rollout is truer than the record
+  of another run.
+- `-O`: a lookup with no network, the same price each time. A model the
+  table does not know is priced as a fallback, so its cost is unknown,
+  not a guess, until ccusage is updated (ADR-001, invariant 3).
+- Through the supervisor: the lookup is a program, ended with the call
+  on a timeout or a cancellation, as the turn is. A time limit reached
+  during the lookup after a turn that completed ends the call
+  interrupted, as one reached at any other moment does: the lookup is
+  under a second, and the limit is the call's.
+- A lookup that fails leaves the cost unknown, and nothing else about
+  the turn: it ran, whatever its price. It is a warning, so a limit
+  that bounds no longer, ccusage not installed or a model it does not
+  know, is not silent (as "A call's cost" keeps a limit on bash).
+- A turn a signal ended has no lookup: it gives no reply, as now, and
+  a stale turn spends nothing (LAB-336).
+- The source is recorded, as ADR-001, invariant 3 asks: codex's cost is
+  ccusage's estimate from its price table, not a bill, Claude's what
+  Claude reports. ccusage's version is not kept: the source says whose
+  price it is, and an estimate bounds a limit as a reported cost does.
+- The contract stays `codex/2`, as `claude-code/3` stayed for Claude's
+  cost (LAB-336): the settings' runtime documents name it, and what a
+  call is given is unchanged.
+
+## Branch and repeat
+
+A workflow's branches and repeats run: Audelin's repair loop, a test
+step on bash whose failure goes back to the builder's session until the
+tests pass, at most three times.
+
+**`core/workflow`** runs an item that is a step, a parallel, a branch or
+a repeat, wherever it is: in the workflow's steps, an arm of a branch,
+or a repeat's body.
+
+- A **condition** is pure: it reads params, inputs, a repeat's state, the
+  outputs of items that have ended and, in an `all` or `any`, the
+  query's item. `equals` holds where the value read is the literal's: a
+  number equals a number of the same value, a string a string, a
+  boolean a boolean; a string never equals a number, and a param or an
+  input is a string. `present` holds where the reference reads a value.
+  A reference that reads nothing makes `equals`, `all` and `any` false.
+  `all` of an empty list holds, `any` of one does not, and either of
+  what is not a list does not hold. `and`, `or` and `not` compose.
+- A **branch** reads each arm's condition in order, and runs the first
+  that holds, or else its default; no other arm runs. Its outputs are
+  the arm's output mapping, read once the arm has completed; an arm
+  that does not complete ends the branch, and the run, as a step in
+  sequence does.
+- A **repeat** binds its state from its `state`, then runs its body;
+  after each pass that completes it binds its next state from `next`,
+  reading the pass's outputs and the state before it, a name `next`
+  does not bind keeping its value; a body sees the state of the repeats
+  around it, its own over theirs; and then reads
+  `until`: where it holds, or where the body has run `max` times, the
+  repeat ends, else the next pass starts. The condition is never read
+  before the first pass. A body item that does not complete ends the
+  repeat, and the run. Its outputs are `{"state": {...}, "stopped":
+  "until" | "max", "passes": n}`: the last state, why it stopped, and
+  how many passes ran. A body reads the outputs of its own pass, each
+  item those of the items before it, as in a sequence; what follows the
+  repeat reads only its outputs. A state value keeps the type it was
+  bound with: from a param a text, from an exit code a number; bound to
+  a text, a number is given as its JSON.
+- A step in a repeat's body is called, and told to the events, by its
+  **name and pass**, `<step>/<pass>`, outer passes first where repeats
+  nest (`fix/2/1`); elsewhere by its name. A branch or repeat inside a
+  repeat's body is told to the events the same way (`inner/2`). The
+  caller, the events, the record, progress and reuse take that name as
+  they take a step's.
+- The **events port** grows three: a branch's arm taken, with each
+  condition read before it, whether it held and the values it read; a
+  pass's end, with the state it bound; and a repeat's stop, why and
+  after how many passes.
+- Cost, usage, warnings and sessions count every call made, each pass's
+  too; a session continued in a body goes on from its latest call
+  as any continued session does, so each pass continues the one
+  before.
+
+**The composition** builds core's items from resolve's, every arm and
+body step planned as a step in sequence is: every step is planned,
+those of arms a run may not take too. `notRunOf` no longer names a
+branch or a repeat; it still names a workflow item wherever it is, an
+item of a parallel that is not a step, a field read within a parallel's
+outputs, a step's session read as a value, and an item named as a pass
+is, ending in `/<n>`, whose call id a pass could share. `agister check`
+follows, as it shares that list. A call's id is
+`<run id>/<step>/<pass>` in a repeat; its progress lines name it so;
+three lines more: `· <branch>: took <arm>`,
+`· <repeat>: ended pass <n>`, `· <repeat>: stopped <why> after <n> passes`.
+`events.jsonl` gains the kinds `branch`, `pass` and `stopped`:
+
+```json
+{"at": "", "step": "fix", "kind": "branch", "arm": "repair",
+ "conditions": [{"arm": "passed", "holds": false,
+   "read": {"steps.test.outputs.exit_code": 1}}]}
+{"at": "", "step": "repair", "kind": "pass", "pass": 1,
+ "state": {"code": 0, "tail": ""}}
+{"at": "", "step": "repair", "kind": "stopped", "stopped": "until",
+ "passes": 1}
+```
+
+A reuse takes a call of the same name and pass, so a later
+pass's call is never taken for an earlier one.
+
+Decisions, each with its reason:
+
+- A pass is in the step's name, not a field of its own: the caller,
+  events, record, progress and reuse already key on the name, and none
+  needs a change of shape.
+- A repeat's state sits under `state` in its outputs, beside `stopped`
+  and `passes`: a state may be named anything, and nothing it is named
+  shadows them.
+- The condition's values are kept in `events.jsonl`, not the record:
+  the record keeps calls, and the branch's facts are of no call. The
+  run must still record them, and `events.jsonl` sits in the run's
+  directory beside the record.
+- A branch's and a repeat's events name it under the `step` key, as a
+  parallel's do: a reader of `events.jsonl` finds every item by one key.
+- Conditions stay the starting set (equals, present, all, any, and,
+  or, not); settings already type them.
+- A workflow item stayed not run here; "A workflow as an item" runs it.
+
+## A workflow as an item
+
+A workflow item runs, in a sequence and in a parallel: home's
+`code_review`, its tests lens the workflow `tests_debate`, a draft and
+a private debate with a critic, in the slot the lens's one step held.
+
+**`core/workflow`** runs an item that is a workflow wherever an item
+runs, a parallel's children included.
+
+- The item's **boundary** is the workflow's own: its params bound from
+  the item's bindings, read in the caller's scope, a param not bound
+  taking its default; its inputs resolved over those params, once,
+  before its first step, by the resolver the composition built for its
+  workflow and gave its item. Its steps read that boundary and the outputs
+  and sessions of its own items, never the caller's; the caller reads
+  only the item's outputs, as an item's in sequence.
+- Its **outputs** are its output mapping, read once its steps have
+  completed. A workflow whose one output is named `output` gives that
+  value whole; any other gives the mapping. A step of it that does not
+  complete ends the item, as it ends a run.
+- A step inside is called, and told to the events, by the **item's
+  name, then its own**, `<item>/<step>`, a pass after it where it is in
+  a repeat (`tests/revise/1`); a branch or repeat inside is told the
+  same way (`tests/debate`). Its declared name to the caller is
+  `<item>/<step>`, so the composition's plan tells it from a caller's
+  step of the same name.
+- In a **parallel**, a workflow item runs its steps in sequence beside
+  the parallel's other children, counting as one toward `max`. Its slot
+  is `{"status", "class", "output"}` as a step's: the item's outputs
+  where it completed, else null, its class the failing step's.
+- Its calls' cost, usage, warnings and sessions count in the run's, as
+  a step's in sequence; each call keeps its own limits and the daily
+  budget, as any call does. No budget of the run's resets at the item:
+  the day's budget is the composition's, kept per call, so a call
+  inside an item meets it as a call outside does.
+- It is a **child run**. The events port grows one kind, a child run's
+  start, with its params and inputs as bound, and its end, with its
+  status, class and output; the record keeps each under `children`,
+  by the id `<run id>/<item>`: the item, its workflow, its parent's
+  id, its params and inputs as bound, its status, class and output.
+  Its calls stay in the run's `calls`, by their names.
+
+**Resolve** reads an item of a workflow whose one output is `output` as
+that value: a field read from the item's outputs is not checked against
+the workflow's output names, as a step's fields are not;
+`steps.<item>.outputs.output` is refused. A workflow of other outputs is
+read through their names, as now.
+
+**The composition** plans a workflow item's steps as it plans any step,
+each under its `<item>/<step>` name, and gives core the workflow's
+resolver of params and inputs, as it gives the run's. `notRunOf` no
+longer names a workflow item; a parallel's branch or repeat stays not
+run. `agister check` follows, as it shares that list.
+
+**Home** adds `tests_debate`, the processes `review_critique` and
+`review_revise`, the prompts `code-review-critic` and
+`code-review-revise`, and the schema `critique`; `code_review`'s tests
+slot names the workflow `tests_debate`. Its debate takes the critique
+before the repeat and, in the repeat's body, the revision before the
+next critique, so a later critique that converges ends it with no
+revision after it; a first critique that converges still gets one
+revision, which returns the review as it stands, as a branch would
+need a step for its arm that does nothing. The judge's process, prompt and
+input do not change.
+
+This section runs what "Branch and repeat" left not run: a workflow
+item.
+
+Decisions, each with its reason:
+
+- An item's own inputs resolve when it starts, not with the parallel's
+  shared inputs: they are its own, over params only it binds. A caller
+  that needs one snapshot binds its resolved revisions into the item's
+  params, as `code_review` does.
+- No workflow budget is added: none exists yet for a run; the item's
+  calls are bounded as every call is. One comes with a run's budget.
+- The one output named `output` is given whole, as a step requested
+  alone makes its workflow's: a lens that is a workflow fills
+  its slot with a review, as a lens that is a step does; a mapping
+  around it would change what the join reads.
+- The item is run by core, not spread into the caller's plan by the
+  composition: a caller has no access inside a child, and a spread plan
+  would let a caller's reference reach inside.
+- The child run is told through the events port, not a record port of
+  core's: core writes no record; the composition keeps records from
+  what the events tell, as it does a call's.
+- A parallel's branch and repeat stay not run: nothing needs one yet;
+  a workflow item gives either a slot.
+- Resolve already checks an item's bindings against its workflow's
+  params, refuses a cycle of named workflows, and refuses a caller's
+  read of an item's session or of a step inside it; none changes.

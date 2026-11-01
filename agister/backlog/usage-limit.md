@@ -7,14 +7,14 @@ description: "Backlog: a run stopped by a usage limit goes on from where it stop
 # A run stopped by a usage limit goes on
 
 From the agister-run branch, 2026-10-16. A usage limit, unlike capacity
-(`capacity-retry.md`), comes with its reset time, often an hour away.
-Three things cost a run each:
+(`run-implementation.md`, "Capacity"), comes with its reset time, often
+an hour away. Three things cost a run each:
 
 - An implement run stopped halfway leaves its changes in the worktree.
   A run on another agent is refused, as the worktree is not clean, so
   the changes had to be saved as a patch by hand and the files reset.
 - A review's judge stopped by the limit threw away five finished
-  reviews (`rerun-the-join.md`).
+  reviews (since "Reuse", `--reuse` runs the judge alone).
 - Nothing waited for the reset: the caller watched the clock and ran
   it again.
 

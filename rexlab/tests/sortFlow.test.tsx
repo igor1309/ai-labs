@@ -1,24 +1,38 @@
+import { emptyLabyrinth } from "./support.ts";
+import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
+import { AGE_LEVEL_KEY, localAgeLevel } from "../src/localAgeLevel.ts";
+import { TEXTS } from "../src/language/texts.ts";
+import { chooseFrom } from "./menus.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
-import { App } from "../src/App.tsx";
+import { describe, expect, it, vi } from "vitest";
+import { App, type AgeLevelStore } from "../src/App.tsx";
+import { PICTURE_LIMIT } from "../src/Picture.tsx";
 import { PROGRESS_KEY, localProgress, localSortingProgress } from "../src/localProgress.ts";
+import type { HomeGame } from "../src/HomePage.tsx";
 import type { Random } from "../src/sorting/index.ts";
-import { basketsShown, sortByTrying, storedRecord, tray } from "./sorting.tsx";
+import type { SortingProgressStore, SortingSaved } from "../src/sortingGame.tsx";
+import { basketsShown, sortingRecord, sortByTrying, storedRecord, tray } from "./sorting.tsx";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   SHIPPED_SORTABLES,
   emptyCare,
+  emptyDig,
   emptyPairs,
   englishDevice,
   emptySkeletons,
   fakeBodyPicture,
+  featuredCard,
+  gameDoor,
+  featuring,
   lightDevice,
+  loadShownPictures,
   loadedPictures,
-  manualOrientation,
+  manualViewport,
   manualPictures,
   memoryStorage,
+  pageAtRest,
   seededRandom,
   symbolOf,
   words,
@@ -31,36 +45,47 @@ import {
 function openApp({
   storage = memoryStorage(),
   random = seededRandom(11),
-  pictures = loadedPictures()
+  pictures = loadedPictures(),
+  featured = "compare",
+  ageLevelStore = { load: () => ({ level: "hatchling", revision: null }), save: () => {} },
+  sortingProgress = localSortingProgress(() => storage)
 }: {
   storage?: MemoryStorage;
   random?: Random;
   pictures?: ReturnType<typeof loadedPictures>;
+  featured?: HomeGame;
+  ageLevelStore?: AgeLevelStore;
+  sortingProgress?: SortingProgressStore;
 } = {}) {
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
+      {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={random}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={{}}
+      viewport={manualViewport("landscape")}
       progress={localProgress(() => storage)}
       {...englishDevice()}
       {...lightDevice()}
+      ageLevelStore={ageLevelStore}
       {...emptyCare()}
       {...emptyPairs()}
       {...emptySkeletons()}
+      {...emptyDig()}
+      {...pageAtRest()}
       sortables={SHIPPED_SORTABLES}
-      sortingProgress={localSortingProgress(() => storage)}
+      sortingProgress={sortingProgress}
       {...pictures}
     />
   );
-  return { user: userEvent.setup(), unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), unmount: view.unmount };
 }
 
 const button = (name: string) => screen.getByRole("button", { name });
 const onHomePage = () => screen.queryByRole("button", { name: "SORT" }) !== null;
-const onBoard = () => screen.queryByRole("heading", { name: "SORT THE DINOSAURS" }) !== null;
+const onBoard = () => screen.queryByRole("heading", { name: "SORT THEM ALL" }) !== null;
 const onResult = () => screen.queryByRole("button", { name: "PLAY AGAIN" }) !== null;
 const picturesShown = () =>
   within(tray())
@@ -80,7 +105,7 @@ describe("the sorting game from the home page", () => {
     await user.click(button("SORT"));
 
     expect(onHomePage()).toBe(false);
-    expect(words(screen.getByRole("heading"))).toBe("SORT THE DINOSAURS");
+    expect(words(screen.getByRole("heading"))).toBe("SORT THEM ALL");
     expect(basketsShown()).toHaveLength(2);
     const cards = within(tray()).getAllByRole("button");
     expect(cards).toHaveLength(6);
@@ -102,7 +127,7 @@ describe("the sorting game from the home page", () => {
     const score = screen.getByLabelText("SCORE").textContent ?? "";
     const [right, total] = score.split("/");
     expect(total).toBe("6");
-    expect(storedRecord(storage)?.games["sort-dinosaurs"]).toEqual({ bestScore: Number(right), roundsPlayed: 1 });
+    expect(storedRecord(storage)?.games["sort-dinosaurs"]).toEqual({ explorerBest: null, paleontologistBest: null, bestScore: Number(right), roundsPlayed: 1 });
 
     await user.click(button("HOME"));
 
@@ -141,19 +166,24 @@ describe("the sorting game from the home page", () => {
 
 // Opens the app on the screen a new board is started from: the home page,
 // or the sorting game's result, reached with every picture loaded.
-async function openOn(start: "home" | "result", pictures: ManualPictures) {
-  const app = openApp({ pictures });
+async function openOn(start: "home" | "result", pictures: ManualPictures, featured?: HomeGame) {
+  const app = openApp({ pictures, ...(featured && { featured }) });
+  loadShownPictures(pictures);
   if (start === "result") {
     await app.user.click(button("SORT"));
     act(() => pictures.loading().forEach(pictures.finish));
     await finishShownBoard(app.user);
+    loadShownPictures(pictures);
   }
   return app;
 }
 
+// Each screen a round starts from, the button that starts it, and the
+// game featured on the home page meanwhile.
 const STARTS = [
-  ["the home page", "home", "SORT", onHomePage],
-  ["the result", "result", "PLAY AGAIN", onResult]
+  ["the home page", "home", "SORT", () => button("SORT"), undefined],
+  ["the home page", "home", "its featured card", () => featuredCard(), "sort"],
+  ["the result", "result", "PLAY AGAIN", () => button("PLAY AGAIN"), undefined]
 ] as const;
 
 const TAPS = [
@@ -161,123 +191,60 @@ const TAPS = [
   ["twice quickly", (user: UserEvent, element: HTMLElement) => user.dblClick(element)]
 ] as const;
 
-// Each screen the child may open from the home page while a board's
-// pictures load, and whether it is on screen.
-const ELSEWHERE = [
-  ["CARE", () => screen.queryByRole("button", { name: "NEW VISITOR" }) !== null],
-  ["ALL DINOSAURS", () => screen.queryByRole("group", { name: "ALL DINOSAURS" }) !== null],
-  ["FIND THE PAIR", () => screen.queryByRole("heading", { name: "FIND THE PAIR" }) !== null]
-] as const;
-
-// Each way a board's wait for its pictures ends.
-const ENDS = [
-  ["its pictures load", (pictures: ManualPictures, asked: readonly string[]) => asked.forEach(pictures.finish)],
-  ["its second runs out", (pictures: ManualPictures) => pictures.fire(1000)]
-] as const;
+// Each card's picture on the tray, as its place looks.
+const looksShown = () => within(tray()).getAllByRole("img").map((picture) => picture.dataset.picture);
 
 describe("a new board", () => {
   it.each(STARTS.flatMap((start) => TAPS.map((taps) => [...start, ...taps] as const)))(
-    "waits on %s for its six pictures after %s is tapped %s, then starts one board with them",
-    async (_, start, name, stillThere, __, tap) => {
+    "starts at once on %s after %s is tapped %s, one board, its six cards named over their pictures' shimmer, then fading them in",
+    async (_, start, __, control, featured, ___, tap) => {
       const pictures = manualPictures();
-      const { user } = await openOn(start, pictures);
+      const { user } = await openOn(start, pictures, featured);
 
-      await tap(user, button(name));
+      await tap(user, control());
 
+      // A picture loaded before shows at once, and only the rest shimmer.
+      const cards = within(tray()).getAllByRole("button");
+      const urls = cards.map((card) => fakeBodyPicture(SHIPPED_SORTABLES.find(({ name }) => name.en === card.getAttribute("aria-label"))?.id ?? ""));
       const asked = pictures.loading();
-      expect(asked).toHaveLength(6);
-      expect(pictures.timers()).toEqual([1000]);
-      act(() => asked.slice(0, 5).forEach(pictures.finish));
-      expect([stillThere(), onBoard()]).toEqual([true, false]);
-
-      act(() => pictures.finish(asked[5] ?? ""));
-
-      expect(onBoard()).toBe(true);
-      expect(picturesShown()).toEqual(asked);
-      expect([pictures.loading(), pictures.timers()]).toEqual([[], []]);
+      const loading = urls.map((url) => asked.includes(url));
+      expect([onBoard(), cards.map((card) => card.getAttribute("aria-pressed")), looksShown()]).toEqual([true, Array<string>(6).fill("false"), loading.map((still) => (still ? "loading" : "shown"))]);
+      expect(cards.map((card) => words(card))).toEqual(cards.map((card) => card.getAttribute("aria-label")?.toUpperCase()));
+      act(() => asked.forEach(pictures.finish));
+      expect([looksShown(), picturesShown()]).toEqual([loading.map((still) => (still ? "appearing" : "shown")), urls]);
     }
   );
 
-  it.each(STARTS)("starts on %s after a second when its pictures are slow, and not again when they arrive", async (_, start, name) => {
-    const pictures = manualPictures();
-    const { user } = await openOn(start, pictures);
-    await user.click(button(name));
-    const asked = pictures.loading();
-
-    act(() => pictures.fire(1000));
-
-    expect(onBoard()).toBe(true);
-    expect(picturesShown()).toEqual(asked);
-    const first = document.body.innerHTML;
-    act(() => asked.forEach(pictures.finish));
-    expect(document.body.innerHTML).toBe(first);
-  });
-
-  it("is not shown when the child goes home while its pictures load, and SORT starts another at once", async () => {
-    const pictures = manualPictures();
-    const { user } = await openOn("result", pictures);
-    await user.click(button("PLAY AGAIN"));
-    const left = pictures.loading();
-    await user.click(button("HOME"));
-
-    await user.click(button("SORT"));
-
-    const asked = pictures.loading().slice(left.length);
-    expect(asked).toHaveLength(6);
-    act(() => asked.forEach(pictures.finish));
-    expect(picturesShown()).toEqual(asked);
-    const shown = document.body.innerHTML;
-    act(() => {
-      left.forEach(pictures.finish);
-      pictures.fire(1000);
-    });
-    expect(document.body.innerHTML).toBe(shown);
-  });
-
-  it.each(ELSEWHERE.flatMap(([name, there]) => ENDS.map(([end, ending]) => [name, end, there, ending] as const)))(
-    "is not shown over %s, tapped while its pictures load, when %s, and SORT starts another later",
-    async (name, _, there, ending) => {
-      const pictures = manualPictures();
-      const { user } = await openOn("home", pictures);
-      await user.click(button("SORT"));
-      const asked = pictures.loading();
-      await user.click(button(name));
-
-      act(() => ending(pictures, asked));
-
-      expect([there(), onBoard()]).toEqual([true, false]);
-      await user.click(button("HOME"));
-      await user.click(button("SORT"));
-      act(() => pictures.loading().forEach(pictures.finish));
-      expect(onBoard()).toBe(true);
-    }
-  );
-
-  it("is not shown when the child taps COMPARE while its pictures load, and the question opens once its own pictures do", async () => {
+  it("is sorted to its result while its pictures load, each sorted card's place shimmering too", async () => {
     const pictures = manualPictures();
     const { user } = await openOn("home", pictures);
     await user.click(button("SORT"));
-    const asked = pictures.loading();
-    await user.click(button("COMPARE"));
-    const question = pictures.loading().slice(asked.length);
-    expect([question.length, question.filter((url) => asked.includes(url))]).toEqual([2, []]);
 
-    act(() => asked.forEach(pictures.finish));
+    await sortByTrying(user);
 
-    expect([onHomePage(), onBoard()]).toEqual([true, false]);
-    act(() => question.forEach(pictures.finish));
-    expect([screen.getByRole("heading").textContent, onBoard()]).toEqual([expect.stringMatching(/^WHO IS (HEAVIER|TALLER)\?$/), false]);
+    expect([...document.querySelectorAll<HTMLElement>(".sorted-picture")].map((picture) => picture.dataset.picture)).toEqual(Array<string>(6).fill("loading"));
+    await user.click(button("SEE RESULT"));
+    expect(onResult()).toBe(true);
   });
 
-  it("is not shown on the home page when the child goes home while its pictures load", async () => {
+  it("shows each card's failure look once its pictures are still loading after 8 seconds, named, and sorted all the same, each sorted card shimmering for 8 seconds of its own", async () => {
     const pictures = manualPictures();
-    const { user } = await openOn("result", pictures);
-    await user.click(button("PLAY AGAIN"));
-    await user.click(button("HOME"));
+    const { user } = await openOn("home", pictures);
+    await user.click(button("SORT"));
 
-    act(() => pictures.loading().forEach(pictures.finish));
+    act(() => pictures.fire(PICTURE_LIMIT));
 
-    expect([onHomePage(), onBoard()]).toEqual([true, false]);
+    expect(looksShown()).toEqual(Array<string>(6).fill("failed"));
+    const cards = within(tray()).getAllByRole("button");
+    expect(cards.map((card) => words(card))).toEqual(cards.map((card) => card.getAttribute("aria-label")?.toUpperCase()));
+    await sortByTrying(user);
+    // Each sorted card is a place of its own, with 8 seconds of its own.
+    const sortedLooks = () => [...document.querySelectorAll<HTMLElement>(".sorted-picture")].map((picture) => picture.dataset.picture);
+    expect(sortedLooks()).toEqual(Array<string>(6).fill("loading"));
+    act(() => pictures.fire(PICTURE_LIMIT));
+    expect(sortedLooks()).toEqual(Array<string>(6).fill("failed"));
+    await user.click(button("SEE RESULT"));
+    expect(onResult()).toBe(true);
   });
 });
 
@@ -339,5 +306,270 @@ describe("rounds", () => {
     await user.click(button("SORT"));
 
     expect(basketsShown()).toEqual(last);
+  });
+});
+
+const LEVEL_CARDS = { hatchling: 6, explorer: 8, paleontologist: 10 } as const;
+const switchButton = (level: AgeLevel) => within(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).getByRole("button", { name: TEXTS.en.ageLevels[level].name });
+const shownBest = () => screen.queryByLabelText("BEST SCORE")?.querySelector(".best-score-value")?.textContent;
+const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
+const EMPTY_SORTING_ENTRY = { bestScore: null, explorerBest: null, paleontologistBest: null, roundsPlayed: 0 };
+const recordAt = (level: AgeLevel, entry: unknown = EMPTY_SORTING_ENTRY) => memoryStorage({
+  [AGE_LEVEL_KEY]: JSON.stringify({ level, revision: "parent-pick" }),
+  [PROGRESS_KEY]: sortingRecord(entry)
+});
+const openStored = (storage: MemoryStorage) => openApp({ storage, ageLevelStore: localAgeLevel(() => storage), random: () => 0, featured: "sort" });
+
+// Sorts the screen's actual cards, using the shipped facts and the named
+// baskets, with exactly `right` first drops correct.
+async function finishWith(user: UserEvent, right: number) {
+  const baskets = [...document.querySelectorAll<HTMLElement>(".basket")];
+  const cards = within(tray()).getAllByRole("button");
+  for (const [at, card] of cards.entries()) {
+    const dinosaur = SHIPPED_SORTABLES.find(({ name }) => name.en === card.getAttribute("aria-label"));
+    if (!dinosaur) throw new Error("No shipped dinosaur for the shown card");
+    const facts = {
+      "TWO LEGS": dinosaur.legs === 2, "FOUR LEGS": dinosaur.legs === 4, "TWO OR FOUR": dinosaur.legs === "either",
+      "PLANTS": dinosaur.diet === "plants", "MEAT": dinosaur.diet === "meat", "BOTH": dinosaur.diet === "both",
+      "BIG": dinosaur.size === "big", "SMALL": dinosaur.size === "small",
+      "HORNS": dinosaur.horns === true, "NO HORNS": dinosaur.horns === false,
+      "FEATHERS": dinosaur.feathers === true, "NO FEATHERS": dinosaur.feathers === false, "NOT KNOWN YET": dinosaur.feathers === "unknown"
+    };
+    const correct = baskets.find((basket) => facts[basket.getAttribute("aria-label") as keyof typeof facts]);
+    const wrong = baskets.find((basket) => basket !== correct);
+    if (!correct || !wrong) throw new Error("No correct and wrong basket for the card");
+    if (at >= right) {
+      await user.click(card);
+      await user.click(wrong);
+    }
+    await user.click(card);
+    await user.click(correct);
+  }
+  await user.click(button("SEE RESULT"));
+}
+
+describe("the sorting levels across the app", () => {
+  it("compares a finished Explorer board against progress saved by another tab after mount", async () => {
+    let saved: SortingSaved = { progress: { best: { hatchling: null, explorer: null, paleontologist: null }, roundsPlayed: 0 }, levelChoice: undefined };
+    const { user } = openApp({
+      ageLevelStore: { load: () => ({ level: "explorer", revision: "parent-pick" }), save: () => {} },
+      sortingProgress: { load: () => saved, save: (next) => { saved = next; } }
+    });
+    await user.click(gameDoor("SORT"));
+    saved = { progress: { best: { hatchling: 6, explorer: 8, paleontologist: 9 }, roundsPlayed: 4 }, levelChoice: { level: "hatchling", revision: "parent-pick" } };
+
+    await finishWith(user, 5);
+
+    expect(saved).toEqual({ progress: { best: { hatchling: 6, explorer: 8, paleontologist: 9 }, roundsPlayed: 5 }, levelChoice: undefined });
+    expect(shownBest()).toBe("8");
+    expect(celebrations()).toEqual([]);
+    expect(switchButton("explorer").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("saves this tab's level choice with newer progress saved by another tab", async () => {
+    let saved: SortingSaved = { progress: { best: { hatchling: null, explorer: null, paleontologist: null }, roundsPlayed: 0 }, levelChoice: undefined };
+    const { user } = openApp({ sortingProgress: { load: () => saved, save: (next) => { saved = next; } } });
+    await user.click(gameDoor("SORT"));
+    await finishWith(user, 5);
+    saved = { progress: { best: { hatchling: 3, explorer: 8, paleontologist: 9 }, roundsPlayed: 4 }, levelChoice: { level: "explorer", revision: null } };
+
+    await user.click(switchButton("paleontologist"));
+
+    expect(saved).toEqual({ progress: { best: { hatchling: 5, explorer: 8, paleontologist: 9 }, roundsPlayed: 4 }, levelChoice: { level: "paleontologist", revision: null } });
+    expect(switchButton("paleontologist").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("keeps this tab's best and count through another round when saves fail", async () => {
+    const saved: SortingSaved = { progress: { best: { hatchling: null, explorer: null, paleontologist: null }, roundsPlayed: 0 }, levelChoice: undefined };
+    const save = vi.fn();
+    const { user } = openApp({ sortingProgress: { load: () => saved, save } });
+    await user.click(gameDoor("SORT"));
+    await finishWith(user, 5);
+    await user.click(button("PLAY AGAIN"));
+
+    await finishWith(user, 3);
+
+    expect(shownBest()).toBe("5");
+    expect(celebrations()).toEqual([]);
+    expect(save.mock.calls.map(([next]) => next)).toEqual([
+      { progress: { best: { hatchling: 5, explorer: null, paleontologist: null }, roundsPlayed: 1 }, levelChoice: undefined },
+      { progress: { best: { hatchling: 5, explorer: null, paleontologist: null }, roundsPlayed: 2 }, levelChoice: undefined }
+    ]);
+    expect(saved.progress).toEqual({ best: { hatchling: null, explorer: null, paleontologist: null }, roundsPlayed: 0 });
+  });
+
+  it("neither compares nor saves over progress that becomes unreadable after mount", async () => {
+    let saved: SortingSaved | undefined = { progress: { best: { hatchling: 6, explorer: null, paleontologist: null }, roundsPlayed: 4 }, levelChoice: undefined };
+    const save = vi.fn();
+    const { user } = openApp({ sortingProgress: { load: () => saved, save } });
+    await user.click(gameDoor("SORT"));
+    saved = undefined;
+
+    await finishWith(user, 5);
+    await user.click(switchButton("explorer"));
+
+    expect([shownBest(), celebrations()]).toEqual([undefined, []]);
+    expect(save).not.toHaveBeenCalled();
+    expect(switchButton("explorer").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("does not save a round when progress becomes unreadable between scoring and saving", async () => {
+    const saved: SortingSaved = { progress: { best: { hatchling: 6, explorer: null, paleontologist: null }, roundsPlayed: 4 }, levelChoice: undefined };
+    const load = vi.fn<SortingProgressStore["load"]>()
+      .mockReturnValueOnce(saved)
+      .mockReturnValueOnce(saved)
+      .mockReturnValue(undefined);
+    const save = vi.fn();
+    const { user } = openApp({ sortingProgress: { load, save } });
+    await user.click(gameDoor("SORT"));
+
+    await finishWith(user, 5);
+
+    expect(shownBest()).toBe("6");
+    expect(celebrations()).toEqual([]);
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it.each(AGE_LEVELS.flatMap((level) => (["tile", "featured"] as const).map((entry) => [level, entry] as const)))(
+    "starts %s from the %s at the age level and marks it on the result switch",
+    async (level, entry) => {
+      const { user } = openStored(recordAt(level));
+      await user.click(entry === "tile" ? gameDoor("SORT") : featuredCard());
+      expect(within(tray()).getAllByRole("button")).toHaveLength(LEVEL_CARDS[level]);
+      expect(document.querySelectorAll(".step")).toHaveLength(LEVEL_CARDS[level]);
+      await finishShownBoard(user);
+      expect(switchButton(level).getAttribute("aria-pressed")).toBe("true");
+    }
+  );
+
+  it.each([
+    ["hatchling", 6, 6, "NEW BEST SCORE", { bestScore: 6, explorerBest: 6, paleontologistBest: null }],
+    ["explorer", 8, 5, undefined, { bestScore: 5, explorerBest: 6, paleontologistBest: null }],
+    ["paleontologist", 10, 7, "FIRST BEST SCORE", { bestScore: 5, explorerBest: 6, paleontologistBest: 7 }]
+  ] as const)("scores %s's %i cards, celebrates its own best, and keeps other levels and games", async (level, total, right, celebration, bests) => {
+    const entry = { bestScore: 5, explorerBest: 6, paleontologistBest: null, roundsPlayed: 3 };
+    const storage = recordAt(level, entry);
+    storage.items.set(PROGRESS_KEY, sortingRecord(entry, { "compare-dinosaurs": { bestScore: 9, roundsPlayed: 2 } }));
+    const { user } = openStored(storage);
+    await user.click(gameDoor("SORT"));
+    await finishWith(user, right);
+    expect(screen.getByLabelText("SCORE").textContent).toBe(`${right}/${total}`);
+    expect([document.querySelectorAll(".result-stars .star").length, document.querySelectorAll(".result-stars .star-won").length]).toEqual([total, right]);
+    expect(celebrations()).toEqual(celebration ? [celebration] : []);
+    expect(shownBest()).toBe(String(level === "hatchling" ? bests.bestScore : level === "explorer" ? bests.explorerBest : bests.paleontologistBest));
+    expect(storedRecord(storage)?.games).toEqual({ "sort-dinosaurs": { ...bests, roundsPlayed: 4 }, "compare-dinosaurs": { bestScore: 9, roundsPlayed: 2 } });
+  });
+
+  it.each(["hatchling", "paleontologist"] as const)("keeps the finished result while choosing %s, then uses that choice on PLAY AGAIN, home and reopen", async (chosen) => {
+    const storage = recordAt("explorer", { ...EMPTY_SORTING_ENTRY, explorerBest: 7 });
+    const app = openStored(storage);
+    await app.user.click(gameDoor("SORT"));
+    await finishWith(app.user, 5);
+    const result = screen.getByRole("main");
+    await app.user.click(switchButton(chosen));
+    expect(screen.getByRole("main")).toBe(result);
+    expect(screen.getByLabelText("SCORE").textContent).toBe("5/8");
+    expect(shownBest()).toBe("7");
+    expect(onBoard()).toBe(false);
+    expect(storedRecord(storage)?.games["sort-dinosaurs"]).toEqual({ ...EMPTY_SORTING_ENTRY, explorerBest: 7, roundsPlayed: 1, levelChoice: { level: chosen, revision: "parent-pick" } });
+    await app.user.click(button("PLAY AGAIN"));
+    expect(within(tray()).getAllByRole("button")).toHaveLength(LEVEL_CARDS[chosen]);
+    await app.user.click(button("HOME"));
+    await app.user.click(gameDoor("SORT"));
+    expect(within(tray()).getAllByRole("button")).toHaveLength(LEVEL_CARDS[chosen]);
+    app.unmount();
+    const reopened = openStored(storage);
+    await reopened.user.click(featuredCard());
+    expect(within(tray()).getAllByRole("button")).toHaveLength(LEVEL_CARDS[chosen]);
+  });
+
+  it.each([undefined, "hatchling"] as const)("holds an unsavable choice for the visit over a saved choice of %s, then reloads the stored level", async (saved) => {
+    const entry = { ...EMPTY_SORTING_ENTRY, ...(saved && { levelChoice: { level: saved, revision: "parent-pick" } }) };
+    const original = recordAt("explorer", entry);
+    const storage = memoryStorage(Object.fromEntries(original.items), { save: false });
+    const before = storage.items.get(PROGRESS_KEY);
+    const app = openStored(storage);
+    await app.user.click(gameDoor("SORT"));
+    await finishShownBoard(app.user);
+    await app.user.click(switchButton("paleontologist"));
+    await app.user.click(button("HOME"));
+    await app.user.click(gameDoor("SORT"));
+    expect(within(tray()).getAllByRole("button")).toHaveLength(10);
+    expect(storage.items.get(PROGRESS_KEY)).toBe(before);
+    app.unmount();
+    const reopened = openStored(storage);
+    await reopened.user.click(gameDoor("SORT"));
+    expect(within(tray()).getAllByRole("button")).toHaveLength(saved ? 6 : 8);
+  });
+
+  it("holds a choice even when progress cannot be read, without comparing or overwriting it", async () => {
+    const storage = memoryStorage({}, { read: false });
+    const { user } = openStored(storage);
+    await user.click(gameDoor("SORT"));
+    await finishWith(user, 5);
+    await user.click(switchButton("paleontologist"));
+    await user.click(button("PLAY AGAIN"));
+    expect(within(tray()).getAllByRole("button")).toHaveLength(10);
+    await finishWith(user, 7);
+    expect([shownBest(), celebrations(), storage.items.size]).toEqual([undefined, [], 0]);
+  });
+
+  it("drops the child's choice when a parent changes the age level, including a change back", async () => {
+    const storage = recordAt("explorer", { ...EMPTY_SORTING_ENTRY, levelChoice: { level: "hatchling", revision: "parent-pick" } });
+    const { user } = openStored(storage);
+    await user.click(gameDoor("SORT"));
+    expect(within(tray()).getAllByRole("button")).toHaveLength(6);
+    await user.click(button("HOME"));
+    await chooseFrom(user, TEXTS.en.ageLevelMenu, `${TEXTS.en.ageLevels.paleontologist.name} ${TEXTS.en.ageLevels.paleontologist.age}`);
+    await user.click(gameDoor("SORT"));
+    expect(within(tray()).getAllByRole("button")).toHaveLength(10);
+    await user.click(button("HOME"));
+    await chooseFrom(user, TEXTS.en.ageLevelMenu, `${TEXTS.en.ageLevels.explorer.name} ${TEXTS.en.ageLevels.explorer.age}`);
+    await user.click(featuredCard());
+    expect(within(tray()).getAllByRole("button")).toHaveLength(8);
+  });
+
+  it.each(AGE_LEVELS)("shows %s's best on the SORT tile and on the large card featuring SORT when it is the setting or the child's choice", async (level) => {
+    const bests = { bestScore: 5, explorerBest: 7, paleontologistBest: 9, roundsPlayed: 3 };
+    for (const byChoice of [false, true]) {
+      const best = String({ hatchling: 5, explorer: 7, paleontologist: 9 }[level]);
+      const shown = (["sort", "compare"] as const).map((featured) => {
+        const storage = recordAt(byChoice ? "explorer" : level, { ...bests, ...(byChoice && { levelChoice: { level, revision: "parent-pick" } }) });
+        const { unmount } = openApp({ storage, ageLevelStore: localAgeLevel(() => storage), random: () => 0, featured });
+        const badge = gameDoor("SORT").querySelector(".sort-tile-best, .featured-card-badge")?.textContent;
+        unmount();
+        return badge;
+      });
+      expect(shown).toEqual([best, best]);
+    }
+  });
+
+  it("counts finished rounds across levels while retaining all three bests", async () => {
+    const storage = recordAt("hatchling");
+    const { user } = openStored(storage);
+    await user.click(gameDoor("SORT"));
+    for (const [at, level] of AGE_LEVELS.entries()) {
+      if (at > 0) {
+        await user.click(switchButton(level));
+        await user.click(button("PLAY AGAIN"));
+      }
+      await finishWith(user, at + 1);
+      expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
+      expect(localSortingProgress(() => storage).load()?.progress.roundsPlayed).toBe(at + 1);
+    }
+    expect(localSortingProgress(() => storage).load()).toEqual({
+      progress: { best: { hatchling: 1, explorer: 2, paleontologist: 3 }, roundsPlayed: 3 },
+      levelChoice: { level: "paleontologist", revision: "parent-pick" }
+    });
+  });
+
+  it("reads a pre-level best as Hatchling's, retains its rounds, and starts at the age level without a choice", async () => {
+    const storage = recordAt("hatchling", { bestScore: 5, roundsPlayed: 3 });
+    const { user } = openStored(storage);
+    await user.click(gameDoor("SORT"));
+    await finishWith(user, 5);
+    expect(celebrations()).toEqual([]);
+    expect(shownBest()).toBe("5");
+    expect(storedRecord(storage)?.games["sort-dinosaurs"]).toEqual({ ...EMPTY_SORTING_ENTRY, bestScore: 5, roundsPlayed: 4 });
   });
 });

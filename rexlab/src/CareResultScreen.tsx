@@ -1,7 +1,9 @@
 import { Footprints, Heart, HeartHandshake, House } from "lucide-react";
+import { Button } from "./Button.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture } from "./Picture.tsx";
 import { BestScore, CelebrationChip, motion, ScoreCount, type Celebration } from "./ResultParts.tsx";
 
 export type CareCelebration = Celebration;
@@ -27,43 +29,44 @@ export type CareResultScreenProps = {
 
 export function CareResultScreen({ language, visitor, score, total, best, beaten, celebration, newFriend, onNewVisitor, onFriends, onHome }: CareResultScreenProps) {
   const text = TEXTS[language];
+  // The visitor, each reward and the actions are the parts a turn glides.
   return (
     <main className="result care-result">
       {celebration && <Festivity />}
       <div className="stratum result-stratum" aria-hidden="true" />
-      <img className="result-hero care-result-hero" src={visitor.picture} alt="" draggable={false} />
+      <Picture className="result-hero care-result-hero" part="result-hero" src={visitor.picture} alt="" width={800} height={600} />
       <div className="result-content">
-        {celebration && <CelebrationChip language={language} celebration={celebration} />}
-        <ScoreCount language={language} score={score} total={total} />
+        {celebration && <CelebrationChip language={language} celebration={celebration} part="result-celebration" />}
+        <ScoreCount language={language} score={score} total={total} part="result-score" />
         {/* A child who cannot read the numbers yet counts the hearts. */}
-        <p className="result-hearts" role="img" aria-label={text.heartsOf(score, total)}>
+        <p className="result-hearts" data-turn-part="result-hearts" role="img" aria-label={text.heartsOf(score, total)}>
           {Array.from({ length: total }, (_, index) => (
             <span key={index} className={index < score ? "result-heart result-heart-won" : "result-heart"} style={motion({ "--heart": index })} aria-hidden="true">
               <Heart size={52} fill="currentColor" />
             </span>
           ))}
         </p>
-        <h1 className="result-title">{newFriend ? text.newFriend : text.wellDone}</h1>
-        <div className="care-result-chips">
+        <h1 className="result-title" data-turn-part="result-title">{newFriend ? text.newFriend : text.wellDone}</h1>
+        <div className="care-result-chips" data-turn-part="care-result-chips">
           <p className="friend-chip" aria-label={text.friend}>
             <Heart size={22} fill="currentColor" aria-hidden="true" />
             {visitor.name.toLocaleUpperCase(language)}
           </p>
-          {best !== undefined && <BestScore language={language} best={best} beaten={beaten} total={total} />}
+          {best !== undefined && <BestScore language={language} best={best} beaten={beaten} total={total} part="result-best" />}
         </div>
-        <nav className="result-actions">
-          <button type="button" className="play-again-button" onClick={onNewVisitor}>
+        <nav className="result-actions" data-turn-part="result-actions">
+          <Button className="play-again-button" onClick={onNewVisitor}>
             <Footprints size={28} aria-hidden="true" />
             {text.newVisitor}
-          </button>
-          <button type="button" className="home-button" onClick={onFriends}>
+          </Button>
+          <Button className="home-button" onClick={onFriends}>
             <HeartHandshake size={28} aria-hidden="true" />
             {text.friends}
-          </button>
-          <button type="button" className="home-button" onClick={onHome}>
+          </Button>
+          <Button className="home-button" onClick={onHome}>
             <House size={28} aria-hidden="true" />
             {text.home}
-          </button>
+          </Button>
         </nav>
       </div>
     </main>

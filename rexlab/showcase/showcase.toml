@@ -1,0 +1,34 @@
+repo = "igor1309/rexlab"
+description = "A dinosaur learning game for children, built with React and TypeScript."
+homepage = "https://rexlab.enoa.ai"
+topics = ["react", "typescript", "vite", "kids-game", "ai-assisted"]
+check = "sh scripts/test.sh"
+
+include = [
+  "src/**",
+  "tests/**",
+  "docs/features/*.feature",
+  "index.html",
+  "package.json",
+  "package-lock.json",
+  "tsconfig.json",
+  "vite.config.ts",
+  ".gitignore",
+  "scripts/test.sh",
+  "scripts/cut-skeleton.py",
+  "scripts/dig-cells.ts",
+  "scripts/dig-preview.ts",
+  "scripts/dig-tile.ts",
+  "scripts/digGrid.ts",
+  "scripts/make-placeholders.sh",
+  "scripts/recut-skeletons.ts",
+  "scripts/skeletonBones.ts",
+  "art/skeleton-cuts.json",
+  "prototypes/careHatch.ts",
+  "prototypes/careSounds.ts",
+  "prototypes/careHatch.css",
+  "prototypes/care-hatch.html",
+]
+exclude = [
+  "tests/catalogueSources.test.ts",
+]

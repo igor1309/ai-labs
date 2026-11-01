@@ -45,11 +45,11 @@ Feature: A call is admitted before it starts
 
   Scenario Outline: An admitted call's worktree is told, read under its hold
     Given the worktree's HEAD is "c1" and its content "t1" until the
-      call ends, then "t2"
+      call ends, then HEAD "c2" and the content "t2"
     And an admitted call, whose turn <ends>
     When the call ends
-    Then the port is told HEAD "c1" and the content "t2", read before
-      the hold is released
+    Then the port is told HEAD "c1", the end HEAD "c2" and the content
+      "t2", the last two read before the hold is released
 
     Examples:
       | ends         |
@@ -64,4 +64,18 @@ Feature: A call is admitted before it starts
   Scenario: A fact that cannot be read is told empty
     Given the worktree's HEAD cannot be read, and the call pins nothing
     When the call is made through admit
-    Then the call is made, and the port is told HEAD empty
+    Then the call is made, and the port is told HEAD and the end HEAD
+      empty
+
+  Scenario Outline: A pinned call's patch is told, asked under its hold
+    Given the worktree's HEAD is "c1", its content "t2" at the call's
+      end, and its changes from "c1" to "t2" <changes>
+    And an admitted call that <pins>
+    When the call ends
+    Then the port is told <told>, asked before the hold is released
+
+    Examples:
+      | pins                         | changes   | told                                          |
+      | pins the input "rev" of "c1" | "d1"      | the patch "d1"                                |
+      | pins the input "rev" of "c1" | not given | no patch, and why: the changes' error         |
+      | pins nothing                 | "d1"      | no patch, and no error, its changes not asked |

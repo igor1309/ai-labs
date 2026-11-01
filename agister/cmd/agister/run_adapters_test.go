@@ -50,7 +50,7 @@ func TestARunAsksGitForTheRootOnce(t *testing.T) {
 	t.Parallel()
 	roots := &countedRoots{asked: map[string]int{}}
 	clock := clocktest.NewClock(runStart)
-	machine := host{ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch,
+	machine := host{probe: unexpectedProbe(t), ctx: context.Background(), environ: environ, clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch,
 		random: randomSpy{0x55, 0xfd, 0x36}}
 	wrappers := newRuntimesSpy(t)
 	wrappers.bash.answer = echoes
@@ -97,8 +97,8 @@ func (s *turnSpy) Call(_ context.Context, step call.Step, report func(call.Repor
 }
 
 // discard is a report that keeps nothing, for a call whose test is not
-// about its tool calls.
-func discard(workflow.Tool) {}
+// about what it reports.
+func discard(workflow.Report) {}
 
 // A step's call is given its process's environment and inputs, resolved
 // over the params its bindings give, the inputs in the order its process
@@ -122,12 +122,12 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 	planned.declared.Inputs = append(planned.declared.Inputs, inputs.Input{Name: "a", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "what"}}})
 	unplugged := sayCall("x")
 	unplugged.declared.Inputs[0].Source = "git.revision"
-	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clock, map[string]plannedCall{"a": planned, "b": unplugged}, &callsSpy{})
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clock, map[string]plannedCall{"a": planned, "b": unplugged}, &callsSpy{}, noDailyBudget)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, discard)
+	got := steps.Call(context.Background(), "a", "a", map[string]string{"what": "hi"}, "", discard)
 	want := workflow.Result{Status: workflow.Completed, Output: map[string]any{"exit_code": 0},
 		Timing: workflow.Timing{Started: runStart, Ended: runStart.Add(time.Second), Duration: time.Second}, Cost: &cost, Warnings: []string{"w"}}
 	if !reflect.DeepEqual(got, want) {
@@ -140,7 +140,7 @@ func TestAStepsCallResolvesItsInputsBeforeItStarts(t *testing.T) {
 		t.Errorf("called %+v, want %+v", spy.steps, wantStep)
 	}
 
-	got = steps.Call(context.Background(), "b", map[string]string{"what": "hi"}, discard)
+	got = steps.Call(context.Background(), "b", "b", map[string]string{"what": "hi"}, "", discard)
 	want = workflow.Result{Status: workflow.Failed, Class: workflow.Refused, Timing: workflow.Timing{Started: runStart, Ended: runStart},
 		Reason: `input "what": no source "git.revision" is plugged in`, Warnings: []string{"w"}}
 	if !reflect.DeepEqual(got, want) {
@@ -162,11 +162,11 @@ func TestAStepsCallGivesItsUsageSessionAndReason(t *testing.T) {
 	count := func(n int64) *int64 { return &n }
 	spy := &turnSpy{result: call.Result{Status: call.Lost, Class: call.NoResult, Session: "s1", Reason: "exited 0",
 		Usage: &call.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}}}
-	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{})
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{}, noDailyBudget)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, discard)
+	got := steps.Call(context.Background(), "a", "a", map[string]string{"what": "hi"}, "", discard)
 	want := workflow.Result{Status: "lost", Class: "no_result", Session: "s1", Reason: "exited 0",
 		Usage: workflow.Usage{Input: count(1), Output: count(2), CacheRead: count(3), CacheWrite: count(4), Reasoning: count(5)}}
 	if !reflect.DeepEqual(got, want) {
@@ -189,35 +189,56 @@ func (s *inputsSpy) Resolve(_ context.Context, declared inputs.Declared, given m
 	return s.resolved, s.err
 }
 
+// boundarySpy is a spy of a boundary's records: it keeps each workflow's
+// inputs it is told, in order.
+type boundarySpy struct {
+	told [][]givenInput
+}
+
+func (s *boundarySpy) Resolved(given []givenInput) { s.told = append(s.told, given) }
+
 // A workflow's boundary is what it declares, resolved by core/inputs over
-// the params given: its params and each input's value; core/inputs'
-// refusal refuses it.
+// the params given: its params and each input's value, each input told to
+// the records with its identity, in the order declared; core/inputs'
+// refusal refuses it, and the records are told nothing.
 func TestTheBoundaryIsResolvedByCoreInputs(t *testing.T) {
 	t.Parallel()
 	main := "main"
 	declared := inputs.Declared{
 		Params: []inputs.Param{{Name: "base", Default: &main}, {Name: "goal"}},
-		Inputs: []inputs.Input{{Name: "g", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "goal"}}}},
+		Inputs: []inputs.Input{
+			{Name: "g", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "goal"}}},
+			{Name: "b", Source: "param", Arguments: map[string]inputs.Value{"name": {Text: "base"}}},
+		},
 	}
 	spy := &inputsSpy{resolved: inputs.Resolved{
 		Params: map[string]string{"base": "main", "goal": "x"},
-		Inputs: map[string]inputs.Fixed{"g": {Value: "x", Identity: "digest"}},
+		Inputs: map[string]inputs.Fixed{"g": {Value: "x", Identity: "digest"}, "b": {Value: "main", Identity: "c0"}},
 	}}
-	got, err := boundary{inputs: spy, declared: declared}.Resolve(context.Background(), map[string]string{"goal": "x"})
+	records := &boundarySpy{}
+	got, err := boundary{inputs: spy, declared: declared, records: records}.Resolve(context.Background(), map[string]string{"goal": "x"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := workflow.Boundary{Params: map[string]string{"base": "main", "goal": "x"}, Inputs: map[string]string{"g": "x"}}
+	want := workflow.Boundary{Params: map[string]string{"base": "main", "goal": "x"}, Inputs: map[string]string{"g": "x", "b": "main"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("boundary %+v, want %+v", got, want)
 	}
 	if !reflect.DeepEqual(spy.declared, []inputs.Declared{declared}) || !reflect.DeepEqual(spy.given, []map[string]string{{"goal": "x"}}) {
 		t.Errorf("resolved %+v over %v, want %+v over goal=x", spy.declared, spy.given, declared)
 	}
+	told := [][]givenInput{{{name: "g", Fixed: inputs.Fixed{Value: "x", Identity: "digest"}}, {name: "b", Fixed: inputs.Fixed{Value: "main", Identity: "c0"}}}}
+	if !reflect.DeepEqual(records.told, told) {
+		t.Errorf("told the records %+v, want %+v", records.told, told)
+	}
 
 	refusal := &inputs.Refusal{Reason: `input "g": no param "goal" is given`}
-	if _, err := (boundary{inputs: &inputsSpy{err: refusal}, declared: declared}).Resolve(context.Background(), nil); !errors.Is(err, refusal) {
+	records = &boundarySpy{}
+	if _, err := (boundary{inputs: &inputsSpy{err: refusal}, declared: declared, records: records}).Resolve(context.Background(), nil); !errors.Is(err, refusal) {
 		t.Errorf("refused with %v, want %v", err, refusal)
+	}
+	if records.told != nil {
+		t.Errorf("refused: told the records %+v, want nothing", records.told)
 	}
 }
 
@@ -561,7 +582,7 @@ func TestNewRunsFailsWithoutACollaborator(t *testing.T) {
 	full := func() (string, links, *filesystemSpy, rootSpy, wrappersSpy, []turn, host) {
 		return "/u/.agister", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, wrappersSpy{},
 			[]turn{{contract: "bash/1", inputs: call.InEnvironment, runtime: turns}},
-			host{ctx: context.Background(), clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch, random: randomSpy{0}}
+			host{probe: unexpectedProbe(t), ctx: context.Background(), clock: clock, timer: clock.Timer, signals: (&signalsSpy{}).watch, random: randomSpy{0}}
 	}
 	home, l, fs, roots, wrappers, tu, machine := full()
 	sources := (&sourcesSpy{}).sourcing()

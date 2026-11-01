@@ -6,8 +6,9 @@ import (
 )
 
 // check checks what each workflow and process reached reads, and what
-// crosses each boundary (ADR-011, rules 3 and 6). A problem is its
-// document's, at the origin of what is wrong.
+// crosses each boundary (ADR-011, rules 3 and 6); and the fallback of each
+// agent reached. A problem is its document's, at the origin of what is
+// wrong.
 func (w *walk) check() {
 	for _, reference := range w.reached {
 		switch reference.Kind {
@@ -19,7 +20,25 @@ func (w *walk) check() {
 			if process, ok := w.processes[reference.Name]; ok {
 				w.checkProcess(reference, process)
 			}
+		case KindAgent:
+			if agent, ok := w.agents[reference.Name]; ok {
+				w.checkAgent(reference, agent)
+			}
 		}
+	}
+}
+
+// checkAgent checks the agent its fallback names: another agent, which
+// resolves. It is checked once every agent is followed, for agents may
+// fall back to each other.
+func (w *walk) checkAgent(reference Reference, agent Agent) {
+	fallback := agent.Fallback
+	switch _, resolves := w.agents[fallback.Value]; {
+	case fallback.Value == "":
+	case fallback.Value == agent.Name:
+		w.fault(reference, Problem{Origin: fallback.Origin, Message: "it names another agent"})
+	case !resolves:
+		w.fault(reference, Problem{Origin: fallback.Origin, Message: "it names an agent that resolves"})
 	}
 }
 
@@ -138,7 +157,9 @@ func (s *scope) sequence(items []Item, a at) {
 }
 
 // together checks items, read from a, none after another: a parallel's,
-// which run beside one another, or a branch's arms, of which one runs.
+// which run beside one another, or a branch's arms, of which one runs. Two
+// steps of a parallel do not continue one session: two turns at once in
+// one session are not run. The later is at fault.
 func (s *scope) together(items []Item, a at, arms bool) {
 	for _, item := range items {
 		if arms {
@@ -147,21 +168,24 @@ func (s *scope) together(items []Item, a at, arms bool) {
 			a.beside = append(a.beside[:len(a.beside):len(a.beside)], item.Name)
 		}
 	}
-	for _, item := range items {
-		s.item(item, a)
+	firsts := make([]string, len(items))
+	for i, item := range items {
+		firsts[i] = s.item(item, a)
+		if arms || firsts[i] == "" {
+			continue
+		}
+		if j := slices.Index(firsts[:i], firsts[i]); j >= 0 {
+			s.problem(item.Session.Origin, "the step %q beside it continues the session of %q", items[j].Name, firsts[i])
+		}
 	}
 }
 
-func (s *scope) item(item Item, a at) {
+// item checks item, read from a, and gives the first step of the session
+// it continues, "" for none or one it cannot continue.
+func (s *scope) item(item Item, a at) string {
 	s.condition(item.If, a)
 	s.bindings(item.Inputs, a)
-	// A step continues an earlier step's session, and reads nothing else
-	// there (ADR-011, rule 3).
-	if session := item.Session; session != nil && session.Root != RootSession {
-		s.problem(session.Origin, "it reads a step's session")
-	} else if session != nil {
-		s.read(*session, a)
-	}
+	first := s.session(item, a)
 	inner := a.inside(item.Name)
 	switch {
 	case item.Process.Value != "":
@@ -193,6 +217,43 @@ func (s *scope) item(item Item, a at) {
 	}
 	// An arm's outputs read the arm itself, once it has ended.
 	s.bindings(item.Outputs, inner.with(item.Name))
+	return first
+}
+
+// session checks the session item continues, read from a, and gives the
+// first step of it, followed back through the steps each continues; ""
+// for none, or for one it cannot continue. A step continues an earlier
+// step's session, and reads nothing else there (ADR-011, rule 3); that
+// step is on its agent: a session belongs to its runtime, and one agent is
+// the plainest same runtime.
+func (s *scope) session(item Item, a at) string {
+	session := item.Session
+	switch {
+	case session == nil:
+		return ""
+	case session.Root != RootSession:
+		s.problem(session.Origin, "it reads a step's session")
+		return ""
+	case !s.step(*session, a):
+		return ""
+	}
+	if from := s.items[session.Name]; from.Agent.Value != item.Agent.Value {
+		s.problem(session.Origin, "the step %q runs on another agent, %q", session.Name, from.Agent.Value)
+		return ""
+	}
+	// A chain whose reference is at fault may loop: the bound ends it.
+	first := session.Name
+	for range len(s.items) {
+		from := s.items[first].Session
+		if from == nil || from.Root != RootSession {
+			break
+		}
+		if _, known := s.items[from.Name]; !known {
+			break
+		}
+		first = from.Name
+	}
+	return first
 }
 
 // boundary checks the inputs item binds against params, those of the
@@ -203,10 +264,38 @@ func (s *scope) boundary(item Item, kind, name string, params []Param) {
 			s.problem(binding.Origin, "the %s %q declares the param %q", kind, name, binding.Name)
 		}
 	}
+	if kind == "process" {
+		s.filePathBindings(item, name)
+	}
 	for _, param := range params {
 		bound := slices.ContainsFunc(item.Inputs, func(b Binding) bool { return b.Name == param.Name })
 		if !param.Default && !bound {
 			s.problem(item.Origin, "it binds the param %q of the %s %q, which has no default", param.Name, kind, name)
+		}
+	}
+}
+
+// filePathBindings refuses a workflow input's text where a process input's
+// file source reads its path from the process param being bound. The source
+// metadata is supplied by the composition; resolve names neither source nor
+// argument.
+func (s *scope) filePathBindings(item Item, process string) {
+	processDefinition, ok := s.walk.processes[process]
+	if !ok {
+		return
+	}
+	for _, processInput := range processDefinition.Inputs {
+		if processInput.Path == nil || processInput.Path.Root != RootParam || !processInput.File {
+			continue
+		}
+		for _, binding := range item.Inputs {
+			if binding.Name != processInput.Path.Name || binding.From == nil || binding.From.Root != RootInput {
+				continue
+			}
+			workflowInput := slices.IndexFunc(s.inputs, func(input Input) bool { return input.Name == binding.From.Name })
+			if workflowInput >= 0 && s.inputs[workflowInput].File {
+				s.problem(binding.Origin, "it gives a file's text where the process %q reads a path, at its input %q", process, processInput.Name)
+			}
 		}
 	}
 }
@@ -276,34 +365,43 @@ func (s *scope) read(reference Read, a at) {
 
 // step checks a reference to an item's outputs or session: the item has
 // ended where it is read, a session is a step's, and a field of the
-// outputs of a child workflow or of a branch is one it gives.
-func (s *scope) step(reference Read, a at) {
+// outputs of a child workflow or of a branch is one it gives. It is
+// whether the reference reads what is there.
+func (s *scope) step(reference Read, a at) bool {
 	name := reference.Name
 	item, known := s.items[name]
 	holder := s.holders[name]
+	problem := func(format string, args ...any) bool {
+		s.problem(reference.Origin, format, args...)
+		return false
+	}
 	switch {
 	case !known:
-		s.problem(reference.Origin, "its workflow has the item %q", name)
+		return problem("its workflow has the item %q", name)
 	case holder != "" && !slices.Contains(a.within, holder):
-		s.problem(reference.Origin, "the item %q is read through the item holding it", name)
+		return problem("the item %q is read through the item holding it", name)
 	case !a.ended[name] && slices.Contains(a.beside, name):
-		s.problem(reference.Origin, "the item %q runs beside it", name)
+		return problem("the item %q runs beside it", name)
 	case !a.ended[name] && slices.Contains(a.arms, name):
-		s.problem(reference.Origin, "the item %q is another arm of its branch", name)
+		return problem("the item %q is another arm of its branch", name)
 	case !a.ended[name]:
-		s.problem(reference.Origin, "the item %q has ended before it", name)
+		return problem("the item %q has ended before it", name)
 	case reference.Root == RootSession && item.Process.Value == "":
-		s.problem(reference.Origin, "the item %q is no step, and has no session", name)
+		return problem("the item %q is no step, and has no session", name)
 	case reference.Root == RootOutputs && reference.Field != "" && item.Workflow.Value != "":
 		child, ok := s.walk.workflows[item.Workflow.Value]
-		if ok && !slices.ContainsFunc(child.Outputs, func(b Binding) bool { return b.Name == reference.Field }) {
-			s.problem(reference.Origin, "the workflow %q gives the output %q", item.Workflow.Value, reference.Field)
+		if ok && len(child.Outputs) == 1 && child.Outputs[0].Name == "output" && reference.Field == "output" {
+			return problem("the workflow %q gives its output %q whole, read by its own fields", item.Workflow.Value, reference.Field)
+		}
+		if ok && !(len(child.Outputs) == 1 && child.Outputs[0].Name == "output") && !slices.ContainsFunc(child.Outputs, func(b Binding) bool { return b.Name == reference.Field }) {
+			return problem("the workflow %q gives the output %q", item.Workflow.Value, reference.Field)
 		}
 	case reference.Root == RootOutputs && reference.Field != "" && item.Branch != nil:
 		if !slices.Contains(branchOutputs(item.Branch), reference.Field) {
-			s.problem(reference.Origin, "the branch %q gives the output %q", name, reference.Field)
+			return problem("the branch %q gives the output %q", name, reference.Field)
 		}
 	}
+	return true
 }
 
 func (s *scope) problem(origin Origin, format string, args ...any) {

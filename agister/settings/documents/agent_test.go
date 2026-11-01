@@ -31,6 +31,7 @@ model = "opus"
 model_family = "anthropic"
 effort = "high"
 command = "/usr/local/bin/claude"
+fallback = "claude-opus"
 `)}}})
 	got, problems := d.Agent("a")
 	assertProblems(t, problems, nil)
@@ -41,6 +42,7 @@ command = "/usr/local/bin/claude"
 		ModelFamily: text("anthropic", homeAgent, 0, "model_family"),
 		Effort:      text("high", homeAgent, 0, "effort"),
 		Command:     text("/usr/local/bin/claude", homeAgent, 0, "command"),
+		Fallback:    text("claude-opus", homeAgent, 0, "fallback"),
 	})
 }
 
@@ -250,6 +252,31 @@ func TestEachAgentIsTypedOnce(t *testing.T) {
 	assertAgent(t, got, documents.AgentDefinition{Name: "a", Runtime: text("codex", agentFile("/home", "a"), 0, "runtime")})
 	if _, problems := d.Agent("c"); !slices.Equal(problems, []documents.Problem{missing("runtime")}) {
 		t.Errorf("agent c's problems %q, want its runtime missing", problems)
+	}
+}
+
+// agent.feature, "An agent names its fallback, with its kind or
+// without".
+func TestAnAgentsFallbackIsGivenWithItsKindOrWithout(t *testing.T) {
+	t.Parallel()
+	runtime := text("codex", agentFile("/home", "a"), 0, "runtime")
+	for _, c := range []struct {
+		fallback string
+		want     documents.AgentDefinition
+		problems []documents.Problem
+	}{
+		{"claude-opus", documents.AgentDefinition{Name: "a", Runtime: runtime, Fallback: text("claude-opus", agentFile("/home", "a"), 0, "fallback")}, nil},
+		{"agent:claude-opus", documents.AgentDefinition{Name: "a", Runtime: runtime, Fallback: text("claude-opus", agentFile("/home", "a"), 0, "fallback")}, nil},
+		{"runtime:codex", documents.AgentDefinition{}, []documents.Problem{{Path: agentFile("/home", "a"), Place: "fallback", Message: "it names an agent"}}},
+	} {
+		t.Run(c.fallback, func(t *testing.T) {
+			t.Parallel()
+			got, problems := agentsOf(map[string]documents.Document{"a": {Sources: documents.Sources{
+				Home: source(agentFile("/home", "a"), "schema = 'agister.agent/v1alpha1'\nruntime = 'codex'\nfallback = '"+c.fallback+"'\n"),
+			}}}).Agent("a")
+			assertProblems(t, problems, c.problems)
+			assertAgent(t, got, c.want)
+		})
 	}
 }
 

@@ -1,7 +1,11 @@
 Feature: Find the pair: keeping progress
-  Stars, levels, best scores and found dinosaurs are kept on this
-  browser, best effort, and never disturb the other games or the
-  settings.
+  Stars, levels, best scores, found dinosaurs, the strong boards toward a
+  level offer and the offers turned down
+  (find-the-pair-level-offer.feature) are kept on this browser, best
+  effort, and never disturb the other games or the settings.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
@@ -12,15 +16,17 @@ Feature: Find the pair: keeping progress
     Then I still have 5 stars, level 3, a level 2 best of 6 tries and Triceratops found
 
   Scenario: Saving leaves other games and app settings alone
-    Given I have stored quiz and care progress, language and theme choices
+    Given I have stored quiz and care progress, language, theme and age level choices
     When I finish a board and reopen the app
-    Then my quiz and care progress, language and theme choices are unchanged
+    Then my quiz and care progress, language, theme and age level choices are unchanged
     And saving quiz or care progress also keeps my find-the-pair progress
 
   Scenario Outline: Unusable progress starts afresh
     Given the stored find-the-pair progress is <state>
     When I open find the pair
     Then I am on level 1 with no stars, no best scores and no found dinosaurs
+    And no strong boards toward an offer and no offer turned down
+    And the level switch shows the age level
     When I finish a board
     Then I see a first best score celebration
     And that board's star, best and found dinosaurs are saved in readable progress
@@ -32,15 +38,16 @@ Feature: Find the pair: keeping progress
       | malformed                      |
       | from an unknown schema version |
 
-  Scenario: A found dinosaur no longer in the list is ignored
+  Scenario: Opening the catalogue keeps the found as stored
     Given the stored found dinosaurs include one that is no longer in the dinosaur list
-    When I open "ALL DINOSAURS"
-    Then the found count counts only dinosaurs in the list
-    And the stored progress is not changed by opening it
+    When I open "ANCIENT REPTILES"
+    Then the stored progress is not changed by opening it
 
   Scenario: The game works when progress cannot be read
     Given the browser cannot read stored progress
-    When I finish a board in 6 tries
+    When I open find the pair
+    Then the level switch shows the age level
+    When I choose Hatchling and finish a board in 6 tries
     Then I see "6" tries and a star
     And I see no best score or best score celebration
     And its dinosaurs are found while the app remains open

@@ -1,14 +1,20 @@
-import { act, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { LANGUAGES } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { NAME_EMS } from "./nameWidths.ts";
 import { board, choices, finishLoading, openSkeletonsApp, puzzlePictures, slots, tray } from "./skeletonsApp.tsx";
-import { SHIPPED_SKELETONS, fakeBodyPicture, fakeSkeletonPicture, symbolOf } from "./support.ts";
+import { SHIPPED_SKELETONS, countedStarts, fakeBodyPicture, fakeSkeletonPicture, symbolOf, gameDoor } from "./support.ts";
+
+// The names of Hatchling's four pieces, in the tray's order.
+const HATCHLING_NAMES = { en: ["SKULL", "SPINE", "LEGS", "TAIL"], ru: ["ЧЕРЕП", "ПОЗВОНОЧНИК", "НОГИ", "ХВОСТ"] };
 
 const button = (name: string) => screen.getByRole("button", { name });
 
-const NAMES = ["TYRANNOSAURUS", "TRICERATOPS", "STEGOSAURUS"];
+const NAMES = ["TYRANNOSAURUS", "TRICERATOPS", "STEGOSAURUS", "BRACHIOSAURUS", "SPINOSAURUS"];
+
+// The look of the outline's picture, then of each bone's in the tray.
+const looks = () => [board().querySelector(".skeleton-outline img"), ...within(tray()).getAllByRole("img")].map((picture) => (picture as HTMLElement | null)?.dataset.picture);
 
 // A touch target's least side, as app.css gives it: jsdom lays nothing
 // out, so it is read from the sizes and least sizes the stylesheet sets.
@@ -19,14 +25,15 @@ const leastSide = (element: Element) => {
 };
 
 describe("the skeleton game's choice of dinosaurs", () => {
-  it("offers three dinosaurs from the start, each its own picture and name in capitals, none locked", () => {
-    openSkeletonsApp();
+  it("offers five dinosaurs from the start, each its own picture and name in capitals, none locked", () => {
+    const { pictures } = openSkeletonsApp();
+    act(() => finishLoading(pictures));
 
     expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
     expect(choices().map((choice) => choice.getAttribute("aria-label"))).toEqual(NAMES);
     expect(choices().map((choice) => choice.querySelector(".skeleton-choice-name")?.textContent)).toEqual(NAMES);
     expect(choices().map((choice) => choice.querySelector("img")?.getAttribute("src"))).toEqual(
-      ["tyrannosaurus", "triceratops", "stegosaurus"].map(fakeBodyPicture)
+      ["tyrannosaurus", "triceratops", "stegosaurus", "brachiosaurus", "spinosaurus"].map(fakeBodyPicture)
     );
     expect(choices().filter((choice) => choice.hasAttribute("disabled") || symbolOf(choice) !== undefined)).toEqual([]);
   });
@@ -61,12 +68,23 @@ describe("the skeleton game's choice of dinosaurs", () => {
     expect(names.filter((each) => !((NAME_EMS[each] ?? Infinity) <= ems))).toEqual([]);
   });
 
+  it("lays the dinosaurs in rows of three, a card a third of the row however many there are, the last row centred", () => {
+    openSkeletonsApp();
+
+    const row = getComputedStyle(choices()[0]?.parentElement ?? document.body);
+    const gap = parseFloat(row.gap.split(" ").at(-1) ?? "");
+    expect([row.flexWrap, row.justifyContent]).toEqual(["wrap", "center"]);
+    expect(choices().map((choice) => [getComputedStyle(choice).flexBasis, getComputedStyle(choice).flexGrow])).toEqual(
+      choices().map(() => [`calc(${1 / 3}*(100% - ${2 * gap}px))`, "0"])
+    );
+  });
+
   it("goes home on HOME", async () => {
     const { user } = openSkeletonsApp();
 
     await user.click(button("HOME"));
 
-    expect(button("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
   });
 
   it.each(LANGUAGES)("reads in the device's language, %s, its names in capitals", (language) => {
@@ -75,24 +93,23 @@ describe("the skeleton game's choice of dinosaurs", () => {
 
     expect(screen.getByRole("heading").textContent).toBe(text.skeletonTitle);
     expect([button(text.museum), button(text.home)].map((each) => each.textContent)).toEqual([text.museum, text.home]);
-    expect(choices(text.dinosaurs).map((choice) => choice.textContent)).toEqual(SHIPPED_SKELETONS.map(({ name }) => name[language].toLocaleUpperCase(language)));
+    expect(choices(text.creatures).map((choice) => choice.textContent)).toEqual(SHIPPED_SKELETONS.map(({ name }) => name[language].toLocaleUpperCase(language)));
   });
 });
 
 describe("choosing a dinosaur", () => {
   it.each(SHIPPED_SKELETONS.map(({ id, name }, at) => [name.en, id, NAMES[at] ?? ""] as const))(
-    "starts the %s puzzle once its outline and pieces are loaded",
+    "starts the %s puzzle at once, its outline and pieces shimmering until they have loaded",
     async (_, id, shown) => {
       const { user, pictures } = openSkeletonsApp();
 
       await user.click(button(shown));
 
-      expect(pictures.loading()).toEqual(puzzlePictures(id));
-      expect(screen.getByRole("heading").textContent).toBe("BUILD A SKELETON");
-
+      // A picture the home page showed has loaded already.
+      const loading = puzzlePictures(id).map((url) => pictures.loading().includes(url));
+      expect([screen.getByRole("heading").textContent, looks()]).toEqual([shown, loading.map((still) => (still ? "loading" : "shown"))]);
       act(() => finishLoading(pictures));
-
-      expect(screen.getByRole("heading").textContent).toBe(shown);
+      expect(looks()).toEqual(loading.map((still) => (still ? "appearing" : "shown")));
     }
   );
 
@@ -102,9 +119,9 @@ describe("choosing a dinosaur", () => {
     await user.click(button("TRICERATOPS"));
     act(() => finishLoading(pictures));
 
-    const outline = board().querySelector(".skeleton-outline");
+    const outline = board().querySelector(".skeleton-outline img");
     expect(outline?.getAttribute("src")).toBe(fakeSkeletonPicture("triceratops", "skeleton"));
-    expect(Number(getComputedStyle(outline ?? document.body).opacity)).toBeLessThan(0.5);
+    expect(Number(getComputedStyle(outline?.parentElement ?? document.body).opacity)).toBeLessThan(0.5);
     const pieces = within(tray()).getAllByRole("img");
     expect(pieces.map((piece) => [piece.getAttribute("alt"), piece.getAttribute("src")])).toEqual(
       ["SKULL", "SPINE", "LEGS", "TAIL"].map((name) => [name, fakeSkeletonPicture("triceratops", name.toLowerCase())])
@@ -131,11 +148,11 @@ describe("choosing a dinosaur", () => {
 
     const stegosaurus = SHIPPED_SKELETONS.find(({ id }) => id === "stegosaurus");
     if (!stegosaurus) throw new Error("No stegosaurus skeleton is shipped");
-    const { frame, places } = stegosaurus;
+    const { frame, cuts } = stegosaurus;
     const percent = (part: number, whole: number) => `${(part / whole) * 100}%`;
     const shown = [...board().querySelectorAll<HTMLElement>(".skeleton-slot")].map(({ style }) => [style.left, style.top, style.width, style.height]);
     expect(shown).toEqual(
-      [places.skull, places.spine, places.legs, places.tail].map(({ x, y, width, height }) => [
+      cuts.hatchling.map(({ place: { x, y, width, height } }) => [
         percent(x, frame.width),
         percent(y, frame.height),
         percent(width, frame.width),
@@ -144,41 +161,30 @@ describe("choosing a dinosaur", () => {
     );
   });
 
-  it("starts the puzzle without the pictures once the wait runs out", async () => {
-    const { user, pictures } = openSkeletonsApp();
-
-    await user.click(button("TYRANNOSAURUS"));
-    expect(pictures.timers()).toEqual([1000]);
-    act(() => pictures.fire(1000));
-
-    expect(screen.getByRole("heading").textContent).toBe("TYRANNOSAURUS");
-    expect(within(tray()).getAllByRole("img")).toHaveLength(4);
-  });
-
-  it("starts one puzzle on a quick double tap, earning no star or exhibit", async () => {
-    const { user, pictures, storage } = openSkeletonsApp();
+  it("starts one puzzle at once on a quick double tap, counted once, earning no star or exhibit", async () => {
+    const { counted, startCounter } = countedStarts();
+    const { user, storage } = openSkeletonsApp({ startCounter });
 
     await user.dblClick(button("TYRANNOSAURUS"));
-    await user.click(button("TRICERATOPS"));
 
-    expect(pictures.loading()).toEqual(puzzlePictures("tyrannosaurus"));
-    expect(pictures.timers()).toEqual([1000]);
-    act(() => finishLoading(pictures));
-    expect(screen.getByRole("heading").textContent).toBe("TYRANNOSAURUS");
+    expect([screen.getByRole("heading").textContent, counted]).toEqual(["TYRANNOSAURUS", ["skeletons"]]);
     expect(slots().map(([, state]) => state)).toEqual(["empty", "empty", "empty", "empty"]);
     expect(within(tray()).getAllByRole("img")).toHaveLength(4);
     expect([...storage.items.keys()]).toEqual([]);
   });
 
-  it("starts nothing once the child has gone home while the pictures load", async () => {
-    const { user, pictures } = openSkeletonsApp();
+  // In a browser the puzzle shows after its transition, so a second choice
+  // can land on the choice screen still shown: here both land in one act,
+  // before React renders. A key's click has no pointer's detail, so the
+  // double-tap filter lets both through to the game.
+  it("starts one puzzle, the first tapped's, counted once, for two choices landing before the puzzle shows", () => {
+    const { counted, startCounter } = countedStarts();
+    openSkeletonsApp({ startCounter });
+    const tapped = [button("TYRANNOSAURUS"), button("TRICERATOPS")];
 
-    await user.click(button("TRICERATOPS"));
-    await user.click(button("HOME"));
-    act(() => finishLoading(pictures));
+    act(() => tapped.forEach((each) => fireEvent.click(each, { detail: 0 })));
 
-    expect(button("COMPARE")).toBeDefined();
-    expect(screen.queryByRole("group", { name: "BONES" })).toBeNull();
+    expect([screen.getByRole("heading").textContent, counted]).toEqual(["TYRANNOSAURUS", ["skeletons"]]);
   });
 
   it("goes home from the puzzle on HOME", async () => {
@@ -188,7 +194,7 @@ describe("choosing a dinosaur", () => {
 
     await user.click(button("HOME"));
 
-    expect(button("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
   });
 
   it.each(LANGUAGES)("reads in %s, its title the dinosaur's name in capitals", async (language) => {
@@ -200,7 +206,7 @@ describe("choosing a dinosaur", () => {
     act(() => finishLoading(pictures));
 
     expect(screen.getByRole("heading").textContent).toBe(triceratops);
-    expect(within(tray(text.bones)).getAllByRole("img").map((piece) => piece.getAttribute("alt"))).toEqual(Object.values(text.pieces));
+    expect(within(tray(text.bones)).getAllByRole("img").map((piece) => piece.getAttribute("alt"))).toEqual(HATCHLING_NAMES[language]);
     expect(screen.getByLabelText(text.fitted).textContent).toBe("0/4");
     expect([button(text.museum), button(text.home)]).toHaveLength(2);
     expect(board(text.skeleton)).toBeDefined();

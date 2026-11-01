@@ -1,5 +1,7 @@
 Feature: Compare dinosaurs quiz: the result and the best score
   A finished round shows its score and celebrates a new best score.
+  "Best score" here is the best of the level the round played; each
+  level keeps its own (compare-dinosaurs-level-switch.feature).
   Gamification is essential: a missing celebration is a defect.
 
   Background:
@@ -16,7 +18,7 @@ Feature: Compare dinosaurs quiz: the result and the best score
     Given I am on the result screen
     When I tap "PLAY AGAIN"
     Then a new round of 10 questions starts
-    And I see the progress "1/10"
+    And I see the progress "1/10" at once, its pictures shimmering
 
   Scenario: Home returns to the home page
     Given I am on the result screen

@@ -32,8 +32,32 @@ func (s *eventsSpy) Tool(step string, tool workflow.Tool) {
 	s.told = append(s.told, step+" "+tool.Name+" "+tool.Input)
 }
 
+func (s *eventsSpy) Stale(step string, stale workflow.Stale) {
+	s.told = append(s.told, fmt.Sprintf("%s stale %s recovering %t", step, stale.What, stale.Recovering))
+}
+
+func (s *eventsSpy) Capacity(step string, capacity workflow.Capacity) {
+	s.told = append(s.told, fmt.Sprintf("%s at capacity %s retrying in %v", step, capacity.Reason, capacity.Retry))
+}
+
+func (s *eventsSpy) Fallback(step, agent string) {
+	s.told = append(s.told, step+" falls back to "+agent)
+}
+
+func (s *eventsSpy) Reused(step, call string) {
+	s.told = append(s.told, step+" reused "+call)
+}
+
 func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 	s.told = append(s.told, fmt.Sprintf("%s ended %s %s in %v", step, ended.Status, ended.Class, ended.Duration))
+}
+
+func (s *eventsSpy) ChildStarted(step, name string, _ map[string]string, _ map[string]string) {
+	s.told = append(s.told, step+" child "+name+" started")
+}
+
+func (s *eventsSpy) ChildEnded(step string, ended workflow.ChildEnd) {
+	s.told = append(s.told, fmt.Sprintf("%s child ended %s %s", step, ended.Status, ended.Class))
 }
 
 // progress.feature, "A step's start, tool calls and end, each a line".
@@ -85,8 +109,10 @@ func TestALineIsNotPrintedALongToolCallIsCutWherePrinted(t *testing.T) {
 	}
 }
 
-// A step's call gives each tool call its turn reports on to core/workflow's
-// report, in core/workflow's words, in order, and no other line.
+// A step's call reports its start, then gives each tool call its turns
+// report, each stale turn and each turn at capacity on to core/workflow's
+// report, in core/workflow's words, in order, and no other line, a tool's
+// result among them.
 func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 	t.Parallel()
 	resolver, err := inputs.New(map[string]inputs.Source{"param": inputs.ParamSource{}}, briefPaths{paths: &sourcesSpy{}})
@@ -94,21 +120,29 @@ func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 		t.Fatal(err)
 	}
 	spy := &turnSpy{result: call.Result{Status: call.Completed}, reports: []call.Report{
-		{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {}, {Tool: &call.Tool{Name: "Read", Input: "a.go"}}, {}}}
-	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{})
+		{Tool: &call.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}, {Stale: &call.StaleTurn{What: "no event for 1m", Recovering: true}},
+		{Tool: &call.Tool{Name: "Read", Input: "a.go"}}, {}, {Stale: &call.StaleTurn{What: "no event for 1m"}},
+		{Capacity: &call.CapacityTurn{Reason: "Overloaded", Retry: 30 * time.Second}}, {Capacity: &call.CapacityTurn{Reason: "Overloaded"}}}}
+	steps, err := newStepCalls(resolver, &admissionSpy{}, map[string]turnCaller{"bash/1": spy}, clocktest.NewClock(runStart), map[string]plannedCall{"a": sayCall("x")}, &callsSpy{}, noDailyBudget)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var reported []workflow.Tool
-	steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, func(tool workflow.Tool) { reported = append(reported, tool) })
-	if want := []workflow.Tool{{Name: "Bash", Input: "ls"}, {Name: "Read", Input: "a.go"}}; !reflect.DeepEqual(reported, want) {
+	var reported []workflow.Report
+	steps.Call(context.Background(), "a", "a", map[string]string{"what": "hi"}, "", func(r workflow.Report) { reported = append(reported, r) })
+	want := []workflow.Report{{Started: true},
+		{Tool: &workflow.Tool{Name: "Bash", Input: "ls"}}, {Stale: &workflow.Stale{What: "no event for 1m", Recovering: true}},
+		{Tool: &workflow.Tool{Name: "Read", Input: "a.go"}}, {Stale: &workflow.Stale{What: "no event for 1m"}},
+		{Capacity: &workflow.Capacity{Reason: "Overloaded", Retry: 30 * time.Second}}, {Capacity: &workflow.Capacity{Reason: "Overloaded"}}}
+	if !reflect.DeepEqual(reported, want) {
 		t.Errorf("reported %+v, want %+v", reported, want)
 	}
 }
 
 // Each event is printed as a line: "· ", the step's name, and what it
 // tells; a status with its class where it has one; a tool call's name, then
-// its input where it has one; a duration to the second from a second on,
+// its input where it has one; what went stale of a turn, then whether a
+// recovery turn follows; a turn at capacity, then its wait where it is made
+// again; the agent a call falls back to; a duration to the second from a second on,
 // to the millisecond below; and a text that would break the line quoted.
 func TestEachEventIsPrintedAsALine(t *testing.T) {
 	t.Parallel()
@@ -121,6 +155,14 @@ func TestEachEventIsPrintedAsALine(t *testing.T) {
 		{"a tool call", func(p *progress) { p.Tool("a", workflow.Tool{Name: "Bash", Input: `{"command":"ls"}`}) }, "· a: Bash {\"command\":\"ls\"}\n"},
 		{"a tool call with no input", func(p *progress) { p.Tool("a", workflow.Tool{Name: "Glob"}) }, "· a: Glob\n"},
 		{"an input of two lines", func(p *progress) { p.Tool("a", workflow.Tool{Name: "command", Input: "a\nb"}) }, "· a: command \"a\\nb\"\n"},
+		{"stale, recovering", func(p *progress) { p.Stale("a", workflow.Stale{What: "no event for 1m", Recovering: true}) },
+			"· a: stale: no event for 1m; recovering\n"},
+		{"stale", func(p *progress) { p.Stale("a", workflow.Stale{What: `the tool command "Bash" ran over 1m`}) },
+			"· a: stale: the tool command \"Bash\" ran over 1m\n"},
+		{"at capacity, retrying", func(p *progress) { p.Capacity("a", workflow.Capacity{Reason: "Overloaded", Retry: 30 * time.Second}) },
+			"· a: at capacity; retrying in 30s\n"},
+		{"at capacity", func(p *progress) { p.Capacity("a", workflow.Capacity{Reason: "Overloaded"}) }, "· a: at capacity\n"},
+		{"falling back", func(p *progress) { p.Fallback("a", "claude-opus") }, "· a: falling back to claude-opus\n"},
 		{"completed", func(p *progress) {
 			p.Ended("a", workflow.Ended{Status: workflow.Completed, Duration: 3*time.Minute + 2*time.Second + 400*time.Millisecond})
 		}, "· a: ended completed in 3m2s\n"},
@@ -215,4 +257,16 @@ func TestTheProgressNeedsAWriter(t *testing.T) {
 	if _, err := newProgress(nil); err == nil {
 		t.Error("progress built with no writer, want an error")
 	}
+}
+
+func (s *eventsSpy) Branch(step, arm string, conditions []workflow.ConditionRead) {
+	s.told = append(s.told, fmt.Sprintf("%s took %s %v", step, arm, conditions))
+}
+
+func (s *eventsSpy) Pass(step string, pass int, state map[string]any) {
+	s.told = append(s.told, fmt.Sprintf("%s pass %d %v", step, pass, state))
+}
+
+func (s *eventsSpy) Stopped(step, why string, passes int) {
+	s.told = append(s.told, fmt.Sprintf("%s stopped %s after %d", step, why, passes))
 }

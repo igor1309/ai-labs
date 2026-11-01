@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { finishSkeleton, knockDown, museumOf, NO_SKELETONS, openCollection, PIECES, startPuzzle, type KeptSkeletons, type Puzzle, type SkeletonProgress } from "../src/skeletons/index.ts";
+import { finishSkeleton, knockDown, museumOf, NO_SKELETONS, openCollection, startPuzzle, type Badge, type KeptSkeletons, type Puzzle, type SkeletonProgress } from "../src/skeletons/index.ts";
 import { SHIPPED_SKELETONS, scoringSpy } from "./support.ts";
 
 const ORDER = ["tyrannosaurus", "triceratops", "stegosaurus"];
@@ -8,19 +8,19 @@ const ORDER = ["tyrannosaurus", "triceratops", "stegosaurus"];
 function finished(id: string): Puzzle {
   const skeleton = SHIPPED_SKELETONS.find((each) => each.id === id);
   if (!skeleton) throw new Error(`No ${id} skeleton is shipped`);
-  return { ...startPuzzle(skeleton), fitted: [...PIECES] };
+  return { ...startPuzzle(skeleton, skeleton.cuts.hatchling), fitted: skeleton.cuts.hatchling.map(({ id }) => id) };
 }
 
 // Kept progress of these stars and best, with the stands of `rebuilding`
 // awaiting their skeletons.
-const kept = ({ earned, bestScore }: Omit<SkeletonProgress, "rebuilding">, readable = true, rebuilding: readonly string[] = []): KeptSkeletons => ({
-  progress: { earned, bestScore, rebuilding },
+const kept = ({ earned, bestScore }: Omit<SkeletonProgress, "rebuilding" | "badges">, readable = true, rebuilding: readonly string[] = []): KeptSkeletons => ({
+  progress: { earned, bestScore, rebuilding, badges: {} },
   readable
 });
 
 describe("opening the collection", () => {
   it("keeps the progress stored, its stands awaiting their skeletons among it", () => {
-    const stored = { earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: ["triceratops"] };
+    const stored = { earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: ["triceratops"], badges: {} };
 
     expect(openCollection(stored, ORDER)).toEqual({ progress: stored, readable: true });
   });
@@ -29,20 +29,20 @@ describe("opening the collection", () => {
     expect(openCollection(undefined, ORDER)).toEqual({ progress: NO_SKELETONS, readable: false });
   });
 
-  it.each<[string, Omit<SkeletonProgress, "rebuilding">, number | null]>([
+  it.each<[string, Omit<SkeletonProgress, "rebuilding" | "badges">, number | null]>([
     ["repeats a dinosaur", { earned: ["tyrannosaurus", "tyrannosaurus"], bestScore: 2 }, 1],
     ["names a dinosaur with no skeleton", { earned: ["allosaurus", "triceratops"], bestScore: 3 }, 1],
     ["names only dinosaurs with no skeleton", { earned: ["allosaurus"], bestScore: 1 }, null],
     ["has a best its stars fall short of", { earned: ORDER, bestScore: 5 }, 3]
   ])("caps a best that a save which %s would inflate at the different dinosaurs with a star", (_, stored, best) => {
-    const opened = openCollection({ ...stored, rebuilding: [] }, ORDER);
+    const opened = openCollection({ ...stored, rebuilding: [], badges: {} }, ORDER);
 
-    expect(opened.progress).toEqual({ ...stored, bestScore: best, rebuilding: [] });
+    expect(opened.progress).toEqual({ ...stored, bestScore: best, rebuilding: [], badges: {} });
     expect(museumOf(opened, SHIPPED_SKELETONS).best).toBe(best ?? undefined);
   });
 
   it("keeps a best that is no more than the stars counted", () => {
-    const stored = { earned: ["stegosaurus", "allosaurus"], bestScore: 1, rebuilding: [] };
+    const stored = { earned: ["stegosaurus", "allosaurus"], bestScore: 1, rebuilding: [], badges: {} };
 
     expect(openCollection(stored, ORDER).progress.bestScore).toBe(1);
   });
@@ -73,7 +73,7 @@ describe("finishing a skeleton", () => {
     const { result, kept: after } = finishSkeleton(kept({ earned: ["stegosaurus", "tyrannosaurus"], bestScore: 2 }), finished("triceratops"), ORDER, scoring.beatBest);
 
     expect(scoring.asked).toEqual([[2, 3]]);
-    expect(after.progress).toEqual({ earned: ORDER, bestScore: 3, rebuilding: [] });
+    expect(after.progress).toEqual({ earned: ORDER, bestScore: 3, rebuilding: [], badges: {} });
     expect([result.score, result.best, result.previousBest, result.celebration, result.newStar]).toEqual([3, 3, 2, "new-best", true]);
   });
 
@@ -83,7 +83,7 @@ describe("finishing a skeleton", () => {
     const { result, kept: after } = finishSkeleton(kept({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2 }), finished("triceratops"), ORDER, scoring.beatBest);
 
     expect(scoring.asked).toEqual([[2, 2]]);
-    expect(after.progress).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
+    expect(after.progress).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [], badges: {} });
     expect([result.score, result.celebration, result.newStar]).toEqual([2, null, false]);
   });
 
@@ -157,8 +157,8 @@ describe("the museum", () => {
   it("has an empty stand for each skeleton, in their order, before any is built", () => {
     const museum = museumOf(kept(NO_SKELETONS), SHIPPED_SKELETONS);
 
-    expect(states(museum)).toEqual(ORDER.map((id) => [id, "empty"]));
-    expect([museum.score, museum.total, museum.best]).toEqual([0, 3, undefined]);
+    expect(states(museum)).toEqual(SHIPPED_SKELETONS.map(({ id }) => [id, "empty"]));
+    expect([museum.score, museum.total, museum.best]).toEqual([0, 5, undefined]);
   });
 
   it("stands each earned skeleton on its stand, and keeps the stand of one knocked down waiting for it, its star counted", () => {
@@ -167,9 +167,11 @@ describe("the museum", () => {
     expect(states(museum)).toEqual([
       ["tyrannosaurus", "rebuilding"],
       ["triceratops", "built"],
-      ["stegosaurus", "empty"]
+      ["stegosaurus", "empty"],
+      ["brachiosaurus", "empty"],
+      ["spinosaurus", "empty"]
     ]);
-    expect([museum.score, museum.total, museum.best]).toEqual([2, 3, 2]);
+    expect([museum.score, museum.total, museum.best]).toEqual([2, 5, 2]);
   });
 
   it("gives a dinosaur kept twice one stand and one star, and one with no skeleton none", () => {
@@ -178,9 +180,11 @@ describe("the museum", () => {
     expect(states(museum)).toEqual([
       ["tyrannosaurus", "built"],
       ["triceratops", "empty"],
-      ["stegosaurus", "empty"]
+      ["stegosaurus", "empty"],
+      ["brachiosaurus", "empty"],
+      ["spinosaurus", "empty"]
     ]);
-    expect([museum.score, museum.total]).toEqual([1, 3]);
+    expect([museum.score, museum.total]).toEqual([1, 5]);
   });
 
   it("shows no best when stored progress cannot be read, but counts the stars earned meanwhile", () => {
@@ -189,8 +193,61 @@ describe("the museum", () => {
     expect(states(museum)).toEqual([
       ["tyrannosaurus", "empty"],
       ["triceratops", "empty"],
-      ["stegosaurus", "built"]
+      ["stegosaurus", "built"],
+      ["brachiosaurus", "empty"],
+      ["spinosaurus", "empty"]
     ]);
     expect([museum.score, museum.best]).toEqual([1, undefined]);
+  });
+});
+
+describe("level badges", () => {
+  // The shipped skeleton of `id` finished at a level offering `badge`,
+  // after help's last step showed or not.
+  const finishedFor = (id: string, badge: Badge | undefined, lastStepShown = false): Puzzle => ({ ...finished(id), badge, lastStepShown });
+  const withBadges = (badges: SkeletonProgress["badges"]): KeptSkeletons => ({ progress: { earned: ["triceratops"], bestScore: 1, rebuilding: [], badges }, readable: true });
+  const finish = (from: KeptSkeletons, puzzle: Puzzle) => finishSkeleton(from, puzzle, ORDER, scoringSpy({ best: 1, celebration: null }).beatBest);
+
+  it("are earned by a skeleton finished without help's last step, at a level that offers one", () => {
+    const { result, kept: after } = finish(withBadges({}), finishedFor("triceratops", "explorer"));
+
+    expect([result.badge, after.progress.badges]).toEqual(["explorer", { triceratops: ["explorer"] }]);
+  });
+
+  it.each<[string, Badge | undefined, boolean]>([
+    ["after help's last step showed", "paleontologist", true],
+    ["at a level that offers none", undefined, false]
+  ])("are not earned %s, the star earned all the same", (_, badge, lastStepShown) => {
+    const { result, kept: after } = finish(withBadges({}), finishedFor("stegosaurus", badge, lastStepShown));
+
+    expect([result.badge, result.newStar, after.progress.badges, after.progress.earned]).toEqual([undefined, true, {}, ["triceratops", "stegosaurus"]]);
+  });
+
+  it("are kept for good: a later try with help takes none away", () => {
+    const { result, kept: after } = finish(withBadges({ triceratops: ["explorer"] }), finishedFor("triceratops", "explorer", true));
+
+    expect([result.badge, after.progress.badges]).toEqual([undefined, { triceratops: ["explorer"] }]);
+  });
+
+  it("are each level's own, kept in the levels' order, and earned again without a second", () => {
+    const paleontologist = finish(withBadges({ triceratops: ["explorer"], stegosaurus: ["paleontologist"] }), finishedFor("triceratops", "paleontologist")).kept;
+    const again = finish(paleontologist, finishedFor("stegosaurus", "explorer")).kept;
+    const twice = finish(again, finishedFor("triceratops", "explorer"));
+
+    expect(again.progress.badges).toEqual({ triceratops: ["explorer", "paleontologist"], stegosaurus: ["explorer", "paleontologist"] });
+    expect([twice.result.badge, twice.kept.progress.badges]).toEqual(["explorer", again.progress.badges]);
+  });
+
+  it("stay through a skeleton knocked down to be built again, and show on its stand", () => {
+    const knocked = knockDown(withBadges({ triceratops: ["explorer", "paleontologist"], allosaurus: ["explorer"] }), "triceratops");
+
+    expect(knocked.progress.badges).toEqual({ triceratops: ["explorer", "paleontologist"], allosaurus: ["explorer"] });
+    expect(museumOf(knocked, SHIPPED_SKELETONS).stands.map(({ skeleton, state, badges }) => [skeleton.id, state, badges])).toEqual([
+      ["tyrannosaurus", "empty", []],
+      ["triceratops", "rebuilding", ["explorer", "paleontologist"]],
+      ["stegosaurus", "empty", []],
+      ["brachiosaurus", "empty", []],
+      ["spinosaurus", "empty", []]
+    ]);
   });
 });

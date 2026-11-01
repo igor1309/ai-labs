@@ -1,8 +1,11 @@
 import { ArrowRight, Bone, Landmark, Lightbulb, Star, Trophy } from "lucide-react";
-import { useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
+import { Button } from "./Button.tsx";
 import { Festivity } from "./Festivity.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
+import { Picture, PictureImage, usePicture } from "./Picture.tsx";
+import { LevelBadge, type ShownBadge } from "./LevelBadge.tsx";
 import { CelebrationChip, type Celebration } from "./ResultParts.tsx";
 import { SkeletonBar } from "./SkeletonBar.tsx";
 
@@ -29,6 +32,9 @@ export type SkeletonResultScreenProps = {
   // This skeleton earned its dinosaur's star, which pops in; a skeleton
   // built again shows the star it already had.
   newStar: boolean;
+  // The level badge this skeleton earned, built without help's last step,
+  // shown by its name.
+  badge: ShownBadge | undefined;
   onBuildAnother: () => void;
   onMuseum: () => void;
   onHome: () => void;
@@ -47,15 +53,18 @@ export function SkeletonResultScreen({
   beaten,
   celebration,
   newStar,
+  badge,
   onBuildAnother,
   onMuseum,
   onHome
 }: SkeletonResultScreenProps) {
   const text = TEXTS[language];
   const shownName = name.toLocaleUpperCase(language);
-  // A body picture that cannot be loaded leaves the skeleton whole, so the
-  // reward never waits on it.
-  const [missing, setMissing] = useState(false);
+  // The whole skeleton stands in for the body picture until it loads, so
+  // the reward never waits on it: the body fades in over its bones once
+  // loaded, and one that fails leaves the skeleton whole.
+  const bodyLook = usePicture(body);
+  const bodyShown = bodyLook === "appearing" || bodyLook === "shown";
   return (
     <main className="skeleton-screen skeleton-result">
       {celebration && <Festivity />}
@@ -69,20 +78,29 @@ export function SkeletonResultScreen({
       <div className="skeleton-reveal">
         <div
           className="skeleton-board skeleton-reveal-board"
+          data-turn-part="skeleton-result-board"
           role="img"
           aria-label={shownName}
           style={{ "--frame-width": frame.width, "--frame-height": frame.height } as CSSProperties}
         >
-          <img className="skeleton-reveal-bones" src={skeleton} alt="" draggable={false} data-alone={missing || undefined} />
-          {!missing && <img className="skeleton-reveal-body" src={body} alt="" draggable={false} onError={() => setMissing(true)} />}
+          <span className="skeleton-reveal-bones" data-alone={!bodyShown || undefined}>
+            <Picture className="skeleton-reveal-bones-picture" src={skeleton} alt="" />
+          </span>
+          {bodyShown && <PictureImage look={bodyLook} className="skeleton-reveal-body" src={body} alt="" />}
         </div>
-        <section className="skeleton-reward">
+        <section className="skeleton-reward" data-turn-part="skeleton-reward">
           <div className="skeleton-reward-row">
             <span className="skeleton-star" role="img" aria-label={text.star} data-new={newStar || undefined}>
               <Star size={40} aria-hidden="true" />
             </span>
             {celebration && <CelebrationChip language={language} celebration={celebration} />}
           </div>
+          {badge && (
+            <p className="skeleton-badge-earned">
+              <LevelBadge language={language} badge={badge} />
+              <span aria-hidden="true">{text.badges[badge]}</span>
+            </p>
+          )}
           <h2 className="skeleton-reveal-name">{shownName}</h2>
           <p className="skeleton-fact">
             <Lightbulb size={28} aria-hidden="true" />
@@ -104,14 +122,14 @@ export function SkeletonResultScreen({
             </p>
           )}
           <nav className="skeleton-actions">
-            <button type="button" className="skeleton-build-another" onClick={onBuildAnother}>
+            <Button className="skeleton-build-another" onClick={onBuildAnother}>
               <Bone size={28} aria-hidden="true" />
               {text.buildAnother}
-            </button>
-            <button type="button" className="home-button museum-button skeleton-museum" onClick={onMuseum}>
+            </Button>
+            <Button className="home-button museum-button skeleton-museum" onClick={onMuseum}>
               <Landmark size={28} aria-hidden="true" />
               {text.museum}
-            </button>
+            </Button>
           </nav>
         </section>
       </div>

@@ -1,28 +1,35 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/App.tsx";
 import { QuestionScreen } from "../src/QuestionScreen.tsx";
 import type { Language } from "../src/language/language.ts";
-import type { Attribute, Dinosaur } from "../src/quiz/round.ts";
+import { attributeOf, type Dinosaur, type QuestionKind } from "../src/quiz/round.ts";
 import {
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyDig,
   emptyPairs,
   emptyProgress,
   emptySkeletons,
   emptySorting,
   englishDevice,
   fakeBodyPicture,
+  featuring,
   lightDevice,
   loadedPictures,
-  manualOrientation,
+  manualViewport,
+  pageAtRest,
   questionView,
   seededRandom,
   symbolOf,
-  words
+  words,
+  gameDoor,
+  unsetAgeLevel
 } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
 
 const byName = (name: string): Dinosaur => {
   const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
@@ -30,7 +37,7 @@ const byName = (name: string): Dinosaur => {
   return found;
 };
 
-const cards = () => within(screen.getByRole("group", { name: "DINOSAURS" })).getAllByRole("button");
+const cards = () => within(screen.getByRole("group", { name: "ANIMALS" })).getAllByRole("button");
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
 const shownQuestion = () => ({
   prompt: screen.getByRole("heading").textContent,
@@ -45,19 +52,20 @@ async function answerAndGoOn(user: UserEvent) {
 }
 
 describe("a question", () => {
-  it.each<[Attribute, string, string]>([
-    ["mass", "scale", "WHO IS HEAVIER?"],
-    ["height", "ruler", "WHO IS TALLER?"]
-  ])("comparing %s shows the %s symbol, its prompt and two dinosaur cards", (attribute, symbol, prompt) => {
+  it.each<[QuestionKind, string, string]>([
+    ["heavier", "scale", "WHO IS HEAVIER?"],
+    ["taller", "ruler", "WHO IS TALLER?"]
+  ])("asking %s shows the %s symbol, its prompt and two dinosaur cards", (kind, symbol, prompt) => {
     const nothing = () => {};
     render(
       <QuestionScreen
         language="en"
-        {...questionView({ attribute, left: byName("Triceratops"), right: byName("Velociraptor") }, "en")}
+        {...questionView({ kind, attribute: attributeOf(kind), left: byName("Triceratops"), right: byName("Velociraptor") }, "en")}
         onChoose={nothing}
         onNext={nothing}
         onHome={nothing}
-      />
+      />,
+      withPictures
     );
 
     const heading = screen.getByRole("heading", { name: prompt });
@@ -85,7 +93,7 @@ describe("a question", () => {
 
     const home = screen.getByRole("button", { name: "HOME" });
     expect([symbolOf(home), home.textContent]).toEqual(["house", "HOME"]);
-    expect(screen.getByRole("group", { name: "DINOSAURS" }).contains(home)).toBe(false);
+    expect(screen.getByRole("group", { name: "ANIMALS" }).contains(home)).toBe(false);
   });
 });
 
@@ -98,7 +106,8 @@ describe("a dinosaur card's picture", () => {
     const nothing = () => {};
     for (const [left, right] of pairs) {
       const { unmount } = render(
-        <QuestionScreen language={language} {...questionView({ attribute: "mass", left, right }, language)} onChoose={nothing} onNext={nothing} onHome={nothing} />
+        <QuestionScreen language={language} {...questionView({ kind: "heavier", attribute: "mass", left, right }, language)} onChoose={nothing} onNext={nothing} onHome={nothing} />,
+        withPictures
       );
 
       const shown = within(screen.getByRole("group")).getAllByRole("button").map((card) => {
@@ -113,30 +122,31 @@ describe("a dinosaur card's picture", () => {
 
 describe("a round", () => {
   it("asks to turn the iPad sideways in portrait and resumes the same question", async () => {
-    const orientation = manualOrientation("landscape");
-    render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(3)} orientation={orientation} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...loadedPictures()} />);
-    const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "COMPARE" }));
+    const viewport = manualViewport("landscape");
+    render(<App {...emptyLabyrinth()} {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(3)} portraitLayouts={{}} viewport={viewport} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />);
+    const user = userEvent.setup({ delay: null });
+    await user.click(gameDoor("COMPARE"));
     await answerAndGoOn(user);
     await answerAndGoOn(user);
     expect(progress()).toBe("3/10");
     const third = shownQuestion();
 
-    act(() => orientation.turn("portrait"));
+    act(() => viewport.turn("portrait"));
 
-    expect(screen.getByRole("img", { name: "TURN THE IPAD SIDEWAYS" })).toBeDefined();
-    expect(screen.queryByLabelText("PROGRESS")).toBeNull();
+    expect(screen.getByRole("img", { name: "TURN SIDEWAYS" })).toBeDefined();
+    // The question stays mounted while the gate makes it inaccessible.
+    expect(screen.getByLabelText("PROGRESS").closest("[inert]")).not.toBeNull();
 
-    act(() => orientation.turn("landscape"));
+    act(() => viewport.turn("landscape"));
 
     expect(progress()).toBe("3/10");
     expect(shownQuestion()).toEqual(third);
   });
 
   it("marks the questions done, the one on screen and those to come on its steps", async () => {
-    render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(3)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...loadedPictures()} />);
-    const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "COMPARE" }));
+    render(<App {...emptyLabyrinth()} {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(3)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />);
+    const user = userEvent.setup({ delay: null });
+    await user.click(gameDoor("COMPARE"));
     await answerAndGoOn(user);
     await answerAndGoOn(user);
 
@@ -148,11 +158,11 @@ describe("a round", () => {
   // The generator's own tests cover the class of random draws; this one
   // proves the app hands each new round the one played before it.
   it("does not repeat the previous round's questions", async () => {
-    render(<App dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(5)} orientation={manualOrientation("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...loadedPictures()} />);
-    const user = userEvent.setup();
+    render(<App {...emptyLabyrinth()} {...featuring()} dinosaurs={SHIPPED_DINOSAURS} catalogue={SHIPPED_CATALOGUE} bodyPicture={fakeBodyPicture} random={seededRandom(5)} portraitLayouts={{}} viewport={manualViewport("landscape")} progress={emptyProgress()} {...englishDevice()} {...lightDevice()} {...unsetAgeLevel()} {...emptyCare()} {...emptySorting()} {...emptyPairs()} {...emptySkeletons()} {...emptyDig()} {...pageAtRest()} {...loadedPictures()} />);
+    const user = userEvent.setup({ delay: null });
 
     async function playRound() {
-      await user.click(screen.getByRole("button", { name: "COMPARE" }));
+      await user.click(gameDoor("COMPARE"));
       const asked = [];
       for (let number = 1; number <= 10; number++) {
         expect(progress()).toBe(`${number}/10`);

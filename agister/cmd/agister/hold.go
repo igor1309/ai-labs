@@ -17,6 +17,7 @@ type worktreeFacts interface {
 	Head(ctx context.Context, dir string) (string, error)
 	Clean(ctx context.Context, dir string) (bool, error)
 	Content(ctx context.Context, dir string) (string, error)
+	Changes(ctx context.Context, dir, commit, content string) (string, error)
 }
 
 // lockFiles is what core/admit's hold asks of files.
@@ -48,9 +49,8 @@ func (h holding) check() error {
 }
 
 // lockFolder is the folder of the worktrees' lock files for the user whose
-// home directory is user: the archive's, under the user's ".agister"
-// whatever AGISTER_HOME says, so that the two Agisters exclude each other
-// on a worktree.
+// home directory is user: under the user's ".agister" whatever
+// AGISTER_HOME says, since runs on any home share the user's worktrees.
 func lockFolder(user string) string { return filepath.Join(user, ".agister", "locks", "in-place") }
 
 // worktreeAt answers core/admit's worktree from git, in root, the
@@ -64,10 +64,13 @@ func (w worktreeAt) Head(ctx context.Context) (string, error)    { return w.fact
 func (w worktreeAt) Clean(ctx context.Context) (bool, error)     { return w.facts.Clean(ctx, w.root) }
 func (w worktreeAt) Content(ctx context.Context) (string, error) { return w.facts.Content(ctx, w.root) }
 
+func (w worktreeAt) Changes(ctx context.Context, commit, content string) (string, error) {
+	return w.facts.Changes(ctx, w.root, commit, content)
+}
+
 // worktreeHold answers core/admit's hold from files' lock: the lock file
 // under folder named by the SHA-256 of root's path, its links resolved
-// through links, and ".lock", as the archive names it. A lock held is
-// admit's ErrHeld.
+// through links, and ".lock". A lock held is admit's ErrHeld.
 type worktreeHold struct {
 	locks  lockFiles
 	links  links

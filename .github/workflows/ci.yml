@@ -1,9 +1,12 @@
 name: CI
 
 on:
+  # A branch commit is tested by its PR's run alone, so the required
+  # `report` check is the only verdict on it; trunk is tested after each
+  # merge.
   push:
     branches:
-      - "**"
+      - trunk
     tags-ignore:
       - "*_v*"
       - "v*"
@@ -54,6 +57,10 @@ jobs:
       loki: ${{ steps.filter.outputs.loki }}
       loki-ci: ${{ steps.filter.outputs.loki-ci }}
       neris: ${{ steps.filter.outputs.neris }}
+      audelin: ${{ steps.filter.outputs.audelin }}
+      audelin-ci: ${{ steps.filter.outputs.audelin-ci }}
+      mizan-ble: ${{ steps.filter.outputs.mizan-ble }}
+      mizan-ble-ci: ${{ steps.filter.outputs.mizan-ble-ci }}
       neris-ci: ${{ steps.filter.outputs.neris-ci }}
       claude-insights: ${{ steps.filter.outputs.claude-insights }}
       claude-insights-ci: ${{ steps.filter.outputs.claude-insights-ci }}
@@ -100,6 +107,14 @@ jobs:
               - "release-units.config.toml"
               - "release-units.toml"
               - "scripts/release/**"
+              - "scripts/showcase/**"
+              - "agister/showcase/**"
+              - "agister/scripts/check-public.sh"
+              - "agister/go.mod"
+              - "rexlab/package.json"
+              - "rexlab/showcase/showcase.toml"
+              - "rexlab/showcase/public/LICENSE"
+              - "rexlab/tests/catalogueSources.test.ts"
               - "agonara/**"
               - "clipdeck/**"
               - "foliotell/**"
@@ -133,11 +148,14 @@ jobs:
               - ".github/workflows/notio-frontend-deploy.yml"
             rexlab:
               - "rexlab/src/**"
+              - "rexlab/prototypes/coloring.html"
               - "rexlab/tests/**"
               - "rexlab/scripts/**"
               - "rexlab/index.html"
+              - "rexlab/public/**"
               - "rexlab/package.json"
               - "rexlab/package-lock.json"
+              - "rexlab/patches/**"
               - "rexlab/tsconfig.json"
               - "rexlab/vite.config.ts"
               - "rexlab/wrangler.toml"
@@ -188,7 +206,6 @@ jobs:
               - ".agister/**"
               - "agister/.agister/**"
               - "agister/home/**"
-              - "scripts/agister-gate/**"
               - "agister/docs/**"
               - "agister/skills/**"
               - "agister/README.md"
@@ -218,6 +235,7 @@ jobs:
               - "agonara/compose.yaml"
               - "agonara/compose*.yml"
               - "agonara/scripts/**"
+              - "agonara/showcase/*.mjs"
               - "agonara/docs/api/**"
               - "agonara/docs/intent/**"
               - "agonara/skills/**"
@@ -264,6 +282,17 @@ jobs:
               - "neris/packages/swift-neris/**"
             neris-ci:
               - ".github/workflows/neris-core.yml"
+            audelin:
+              - "audelin/macos/**"
+              - "audelin/docs/research/spike/fixtures/**"
+            audelin-ci:
+              - ".github/workflows/audelin-core.yml"
+              - "audelin/scripts/swift-test-bounded.sh"
+            mizan-ble:
+              - "mizan-ble/ios/**"
+              - "mizan-ble/docs/design/mizan-ble.pen"
+            mizan-ble-ci:
+              - ".github/workflows/mizan-ble-core.yml"
             claude-insights:
               - "claude-insights/claude-insights.py"
               - "claude-insights/test_claude_insights.py"
@@ -380,6 +409,16 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.neris == 'true' || needs.changes.outputs.neris-ci == 'true' || needs.changes.outputs.shared == 'true' }}
     uses: ./.github/workflows/neris-core.yml
 
+  audelin-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.audelin == 'true' || needs.changes.outputs.audelin-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/audelin-core.yml
+
+  mizan-ble-core:
+    needs: [changes]
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.mizan-ble == 'true' || needs.changes.outputs.mizan-ble-ci == 'true' || needs.changes.outputs.shared == 'true' }}
+    uses: ./.github/workflows/mizan-ble-core.yml
+
   claude-insights-core:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.claude-insights == 'true' || needs.changes.outputs.claude-insights-ci == 'true' || needs.changes.outputs.shared == 'true' }}
@@ -411,6 +450,12 @@ jobs:
         with:
           node-version-file: .node-version
 
+      - name: Setup Go for showcase workspace tests
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: agister/go.mod
+          cache-dependency-path: agister/go.sum
+
       - name: Verify manifest is up to date
         run: node scripts/release/generate-manifest.js --check
 
@@ -420,8 +465,8 @@ jobs:
       - name: Validate FolioTell release notes
         run: node scripts/release/validate-foliotell-release-notes.js
 
-      - name: Run release script tests
-        run: ./scripts/run_silent.sh "release-tests" node --test scripts/release/tests/*.test.js
+      - name: Run release and showcase script tests
+        run: ./scripts/run_silent.sh "release-tests" node --test scripts/release/tests/*.test.js scripts/showcase/tests/*.test.js
 
   pr-scope:
     if: ${{ github.event_name == 'pull_request' }}
@@ -440,6 +485,30 @@ jobs:
 
       - name: A change to Agister changes no other project
         run: node scripts/pr-scope.js "origin/${{ github.base_ref }}"
+
+  # A job on the self-hosted local-mac runner waits queued while the runner
+  # is offline, and GitHub fails it only after 24 hours: this cancels the
+  # run once one has waited 15 minutes, naming it.
+  local-wait:
+    needs: [changes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: No local-mac job waits queued past 15 minutes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/local-wait.js "${{ github.repository }}" "${{ github.run_id }}" 15
 
   # The repository scripts' tests read files across the repository, so
   # they run on every push and pull request, behind no filter.
@@ -517,7 +586,7 @@ jobs:
     # run of the same commit reports under another name.
     name: ${{ github.event_name == 'pull_request' && 'report' || format('report ({0})', github.event_name) }}
     if: ${{ always() }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, rexlab-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts, session-digest-core, loki-core, neris-core, claude-insights-core, langfuse-core, mac-health-core]
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, rexlab-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, local-wait, repo-scripts, session-digest-core, loki-core, neris-core, audelin-core, mizan-ble-core, claude-insights-core, langfuse-core, mac-health-core]
     runs-on: ubuntu-latest
     steps:
       - name: Check all jobs passed
@@ -528,8 +597,8 @@ jobs:
           done
 
   notify:
-    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.ntfy-sender-core.result == 'failure' || needs.noreta-core.result == 'failure' || needs.agister-core.result == 'failure' || needs.warder-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.foliotell-core.result == 'failure' || needs.foliotell-android-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.rexlab-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure' || needs.pr-scope.result == 'failure' || needs.repo-scripts.result == 'failure' || needs.session-digest-core.result == 'failure' || needs.loki-core.result == 'failure' || needs.neris-core.result == 'failure' || needs.claude-insights-core.result == 'failure' || needs.langfuse-core.result == 'failure' || needs.mac-health-core.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
-    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, rexlab-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, repo-scripts, session-digest-core, loki-core, neris-core, claude-insights-core, langfuse-core, mac-health-core]
+    if: ${{ always() && !cancelled() && (needs.changes.result == 'failure' || needs.nomos-core.result == 'failure' || needs.oracle-core.result == 'failure' || needs.web-scout-core.result == 'failure' || needs.corpus-scout-core.result == 'failure' || needs.reinix-core.result == 'failure' || needs.clipdeck-core.result == 'failure' || needs.ntfy-sender-core.result == 'failure' || needs.noreta-core.result == 'failure' || needs.agister-core.result == 'failure' || needs.warder-core.result == 'failure' || needs.agonara-core.result == 'failure' || needs.foliotell-core.result == 'failure' || needs.foliotell-android-core.result == 'failure' || needs.notio-core.result == 'failure' || needs.notio-frontend-core.result == 'failure' || needs.rexlab-core.result == 'failure' || needs.release-validation.result == 'failure' || needs.real-provider-smoke.result == 'failure' || needs.dev-skills-validation.result == 'failure' || needs.pr-scope.result == 'failure' || needs.local-wait.result == 'failure' || needs.repo-scripts.result == 'failure' || needs.session-digest-core.result == 'failure' || needs.loki-core.result == 'failure' || needs.neris-core.result == 'failure' || needs.audelin-core.result == 'failure' || needs.mizan-ble-core.result == 'failure' || needs.claude-insights-core.result == 'failure' || needs.langfuse-core.result == 'failure' || needs.mac-health-core.result == 'failure') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
+    needs: [changes, nomos-core, oracle-core, web-scout-core, corpus-scout-core, reinix-core, clipdeck-core, ntfy-sender-core, noreta-core, agister-core, warder-core, agonara-core, foliotell-core, foliotell-android-core, notio-core, notio-frontend-core, rexlab-core, release-validation, real-provider-smoke, dev-skills-validation, pr-scope, local-wait, repo-scripts, session-digest-core, loki-core, neris-core, audelin-core, mizan-ble-core, claude-insights-core, langfuse-core, mac-health-core]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "CI"
@@ -556,10 +625,13 @@ jobs:
         release-validation=${{ needs.release-validation.result }}
         real-provider-smoke=${{ needs.real-provider-smoke.result }}
         dev-skills-validation=${{ needs.dev-skills-validation.result }}
+        local-wait=${{ needs.local-wait.result }}
         repo-scripts=${{ needs.repo-scripts.result }}
         session-digest-core=${{ needs.session-digest-core.result }}
         loki-core=${{ needs.loki-core.result }}
         neris-core=${{ needs.neris-core.result }}
+        audelin-core=${{ needs.audelin-core.result }}
+        mizan-ble-core=${{ needs.mizan-ble-core.result }}
         claude-insights-core=${{ needs.claude-insights-core.result }}
         langfuse-core=${{ needs.langfuse-core.result }}
         mac-health-core=${{ needs.mac-health-core.result }}

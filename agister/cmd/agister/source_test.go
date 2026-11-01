@@ -71,18 +71,20 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 		want any
 	}{
 		{
-			name: "an agent's model, effort and runtime, each with its origin",
+			name: "an agent's model, effort, runtime and fallback, each with its origin",
 			documents: func(d *documentsSpy) {
 				d.agents["a"] = typed[documents.AgentDefinition]{value: documents.AgentDefinition{
 					Name: "a", Runtime: given("r", agentFile, 1, "runtime"), Model: given("opus", agentFile, 2, "model"), Effort: given("high", agentFile, 3, "effort"),
+					Fallback: given("b", agentFile, 4, "fallback"),
 				}}
 			},
 			ask: func(s *source) any { return answerOf(s.Agent("a")) },
 			want: answerOf(resolve.Agent{
-				Name:    "a",
-				Runtime: resolve.Name{Value: "r", Origin: at(agentFile, 1, "runtime")},
-				Model:   resolve.Name{Value: "opus", Origin: at(agentFile, 2, "model")},
-				Effort:  resolve.Name{Value: "high", Origin: at(agentFile, 3, "effort")},
+				Name:     "a",
+				Runtime:  resolve.Name{Value: "r", Origin: at(agentFile, 1, "runtime")},
+				Model:    resolve.Name{Value: "opus", Origin: at(agentFile, 2, "model")},
+				Effort:   resolve.Name{Value: "high", Origin: at(agentFile, 3, "effort")},
+				Fallback: resolve.Name{Value: "b", Origin: at(agentFile, 4, "fallback")},
 			}, nil),
 		},
 		{
@@ -121,10 +123,11 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 			}, nil),
 		},
 		{
-			name: "a process's require, allow, recovery and stale tool calls",
+			name: "a process's require, allow, instruction, recovery and stale tool calls",
 			documents: func(d *documentsSpy) {
 				d.processes["p"] = typed[documents.ProcessDefinition]{value: documents.ProcessDefinition{
-					Name: "p",
+					Name:        "p",
+					Instruction: given("i", processFile, 10, "instruction"),
 					Permissions: given(documents.Permissions{
 						Require: given([]string{"read"}, processFile, 3, "permissions.require"),
 						Allow:   given([]string{"write"}, processFile, 4, "permissions.allow"),
@@ -137,7 +140,7 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 			},
 			ask: func(s *source) any { return answerOf(s.Process("p")) },
 			want: answerOf(resolve.Process{
-				Name: "p", Require: []string{"read"}, Allow: []string{"write"}, Recovery: true, StaleToolCalls: true,
+				Name: "p", Require: []string{"read"}, Allow: []string{"write"}, Instruction: true, Recovery: true, Staleness: true, StaleToolCalls: true,
 			}, nil),
 		},
 		{
@@ -151,7 +154,7 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				}}
 			},
 			ask:  func(s *source) any { return answerOf(s.Process("p")) },
-			want: answerOf(resolve.Process{Name: "p", StaleToolCommands: true}, nil),
+			want: answerOf(resolve.Process{Name: "p", Staleness: true, StaleToolCommands: true}, nil),
 		},
 		{
 			name: "a process's revision, reading the input base",
@@ -219,7 +222,8 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 				Name:   "p",
 				Params: []resolve.Param{{Name: "base"}, {Name: "goal", Default: true}},
 				Inputs: []resolve.Input{{
-					Name:  "brief",
+					Name: "brief", File: true,
+					Path:  read(resolve.RootParam, "goal", "", at(processFile, 8, "inputs.brief.path")),
 					Forms: []resolve.Name{{Value: "step", Origin: at(processFile, 7, "inputs.brief.form[0]")}},
 					Arguments: []resolve.Binding{{
 						Name:   "path",
@@ -353,6 +357,28 @@ func TestTheSourceGivesResolveWhatDecidesARefusal(t *testing.T) {
 						resolvedStep("y", workflowFile, 11, "steps[2].branch[1]"),
 					}},
 				},
+			}, nil),
+		},
+		{
+			name: "a workflow's parallel p of max 1, its items and its max",
+			documents: func(d *documentsSpy) {
+				d.workflows["w"] = typed[documents.WorkflowDefinition]{value: documents.WorkflowDefinition{
+					Name: "w",
+					Steps: given([]documents.Field[documents.Item]{
+						given(documents.Item{Name: "p",
+							Parallel: given([]documents.Field[documents.Item]{
+								step("a", workflowFile, 7, "steps[0].parallel.steps[0]"),
+							}, workflowFile, 6, "steps[0].parallel.steps"),
+							Max: given(1, workflowFile, 5, "steps[0].parallel.max"),
+						}, workflowFile, 3, "steps[0]"),
+					}, workflowFile, 2, "steps"),
+				}}
+			},
+			ask: func(s *source) any { return answerOf(s.Workflow("w")) },
+			want: answerOf(resolve.Workflow{
+				Name: "w",
+				Steps: []resolve.Item{{Name: "p", Origin: at(workflowFile, 3, "steps[0]"), Max: 1,
+					Parallel: []resolve.Item{resolvedStep("a", workflowFile, 7, "steps[0].parallel.steps[0]")}}},
 			}, nil),
 		},
 		{
@@ -626,5 +652,18 @@ func TestAConditionGivesEveryReferenceItReadsHoweverNested(t *testing.T) {
 	}
 	if got := workflow.Steps[0].Branch[0].If.Reads; !reflect.DeepEqual(got, want) {
 		t.Errorf("the arm's condition reads\n got %+v\nwant %+v", got, want)
+	}
+}
+
+// A budget's problems, like blocks', belong to no document and preserve
+// their field and line when resolve is given them.
+func TestSourceReportsBudgetProblems(t *testing.T) {
+	t.Parallel()
+	docs := newDocumentsSpy(t)
+	docs.budgetProblems = []documents.Problem{{Path: "/u/.agister/budget.yaml", Line: 2, Place: "daily.cost", Message: "it is more than zero"}}
+	s := sourceOf(t, docs, layout.Snapshot{})
+	want := []resolve.Problem{{Origin: resolve.Origin{Path: "/u/.agister/budget.yaml", Line: 2, Place: "daily.cost"}, Message: "it is more than zero"}}
+	if got := s.Problems(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("problems %+v, want %+v", got, want)
 	}
 }

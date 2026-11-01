@@ -1,6 +1,6 @@
-# runtime/codex, a resumed turn (docs/run-implementation.md,
-# "Continuation"; ADR-004, rule 5). A spy answers in place of the
-# supervisor (ADR-009, rule 3); the schema's folder is a temporary
+# runtime/codex, a resumed turn (docs/run-implementation.md, "Continuation"
+# and "Recovery"; ADR-004, rule 5; ADR-006, rule 3). A spy answers in place
+# of the supervisor (ADR-009, rule 3); the schema's folder is a temporary
 # directory.
 
 Feature: The codex wrapper resumes a session
@@ -14,3 +14,8 @@ Feature: The codex wrapper resumes a session
       "--ignore-rules", "--model", "gpt-6.1-sol", "--output-schema", a
       file holding "{}", "s1" and "-"; it is given the text "m"
     And the file is gone once the turn has returned
+
+  Scenario: A turn a signal ended gives the session it read
+    Given codex's stream gives "thread.started" of the thread "t1"
+    When the program is ended by SIGTERM
+    Then the turn gives no reply, and the session "t1"

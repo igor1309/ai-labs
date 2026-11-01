@@ -20,7 +20,8 @@ import {
   visitorsFrom,
   welcomeVisitor
 } from "./careApp.tsx";
-import { fakeBodyPicture, fakeItemPicture, manualOrientation, manualPictures, memoryStorage, symbolOf } from "./support.ts";
+import { PICTURE_LIMIT } from "../src/Picture.tsx";
+import { fakeBodyPicture, fakeItemPicture, manualViewport, manualPictures, memoryStorage, symbolOf, gameDoor, tilesRow, type ManualPictures } from "./support.ts";
 
 // The name of every symbol an element shows, in order.
 const symbolsOf = (element: Element) =>
@@ -29,16 +30,27 @@ const symbolsOf = (element: Element) =>
 const stage = () => document.querySelector(".stage");
 const reaction = () => stage()?.getAttribute("data-reaction") ?? undefined;
 const visitorName = () => document.querySelector(".visitor-name");
+// The visitor's picture's look and source.
+const visitorLook = () => {
+  const picture = document.querySelector<HTMLElement>(".visitor > img");
+  return [picture?.dataset.picture, picture?.getAttribute("src")];
+};
 
 describe("the CARE tile", () => {
-  it("is beside the COMPARE card, under ALL DINOSAURS, with a heart and a dinosaur", () => {
+  it("stands under SORT, before sand writing, with a heart and a dinosaur", () => {
     openCareApp();
 
-    const tile = button("CARE");
+    const tile = gameDoor("CARE");
     expect(symbolOf(tile)).toBe("heart");
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("parasaurolophus"));
-    expect(button("ALL DINOSAURS").nextElementSibling).toBe(tile);
-    expect(tile.parentElement?.previousElementSibling).toBe(button("COMPARE"));
+    // The row fills two tiles to a column, COMPARE's tile left out for
+    // the large card: the sixth tile is still under SORT. Sand writing
+    // and labyrinth occupy the next column before MORE COMING.
+    expect([...tilesRow().children].indexOf(tile)).toBe(5);
+    expect(tile.previousElementSibling).toBe(gameDoor("SORT"));
+    expect(tile.nextElementSibling).toBe(gameDoor("SAND WRITING"));
+    expect(tile.nextElementSibling?.nextElementSibling).toBe(gameDoor("LABYRINTH"));
+    expect(tile.nextElementSibling?.nextElementSibling?.nextElementSibling?.className).toBe("more-coming");
     expect(tile.querySelector(".care-tile-best")).toBeNull();
   });
 
@@ -78,7 +90,7 @@ describe("a new visitor", () => {
     const name = screen.getByRole("heading", { name: "Tyrannosaurus" });
     expect(name.textContent).toBe("TYRANNOSAURUS");
     expect(parseFloat(getComputedStyle(name).fontSize)).toBeGreaterThanOrEqual(32);
-    expect(document.querySelector("img.visitor")?.getAttribute("src")).toBe(fakeBodyPicture("tyrannosaurus"));
+    expect(visitorLook()).toEqual(["shown", fakeBodyPicture("tyrannosaurus")]);
     expect(bubbleShows()).toEqual(["bowl"]);
     expect(needStates()).toEqual(["current", "pending", "pending", "pending"]);
     expect(needAsked()).toBe("hungry");
@@ -96,40 +108,50 @@ describe("a new visitor", () => {
     expect(visitorShown().id).toBe("triceratops");
   });
 
-  it("starts one visit on a quick double tap", async () => {
+  // Velociraptor's picture, shown nowhere before its visit.
+  const RAPTOR = fakeBodyPicture("velociraptor");
+
+  it("starts one visit on a quick double tap, at once while its picture loads", async () => {
     const clock = manualPictures();
-    const { user } = openCareApp({ clock });
+    const { user } = openCareApp({ clock, visitors: visitorsFrom("velociraptor") });
     await openCare(user);
 
     await user.dblClick(button("NEW VISITOR"));
 
-    expect(clock.loading()).toEqual([fakeBodyPicture("tyrannosaurus")]);
-    expect(clock.timers()).toEqual([1000]);
-    act(() => clock.finish(fakeBodyPicture("tyrannosaurus")));
-    expect(heartsShown()).toBe("0");
-    expect([clock.loading(), clock.timers()]).toEqual([[], []]);
+    expect([heartsShown(), visitorShown().id, visitorLook()]).toEqual(["0", "velociraptor", ["loading", null]]);
+    act(() => clock.finishAll());
+    expect([heartsShown(), visitorLook()]).toEqual(["0", ["appearing", RAPTOR]]);
   });
 
-  it("waits for its picture at most a second, and goes on without it, a dinosaur symbol by its name", async () => {
+  it("starts at once while its picture loads, the visitor walking in as a shimmer, and fades the picture in", async () => {
     const clock = manualPictures();
-    const { user } = openCareApp({ clock });
+    const { user } = openCareApp({ clock, visitors: visitorsFrom("velociraptor") });
     await openCare(user);
 
     await user.click(button("NEW VISITOR"));
 
-    expect(screen.queryByLabelText("HEARTS")).toBeNull();
-    expect(button("NEW VISITOR")).toBeDefined();
-    act(() => clock.fire(1000));
-    expect(heartsShown()).toBe("0");
-    const shown = document.body.innerHTML;
-    act(() => clock.finish(fakeBodyPicture("tyrannosaurus")));
-    expect(document.body.innerHTML).toBe(shown);
+    expect([heartsShown(), needAsked(), visitorLook()]).toEqual(["0", "hungry", ["loading", null]]);
+    const picture = document.querySelector(".visitor > img");
+    expect([picture?.className, picture?.getAttribute("width"), picture?.getAttribute("height")]).toEqual(["picture visitor-picture", "800", "600"]);
+    act(() => clock.finish(RAPTOR));
+    expect(visitorLook()).toEqual(["appearing", RAPTOR]);
+  });
 
-    fireEvent.error(document.querySelector("img.visitor") ?? document.body);
+  it.each([
+    ["fails", (clock: ManualPictures) => clock.fail(RAPTOR)],
+    ["loads past the limit", (clock: ManualPictures) => clock.fire(PICTURE_LIMIT)]
+  ])("goes on with the failure look, its name still shown, when its picture %s", async (_, end) => {
+    const clock = manualPictures();
+    const { user } = openCareApp({ clock, visitors: visitorsFrom("velociraptor") });
+    await openCare(user);
+    await user.click(button("NEW VISITOR"));
+    act(() => clock.loading().filter((url) => url !== RAPTOR).forEach(clock.finish));
 
-    expect(document.querySelector("img.visitor")).toBeNull();
-    expect([symbolOf(visitorName() ?? document.body), visitorName()?.textContent]).toEqual(["footprints", "TYRANNOSAURUS"]);
-    await meetNeed(user, clock);
+    act(() => end(clock));
+
+    expect([visitorLook(), visitorName()?.textContent]).toEqual([["failed", null], "VELOCIRAPTOR"]);
+    await user.click(trayItem(meets(visitorShown(), "hungry")));
+    act(() => clock.fire(800));
     expect([heartsShown(), needAsked()]).toEqual(["2", "thirsty"]);
   });
 
@@ -215,7 +237,7 @@ describe("leaving a visit", () => {
     await user.click(button("HOME"));
     act(() => clock.settle());
 
-    expect(button("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(storedCare(storage)).toBeUndefined();
     await user.click(button("CARE"));
     expect(button("NEW VISITOR")).toBeDefined();
@@ -223,23 +245,31 @@ describe("leaving a visit", () => {
     expect([heartsShown(), needStates()]).toEqual(["0", ["current", "pending", "pending", "pending"]]);
   });
 
-  it("starts no visit when the child goes home while its picture loads, and the next visit starts afresh", async () => {
-    const clock = manualPictures();
-    const { user } = openCareApp({ clock });
-    await openCare(user);
-    await user.click(button("NEW VISITOR"));
-    expect(clock.loading()).toEqual([fakeBodyPicture("tyrannosaurus")]);
+  // The tap and the timers read in one act, before React renders the home
+  // page: the visit's timers stop as the child leaves, not as care is
+  // taken off the screen.
+  it.each([
+    ["reaction", 800],
+    ["departure", 1280]
+  ] as const)("stops the %s as the child goes home, and the next visit is not moved on by it, delivered all the same", async (during, ms) => {
+    const { user, clock } = openCareApp();
+    await welcomeVisitor(user);
+    if (during === "reaction") await user.click(trayItem("meat"));
+    else for (let need = 0; need < 4; need++) await meetNeed(user, clock);
+    expect(clock.timers()).toEqual([ms]);
 
-    await user.click(button("HOME"));
-    act(() => clock.finish(fakeBodyPicture("tyrannosaurus")));
+    let running: number[] = [];
+    act(() => {
+      fireEvent.click(button("HOME"));
+      running = clock.timers();
+    });
+    await welcomeVisitor(user);
+    act(() => clock.deliverStopped(ms));
 
-    expect(button("COMPARE")).toBeDefined();
-    expect(screen.queryByLabelText("HEARTS")).toBeNull();
-    await user.click(button("CARE"));
-    await user.click(button("NEW VISITOR"));
-    expect(clock.loading()).toEqual([fakeBodyPicture("tyrannosaurus")]);
-    act(() => clock.finish(fakeBodyPicture("tyrannosaurus")));
-    expect([visitorShown().id, heartsShown(), needStates()]).toEqual(["tyrannosaurus", "0", ["current", "pending", "pending", "pending"]]);
+    expect(running).toEqual([]);
+    expect([reaction(), heartsShown(), needStates(), screen.queryByLabelText("SCORE")]).toEqual([undefined, "0", ["current", "pending", "pending", "pending"], null]);
+    await meetNeed(user, clock);
+    expect([heartsShown(), needStates()]).toEqual(["2", ["met", "current", "pending", "pending"]]);
   });
 
   it("is dropped on a reload, which opens care on its welcome screen", async () => {
@@ -259,16 +289,18 @@ describe("leaving a visit", () => {
   });
 
   it("pauses in portrait, nothing to give behind the picture, and goes on unchanged", async () => {
-    const orientation = manualOrientation("landscape");
-    const { user, clock } = openCareApp({ orientation });
+    const viewport = manualViewport("landscape");
+    const { user, clock } = openCareApp({ viewport });
     await welcomeVisitor(user);
     await meetNeed(user, clock);
 
-    act(() => orientation.turn("portrait"));
+    act(() => viewport.turn("portrait"));
 
     expect(screen.getByRole("img", { name: TEXTS.en.turnSideways })).toBeDefined();
-    expect(document.querySelector(".tray-item")).toBeNull();
-    act(() => orientation.turn("landscape"));
+    // The visit remains mounted for the gate fade and cannot be reached.
+    expect(document.querySelector(".tray-item")?.closest("[inert]")).toBe(document.querySelector(".gated-screen"));
+    expect(screen.queryAllByRole("button")).toEqual([]);
+    act(() => viewport.turn("landscape"));
     expect([visitorShown().id, needAsked(), heartsShown()]).toEqual(["tyrannosaurus", "thirsty", "2"]);
     await meetNeed(user, clock);
     expect(heartsShown()).toBe("4");

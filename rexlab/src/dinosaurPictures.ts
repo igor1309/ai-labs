@@ -29,15 +29,16 @@ const SKELETON_PICTURE = /(?:^|\/)assets\/skeletons\/([^/]+)\/([^/]+)\.webp$/;
 
 // Each skeleton's pictures, by the dinosaur's id and the part's name, from
 // the files at `assets/skeletons/<id>/<part>.webp`: the whole skeleton and
-// each of its pieces. A skeleton in `ids` missing one of `parts` fails
-// here, when the app is put together, rather than as a hole in a puzzle.
-export function skeletonPictures<Part extends string>(files: PictureFiles, ids: readonly string[], parts: readonly Part[]): (id: string, part: Part) => string {
+// each of its pieces. A skeleton of `parts`, by its id, missing one of its
+// parts fails here, when the app is put together, rather than as a hole in
+// a puzzle.
+export function skeletonPictures(files: PictureFiles, parts: Readonly<Record<string, readonly string[]>>): (id: string, part: string) => string {
   const byPart = new Map<string, string>();
   for (const [path, url] of Object.entries(files)) {
     const found = SKELETON_PICTURE.exec(path);
     if (found) byPart.set(`${found[1]}/${found[2]}`, url);
   }
-  const missing = ids.flatMap((id) => parts.filter((part) => !byPart.has(`${id}/${part}`)).map((part) => `${id}/${part}`));
+  const missing = Object.entries(parts).flatMap(([id, own]) => own.filter((part) => !byPart.has(`${id}/${part}`)).map((part) => `${id}/${part}`));
   if (missing.length > 0) {
     throw new Error(`No skeleton picture for ${missing.join(", ")}`);
   }
@@ -46,4 +47,12 @@ export function skeletonPictures<Part extends string>(files: PictureFiles, ids: 
     if (url === undefined) throw new Error(`No skeleton picture for ${id}/${part}`);
     return url;
   };
+}
+
+const WHOLE_SKELETON = /(?:^|\/)assets\/skeletons\/([^/]+)\/skeleton\.webp$/;
+
+// The ids of the dinosaurs with a whole skeleton drawn, each at
+// `assets/skeletons/<id>/skeleton.webp`, cut into pieces or not.
+export function wholeSkeletons(files: PictureFiles): ReadonlySet<string> {
+  return new Set(Object.keys(files).flatMap((path) => WHOLE_SKELETON.exec(path)?.[1] ?? []));
 }

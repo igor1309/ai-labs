@@ -215,6 +215,25 @@ func TestAFaultMetByManyNamesIsReportedOnceWithEach(t *testing.T) {
 	})
 }
 
+// check.feature, "A fault met again adds the problems it did not have".
+func TestAFaultMetAgainAddsNewProblemsInOrder(t *testing.T) {
+	t.Parallel()
+	s := newSpy(t)
+	s.hold(workflow("w1"), workflow("w2"), process("p"))
+	one := check.Problem{Message: "one"}
+	two := check.Problem{Message: "two"}
+	three := check.Problem{Message: "three"}
+	s.refuses([]check.Fault{at([]check.Problem{one, two}, workflow("w1"), process("p"))}, workflow("w1"))
+	s.refuses([]check.Fault{at([]check.Problem{two, three}, workflow("w2"), process("p"))}, workflow("w2"))
+	s.refuses([]check.Fault{at([]check.Problem{three}, process("p"))}, process("p"))
+
+	got := newChecker(t, s).Check()
+
+	if want := []check.Problem{one, two, three}; !reflect.DeepEqual(got.Findings[0].Problems, want) {
+		t.Errorf("problems %v, want %v", got.Findings[0].Problems, want)
+	}
+}
+
 // check.feature, "A blocked document is reported with its block".
 func TestABlockedDocumentIsReportedWithItsBlock(t *testing.T) {
 	t.Parallel()

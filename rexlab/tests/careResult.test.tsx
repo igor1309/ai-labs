@@ -20,7 +20,7 @@ import {
   visitorsFrom,
   welcomeVisitor
 } from "./careApp.tsx";
-import { SHIPPED_VISITORS, fakeBodyPicture, fakeItemPicture, manualPictures, memoryStorage, symbolOf } from "./support.ts";
+import { SHIPPED_VISITORS, fakeBodyPicture, fakeItemPicture, manualPictures, memoryStorage, quizSaved, symbolOf } from "./support.ts";
 
 const symbolsOf = (element: Element) =>
   [...element.querySelectorAll("svg.lucide")].map((svg) => [...svg.classList].find((name) => name.startsWith("lucide-"))?.slice("lucide-".length));
@@ -112,18 +112,15 @@ describe("a finished visit", () => {
     expect(storedCare(storage)).toMatchObject({ bestScore: 7 });
   });
 
-  it("gives way to one fresh visit by another dinosaur on a quick double tap of NEW VISITOR", async () => {
+  it("gives way at once to one fresh visit by another dinosaur on a quick double tap of NEW VISITOR", async () => {
     const clock = manualPictures();
     const { user, storage } = openCareApp({ clock });
-    await openCare(user);
-    await user.click(button("NEW VISITOR"));
-    act(() => clock.finish(fakeBodyPicture("tyrannosaurus")));
+    await welcomeVisitor(user);
+    act(() => clock.finishAll());
     await playVisit(user, clock);
 
     await user.dblClick(button("NEW VISITOR"));
 
-    expect(clock.loading()).toEqual([fakeBodyPicture("triceratops")]);
-    act(() => clock.finish(fakeBodyPicture("triceratops")));
     expect([visitorShown().id, heartsShown(), needStates()]).toEqual(["triceratops", "0", ["current", "pending", "pending", "pending"]]);
     expect(storedCare(storage)).toMatchObject({ visitsFinished: 1 });
   });
@@ -218,6 +215,9 @@ describe("friends", () => {
     expect(SHIPPED_VISITORS).toHaveLength(42);
     expect(friendCount()).toBe("42");
     expect(getComputedStyle(screen.getByRole("group", { name: "FRIENDS" })).overflowY).toBe("auto");
+    // Four to a row, the friends' own: the catalogue's cards in a row are
+    // the catalogue's alone.
+    expect(getComputedStyle(screen.getByRole("group", { name: "FRIENDS" })).gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))");
     expect(["NEW VISITOR", "BACK", "HOME"].map((name) => symbolOf(button(name)))).toEqual(["footprints", "arrow-left", "house"]);
     const last = friendCards().at(-1);
     await user.click(last ?? document.body);
@@ -310,9 +310,9 @@ describe("care progress", () => {
     openCareApp({ storage });
 
     expect([storage.items.get(LANGUAGE_KEY), storage.items.get(THEME_KEY)]).toEqual(["en", "dark"]);
-    expect(localProgress(() => storage).load()).toEqual(QUIZ["compare-dinosaurs"]);
+    expect(localProgress(() => storage).load()).toEqual(quizSaved(9, 4));
     expect(document.documentElement.dataset.theme).toBe("dark");
-    localProgress(() => storage).save({ bestScore: 10, roundsPlayed: 5 });
+    localProgress(() => storage).save(quizSaved(10, 5));
     expect(storedCare(storage)).toEqual({ bestScore: 8, visitsFinished: 1, friends: ["tyrannosaurus"] });
   });
 
@@ -331,7 +331,7 @@ describe("care progress", () => {
 
     expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
     expect(storedCare(storage)).toEqual({ bestScore: 6, visitsFinished: 1, friends: ["tyrannosaurus"] });
-    expect(localProgress(() => storage).load()).toEqual(quizReadable ? QUIZ["compare-dinosaurs"] : { bestScore: null, roundsPlayed: 0 });
+    expect(localProgress(() => storage).load()).toEqual(quizReadable ? quizSaved(9, 4) : quizSaved(null, 0));
   });
 
   it("goes on when progress cannot be read: the score and departure, no best, and a friend while the app is open", async () => {

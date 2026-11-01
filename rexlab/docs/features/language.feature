@@ -40,27 +40,30 @@ Feature: English and Russian
     Then it reads "<text>"
 
     Examples:
-      | item                | text               |
-      | quiz card           | СРАВНИ             |
-      | mass prompt         | КТО ТЯЖЕЛЕЕ?       |
-      | height prompt       | КТО ВЫШЕ?          |
-      | Next button         | ДАЛЬШЕ             |
-      | See result button   | РЕЗУЛЬТАТ          |
-      | Play again button   | ЕЩЁ РАЗ            |
-      | Home button         | ДОМОЙ              |
-      | name of Triceratops | ТРИЦЕРАТОПС        |
-      | sorting game card   | РАЗЛОЖИ            |
-      | sorting prompt      | РАЗЛОЖИ ДИНОЗАВРОВ |
-      | basket TWO LEGS     | ДВЕ НОГИ           |
-      | basket FOUR LEGS    | ЧЕТЫРЕ НОГИ        |
-      | basket PLANTS       | РАСТЕНИЯ           |
-      | basket MEAT         | МЯСО               |
-      | basket BIG          | БОЛЬШИЕ            |
-      | basket SMALL        | МАЛЕНЬКИЕ          |
-      | basket HORNS        | С РОГАМИ           |
-      | basket NO HORNS     | БЕЗ РОГОВ          |
-      | basket FEATHERS     | С ПЕРЬЯМИ          |
-      | basket NO FEATHERS  | БЕЗ ПЕРЬЕВ         |
+      | item                 | text               |
+      | quiz tile            | СРАВНИ             |
+      | mass prompt          | КТО ТЯЖЕЛЕЕ?       |
+      | height prompt        | КТО ВЫШЕ?          |
+      | Next button          | ДАЛЬШЕ             |
+      | See result button    | РЕЗУЛЬТАТ          |
+      | Play again button    | ЕЩЁ РАЗ            |
+      | Home button          | ДОМОЙ              |
+      | name of Triceratops  | ТРИЦЕРАТОПС        |
+      | sorting game card    | РАЗЛОЖИ            |
+      | sorting prompt       | РАЗЛОЖИ ВСЕХ |
+      | basket TWO LEGS      | ДВЕ НОГИ           |
+      | basket FOUR LEGS     | ЧЕТЫРЕ НОГИ        |
+      | basket PLANTS        | РАСТЕНИЯ           |
+      | basket MEAT          | МЯСО               |
+      | basket BIG           | БОЛЬШИЕ            |
+      | basket SMALL         | МАЛЕНЬКИЕ          |
+      | basket HORNS         | С РОГАМИ           |
+      | basket NO HORNS      | БЕЗ РОГОВ          |
+      | basket FEATHERS      | С ПЕРЬЯМИ          |
+      | basket NO FEATHERS   | БЕЗ ПЕРЬЕВ         |
+      | basket BOTH          | ВСЁ                |
+      | basket TWO OR FOUR   | ДВЕ ИЛИ ЧЕТЫРЕ     |
+      | basket NOT KNOWN YET | ПОКА НЕИЗВЕСТНО    |
 
   Scenario Outline: Values are written in the chosen language
     Given the app is in <language>
@@ -71,6 +74,8 @@ Feature: English and Russian
       | language | attribute | value   | text  |
       | English  | mass      | 15 kg   | 15 KG |
       | Russian  | mass      | 15 kg   | 15 КГ |
+      | English  | mass      | 0.5 kg  | 500 G |
+      | Russian  | mass      | 0.5 kg  | 500 Г |
       | Russian  | mass      | 1000 kg | 1 Т   |
       | English  | mass      | 6500 kg | 6.5 T |
       | Russian  | mass      | 6500 kg | 6,5 Т |
@@ -81,7 +86,7 @@ Feature: English and Russian
     Given the app is in <language>
     When I play a round of <game> through to the result
     Then every text on every screen is in capitals
-    But the language and theme menus and the version footer, which are for parents, are not
+    But the parents' menus and the version footer, which are for parents, are not, save the age level names (age-level.feature)
 
     Examples:
       | language | game             |

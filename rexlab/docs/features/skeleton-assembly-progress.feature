@@ -3,9 +3,12 @@ Feature: Skeleton assembly: keeping the collection
   effort. An unfinished rebuild keeps only its earned identity and
   awaiting-rebuild state; fitted bone placements are not saved. Leaving
   a puzzle never awards a star or removes a previously earned star or stand.
+  The child's choice on the level switch is kept beside them
+  (skeleton-assembly-levels.feature).
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, whose four pieces these scenarios count
 
   Scenario: Earned stars and completed exhibits survive reopening
     Given I have finished Tyrannosaurus and Triceratops
@@ -28,6 +31,7 @@ Feature: Skeleton assembly: keeping the collection
     Examples:
       | leave          |
       | tap "HOME"     |
+      | tap "BACK"     |
       | reload the app |
 
   Scenario: Home leaves a puzzle without confirmation

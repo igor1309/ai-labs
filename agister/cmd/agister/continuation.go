@@ -29,12 +29,15 @@ type continuedWorktree interface {
 }
 
 // continuation is how a run continues an earlier call's session: the
-// session, the id of its latest call, and the text of home's prompt
+// session and its cost, the id of its latest call, and the text of home's prompt
 // "continuation".
 type continuation struct {
-	session   string
-	continues string
-	prompt    string
+	session         string
+	sessionCost     *float64
+	continues       string
+	prompt          string
+	definitions     []runstore.Definition
+	definitionBytes map[string][]byte
 }
 
 // continuationOf is the continuation of the run named run by built, asked
@@ -85,8 +88,8 @@ func continuationOf(ctx context.Context, run string, built plan, root string, ke
 	if err != nil {
 		return continuation{}, nil, err
 	}
-	if head != latest.Head {
-		return refuse("HEAD is %q, not %q's %q", head, latest.ID, latest.Head)
+	if head != leftHead(latest) {
+		return refuse("HEAD is %q, not %q's %q", head, latest.ID, leftHead(latest))
 	}
 	content, err := facts.Content(ctx, root)
 	if err != nil {
@@ -95,32 +98,59 @@ func continuationOf(ctx context.Context, run string, built plan, root string, ke
 	if latest.Content == "" || content != latest.Content {
 		return refuse("the worktree is not as %q left it", latest.ID)
 	}
-	prompt, problems := docs.Blob(documents.Prompt, "continuation")
-	if len(problems) > 0 {
-		return refuse("the prompt %q does not resolve: %v", "continuation", documentProblems(problems))
+	prompt, definitions, files, refusal := continuationPrompt(docs)
+	if len(refusal) > 0 {
+		return continuation{}, refusal, nil
 	}
-	return continuation{session: session, continues: latest.ID, prompt: string(prompt.Bytes)}, nil, nil
+	return continuation{session: session, sessionCost: latest.Result.SessionCost, continues: latest.ID, prompt: prompt, definitions: definitions, definitionBytes: files}, nil, nil
 }
 
-// latestCall is the latest call of session, first the call of the run
-// named run that has it: of the runs kept, read newest first, the first
-// holding a call of that session, its last such. The runs before run's
-// are not read, since none of them is later.
+// continuationPrompt is the text of the prompt "continuation" in docs, or
+// why it does not resolve.
+func continuationPrompt(docs runDocuments) (string, []runstore.Definition, map[string][]byte, []string) {
+	prompt, problems := docs.Blob(documents.Prompt, "continuation")
+	if len(problems) > 0 {
+		return "", nil, nil, []string{fmt.Sprintf("the prompt %q does not resolve: %v", "continuation", documentProblems(problems))}
+	}
+	definitions, files, err := definitionsOf(docs, []runstore.Definition{{Kind: "prompt", Name: "continuation"}})
+	if err != nil {
+		return "", nil, nil, []string{err.Error()}
+	}
+	return string(prompt.Bytes), definitions, files, nil
+}
+
+// latestCall is the latest call made of session, first the call of the
+// run named run that has it: of the runs kept, read newest first, the first
+// holding a call of that session not reused, its last such. A call whose
+// primary went on in session before it fell back is one, on its primary's
+// agent and with its primary's result: its turns resumed the session. The
+// runs before run's are read only where its call was reused, since none of
+// them is later than a call it made; first where no call made is kept.
 func latestCall(kept keptRuns, run string, first runstore.Call, session string) (runstore.Call, error) {
 	ids, err := kept.Runs()
 	if err != nil {
 		return runstore.Call{}, err
 	}
 	for _, id := range slices.Backward(ids) {
-		if id == run {
+		if id <= run && first.Reuses == nil {
 			break
 		}
 		record, err := kept.Record(id)
+		if errors.Is(err, runstore.ErrNotStarted) {
+			continue
+		}
 		if err != nil {
 			return runstore.Call{}, err
 		}
 		for _, made := range slices.Backward(record.Calls) {
+			if made.Reuses != nil {
+				continue
+			}
 			if s := made.Result.Session; s != nil && *s == session {
+				return made, nil
+			}
+			if primary := made.Primary; primary != nil && primary.Result.Session != nil && *primary.Result.Session == session {
+				made.Agent, made.Permissions, made.Result = primary.Agent, primary.Permissions, primary.Result
 				return made, nil
 			}
 		}
@@ -129,18 +159,62 @@ func latestCall(kept keptRuns, run string, first runstore.Call, session string) 
 }
 
 // continued is built, its one step continuing c: its call given c's
-// session and the prompt "continuation" as its first document, and
-// admitted with no clean worktree asked, the continuation's checks taking
-// its place (ADR-004, rule 5).
+// session, and continuing as continuing gives it.
 func continued(built plan, c continuation) plan {
 	calls := maps.Clone(built.calls)
 	for name, planned := range calls {
+		planned = continuing(planned, c.prompt, c.definitions, c.definitionBytes)
 		planned.continues = c.continues
 		planned.step.Session = c.session
-		planned.step.Documents = append([]call.Named{{Name: "continuation", Text: c.prompt}}, planned.step.Documents...)
-		planned.admission.Clean = false
+		planned.step.SessionCostBefore = c.sessionCost
 		calls[name] = planned
 	}
 	built.calls = calls
 	return built
+}
+
+// continuing is planned, a call continuing a session: given prompt, the
+// prompt "continuation", as its first document, and admitted with no clean
+// worktree asked, the checks of the worktree the session left taking its
+// place (ADR-004, rule 5).
+func continuing(planned plannedCall, prompt string, definitions []runstore.Definition, files map[string][]byte) plannedCall {
+	planned.step.Documents = append([]call.Named{{Name: "continuation", Text: prompt}}, planned.step.Documents...)
+	planned.definitions = orderedDefinitions(slices.Concat(planned.definitions, definitions))
+	data := make(map[string][]byte, len(planned.definitionBytes)+len(files))
+	maps.Copy(data, planned.definitionBytes)
+	maps.Copy(data, files)
+	planned.definitionBytes = data
+	planned.admission.Clean = false
+	return planned
+}
+
+// sessionsContinued is built, each step continuing an earlier step's
+// session continuing as continuing gives it (docs/run-implementation.md, "A
+// binding continuing a session"), or why it does not hold: the prompt
+// "continuation" does not resolve in docs. A workflow none of whose steps
+// continues a session does not ask for the prompt.
+func sessionsContinued(built plan, docs runDocuments) (plan, []string) {
+	names := slices.Clone(built.sessionSteps)
+	if len(names) == 0 {
+		return built, nil
+	}
+	prompt, definitions, files, refusal := continuationPrompt(docs)
+	if len(refusal) > 0 {
+		return plan{}, refusal
+	}
+	calls := maps.Clone(built.calls)
+	for _, name := range names {
+		calls[name] = continuing(calls[name], prompt, definitions, files)
+	}
+	built.calls = calls
+	return built, nil
+}
+
+// leftHead reads legacy records at their admitted HEAD. A present empty
+// end_head means it could not be read, so it must not fall back.
+func leftHead(c runstore.Call) string {
+	if c.EndHead != nil {
+		return *c.EndHead
+	}
+	return c.Head
 }

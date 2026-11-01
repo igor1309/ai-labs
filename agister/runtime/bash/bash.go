@@ -12,7 +12,8 @@ import (
 // Facts are the wrapper's contract and what it can do: check output
 // against a schema, resume a session, take skills, take a model, the
 // efforts it accepts, report tool calls and tool commands, and how it
-// takes a call's inputs.
+// takes a call's inputs, whether it takes a budget, and whether it
+// reports a cost.
 type Facts struct {
 	Contract     string
 	Schema       bool
@@ -22,6 +23,8 @@ type Facts struct {
 	Efforts      []string
 	ToolCalls    bool
 	ToolCommands bool
+	Budget       bool
+	Cost         bool
 	Inputs       Inputs
 }
 
@@ -112,6 +115,7 @@ func (*Wrapper) Facts() Facts {
 		Model:        false,
 		ToolCalls:    false,
 		ToolCommands: false,
+		Cost:         false,
 		Inputs:       InEnvironment,
 	}
 }

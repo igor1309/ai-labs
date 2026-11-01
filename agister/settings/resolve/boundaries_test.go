@@ -64,6 +64,18 @@ func TestAChildWorkflowIsReadThroughItsOutputs(t *testing.T) {
 		problemOfW(6, "steps[1].inputs.summary", `the workflow "c" gives the output "summary"`))
 }
 
+func TestAChildWorkflowWithOneOutputPublishesItWhole(t *testing.T) {
+	t.Parallel()
+	s := withSteps(newSource(), resolve.Item{Name: "child", Workflow: resolve.Name{Value: "c"}},
+		reading("use", from("verdict", outputs("child", "verdict"), 5, "steps[1].inputs.verdict"),
+			from("output", outputs("child", "output"), 6, "steps[1].inputs.output")))
+	s.workflows["c"] = resolve.Workflow{Name: "c", Steps: []resolve.Item{reading("t")},
+		Outputs: []resolve.Binding{from("output", outputs("t", "verdict"), 3, "outputs.output")}}
+	s.processes["t"] = resolve.Process{Name: "t"}
+	assertProblemsOf(t, s, requestW, resolve.KindWorkflow, "w",
+		problemOfW(6, "steps[1].inputs.output", `the workflow "c" gives its output "output" whole, read by its own fields`))
+}
+
 // arm is the step name, an arm of a branch on line of w's file, at place,
 // giving each of gives from its own outputs' field of that name.
 func arm(name string, line int, place string, gives ...string) resolve.Item {

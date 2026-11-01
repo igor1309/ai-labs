@@ -1,8 +1,12 @@
 Feature: Find the pair: starting a board
   A memory game: the child turns over cards two at a time to find
-  matching dinosaur pairs, with no timer and no move limit. Levels grow
-  from a few pairs of the same picture to more pairs where a picture
-  matches its dinosaur's silhouette.
+  matching dinosaur pairs, with no timer and no move limit. At Hatchling
+  its climb levels grow from a few pairs of the same picture to more
+  pairs where a picture matches its dinosaur's silhouette; Explorer and
+  Paleontologist are in find-the-pair-levels.feature.
+  Its rules hold at every age level. A scenario that names a climb
+  level or a number of tries plays Hatchling, whose climb levels 1 to 4
+  these are (find-the-pair-levels.feature).
 
   Background:
     Given an iPad in landscape
@@ -10,16 +14,17 @@ Feature: Find the pair: starting a board
   Scenario: The home page offers the game
     When I open the home page
     Then I see a "FIND THE PAIR" tile with a two-cards symbol and a dinosaur
-    And it is in the column of the "SORT" card, under it and as tall
+    And on a day COMPARE is featured it stands under the "ANCIENT REPTILES" card and as tall, before the "SKELETONS" tile
     And its title sits beside its symbol, on two lines at most
     And once I have finished a board it shows my stars with a star symbol
     When I tap "FIND THE PAIR"
     Then I see the find-the-pair welcome screen
-    And I see "PLAY" with a play symbol and my level as a number with a ladder symbol
+    And I see "PLAY" with a play symbol and the level switch (find-the-pair-levels.feature)
+    And at Hatchling, my climb level as a number with a ladder symbol
     And my stars as a number with a star symbol
     And "HOME" with a house symbol
 
-  Scenario Outline: Each level has its own board
+  Scenario Outline: Each climb level has its own board
     Given I am on level <level>
     When I tap "PLAY"
     Then I see <pairs> pairs of face-down cards in <rows> rows of <columns>
@@ -38,23 +43,18 @@ Feature: Find the pair: starting a board
     When a board is dealt
     Then its pairs are of different dinosaurs from the shared dinosaur list
     And its cards are in a random order
-    And two boards in a row do not deal the same dinosaurs
+    And it deals as few of the dinosaurs of the board before it as find-the-pair-level-progress.feature allows
 
   Scenario: A silhouette board never deals look-alikes
     When a board of pictures and silhouettes is dealt
     Then no two of its dinosaurs are from the same look-alike group
     And every dinosaur in the shared list belongs to exactly one look-alike group
 
-  Scenario: A board waits briefly for its pictures
-    Given the pictures of the next board are still loading
-    When I tap "PLAY"
-    Then the welcome screen stays until the pictures load, for at most a second
-    And then the board appears, its cards dealt one after the other
-
   Scenario: A quick double tap deals one board
     Given I am on the find-the-pair welcome screen
     When I tap "PLAY" twice quickly
     Then one board is dealt
+    And no card is turned over
 
   Scenario Outline: The game uses the chosen language
     Given the app is in <language>

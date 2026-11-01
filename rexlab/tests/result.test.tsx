@@ -1,51 +1,43 @@
+import { emptyLabyrinth } from "./support.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.tsx";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
-import { largerOf, type Question } from "../src/quiz/round.ts";
+import { correctOf } from "../src/quiz/round.ts";
 import {
   PALETTE,
   SHIPPED_CATALOGUE,
   SHIPPED_DINOSAURS,
   emptyCare,
+  emptyDig,
   emptySorting,
   emptyPairs,
   englishDevice,
   emptySkeletons,
   fakeBodyPicture,
+  featuring,
   lightDevice,
   loadedPictures,
-  manualOrientation,
+  manualViewport,
   memoryStorage,
+  pageAtRest,
   sameColour,
   seededRandom,
   symbolOf,
-  type MemoryStorage
+  type MemoryStorage,
+  gameDoor,
+  shownQuestion,
+  wrongOf
 } from "./support.ts";
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const byName = (name: string) => {
-  const found = SHIPPED_DINOSAURS.find((d) => d.name.en === name);
-  if (!found) throw new Error(`No ${name} in the shipped list`);
-  return found;
-};
-
-const group = () => screen.getByRole("group", { name: "DINOSAURS" });
+const group = () => screen.getByRole("group", { name: "ANIMALS" });
 const cardOf = (name: string) => within(group()).getByRole("button", { name });
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
-
-function shownQuestion(): Question {
-  const attribute = screen.getByRole("heading").textContent?.includes("HEAVIER") ? "mass" : "height";
-  const [left, right] = within(group())
-    .getAllByRole("button")
-    .map((card) => byName(card.getAttribute("aria-label") ?? ""));
-  if (!left || !right) throw new Error("Expected two dinosaur cards");
-  return { attribute, left, right };
-}
 
 // A stored record in the section 5 format of docs/mvp-infrastructure.md.
 const record = (bestScore: number | null, roundsPlayed: number) =>
@@ -56,37 +48,47 @@ const stored = (storage: MemoryStorage) => {
   return raw === undefined ? undefined : JSON.parse(raw);
 };
 const storedGame = (storage: MemoryStorage) => stored(storage)?.games["compare-dinosaurs"];
+// The quiz's entry as a round saves it, its best at Hatchling.
+const savedGame = (bestScore: number, roundsPlayed: number) => ({ bestScore, explorerBest: null, paleontologistBest: null, roundsPlayed });
+
+// The age level picked, Hatchling, whose best a record saved before the
+// quiz had levels holds.
+const HATCHLING = { load: () => ({ level: "hatchling" as const, revision: null }), save: () => {} };
 
 function openApp(storage: MemoryStorage, seed = 21) {
   render(
-    <App
+    <App {...emptyLabyrinth()}
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(seed)}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={{}}
+      viewport={manualViewport("landscape")}
       progress={localProgress(() => storage)}
       {...englishDevice()}
       {...lightDevice()}
+      ageLevelStore={HATCHLING}
       {...emptyCare()}
       {...emptySorting()}
       {...emptyPairs()}
       {...emptySkeletons()}
+      {...emptyDig()}
+      {...pageAtRest()}
       {...loadedPictures()}
     />
   );
-  return userEvent.setup();
+  return userEvent.setup({ delay: null });
 }
 
 // Starts a round and answers its first `count` questions, the first
 // `correct` of them right and the rest wrong, moving on after each but the
 // last question of the round.
 async function answer(user: UserEvent, correct: number, count = 10) {
-  await user.click(screen.getByRole("button", { name: "COMPARE" }));
+  await user.click(gameDoor("COMPARE"));
   for (let number = 1; number <= count; number++) {
     const question = shownQuestion();
-    const larger = largerOf(question);
-    const tapped = number <= correct ? larger : larger === question.left ? question.right : question.left;
+    const tapped = number <= correct ? correctOf(question) : wrongOf(question);
     await user.click(cardOf(tapped.name.en));
     if (number < 10) await user.click(screen.getByRole("button", { name: "NEXT" }));
   }
@@ -156,7 +158,7 @@ describe("the result", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
-    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(screen.queryByLabelText("SCORE")).toBeNull();
   });
 });
@@ -168,7 +170,7 @@ describe("stored progress", () => {
 
     await finishRound(user, 5);
 
-    expect(storedGame(storage)).toEqual({ bestScore: 9, roundsPlayed: 4 });
+    expect(storedGame(storage)).toEqual(savedGame(9, 4));
   });
 
   it("celebrates a new best score and keeps it", async () => {
@@ -182,7 +184,7 @@ describe("stored progress", () => {
     expect(confetti()).toBeGreaterThan(0);
     expect(shownBest()).toBe("7");
     expect(shownBeaten()).toEqual(["6", "arrow-right"]);
-    expect(storedGame(storage)).toEqual({ bestScore: 7, roundsPlayed: 4 });
+    expect(storedGame(storage)).toEqual(savedGame(7, 4));
   });
 
   it.each([7, 5])("does not celebrate %i against a best of 7, and the best stays 7", async (points) => {
@@ -196,7 +198,7 @@ describe("stored progress", () => {
     expect(confetti()).toBe(0);
     expect(shownBest()).toBe("7");
     expect(shownBeaten()).toEqual([undefined, undefined]);
-    expect(storedGame(storage)).toEqual({ bestScore: 7, roundsPlayed: 4 });
+    expect(storedGame(storage)).toEqual(savedGame(7, 4));
   });
 
   it("celebrates the first finished round as the first best", async () => {
@@ -210,7 +212,7 @@ describe("stored progress", () => {
     expect(confetti()).toBeGreaterThan(0);
     expect(shownBest()).toBe("4");
     expect(shownBeaten()).toEqual([undefined, undefined]);
-    expect(storedGame(storage)).toEqual({ bestScore: 4, roundsPlayed: 1 });
+    expect(storedGame(storage)).toEqual(savedGame(4, 1));
   });
 
   it("does not celebrate a first round of 0, which still sets the best", async () => {
@@ -222,7 +224,7 @@ describe("stored progress", () => {
     expect(celebrations()).toEqual([]);
     expect(confetti()).toBe(0);
     expect(shownBest()).toBe("0");
-    expect(storedGame(storage)).toEqual({ bestScore: 0, roundsPlayed: 1 });
+    expect(storedGame(storage)).toEqual(savedGame(0, 1));
   });
 
   it("does not record a round left early, and goes home without asking", async () => {
@@ -235,7 +237,7 @@ describe("stored progress", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
-    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(confirm).not.toHaveBeenCalled();
     expect(storage.items.get(PROGRESS_KEY)).toBe(kept);
   });
@@ -251,7 +253,7 @@ describe("stored progress", () => {
 
     expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
     expect(shownBest()).toBe("4");
-    expect(stored(storage)).toEqual({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 4, roundsPlayed: 1 } } });
+    expect(stored(storage)).toEqual({ schemaVersion: 1, games: { "compare-dinosaurs": savedGame(4, 1) } });
   });
 
   it("shows the score but no best and no celebration when storage cannot be read", async () => {

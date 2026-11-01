@@ -39,5 +39,11 @@ limits:
     tool_command: 15m
     repeated_tool_calls: 5
 
+recovery:
+  resumes: 1
+  instruction: >-
+    Your last turn was ended: it stopped making progress, as said below.
+    Its work is in the worktree. Go on with the task another way.
+
 output:
   schema: implementation

@@ -1,10 +1,12 @@
 import { act, render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import userEvent, { type UserEvent } from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
 import { SortScreen, type Basket } from "../src/SortScreen.tsx";
 import { boardState, score, type CardState, type Property, type Sorting } from "../src/sorting/index.ts";
 import { AWAY, basketButton, centreOf, dragTo, latest, layOutBaskets, openBoard, otherBasket, tray, trayCard } from "./sorting.tsx";
-import { fakeBodyPicture, sortingBy, symbolOf, words } from "./support.ts";
+import { withPictures } from "./pictures.tsx";
+import { fakeBodyPicture, manualPictures, sortingBy, symbolOf, words, type ManualPictures } from "./support.ts";
+import { moveAt, pressAt, releaseAt } from "./taps.ts";
 
 const cardsOf = (sorting: Sorting) => boardState(sorting).cards;
 
@@ -19,12 +21,29 @@ const isPicked = (card: HTMLElement) => card.hasAttribute("data-picked") && card
 const filledSteps = () => document.querySelectorAll('.step[data-step="done"]').length;
 
 describe("a new board", () => {
+  it("cancels a held card when the gate covers the board, ignoring its release over a basket", () => {
+    const sorting = sortingBy("diet");
+    const opened = openBoard(sorting);
+    layOutBaskets(sorting);
+    const card = nthCard(sorting, 0);
+    pressAt(trayCard(card), 0, { x: 200, y: 300 });
+    const centre = centreOf(sorting, card.basket as Basket);
+    moveAt(50, { x: centre.clientX, y: centre.clientY });
+    expect(document.querySelector(".sort-card[data-dragging]")).not.toBeNull();
+    act(() => opened.viewport.turn("portrait"));
+    releaseAt(window, 100, { x: centre.clientX, y: centre.clientY });
+    act(() => opened.viewport.turn("landscape"));
+    expect(document.querySelector(".sort-card[data-dragging]")).toBeNull();
+    expect(latest(opened)).toBe(sorting);
+    expect(within(tray()).getAllByRole("button")).toHaveLength(6);
+  });
+
   it("shows the prompt, two baskets and six cards, each with its own dinosaur's picture and name in capitals", () => {
     const sorting = sortingBy("diet");
     openBoard(sorting);
 
-    const heading = screen.getByRole("heading", { name: "SORT THE DINOSAURS" });
-    expect([symbolOf(heading), words(heading)]).toEqual(["shapes", "SORT THE DINOSAURS"]);
+    const heading = screen.getByRole("heading", { name: "SORT THEM ALL" });
+    expect([symbolOf(heading), words(heading)]).toEqual(["shapes", "SORT THEM ALL"]);
     expect(screen.getAllByRole("button", { name: /^(PLANTS|MEAT)$/ })).toHaveLength(2);
     const cards = within(tray()).getAllByRole("button");
     expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual(cardsOf(sorting).map(({ dinosaur }) => dinosaur.name.en));
@@ -90,25 +109,71 @@ describe("a new board", () => {
         onDrop={nothing}
         onHome={nothing}
         onSeeResult={nothing}
-      />
+      />,
+      withPictures
     );
 
     const names = [...document.querySelectorAll<HTMLElement>(".sort-name, .sorted-name")];
     expect(names.map((each) => each.textContent)).toEqual([name.toLocaleUpperCase(language), name.toLocaleUpperCase(language)]);
     for (const each of names) {
       const style = getComputedStyle(each);
-      // Each name's size falls with its letters, from the card's width, so
-      // it shrinks to fit rather than wrap or be cut off.
+      // Tray names shrink with their letters; sorted names stay at 14px
+      // and give their strip to the picture when it cannot fit.
       expect(each.style.getPropertyValue("--letters")).toBe(String(name.length));
       expect(style.whiteSpace).toBe("nowrap");
-      expect(getComputedStyle(each.parentElement ?? each).getPropertyValue("container-type")).toBe("inline-size");
+      if (each.classList.contains("sort-name")) expect(getComputedStyle(each.parentElement ?? each).getPropertyValue("container-type")).toBe("inline-size");
+      else expect(style.fontSize).toBe("14px");
+    }
+  });
+});
+
+describe("a basket's measured layout", () => {
+  it("updates columns and all names when cards, language or the window change, without ResizeObserver", () => {
+    let room = [629, 159];
+    vi.stubGlobal("ResizeObserver", undefined);
+    const measurements = ([["clientWidth", 0], ["clientHeight", 1], ["offsetWidth", 0], ["offsetHeight", 1]] as const).map(([property, axis]) =>
+      vi.spyOn(HTMLElement.prototype, property, "get").mockImplementation(function (this: HTMLElement) {
+        if (this.classList.contains("basket-cards")) return room[axis] ?? 0;
+        if (this.classList.contains("sorted-footer")) return axis === 1 ? 26 : this.textContent?.includes("П") ? 250 : 191;
+        return 0;
+      })
+    );
+    const cards = Array.from({ length: 5 }, (_, at) => ({ id: String(at), name: "Pachycephalosaurus", picture: fakeBodyPicture("pachycephalosaurus") }));
+    const board = (count: number, language: "en" | "ru" = "en") => (
+      <SortScreen language={language} tray={Array.from({ length: 6 }, () => null)} baskets={[
+        { basket: "feathers", cards: [] },
+        { basket: "no-feathers", cards: cards.slice(0, count).map((card) => ({ ...card, name: language === "ru" ? "Пахицефалозавр" : card.name })) }
+      ]} sorted={count} total={6} glow={undefined} onDrop={() => {}} onHome={() => {}} onSeeResult={() => {}} />
+    );
+    const state = (language: "en" | "ru" = "en") => {
+      const area = basketButton("no-feathers", language).querySelector<HTMLElement>(".basket-cards");
+      return [area?.style.getPropertyValue("--columns"), [...(area?.children ?? [])].map((card) => card.hasAttribute("data-name-fits"))];
+    };
+    try {
+      const { rerender, unmount } = render(board(3), withPictures);
+      expect(state()).toEqual(["3", [true, true, true]]);
+      rerender(board(3, "ru"));
+      expect(state("ru")[1]).toEqual([false, false, false]);
+      rerender(board(3));
+      expect(state()).toEqual(["3", [true, true, true]]);
+      room = [390, 120];
+      rerender(board(5));
+      expect(state()).toEqual(["3", [false, false, false, false, false]]);
+      room = [1100, 240];
+      act(() => window.dispatchEvent(new Event("resize")));
+      expect(state()).toEqual(["5", [true, true, true, true, true]]);
+      unmount();
+      act(() => window.dispatchEvent(new Event("resize")));
+    } finally {
+      measurements.forEach((measurement) => measurement.mockRestore());
+      vi.unstubAllGlobals();
     }
   });
 });
 
 describe("dragging a card", () => {
   it("lights the basket under it, and lands it in its right basket with a ✓, counted as right", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("legs");
     const opened = openBoard(sorting);
     layOutBaskets(sorting);
@@ -139,7 +204,7 @@ describe("dragging a card", () => {
   });
 
   it("slides a card dropped on the wrong basket back to its place, with its right basket's symbol as a hint, and glows that basket", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("diet");
     const opened = openBoard(sorting);
     layOutBaskets(sorting);
@@ -170,7 +235,7 @@ describe("dragging a card", () => {
   });
 
   it("slides back again from a second wrong drop, and glows the right basket anew", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("horns");
     openBoard(sorting);
     layOutBaskets(sorting);
@@ -192,7 +257,7 @@ describe("dragging a card", () => {
   });
 
   it("slides a card let go away from the baskets back, counting nothing, and it counts as right when then dropped on its basket", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("feathers");
     const opened = openBoard(sorting);
     layOutBaskets(sorting);
@@ -211,7 +276,7 @@ describe("dragging a card", () => {
   });
 
   it("moves one card at a time: a second finger moves nothing while one card is dragged", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("size");
     const opened = openBoard(sorting);
     layOutBaskets(sorting);
@@ -242,9 +307,103 @@ describe("dragging a card", () => {
   });
 });
 
+// How a card's picture is not shown: still loading, or failed. A sorted
+// card is a place of its own, so a failed picture is loaded again there.
+const NOT_SHOWN = [
+  ["still loading", () => {}, (pictures: ManualPictures, url: string) => pictures.finish(url), ["loading", "appearing"]],
+  ["failed", (pictures: ManualPictures, url: string) => pictures.fail(url), (pictures: ManualPictures, url: string) => pictures.fail(url), ["loading", "failed"]]
+] as const;
+
+// Each way a card is moved to a basket.
+const MOVES = [
+  ["a drag", async (user: UserEvent, sorting: Sorting, card: HTMLElement, basket: Basket) => dragTo(user, card, centreOf(sorting, basket))],
+  [
+    "taps",
+    async (user: UserEvent, _: Sorting, card: HTMLElement, basket: Basket) => {
+      await user.click(card);
+      await user.click(basketButton(basket));
+    }
+  ]
+] as const;
+
+const lookIn = (element: Element | null) => element?.querySelector<HTMLElement>(".picture")?.dataset.picture;
+
+describe("a card whose picture is not shown", () => {
+  it("shows the failure look on the tray once its picture has failed, its name below", () => {
+    const pictures = manualPictures();
+    const sorting = sortingBy("diet");
+    openBoard(sorting, "en", pictures);
+    const card = nthCard(sorting, 1);
+
+    act(() => pictures.fail(fakeBodyPicture(card.dinosaur.id)));
+
+    const shown = trayCard(card);
+    expect([lookIn(shown), words(shown.querySelector(".sort-name") as HTMLElement)]).toEqual(["failed", card.dinosaur.name.en.toUpperCase()]);
+  });
+
+  it.each(NOT_SHOWN.flatMap((shown) => MOVES.map((move) => [...shown, ...move] as const)))(
+    "lands, its picture %s, in its right basket by %s, named and counted right, its place there shimmering, then as the picture ends",
+    async (_, before, after, looks, __, move) => {
+      const user = userEvent.setup({ delay: null });
+      const pictures = manualPictures();
+      const sorting = sortingBy("diet");
+      const opened = openBoard(sorting, "en", pictures);
+      layOutBaskets(sorting);
+      const card = nthCard(sorting, 1);
+      const url = fakeBodyPicture(card.dinosaur.id);
+      act(() => before(pictures, url));
+      const right = card.basket as Basket;
+
+      await move(user, sorting, trayCard(card), right);
+
+      const sorted = basketButton(right).querySelector(".sorted-card");
+      expect([sortedIn(right), score(latest(opened)), lookIn(sorted)]).toEqual([[card.dinosaur.name.en.toUpperCase()], 1, looks[0]]);
+      act(() => after(pictures, url));
+      expect(lookIn(sorted)).toBe(looks[1]);
+    }
+  );
+
+  it.each(NOT_SHOWN)("slides back to its place on a miss, its picture %s, named and hinted, its place shimmering, and glows its right basket", async (_, before, after, looks) => {
+    const user = userEvent.setup({ delay: null });
+    const pictures = manualPictures();
+    const sorting = sortingBy("diet");
+    openBoard(sorting, "en", pictures);
+    layOutBaskets(sorting);
+    const card = nthCard(sorting, 1);
+    const url = fakeBodyPicture(card.dinosaur.id);
+    act(() => before(pictures, url));
+    const right = card.basket as Basket;
+
+    await dragTo(user, trayCard(card), centreOf(sorting, otherBasket(sorting, right)));
+
+    const back = trayCard(card);
+    expect([back.hasAttribute("data-returning"), words(back.querySelector(".sort-name") as HTMLElement), back.querySelector(".sort-hint")?.getAttribute("data-basket"), lookIn(back)]).toEqual([true, card.dinosaur.name.en.toUpperCase(), right, looks[0]]);
+    expect(basketButton(right).querySelector(".basket-glow")).not.toBeNull();
+    act(() => after(pictures, url));
+    expect(lookIn(trayCard(card))).toBe(looks[1]);
+  });
+
+  it.each(NOT_SHOWN)("slides back to its place when let go away from the baskets, its picture %s, its place shimmering, and nothing counts", async (_, before, after, looks) => {
+    const user = userEvent.setup({ delay: null });
+    const pictures = manualPictures();
+    const sorting = sortingBy("diet");
+    const opened = openBoard(sorting, "en", pictures);
+    layOutBaskets(sorting);
+    const card = nthCard(sorting, 1);
+    const url = fakeBodyPicture(card.dinosaur.id);
+    act(() => before(pictures, url));
+
+    await dragTo(user, trayCard(card), AWAY);
+
+    expect([trayCard(card).hasAttribute("data-returning"), lookIn(trayCard(card)), opened.seen]).toEqual([true, looks[0], [sorting]]);
+    act(() => after(pictures, url));
+    expect(lookIn(trayCard(card))).toBe(looks[1]);
+  });
+});
+
 describe("tapping", () => {
   it("picks a card up, and a tap on a basket drops it there, as if dragged", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("legs");
     const opened = openBoard(sorting);
     const [first, second] = [nthCard(sorting, 0), nthCard(sorting, 1)];
@@ -272,7 +431,7 @@ describe("tapping", () => {
     ["the prompt", () => screen.getByRole("heading")],
     ["a sorted card", (sorting) => basketButton(nthCard(sorting, 0).basket as Basket).querySelector(".sorted-card") as HTMLElement]
   ])("puts a picked card down at a tap on %s, and nothing counts", async (_, target) => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("diet");
     const opened = openBoard(sorting);
     const [sorted, card] = [nthCard(sorting, 0), nthCard(sorting, 1)];
@@ -288,7 +447,7 @@ describe("tapping", () => {
   });
 
   it("picks another card up instead at a tap on it", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("diet");
     openBoard(sorting);
     const [first, second] = [nthCard(sorting, 0), nthCard(sorting, 1)];
@@ -300,7 +459,7 @@ describe("tapping", () => {
   });
 
   it("puts a picked card down when another card is dragged, and the dragged one moves", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("diet");
     openBoard(sorting);
     layOutBaskets(sorting);
@@ -318,19 +477,19 @@ describe("tapping", () => {
   });
 
   it("changes nothing at a tap on a basket with no card picked up", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("horns");
     const opened = openBoard(sorting);
     const before = document.body.innerHTML;
 
-    await user.click(basketButton("horns"));
+    await user.pointer({ keys: "[TouchA]", target: basketButton("horns") });
 
     expect(opened.seen).toEqual([sorting]);
     expect(document.body.innerHTML).toBe(before);
   });
 
   it("does not move a sorted card, dragged or tapped, nor change the score", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("legs");
     const opened = openBoard(sorting);
     layOutBaskets(sorting);
@@ -356,7 +515,7 @@ describe("tapping", () => {
 
 describe("the round on the board", () => {
   it("fills one progress step, with no numbers, for each card sorted", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("size");
     openBoard(sorting);
 
@@ -371,7 +530,7 @@ describe("the round on the board", () => {
   });
 
   it("shows SEE RESULT with a trophy once the last card lands, and it leads to the result", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("feathers");
     const opened = openBoard(sorting);
     const cards = cardsOf(sorting);
@@ -393,7 +552,7 @@ describe("the round on the board", () => {
   });
 
   it("leaves at HOME without asking", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const opened = openBoard(sortingBy("legs"));
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
@@ -403,7 +562,7 @@ describe("the round on the board", () => {
   });
 
   it("asks to turn the iPad in portrait, and keeps the cards sorted and the wrong drop when turned back", async () => {
-    const user = userEvent.setup();
+    const user = userEvent.setup({ delay: null });
     const sorting = sortingBy("diet");
     const opened = openBoard(sorting);
     const cards = cardsOf(sorting).slice(0, 3);
@@ -418,12 +577,12 @@ describe("the round on the board", () => {
     const sorted = (["plants", "meat"] as const).map(sortedIn);
     expect(sorted.flat()).toHaveLength(3);
 
-    act(() => opened.orientation.turn("portrait"));
+    act(() => opened.viewport.turn("portrait"));
 
-    expect(screen.getByRole("img", { name: "TURN THE IPAD SIDEWAYS" })).toBeDefined();
+    expect(screen.getByRole("img", { name: "TURN SIDEWAYS" })).toBeDefined();
     expect(screen.queryByRole("group")).toBeNull();
 
-    act(() => opened.orientation.turn("landscape"));
+    act(() => opened.viewport.turn("landscape"));
 
     expect((["plants", "meat"] as const).map(sortedIn)).toEqual(sorted);
     expect(within(tray()).getAllByRole("button")).toHaveLength(3);

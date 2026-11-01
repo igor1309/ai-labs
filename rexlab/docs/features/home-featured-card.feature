@@ -1,76 +1,80 @@
-@next
 Feature: Home page: the featured card and the tiles
-  The large card on the left of the home page features one game a day, as
-  an extra door beside that game's own tile. Every tile keeps a fixed place,
-  so a child who cannot read yet finds a game by its picture where it was
-  last time, whichever game is featured. When this is built it replaces the
-  fixed COMPARE card of compare-dinosaurs-start.feature, and the home layout
-  scenarios there and in catalogue.feature, dinosaur-care-start.feature
-  and find-the-pair-start.feature change with it. The choice is in
-  home-featured-choice.feature.
+  The large card on the left of the home page features one game a day,
+  in place of that game's tile: no game is on the page twice. The other
+  tiles keep their order, each moving up one place where the featured
+  game's tile would stand. The row scrolls and fits its words as
+  home-tiles.feature says. The choice is in home-featured-choice.feature.
 
   Background:
     Given an iPad in landscape
-    And the games, in the order they were added, are COMPARE, ALL DINOSAURS, CARE and SKELETONS
+    And the games, in tile order, are COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
 
-  Scenario: The featured card is an extra door; every tile keeps its place
+  Scenario: The featured game has the large card and no tile
     Given CARE is today's featured game
     When I open the home page
     Then the large card on the left shows CARE with its picture and its name in large capitals
-    And the tiles show COMPARE, ALL DINOSAURS, CARE and SKELETONS in that order, then "MORE COMING"
+    And the tiles show COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT and SAND WRITING in that order, then "MORE COMING"
     When SKELETONS is featured on another day
-    Then every tile is in the same place as before
+    Then the tiles show COMPARE, ANCIENT REPTILES, FIND THE PAIR, DIG, SORT, CARE and SAND WRITING in that order, then "MORE COMING"
 
 
-  Scenario Outline: The featured card shows what its tile shows
-    Given <game> is today's featured game
-    And its tile shows <badge>
-    When I open the home page
+  Scenario Outline: The featured card shows what its tile would show
+    Given <game>'s tile shows <badge> on a day another game is featured
+    When <game> is today's featured game and I open the home page
     Then the large card shows <badge> too
-    When I finish a game and go home
-    Then the large card and the tile show the same, updated value
+    When I play it and come back home
+    Then the large card shows the value its tile would, updated if playing changed it
 
     Examples:
       | game          | badge                                       |
       | COMPARE       | no best score, as I have not played it yet  |
       | COMPARE       | a best score of 0 with a trophy symbol      |
-      | ALL DINOSAURS | the dinosaur count                          |
+      | ANCIENT REPTILES | the dinosaur count                          |
       | CARE          | a best score of 7 with a trophy symbol      |
+      | SORT          | a best score of 6 with a trophy symbol      |
+      | FIND THE PAIR | 120 stars with a star symbol                |
       | SKELETONS     | a collection best of 2 with a trophy symbol |
+      | DIG           | 7 dinosaurs dug up with a star symbol       |
+      | SAND WRITING  | no score or badge                          |
 
 
-  Scenario Outline: The featured card opens its game as its tile does
+  Scenario Outline: The featured card starts its game
     Given <game> is today's featured game
     And I am on the home page
     When I tap the large card twice quickly
     Then I see <destination>, opened once
-    And it counts as one start of <game>
+    And <game> counts one more start
 
     Examples:
-      | game          | destination                                    |
-      | COMPARE       | question "1/10", once its pictures have loaded |
-      | ALL DINOSAURS | the dinosaur list                              |
-      | CARE          | the care welcome screen                        |
-      | SKELETONS     | the skeleton selection screen                  |
+      | game          | destination                                               |
+      | COMPARE       | question "1/10"                                           |
+      | ANCIENT REPTILES | the dinosaur list                                         |
+      | SORT          | a sorting round, at once, whatever its pictures are doing |
+      | DIG           | a dig round, at once                                      |
+      | SAND WRITING  | a blank full-screen sand canvas                          |
 
 
-  Scenario Outline: Tiles that no longer fit scroll sideways
-    Given there are 8 games
-    And the app is in <language>
-    And the screen is <width> by <height> CSS pixels
+  Scenario Outline: The featured card opens a game's first screen
+    Given <game> is today's featured game
+    And I am on the home page
+    When I tap the large card twice quickly
+    Then I see <destination>, opened once
+    And no start of <game> is counted yet
+    When I <begin>
+    Then <game> counts one more start
+
+    Examples:
+      | game          | destination                      | begin                 |
+      | CARE          | the care welcome screen          | tap "NEW VISITOR"     |
+      | FIND THE PAIR | the find-the-pair welcome screen | tap "PLAY"            |
+      | SKELETONS     | the skeleton selection screen    | choose a dinosaur     |
+
+
+  Scenario: The large card stays while the tiles scroll
+    Given I am on the home page
     When I swipe the tiles to the left until they stop
-    Then I can reach the last game's tile and "MORE COMING"
-    And the large card stays in place
-    When I swipe back to the right
-    Then I see the first tiles again
-    And every tile keeps its picture, its words and its count on one line
-
-    Examples:
-      | language | width | height |
-      | English  | 1024  | 768    |
-      | English  | 1366  | 1024   |
-      | Russian  | 1024  | 768    |
-      | Russian  | 1180  | 820    |
+    Then I see "MORE COMING" at the right edge
+    And the large card stays in place, showing today's featured game
 
 
   Scenario: The featured card moves smoothly

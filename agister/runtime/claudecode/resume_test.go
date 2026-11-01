@@ -46,3 +46,35 @@ func TestATurnGivenASessionResumesIt(t *testing.T) {
 		})
 	}
 }
+
+// resume.feature, "A turn a signal ended gives the session it read": the
+// session of the first line that names one, whatever its type, a line
+// before it naming none; the reply's the same.
+func TestATurnASignalEndedGivesTheSessionItRead(t *testing.T) {
+	t.Parallel()
+	terminated := claudecode.Ended{Signal: "terminated"}
+	other := `{"type":"assistant","message":{"content":[{"type":"text","text":"x"}]},"session_id":"s2"}`
+	for _, c := range []struct {
+		name  string
+		lines []string
+	}{
+		{"the init event", []string{initLine, other}},
+		{"a tool call", []string{notJSONLine, `{"type":"system","subtype":"hook_started"}`, toolUseLine, other}},
+		{"a rate limit event", []string{allowedLine, other}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := wrapper(t, &supervisorSpy{lines: c.lines, result: terminated}).Run(context.Background(), claudecode.Turn{Message: "m"}, discard)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if want := (claudecode.Result{Ended: terminated, Session: "s1"}); !reflect.DeepEqual(got, want) {
+				t.Errorf("turn gave %+v, want %+v", got, want)
+			}
+			exited := &supervisorSpy{lines: c.lines}
+			if got := reply(t, exited, nil); got.Session != "s1" {
+				t.Errorf("the reply of a turn that exited: session %q, want s1", got.Session)
+			}
+		})
+	}
+}

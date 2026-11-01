@@ -10,7 +10,9 @@ import {
   finishLoading,
   fit,
   fitAll,
+  fittedPieces,
   hints,
+  layOutPuzzle,
   openPuzzle,
   openSkeletonsApp,
   release,
@@ -22,17 +24,13 @@ import {
   savedSkeletons,
   type SkeletonsAppOptions
 } from "./skeletonsApp.tsx";
-import { fakeBodyPicture, fakeSkeletonPicture, manualPictures, memoryStorage, symbolOf, words, type MemoryStorage } from "./support.ts";
+import { fakeBodyPicture, fakeSkeletonPicture, manualPictures, memoryStorage, symbolOf, words, type MemoryStorage, gameDoor } from "./support.ts";
 
 const GAME = "skeleton-assembly";
 
 const NAMES: Record<string, string> = { tyrannosaurus: "TYRANNOSAURUS", triceratops: "TRICERATOPS", stegosaurus: "STEGOSAURUS" };
 
-// The longest the reveal waits for a body picture, in milliseconds.
-const PICTURE_WAIT = 1000;
-
 const button = (name: string) => screen.getByRole("button", { name });
-
 
 // Every skeleton entry written to storage, in order.
 function countingSaves(storage: MemoryStorage) {
@@ -57,26 +55,23 @@ const starsChip = () => screen.getByLabelText("STARS").textContent;
 const bestScore = () => screen.queryByLabelText("BEST SCORE")?.textContent;
 const celebration = () => screen.queryByRole("status")?.getAttribute("aria-label");
 const bones = () => reveal()?.querySelector(".skeleton-reveal-bones");
+const bonesPicture = () => bones()?.querySelector("img");
 const body = () => reveal()?.querySelector(".skeleton-reveal-body");
 
 describe("the reveal of a finished skeleton", () => {
-  it("shows the complete skeleton on its board first, waiting for its moment and its body picture", async () => {
+  it("shows the complete skeleton on its board first, waiting for its moment alone", async () => {
     const { pictures } = await finish("tyrannosaurus");
 
     expect(board().hasAttribute("data-complete")).toBe(true);
     expect(reveal()).toBeNull();
-    expect(pictures.loading()).toEqual([fakeBodyPicture("tyrannosaurus")]);
-    expect(pictures.timers().sort()).toEqual([REVEAL.motion, PICTURE_WAIT].sort());
-
-    act(() => pictures.finish(fakeBodyPicture("tyrannosaurus")));
-    expect(reveal()).toBeNull();
+    expect(pictures.timers()).toEqual([REVEAL.motion]);
 
     act(() => pictures.fire(REVEAL.motion));
     expect(reveal()).not.toBeNull();
   });
 
-  it("holds the whole skeleton as long as the last piece's slide in and as long again, and only its fade with reduced motion", () => {
-    expect(REVEAL).toEqual({ motion: 480, reduced: 160 });
+  it("holds the whole skeleton while it stomps, snaps and roars, and only the last piece's fade with reduced motion", () => {
+    expect(REVEAL).toEqual({ motion: 1500, reduced: 160 });
   });
 
   it("fades the dinosaur's body in over its whole skeleton, in the frame they share", async () => {
@@ -84,12 +79,12 @@ describe("the reveal of a finished skeleton", () => {
     revealNow(pictures, "tyrannosaurus");
 
     const art = screen.getByRole("img", { name: "TYRANNOSAURUS" });
-    expect([bones()?.getAttribute("src"), body()?.getAttribute("src")]).toEqual([fakeSkeletonPicture("tyrannosaurus", "skeleton"), fakeBodyPicture("tyrannosaurus")]);
+    expect([bonesPicture()?.getAttribute("src"), body()?.getAttribute("src")]).toEqual([fakeSkeletonPicture("tyrannosaurus", "skeleton"), fakeBodyPicture("tyrannosaurus")]);
     expect([bones()?.parentElement, body()?.parentElement]).toEqual([art, art]);
     expect([art.style.getPropertyValue("--frame-width"), art.style.getPropertyValue("--frame-height")]).toEqual(["800", "600"]);
   });
 
-  it("shows the name in large capitals, one short fact, the star and the collection score out of 3", async () => {
+  it("shows the name in large capitals, one short fact, the star and the collection score out of 5", async () => {
     const { pictures } = await finish("tyrannosaurus");
     revealNow(pictures, "tyrannosaurus");
 
@@ -97,7 +92,7 @@ describe("the reveal of a finished skeleton", () => {
     expect(reveal()?.querySelectorAll(".skeleton-fact")).toHaveLength(1);
     expect(words(reveal()?.querySelector(".skeleton-fact") ?? document.body)).toBe("T. REX HAD TINY ARMS BUT HUGE LEGS.");
     expect(screen.getByRole("img", { name: "STAR" })).toBeDefined();
-    expect(starsChip()).toBe("1/3");
+    expect(starsChip()).toBe("1/5");
   });
 
   it("offers BUILD ANOTHER, MUSEUM and HOME, each with its symbol", async () => {
@@ -111,9 +106,8 @@ describe("the reveal of a finished skeleton", () => {
     const { pictures } = await finish("stegosaurus");
 
     expect(hints()).toEqual([]);
-    // Only the reveal's pause and its wait for the body picture run: no
-    // tick of help.
-    expect(pictures.timers().sort()).toEqual([REVEAL.motion, PICTURE_WAIT].sort());
+    // Only the reveal's pause runs: no tick of help.
+    expect(pictures.timers()).toEqual([REVEAL.motion]);
   });
 });
 
@@ -124,7 +118,7 @@ describe("earning a star", () => {
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
 
     revealNow(pictures, "tyrannosaurus");
-    expect([starsChip(), bestScore(), celebration()]).toEqual(["1/3", "BEST1/3", "FIRST BEST SCORE"]);
+    expect([starsChip(), bestScore(), celebration()]).toEqual(["1/5", "BEST1/5", "FIRST BEST SCORE"]);
   });
 
   it("raises the collection and its best with a different dinosaur, celebrating a new best", async () => {
@@ -133,17 +127,17 @@ describe("earning a star", () => {
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
 
     revealNow(pictures, "triceratops");
-    expect([starsChip(), bestScore(), celebration()]).toEqual(["2/3", "BEST12/3", "NEW BEST SCORE"]);
+    expect([starsChip(), bestScore(), celebration()]).toEqual(["2/5", "BEST12/5", "NEW BEST SCORE"]);
   });
 
-  it("fills the collection with the third dinosaur, and keeps the other games' progress", async () => {
+  it("raises the collection with a third dinosaur, and keeps the other games' progress", async () => {
     const { pictures, storage } = await finish("stegosaurus", { storage: keptSkeletons({ earned: ["triceratops", "tyrannosaurus"], bestScore: 2, rebuilding: [] }) });
 
     revealNow(pictures, "stegosaurus");
 
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] });
     expect(JSON.parse(storage.items.get(PROGRESS_KEY) ?? "").games["compare-dinosaurs"]).toEqual({ bestScore: 7, roundsPlayed: 3 });
-    expect([starsChip(), bestScore()]).toEqual(["3/3", "BEST23/3"]);
+    expect([starsChip(), bestScore()]).toEqual(["3/5", "BEST23/5"]);
   });
 
   it("records the star exactly once, the moment the last piece fits, whatever releases follow", async () => {
@@ -172,8 +166,33 @@ describe("earning a star", () => {
     revealNow(pictures, "tyrannosaurus");
 
     expect(reveal()).toBeNull();
-    expect(button("COMPARE")).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus"], bestScore: 1, rebuilding: [] });
+  });
+
+  // The tap and the timers read in one act, before React renders the home
+  // page: the puzzle's timers stop as the child leaves, not as the game is
+  // taken off the screen.
+  it("stops the reveal's pause as the child goes home, and the next puzzle is not revealed by it, delivered all the same", async () => {
+    const { user, pictures } = await finish("tyrannosaurus");
+    expect(pictures.timers()).toEqual([REVEAL.motion]);
+
+    let running: number[] = [];
+    act(() => {
+      fireEvent.click(button("HOME"));
+      running = pictures.timers();
+    });
+    fireEvent.click(gameDoor("SKELETONS"));
+    await user.click(button("TYRANNOSAURUS"));
+    act(() => finishLoading(pictures));
+    layOutPuzzle();
+    act(() => pictures.deliverStopped(REVEAL.motion));
+
+    expect(running).toEqual([]);
+    expect([reveal(), fittedPieces(), board().hasAttribute("data-complete")]).toEqual([null, [], false]);
+    fitAll(skeletonOf("tyrannosaurus"));
+    revealNow(pictures, "tyrannosaurus");
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
   });
 
   it("keeps the star when the app is reloaded during the reveal", async () => {
@@ -183,7 +202,7 @@ describe("earning a star", () => {
     openSkeletonsApp({ storage });
 
     expect(within(choices()[0] ?? document.body).getByRole("img", { name: "STAR" })).toBeDefined();
-    expect(screen.getByLabelText("BEST SCORE").textContent).toBe("1/3");
+    expect(screen.getByLabelText("BEST SCORE").textContent).toBe("1/5");
   });
 
   it("still reveals and keeps the star for the visit when stored progress cannot be read, with no best to show", async () => {
@@ -192,51 +211,114 @@ describe("earning a star", () => {
 
     revealNow(pictures, "triceratops");
 
-    expect([starsChip(), bestScore(), celebration()]).toEqual(["1/3", undefined, undefined]);
+    expect([starsChip(), bestScore(), celebration()]).toEqual(["1/5", undefined, undefined]);
     expect(storage.items.size).toBe(0);
   });
 });
 
-describe("a body picture that cannot load", () => {
-  it("reveals the skeleton once the wait for it runs out, never more than a second after the pause", async () => {
-    const { pictures } = await finish("triceratops");
+type End = "loaded" | "loading" | "failed";
 
-    act(() => pictures.fire(REVEAL.motion));
-    expect(reveal()).toBeNull();
+// The puzzle of the dinosaur with this id finished and its skeleton held,
+// its outline and body pictures left loading from the home page on, the
+// body on its choice card too, until the result shows, then ended as
+// given.
+async function finishWith(id: string, skeletonEnd: End, bodyEnd: End) {
+  const outline = fakeSkeletonPicture(id, "skeleton");
+  const kept = [outline, fakeBodyPicture(id)];
+  const { user, pictures } = openSkeletonsApp({ loadHome: false });
+  const finishOthers = () => act(() => new Set(pictures.loading()).forEach((url) => kept.includes(url) || pictures.finish(url)));
+  finishOthers();
+  await user.click(button(NAMES[id] ?? id));
+  finishOthers();
+  layOutPuzzle();
+  fitAll(skeletonOf(id));
+  act(() => pictures.fire(REVEAL.motion));
+  const end = (url: string, how: End) => (how === "loaded" ? pictures.finish(url) : how === "failed" ? pictures.fail(url) : undefined);
+  act(() => {
+    end(outline, skeletonEnd);
+    end(fakeBodyPicture(id), bodyEnd);
+  });
+  return pictures;
+}
 
-    act(() => pictures.fire(PICTURE_WAIT));
-    expect(reveal()).not.toBeNull();
+// The skeleton's look, whether the body shows, and whether the skeleton
+// shows whole, alone.
+const result = () => [bonesPicture()?.dataset.picture?.replace("appearing", "shown"), body() ? "body" : "no body", bones()?.hasAttribute("data-alone")];
+
+describe("the result's pictures", () => {
+  it.each<[End, End, ReturnType<typeof result>]>([
+    ["loaded", "failed", ["shown", "no body", true]],
+    ["loaded", "loading", ["shown", "no body", true]],
+    ["loading", "loaded", ["loading", "body", false]],
+    ["loading", "failed", ["loading", "no body", true]],
+    ["loading", "loading", ["loading", "no body", true]],
+    ["failed", "loaded", ["failed", "body", false]],
+    ["failed", "loading", ["failed", "no body", true]],
+    ["failed", "failed", ["failed", "no body", true]]
+  ])("shows, for a skeleton picture %s and a body picture %s, the reward with %j", async (skeletonEnd, bodyEnd, shows) => {
+    await finishWith("stegosaurus", skeletonEnd, bodyEnd);
+
+    expect(result()).toEqual(shows);
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("STEGOSAURUS");
+    expect(words(reveal()?.querySelector(".skeleton-fact") ?? document.body)).toBe("STEGOSAURUS HAD LARGE PLATES ALONG ITS BACK.");
+    expect([starsChip(), celebration()]).toEqual(["1/5", "FIRST BEST SCORE"]);
+    expect([button("BUILD ANOTHER"), button("MUSEUM")]).toHaveLength(2);
   });
 
-  it("leaves the whole skeleton, the name, the fact and the reward, and the ways on", async () => {
-    const { pictures } = await finish("triceratops");
-    revealNow(pictures, "triceratops");
+  it("fades a body that loads late in over the whole skeleton, and a skeleton that loads late in under the body", async () => {
+    const pictures = await finishWith("stegosaurus", "loading", "loading");
 
-    fireEvent.error(body() ?? document.body);
+    act(() => pictures.finish(fakeBodyPicture("stegosaurus")));
+    expect(result()).toEqual(["loading", "body", false]);
+    expect(body()?.getAttribute("data-picture")).toBe("appearing");
 
-    expect([body() ?? "no body", bones()?.hasAttribute("data-alone")]).toEqual(["no body", true]);
-    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TRICERATOPS");
-    expect(words(reveal()?.querySelector(".skeleton-fact") ?? document.body)).toBe("TRICERATOPS HAD THREE HORNS AND A BONY FRILL.");
-    expect([starsChip(), celebration()]).toEqual(["1/3", "FIRST BEST SCORE"]);
-    expect([button("BUILD ANOTHER"), button("MUSEUM")]).toHaveLength(2);
+    act(() => pictures.finish(fakeSkeletonPicture("stegosaurus", "skeleton")));
+    expect(bonesPicture()?.dataset.picture).toBe("appearing");
+  });
+
+  it("loads again a body picture that failed on its choice card, as any new place does", async () => {
+    const { user, pictures } = openSkeletonsApp({ loadHome: false });
+    act(() => new Set(pictures.loading()).forEach((url) => (url === fakeBodyPicture("stegosaurus") ? pictures.fail(url) : pictures.finish(url))));
+    await user.click(button("STEGOSAURUS"));
+    act(() => finishLoading(pictures));
+    layOutPuzzle();
+    fitAll(skeletonOf("stegosaurus"));
+
+    act(() => pictures.fire(REVEAL.motion));
+    expect(pictures.loading()).toEqual([fakeBodyPicture("stegosaurus")]);
+    act(() => pictures.finish(fakeBodyPicture("stegosaurus")));
+    expect(result()).toEqual(["shown", "body", false]);
+  });
+
+  // skeleton-assembly-result.feature: the body fades in as the reveal
+  // does, not as any other picture would.
+  it("fades a late body in over the reveal's time, from when it loads", async () => {
+    const pictures = await finishWith("stegosaurus", "loaded", "loading");
+
+    act(() => pictures.finish(fakeBodyPicture("stegosaurus")));
+
+    expect(getComputedStyle(body() ?? document.body).animation).toBe("fade-in calc(var(--motion-screen) * 2) var(--ease-out) var(--motion-screen) both");
   });
 });
 
 describe("building another", () => {
-  it("returns to one choice of all three dinosaurs on a double tap, the finished one starred", async () => {
+  it("returns to one choice of all the dinosaurs on a double tap, the finished one starred", async () => {
     const { user, pictures } = await finish("triceratops");
     revealNow(pictures, "triceratops");
 
     await user.dblClick(button("BUILD ANOTHER"));
 
     expect(reveal()).toBeNull();
-    expect(screen.getAllByRole("group", { name: "DINOSAURS" })).toHaveLength(1);
+    expect(screen.getAllByRole("group", { name: "ANIMALS" })).toHaveLength(1);
     expect(choices().map((choice) => [choice.getAttribute("aria-label"), within(choice).queryByRole("img", { name: "STAR" }) !== null])).toEqual([
       ["TYRANNOSAURUS", false],
       ["TRICERATOPS", true],
-      ["STEGOSAURUS", false]
+      ["STEGOSAURUS", false],
+      ["BRACHIOSAURUS", false],
+      ["SPINOSAURUS", false],
+      ["MYSTERY SKELETON", false]
     ]);
-    expect(screen.getByLabelText("BEST SCORE").textContent).toBe("1/3");
+    expect(screen.getByLabelText("BEST SCORE").textContent).toBe("1/5");
   });
 
   it("builds the next dinosaur from the choice", async () => {
@@ -257,11 +339,11 @@ describe("reduced motion", () => {
     const pictures = manualPictures();
     await finish("tyrannosaurus", { pictures, reducedMotion: true });
 
-    expect(pictures.timers().sort()).toEqual([REVEAL.reduced, PICTURE_WAIT].sort());
+    expect(pictures.timers()).toEqual([REVEAL.reduced]);
 
     revealNow(pictures, "tyrannosaurus", REVEAL.reduced);
 
-    expect([starsChip(), celebration(), button("BUILD ANOTHER").textContent]).toEqual(["1/3", "FIRST BEST SCORE", "BUILD ANOTHER"]);
+    expect([starsChip(), celebration(), button("BUILD ANOTHER").textContent]).toEqual(["1/5", "FIRST BEST SCORE", "BUILD ANOTHER"]);
   });
 });
 

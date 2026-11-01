@@ -208,8 +208,8 @@ type Status struct {
 // Check asks for the problems of no document, then resolves every name a
 // layer holds, alone, kind by kind and by name within a kind, so a
 // document nothing uses is checked too. A fault with a chain is the
-// document at its end, reported as first met; one with none is problems of
-// no document. A warning of a refused name is not reported: resolve gives
+// document at its end, reported as first met, and met again adds each
+// problem it did not have; one with none is problems of no document. A warning of a refused name is not reported: resolve gives
 // none with a refusal.
 func (c *Checker) Check() Report {
 	var report Report
@@ -252,7 +252,18 @@ func (c *Checker) Check() Report {
 			if !met {
 				i = len(report.Findings)
 				findings[document] = i
-				report.Findings = append(report.Findings, Finding{Document: document, Problems: fault.Problems, Block: fault.Block})
+				report.Findings = append(report.Findings, Finding{Document: document, Problems: slices.Clone(fault.Problems), Block: fault.Block})
+			} else {
+				known := make(map[Problem]bool, len(report.Findings[i].Problems))
+				for _, problem := range report.Findings[i].Problems {
+					known[problem] = true
+				}
+				for _, problem := range fault.Problems {
+					if !known[problem] {
+						report.Findings[i].Problems = append(report.Findings[i].Problems, problem)
+						known[problem] = true
+					}
+				}
 			}
 			report.Findings[i].Refuses = append(report.Findings[i].Refuses, name)
 		}

@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { bodyPictures } from "../src/dinosaurPictures.ts";
 import { appProps } from "../src/root.ts";
-import { SHIPPED_DINOSAURS, browserDocument, browserQueries, memoryStorage, pictureBrowser, readWebp, type WebpImage } from "./support.ts";
+import { SHIPPED_DINOSAURS, browserDocument, browserQueries, manualWindow, memoryStorage, pictureBrowser, readWebp, rootInsets, type WebpImage } from "./support.ts";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -69,7 +69,8 @@ describe("bodyPictures", () => {
 
 // The shipped pictures as the app is given them in a browser.
 function shippedBodyPicture() {
-  return appProps({ localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document: browserDocument().document, ...pictureBrowser() }).bodyPicture;
+  const { document } = browserDocument();
+  return appProps({ screen: {}, localStorage: memoryStorage(), matchMedia: browserQueries().matchMedia, navigator: { language: "en-GB" }, document, ...rootInsets(document.documentElement), ...manualWindow(1024), ...pictureBrowser() }).bodyPicture;
 }
 
 // The file under rexlab/ a picture URL is served from while testing.

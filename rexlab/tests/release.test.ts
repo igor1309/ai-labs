@@ -1,10 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { workerHeader, workerVersion } from "../src/offline/workerBuild.ts";
 import {
   expectedVersion,
   pageVersion,
+  smokeDeployment,
   stampVersion,
   verifyDeployedVersion,
+  verifyRelease,
   type SmokeDeps
 } from "../src/release";
 
@@ -15,7 +18,7 @@ describe("stampVersion", () => {
     const html = stampVersion(INDEX_HTML, "v1.2.3");
 
     expect(pageVersion(html)).toBe("v1.2.3");
-    expect(html).toContain('<footer aria-label="Version">v1.2.3</footer>');
+    expect(html).toContain('<footer id="version" aria-label="Version" data-turn-fade>v1.2.3</footer>');
     expect(html).not.toContain("%REXLAB_VERSION%");
   });
 });
@@ -47,8 +50,10 @@ describe("verifyDeployedVersion", () => {
   function deps(responses: Array<{ status: number; body: string } | Error>) {
     const sleeps: number[] = [];
     const logs: string[] = [];
+    const fetched: string[] = [];
     const smoke: SmokeDeps = {
-      fetchPage: async () => {
+      fetchFile: async (target) => {
+        fetched.push(target);
         const next = responses.shift();
         if (!next) throw new Error("no more responses");
         if (next instanceof Error) throw next;
@@ -59,7 +64,7 @@ describe("verifyDeployedVersion", () => {
       },
       log: (line) => logs.push(line)
     };
-    return { smoke, sleeps, logs };
+    return { smoke, sleeps, logs, fetched };
   }
 
   const page = (version: string) => ({ status: 200, body: stampVersion(INDEX_HTML, version) });
@@ -78,6 +83,43 @@ describe("verifyDeployedVersion", () => {
     await verifyDeployedVersion("https://rexlab.test", "v0.1.0", smoke, 5, 10);
 
     expect(sleeps).toEqual([10, 10, 10]);
+  });
+
+  it("reads the version where it is told to, as the worker's header", async () => {
+    const { smoke, sleeps } = deps([{ status: 200, body: workerHeader("v0.0.9") }, { status: 200, body: `${workerHeader("v0.1.0")}self.x=1;` }]);
+
+    await verifyDeployedVersion("https://rexlab.test/sw.js", "v0.1.0", { ...smoke, read: workerVersion }, 5, 10);
+
+    expect(sleeps).toEqual([10]);
+  });
+
+  it("checks a release's page and then the worker beside it", async () => {
+    const { smoke, fetched } = deps([page("v0.1.0"), { status: 200, body: `${workerHeader("v0.1.0")}self.x=1;` }]);
+
+    await verifyRelease("https://rexlab.test/", "v0.1.0", smoke);
+
+    expect(fetched).toEqual(["https://rexlab.test/", "https://rexlab.test/sw.js"]);
+  });
+
+  it("fails a release whose worker is an older one", async () => {
+    const { smoke } = deps([page("v0.1.0"), ...Array(12).fill({ status: 200, body: workerHeader("v0.0.9") })]);
+
+    await expect(verifyRelease("https://rexlab.test/", "v0.1.0", smoke)).rejects.toThrow(/sw\.js, got version v0\.0\.9/);
+  });
+
+  it("smokes the release the environment names: its page and then its worker", async () => {
+    const { smoke, fetched } = deps([page("v0.2.0"), { status: 200, body: workerHeader("v0.2.0") }]);
+
+    await smokeDeployment({ REXLAB_URL: "https://rexlab.test/", GITHUB_REF_NAME: "rexlab_v0.2.0", GITHUB_REF_TYPE: "tag" }, "0.1.0", smoke);
+
+    expect(fetched).toEqual(["https://rexlab.test/", "https://rexlab.test/sw.js"]);
+  });
+
+  it("fails a smoke whose page is current but whose worker is stale, and one with no URL", async () => {
+    const { smoke } = deps([page("v0.1.0"), ...Array(12).fill({ status: 200, body: workerHeader("v0.0.9") })]);
+
+    await expect(smokeDeployment({ REXLAB_URL: "https://rexlab.test/" }, "0.1.0", smoke)).rejects.toThrow(/sw\.js, got version v0\.0\.9/);
+    await expect(smokeDeployment({ REXLAB_URL: " " }, "0.1.0", smoke)).rejects.toThrow("Missing required environment variable: REXLAB_URL");
   });
 
   it("fails with the last observation once attempts run out", async () => {

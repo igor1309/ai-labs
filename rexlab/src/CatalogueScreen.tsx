@@ -1,34 +1,56 @@
-import { BookOpen, Copy, Footprints, House, Ruler, Weight } from "lucide-react";
-import { useLayoutEffect, useRef, type CSSProperties } from "react";
+import { Copy, House, MoveHorizontal, Ruler, Weight } from "lucide-react";
+import { useImperativeHandle, useRef, type CSSProperties, type Ref } from "react";
+import { Button } from "./Button.tsx";
+import type { ChipArrangement, ChipContent } from "./chipArrangement.ts";
 import { DietTag, type Diet } from "./DietTag.tsx";
-import { FoodChips, type Food, type FoodChoice } from "./FoodChips.tsx";
+import { FoodChips, type ChipWidths, type Food, type FoodChoice } from "./FoodChips.tsx";
 import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
-import { SharedPicture } from "./SharedPicture.tsx";
-import { usePointerState } from "./usePointerState.ts";
+import { Picture } from "./Picture.tsx";
+import { SharedPicture, type PictureTransition } from "./SharedPicture.tsx";
+import { useKeptList } from "./useKeptList.ts";
+import type { LayoutKeeping } from "./useKeptRow.ts";
 
-// The cards in a row of the catalogue.
-const COLUMNS = 4;
+// How a creature's size is measured: a dinosaur's height, a flying
+// reptile's wingspan or a sea reptile's length.
+export type Measure = "height" | "wingspan" | "length";
+
+// A height stands up the card's ruler; a wingspan or a length lies along
+// its arrow, so neither reads as a height beside a dinosaur's.
+export const MEASURE_ICONS = { height: Ruler, wingspan: MoveHorizontal, length: MoveHorizontal } as const;
 
 export type CatalogueCardView = {
   id: string;
   name: string;
   // The URL of the dinosaur's picture.
   picture: string;
-  // The height and the mass, written out.
-  height: string;
+  // The size, by its measure, and the mass, written out.
+  size: { measure: Measure; value: string };
   mass: string;
   diet: Diet;
   // Found in find the pair.
   found: boolean;
 };
 
+export type CatalogueArrangement = { columns: number; chips: ChipArrangement | undefined };
+
+// The turn applies the arrangement only after measuring or capturing the
+// previous one. The keeper reads the applied columns during restoration.
+export type CatalogueLayout = { apply(arrangement: CatalogueArrangement): void };
+
 export type CatalogueScreenProps = {
+  ref?: Ref<CatalogueLayout>;
+  pictureTransition?: PictureTransition | undefined;
   language: Language;
   // The dinosaurs of the food chosen.
   dinosaurs: readonly CatalogueCardView[];
   foods: readonly FoodChoice[];
   food: Food;
+  initialArrangement: CatalogueArrangement;
+  // How the chips' parts are measured, for how they stand on their row.
+  chipWidths: ChipWidths;
+  onChipContents: (contents: readonly ChipContent[]) => void;
+  layoutKeeping: LayoutKeeping;
   // The dinosaur whose page the child came back from, undefined when the
   // catalogue opens from the home page.
   returning: string | undefined;
@@ -37,52 +59,54 @@ export type CatalogueScreenProps = {
   onHome: () => void;
 };
 
-export function CatalogueScreen({ language, dinosaurs, foods, food, returning, onFood, onOpen, onHome }: CatalogueScreenProps) {
+export function CatalogueScreen({ ref, pictureTransition, language, dinosaurs, foods, food, initialArrangement, chipWidths, onChipContents, layoutKeeping, returning, onFood, onOpen, onHome }: CatalogueScreenProps) {
   const text = TEXTS[language];
-  const found = dinosaurs.filter((view) => view.found).length;
-  const grid = useRef<HTMLDivElement>(null);
-
-  // Back from a page, its card is in view, so its picture has a card to
-  // shrink back into wherever the list was scrolled to.
-  useLayoutEffect(() => {
-    if (returning === undefined) return;
-    const cards = [...(grid.current?.children ?? [])] as HTMLElement[];
-    cards.find((card) => card.dataset.id === returning)?.scrollIntoView({ block: "nearest" });
-  }, [returning]);
+  const applied = useRef(initialArrangement);
+  const main = useRef<HTMLElement>(null);
+  useImperativeHandle(ref, () => ({
+    apply: (next) => {
+      applied.current = next;
+      const grid = main.current?.querySelector<HTMLElement>(".catalogue-grid");
+      grid?.style.setProperty("--columns", String(next.columns));
+      grid?.querySelectorAll<HTMLElement>(".catalogue-card:not([data-turn-frame])").forEach((card, index) => card.style.setProperty("--card", String(Math.min(index, next.columns - 1))));
+      const chips = main.current?.querySelector<HTMLElement>(".food-chips");
+      if (chips) {
+        if (next.chips === undefined) delete chips.dataset.arrangement;
+        else chips.dataset.arrangement = next.chips;
+      }
+    }
+  }), []);
+  const returningIndex = returning === undefined ? undefined : dinosaurs.findIndex(({ id }) => id === returning);
+  // Back from a page, its card is scrolled into view, so its picture has a
+  // card to shrink back into wherever the list was scrolled to.
+  const list = useKeptList(layoutKeeping, () => applied.current.columns, returningIndex === -1 ? undefined : returningIndex, food);
+  const { columns, chips } = applied.current;
 
   return (
-    <main className="catalogue">
+    <main ref={main} className="catalogue" aria-label={text.catalogue}>
       <header className="catalogue-bar">
-        <button type="button" className="home-button" onClick={onHome}>
+        <Button className="home-button" aria-label={text.home} data-turn-part="catalogue-home" onClick={onHome}>
           <House size={24} aria-hidden="true" />
-          {text.home}
-        </button>
-        <h1 className="catalogue-title">
-          <span className="catalogue-mark" aria-hidden="true">
-            <BookOpen size={28} />
-          </span>
-          {text.catalogue}
-        </h1>
-        {/* Once a dinosaur shown is found, the count is of those found. */}
-        {found > 0 ? (
-          <p className="catalogue-count catalogue-found" aria-label={text.found}>
-            <Copy size={20} aria-hidden="true" />
-            {found} / {dinosaurs.length}
-          </p>
-        ) : (
-          <p className="catalogue-count" aria-label={text.dinosaurs}>
-            <Footprints size={20} aria-hidden="true" />
-            {dinosaurs.length}
-          </p>
-        )}
+          <span className="catalogue-home-word">{text.home}</span>
+        </Button>
+        <FoodChips language={language} choices={foods} chosen={food} arrangement={chips} widths={chipWidths} onContents={onChipContents} onChoose={onFood} />
       </header>
-      <FoodChips language={language} choices={foods} chosen={food} onChoose={onFood} />
       {/* The cards rise in when the catalogue opens from home, and again
           for each food chosen, as a list of their own: back from a page,
           the picture shrinking into its card is the motion. */}
-      <div key={food} ref={grid} className="catalogue-grid" role="group" aria-label={text.catalogue} data-rise={returning === undefined || undefined}>
+      <div
+        key={food}
+        ref={list.ref}
+        onScroll={list.onScroll}
+        className="catalogue-grid"
+        role="group"
+        aria-label={text.catalogue}
+        data-rise={returning === undefined || undefined}
+        data-turn-part="catalogue-list"
+        style={{ "--columns": columns } as CSSProperties}
+      >
         {dinosaurs.map((view, index) => (
-          <CatalogueCard key={view.id} view={view} language={language} place={Math.min(index, COLUMNS - 1)} onOpen={onOpen} />
+          <CatalogueCard key={view.id} view={view} language={language} place={Math.min(index, columns - 1)} onOpen={onOpen} pictureTransition={pictureTransition} />
         ))}
       </div>
     </main>
@@ -90,6 +114,7 @@ export function CatalogueScreen({ language, dinosaurs, foods, food, returning, o
 }
 
 type CatalogueCardProps = {
+  pictureTransition?: PictureTransition | undefined;
   view: CatalogueCardView;
   language: Language;
   // The card's place in the stagger of the cards rising in: only the
@@ -98,35 +123,28 @@ type CatalogueCardProps = {
   onOpen: (id: string) => void;
 };
 
-function CatalogueCard({ view: { id, name, picture, height, mass, diet, found }, language, place, onOpen }: CatalogueCardProps) {
-  const pointer = usePointerState();
-  const text = TEXTS[language];
+function CatalogueCard({ view: { id, name, picture, size, mass, diet }, language, place, onOpen, pictureTransition }: CatalogueCardProps) {
+  const SizeIcon = MEASURE_ICONS[size.measure];
   return (
-    <button
-      type="button"
+    <Button
       className="card catalogue-card"
       aria-label={name}
       data-id={id}
+      data-turn-part={`catalogue-card-${id}`}
       style={{ "--card": place } as CSSProperties}
       onClick={() => onOpen(id)}
-      {...pointer}
     >
       <span className="catalogue-art">
-        <SharedPicture id={id}>
-          <img className="catalogue-picture" src={picture} alt="" width={800} height={600} draggable={false} />
+        <SharedPicture id={id} transition={pictureTransition}>
+          <Picture className="catalogue-picture" src={picture} alt="" width={800} height={600} />
         </SharedPicture>
-        {found && (
-          <span className="found-stamp" role="img" aria-label={text.found}>
-            <Copy size={26} aria-hidden="true" />
-          </span>
-        )}
       </span>
       <span className="catalogue-footer">
         <span className="catalogue-name">{name.toLocaleUpperCase(language)}</span>
         <span className="catalogue-chips">
           <span className="catalogue-chip">
-            <Ruler size={16} aria-hidden="true" />
-            {height}
+            <SizeIcon size={16} aria-hidden="true" />
+            {size.value}
           </span>
           <span className="catalogue-chip">
             <Weight size={16} aria-hidden="true" />
@@ -135,6 +153,6 @@ function CatalogueCard({ view: { id, name, picture, height, mass, diet, found },
           <DietTag diet={diet} language={language} size="small" />
         </span>
       </span>
-    </button>
+    </Button>
   );
 }

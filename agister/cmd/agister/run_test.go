@@ -95,8 +95,13 @@ func echoes(_ context.Context, turn bash.Turn) (bash.Ended, error) {
 
 // kept is what bash gives of a stream that wrote text.
 func kept(text string) bash.Stream {
+	return bash.Stream{Head: text, Tail: text, Size: int64(len(text)), Digest: identityOf(text)}
+}
+
+// identityOf is the hex SHA-256 digest of text.
+func identityOf(text string) string {
 	digest := sha256.Sum256([]byte(text))
-	return bash.Stream{Head: text, Tail: text, Size: int64(len(text)), Digest: hex.EncodeToString(digest[:])}
+	return hex.EncodeToString(digest[:])
 }
 
 // keptJSON is a stream that wrote text, as the result prints it.
@@ -151,6 +156,7 @@ type runFixture struct {
 	sources   *sourcesSpy
 	holding   *holdingSpy
 	store     *storeSpy
+	random    randomSpy
 }
 
 func newRunFixture(t *testing.T, settings map[string]string, answer func(context.Context, bash.Turn) (bash.Ended, error)) *runFixture {
@@ -167,6 +173,7 @@ func newRunFixture(t *testing.T, settings map[string]string, answer func(context
 		sources:   &sourcesSpy{root: "/r"},
 		holding:   &holdingSpy{root: "/r", head: "c1", clean: true},
 		store:     &storeSpy{},
+		random:    randomSpy{0x55, 0xfd, 0x36},
 	}
 }
 
@@ -179,8 +186,8 @@ func (f *runFixture) run(t *testing.T, dir string, args ...string) ran {
 func (f *runFixture) runWatching(t *testing.T, watch signals, environment []string, dir string, args ...string) ran {
 	t.Helper()
 	var stdout, stderr strings.Builder
-	machine := host{ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch,
-		random: randomSpy{0x55, 0xfd, 0x36}}
+	machine := host{probe: unexpectedProbe(t), ctx: context.Background(), environ: environment, clock: f.clock, timer: f.clock.Timer, signals: watch,
+		random: f.random}
 	commandLine, err := build("/u", &linksSpy{}, newFilesystemSpy(f.settings), f.roots, f.runtimes.runtimes(), f.validator, f.sources.sourcing(), f.holding.holding(), f.store.at, machine, &stdout, &stderr)
 	if err != nil {
 		t.Fatal(err)
@@ -322,22 +329,18 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 		agent    string
 		what     string
 	}{
-		{declares: "as it is", agent: "pi-m3", what: `the step "say": the runtime "pi"'s turn`},
-		{declares: "a recovery of 1 resume", more: "recovery: {resumes: 1, instruction: resume}\n",
-			agent: "claude-opus", what: `the process "say": the recovery`},
-		{declares: "the cost limit 1", more: "limits: {cost: 1}\n",
-			agent: "claude-opus", what: `the process "say": the cost limit`},
+		{declares: "as it is", agent: "pi-m3", what: `the step "say": the runtime "pi"'s turn is not run yet`},
 		{declares: `an input "prompt" from the param "what"`, more: "  prompt: {source: param, name: what}\n",
-			agent: "claude-opus", what: `the process "say": the input "prompt", a document's name,`},
+			agent: "claude-opus", what: `the process "say": the input "prompt", a document's name, is not run yet`},
 		{declares: `an input "b" from the source "git.diff"`, more: "  b: {source: git.diff, base: {from: params.what}, head: HEAD}\n",
-			agent: "bash", what: `the process "say": the input "b" from the source "git.diff"`},
+			agent: "bash", what: `the process "say": the input "b" from the source "git.diff" is not run yet`},
 		{declares: "the stale limit no_event 1m", more: "limits: {stale: {no_event: 1m}}\n",
-			agent: "bash", what: `the process "say": the staleness limit on bash`},
+			agent: "bash", what: `steps[0]: its runtime "bash" reports lines for staleness limits, as its process "say" needs`},
 		{declares: `an instruction "think"`, more: "instruction: think\n",
-			agent: "bash", what: `the process "say": the instruction on bash`},
+			agent: "bash", what: `steps[0]: its runtime "bash" takes an instruction, as its process "say" needs`},
 		{declares: `the guidance "g", a prompt the settings hold`, more: "guidance: [g]\n",
 			files: map[string]string{"/u/.agister/prompts/g.md": "Go.\n"},
-			agent: "bash", what: `the process "say": the guidance on bash`},
+			agent: "bash", what: `steps[0]: its runtime "bash" takes guidance, as its process "say" needs`},
 	}
 	for _, c := range cases {
 		t.Run(c.declares, func(t *testing.T) {
@@ -346,7 +349,9 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 			maps.Copy(files, c.files)
 			f := newRunFixture(t, runSettings(t, files), echoes)
 			got := f.run(t, "/r", "run", "--process", "say", "--agent", c.agent, "--param", "what=hi")
-			want := ran{stderr: "agister: the run is refused, and nothing runs:\n  " + c.what + " is not run yet\n", code: 1}
+			// Capability failures use resolve's diagnostic; slice limitations
+			// use the execution diagnostic.
+			want := ran{stderr: "agister: the run is refused, and nothing runs:\n  " + c.what + "\n", code: 1}
 			if got != want {
 				t.Errorf("ran %+v, want %+v", got, want)
 			}
@@ -358,10 +363,33 @@ func TestWhatThisSliceDoesNotRunIsRefusedBeforeAnything(t *testing.T) {
 }
 
 // run.feature, "What a parallel does not run yet is refused": the workflow
-// "w", its parallel "p" holding a branch, or read by a join's binding of a
+// "w", its parallel "p" holding a repeat, or read by a join's binding of a
 // field within its outputs.
 //
 // Contract test: the files home holds, as Agister ships them.
+// parallelThen is the parallel "p" of two "say", then items.
+func parallelThen(items string) string {
+	return `  - name: p
+    parallel:
+      - {name: a, process: say, agent: bash, inputs: {what: hi}}
+      - {name: b, process: say, agent: bash, inputs: {what: hi}}
+` + items
+}
+
+// repeatReading is the repeat "r" of one "say", its state and until as
+// given.
+func repeatReading(state, until string) string {
+	return `  - name: r
+    repeat:
+      ` + state + `
+      steps:
+        - {name: s, process: say, agent: bash, inputs: {what: hi}}
+      next: {last: {from: steps.s.outputs.stdout.head}}
+      ` + until + `
+      max: 1
+`
+}
+
 func TestWhatAParallelDoesNotRunYetIsRefused(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -369,20 +397,35 @@ func TestWhatAParallelDoesNotRunYetIsRefused(t *testing.T) {
 		steps   string
 		what    string
 	}{
-		{holding: `of "say" and a branch "b"`, steps: `  - name: p
+		{holding: `of "say" and a repeat "r"`, steps: `  - name: p
     parallel:
       - {name: a, process: say, agent: bash, inputs: {what: hi}}
-      - name: b
-        branch:
-          - {name: x, if: {present: {from: params.what}}, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
-          - {name: y, process: say, agent: bash, inputs: {what: hi}, outputs: {}}
-`, what: `the item "b", a branch,`},
+      - name: r
+        repeat:
+          state: {last: hi}
+          steps:
+            - {name: s, process: say, agent: bash, inputs: {what: hi}}
+          next: {last: {from: steps.s.outputs.stdout.head}}
+          until: {present: {from: state.last}}
+          max: 1
+`, what: `the item "r", a repeat,`},
 		{holding: `of two "say", read by steps.p.outputs.x`, steps: `  - name: p
     parallel:
       - {name: a, process: say, agent: bash, inputs: {what: hi}}
       - {name: b, process: say, agent: bash, inputs: {what: hi}}
   - {name: j, process: say, agent: bash, inputs: {what: {from: steps.p.outputs.x}}}
 `, what: `a field within the parallel "p"'s outputs`},
+		{holding: `of two "say", read by an arm's if`, steps: parallelThen(`  - name: choose
+    branch:
+      - {name: x, if: {equals: [{from: steps.p.outputs.x}, 0]}, process: say, agent: bash, inputs: {what: hi}, outputs: {o: {from: steps.x.outputs.stdout}}}
+      - {name: y, process: say, agent: bash, inputs: {what: hi}, outputs: {o: {from: steps.y.outputs.stdout}}}
+`), what: `a field within the parallel "p"'s outputs`},
+		{holding: `of two "say", read by a repeat's state`, steps: parallelThen(repeatReading(`state: {last: {from: steps.p.outputs.x}}`, `until: {present: {from: state.last}}`)), what: `a field within the parallel "p"'s outputs`},
+		{holding: `of two "say", read by a repeat's until`, steps: parallelThen(repeatReading(`state: {last: hi}`, `until: {equals: [{from: steps.p.outputs.x}, 0]}`)), what: `a field within the parallel "p"'s outputs`},
+		{holding: `of two "say", then a session read by a condition`, steps: parallelThen(`  - {name: c, process: say, agent: bash, inputs: {what: hi}}
+` + repeatReading(`state: {last: hi}`, `until: {present: {from: steps.c.session}}`)), what: `the session of "c", read as a value,`},
+		{holding: `of two "say", then a step named as a pass`, steps: parallelThen(`  - {name: j/1, process: say, agent: bash, inputs: {what: hi}}
+`), what: `the item "j/1", named as a pass,`},
 	}
 	for _, c := range cases {
 		t.Run(c.holding, func(t *testing.T) {

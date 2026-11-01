@@ -2,13 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="rexlab-version" content="%REXLAB_VERSION%" />
+    <meta name="theme-color" content="#F2EFE8" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="RexLab" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
     <title>RexLab</title>
   </head>
   <body>
     <div id="root"></div>
-    <footer aria-label="Version">%REXLAB_VERSION%</footer>
+    <footer id="version" aria-label="Version" data-turn-fade>%REXLAB_VERSION%</footer>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

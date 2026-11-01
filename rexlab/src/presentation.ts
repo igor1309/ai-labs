@@ -1,34 +1,43 @@
 import { askedNeed, NEEDS as CARE_NEEDS, suitableItems, type CareResult, type Celebration as CareCelebration, type Item, type Need, type Visit, type Visitor } from "./care/index.ts";
 import type { CareCelebration as ShownCareCelebration, CareResultScreenProps } from "./CareResultScreen.tsx";
-import type { CatalogueEntry, Diet } from "./catalogue.ts";
-import type { CatalogueCardView } from "./CatalogueScreen.tsx";
+import type { CatalogueEntry, Diet, Group, Measure } from "./catalogue.ts";
+import type { CatalogueCardView, Measure as ShownMeasure } from "./CatalogueScreen.tsx";
 import type { Diet as ShownDiet } from "./DietTag.tsx";
+import { asking, choiceOpacity, clearCells, FRAME, GRID, roundShare, TREASURE_CELLS, type DigRound, type TreasureKind } from "./dig/index.ts";
+import type { DigBoardScreenProps } from "./DigBoardScreen.tsx";
 import type { DinosaurPageView } from "./DinosaurPage.tsx";
-import { formatHeight, formatMass } from "./formatValue.ts";
+import { formatLength, formatMass } from "./formatValue.ts";
 import type { Language } from "./language/language.ts";
-import { LEVELS, type Board, type Celebration as PairsCelebration, type PairsResult } from "./pairs/index.ts";
+import { CLIMB_LEVELS, shapeOf, type Board, type Celebration as PairsCelebration, type LargeLevel, type PairsResult } from "./pairs/index.ts";
 import type { PairCardView, PairsBoardScreenProps } from "./PairsBoardScreen.tsx";
 import type { PairsCelebration as ShownPairsCelebration, PairsResultScreenProps } from "./PairsResultScreen.tsx";
-import type { Attribute, Celebration, Option, QuestionState, RoundResult } from "./quiz/index.ts";
+import { bestForLevel as bestForQuizLevel, type Attribute, type Celebration, type Option, type QuestionState, type RoundResult } from "./quiz/index.ts";
 import type { DinosaurCardView, Prompt, QuestionScreenProps } from "./QuestionScreen.tsx";
 import type { ResultScreenProps, Celebration as ShownCelebration } from "./ResultScreen.tsx";
 import type { Celebration as ShownSkeletonCelebration } from "./ResultParts.tsx";
 import type { SkeletonChoiceView } from "./SkeletonChoiceScreen.tsx";
+import type { SkeletonGuessScreenProps } from "./SkeletonGuessScreen.tsx";
+import type { ShownBadge } from "./LevelBadge.tsx";
 import type { ShownStand, SkeletonMuseumScreenProps } from "./SkeletonMuseumScreen.tsx";
-import type { ShownPiece, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
+import type { ShownArea, ShownHelpStep, ShownHint, ShownRegion, SkeletonPuzzleScreenProps } from "./SkeletonPuzzleScreen.tsx";
 import type { SkeletonResultScreenProps } from "./SkeletonResultScreen.tsx";
 import {
   help,
   isComplete,
-  PIECES,
+  strayId,
+  trayOf,
+  type Badge,
   type Celebration as SkeletonCelebration,
   type Museum,
-  type Piece,
+  type BodyArea,
+  type HelpStep,
+  type Kin,
   type Puzzle,
   type Skeleton,
   type SkeletonResult,
   type StandState
 } from "./skeletons/index.ts";
+import { bestForLevel } from "./sorting/index.ts";
 import type { BoardState, CardState, Basket as SortBasket, Celebration as SortingCelebration, SortingResult } from "./sorting/index.ts";
 import type { Basket as ShownBasket, SortScreenProps } from "./SortScreen.tsx";
 import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx";
@@ -39,11 +48,12 @@ import type { CareItem, CareNeed, NeedState, VisitView } from "./VisitScreen.tsx
 // attribute, celebration, food type, need, item, basket, bone piece or
 // museum stand fails the typecheck here until it is given a presentation.
 
-const PROMPTS: Record<Attribute, Prompt> = { mass: "mass", height: "height" };
+export const PROMPTS: Record<QuestionState["kind"], Prompt> = { heavier: "mass", taller: "height", lighter: "lighter", shorter: "shorter", longer: "longer" };
 
 const FORMATS: Record<Attribute, (value: number, language: Language) => string> = {
   mass: formatMass,
-  height: formatHeight
+  height: formatLength,
+  length: formatLength
 };
 
 const CELEBRATIONS: Record<Celebration, ShownCelebration> = { "first-best": "first-best", "new-best": "new-best" };
@@ -52,7 +62,7 @@ export type QuestionView = Pick<QuestionScreenProps, "prompt" | "number" | "tota
 
 export function presentQuestion(question: QuestionState, language: Language, bodyPicture: (dinosaurId: string) => string): QuestionView {
   // Once answered, the right answer is marked whichever card was tapped,
-  // so a wrong answer still shows the child which one is larger.
+  // so a wrong answer still shows the child which one wins.
   const card = ({ dinosaur, value, correct, chosen }: Option): DinosaurCardView => ({
     id: dinosaur.id,
     name: dinosaur.name[language],
@@ -62,7 +72,7 @@ export function presentQuestion(question: QuestionState, language: Language, bod
     chosen
   });
   return {
-    prompt: PROMPTS[question.attribute],
+    prompt: PROMPTS[question.kind],
     number: question.number,
     total: question.total,
     left: card(question.left),
@@ -80,11 +90,16 @@ function presentScore(score: number, total: number, best: number | undefined, pr
   return { score, total, best, beaten: celebration === "new-best" ? previousBest : undefined, celebration };
 }
 
-export function presentResult({ score, total, progress, previousBest, celebration }: RoundResult): ResultView {
-  return presentScore(score, total, progress?.bestScore, previousBest, celebration && CELEBRATIONS[celebration]);
+export function presentResult({ level, score, total, progress, previousBest, celebration }: RoundResult): ResultView {
+  return presentScore(score, total, progress === undefined ? undefined : bestForQuizLevel(progress, level) ?? undefined, previousBest, celebration && CELEBRATIONS[celebration]);
 }
 
 const DIETS: Record<Diet, ShownDiet> = { meat: "meat", plants: "plants", both: "both" };
+
+const MEASURES: Record<Measure, ShownMeasure> = { height: "height", wingspan: "wingspan", length: "length" };
+
+// A dinosaur's page names no group: only the creatures that are none do.
+const GROUPS: Record<Group, Pick<DinosaurPageView, "group">> = { dinosaur: {}, "flying-reptile": { group: "flying-reptile" }, "sea-reptile": { group: "sea-reptile" } };
 
 // `found` is the ids of the dinosaurs found in find the pair.
 export function presentCatalogueCard(
@@ -97,7 +112,7 @@ export function presentCatalogueCard(
     id: entry.id,
     name: entry.name[language],
     picture: bodyPicture(entry.id),
-    height: formatHeight(entry.height, language),
+    size: { measure: MEASURES[entry.size.measure], value: formatLength(entry.size.metres, language) },
     mass: formatMass(entry.mass, language),
     diet: DIETS[entry.diet],
     found: found.includes(entry.id)
@@ -110,7 +125,7 @@ export function presentDinosaurPage(
   bodyPicture: (dinosaurId: string) => string,
   found: readonly string[]
 ): DinosaurPageView {
-  return { ...presentCatalogueCard(entry, language, bodyPicture, found), description: entry.description[language] };
+  return { ...presentCatalogueCard(entry, language, bodyPicture, found), ...GROUPS[entry.group], description: entry.description[language] };
 }
 
 const ITEMS: Record<Item, CareItem> = { plants: "plants", meat: "meat", water: "water", bath: "bath", nest: "nest" };
@@ -168,7 +183,10 @@ const BASKETS: Record<SortBasket, ShownBasket> = {
   horns: "horns",
   "no-horns": "no-horns",
   feathers: "feathers",
-  "no-feathers": "no-feathers"
+  "no-feathers": "no-feathers",
+  both: "both",
+  "two-or-four": "two-or-four",
+  "not-known-yet": "not-known-yet"
 };
 
 const DROPPED = Object.fromEntries(Object.entries(BASKETS).map(([basket, shown]) => [shown, basket])) as Record<ShownBasket, SortBasket>;
@@ -185,14 +203,14 @@ export type BoardView = Pick<SortScreenProps, "tray" | "baskets" | "sorted" | "t
 export function presentBoard(board: BoardState, language: Language, bodyPicture: (dinosaurId: string) => string): BoardView {
   const { cards, landed, lastMiss } = board;
   const card = ({ dinosaur }: CardState) => ({ id: dinosaur.id, name: dinosaur.name[language], picture: bodyPicture(dinosaur.id) });
-  const [first, second] = board.baskets.map((basket) => ({
+  const [first, second, third] = board.baskets.map((basket) => ({
     basket: BASKETS[basket],
     cards: landed.filter((each) => each.basket === basket).map(card)
   }));
-  if (!first || !second) throw new Error("A board has two baskets");
+  if (!first || !second) throw new Error("A board has two or three baskets");
   return {
     tray: cards.map((each) => (each.landed ? null : { ...card(each), hint: each.missed ? BASKETS[each.basket] : undefined })),
-    baskets: [first, second],
+    baskets: third ? [first, second, third] : [first, second],
     sorted: landed.length,
     total: cards.length,
     glow: lastMiss && { basket: BASKETS[lastMiss.basket], count: lastMiss.misses }
@@ -202,28 +220,36 @@ export function presentBoard(board: BoardState, language: Language, bodyPicture:
 const SORTING_CELEBRATIONS: Record<SortingCelebration, ShownCelebration> = { "first-best": "first-best", "new-best": "new-best" };
 
 // A finished board shows on the quiz's result screen, a star for each card.
-export function presentSortingResult({ score, total, progress, previousBest, celebration }: SortingResult): ResultView {
-  return presentScore(score, total, progress?.bestScore, previousBest, celebration && SORTING_CELEBRATIONS[celebration]);
+export function presentSortingResult({ level, score, total, progress, previousBest, celebration }: SortingResult): ResultView {
+  return presentScore(score, total, progress === undefined ? undefined : bestForLevel(progress, level) ?? undefined, previousBest, celebration && SORTING_CELEBRATIONS[celebration]);
 }
 
 const PAIRS_CELEBRATIONS: Record<PairsCelebration, ShownPairsCelebration> = { "first-best": "first-best", "new-best": "new-best" };
 
-export type PairsBoardView = Pick<PairsBoardScreenProps, "level" | "tries" | "rows" | "columns" | "cards">;
+export type PairsBoardView = Pick<PairsBoardScreenProps, "climbLevel" | "tries" | "rows" | "columns" | "cardFloor" | "cards">;
+
+// The smallest a card may be, in CSS pixels: 150 on the climb's boards, as
+// find-the-pair-start.feature says, and on a larger level's board its size
+// on the smallest screen of the fit table of find-the-pair-levels.feature.
+const CLIMB_CARD_FLOOR = 150;
+const LARGE_CARD_FLOORS: Record<LargeLevel, number> = { explorer: 130, paleontologist: 120 };
 
 // A card is found once its pair is, open while turned over, and face down
-// otherwise.
-export function presentPairsBoard(board: Board, language: Language, bodyPicture: (dinosaurId: string) => string): PairsBoardView {
-  const { rows, columns } = LEVELS[board.level];
+// otherwise. A skeleton card shows the dinosaur's whole skeleton, any other
+// its body picture. Only a board of the climb shows its climb level.
+export function presentPairsBoard(board: Board, language: Language, bodyPicture: (dinosaurId: string) => string, skeletonPicture: SkeletonPicture): PairsBoardView {
+  const { rows, columns } = shapeOf(board.level);
   return {
-    level: board.level,
+    climbLevel: "climbLevel" in board.level ? board.level.climbLevel : undefined,
     tries: board.tries,
     rows,
     columns,
+    cardFloor: "climbLevel" in board.level ? CLIMB_CARD_FLOOR : LARGE_CARD_FLOORS[board.level.large],
     cards: board.cards.map(
       ({ pal, face }, place): PairCardView => ({
         id: pal.id,
         name: pal.name[language],
-        picture: bodyPicture(pal.id),
+        picture: face === "skeleton" ? skeletonPicture(pal.id, "skeleton") : bodyPicture(pal.id),
         face,
         state: board.found.includes(pal.id) ? "found" : board.open.includes(place) ? "open" : "down"
       })
@@ -243,7 +269,7 @@ export function presentPairsResult(result: PairsResult, language: Language, body
     // Only a new best shows the best it beat: a first best beat none.
     beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : PAIRS_CELEBRATIONS[celebration],
-    levelUp: levelUp === null ? null : { level: levelUp, rows: LEVELS[levelUp].rows, columns: LEVELS[levelUp].columns }
+    levelUp: levelUp === null ? null : { level: levelUp, rows: CLIMB_LEVELS[levelUp].rows, columns: CLIMB_LEVELS[levelUp].columns }
   };
 }
 
@@ -259,58 +285,98 @@ export function presentSkeletonChoices(
   return skeletons.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), earned: earned.includes(id) }));
 }
 
-const SHOWN_PIECES: Record<Piece, ShownPiece> = { skull: "skull", spine: "spine", legs: "legs", tail: "tail" };
+export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "silhouette" | "homeShown" | "frame" | "slots" | "strays" | "tray" | "told" | "hint" | "complete">;
 
-const DROPPED_PIECES: Record<ShownPiece, Piece> = { skull: "skull", spine: "spine", legs: "legs", tail: "tail" };
+// The pictures of a skeleton: the whole of it, "skeleton", or one of its
+// pieces, by the piece's id.
+export type SkeletonPicture = (dinosaurId: string, part: string) => string;
 
-// The piece the child dropped on the puzzle's board.
-export function droppedPiece(piece: ShownPiece): Piece {
-  return DROPPED_PIECES[piece];
+// Each body area, as the puzzle screen moves it.
+const SHOWN_AREAS: Record<BodyArea, ShownArea> = { head: "head", neck: "neck", back: "back", hips: "hips", legs: "legs", tail: "tail" };
+
+const SHOWN_STEPS: Record<HelpStep, ShownHelpStep> = { glow: "glow", region: "region", ghost: "ghost", move: "move" };
+
+// The body region the ladder's help shows for `piece`: around every piece
+// of its cut in the same body area, as fractions of the frame.
+function regionOf({ skeleton, cut }: Puzzle, piece: string): ShownRegion | undefined {
+  const area = cut.find(({ id }) => id === piece)?.area;
+  const places = cut.filter((each) => each.area === area).map(({ place }) => place);
+  if (places.length === 0) return undefined;
+  const left = Math.min(...places.map(({ x }) => x));
+  const top = Math.min(...places.map(({ y }) => y));
+  const right = Math.max(...places.map(({ x, width }) => x + width));
+  const bottom = Math.max(...places.map(({ y, height }) => y + height));
+  const { width, height } = skeleton.frame;
+  return { left: left / width, top: top / height, width: (right - left) / width, height: (bottom - top) / height };
 }
 
-export type SkeletonPuzzleView = Pick<SkeletonPuzzleScreenProps, "name" | "outline" | "frame" | "slots" | "hint" | "complete">;
-
-// The pictures of a skeleton: the whole of it, or one of its pieces.
-export type SkeletonPicture = (dinosaurId: string, part: "skeleton" | Piece) => string;
-
 // Each slot is placed as a fraction of the frame, so the outline and its
-// pieces scale together to any board.
-export function presentPuzzle(puzzle: Puzzle, language: Language, skeletonPicture: SkeletonPicture): SkeletonPuzzleView {
-  const { skeleton, fitted } = puzzle;
-  const { id, name, frame, places } = skeleton;
-  const helped = help(puzzle);
+// pieces scale together to any board. Each slot carries its piece's body
+// area, so a fitted skull or tail moves as itself. A puzzle on a
+// `silhouette` shows its outline as the skeleton's shape alone; one with
+// `homeShown` outlines a held piece's home. Other skeletons' bones wait in
+// the tray among the pieces, each its own skeleton's picture, sized as the
+// pieces are.
+export function presentPuzzle(
+  puzzle: Puzzle,
+  language: Language,
+  skeletonPicture: SkeletonPicture,
+  { silhouette = false, homeShown = false }: { silhouette?: boolean; homeShown?: boolean } = {}
+): SkeletonPuzzleView {
+  const { skeleton, cut, fitted, distractors, told } = puzzle;
+  const { id, name, frame } = skeleton;
   return {
     name: name[language],
     outline: skeletonPicture(id, "skeleton"),
+    silhouette,
+    homeShown,
     frame,
-    slots: PIECES.map((piece) => {
-      const { x, y, width, height } = places[piece];
+    strays: distractors.map((distractor) => ({
+      piece: strayId(distractor),
+      name: distractor.name[language],
+      picture: skeletonPicture(distractor.skeleton, distractor.id),
+      width: distractor.place.width / frame.width,
+      height: distractor.place.height / frame.height
+    })),
+    tray: trayOf(puzzle),
+    told: told?.name[language],
+    slots: cut.map((piece) => {
+      const { x, y, width, height } = piece.place;
       return {
-        piece: SHOWN_PIECES[piece],
-        picture: skeletonPicture(id, piece),
+        piece: piece.id,
+        name: piece.name[language],
+        picture: skeletonPicture(id, piece.id),
+        area: SHOWN_AREAS[piece.area],
         left: x / frame.width,
         top: y / frame.height,
         width: width / frame.width,
         height: height / frame.height,
-        fitted: fitted.includes(piece)
+        fitted: fitted.includes(piece.id)
       };
     }),
-    hint: helped && SHOWN_PIECES[helped],
+    hint: hintOf(puzzle),
     complete: isComplete(puzzle)
   };
+}
+
+// Help as the screen shows it: the ladder's steps with their region.
+function hintOf(puzzle: Puzzle): ShownHint | undefined {
+  const shown = help(puzzle);
+  if (shown === undefined) return undefined;
+  return { piece: shown.piece, step: SHOWN_STEPS[shown.step], region: shown.step === "glow" ? undefined : regionOf(puzzle, shown.piece) };
 }
 
 const SKELETON_CELEBRATIONS: Record<SkeletonCelebration, ShownSkeletonCelebration> = { "first-best": "first-best", "new-best": "new-best" };
 
 export type SkeletonResultView = Pick<
   SkeletonResultScreenProps,
-  "name" | "fact" | "skeleton" | "body" | "frame" | "score" | "total" | "best" | "beaten" | "celebration" | "newStar"
+  "name" | "fact" | "skeleton" | "body" | "frame" | "score" | "total" | "best" | "beaten" | "celebration" | "newStar" | "badge"
 >;
 
 // A finished skeleton is revealed as its dinosaur, its body picture over
 // the whole skeleton in the frame they share.
 export function presentSkeletonResult(
-  { skeleton, score, total, best, previousBest, celebration, newStar }: SkeletonResult,
+  { skeleton, score, total, best, previousBest, celebration, newStar, badge }: SkeletonResult,
   language: Language,
   skeletonPicture: SkeletonPicture,
   bodyPicture: (dinosaurId: string) => string
@@ -328,11 +394,34 @@ export function presentSkeletonResult(
     // Only a new best shows the best it beat: a first best beat none.
     beaten: celebration === "new-best" ? previousBest : undefined,
     celebration: celebration === null ? null : SKELETON_CELEBRATIONS[celebration],
-    newStar
+    newStar,
+    badge: badge && SHOWN_BADGES[badge]
+  };
+}
+
+export type SkeletonGuessView = Pick<SkeletonGuessScreenProps, "skeleton" | "frame" | "choices" | "clue">;
+
+// The finished mystery skeleton beside the dinosaurs it is guessed from,
+// each by its name and body picture, and its clue once a guess is wrong.
+export function presentSkeletonGuess(
+  skeleton: Skeleton,
+  choices: readonly Kin[],
+  wrong: readonly string[],
+  language: Language,
+  skeletonPicture: SkeletonPicture,
+  bodyPicture: (dinosaurId: string) => string
+): SkeletonGuessView {
+  return {
+    skeleton: skeletonPicture(skeleton.id, "skeleton"),
+    frame: skeleton.frame,
+    choices: choices.map(({ id, name }) => ({ id, name: name[language], picture: bodyPicture(id), wrong: wrong.includes(id) })),
+    clue: wrong.length > 0 ? skeleton.clue[language] : undefined
   };
 }
 
 const STANDS: Record<StandState, ShownStand> = { built: "built", rebuilding: "rebuilding", empty: "empty" };
+
+const SHOWN_BADGES: Record<Badge, ShownBadge> = { explorer: "explorer", paleontologist: "paleontologist" };
 
 export type SkeletonMuseumView = Pick<SkeletonMuseumScreenProps, "stands" | "score" | "total" | "best">;
 
@@ -340,9 +429,59 @@ export type SkeletonMuseumView = Pick<SkeletonMuseumScreenProps, "stands" | "sco
 // not standing there.
 export function presentSkeletonMuseum({ stands, score, total, best }: Museum, language: Language, skeletonPicture: SkeletonPicture): SkeletonMuseumView {
   return {
-    stands: stands.map(({ skeleton: { id, name }, state }) => ({ id, name: name[language], skeleton: skeletonPicture(id, "skeleton"), state: STANDS[state] })),
+    stands: stands.map(({ skeleton: { id, name }, state, badges }) => ({
+      id,
+      name: name[language],
+      skeleton: skeletonPicture(id, "skeleton"),
+      state: STANDS[state],
+      badges: badges.map((badge) => SHOWN_BADGES[badge])
+    })),
     score,
     total,
     best
+  };
+}
+
+type DigBoardView = Pick<DigBoardScreenProps, "picture" | "frame" | "marks" | "clear" | "cleared" | "blown" | "spots" | "treasure" | "asks" | "questionShown" | "choicesShown" | "choices">;
+
+// A dig round's board: its dinosaur's picture under the sand, every mark
+// brushed, and which cells are clear, as rows of 0 and 1, as dig.json
+// gives the dinosaur's own. The question's cards stay through the gust its
+// right pick brings. The treasure lies on its cells, in the frame's pixels.
+export function presentDigBoard(
+  round: DigRound,
+  bodyPicture: (dinosaurId: string) => string,
+  treasurePicture: (kind: TreasureKind) => string,
+  dinosaurName: (dinosaurId: string) => string
+): DigBoardView {
+  const [width, height] = [FRAME.width / GRID.columns, FRAME.height / GRID.rows];
+  const { treasure } = round;
+  return {
+    treasure: treasure && {
+      kind: treasure.kind,
+      picture: treasurePicture(treasure.kind),
+      x: treasure.column * width,
+      y: treasure.row * height,
+      size: TREASURE_CELLS * width
+    },
+    spots: round.spots.map(({ kind, x, y, r }) => ({ id: kind, x, y, r, found: round.found.includes(kind), helped: round.helped.includes(kind) })),
+    choices: round.choices.map((id) => ({
+      id,
+      name: dinosaurName(id),
+      picture: bodyPicture(id),
+      rejected: round.rejected.includes(id),
+      correct: round.blown && id === round.dinosaur.id
+    })),
+    asks: round.choices.length > 0,
+    questionShown: round.choices.length > 0 && (asking(round) || round.blown),
+    choicesShown: choiceOpacity(roundShare(round)),
+    picture: bodyPicture(round.dinosaur.id),
+    frame: FRAME,
+    marks: round.sand.marks,
+    clear: clearCells(round.sand)
+      .map((row) => row.map((clear) => (clear ? "1" : "0")).join(""))
+      .join(" "),
+    cleared: roundShare(round),
+    blown: round.blown
   };
 }

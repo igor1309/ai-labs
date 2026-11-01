@@ -60,6 +60,36 @@ func short(text string) string {
 	return text[:end] + "…"
 }
 
+// Stale prints what went stale, and "; recovering" where a recovery turn
+// follows.
+func (p *progress) Stale(step string, stale workflow.Stale) {
+	what := "stale: " + inLine(stale.What)
+	if stale.Recovering {
+		what += "; recovering"
+	}
+	p.line(step, what)
+}
+
+// Capacity prints a turn at capacity, and "; retrying in <wait>" where
+// the turn is made again.
+func (p *progress) Capacity(step string, capacity workflow.Capacity) {
+	what := "at capacity"
+	if capacity.Retry > 0 {
+		what += "; retrying in " + took(capacity.Retry)
+	}
+	p.line(step, what)
+}
+
+// Fallback prints the agent the step's call is made again on.
+func (p *progress) Fallback(step, agent string) {
+	p.line(step, "falling back to "+inLine(agent))
+}
+
+// Reused prints the call taken in place of the step's start and end.
+func (p *progress) Reused(step, call string) {
+	p.line(step, "reused "+inLine(call))
+}
+
 func (p *progress) Ended(step string, ended workflow.Ended) {
 	how := string(ended.Status)
 	if ended.Class != "" {
@@ -67,6 +97,10 @@ func (p *progress) Ended(step string, ended workflow.Ended) {
 	}
 	p.line(step, fmt.Sprintf("ended %s in %s", how, took(ended.Duration)))
 }
+
+func (p *progress) ChildStarted(string, string, map[string]string, map[string]string) {}
+
+func (p *progress) ChildEnded(string, workflow.ChildEnd) {}
 
 // line writes "· <step>: <what>" and a newline.
 func (p *progress) line(step, what string) {
@@ -91,4 +125,16 @@ func took(d time.Duration) string {
 		return d.Round(time.Second).String()
 	}
 	return d.Round(time.Millisecond).String()
+}
+
+func (p *progress) Branch(step, arm string, _ []workflow.ConditionRead) {
+	p.line(step, "took "+inLine(arm))
+}
+
+func (p *progress) Pass(step string, pass int, _ map[string]any) {
+	p.line(step, fmt.Sprintf("ended pass %d", pass))
+}
+
+func (p *progress) Stopped(step, why string, passes int) {
+	p.line(step, fmt.Sprintf("stopped %s after %d passes", inLine(why), passes))
 }

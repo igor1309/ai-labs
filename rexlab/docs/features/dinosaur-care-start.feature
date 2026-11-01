@@ -9,7 +9,7 @@ Feature: Dinosaur care: welcoming a visitor
   Scenario: The home page offers the care game
     When I open the home page
     Then I see a "CARE" tile with a heart symbol and a dinosaur
-    And it is beside the "COMPARE" card, under "ALL DINOSAURS"
+    And on a day COMPARE is featured it stands under the "SORT" card, the last game before "MORE COMING"
     And once I have finished a visit it shows my care best score with a trophy symbol
     When I tap "CARE"
     Then I see the care welcome screen
@@ -21,6 +21,7 @@ Feature: Dinosaur care: welcoming a visitor
     Given I am on the care welcome screen
     When I tap "NEW VISITOR"
     Then a dinosaur from the shared dinosaur list visits
+    But never a flying or sea reptile, to whom water and a bath mean nothing
     And I see its picture and its name in large capital letters
     And it asks for food with a picture bubble
     And I see four need symbols with the hungry symbol highlighted
@@ -37,15 +38,6 @@ Feature: Dinosaur care: welcoming a visitor
     When I tap "NEW VISITOR" twice quickly
     Then only one visit starts
     And I have 0 hearts for that visit
-
-  Scenario: A visitor waits briefly for its picture
-    Given I am on the care welcome screen
-    And the new visitor's picture is still loading
-    When I tap "NEW VISITOR"
-    Then the welcome screen stays visible until the picture loads, for at most a second
-    And then the visit starts
-    And a missing picture is replaced by a dinosaur symbol beside its name
-    And I can care for the visitor even if its picture never loads
 
   Scenario Outline: Care uses the chosen language
     Given the app is in <language>
@@ -67,7 +59,7 @@ Feature: Dinosaur care: welcoming a visitor
     Examples:
       | language | care        | new visitor | friends | home  | plants   | meat | water | bath     | nest   |
       | English  | CARE        | NEW VISITOR | FRIENDS | HOME  | PLANTS   | MEAT | WATER | BATH     | NEST   |
-      | Russian  | ПОЗАБОТЬСЯ | НОВЫЙ ГОСТЬ | ДРУЗЬЯ  | ДОМОЙ | РАСТЕНИЯ | МЯСО | ВОДА  | КУПАНИЕ  | ГНЕЗДО |
+      | Russian  | ЗАБОТА      | НОВЫЙ ГОСТЬ | ДРУЗЬЯ  | ДОМОЙ | РАСТЕНИЯ | МЯСО | ВОДА  | КУПАНИЕ  | ГНЕЗДО |
 
   Scenario Outline: Care stays readable in either theme
     Given the app uses the <theme> theme

@@ -22,9 +22,10 @@ type WorkflowDefinition struct {
 // Item is one item of a workflow, named, unique in its workflow, and one
 // of five (ADR-011, rule 2): a step, its process and agent, the session
 // of an earlier call it continues (rule 3) and its inputs; a workflow, by
-// name, and its inputs; a parallel, or a branch, of items; or a repeat.
-// An arm of a branch has the condition it is taken on, but the last, the
-// default; and its outputs, the branch's.
+// name, and its inputs; a parallel, of items, and the most of them that
+// run at once, all where not given (ADR-012, rule 8); a branch, of items;
+// or a repeat. An arm of a branch has the condition it is taken on, but
+// the last, the default; and its outputs, the branch's.
 type Item struct {
 	Name     string
 	If       Field[Condition]
@@ -34,6 +35,7 @@ type Item struct {
 	Workflow Field[string]
 	Inputs   Field[[]Field[Binding]]
 	Parallel Field[[]Field[Item]]
+	Max      Field[int]
 	Branch   Field[[]Field[Item]]
 	Repeat   Field[Repeat]
 	Outputs  Field[[]Field[Binding]]
@@ -174,7 +176,7 @@ func (s *items) item(f *fields, arm func(*fields, *Item)) Field[Item] {
 		item.Workflow = f.reference("workflow", required, Workflow)
 		item.Inputs = f.bindings("inputs", optional, workflowReads())
 	case "parallel":
-		item.Parallel = s.of(f, "parallel")
+		item.Parallel, item.Max = s.parallel(f)
 	case "branch":
 		item.Branch = s.arms(f)
 	case "repeat":
@@ -182,6 +184,19 @@ func (s *items) item(f *fields, arm func(*fields, *Item)) Field[Item] {
 	}
 	f.done()
 	return Field[Item]{Value: item, Origin: originOf(f.node, f.place), Given: true}
+}
+
+// parallel is a parallel's items, a list, or a map of its items, "steps",
+// and the most of them that run at once, "max", one or more.
+func (s *items) parallel(f *fields) (Field[[]Field[Item]], Field[int]) {
+	if node, _ := f.node.Get("parallel"); node.Kind() != tree.Map {
+		return s.of(f, "parallel"), Field[int]{}
+	}
+	parallel := f.mapping("parallel", required)
+	p := parallel.Value
+	items, most := s.of(p, "steps"), p.integer("max", optional, 1)
+	p.done()
+	return items, most
 }
 
 func (s *items) repeat(f *fields) Field[Repeat] {

@@ -57,14 +57,6 @@ Feature: The composition runs a step on a model runtime
     Then the composition's validator accepts {"ok":true}, and rejects
       {"ok":1} and {}, saying why
 
-
-  Scenario: A step given a session is not run yet
-    Given a workflow whose second step on claude-opus is given the
-      session of its first
-    When the workflow runs
-    Then it prints to stderr that the session is not run yet, nothing
-      runs, and it exits 1
-
   Scenario: A step alone prints its session by its process's name
     Given claude-code replies with the session "s1"
     When "agister run --process ask --agent claude-opus --param q=why"

@@ -1,11 +1,10 @@
-@next
 Feature: Home page: counting starts and keeping the featured choice
   Start counts and the day's featured game are kept on this browser beside
   the other progress, best effort, and never disturb it.
 
   Background:
     Given an iPad in landscape
-    And the games, in the order they were added, are COMPARE, ALL DINOSAURS, CARE and SKELETONS
+    And the games, in tile order, are COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
 
   Scenario Outline: What counts as starting a game
     When <action>
@@ -14,9 +13,13 @@ Feature: Home page: counting starts and keeping the featured choice
     Examples:
       | action                                                          | game          |
       | a quiz round starts from the home page or from PLAY AGAIN       | COMPARE       |
-      | the dinosaur list opens from the home page                      | ALL DINOSAURS |
+      | the dinosaur list opens from the home page                      | ANCIENT REPTILES |
       | a care visit starts from NEW VISITOR or a friend is called back | CARE          |
+      | a sorting round starts from its card or from PLAY AGAIN         | SORT          |
+      | a board is dealt from PLAY or PLAY AGAIN                        | FIND THE PAIR |
       | a skeleton puzzle starts, a rebuild included                    | SKELETONS     |
+      | a dig round starts from its tile, the large card or DIG AGAIN   | DIG           |
+      | sand writing opens from its tile or the large card              | SAND WRITING  |
 
 
   Scenario: Leaving a game unfinished still counts its start
@@ -26,7 +29,7 @@ Feature: Home page: counting starts and keeping the featured choice
 
 
   Scenario: Browsing inside a game is not a start
-    When I open the care welcome screen, a dinosaur's catalogue page, or go back from a catalogue page to the list
+    When I open the care or find-the-pair welcome screen, a dinosaur's catalogue page, or go back from a catalogue page to the list
     Then no start count changes
 
 
@@ -65,7 +68,7 @@ Feature: Home page: counting starts and keeping the featured choice
     Given the browser cannot read progress
     When I open the home page
     Then a featured game is chosen with every start count at 0
-    And every tile opens its game
+    And every tile, and the large card, opens its game
 
 
   Scenario: A browser that cannot save keeps the choice for the session

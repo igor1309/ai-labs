@@ -27,7 +27,8 @@ func (s *watcherSpy) Watch(limits watch.Limits, stale func(watch.Stale)) (func(w
 }
 
 // A call's staleness is core/watch's, in core/call's words both ways: the
-// limits and each line reported, a tool call and another line, go to the
+// limits and each line reported, a tool call, a tool's result and another
+// line, go to the
 // watch; each limit it reaches, and what it says, comes back; the stop is
 // the watch's.
 func TestACallsStalenessIsCoreWatchs(t *testing.T) {
@@ -52,13 +53,14 @@ func TestACallsStalenessIsCoreWatchs(t *testing.T) {
 			report, stop := s.Watch(call.Limits{RepeatedToolCalls: 5, ToolCommand: 15 * time.Minute, NoEvent: 21 * time.Minute},
 				func(stale call.Stale) { told = append(told, stale) })
 			report(call.Report{Tool: &call.Tool{Name: "Bash", Input: "ls"}})
+			report(call.Report{Result: true})
 			report(call.Report{})
 			spy.stale(watch.Stale{Limit: c.watched, What: "w"})
 			stop()
 			if want := []watch.Limits{{RepeatedToolCalls: 5, ToolCommand: 15 * time.Minute, NoEvent: 21 * time.Minute}}; !reflect.DeepEqual(spy.limits, want) {
 				t.Errorf("watched against %+v, want %+v", spy.limits, want)
 			}
-			if want := []watch.Report{{Tool: &watch.Tool{Name: "Bash", Input: "ls"}}, {}}; !reflect.DeepEqual(spy.reports, want) {
+			if want := []watch.Report{{Tool: &watch.Tool{Name: "Bash", Input: "ls"}}, {Result: true}, {}}; !reflect.DeepEqual(spy.reports, want) {
 				t.Errorf("the watch was given %+v, want %+v", spy.reports, want)
 			}
 			if want := []call.Stale{{Limit: c.want, What: "w"}}; !reflect.DeepEqual(told, want) || spy.stopped != 1 {
@@ -77,8 +79,9 @@ func TestTheStalenessNeedsAWatcher(t *testing.T) {
 }
 
 // home's implement on claude-code is watched against its staleness
-// limits, as it ships them: a turn that goes stale is ended, the call
-// ending as what went stale says, and its hold is released.
+// limits, as it ships them: a turn that goes stale, its session unread,
+// so that no recovery turn can resume it, is ended, the call ending as
+// what went stale says, and its hold is released.
 //
 // Contract test: the files home holds, as Agister ships them.
 func TestHomesImplementEndsAStaleTurn(t *testing.T) {
@@ -94,7 +97,7 @@ func TestHomesImplementEndsAStaleTurn(t *testing.T) {
 	}{
 		{"the same tool call five times", []claudecode.Report{{Tool: bash}, {}, {Tool: bash}, {Tool: bash}, {}, {Tool: bash}, {Tool: bash}}, nil,
 			"failed", "budget_exhausted", `the tool call "Bash" repeated 5 times`},
-		{"a tool command that hangs", []claudecode.Report{{}, {Tool: bash}}, func(f *runFixture) {
+		{"a tool command that hangs, lines printed while it runs", []claudecode.Report{{}, {Tool: bash}, {}, {}}, func(f *runFixture) {
 			f.clock.Started(15 * time.Minute)
 			f.clock.Advance(15 * time.Minute)
 		}, "interrupted", "timeout", `the tool command "Bash" ran over 15m`},

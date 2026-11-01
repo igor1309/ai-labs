@@ -68,6 +68,7 @@ const (
 	allowedLine         = `{"type":"rate_limit_event","rate_limit_info":{"status":"allowed"},"session_id":"s1"}`
 	toolUseLine         = `{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/r/a"}}]},"session_id":"s1"}`
 	toolDoneLine        = `{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"a"}]},"session_id":"s1"}`
+	userLine            = `{"type":"user","message":{"content":[{"type":"text","text":"a"}]},"session_id":"s1"}`
 	notJSONLine         = `{broken`
 	duringExecutionLine = `{"type":"result","subtype":"error_during_execution","is_error":true,"session_id":"s1","errors":["the request was rejected"]}`
 )
@@ -94,7 +95,9 @@ func TestItsFacts(t *testing.T) {
 		Model:        true,
 		Efforts:      []string{"low", "medium", "high", "xhigh", "max"},
 		ToolCalls:    true,
+		Budget:       true,
 		ToolCommands: true,
+		Cost:         true,
 		Inputs:       claudecode.InMessage,
 	}
 	if got := wrapper(t, &supervisorSpy{}).Facts(); !reflect.DeepEqual(got, want) {
@@ -169,8 +172,8 @@ func TestASuccessfulResultIsTheReply(t *testing.T) {
 				initLine, allowedLine, notJSONLine, "", toolUseLine, toolDoneLine, assistant("thinking"),
 				`{"type":"result","subtype":"success","is_error":false,"result":"done","session_id":"s1","structured_output":{"ok":true},"total_cost_usd":0.25,"usage":{"input_tokens":10,"output_tokens":3}}`,
 			}}
-			want := claudecode.Reply{Text: "done", Output: []byte(`{"ok":true}`), Session: "s1", Cost: ptr(0.25),
-				Usage: claudecode.Usage{Input: ptr(int64(10)), Output: ptr(int64(3))}}
+			want := claudecode.Reply{Text: "done", Output: []byte(`{"ok":true}`), Session: "s1", Cost: ptr(0.25), SessionCost: ptr(0.25),
+				CostSource: "claude-code", Usage: claudecode.Usage{Input: ptr(int64(10)), Output: ptr(int64(3))}}
 			if got := reply(t, spy, schema); !reflect.DeepEqual(got, want) {
 				t.Errorf("reply\n got %+v\nwant %+v", got, want)
 			}
@@ -230,6 +233,12 @@ func TestAFailedResultIsClassedByItsFields(t *testing.T) {
 		class  claudecode.Class
 		reason string
 	}{
+		{"status 529", initLine, `{"type":"result","subtype":"success","is_error":true,"api_error_status":529,"result":"API Error: 529"}`,
+			claudecode.Capacity, "API Error: 529"},
+		{"overloaded", initLine, `{"type":"result","subtype":"success","is_error":true,"result":"Overloaded"}`,
+			claudecode.Capacity, "Overloaded"},
+		{"overloaded, its rate limit rejected", rejectedLine, `{"type":"result","subtype":"error_during_execution","is_error":true,"errors":["Overloaded"]}`,
+			claudecode.Capacity, "Overloaded"},
 		{"status 429", initLine, `{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"result":"API Error: 429 rate limited"}`,
 			claudecode.RateLimited, "API Error: 429 rate limited"},
 		{"a rejected rate limit", rejectedLine, duringExecutionLine, claudecode.RateLimited, "the request was rejected"},
@@ -317,7 +326,7 @@ func TestWhatTheSupervisorGivesBesidesIsTheTurns(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := (claudecode.Result{Ended: given}); !reflect.DeepEqual(got, want) {
+	if want := (claudecode.Result{Ended: given, Session: "s1"}); !reflect.DeepEqual(got, want) {
 		t.Errorf("turn gave %+v, want %+v", got, want)
 	}
 }

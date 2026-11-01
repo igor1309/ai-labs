@@ -37,46 +37,54 @@ type event struct {
 	} `json:"usage"`
 }
 
-// stream is what a turn's stream-json lines told: the session, the last
-// assistant text, whether a rate limit was rejected, and the result event;
-// and the report each line is given to.
+// stream is what a turn's stream-json lines told: the session the first
+// line naming one names, the last assistant text, whether a rate limit was
+// rejected, and the result event; and the report each line is given to.
 type stream struct {
-	report   func(Report)
-	session  string
-	lastText string
-	rejected bool
-	result   *event
+	report         func(Report)
+	session        string
+	pendingSession string
+	lastText       string
+	rejected       bool
+	result         *event
 }
 
-// line reads one line of stream-json, and reports each tool call it makes,
-// or the line where it makes none. A line that is not an event the
+// line reads one line of stream-json, and reports each tool call it makes
+// and each tool's result it carries, or the line where it has neither. A line that is not an event the
 // wrapper reads tells nothing more: the result event decides, and what
 // precedes it only adds to it.
 func (s *stream) line(line string) {
 	if s.read(line) == 0 {
-		s.report(Report{})
+		s.emit(Report{})
 	}
 }
 
-// read reads one line, reports each tool call it makes, and gives how
-// many it reported.
+// read reads one line, reports each tool call it makes and each tool's
+// result it carries, and gives how many it reported.
 func (s *stream) read(line string) (reported int) {
 	var e event
 	if err := json.Unmarshal([]byte(line), &e); err != nil {
 		return 0
 	}
+	if s.session == "" {
+		s.session = e.SessionID
+		s.pendingSession = s.session
+	}
 	switch e.Type {
-	case "system":
-		if e.Subtype == "init" {
-			s.session = e.SessionID
-		}
 	case "assistant":
 		for _, block := range e.Message.Content {
 			switch {
 			case block.Type == "text" && strings.TrimSpace(block.Text) != "":
 				s.lastText = block.Text
 			case block.Type == "tool_use":
-				s.report(Report{Tool: &Tool{Name: block.Name, Input: compact(block.Input)}})
+				s.emit(Report{Tool: &Tool{Name: block.Name, Input: compact(block.Input)}})
+				reported++
+			}
+		}
+	case "user":
+		for _, block := range e.Message.Content {
+			if block.Type == "tool_result" {
+				s.emit(Report{Result: true})
 				reported++
 			}
 		}
@@ -86,9 +94,6 @@ func (s *stream) read(line string) (reported int) {
 		}
 	case "result":
 		s.result = &e
-		if s.session == "" {
-			s.session = e.SessionID
-		}
 	}
 	return reported
 }
@@ -137,7 +142,9 @@ func (s *stream) reply(ended Ended, schema bool) *Reply {
 
 // class is a failed result's class, by its fields: its status and a
 // rejected rate limit where claude-code reports them, else its words,
-// since a failure before any request, such as no login, has no status.
+// since a failure before any request, such as no login, has no status. A
+// budget subtype decides before capacity signals: core must not retry
+// a turn whose budget ended it.
 func (s *stream) class(r *event) Class {
 	status := 0
 	if r.APIErrorStatus != nil {
@@ -145,6 +152,10 @@ func (s *stream) class(r *event) Class {
 	}
 	words := strings.ToLower(reason(r))
 	switch {
+	case r.Subtype == "error_max_budget_usd":
+		return BudgetExhausted
+	case status == 529 || strings.Contains(words, "overloaded"):
+		return Capacity
 	case status == 429 || s.rejected:
 		return RateLimited
 	case status == 401 || status == 403 || strings.Contains(strings.ToLower(r.Result), "not logged in"):
@@ -165,4 +176,9 @@ func reason(r *event) string {
 		words[i] = fmt.Sprint(e)
 	}
 	return strings.Join(words, "; ")
+}
+
+func (s *stream) emit(r Report) {
+	r.Session, s.pendingSession = s.pendingSession, ""
+	s.report(r)
 }

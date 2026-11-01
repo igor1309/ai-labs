@@ -1,10 +1,11 @@
-import { act, screen, within } from "@testing-library/react";
+import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { REVEAL } from "../src/skeletonGame.tsx";
 import {
   AWAY,
   board,
   dragTo,
+  finishLoading,
   fit,
   fittedPieces,
   hints,
@@ -24,11 +25,9 @@ import {
   spotOf,
   trayPieces
 } from "./skeletonsApp.tsx";
-import { words, type ManualPictures } from "./support.ts";
+import { words, type ManualPictures, gameDoor } from "./support.ts";
 
 const TYRANNOSAURUS = skeletonOf("tyrannosaurus");
-// The longest the reveal waits for the body picture.
-const PICTURE_WAIT = 1000;
 
 // `seconds` seconds at the puzzle: the game counts its time towards help
 // by a timer of a second, started anew each time it fires.
@@ -87,7 +86,7 @@ describe("help after waiting", () => {
 
     release(AWAY);
 
-    expect(spotOf("spine").querySelector("img")?.hasAttribute("data-returning")).toBe(true);
+    expect(spotOf("spine").querySelector(".skeleton-piece")?.hasAttribute("data-returning")).toBe(true);
     expect(hints()).toEqual(["slot skull", "spot skull"]);
   });
 
@@ -126,14 +125,14 @@ describe("help after waiting", () => {
   });
 
   it("counts no time while the iPad is in portrait, and keeps the pieces as they were", async () => {
-    const { pictures, orientation } = await openPuzzle("TYRANNOSAURUS");
+    const { pictures, viewport } = await openPuzzle("TYRANNOSAURUS");
     fit(TYRANNOSAURUS, "legs");
     spend(pictures, 4);
 
-    act(() => orientation.turn("portrait"));
+    act(() => viewport.turn("portrait"));
 
     expect(pictures.timers()).toEqual([]);
-    act(() => orientation.turn("landscape"));
+    act(() => viewport.turn("landscape"));
     layOutPuzzle();
     expect(fittedPieces()).toEqual(["legs"]);
     spend(pictures, 5);
@@ -148,8 +147,50 @@ describe("help after waiting", () => {
 
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
-    expect(screen.getByRole("button", { name: "COMPARE" })).toBeDefined();
+    expect(gameDoor("COMPARE")).toBeDefined();
     expect(pictures.timers()).toEqual([]);
+  });
+
+  // The tap and the timers read in one act, while the puzzle is still on
+  // the screen: help's timer stops as the child leaves, not as the puzzle
+  // is taken off the screen.
+  it.each(["HOME", "BACK"])("stops as the child taps %s, and the next puzzle's help is not moved on by the tick, delivered all the same", async (leave) => {
+    const { pictures, user } = await openPuzzle("TYRANNOSAURUS");
+    spend(pictures, 9);
+
+    let left: [number[], boolean] = [[], false];
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: leave }));
+      left = [pictures.timers(), document.contains(board())];
+    });
+    if (leave === "HOME") fireEvent.click(gameDoor("SKELETONS"));
+    await user.click(screen.getByRole("button", { name: "TYRANNOSAURUS" }));
+    act(() => finishLoading(pictures));
+    layOutPuzzle();
+    act(() => pictures.deliverStopped(1000));
+
+    expect(left).toEqual([[], true]);
+    expect(hints()).toEqual([]);
+    spend(pictures, 9);
+    expect(hints()).toEqual([]);
+    spend(pictures, 1);
+    expect(hints()).toEqual(["slot skull", "spot skull"]);
+    fit(TYRANNOSAURUS, "skull");
+    expect(fittedPieces()).toEqual(["skull"]);
+  });
+
+  it("needs ten more seconds after a fit just before a tick, the tick it stopped delivered all the same", async () => {
+    const { pictures } = await openPuzzle("TYRANNOSAURUS");
+    spend(pictures, 9);
+
+    fit(TYRANNOSAURUS, "skull");
+    act(() => pictures.deliverStopped(1000));
+
+    expect(hints()).toEqual([]);
+    spend(pictures, 9);
+    expect(hints()).toEqual([]);
+    spend(pictures, 1);
+    expect(hints()).toEqual(["slot spine", "spot spine"]);
   });
 
   it("completes the skeleton after help, many missed drops and help again, with no time, count or failure shown, and rewards it in full", async () => {
@@ -166,9 +207,8 @@ describe("help after waiting", () => {
     expect(board().hasAttribute("data-complete")).toBe(true);
     expect(fittedPieces()).toEqual(["skull", "spine", "legs", "tail"]);
     expect(hints()).toEqual([]);
-    // Only the reveal's pause and its wait for the body picture: help
-    // counts no more time.
-    expect(pictures.timers().sort()).toEqual([REVEAL.motion, PICTURE_WAIT].sort());
+    // Only the reveal's pause: help counts no more time.
+    expect(pictures.timers()).toEqual([REVEAL.motion]);
     expect(document.body.textContent).toBe(before?.replace("0/4", "4/4"));
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
 
@@ -177,14 +217,14 @@ describe("help after waiting", () => {
     expect(screen.getByRole("heading", { level: 2 }).textContent).toBe("TYRANNOSAURUS");
     expect(screen.getByRole("img", { name: "STAR" }).hasAttribute("data-new")).toBe(true);
     expect([screen.getByLabelText("STARS").textContent, screen.queryByLabelText("BEST SCORE")?.textContent, screen.queryByRole("status")?.getAttribute("aria-label")]).toEqual([
-      "2/3",
-      "BEST12/3",
+      "2/5",
+      "BEST12/5",
       "NEW BEST SCORE"
     ]);
 
     await user.click(within(reveal() ?? document.body).getByRole("button", { name: "MUSEUM" }));
 
-    expect(within(screen.getByRole("group", { name: "STANDS" })).getAllByRole("region").map((stand) => stand.getAttribute("data-state"))).toEqual(["built", "built", "empty"]);
+    expect(within(screen.getByRole("group", { name: "STANDS" })).getAllByRole("region").map((stand) => stand.getAttribute("data-state"))).toEqual(["built", "built", "empty", "empty", "empty"]);
     expect(savedSkeletons(storage)).toEqual({ earned: ["tyrannosaurus", "triceratops"], bestScore: 2, rebuilding: [] });
   });
 });

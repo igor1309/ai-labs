@@ -1,6 +1,10 @@
 Feature: Sort dinosaurs: stored progress
-  The sorting game keeps a best score and a count of finished rounds of
-  its own, beside the compare quiz's, in the browser.
+  The sorting game keeps a best for each level and one count of finished
+  rounds across all levels, of its own, beside the compare quiz's, in
+  the browser, with the child's choice on the level switch
+  (sort-dinosaurs-level-switch.feature). A best belongs to the level it
+  was set at (docs/age-levels.md). Its scenarios play Hatchling's six
+  cards unless they name a level.
 
   Background:
     Given an iPad in landscape
@@ -49,7 +53,34 @@ Feature: Sort dinosaurs: stored progress
 
   Scenario: The game works when storage cannot be read
     Given the browser cannot read stored progress
+    And the sorting game plays Hatchling
     When I finish a round of the sorting game with 4 right
     Then I see "4/6"
     And I see no best score
     And I see no celebration
+
+  Scenario Outline: Each level keeps its own best
+    Given my Hatchling best is 5 and my Explorer best is 6
+    And I have never finished a Paleontologist round
+    When I finish a <level> round with <right> right
+    Then I see <celebration>
+    And my <level> best becomes <best>, and my other bests are unchanged
+
+    Examples:
+      | level          | right | celebration                    | best |
+      | Hatchling      | 6     | a new best score celebration   | 6    |
+      | Explorer       | 5     | no celebration                 | 6    |
+      | Paleontologist | 3     | a first best score celebration | 3    |
+
+  Scenario: The SORT tile and the featured SORT card show the level's best
+    Given my Hatchling best is 5 and my Explorer best is 7
+    When the next sorting round would start at Explorer, by the child's choice or else the age level
+    Then the "SORT" tile shows 7 on a day another game is featured, and the large card does on a day it features SORT
+
+  Scenario: A best saved before levels is the Hatchling best
+    Given my sorting best of 5 was saved before the game had levels
+    When I finish a Hatchling round with 5 right
+    Then I see no celebration, and my Hatchling best stays 5
+    And my Explorer and Paleontologist bests are none
+    And the finished rounds saved before levels are kept, with one more
+    And there is no level choice, so the first round played the age level

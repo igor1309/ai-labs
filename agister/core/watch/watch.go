@@ -1,6 +1,6 @@
 // Package watch observes a turn for staleness (ADR-001, "Core"; ADR-006,
 // rule 1), best effort, over what its wrapper reports: the same tool call
-// made a number of times in a row, nothing following a tool call for too
+// made a number of times in a row, no result following a tool call for too
 // long, or nothing at all for too long. It reports the limit reached and
 // what went stale; it ends nothing itself.
 package watch
@@ -14,8 +14,8 @@ import (
 )
 
 // Limits are a turn's staleness limits, each not watched where zero: the
-// tool calls in a row that make it stale; how long nothing may follow a
-// tool call, its command running; and how long nothing at all may come.
+// tool calls in a row that make it stale; how long a tool call may wait for
+// a result, its command running; and how long nothing at all may come.
 type Limits struct {
 	RepeatedToolCalls int
 	ToolCommand       time.Duration
@@ -23,9 +23,10 @@ type Limits struct {
 }
 
 // Report is a line a turn read: the tool call it made, where Tool is not
-// nil; else another line.
+// nil; a tool's result, where Result is set; else another line.
 type Report struct {
-	Tool *Tool
+	Tool   *Tool
+	Result bool
 }
 
 // Tool is a tool call: the tool's name and all it was given.
@@ -92,7 +93,7 @@ func (w *Watcher) Watch(limits Limits, stale func(Stale)) (report func(Report), 
 
 // turn is one turn watched. Its reports, its waits and its stop are taken
 // by one goroutine, one at a time, so nothing of it needs a lock: quiet is
-// the wait for the next line, and command the wait for the line after the
+// the wait for the next line, and command the wait for a result of the
 // tool call running; last is the latest tool call, made repeated times in
 // a row.
 type turn struct {
@@ -194,12 +195,18 @@ func (t *turn) commandRan() *Stale {
 }
 
 // took restarts the waits for what follows r, and counts a tool call
-// against the one before it: the limit it reaches, nil for none. Lines
-// between two tool calls do not break their run; only a different call
-// does.
+// against the one before it: the limit it reaches, nil for none. Any line
+// restarts the quiet wait; a command's wait ends only at a result or the
+// next tool call, since a runtime prints other lines while a command runs.
+// The first result ends it, not the command's own: a turn runs one command
+// at a time in practice. Lines between two tool calls do not break their
+// run; only a different call does.
 func (t *turn) took(r Report) *Stale {
 	t.quiet.stop()
 	t.quiet = t.start(t.limits.NoEvent)
+	if r.Tool == nil && !r.Result {
+		return nil
+	}
 	t.command.stop()
 	t.command = none
 	if r.Tool == nil {

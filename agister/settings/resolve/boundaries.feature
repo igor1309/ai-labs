@@ -36,6 +36,14 @@ Feature: Resolve checks what crosses each boundary
     Then it refuses only "steps.child.outputs.summary": the workflow "c"
       gives the output "summary"
 
+  Scenario: A child workflow of the one output "output" is read as that value
+    Given the workflow "c" has the one output "output"
+    And the item "child" of "w" names "c", and "w" reads
+      "steps.child.outputs.verdict" and "steps.child.outputs.output"
+    When resolve is asked for the workflow "w"
+    Then it refuses only "steps.child.outputs.output": the workflow "c"
+      gives its output "output" whole, read by its own fields
+
   Scenario: A branch is read through its outputs
     Given the branch "decide" of "w" has the arms "fix" and "done", each
       of the output "summary"

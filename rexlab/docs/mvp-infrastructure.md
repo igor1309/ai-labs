@@ -9,7 +9,7 @@ description: "RexLab MVP infrastructure and technical architecture: a static Clo
 
 ## 1. Product scope
 
-- **Platform:** Web application, optimized for iPad in landscape orientation.
+- **Platform:** Web application, iPad first, laid out by the window's size class for iPad, iPhone and Mac (`docs/features/window-shape.feature`); every screen fits a landscape window today, and portrait comes screen by screen (LAB-325).
 - **Audience:** Children aged 5–7, who are just learning to read: dinosaur names in large capitals, meaning carried by symbols and pictures, touch-friendly controls.
 - **First game:** Two dinosaur cards; choose the dinosaur that matches a comparison question (e.g., bigger, heavier, taller).
 - **Round:** 10 pairs/questions, with immediate answer feedback and a final score.
@@ -62,6 +62,15 @@ Each dinosaur is a record with descriptive metadata, multiple image variants, an
 
 Additional views can be added to `images` without changing the hosting architecture. Standardize measurement definitions and keep estimates clearly distinguished from verified counts.
 
+**What each attribute measures** (LAB-263). The shipped list asks two; `docs/sources.md` holds the full rules and each value's references.
+
+| Attribute | Measures | Unit | Comes from |
+| --- | --- | --- | --- |
+| `heightMeters` | Hip height: ground to the top of the hip, standing; never head, neck, crest, plates or shoulder | metres | The leg bones end to end (femur, tibia, third metatarsal) in peer-reviewed tables; a missing bone, or the whole leg, in the closest relative's proportion |
+| `massKg` | Live body mass | kilograms | The trusted sources' estimates; Britannica's short tons at 907 kg |
+
+Length and horn count are not asked yet; each gets its definition here when a game asks it.
+
 ## 4. Comparison quiz engine
 
 **Round flow:**
@@ -93,7 +102,23 @@ Store progress under versioned browser-local keys, for example (`achievements` a
 }
 ```
 
-Each game keeps its own entry under `games`, and saving one leaves the others as they are: the compare quiz `compare-dinosaurs`, the sorting game `sort-dinosaurs`, both with `bestScore` and `roundsPlayed`, dinosaur care `dinosaur-care`, with `bestScore`, `visitsFinished` and `friends`, and the skeleton game `skeleton-assembly`, with `bestScore`, `earned`, the ids of the dinosaurs whose skeleton has earned its star, and `rebuilding`, the ids of those knocked down to be built again, whose museum stands await them; a rebuild's fitted bones are not kept. Every game scores a finished round by the one rule below (`src/bestScore.ts`).
+Each game keeps its own entry under `games`, and saving one leaves the others as they are: the compare quiz `compare-dinosaurs`, the sorting game `sort-dinosaurs`, both with `bestScore` and `roundsPlayed`, dinosaur care `dinosaur-care`, with `bestScore`, `visitsFinished` and `friends`, and the skeleton game `skeleton-assembly`, with `bestScore`, `earned`, the ids of the dinosaurs whose skeleton has earned its star, and `rebuilding`, the ids of those knocked down to be built again, whose museum stands await them; a rebuild's fitted bones are not kept. Beside them, the home page keeps `home-featured`: `starts`, how many times each game has been started, by its home page id, and `featured`, the day's game as `{ "day": "2026-10-18", "game": "care" }`. A featured entry with a start count that is not a whole number of starts, or a featured game the home page no longer offers, is read as no starts and no game, and the count of a game no longer offered is dropped. Every game scores a finished round by the one rule below (`src/bestScore.ts`).
+
+The `labyrinth` entry keeps `progress` (total `stars`, completed
+`roundsPlayed` and `best` for each age level), `levelChoice` and `offer`.
+Starts belong to the home counter, including abandoned rounds. Boards and
+positions are never saved. Labyrinth holds earned progress in memory when
+storage is blocked, so rewards and level choices still work for the session.
+Unreadable scores start empty; an unusable optional choice or offer is
+dropped without losing otherwise readable rewards.
+
+Labyrinth's pure model owns procedural generation, movement, hint history
+and reward calculation; its caller supplies the best-score rule. The game
+module owns board-to-result transitions, counted starts and persistence,
+and applies the shared level-offer policy. Screens receive cell and reward views and
+report actions, without importing the model. App connects routing and home
+cards; the browser root supplies storage, randomness and timers. The import
+graph tests enforce these boundaries.
 
 `bestScore` is `null` until a round is finished. On round completion:
 
@@ -105,12 +130,12 @@ const newBest = previousBest === null ? currentScore : Math.max(previousBest, cu
 
 Use `firstBest` and `beatPersonalBest` to trigger the **first best** and **new personal best** celebrations; a first round of 0/10 is not celebrated. Each finished round increments `roundsPlayed`; an unfinished round changes nothing. Stored progress that is unreadable or has an unknown `schemaVersion` counts as no progress: the round is scored as a first round and its record replaces the bad one. When storage cannot be read at all, the round shows its score but no best score and no celebration. When progress can be read but not saved, the round is shown and celebrated against what was read, and nothing is saved. Achievements (LAB-266) start with: first completed round, perfect 10/10, improved personal best. Browser storage may be cleared; this is an accepted product trade-off.
 
-## 6. iPad interaction constraints
+## 6. Touch and window constraints
 
 - Landscape-first layout with side-by-side cards.
 - Large typography and large touch targets for six-year-olds.
 - Immediate visual feedback on card selection: a pressed state on tap, then a ✓ or ✗ mark with colour, never colour alone.
-- In portrait, a screen asks to turn the iPad sideways.
+- A screen with no portrait layout yet asks, in a portrait window, to turn sideways, or to make the window wider where the screen is already sideways (`docs/features/window-shape.feature`).
 - Dinosaur pictures on question cards are all the same size, so the picture never gives away or contradicts the answer; the revealed values do. Additional thumbnails/head images for other screens or games.
 
 ## 7. Deployment workflow
@@ -123,7 +148,18 @@ Agreed: RexLab ships through the repository's tag release, like the Notio fronte
 4. The deploy builds `rexlab/dist`, runs `wrangler pages deploy` to the Cloudflare Pages project `rexlab`, and passes only when `https://rexlab.enoa.ai/` serves the tag's version in its `rexlab-version` meta tag.
 5. Cloudflare serves the site over HTTPS through its CDN at `rexlab.enoa.ai`.
 
-## 8. Open implementation choices
+## 8. Testing
+
+Agreed: Vitest, the runner that comes with the Vite stack, with Testing Library for screens.
+
+1. Behaviour is specified in Gherkin under `rexlab/docs/features/`; each scenario is proved by a test under `rexlab/tests/`. A feature tagged `@next` is not yet built.
+2. Game rules are plain functions, free of React and of the browser, and are tested directly in Node (`*.test.ts`). For the quiz, `src/quiz/` makes a round: every question compares two distinct dinosaurs on an attribute it can ask, with the larger value at least 1.5 times the smaller, and no pair repeats (`round.test.ts`, over many seeds and the shipped list). The best score keeps the best ever, not the last round (`bestScore.test.ts`, `progress.test.ts`). The care, sorting, pairs and skeleton rules are tested the same way.
+3. Screens and whole flows render `App` in jsdom (`*.test.tsx`), with the app's stylesheet loaded so computed styles can be checked. jsdom lays nothing out, so where fit matters (a name on one line) the widths are measured in ems of the font and checked against each window size in `docs/features/window-fit.feature`.
+4. Whatever the browser decides is passed to `App` by `src/root.ts`, the composition root: local storage, the random source, the clock, timers, picture loading, the window's size class and whether the device's own screen is upright, theme and motion queries. Tests pass their own: a memory storage, a seeded random source, a fixed clock, timers and pictures that fire when the test says. So a weighted draw, a day boundary or a slow picture is tested without waiting or chance. `root.test.ts` checks that the root wires the real browser.
+5. `architecture.test.ts` reads the import graph and keeps it so: the quiz is reached only through `src/quiz/index.ts` and imports nothing but the languages, and screens, texts and themes are kept free of the quiz.
+6. `rexlab/scripts/test.sh` runs the same steps as CI: clean install, typecheck, tests, build. CI runs them on every pull request that touches RexLab (section 7).
+
+## 9. Open implementation choices
 
 - Specify the validated dinosaur dataset and image sourcing/licensing workflow.
 - Choose the thresholds for attributes after mass and height (length, horns).

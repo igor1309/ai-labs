@@ -8,6 +8,7 @@ Feature: Skeleton assembly: placing bones
 
   Background:
     Given an iPad in landscape
+    And the level switch shows Hatchling chosen, whose four pieces these scenarios count
     And a skeleton puzzle is in progress
 
   Scenario: A child can pick up and drag a large bone piece
@@ -34,6 +35,8 @@ Feature: Skeleton assembly: placing bones
       | Tyrannosaurus |
       | Triceratops   |
       | Stegosaurus   |
+      | Brachiosaurus |
+      | Spinosaurus   |
 
   Scenario: A near miss snaps into the correct slot
     Given all four pieces are unplaced
@@ -87,7 +90,7 @@ Feature: Skeleton assembly: placing bones
   Scenario: Portrait pauses the puzzle and cancels a drag
     Given I have placed two pieces and am dragging a third
     When I turn the iPad to portrait
-    Then I see the app's picture asking me to turn the iPad sideways
+    Then I see the app's picture asking me to turn sideways
     And I cannot move pieces or trigger controls behind that picture
     When I turn the iPad back to landscape
     Then the same two pieces are fitted and the other two are in the tray

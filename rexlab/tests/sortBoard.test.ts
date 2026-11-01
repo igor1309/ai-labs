@@ -1,22 +1,26 @@
+import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
 import { describe, expect, it } from "vitest";
-import { boardState, drop, score, startBoard, type Basket, type Dinosaur, type Property } from "../src/sorting/index.ts";
+import { boardState, drop, score, startBoard, type Basket, type Dinosaur, type Property, type Sorting } from "../src/sorting/index.ts";
 import { SHIPPED_SORTABLES, seededRandom, sortingBy } from "./support.ts";
 
 const PROPERTIES: readonly Property[] = ["legs", "diet", "size", "horns", "feathers"];
 
 // The basket each dinosaur belongs in by its shipped facts, or undefined
 // where they give no clear answer.
-function clearBasket(dinosaur: Dinosaur, property: Property): Basket | undefined {
+function clearBasket(dinosaur: Dinosaur, property: Property, level: AgeLevel = "hatchling"): Basket | undefined {
   switch (property) {
     case "legs":
+      if (dinosaur.legs === "either") return level === "paleontologist" ? "two-or-four" : undefined;
       return dinosaur.legs === 2 ? "two-legs" : dinosaur.legs === 4 ? "four-legs" : undefined;
     case "diet":
-      return dinosaur.diet === "both" ? undefined : dinosaur.diet;
+      return dinosaur.diet === "both" ? (level === "explorer" ? "both" : undefined) : dinosaur.diet;
     case "size":
       return dinosaur.size ?? undefined;
     case "horns":
       return dinosaur.horns === null ? undefined : dinosaur.horns ? "horns" : "no-horns";
     case "feathers":
+      if (dinosaur.feathers === "unknown") return level === "paleontologist" ? "not-known-yet" : undefined;
+      if (level === "paleontologist" && dinosaur.diet === "plants" && !dinosaur.feathers) return undefined;
       return dinosaur.feathers === null ? undefined : dinosaur.feathers ? "feathers" : "no-feathers";
   }
 }
@@ -43,7 +47,7 @@ const SEEDS = Array.from({ length: 200 }, (_, seed) => seed);
 describe("a new board", () => {
   it("holds six different dinosaurs of the shipped list, at least two for each basket, each in the basket its facts give", () => {
     for (const seed of SEEDS) {
-      const board = boardState(startBoard(SHIPPED_SORTABLES, seededRandom(seed)));
+      const board = boardState(startBoard(SHIPPED_SORTABLES, "hatchling", seededRandom(seed)));
       const ids = board.cards.map(({ dinosaur }) => dinosaur.id);
 
       expect(new Set(ids).size).toBe(6);
@@ -66,17 +70,19 @@ describe("a new board", () => {
   });
 
   it("sorts by every property, over many boards", () => {
-    const properties = new Set(SEEDS.map((seed) => boardState(startBoard(SHIPPED_SORTABLES, seededRandom(seed))).property));
+    const properties = new Set(SEEDS.map((seed) => boardState(startBoard(SHIPPED_SORTABLES, "hatchling", seededRandom(seed))).property));
 
     expect([...properties].sort()).toEqual([...PROPERTIES].sort());
   });
 
   it.each([
     ["legs", { legs: null }],
+    ["legs", { legs: "either" }],
     ["diet", { diet: "both" }],
     ["size", { size: null }],
     ["horns", { horns: null }],
-    ["feathers", { feathers: null }]
+    ["feathers", { feathers: null }],
+    ["feathers", { feathers: "unknown" }]
   ] as const)("never puts a dinosaur with no clear %s on a board sorting by it", (property, unclear) => {
     const other = { legs: 4, diet: "plants", size: "small", horns: true, feathers: false } as const;
     const firsts = Array.from({ length: 6 }, () => dinosaur());
@@ -104,9 +110,9 @@ describe("the next board", () => {
   it("sorts by another property than the board before it, finished or left early", () => {
     for (const seed of SEEDS) {
       const random = seededRandom(seed);
-      const first = startBoard(SHIPPED_SORTABLES, random);
+      const first = startBoard(SHIPPED_SORTABLES, "hatchling", random);
       const left = drop(first, boardState(first).cards[0]?.dinosaur.id ?? "", "big");
-      const second = startBoard(SHIPPED_SORTABLES, random, left);
+      const second = startBoard(SHIPPED_SORTABLES, "hatchling", random, left);
 
       expect(boardState(second).property).not.toBe(boardState(first).property);
     }
@@ -174,4 +180,71 @@ describe("sorting a board", () => {
     expect(board.landed.map(({ dinosaur }) => dinosaur.id)).toEqual(reversed.map(({ dinosaur }) => dinosaur.id));
     expect(score(done)).toBe(6);
   });
+});
+
+const LEVEL_RULES = [
+  ["hatchling", 6, PROPERTIES],
+  ["explorer", 8, PROPERTIES],
+  ["paleontologist", 10, ["legs", "feathers"]]
+] as const;
+
+describe.each(LEVEL_RULES)("%s generation", (level, size, properties) => {
+  it("fills every property's baskets with distinct eligible dinosaurs, at least two per basket, and never repeats a property", () => {
+    const seen = new Set<Property>();
+    for (const seed of SEEDS) {
+      const random = seededRandom(seed);
+      let previous: Sorting | undefined;
+      for (let round = 0; round < 3; round++) {
+        const sorting = startBoard(SHIPPED_SORTABLES, level, random, previous);
+        const board = boardState(sorting);
+        seen.add(board.property);
+        expect(properties).toContain(board.property);
+        expect(board.property).not.toBe(previous?.board.property);
+        expect(sorting.board.level).toBe(level);
+        expect(board.cards).toHaveLength(size);
+        expect(new Set(board.cards.map(({ dinosaur }) => dinosaur.id)).size).toBe(size);
+        expect(board.cards.map(({ dinosaur }) => clearBasket(dinosaur, board.property, level))).toEqual(board.cards.map(({ basket }) => basket));
+        const third = level === "explorer" && board.property === "diet" ? "both" : level === "paleontologist" ? (board.property === "legs" ? "two-or-four" : "not-known-yet") : undefined;
+        expect(board.baskets).toEqual([...({ legs: ["two-legs", "four-legs"], diet: ["plants", "meat"], size: ["big", "small"], horns: ["horns", "no-horns"], feathers: ["feathers", "no-feathers"] }[board.property]), ...(third ? [third] : [])]);
+        for (const basket of board.baskets) {
+          expect(board.cards.filter((card) => card.basket === basket).length).toBeGreaterThanOrEqual(2);
+        }
+        if (level === "explorer" && board.property === "diet") {
+          expect(board.cards.filter(({ basket }) => basket === "both").length).toBeLessThanOrEqual(3);
+        }
+        if (level === "paleontologist" && board.property === "feathers") {
+          expect(board.cards.filter(({ basket }) => basket === "no-feathers").map(({ dinosaur }) => dinosaur.id).sort()).toEqual(["allosaurus", "carnotaurus"]);
+        }
+        previous = sorting;
+      }
+    }
+    expect([...seen].sort()).toEqual([...properties].sort());
+  });
+
+  it("has enough shipped facts to fill every property and every basket", () => {
+    for (const property of properties) {
+      const counts = new Map<Basket, number>();
+      for (const dinosaur of SHIPPED_SORTABLES) {
+        const basket = clearBasket(dinosaur, property, level);
+        if (basket) counts.set(basket, (counts.get(basket) ?? 0) + 1);
+      }
+      expect([...counts.values()].reduce((sum, count) => sum + count, 0)).toBeGreaterThanOrEqual(size);
+      expect([...counts.values()].every((count) => count >= 2)).toBe(true);
+      expect(counts.size).toBe(level === "paleontologist" || (level === "explorer" && property === "diet") ? 3 : 2);
+    }
+  });
+});
+
+it.each(AGE_LEVELS.flatMap((from) => AGE_LEVELS.map((to) => [from, to] as const)))("does not repeat a property when moving from %s to %s", (from, to) => {
+  for (const seed of SEEDS.slice(0, 30)) {
+    const random = seededRandom(seed);
+    const first = startBoard(SHIPPED_SORTABLES, from, random);
+    expect(startBoard(SHIPPED_SORTABLES, to, random, first).board.property).not.toBe(first.board.property);
+  }
+});
+
+it("rejects a list with only one dinosaur for a third basket", () => {
+  const either = SHIPPED_SORTABLES.find(({ legs }) => legs === "either");
+  const list = SHIPPED_SORTABLES.filter((dinosaur) => dinosaur.legs !== "either" || dinosaur === either);
+  expect(() => startBoard(list, "paleontologist", () => 0)).toThrow("The dinosaur list cannot fill a board sorting by legs");
 });

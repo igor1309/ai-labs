@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -16,42 +17,53 @@ import {
   SHIPPED_DINOSAURS,
   SHIPPED_PALS,
   emptyCare,
+  emptyDig,
   emptyProgress,
   emptySkeletons,
   emptySorting,
   fakeBodyPicture,
+  featuring,
   loadedPictures,
   manualAppearance,
-  manualOrientation,
+  manualViewport,
   memoryStorage,
+  pageAtRest,
   sameColour,
   seededRandom,
-  words
+  unreadVersion,
+  words,
+  unsetAgeLevel
 } from "./support.ts";
 
 function openApp({ language = "en", theme = "light", found = [] }: { language?: Language; theme?: Theme; found?: string[] } = {}) {
   const pairs = memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 0, level: 1, boardsOnLevel: 0, best: {}, found }) });
   render(
-    <App
+    <App {...emptyLabyrinth()}
+      {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
       random={seededRandom(11)}
-      orientation={manualOrientation("landscape")}
+      portraitLayouts={{}}
+      viewport={manualViewport("landscape")}
       progress={emptyProgress()}
       deviceLanguage={language === "ru" ? "ru-RU" : "en-GB"}
       languageStore={localLanguage(() => memoryStorage())}
+      nameVersion={unreadVersion}
       appearance={manualAppearance(theme)}
       themeStore={localTheme(() => memoryStorage())}
+      {...unsetAgeLevel()}
       {...loadedPictures()}
       {...emptyCare()}
       {...emptySorting()}
       pals={SHIPPED_PALS}
       pairsProgress={localPairsProgress(() => pairs)}
       {...emptySkeletons()}
+      {...emptyDig()}
+      {...pageAtRest()}
     />
   );
-  return userEvent.setup();
+  return userEvent.setup({ delay: null });
 }
 
 type User = ReturnType<typeof userEvent.setup>;
@@ -63,7 +75,7 @@ const chipRow = (language: Language = "en") => screen.getByRole("group", { name:
 const chips = (language: Language = "en") => within(chipRow(language)).getAllByRole("button");
 const chip = (name: string) => within(chipRow()).getByRole("button", { name });
 const chosen = () => chips().filter((each) => each.getAttribute("aria-pressed") === "true").map((each) => each.getAttribute("aria-label"));
-const grid = () => screen.getByRole("group", { name: "ALL DINOSAURS" });
+const grid = () => screen.getByRole("group", { name: "ANCIENT REPTILES" });
 const cardNames = () => within(grid()).getAllByRole("button").map((card) => card.getAttribute("aria-label"));
 const position = () => screen.queryByLabelText("NUMBER")?.textContent;
 const pageName = () => screen.queryByRole("heading", { level: 1 })?.textContent;
@@ -81,14 +93,14 @@ async function choose(user: User, name: string) {
 }
 
 describe("the catalogue's food chips", () => {
-  it("are under the title, ALL, MEAT, PLANTS and BOTH, each with its symbols and count, ALL chosen, each a tap target at least 44 high", async () => {
+  it("are beside HOME, ALL a filter symbol alone, then MEAT, PLANTS and BOTH, each with its symbols and count, ALL chosen, each a tap target at least 44 high", async () => {
     const user = openApp();
     await openCatalogue(user);
 
-    expect(chipRow().previousElementSibling).toBe(screen.getByRole("heading", { level: 1 }).closest("header"));
+    expect(chipRow().previousElementSibling).toBe(screen.getByRole("button", { name: "HOME" }));
     expect(chips().map((each) => [each.getAttribute("aria-label"), symbolsOf(each), words(each)])).toEqual([
-      ["ALL", ["book-open"], "ALL42"],
-      ["MEAT", ["beef"], "MEAT16"],
+      ["ALL", ["funnel"], ""],
+      ["MEAT", ["beef"], "MEAT26"],
       ["PLANTS", ["leaf"], "PLANTS23"],
       ["BOTH", ["beef", "leaf"], "BOTH3"]
     ]);
@@ -120,8 +132,7 @@ describe("the catalogue's food chips", () => {
 
     expect(chosen()).toEqual(["MEAT"]);
     expect(cardNames()).toEqual(MEAT.map(({ name }) => name.en));
-    expect(within(grid()).getAllByText("MEAT")).toHaveLength(16);
-    expect(screen.getByLabelText("DINOSAURS").textContent).toBe("16");
+    expect(within(grid()).getAllByRole("img", { name: "MEAT" })).toHaveLength(26);
   });
 
   it("show every dinosaur again for ALL", async () => {
@@ -132,7 +143,6 @@ describe("the catalogue's food chips", () => {
     await user.click(chip("ALL"));
 
     expect(cardNames()).toEqual(SHIPPED_CATALOGUE.map(({ name }) => name.en));
-    expect(screen.getByLabelText("DINOSAURS").textContent).toBe("42");
   });
 
   it("change nothing when the chosen chip is tapped again", async () => {
@@ -146,28 +156,25 @@ describe("the catalogue's food chips", () => {
     expect(cardNames()).toEqual(["Gallimimus", "Oviraptor", "Troodon"]);
   });
 
-  it("count the found among the dinosaurs shown, stamping theirs", async () => {
+  it("show no count of the found and no stamps over the artwork", async () => {
     const user = openApp({ found: ["tyrannosaurus", "velociraptor", "triceratops"] });
     await choose(user, "MEAT");
 
-    const count = screen.getAllByLabelText("FOUND").find((each) => each.tagName === "P");
-    expect([count && symbolsOf(count), count?.textContent]).toEqual([["copy"], "2 / 16"]);
-    const stamped = within(grid()).getAllByRole("img", { name: "FOUND" }).map((stamp) => stamp.closest("button")?.getAttribute("aria-label"));
-    expect(stamped).toEqual(["Tyrannosaurus", "Velociraptor"]);
+    expect(screen.queryAllByLabelText("FOUND")).toEqual([]);
   });
 
   it("make a page go round the dinosaurs shown, counting its place among them", async () => {
     const user = openApp();
     await choose(user, "MEAT");
     await user.click(within(grid()).getByRole("button", { name: "Tyrannosaurus" }));
-    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 16"]);
+    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 26"]);
 
     await user.click(screen.getByRole("button", { name: "PREVIOUS" }));
-    expect([pageName(), position()]).toEqual([MEAT.at(-1)?.name.en.toUpperCase(), "16 / 16"]);
+    expect([pageName(), position()]).toEqual([MEAT.at(-1)?.name.en.toUpperCase(), "26 / 26"]);
 
     await user.click(screen.getByRole("button", { name: "NEXT" }));
     await user.click(screen.getByRole("button", { name: "NEXT" }));
-    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "2 / 16"]);
+    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "2 / 26"]);
   });
 
   it("stay chosen back from a page, its card in view", async () => {
@@ -176,7 +183,7 @@ describe("the catalogue's food chips", () => {
     const last = ofDiet("plants").at(-1)?.name.en ?? "";
     await user.click(within(grid()).getByRole("button", { name: last }));
 
-    await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+    await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
 
     expect(chosen()).toEqual(["PLANTS"]);
     expect(cardNames()).toHaveLength(23);
@@ -191,14 +198,14 @@ describe("the catalogue's food chips", () => {
     await openCatalogue(user);
 
     expect(chosen()).toEqual(["ALL"]);
-    expect(cardNames()).toHaveLength(42);
+    expect(cardNames()).toHaveLength(52);
   });
 
   it("rise the cards of the food chosen in as a new list, the chosen look moving by the tokens", async () => {
     const user = openApp();
     await choose(user, "MEAT");
     await user.click(screen.getByRole("button", { name: "Tyrannosaurus" }));
-    await user.click(screen.getByRole("button", { name: "ALL DINOSAURS" }));
+    await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
     expect(grid().dataset.rise).toBeUndefined();
     const before = grid();
 

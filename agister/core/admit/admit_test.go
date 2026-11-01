@@ -45,6 +45,8 @@ type worktreeSpy struct {
 	content    string
 	headErr    error
 	contentErr error
+	patch      string
+	changesErr error
 	trail      *trail
 }
 
@@ -70,6 +72,14 @@ func (s *worktreeSpy) Content(ctx context.Context) (string, error) {
 		return "", err
 	}
 	return s.content, nil
+}
+
+func (s *worktreeSpy) Changes(ctx context.Context, commit, content string) (string, error) {
+	s.trail.add("changes " + commit + " " + content)
+	if err := cmp.Or(ctx.Err(), s.changesErr); err != nil {
+		return "", err
+	}
+	return s.patch, nil
 }
 
 // holdSpy takes a hold unless its test gives err, and keeps how each was
@@ -206,7 +216,7 @@ func TestAdmitAsksOnlyTheFactsDeclared(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			want := append(slices.Clone(c.asked), "take", "head", "made", "content", "release")
+			want := append(slices.Clone(c.asked), "take", "head", "made", "head", "content", "release")
 			if got := asked.all(); !slices.Equal(got, want) {
 				t.Errorf("asked %q, want %q", got, want)
 			}
@@ -233,6 +243,10 @@ type failingWorktree struct{ err error }
 func (f failingWorktree) Head(context.Context) (string, error)    { return "", f.err }
 func (f failingWorktree) Clean(context.Context) (bool, error)     { return false, f.err }
 func (f failingWorktree) Content(context.Context) (string, error) { return "", f.err }
+
+func (f failingWorktree) Changes(context.Context, string, string) (string, error) {
+	return "", f.err
+}
 
 // A fact or a hold that cannot be told refuses the call, with its words.
 func TestAFactOrAHoldThatCannotBeToldRefusesTheCall(t *testing.T) {
@@ -329,16 +343,16 @@ func TestAnAdmittedCallsWorktreeIsToldReadUnderItsHold(t *testing.T) {
 			worktree := &worktreeSpy{head: "c1", clean: true, content: "t1", trail: asked}
 			told := &toldSpy{trail: asked}
 			err := admitter(t, worktree, &holdSpy{trail: asked}).Make(ctx, admit.Request{Writer: true}, func(ctx context.Context) {
-				worktree.content = "t2"
+				worktree.head, worktree.content = "c2", "t2"
 				ends(ctx, cancel)
 			}, told.told)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if want := []admit.Facts{{Head: "c1", Content: "t2"}}; !slices.Equal(told.facts, want) {
+			if want := []admit.Facts{{Head: "c1", EndHead: "c2", Content: "t2"}}; !slices.Equal(told.facts, want) {
 				t.Errorf("told %+v, want %+v", told.facts, want)
 			}
-			if got, want := asked.all(), []string{"take", "head", "content", "told", "release"}; !slices.Equal(got, want) {
+			if got, want := asked.all(), []string{"take", "head", "head", "content", "told", "release"}; !slices.Equal(got, want) {
 				t.Errorf("asked %q, want %q", got, want)
 			}
 		})
@@ -385,7 +399,7 @@ func TestAFactThatCannotBeReadIsToldEmpty(t *testing.T) {
 		want                admit.Facts
 	}{
 		"HEAD":    {broken, nil, admit.Facts{Content: "t1"}},
-		"content": {nil, broken, admit.Facts{Head: "c1"}},
+		"content": {nil, broken, admit.Facts{Head: "c1", EndHead: "c1"}},
 		"both":    {broken, broken, admit.Facts{}},
 	} {
 		t.Run(name, func(t *testing.T) {

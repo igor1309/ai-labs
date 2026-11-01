@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"slices"
 	"strings"
@@ -10,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/igor1309/ai-labs/agister/cli"
+	"github.com/igor1309/ai-labs/agister/core/workflow"
 	"github.com/igor1309/ai-labs/agister/runstore"
 	"github.com/igor1309/ai-labs/agister/runtime/bash"
 	"github.com/igor1309/ai-labs/agister/runtime/claudecode"
@@ -101,8 +104,11 @@ func TestEachCallIsRecordedWithItsWorktreeAndResult(t *testing.T) {
 		t.Fatalf("the record holds the calls %+v, want one", calls)
 	}
 	result := calls[0].Result
-	calls[0].Result = runstore.CallResult{}
-	want := runstore.Call{ID: recordID + "/ask", Step: "ask", Process: "ask", Agent: "claude-opus", Root: "/r", Head: "c1", Content: "t1"}
+	// Its inputs are runs.feature's, proved there.
+	calls[0].Result, calls[0].Inputs = runstore.CallResult{}, nil
+	endHead := "c1"
+	want := runstore.Call{ID: recordID + "/ask", Step: "ask", Process: "ask", Agent: "claude-opus", Root: "/r", Head: "c1", EndHead: &endHead, Content: "t1", Definitions: askDefinitions(f.settings, "claude-opus"),
+		Permissions: askPermissions(), Environment: []runstore.Variable{{Name: "A", Value: "1"}}}
 	if !reflect.DeepEqual(calls[0], want) {
 		t.Errorf("the record's call %+v, want %+v", calls[0], want)
 	}
@@ -112,11 +118,11 @@ func TestEachCallIsRecordedWithItsWorktreeAndResult(t *testing.T) {
 	}
 }
 
-// record.feature, "A record is lost until the run ends, its ended calls
+// record.feature, "A record is running until the run ends, its ended calls
 // kept": the last record runstore is given before b's turn is taken.
 //
 // Contract test: the files home holds, as Agister ships them.
-func TestARecordIsLostUntilTheRunEndsItsEndedCallsKept(t *testing.T) {
+func TestARecordIsRunningUntilTheRunEndsItsEndedCallsKept(t *testing.T) {
 	t.Parallel()
 	f := newRecordFixture(t, runSettings(t, nil), nil)
 	var during []runstore.Record
@@ -133,8 +139,8 @@ func TestARecordIsLostUntilTheRunEndsItsEndedCallsKept(t *testing.T) {
 		t.Fatal("runstore was given no record while b ran, want one")
 	}
 	last := during[len(during)-1]
-	if last.Status != "lost" || last.Result != nil || last.Ended != nil {
-		t.Errorf("the record while b ran: %s, ended %v, result %+v; want lost, none", last.Status, last.Ended, last.Result)
+	if last.Status != "running" || last.Result != nil || last.Ended != nil {
+		t.Errorf("the record while b ran: %s, ended %v, result %+v; want running, none", last.Status, last.Ended, last.Result)
 	}
 	if len(last.Calls) != 1 || last.Calls[0].Step != "a" || last.Calls[0].Result.Status != "completed" {
 		t.Errorf("the record while b ran holds %+v, want a's call, completed", last.Calls)
@@ -156,7 +162,116 @@ func TestEachEventReachesRunstoreInOrder(t *testing.T) {
 			storedEvent{id: recordID, event: runstore.Event{At: recordStart, Step: step, Kind: runstore.Started, Agent: "bash"}},
 			storedEvent{id: recordID, event: runstore.Event{At: recordStart, Step: step, Kind: runstore.Ended, Status: "completed"}})
 	}
-	if _, _, events := f.store.given(); !reflect.DeepEqual(events, want) {
+	_, _, events := f.store.given()
+	var ordering []string
+	for _, e := range events {
+		ordering = append(ordering, e.event.Step+":"+string(e.event.Kind))
+		if e.event.Kind == runstore.Prepared {
+			c := e.event.CallFact
+			value := "hi"
+			if e.event.Step == "b" {
+				value += "\n"
+			}
+			if c == nil || c.ID != recordID+"/"+e.event.Step || c.Step != e.event.Step || c.Process != "say" || c.Agent != "bash" || c.Root != "/r" || len(c.Inputs) != 1 || c.Inputs[0].Name != "what" || c.Inputs[0].Value != value || c.Inputs[0].Identity != identityOf(value) {
+				t.Fatalf("prepared %+v", c)
+			}
+		}
+	}
+	if want := []string{"a:started", "a:prepared", "a:resumed", "a:call_ended", "a:ended", "b:started", "b:prepared", "b:resumed", "b:call_ended", "b:ended"}; !slices.Equal(ordering, want) {
+		t.Fatalf("events %v, want %v", ordering, want)
+	}
+	// Prepared facts are asserted on their payload above. Lifecycle facts
+	// here keep the original workflow start/end ordering assertion.
+	events = slices.DeleteFunc(events, func(e storedEvent) bool {
+		return e.event.Kind == runstore.Prepared || e.event.Kind == runstore.Resumed || e.event.Kind == runstore.CallEnded || e.event.Kind == runstore.InputResolved
+	})
+	if !reflect.DeepEqual(events, want) {
+		t.Errorf("runstore was given the events\n%+v\nwant\n%+v", events, want)
+	}
+}
+
+func TestChildRecordsKeepTheirOwnResultsWhenTheyEndInAnotherOrder(t *testing.T) {
+	t.Parallel()
+	store := &storeSpy{}
+	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Workflow: "reviews"}, nil, nil, "/r", "/r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := record.begin(); err != nil {
+		t.Fatal(err)
+	}
+	children := []struct {
+		step string
+		end  workflow.ChildEnd
+	}{
+		{"tests", workflow.ChildEnd{Status: workflow.Completed, Output: "approved"}},
+		{"architecture", workflow.ChildEnd{Status: workflow.Failed, Class: workflow.Refused}},
+		{"tests/2", workflow.ChildEnd{Status: workflow.Completed, Output: map[string]any{"verdict": "revise"}}},
+		{"intent", workflow.ChildEnd{Status: workflow.Interrupted, Class: workflow.Cancelled}},
+	}
+	want := []any{}
+	assertChildren := func() {
+		t.Helper()
+		if got := asJSON(t, store.last(t))["children"]; !reflect.DeepEqual(got, want) {
+			t.Fatalf("serialized children %v, want %v", got, want)
+		}
+	}
+	for _, child := range children {
+		record.ChildStarted(child.step, "lens", map[string]string{}, map[string]string{})
+		want = append(want, map[string]any{
+			"id": recordID + "/" + child.step, "parent": recordID, "workflow": "lens",
+			"params": map[string]any{}, "inputs": []any{}, "status": "running", "class": nil, "output": nil,
+		})
+		assertChildren()
+	}
+	for _, i := range []int{2, 0, 3, 1} {
+		child := children[i]
+		record.ChildEnded(child.step, child.end)
+		kept := want[i].(map[string]any)
+		kept["status"], kept["output"] = string(child.end.Status), child.end.Output
+		if child.end.Class != "" {
+			kept["class"] = string(child.end.Class)
+		}
+		assertChildren()
+	}
+}
+
+// A stale turn is appended as runstore's stale event, at the clock's time:
+// what went stale, and whether a recovery turn follows.
+func TestAStaleTurnIsAppendedAsAStaleEvent(t *testing.T) {
+	t.Parallel()
+	store := &storeSpy{}
+	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, []runstore.Definition{}, nil, "/r", "/r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Stale("ask", workflow.Stale{What: "no event for 1m", Recovering: true})
+	record.Stale("ask", workflow.Stale{What: "no event for 1m"})
+	want := []storedEvent{
+		{id: recordID, event: runstore.Event{At: recordStart, Step: "ask", Kind: runstore.Stale, What: "no event for 1m", Recovering: true, Waiting: &runstore.Waiting{On: "recovery", Since: recordStart}}},
+		{id: recordID, event: runstore.Event{At: recordStart, Step: "ask", Kind: runstore.Stale, What: "no event for 1m"}},
+	}
+	if _, _, events := store.given(); !reflect.DeepEqual(events, want) {
+		t.Errorf("runstore was given the events\n%+v\nwant\n%+v", events, want)
+	}
+}
+
+// A turn at capacity is appended as runstore's capacity event, at the
+// clock's time: its reason, and whether the turn is made again.
+func TestATurnAtCapacityIsAppendedAsACapacityEvent(t *testing.T) {
+	t.Parallel()
+	store := &storeSpy{}
+	record, err := newRunRecord(store, clocktest.NewClock(recordStart), recordID, recordStart, cli.Request{Process: "ask"}, []runstore.Definition{}, nil, "/r", "/r")
+	if err != nil {
+		t.Fatal(err)
+	}
+	record.Capacity("ask", workflow.Capacity{Reason: "Overloaded", Retry: 30 * time.Second})
+	record.Capacity("ask", workflow.Capacity{Reason: "Overloaded"})
+	want := []storedEvent{
+		{id: recordID, event: runstore.Event{At: recordStart, Step: "ask", Kind: runstore.Capacity, Reason: "Overloaded", Retrying: true, Waiting: &runstore.Waiting{On: "capacity", Since: recordStart, Until: timeAt(recordStart.Add(30 * time.Second))}}},
+		{id: recordID, event: runstore.Event{At: recordStart, Step: "ask", Kind: runstore.Capacity, Reason: "Overloaded"}},
+	}
+	if _, _, events := store.given(); !reflect.DeepEqual(events, want) {
 		t.Errorf("runstore was given the events\n%+v\nwant\n%+v", events, want)
 	}
 }
@@ -183,7 +298,7 @@ func TestARefusalByAdmissionIsRecorded(t *testing.T) {
 	if last.Status != "failed" || last.Result == nil || !refused(last.Result.Outcome) {
 		t.Errorf("the record %s, its result %+v; want failed, refused as the worktree is not clean", last.Status, last.Result)
 	}
-	if len(last.Calls) != 1 || !refused(last.Calls[0].Result.Outcome) || last.Calls[0].Head != "" || last.Calls[0].Content != "" {
+	if len(last.Calls) != 1 || !refused(last.Calls[0].Result.Outcome) || last.Calls[0].Head != "" || last.Calls[0].EndHead == nil || *last.Calls[0].EndHead != "" || last.Calls[0].Content != "" || last.Calls[0].Patch != nil {
 		t.Errorf("the record holds the calls %+v, want implement's, refused, its HEAD and content empty", last.Calls)
 	}
 }
@@ -196,6 +311,7 @@ func TestARefusalByAdmissionIsRecorded(t *testing.T) {
 func TestCallsSideBySideThatEndTogetherAreBothKept(t *testing.T) {
 	t.Parallel()
 	f := newReviewFixture(t)
+	unboundReviews(f)
 	f.clock = clocktest.NewClock(recordStart)
 	var together sync.WaitGroup
 	together.Add(2)
@@ -228,7 +344,7 @@ func TestCallsSideBySideThatEndTogetherAreBothKept(t *testing.T) {
 		steps = append(steps, call.Step)
 	}
 	slices.Sort(steps)
-	if want := []string{"adversarial", "architecture", "clarity", "intent", "judge", "tests"}; !slices.Equal(steps, want) {
+	if want := []string{"adversarial", "architecture", "clarity", "intent", "judge", "tests/critique", "tests/draft", "tests/recheck/1", "tests/revise/1"}; !slices.Equal(steps, want) {
 		t.Errorf("the last record holds the calls of %q, want each of %q once", steps, want)
 	}
 }
@@ -258,58 +374,47 @@ func TestWhatIsRefusedBeforeAnythingRunsIsNotRecorded(t *testing.T) {
 }
 
 // record.feature, "A record that cannot be written"; and, as the section
-// "Records" of docs/run-implementation.md has it, an event that cannot be
-// appended is a warning in the result, as a later write is. A failure
-// before the last write is a warning in the record's result too; the last
-// write's, in the printed result alone. pair writes its record four
-// times: before a, after a, after b and at the end.
-//
-// Contract test: the files home holds, as Agister ships them.
+// Persistence failures fail the run and stop all further log writes.
+// Contract test: the settings shipped in home.
 func TestARecordThatCannotBeWritten(t *testing.T) {
 	t.Parallel()
-	t.Run("the first write", func(t *testing.T) {
-		t.Parallel()
-		f := newRecordFixture(t, runSettings(t, nil), echoes)
-		f.store.failWrite = 1
-		got := f.run(t, "/r", "run", "pair")
-		want := ran{stderr: "agister: the run is refused, and nothing runs:\n  its record cannot be written: disk full\n", code: 1}
-		if got != want {
-			t.Errorf("ran %+v, want %+v", got, want)
-		}
-		if ran := f.runtimes.bash.ran(); len(ran) > 0 {
-			t.Errorf("ran %+v, want nothing", ran)
-		}
-	})
-	for _, c := range []struct {
-		name     string
-		fail     func(*storeSpy)
-		warning  string
-		recorded int
-	}{
-		{"the second write", func(s *storeSpy) { s.failWrite = 2 }, "the run's record could not be written: disk full", 1},
-		{"the last write", func(s *storeSpy) { s.failWrite = 4 }, "the run's record could not be written: disk full", 0},
-		{"every append", func(s *storeSpy) { s.failAppend = true }, "an event of the run could not be recorded: disk full", 1},
-	} {
-		t.Run(c.name, func(t *testing.T) {
+	// The pair persists its start, two ended calls and terminal result.
+	for _, failAt := range []int{1, 2, 3, 4} {
+		t.Run(fmt.Sprint(failAt), func(t *testing.T) {
 			t.Parallel()
 			f := newRecordFixture(t, runSettings(t, nil), echoes)
-			c.fail(f.store)
+			f.store.failWrite = failAt
 			got := f.run(t, "/r", "run", "pair")
-			if got.stderr != "" || got.code != 0 || len(f.runtimes.bash.ran()) != 2 {
-				t.Fatalf("stderr %q, exit %d, ran %d turns; want none, 0, both", got.stderr, got.code, len(f.runtimes.bash.ran()))
+			if got.code != 1 {
+				t.Fatalf("run %+v, want persistence failure", got)
 			}
-			count := func(warnings []string) int {
-				return len(slices.DeleteFunc(slices.Clone(warnings), func(w string) bool { return w != c.warning }))
+			if failAt == 1 {
+				if len(f.runtimes.bash.ran()) != 0 || got.stderr != "agister: the run is refused, and nothing runs:\n  its record cannot be written: disk full\n" {
+					t.Fatalf("run %+v", got)
+				}
+				return
 			}
-			if p := printedOf(t, got); count(p.Warnings) != 1 {
-				t.Errorf("printed the warnings %q, want %q once", p.Warnings, c.warning)
+			p := printedOf(t, got)
+			if p.Status != "failed" || p.Class == nil || *p.Class != "persistence" || p.Reason == nil || !strings.Contains(*p.Reason, "disk full") {
+				t.Fatalf("printed %+v", p)
 			}
-			if _, records, _ := f.store.given(); len(records) != 4 {
-				t.Fatalf("runstore was given %d records, want 4", len(records))
-			}
-			if last := f.store.last(t); last.Result == nil || count(last.Result.Warnings) != c.recorded {
-				t.Errorf("the record's result %+v, want the warning %q %d times", last.Result, c.warning, c.recorded)
+			_, records, _ := f.store.given()
+			if len(records) != failAt {
+				t.Fatalf("%d writes, want stopped at %d", len(records), failAt)
 			}
 		})
 	}
+	t.Run("append", func(t *testing.T) {
+		t.Parallel()
+		f := newRecordFixture(t, runSettings(t, nil), echoes)
+		f.store.failAppend = true
+		got := f.run(t, "/r", "run", "pair")
+		p := printedOf(t, got)
+		_, _, events := f.store.given()
+		if got.code != 1 || p.Class == nil || *p.Class != "persistence" || len(events) != 1 {
+			t.Fatalf("run %+v, events %+v", got, events)
+		}
+	})
 }
+
+func timeAt(at time.Time) *time.Time { return &at }

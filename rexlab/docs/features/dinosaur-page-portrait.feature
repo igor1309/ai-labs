@@ -1,0 +1,100 @@
+Feature: A dinosaur's page in a tall window
+  In a tall window, portrait and at least 600 CSS pixels wide (an iPad
+  upright, in Split View or Stage Manager, or a tall Mac window), a
+  dinosaur's page stands upright: the bar at the top as in landscape,
+  "ANCIENT REPTILES" at the left and the position at the right; under it
+  the navy stage across the width, the picture in its middle and the ←
+  and → buttons beside it, at the stage's left and right, centred on its
+  height; under the stage the words, each across the width: the line
+  kept for the group of a creature that is no dinosaur, the name, the
+  food tag, the description, the two facts side by side, and the note
+  for parents. The rest is as catalogue.feature and
+  catalogue-creatures.feature tell; a turn is in
+  dinosaur-page-turn.feature. A tall-narrow window, under 600 wide,
+  has its own layout.
+
+  The page's padding, the bar, the stage's padding and rounding, the
+  buttons, the food tag, the facts' cards and the words' type keep their
+  landscape sizes; the stage is 28 pixels under the bar, as in
+  landscape, and 32 over the words, which are 24 apart but for the line
+  over the name, 8 over it; the picture is 16 from each button.
+  "The width" below is the words' width: the window's less its side
+  insets and the padding (a scrollbar that takes room narrows it). Every
+  name in one window is in the same type, 7.8% of the width and at most
+  64 pixels, so the longest fits on one line with room. The line over
+  the name is kept on every page, empty for a dinosaur. The
+  description keeps room for three lines where the width is 656 pixels
+  or more, four at 520 to 655 and five under 520, down to 472 (a
+  600-pixel window beside a scrollbar that takes 16): at each, enough
+  for the longest in either language. The note for parents keeps room
+  for four lines where the width is under 600 pixels and three from
+  600, also enough for either language. So the words take the
+  same height on every page of one window in either language, and the
+  stage takes the height they leave. The picture, at its 4:3, is as wide
+  as the width less 232 (the stage's padding and the buttons with their
+  gaps) or as the stage's height less its padding allows, whichever is
+  less, and the same on every page. The stage is never under 248 pixels
+  tall; where the window leaves it less, the whole page scrolls. Sizes
+  hold to within a pixel, the picture's to within 4.
+
+  Scenario Outline: The page stands upright
+    Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room
+    When I open the page of Pachycephalosaurus
+    Then I see no picture asking to turn sideways or to make the window wider
+    And "ANCIENT REPTILES" stands at the top left and "10 / 52" at the top right
+    And under them the stage spans the width, its picture <picture> CSS pixels, the ← and → buttons beside it
+    And under the stage "PACHYCEPHALOSAURUS" stands on one line in <name>-pixel type, the food tag, the description, the facts side by side and the note under it
+    And the page <scrolls> up and down
+
+    Examples:
+      | width | height | picture   | name | scrolls         | window                         |
+      | 600   | 800    | 256 by 192 | 38   | scrolls         | Stage Manager, or a Mac        |
+      | 744   | 1133   | 385 by 289 | 49   | does not scroll | iPad mini upright              |
+      | 768   | 1024   | 292 by 219 | 51   | does not scroll | iPad 9.7" upright              |
+      | 820   | 1180   | 476 by 357 | 55   | does not scroll | iPad Air upright               |
+      | 1024  | 1366   | 680 by 510 | 64   | does not scroll | iPad Pro 12.9" upright         |
+
+  Scenario Outline: Every word fits the narrowest widths
+    Given the app is in <language>
+    And a window of <window> CSS pixels, with no safe areas and <scrollbar>
+    When I open the page of each of the 52 creatures in turn
+    Then its name stands on one line, none cut
+    And its description takes no more than <lines> lines, the note no more than <note>, its facts' values each on one line
+    And the stage and the words keep the same place and size on every page
+
+    Examples:
+      | language | window      | scrollbar                    | lines | note |
+      | English  | 600 by 800  | a scrollbar that takes 16    | 5     | 4    |
+      | Russian  | 600 by 800  | a scrollbar that takes 16    | 5     | 4    |
+      | English  | 632 by 1366 | scrollbars that take no room | 4     | 4    |
+      | Russian  | 632 by 1366 | scrollbars that take no room | 4     | 4    |
+      | English  | 712 by 1366 | scrollbars that take no room | 4     | 3    |
+      | Russian  | 712 by 1366 | scrollbars that take no room | 4     | 3    |
+      | English  | 768 by 1366 | scrollbars that take no room | 3     | 3    |
+      | Russian  | 768 by 1366 | scrollbars that take no room | 3     | 3    |
+
+  Scenario: A flying reptile names its group in the line kept for it
+    Given a window of 820 by 1180 CSS pixels on the page of Chasmosaurus
+    When I tap the → button
+    Then I see the page of Quetzalcoatlus, "FLYING REPTILE" just over its name
+    And its picture, name and words stand where Chasmosaurus's did
+
+  Scenario: A card opens its page upright
+    Given a window of 820 by 1180 CSS pixels on the list of every dinosaur
+    When I tap the card of Triceratops
+    Then the page of Triceratops opens upright, its picture growing from the card into the stage
+    And I see no picture asking to turn sideways
+    When I tap the "ANCIENT REPTILES" button
+    Then the picture shrinks back into the card of Triceratops, in view in the upright list
+
+  Scenario: A tall-narrow window stands the page on narrow sides
+    Given a window of 820 by 1180 CSS pixels on the page of Triceratops, the device's screen upright
+    When the window becomes 393 by 852 CSS pixels
+    Then no picture asks me to turn or widen the window
+    And the ← and → buttons stand in a row under the picture
+
+  Scenario: Safe areas stay clear upright
+    Given a window of 744 by 1133 CSS pixels on a device with rounded corners and a home indicator
+    When I open the page of Triceratops
+    Then the bar sits under the top inset and the note above the home indicator
+    And the screen's background still reaches the window's edges

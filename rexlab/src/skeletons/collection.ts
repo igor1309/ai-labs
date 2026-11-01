@@ -1,18 +1,20 @@
-import { isComplete, type Puzzle, type Skeleton } from "./puzzle.ts";
+import { BADGES, isComplete, type Badge, type Puzzle, type Skeleton } from "./puzzle.ts";
 
 // What a child has done in the skeleton game: the ids of the dinosaurs
 // whose skeleton they have finished, each earning one star for good, in
 // the skeleton list's order, the best collection score, null until a
 // skeleton is finished, and the ids of the earned skeletons knocked down
 // to be built again, whose stands wait for them. A rebuild keeps no
-// fitted bones: one left unfinished starts afresh.
+// fitted bones: one left unfinished starts afresh. Each skeleton keeps the
+// level badges it has earned, in the levels' order, for good.
 export type SkeletonProgress = {
   earned: readonly string[];
   bestScore: number | null;
   rebuilding: readonly string[];
+  badges: Readonly<Partial<Record<string, readonly Badge[]>>>;
 };
 
-export const NO_SKELETONS: SkeletonProgress = { earned: [], bestScore: null, rebuilding: [] };
+export const NO_SKELETONS: SkeletonProgress = { earned: [], bestScore: null, rebuilding: [], badges: {} };
 
 // The progress the game goes by while the app is open. When stored
 // progress cannot be read there is no best to compare with, but stars
@@ -53,18 +55,24 @@ export type SkeletonResult = {
   celebration: Celebration | null;
   // This skeleton earned its dinosaur's star; it had none before.
   newStar: boolean;
+  // The level badge this skeleton earned, built without help's last
+  // step, whether or not it had it before.
+  badge: Badge | undefined;
 };
 
-// A finished skeleton earns its dinosaur's star once, and the collection
-// is scored by the best-score rule. `order` is the skeleton list's ids:
+// A finished skeleton earns its dinosaur's star once, and its puzzle's
+// badge when help's last step never showed, and the collection is scored
+// by the best-score rule. `order` is the skeleton list's ids:
 // stars are kept in its order, and one of a dinosaur no longer in it is
 // kept after them, untouched.
 export function finishSkeleton(kept: KeptSkeletons, puzzle: Puzzle, order: readonly string[], beatBest: BeatBest): { result: SkeletonResult; kept: KeptSkeletons } {
   if (!isComplete(puzzle)) {
     throw new Error("A skeleton is finished only once every piece is fitted");
   }
-  const { earned, bestScore, rebuilding } = kept.progress;
+  const { earned, bestScore, rebuilding, badges } = kept.progress;
   const { skeleton } = puzzle;
+  const badge = puzzle.lastStepShown ? undefined : puzzle.badge;
+  const had = badges[skeleton.id] ?? [];
   const all = [...new Set([...earned, skeleton.id])];
   const stars = starsOf(all, order);
   const beaten = beatBest(bestScore, stars.length);
@@ -72,7 +80,8 @@ export function finishSkeleton(kept: KeptSkeletons, puzzle: Puzzle, order: reado
   const progress: SkeletonProgress = {
     earned: [...stars, ...all.filter((id) => !order.includes(id))],
     bestScore: beaten.best,
-    rebuilding: rebuilding.filter((id) => id !== skeleton.id)
+    rebuilding: rebuilding.filter((id) => id !== skeleton.id),
+    badges: badge === undefined ? badges : { ...badges, [skeleton.id]: BADGES.filter((each) => each === badge || had.includes(each)) }
   };
   return {
     result: {
@@ -82,7 +91,8 @@ export function finishSkeleton(kept: KeptSkeletons, puzzle: Puzzle, order: reado
       best: kept.readable ? beaten.best : undefined,
       previousBest: kept.readable ? (bestScore ?? undefined) : undefined,
       celebration: kept.readable ? beaten.celebration : null,
-      newStar: !earned.includes(skeleton.id)
+      newStar: !earned.includes(skeleton.id),
+      badge
     },
     kept: { progress, readable: kept.readable }
   };
@@ -107,7 +117,8 @@ export function knockDown(kept: KeptSkeletons, id: string): KeptSkeletons {
 // skeleton is still to build, or has been knocked down to be built again.
 export type StandState = "built" | "rebuilding" | "empty";
 
-export type Stand = { skeleton: Skeleton; state: StandState };
+// A stand shows its skeleton's level badges, in the levels' order.
+export type Stand = { skeleton: Skeleton; state: StandState; badges: readonly Badge[] };
 
 export type Museum = {
   // One stand for each skeleton, in their order.
@@ -125,12 +136,13 @@ export type Museum = {
 // with no skeleton, or kept twice, gets no stand of its own and counts
 // for nothing.
 export function museumOf(kept: KeptSkeletons, skeletons: readonly Skeleton[]): Museum {
-  const { earned, bestScore, rebuilding } = kept.progress;
+  const { earned, bestScore, rebuilding, badges } = kept.progress;
   const order = skeletons.map(({ id }) => id);
   return {
     stands: skeletons.map((skeleton) => ({
       skeleton,
-      state: !earned.includes(skeleton.id) ? "empty" : rebuilding.includes(skeleton.id) ? "rebuilding" : "built"
+      state: !earned.includes(skeleton.id) ? "empty" : rebuilding.includes(skeleton.id) ? "rebuilding" : "built",
+      badges: badges[skeleton.id] ?? []
     })),
     score: starsOf(earned, order).length,
     total: skeletons.length,

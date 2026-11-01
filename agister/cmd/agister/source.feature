@@ -11,7 +11,7 @@ Feature: The source gives resolve each document in resolve's types
 
     Examples:
       | given                                                                  | what                                | gives                                                               |
-      | the agent "a", model "opus", effort "high", runtime "r"                | the agent "a"                       | its model, effort and runtime, each with its origin                 |
+      | the agent "a", model "opus", effort "high", runtime "r", fallback "b"  | the agent "a"                       | its model, effort, runtime and fallback, each with its origin       |
       | the runtime "r", contract "c/1", select one, options x and y           | the runtime "r"                     | its contract, its grants, select one, and x and y with their grants |
       | the process "p", require read, allow write, recovery, stale tool calls | the process "p"                     | its require, its allow, recovery, and stale tool calls              |
       | the process "p", its worktree at "inputs.base"                         | the process "p"                     | its revision, reading the input "base"                              |
@@ -19,6 +19,7 @@ Feature: The source gives resolve each document in resolve's types
       | the workflow "w", params "base", no default, and "goal", "x"           | the workflow "w"                    | the params "base", with no default, and "goal", with one            |
       | the workflow "w", a step "s" continuing the session of "a"             | the workflow "w"                    | the item "s", its session reading the session of "a"                |
       | the workflow "w", a workflow item, a parallel and a branch             | the workflow "w"                    | each item, of its kind, with its items                              |
+      | the workflow "w", a parallel "p" with max 1                            | the workflow "w"                    | the item "p", its items and max 1                                   |
       | the workflow "w", a repeat "r" with max 3                              | the workflow "w"                    | the item "r", its state, steps, next, until and max 3               |
       | the workflow "w", the output "o" reading "steps.s.outputs"             | the workflow "w"                    | the output "o", reading the outputs of "s"                          |
       | the process "p", prompt "pr", guidance "g", schema "sc"                | the process "p"                     | the names "pr", "g" and "sc", each with its origin                  |

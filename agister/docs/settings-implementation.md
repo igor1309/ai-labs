@@ -18,7 +18,7 @@ specified in `settings/documents`' feature files.
 |---|---|---|
 | `settings/layout` | home's folder and the launch directory → the layers found, and a snapshot | where layers are, folders and file names; no content |
 | tree, a library | bytes → a value tree with origins; one tree merged over another | values and origins; no Agister word |
-| `settings/documents` | a snapshot, a kind and a name → one definition, or its problems | what each kind is, and `extends` |
+| `settings/documents` | a snapshot, a kind and a name → one definition, or its problems; or its files, each its layer, path and digest | what each kind is, and `extends` |
 | `settings/resolve` | a request → what a run needs, or a refusal naming the chain | how documents name one another; blocks; plans |
 | `settings/check` | handed resolve: resolves every document and reports; lists and shows documents, each field with its layer | no kind's fields; how a source is read |
 
@@ -79,6 +79,8 @@ Snapshot: kind → name → Sources{Home, Repository, Project}
           each slot: {path, bytes}, or absent
           + blocks: the repository layer's blocks.yaml, {path, bytes},
             or absent
+          + budget: the home layer's budget.yaml, {path, bytes}, or
+            absent (run-implementation.md, "A daily budget")
           + file problems, each of its document: a file that cannot be
             read, a file in a wrong place, …
           + layer problems: a layer that cannot be read at all
@@ -209,6 +211,14 @@ nothing of, a brief, a prompt, a schema or a skill, is given as its problems
 alone. The source also gives the problems of no document, which refuse every
 request. The composition answers the source from documents.
 
+An input whose source reads a file is given with the argument its path is
+read from, which the composition knows of each source; resolve spells no
+source's name nor argument. A step that gives a param of its process the
+value of an input of its workflow whose source reads a file, where an input
+of the process reads its file's path from that param, is refused: a file's
+text given where a path is read. The problem is the workflow's, at the
+step's binding, naming the process and its input.
+
 Its facts port gives, by a runtime mapping's contract, what the runtime
 wrapper can do: check output against a schema, resume a session, take
 skills, take a model, the efforts it accepts, report tool calls and tool
@@ -270,7 +280,22 @@ reached, its plans and its warnings, or to a refusal; and the problems
 of no document, which refuse every request, asked once. The composition
 answers it from resolve and resolve's source, asking for a workflow as a
 caller giving every param it declares, so a param with no default
-refuses no document. Its fields: a document's fields, each its place,
+refuses no document. A workflow that resolves but that a run of it does
+not run yet is refused all the same: the composition asks the run's own
+list of what it does not run, the one `agister run` refuses with,
+which gives each line, as the run words it, with the document it is of.
+A line of the workflow or of one of its steps is a problem of the
+workflow; a line of a process is a problem of the process, refusing
+every workflow that reaches it, so check reports it once. Each is at the
+file of its document's nearest layer, with no line and no place, and
+names its owner, the workflow, a step or a process. A process asked for
+alone is refused the same way for an input from a source a run does not
+take, which no agent changes. Check then
+refuses what a run does not run yet, and the two cannot drift; what a
+run refuses for its request or its worktree (no git worktree, a spent
+budget, a dirty worktree, a missing file) is the run's alone.
+
+Its fields: a document's fields, each its place,
 its value as text and its source, from the document's tree as layered
 and extended, so a document that does not type has its fields too, and
 one that does not decode has none; the composition answers it from
@@ -285,7 +310,9 @@ a layer that cannot be read is reported though no name is held. It
 reports each fault once, in the order first met: the problems of no
 document first, which refuse every request; then each document at
 fault, with its problems, or the block that refuses it, and every name
-it refuses, by kind and name. Each warning is given once, with every
+it refuses, by kind and name. A document met again adds each problem it
+did not have, after those it had: what is not run of a process can
+depend on the runtime of the step that reaches it (LAB-465). Each warning is given once, with every
 name it came with; a refusal gives none. Then every name, by kind,
 resolving or refused. Names are asked for kind by kind, in the order
 workflow, process, agent, runtime, brief, prompt, schema, skill, and by
@@ -295,7 +322,8 @@ name within a kind. Check reports and does not gate (ADR-008, rule 3).
 the layers that hold it, and whether it resolves. It shows one of them:
 each field, its value and its source; then what resolve gives: every
 document it reached, the plan of each step and the warnings; or the
-refusal, each fault with its chain. A document no layer holds is shown
+refusal, each fault with its chain, a workflow a run does not run yet
+among them, shown with no plan. A document no layer holds is shown
 as such, and resolve is not asked.
 
 Check gives data; the command line prints it, and is the composition's.
@@ -316,6 +344,17 @@ Decisions of its reviews, each with its reason:
   is; a workflow's steps are planned.
 - A warning of a refused name is not reported: resolve gives none with
   a refusal, and check reports every problem; a warning is no problem.
+- What a run does not run yet is the run's, not resolve's: resolve
+  checks settings against the ADRs, and a branch is valid settings
+  (ADR-011) that this slice does not run. So the composition, not
+  resolve, adds it to check's refusals, from the run's own list
+  (LAB-465). A process asked for alone is paired with no agent, so what
+  its run would refuse on a runtime (a turn, an input named as a
+  document) is checked only in a workflow; its inputs' sources are
+  checked alone.
+- Inspect shows a workflow a run does not run yet as refused, with no
+  plan: it asks check's resolve, and one answer serves both. Showing
+  plans beside the lines is left until a person needs it.
 
 ## The composition
 
@@ -408,6 +447,8 @@ Decisions of its reviews, each with its reason:
 | an unknown field, a wrong type, a missing field | 5, type |
 | a reference that reads none of the readable forms, or a root its place may not read; `item` outside a query's `where` | 5, type |
 | a blocks file that is not a list of blocks, each a kind, a name and a reason | 5, type |
+| a budget file in a layer but home's | 1, layout |
+| a budget file that is not a daily cost more than zero | 5, type |
 | a name that reaches no document; a blob no layer holds | 6, resolve, from its source |
 | a blocked document; a block naming no document, a warning | 6, resolve |
 | a binding or a condition that reads what is not there | 6, resolve |
@@ -417,6 +458,8 @@ Decisions of its reviews, each with its reason:
 | a runtime mapping of a contract no wrapper takes | 6, resolve |
 | a step its runtime cannot do; a model or effort its runtime does not take | 6, resolve |
 | a required permission its mapping cannot give; a grant beyond the allowed, a warning | 6, resolve |
+| a file's text given to a param a process reads a file's path from | 6, resolve |
+| a workflow a run does not run yet; a process's input from a source a run does not take | the composition, from the run's list |
 
 ## Problems
 

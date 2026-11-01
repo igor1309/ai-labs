@@ -1,11 +1,11 @@
 # The end-to-end check (docs/run-implementation.md, "A step on a model
-# runtime" and "Continuation"): the built agister on real programs, claude-
-# code and codex on the owner's logins. Opt-in: run only with AGISTER_E2E=1,
-# by scripts/e2e.sh; skipped otherwise, saying so. A scratch git repository
-# holds a process "ask", its input "q" from the param "q", its output schema
-# an object of a string "answer"; AGISTER_HOME is a copy of home with the
-# agents "e2e-haiku", claude-code's model "haiku", and "e2e-codex", codex at
-# the effort "low", the least its models take.
+# runtime", "Continuation" and "Recovery"): the built agister on real
+# programs, claude-code and codex on the owner's logins. Opt-in: run only
+# with AGISTER_E2E=1, by scripts/e2e.sh; skipped otherwise, saying so. A
+# scratch git repository holds a process "ask", its input "q" from the param
+# "q", its output schema an object of a string "answer"; AGISTER_HOME is a
+# copy of home with the agents "e2e-haiku", claude-code's model "haiku", and
+# "e2e-codex", codex at the effort "low", the least its models take.
 
 Feature: agister runs a step on the real model runtimes
 
@@ -33,6 +33,21 @@ Feature: agister runs a step on the real model runtimes
       word
     Then it exits 0, its "answer" holding "kiwi", its session that of
       the first
+
+    Examples:
+      | agent     |
+      | e2e-haiku |
+      | e2e-codex |
+
+  Scenario Outline: A stale turn on a real runtime is recovered
+    Given the scratch repository's process "stall", as "ask" but
+      requiring process.execute, whose prompt asks to run the shell
+      command "sh -c 'sleep 60'", then to answer "done"; its
+      staleness limit tool_command 5s; its recovery 1 resume, its
+      instruction to answer "done" without running a command
+    When "agister run --process stall --agent <agent>" runs there
+    Then stderr has the line "· stall: stale: ...; recovering"
+    And it exits 0, the result completed, its "answer" "done"
 
     Examples:
       | agent     |

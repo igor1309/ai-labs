@@ -34,31 +34,56 @@ func (s *resolverSpy) Resolve(_ context.Context, given map[string]string) (workf
 }
 
 // callerSpy answers each step by its test's answer for its name, once it
-// has given the call's report its test's tools for that name, in order; and
-// keeps each call's params, in the order called and by its step. A step it
-// has no answer for fails its test, and is answered with nothing. It is
-// safe for concurrent use; the trail is read once the run has ended.
+// has given the call's report its start, or, where its test gives one,
+// the call it reused for that name, or nothing where its test names the
+// step in silent; then its test's tools for that name, in order, then its
+// stale turns, then its turns at capacity, then its fallback; and keeps each call's params, in the order called and by
+// its step, and the session each step is given, by its step. A step it has no answer for fails its test, and is answered
+// with nothing. It is safe for concurrent use; the trail is read once the
+// run has ended.
 type callerSpy struct {
-	t       *testing.T
-	trail   *trail
-	answers map[string]func() workflow.Result
-	tools   map[string][]workflow.Tool
-	mu      sync.Mutex
-	params  []map[string]string
-	bound   map[string]map[string]string
+	t        *testing.T
+	trail    *trail
+	answers  map[string]func() workflow.Result
+	reused   map[string]string
+	silent   []string
+	tools    map[string][]workflow.Tool
+	stale    map[string][]workflow.Stale
+	capacity map[string][]workflow.Capacity
+	fallback map[string]string
+	mu       sync.Mutex
+	params   []map[string]string
+	bound    map[string]map[string]string
+	sessions map[string]string
+	declared map[string]string
 }
 
-func (s *callerSpy) Call(_ context.Context, step string, params map[string]string, report func(workflow.Tool)) workflow.Result {
+func (s *callerSpy) Call(_ context.Context, step, declared string, params map[string]string, session string, report func(workflow.Report)) workflow.Result {
 	s.mu.Lock()
 	*s.trail = append(*s.trail, step)
 	s.params = append(s.params, params)
 	if s.bound == nil {
-		s.bound = map[string]map[string]string{}
+		s.bound, s.sessions, s.declared = map[string]map[string]string{}, map[string]string{}, map[string]string{}
 	}
-	s.bound[step] = params
+	s.bound[step], s.sessions[step], s.declared[step] = params, session, declared
 	s.mu.Unlock()
+	switch reused := s.reused[step]; {
+	case reused != "":
+		report(workflow.Report{Reused: reused})
+	case !slices.Contains(s.silent, step):
+		report(workflow.Report{Started: true})
+	}
 	for _, tool := range s.tools[step] {
-		report(tool)
+		report(workflow.Report{Tool: &tool})
+	}
+	for _, stale := range s.stale[step] {
+		report(workflow.Report{Stale: &stale})
+	}
+	for _, capacity := range s.capacity[step] {
+		report(workflow.Report{Capacity: &capacity})
+	}
+	if agent := s.fallback[step]; agent != "" {
+		report(workflow.Report{Fallback: agent})
 	}
 	answer, ok := s.answers[step]
 	if !ok {
@@ -95,12 +120,36 @@ func (s *eventsSpy) Started(step, agent string) {
 	s.tell("%s started on %s", step, agent)
 }
 
+func (s *eventsSpy) Reused(step, call string) {
+	s.tell("%s reused %s", step, call)
+}
+
 func (s *eventsSpy) Tool(step string, tool workflow.Tool) {
 	s.tell("%s %s %s", step, tool.Name, tool.Input)
 }
 
+func (s *eventsSpy) Stale(step string, stale workflow.Stale) {
+	s.tell("%s stale %q recovering %t", step, stale.What, stale.Recovering)
+}
+
+func (s *eventsSpy) Capacity(step string, capacity workflow.Capacity) {
+	s.tell("%s at capacity %q retrying in %v", step, capacity.Reason, capacity.Retry)
+}
+
+func (s *eventsSpy) Fallback(step, agent string) {
+	s.tell("%s falls back to %s", step, agent)
+}
+
 func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 	s.tell("%s ended %s %q in %v", step, ended.Status, ended.Class, ended.Duration)
+}
+
+func (s *eventsSpy) ChildStarted(step, name string, _ map[string]string, _ map[string]string) {
+	s.tell("%s child %s started", step, name)
+}
+
+func (s *eventsSpy) ChildEnded(step string, ended workflow.ChildEnd) {
+	s.tell("%s child ended %s %q", step, ended.Status, ended.Class)
 }
 
 // fixture is a runner over its spies and its clock, the resolver and the
@@ -553,4 +602,16 @@ func TestARunCarriesEachStepsSessionByItsName(t *testing.T) {
 	if want := map[string]string{"a": "s1"}; !reflect.DeepEqual(got.Sessions, want) {
 		t.Errorf("sessions %v, want %v", got.Sessions, want)
 	}
+}
+
+func (s *eventsSpy) Branch(step, arm string, conditions []workflow.ConditionRead) {
+	s.tell("%s took %s %v", step, arm, conditions)
+}
+
+func (s *eventsSpy) Pass(step string, pass int, state map[string]any) {
+	s.tell("%s pass %d %v", step, pass, state)
+}
+
+func (s *eventsSpy) Stopped(step, why string, passes int) {
+	s.tell("%s stopped %s after %d", step, why, passes)
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/igor1309/ai-labs/agister/cli"
+	"github.com/igor1309/ai-labs/agister/core/call"
 	"github.com/igor1309/ai-labs/agister/settings/check"
 	"github.com/igor1309/ai-labs/agister/settings/layout"
 	"github.com/igor1309/ai-labs/agister/settings/resolve"
@@ -20,11 +21,11 @@ type links interface {
 // newCommandLine is the command line over the settings of home's folder
 // home and each command's launch directory, its links resolved by links,
 // read through fs and roots, each step planned with the facts of wrappers;
-// and runner, which answers its run.
+// runner, which answers its run; and runs, which answers its runs.
 // Layout walks up the launch directory to the root git gives of it, which
 // git spells as it is asked: a launch through a link would walk up where
 // the link is, and miss the root of where it leads.
-func newCommandLine(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, runner cli.Runner, stdout, stderr io.Writer) (*cli.CLI, error) {
+func newCommandLine(home string, links links, fs layout.FileSystem, roots layout.WorktreeRoot, wrappers resolve.Wrappers, runner cli.Runner, runs cli.Runs, states cli.RunStates, stdout, stderr io.Writer, runTakes map[string]call.Inputs) (*cli.CLI, error) {
 	if links == nil {
 		return nil, errors.New("command line: no links")
 	}
@@ -33,7 +34,7 @@ func newCommandLine(home string, links links, fs layout.FileSystem, roots layout
 		if err != nil {
 			return nil, fmt.Errorf("the launch directory %s: %w", launch, err)
 		}
-		checker, err := newChecker(home, resolved, fs, roots, wrappers)
+		checker, err := newChecker(home, resolved, fs, roots, wrappers, runTakes)
 		if err != nil {
 			return nil, err
 		}
@@ -42,7 +43,7 @@ func newCommandLine(home string, links links, fs layout.FileSystem, roots layout
 	if err != nil {
 		return nil, err
 	}
-	return cli.New(port, runner, stdout, stderr)
+	return cli.New(port, runner, runs, states, stdout, stderr)
 }
 
 // inspector is what cli's port asks of check.

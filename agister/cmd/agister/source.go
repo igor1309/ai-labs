@@ -20,6 +20,7 @@ type definitions interface {
 	Brief(name string) (documents.BriefDefinition, []documents.Problem)
 	Blob(kind documents.Kind, name string) (documents.Blob, []documents.Problem)
 	Blocks() ([]documents.Field[documents.Block], []documents.Problem)
+	Budget() (documents.Field[float64], []documents.Problem)
 }
 
 // source answers resolve's source from documents, and from the layout
@@ -76,6 +77,8 @@ func (s *source) Process(name string) (resolve.Process, []resolve.Problem) {
 		Require:           process.Permissions.Value.Require.Value,
 		Allow:             process.Permissions.Value.Allow.Value,
 		Recovery:          process.Recovery.Given,
+		Instruction:       process.Instruction.Given,
+		Staleness:         process.Limits.Value.Stale.Given,
 		StaleToolCalls:    stale.RepeatedToolCalls.Given,
 		StaleToolCommands: stale.ToolCommand.Given,
 	}, nil
@@ -92,10 +95,11 @@ func (s *source) Agent(name string) (resolve.Agent, []resolve.Problem) {
 		model = nameOf(agent.ModelFamily)
 	}
 	return resolve.Agent{
-		Name:    agent.Name,
-		Runtime: nameOf(agent.Runtime),
-		Model:   model,
-		Effort:  nameOf(agent.Effort),
+		Name:     agent.Name,
+		Runtime:  nameOf(agent.Runtime),
+		Model:    model,
+		Effort:   nameOf(agent.Effort),
+		Fallback: nameOf(agent.Fallback),
 	}, nil
 }
 
@@ -133,14 +137,15 @@ func (s *source) Other(kind resolve.Kind, name string) []resolve.Problem {
 }
 
 // Problems gives the problems of no document: layout's, then the blocks
-// file's.
+// and budget files'.
 func (s *source) Problems() []resolve.Problem {
 	var problems []resolve.Problem
 	for _, p := range s.snapshot.Problems {
 		problems = append(problems, resolve.Problem{Origin: resolve.Origin{Path: p.Path}, Message: p.Err.Error()})
 	}
 	_, blocks := s.documents.Blocks()
-	return append(problems, problemsOf(blocks)...)
+	_, budget := s.documents.Budget()
+	return append(append(problems, problemsOf(blocks)...), problemsOf(budget)...)
 }
 
 func (s *source) Blocks() []resolve.Block {
@@ -208,11 +213,20 @@ func paramsOf(params []documents.Field[documents.Param]) []resolve.Param {
 func inputsOf(inputs []documents.Field[documents.Input]) []resolve.Input {
 	var mapped []resolve.Input
 	for _, input := range inputs {
-		mapped = append(mapped, resolve.Input{
-			Name:      input.Value.Name,
-			Forms:     namesOf(input.Value.Form),
-			Arguments: bindingsOf(input.Value.Arguments),
-		})
+		value := input.Value
+		mappedInput := resolve.Input{Name: value.Name, Forms: namesOf(value.Form), Arguments: bindingsOf(value.Arguments)}
+		// The composition owns source definitions. Resolve only needs to know
+		// whether this source reads a file and what its path argument reads.
+		if value.Source.Value == "file" {
+			mappedInput.File = true
+			for _, argument := range value.Arguments {
+				if argument.Value.Name == "path" && argument.Value.Value.From.Root != "" {
+					mappedInput.Path = readOf(argument.Value.Value.From, argument.Origin)
+					break
+				}
+			}
+		}
+		mapped = append(mapped, mappedInput)
 	}
 	return mapped
 }
@@ -282,7 +296,7 @@ func itemsOf(items []documents.Field[documents.Item]) []resolve.Item {
 			m.Session = readOf(item.Session.Value, item.Session.Origin)
 		}
 		if item.Parallel.Given {
-			m.Parallel = itemsOf(item.Parallel.Value)
+			m.Parallel, m.Max = itemsOf(item.Parallel.Value), item.Max.Value
 		}
 		if item.Branch.Given {
 			m.Branch = itemsOf(item.Branch.Value)

@@ -132,7 +132,9 @@ what the review should have shown.
 Definition of done:
 
 1. Every source finding appears in exactly one item, by
-   `<review>#<finding>`.
+   `<review>#<finding>`. Merge findings making the same claim, name every
+   source, use the highest supported severity, and sort items by severity,
+   highest first.
 2. Every item carries what `judgement.json` requires for its ruling: its
    `action` (fix: the change the evidence calls for, as the finding states
    it, or each option the findings state; defer: gap, trigger, done when;
@@ -144,5 +146,13 @@ Definition of done:
    `coverage_gaps`. A gap is never read as approval.
 4. The `summary` names the reviews whose evidence fell short and any
    coverage gap.
-5. Every item is decided by its ruling: no `reason` rests on a reading the
-   reviews left unsettled, and none asks anyone to decide.
+5. Every item is decided by the presented evidence and its ruling: no
+   `reason` rests on a reading the reviews left unsettled, and none asks
+   anyone to decide. Add no finding or evidence of your own; do not fill a
+   review's evidence gap with your own reasoning.
+6. Every ruling follows the evidence, scope and severity burden: reject
+   unsupported claims and every minor finding; defer an outside finding
+   (and a goal finding barred by an explicit scope exclusion); fix blockers;
+   fix majors unless the presented cost is grossly disproportionate; and
+   waive nits unless the presented benefit exceeds the cost. For other
+   supported change or goal findings, weigh the presented benefit and cost.

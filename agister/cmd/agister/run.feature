@@ -40,19 +40,17 @@ Feature: The composition runs a request
   Scenario Outline: What this slice does not run is refused before anything
     Given the process "say" <declares>
     When "agister run --process say --agent <agent> --param what=hi" runs
-    Then it prints to stderr that <what> is not run yet, nothing runs,
+    Then it prints the refusal <what> to stderr, nothing runs,
       and it exits 1
 
     Examples:
-      | declares                                     | agent       | what                                  |
-      | as it is                                     | pi-m3       | the runtime "pi"'s turn               |
-      | a recovery of 1 resume                       | claude-opus | the recovery                          |
-      | the cost limit 1                             | claude-opus | the cost limit                        |
-      | an input "prompt" from the param "what"      | claude-opus | the input "prompt", a document's name |
-      | an input "b" from the source "git.diff"      | bash        | the source "git.diff"                 |
-      | the stale limit no_event 1m                  | bash        | the staleness limit on bash           |
-      | an instruction "think"                       | bash        | the instruction on bash               |
-      | the guidance "g", a prompt the settings hold | bash        | the guidance on bash                  |
+      | declares                                     | agent       | what                                                                              |
+      | as it is                                     | pi-m3       | the runtime "pi"'s turn is not run yet                                            |
+      | an input "prompt" from the param "what"      | claude-opus | the input "prompt", a document's name, is not run yet                             |
+      | an input "b" from the source "git.diff"      | bash        | the source "git.diff" is not run yet                                              |
+      | the stale limit no_event 1m                  | bash        | its runtime "bash" reports lines for staleness limits, as its process "say" needs |
+      | an instruction "think"                       | bash        | its runtime "bash" takes an instruction, as its process "say" needs               |
+      | the guidance "g", a prompt the settings hold | bash        | its runtime "bash" takes guidance, as its process "say" needs                     |
 
   Scenario Outline: What a parallel does not run yet is refused
     Given the workflow "w" with the parallel "p" <holding>
@@ -62,7 +60,7 @@ Feature: The composition runs a request
 
     Examples:
       | holding                                 | what                                      |
-      | of "say" and a branch "b"               | the item "b", a branch,                   |
+      | of "say" and a repeat "r"               | the item "r", a repeat,                   |
       | of two "say", read by steps.p.outputs.x | a field within the parallel "p"'s outputs |
 
   Scenario: A step reaches core with its process's time limit, as layered
