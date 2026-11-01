@@ -8,7 +8,7 @@ the next such growth is caught on the PR that adds it.
 
 - **Count tests**: cheap, exact, and immune to a busy machine. They check
   how much work an update does: rows built, characters replaced. Example:
-  an update to the newest entry builds one row of 800.
+  an update to the newest entry replaces only its own row of 800.
 - **Ratio tests** time an update late in a long call against one early and
   fail when the late one costs over 3×. They catch growth without a
   baseline, but only for the path they drive. The view's load test used to
