@@ -12,7 +12,7 @@ import protocol TranscriptWriting.CallText
 
 struct ReadingCompositionTests {
 
-    @Test func heldReadingConsumerRetiresAnOmittedIDBeforeItIsReused() async throws {
+    @Test func aHeldReadingConsumerSkipsStatesButNotTheListeningOneThatWithdrewAnEntry() async throws {
 
         let clock = ReadingClockSpy(), text = PanelCallTextSpy()
         let panel = clock.panel()
@@ -23,9 +23,9 @@ struct ReadingCompositionTests {
             var consumer = incoming.makeAsyncIterator()
             await rig.session.send(.begin(liveText: true))
             _ = try await rig.state { $0.phase == .recording }
-            let original = callEntry(.mine, 3, start: 2, settled: "old")
+            let withdrawn = callEntry(.mine, 3, start: 2, settled: "old")
             let other = callEntry(.theirs, 9, start: 8, settled: "other")
-            text.input.continuation.yield(.init(status: .listening, entries: [original, other]))
+            text.input.continuation.yield(.init(status: .listening, entries: [withdrawn, other]))
             let feed = AsyncStream<State>.makeStream()
             defer { feed.continuation.finish() }
             try await withReading(panel, id: 1, text: feed.stream) {
@@ -34,33 +34,30 @@ struct ReadingCompositionTests {
                     feed.continuation.yield(state)
                     if state.status == .listening { break }
                 }
-                let first = try await nextPanel(&states) { $0.lines?.entries.count == 2 }
-                #expect(first.lines?.entries.map(\.id) == [0, 1])
-                await panel.send(.scrolled(atBottom: false))
-                _ = try await nextPanel(&states) { $0.lines?.followsLive == false }
+                _ = try await nextPanel(&states) { $0.lines?.entries.count == 2 }
 
                 // The Reading consumer stays held until every remaining snapshot is queued.
+                let later = callEntry(.theirs, 10, start: 14, settled: "later")
                 text.input.continuation.yield(.init(status: .listening, entries: [other]))
-                text.input.continuation.yield(.init(status: .listening, entries: [
-                    other, callEntry(.mine, 3, start: 12, settled: "reused"),
-                ]))
+                text.input.continuation.yield(.init(status: .listening, entries: [other, later]))
+                text.input.continuation.yield(.init(status: .finished, entries: [other, later]))
                 await rig.session.send(.end)
                 _ = try await rig.state { $0.phase == .ended }
-                while let state = await consumer.next() { feed.continuation.yield(state) }
+                var read: [State] = []
+                while let state = await consumer.next() { read.append(state); feed.continuation.yield(state) }
 
-                let shown = try await nextPanel(&states) { $0.lines?.entries.last?.settled == "reused" }
-                #expect(shown.lines == .init(entries: [
-                    .init(id: 1, time: "00:08", speaker: .them, settled: "other"),
-                    .init(id: 2, time: "00:12", speaker: .me, settled: "reused"),
-                ], newBelow: 1, followsLive: false))
+                #expect(read.map(\.status) == [.listening, .finished])
+                let shown = try await nextPanel(&states) { $0.lines?.entries.last?.settled == "later" }
+                #expect(shown.lines?.entries.map(\.settled) == ["other", "later"])
             }
         }
     }
 
     @Test func textUpdatesReachPanelAndLogsContainOnlyModesAndCounts() async throws {
 
-        let clock = ReadingClockSpy(), sink = ReadingLogSpy()
-        let panel = AudelinPanel(makeReading: ReadingStub.inputs, now: clock.now, ticks: clock.ticks, sink: sink)
+        let clock = ReadingClockSpy(), sink = ReadingLogSpy(), profiling = ProfileIntervalSpy()
+        let panel = AudelinPanel(makeReading: ReadingStub.inputs, now: clock.now, ticks: clock.ticks, sink: sink,
+                                 intervals: profiling.intervals)
         let input = AsyncStream<State>.makeStream()
         try await withReading(panel, id: 1, text: input.stream) {
             var states = await panel.states().makeAsyncIterator()
@@ -79,6 +76,9 @@ struct ReadingCompositionTests {
             #expect(sink.entries.all.contains(.init(category: .reading, message: "state recording=on log=lines rows=1 entries=1 holds=0 newBelow=0 followsLive=true")))
         }
         input.continuation.finish()
+        #expect(profiling.began.all.count >= 5)
+        #expect(profiling.began.all.allSatisfy { $0 == "PanelUpdate" })
+        #expect(profiling.ended.all == profiling.began.all)
         #expect(sink.entries.all.last == .init(category: .reading, message: "state recording=off log=lines rows=1 entries=1 holds=0 newBelow=0 followsLive=true"))
         #expect(sink.entries.all.allSatisfy {
             $0.category == .reading && !$0.message.contains("private") && $0.error == nil && $0.path == nil

@@ -1,3 +1,5 @@
+import SplitRows
+
 /// What one recording's panel shows, with no view or session dependencies.
 public struct ReadingState: Equatable, Sendable {
 
@@ -69,10 +71,18 @@ public struct ReadingState: Equatable, Sendable {
 
     public struct Lines: Equatable, Sendable {
 
-        public internal(set) var rows: [Row] = []
+        public internal(set) var rows: SplitRows<Row> = []
+        /// Changes whenever `rows` is laid out again, so its sealed part may differ.
+        public internal(set) var layout = 0
         public internal(set) var holds: [Held] = []
         public internal(set) var newBelow = 0
         public internal(set) var followsLive = true
+
+        public static func == (lhs: Self, rhs: Self) -> Bool {
+
+            lhs.newBelow == rhs.newBelow && lhs.followsLive == rhs.followsLive
+                && lhs.holds == rhs.holds && lhs.rows == rhs.rows
+        }
 
         public var entries: [Entry] {
 
@@ -85,6 +95,9 @@ public struct ReadingState: Equatable, Sendable {
             }
         }
     }
+
+    /// How many entries the lines hold, without walking them.
+    public var entryCount: Int { text.count }
 
     public internal(set) var banners: [Banner] = []
 
@@ -114,10 +127,46 @@ public struct ReadingState: Equatable, Sendable {
 
     var problems: [ReadingProblem] = []
     var status: ReadingTextUpdate.Status = .off
-    var anchors: [ReadingTextUpdate.Entry.ID: Anchor] = [:]
+    var anchors: SplitDictionary<ReadingTextUpdate.Entry.ID, Anchor> = [:]
     var nextDisplayID = 0
-    var text: [ReadingTextUpdate.Entry.ID: ReadingTextUpdate.Entry] = [:]
+    var text: SplitDictionary<ReadingTextUpdate.Entry.ID, ReadingTextUpdate.Entry> = [:]
     var lines = Lines()
+
+    struct Rendered: Sendable {
+
+        struct Location: Equatable, Sendable {
+
+            let row: Int
+            let lateEntry: Int?
+        }
+
+        var prepared = false
+        var ordered: [ReadingTextUpdate.Entry.ID] = []
+        /// Leading `ordered` entries that the sealed rows show.
+        var inSealedRows = 0
+        var entries: SplitDictionary<ReadingTextUpdate.Entry.ID, Entry> = [:]
+        var locations: SplitDictionary<ReadingTextUpdate.Entry.ID, Location> = [:]
+    }
+
+    // Per-reduction work stays local to the value and does not affect what the panel observes.
+    struct Work: Sendable {
+
+        var entryOrderComparisons = 0
+        var rowsBuilt = 0
+    }
+
+    var rendered = Rendered()
+    var work = Work()
+
+    // Rendering indexes and work counts are derived bookkeeping, not panel state.
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+
+        // More text being final is a change, and finding that out need not walk the call.
+        lhs.text.sealed.count == rhs.text.sealed.count
+            && lhs.banners == rhs.banners && lhs.recording == rhs.recording && lhs.problems == rhs.problems
+            && lhs.status == rhs.status && lhs.anchors == rhs.anchors && lhs.nextDisplayID == rhs.nextDisplayID
+            && lhs.text == rhs.text && lhs.lines == rhs.lines
+    }
 
     public init() {}
 }

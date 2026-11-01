@@ -20,7 +20,7 @@ extension StateLog {
         }
         sink.write(.init(
             category: .reading,
-            message: "state recording=\(recording) log=\(mode) rows=\(lines?.rows.count ?? 0) entries=\(lines?.entries.count ?? 0) holds=\(holds) newBelow=\(lines?.newBelow ?? 0) followsLive=\(lines?.followsLive ?? true)"
+            message: "state recording=\(recording) log=\(mode) rows=\(lines?.rows.count ?? 0) entries=\(lines == nil ? 0 : state.entryCount) holds=\(holds) newBelow=\(lines?.newBelow ?? 0) followsLive=\(lines?.followsLive ?? true)"
         ))
     }
 }

@@ -35,6 +35,8 @@ private struct BarrierTranscriptBinding: TranscriptFileBinding {
 
     func create(at url: URL) throws -> any TranscriptFileHandle { try disk.create(at: url) }
 
+    func open(at url: URL) throws -> any TranscriptFileHandle { try disk.open(at: url) }
+
     func rename(from source: URL, to target: URL) throws {
 
         barrier.arrive()

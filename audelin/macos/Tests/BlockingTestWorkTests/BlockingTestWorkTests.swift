@@ -8,13 +8,16 @@ struct BlockingTestWorkTests {
     @Test(.timeLimit(.minutes(1)))
     func cancelledExitStatusStopsTheChildAndReturnsItsRealStatus() async throws {
 
-        let exited = Mutex<(@Sendable (Int32) -> Void)?>(nil)
+        struct ExitReporter: Sendable {
+            let report: @Sendable (Int32) -> Void
+        }
+        let exited = Mutex<ExitReporter?>(nil)
         let launched = AsyncStream<Void>.makeStream()
         let stopped = AsyncStream<Void>.makeStream()
         let waiting = Task {
             try await exitStatus(
                 launch: { report in
-                    exited.withLock { $0 = report }
+                    exited.withLock { $0 = ExitReporter(report: report) }
                     launched.continuation.finish()
                 },
                 stop: { stopped.continuation.finish() }
@@ -25,7 +28,7 @@ struct BlockingTestWorkTests {
         for await _ in stopped.stream {}
         // Only a helper that waits past cancellation can see this status.
         let exit = try #require(exited.withLock { $0 })
-        exit(15)
+        exit.report(15)
 
         #expect(try await waiting.value == 15)
     }

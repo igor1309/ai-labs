@@ -130,6 +130,21 @@ capture fake sends numbered audio only when started for every app but
 Audelin's. The state names the processes failure and shows both tracks
 recording, and the call track holds that numbered audio. Evidence: `failedProcessChoiceHearsEveryAppButAudelin`.
 
+## S-15 The transcript is saved every 5 seconds
+
+Through the session rig with a clock whose every sleep ends at once and is
+kept: once text is written, every wait the writer asks for is 5 seconds.
+Evidence: `SessionTranscriptTests.theAppWaitsFiveSecondsAfterEachTranscriptWrite`.
+
+## S-16 A crash keeps every final entry already saved
+
+`SessionCrashWriter` runs a call through the app's composition that keeps
+saving every 10 ms and reports each save once it returns. It is killed with
+SIGKILL once a save holds 2, 4 or 8 final entries, wherever the writer then
+is; the file starts with the header and every entry final in that last
+reported save. A planted rewrite that cut the file to nothing failed all
+three cases (2026-10-31). Evidence: `SessionCrashTests.sigkillDuringACallKeepsEveryFinalEntryAlreadySaved(finalEntries:)`.
+
 ## Silent call warning
 
 Pure reducer tests supply interval statistics and microphone windows using a

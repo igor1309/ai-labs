@@ -42,7 +42,12 @@ func numberedTranscript(_ number: Int) -> String {
 
 enum TranscriptFault: CaseIterable, Sendable {
 
-    case create, write, flush, rename
+    case create, open, truncate, write, flush, rename
+
+    /// The steps of replacing the file whole.
+    static let replacing: [TranscriptFault] = [.create, .write, .flush, .rename]
+    /// The steps of rewriting what follows the final text.
+    static let rewriting: [TranscriptFault] = [.open, .truncate, .write, .flush]
 }
 
 struct TranscriptBindingFailure: Error {}
@@ -54,8 +59,25 @@ final class FailingTranscriptBinding: TranscriptFileBinding {
 
     func arm(_ point: TranscriptFault) { fault.withLock { $0 = point } }
 
-    func check(_ point: TranscriptFault) throws {
+    private let record = Mutex<(steps: [TranscriptFault], bytes: Int)>(([], 0))
 
+    /// The steps and the bytes written since the last call.
+    func taken() -> (steps: [TranscriptFault], bytes: Int) {
+
+        record.withLock { record in
+            defer { record = ([], 0) }
+            return record
+        }
+    }
+
+    /// An empty write is recorded but never fails, so a fault lands where bytes reach the disk.
+    func check(_ point: TranscriptFault, bytes: Int = 0, canFail: Bool = true) throws {
+
+        record.withLock { record in
+            record.steps.append(point)
+            record.bytes += bytes
+        }
+        guard canFail else { return }
         let fails = fault.withLock { value in
             guard value == point else { return false }
             value = nil
@@ -68,6 +90,12 @@ final class FailingTranscriptBinding: TranscriptFileBinding {
 
         try check(.create)
         return FailingTranscriptHandle(base: try disk.create(at: url), owner: self)
+    }
+
+    func open(at url: URL) throws -> any TranscriptFileHandle {
+
+        try check(.open)
+        return FailingTranscriptHandle(base: try disk.open(at: url), owner: self)
     }
 
     func rename(from source: URL, to target: URL) throws {
@@ -88,8 +116,14 @@ private struct FailingTranscriptHandle: TranscriptFileHandle {
 
         // Leave a real partial file so cleanup is proved after writing has begun.
         try base.write(Data(data.prefix(7)))
-        try owner.check(.write)
+        try owner.check(.write, bytes: data.count, canFail: !data.isEmpty)
         try base.write(Data(data.dropFirst(7)))
+    }
+
+    func truncate(to length: Int) throws {
+
+        try owner.check(.truncate)
+        try base.truncate(to: length)
     }
 
     func flush() throws {

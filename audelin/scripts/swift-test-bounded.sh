@@ -7,8 +7,9 @@
 #
 # Build first with `swift build --build-tests`: compiling is not bounded
 # here. Exits as `swift test` does, or 124 on the limit, after naming the
-# tests that started and never ended. A crash is named the same way, with
-# the Swift runtime's backtrace in the output.
+# tests that started and never ended, after sampling the stacks of every
+# process below the run. A crash is named the same way, with the Swift
+# runtime's backtrace in the output.
 
 [ $# -ge 1 ] || { echo "usage: $(basename "$0") <seconds> [swift test args]" >&2; exit 2; }
 limit=$1
@@ -32,6 +33,7 @@ perl -e '
   exec(@cmd) or die "exec: $!" if $pid == 0;
   local $SIG{ALRM} = sub {
     my @all = tree($pid);
+    system("sample", $_, "2") for @all;
     kill("TERM", @all); sleep 3; kill("KILL", tree($pid), @all);
     waitpid($pid, 0);
     exit 124;

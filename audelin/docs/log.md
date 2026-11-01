@@ -1,15 +1,50 @@
 # Log
 
+## 2026-10-30
+
+- Call text keeps an ordered final prefix and merges only the remaining entries;
+  a lagging side holds that prefix back until its text catches up or ends (LAB-810).
+
+- Side text retains final entries and their recovered-audio marks, processing only
+  newly final entries and the live tail on each hearing (LAB-813).
+
+- Live text reports only newly final segments and its live tail; track text keeps
+  final text without mapping it again as the call grows (LAB-815).
+
+- Cancelling a capture stops its timer, recorder and rehearsal and removes the
+  recorded media unless kept (LAB-793).
+
+- Capture summaries show the recorded signpost intervals and keep machine data
+  separately; terminating endurance also stops its rehearsal (LAB-793).
+
+- Rehearsals capture bounded CPU-and-hangs windows or run endurance without a
+  profiler; summaries include named intervals and compare growth (LAB-793).
+
+- The reading reducer keeps call entries in order and rebuilds only changed
+  entries when text arrives, reducing work in long calls (LAB-775).
+
+- A long synthetic call can be profiled with one command: the real session
+  and panel under Time Profiler, with a summary of the heaviest frames,
+  hangs and peak memory (LAB-772).
+- The live log redraws only the rows that changed, so an update late in a
+  long call costs it about what one early does (LAB-770, LAB-771).
+
 ## 2026-10-29
 
+- Live text sends the panel a new state only when the words change, not on
+  every audio piece; one side's text failing leaves the other side's going;
+  a transcript that keeps failing is reported once; a hearing late in a
+  long call costs what an early one does; a word crossing a chunk's edge
+  is no longer lost; an entry whose id returns reads as new, and a
+  stalled panel finds only the newest text waiting (LAB-753).
 - Opening Audelin again shows the transcript panel during a call and the
   calls list between calls (LAB-750).
 
 - Live text breaks long monologues into bounded paragraphs and joins short
   fragments before a pause to the following words (LAB-749).
 
-- Long calls no longer crash the app: the microphone's delivery no longer
-  grows with every buffer until it overflowed mid-call or at the call's end (LAB-751).
+- The microphone's delivery no longer grows with every buffer until it
+  overflowed mid-call or at the call's end, the crash seen on a real call (LAB-751).
 
 - «Звонки…» opens the recorded calls list, with Finder opening, inline title
   editing and confirmed permanent deletion; the active call stays protected (LAB-746).

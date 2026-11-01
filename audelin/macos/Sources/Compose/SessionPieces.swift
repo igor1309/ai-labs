@@ -63,6 +63,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     let missingModels: @Sendable () -> [String]
     let monotonicNow: @Sendable () -> Double
     let timeOrigin: Double
+    let intervals: ProfileIntervals
     let captureLogSink: any LogSink
     let openTrackFile: @Sendable (URL) async throws -> TrackFile
     let recordingTrack: @Sendable (SessionSide, TrackFile) -> any RecordedCapture.Track
@@ -70,22 +71,22 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     let makeCaptureAudio: @Sendable (SessionSide, LiveAudio) -> any CaptureAudio
     let openTranscriptFile: @Sendable (URL) async throws -> any SessionTranscriptFile
     let makeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State>
+    let transcriptClock: any Clock<Duration>
     var made: CallFolder.Made?
     var selections: [String: SystemAudioCapture.ProcessSelection] = [:]
     var sides: [SessionSide: Side]
     var transcriptFile: (any SessionTranscriptFile)?
     var text: CallReader?
     var writing: WritingReader?
-    private var readingOutput: AsyncStream<State>.Continuation?
+    private var readingOutput: NewestText?
     private var readingObservation: Task<Void, Never>?
 
     // Register before Session begins so its first text state cannot be missed.
     func readingText() -> AsyncStream<State> {
 
-        // Listening omissions retire identities even when a later snapshot reuses them.
-        let (stream, output) = AsyncStream<State>.makeStream()
+        let output = NewestText()
         readingOutput = output
-        return stream
+        return output.stream
     }
 
     @usableFromInline
@@ -98,6 +99,11 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     static let defaultOpenTranscript: @Sendable (URL) async throws -> any SessionTranscriptFile = { try await WritingTranscript(file: TranscriptFile(url: $0)) }
     @usableFromInline
     static let defaultMakeCallText: @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = { WritingCallText(text: $0) }
+
+    /// A long call's transcript is saved at most this often, and at once when its text stops,
+    /// so the disk is not rewritten on every word (owner, 2026-10-31,
+    /// `docs/research/transcript-save-interval.md`).
+    static let transcriptInterval: Duration = .seconds(5)
 
     @usableFromInline
     static let defaultMonotonicNow: @Sendable () -> Double = { Double(DispatchTime.now().uptimeNanoseconds) / 1_000_000_000 }
@@ -117,7 +123,8 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         closeTrack: @escaping @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack,
         makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
         openTranscript: @escaping @Sendable (URL) async throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
-        makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
+        makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText,
+        transcriptClock: any Clock<Duration> = ContinuousClock()
     ) {
 
         self.init(
@@ -126,7 +133,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
             missingModels: missingModels, monotonicNow: monotonicNow,
             openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
             makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText,
-            captureLogSink: SystemLogSink()
+            captureLogSink: SystemLogSink(), transcriptClock: transcriptClock
         )
     }
 
@@ -145,7 +152,8 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         closeTrack: @escaping @Sendable (SessionSide, TrackFile) async throws -> Void = SessionPieces.defaultCloseTrack,
         makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
         openTranscript: @escaping @Sendable (URL) async throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
-        makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText
+        makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText,
+        transcriptClock: any Clock<Duration> = ContinuousClock()
     ) {
 
         self.init(
@@ -153,7 +161,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
             microphoneRecognizerSource: microphoneRecognizerSource, callRecognizerSource: callRecognizerSource,
             missingModels: missingModels, monotonicNow: monotonicNow, openTrack: openTrack, recordingTrack: recordingTrack, closeTrack: closeTrack,
             makeCaptureAudio: makeCaptureAudio, openTranscript: openTranscript, makeCallText: makeCallText,
-            captureLogSink: SystemLogSink()
+            captureLogSink: SystemLogSink(), transcriptClock: transcriptClock
         )
     }
 
@@ -173,7 +181,9 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         makeCaptureAudio: @escaping @Sendable (SessionSide, LiveAudio) -> any CaptureAudio = SessionPieces.defaultMakeCaptureAudio,
         openTranscript: @escaping @Sendable (URL) async throws -> any SessionTranscriptFile = SessionPieces.defaultOpenTranscript,
         makeCallText: @escaping @Sendable (CallReader) -> any TranscriptWriting.CallText<State> = SessionPieces.defaultMakeCallText,
-        captureLogSink: any LogSink
+        captureLogSink: any LogSink,
+        intervals: ProfileIntervals = .system,
+        transcriptClock: any Clock<Duration> = ContinuousClock()
     ) {
 
         self.folder = folder
@@ -186,6 +196,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         self.monotonicNow = monotonicNow
         self.timeOrigin = monotonicNow()
         self.missingModels = missingModels
+        self.intervals = intervals
         self.captureLogSink = captureLogSink
         self.openTrackFile = openTrack
         self.recordingTrack = recordingTrack
@@ -193,6 +204,7 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         self.makeCaptureAudio = makeCaptureAudio
         self.openTranscriptFile = openTranscript
         self.makeCallText = makeCallText
+        self.transcriptClock = transcriptClock
         let continuation = news.continuation
         transcriptFailures = TranscriptFailureReport(deliver: { continuation.yield($0) })
         sides = Dictionary(uniqueKeysWithValues: [SessionSide.microphone, .call].map { side in
@@ -268,13 +280,14 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
         self.text = text
         let writing = WritingReader(
             callText: makeCallText(text),
-            transcript: transcriptFile.map { TranscriptDestination(file: $0) },
-            failureReport: transcriptFailures
+            transcript: transcriptFile.map { TranscriptDestination(file: SignpostedTranscriptFile(base: $0, intervals: intervals)) },
+            failureReport: transcriptFailures,
+            pause: { [transcriptClock] in try await transcriptClock.sleep(for: SessionPieces.transcriptInterval) }
         )
         self.writing = writing
         if let output = readingOutput {
             readingObservation = Task {
-                for await state in writing.updates { output.yield(state) }
+                for await state in writing.updates.removingRepeats() { output.yield(state) }
                 output.finish()
             }
         }
@@ -295,7 +308,8 @@ public actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, Sess
     private func track(_ side: SessionSide, recognizerSource: @escaping @Sendable () async throws -> any Recognizer) -> CallSide? {
 
         guard let destination = sides[side], let file = destination.track else { return nil }
-        let adapter = TrackText(recognizerSource: recognizerSource)
+        let intervals = intervals
+        let adapter = TrackText(recognizerSource: { SignpostedRecognizer(base: try await recognizerSource(), intervals: intervals) })
         return CallSide(audio: destination.audio, text: adapter, written: WrittenTrack(track: file), sampleRate: TrackFile.sampleRate)
     }
 }

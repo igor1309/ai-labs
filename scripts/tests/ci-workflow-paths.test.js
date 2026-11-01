@@ -124,6 +124,16 @@ test("ciPathFilters_shouldRunEachProjectsJob_onTheDocumentsItsTestsRead", () => 
 // The projects whose tests ran in no workflow before LAB-220: each test,
 // the command its workflow runs, and the job a change to it runs.
 const auditedTests = {
+  "audelin/macos/scripts/tests/test_profile_rehearsal.py": {
+    runner: ".github/workflows/audelin-core.yml",
+    command: "python3 -I -m unittest discover -s audelin/macos/scripts/tests",
+    job: "audelin-core",
+  },
+  "audelin/macos/scripts/tests/test_summarize_trace.py": {
+    runner: ".github/workflows/audelin-core.yml",
+    command: "python3 -I -m unittest discover -s audelin/macos/scripts/tests",
+    job: "audelin-core",
+  },
   "session-digest/tests/_bootstrap.test.ts": {
     runner: ".github/workflows/session-digest-core.yml",
     command: "npm run test:session-digest",

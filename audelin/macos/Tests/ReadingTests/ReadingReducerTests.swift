@@ -342,10 +342,10 @@ private func given(
     var state = ReadingState()
     state.status = status
     state.recording = recording
-    state.anchors = Dictionary(uniqueKeysWithValues: shown.map { ($0.text.id, $0.anchor) })
-    state.text = Dictionary(uniqueKeysWithValues: shown.map { ($0.text.id, $0.text) })
+    state.anchors = .init(uniqueKeysWithValues: shown.map { ($0.text.id, $0.anchor) })
+    state.text = .init(uniqueKeysWithValues: shown.map { ($0.text.id, $0.text) })
     state.nextDisplayID = next
-    state.lines.rows = rows
+    state.lines.rows = .init(tail: rows)
     state.lines.holds = holds
     state.lines.newBelow = newBelow
     state.lines.followsLive = followsLive

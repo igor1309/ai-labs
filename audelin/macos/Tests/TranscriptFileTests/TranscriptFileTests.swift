@@ -1,5 +1,6 @@
 import BlockingTestWork
 import Foundation
+import Synchronization
 import Testing
 @testable import TranscriptFile
 
@@ -215,7 +216,7 @@ struct TranscriptFileTests {
         }
     }
 
-    @Test(arguments: TranscriptFault.allCases)
+    @Test(arguments: TranscriptFault.replacing)
     func failedReplacementKeepsLastTextCleansTemporaryAndAllowsRetry(fault: TranscriptFault) async throws {
 
         try await withTranscriptFolder { folder in
@@ -233,6 +234,112 @@ struct TranscriptFileTests {
         }
     }
 
+    @Test func anEarlierSegmentChangingOrGoingIsWrittenEvenAfterAFailedWrite() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let file = try await TranscriptFile(url: url)
+            let first = TranscriptFile.Segment(side: .mine, start: 0, settled: "one", pending: "")
+            let second = TranscriptFile.Segment(side: .theirs, start: 2, settled: "two", pending: "")
+            try await file.write([first, second])
+            await #expect(throws: TranscriptFile.Failure.invalidStart) {
+                try await file.write([.init(side: .mine, start: 0, settled: "changed", pending: ""),
+                                      .init(side: .theirs, start: -1, settled: "bad", pending: "")])
+            }
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:00\none\n\n**Them** 00:00:02\ntwo\n")
+            try await file.write([.init(side: .mine, start: 0, settled: "again", pending: "now"), second])
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:00\nagain now\n\n**Them** 00:00:02\ntwo\n")
+            try await file.write([second])
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Them** 00:00:02\ntwo\n")
+        }
+    }
+
+    @Test func finalSegmentsAreAskedForOnlyUntilTheyAreFinal() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let file = try await TranscriptFile(url: url)
+            let segments = (0..<5).map { TranscriptFile.Segment(side: .mine, start: Double($0), settled: "w\($0)", pending: "") }
+            let asked = Mutex<[Int]>([])
+            func write(count: Int, finalCount: Int) async throws -> [Int] {
+                asked.withLock { $0 = [] }
+                try await file.write(count: count, finalCount: finalCount) { index in
+                    asked.withLock { $0.append(index) }
+                    return segments[index]
+                }
+                return asked.withLock { $0 }
+            }
+            func whole(_ count: Int) -> String {
+                "# Transcript\n\n" + (0..<count).map { "**Me** 00:00:0\($0)\nw\($0)" }.joined(separator: "\n\n") + "\n"
+            }
+            #expect(try await write(count: 2, finalCount: 0) == [0, 1])
+            #expect(try await transcriptText(url) == whole(2))
+            // Several become final at once when writes coalesce.
+            #expect(try await write(count: 4, finalCount: 3) == [0, 1, 2, 3])
+            #expect(try await transcriptText(url) == whole(4))
+            #expect(try await write(count: 5, finalCount: 3) == [3, 4])
+            #expect(try await transcriptText(url) == whole(5))
+            #expect(try await write(count: 5, finalCount: 5) == [3, 4])
+            #expect(try await transcriptText(url) == whole(5))
+            #expect(try await write(count: 5, finalCount: 5) == [])
+            #expect(try await transcriptText(url) == whole(5))
+        }
+    }
+
+    @Test func aTailChangingOrGoingLeavesTheFinalTextInPlace() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let file = try await TranscriptFile(url: url)
+            let final = TranscriptFile.Segment(side: .mine, start: 0, settled: "one", pending: "")
+            let tail = TranscriptFile.Segment(side: .theirs, start: 2, settled: "two", pending: "")
+            try await file.write(count: 2, finalCount: 1) { [final, tail][$0] }
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:00\none\n\n**Them** 00:00:02\ntwo\n")
+            let revised = TranscriptFile.Segment(side: .theirs, start: 2, settled: "too", pending: "more")
+            try await file.write(count: 2, finalCount: 1) { [final, revised][$0] }
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:00\none\n\n**Them** 00:00:02\ntoo more\n")
+            try await file.write(count: 1, finalCount: 1) { _ in final }
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:00\none\n")
+        }
+    }
+
+    @Test func wordlessFinalSegmentsStillMeanNoTextUntilWordsArrive() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let file = try await TranscriptFile(url: url)
+            let empty = TranscriptFile.Segment(side: .mine, start: 0, settled: "", pending: "")
+            let words = TranscriptFile.Segment(side: .theirs, start: 2, settled: "two", pending: "")
+            try await file.write(count: 1, finalCount: 1) { _ in empty }
+            #expect(try await transcriptText(url) == noTextTranscript)
+            try await file.write(count: 2, finalCount: 1) { [empty, words][$0] }
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:00\n\n\n**Them** 00:00:02\ntwo\n")
+        }
+    }
+
+    @Test func anInvalidStartMakesNothingFinalAndAFailedSaveKeepsItsFinalText() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let binding = FailingTranscriptBinding()
+            let file = try await TranscriptFile(url: url, binding: binding)
+            let first = TranscriptFile.Segment(side: .mine, start: 0, settled: "one", pending: "")
+            let bad = TranscriptFile.Segment(side: .theirs, start: -1, settled: "bad", pending: "")
+            let second = TranscriptFile.Segment(side: .theirs, start: 2, settled: "two", pending: "")
+            let both = "# Transcript\n\n**Me** 00:00:00\none\n\n**Them** 00:00:02\ntwo\n"
+            await #expect(throws: TranscriptFile.Failure.invalidStart) {
+                try await file.write(count: 2, finalCount: 2) { [first, bad][$0] }
+            }
+            binding.arm(.rename)
+            await #expect(throws: TranscriptBindingFailure.self) {
+                try await file.write(count: 2, finalCount: 1) { [first, second][$0] }
+            }
+            #expect(try await transcriptText(url) == noTextTranscript)
+            try await file.write(count: 2, finalCount: 2) { [first, second][$0] }
+            #expect(try await transcriptText(url) == both)
+        }
+    }
+
     @Test(arguments: [-1.0, Double.nan, .infinity, -.infinity, Double(Int.max)])
     func invalidStartsFailWithoutReplacingText(start: Double) async throws {
 
@@ -246,6 +353,96 @@ struct TranscriptFileTests {
             #expect(try await transcriptText(url) == numberedTranscript(1))
             try await file.write(numberedSegments(2))
             #expect(try await transcriptText(url) == numberedTranscript(2))
+        }
+    }
+
+    @Test func finalEntriesStayOnDiskAndOnlyTheTextAfterThemIsWritten() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let binding = FailingTranscriptBinding()
+            let file = try await TranscriptFile(url: url, binding: binding)
+            let first = TranscriptFile.Segment(side: .mine, start: 1, settled: "first final", pending: "")
+            let second = TranscriptFile.Segment(side: .theirs, start: 2, settled: "second final", pending: "")
+            let header = "# Transcript\n\n**Me** 00:00:01\nfirst final\n\n"
+            _ = binding.taken()
+            try await file.write(count: 2, finalCount: 1) { [first, .init(side: .theirs, start: 2, settled: "", pending: "one")][$0] }
+            #expect(binding.taken().steps == [.create, .write, .write, .flush, .rename])
+            #expect(try await transcriptText(url) == header + "**Them** 00:00:02\none\n")
+            try await file.write(count: 2, finalCount: 1) { [first, .init(side: .theirs, start: 2, settled: "", pending: "one two")][$0] }
+            let rewrite = binding.taken()
+            #expect(rewrite.steps == [.open, .truncate, .write, .write, .flush])
+            #expect(rewrite.bytes == "**Them** 00:00:02\none two\n".utf8.count)
+            #expect(try await transcriptText(url) == header + "**Them** 00:00:02\none two\n")
+            try await file.write(count: 2, finalCount: 2) { [first, second][$0] }
+            #expect(binding.taken().steps == [.open, .truncate, .write, .write, .flush])
+            #expect(try await transcriptText(url) == header + "**Them** 00:00:02\nsecond final\n")
+            try await file.write(count: 3, finalCount: 2) { [first, second, .init(side: .mine, start: 3, settled: "", pending: "three")][$0] }
+            #expect(try await transcriptText(url) == header + "**Them** 00:00:02\nsecond final\n\n**Me** 00:00:03\nthree\n")
+            #expect(try await folderNames(folder) == ["transcript.md"])
+        }
+    }
+
+    @Test(arguments: TranscriptFault.rewriting)
+    func failedRewriteKeepsFinalEntriesAndTheNextWriteReplacesTheFileWhole(fault: TranscriptFault) async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let binding = FailingTranscriptBinding()
+            let file = try await TranscriptFile(url: url, binding: binding)
+            let final = TranscriptFile.Segment(side: .mine, start: 1, settled: "final", pending: "")
+            let header = "# Transcript\n\n**Me** 00:00:01\nfinal\n\n"
+            let live = { @Sendable (words: String) in TranscriptFile.Segment(side: .theirs, start: 2, settled: "", pending: words) }
+            try await file.write(count: 2, finalCount: 1) { [final, live("one")][$0] }
+            binding.arm(fault)
+            await #expect(throws: TranscriptBindingFailure.self) {
+                try await file.write(count: 2, finalCount: 1) { [final, live("one two")][$0] }
+            }
+            let left: [TranscriptFault: String] = [
+                .open: "**Them** 00:00:02\none\n", .truncate: "**Them** 00:00:02\none\n",
+                .write: "**Them*", .flush: "**Them** 00:00:02\none two\n",
+            ]
+            #expect(try await transcriptText(url) == header + left[fault]!)
+            _ = binding.taken()
+            try await file.write(count: 2, finalCount: 1) { [final, live("one two three")][$0] }
+            #expect(binding.taken().steps == [.create, .write, .write, .flush, .rename])
+            #expect(try await transcriptText(url) == header + "**Them** 00:00:02\none two three\n")
+            #expect(try await folderNames(folder) == ["transcript.md"])
+        }
+    }
+
+    @Test func textGoingAfterFinalEntriesWithoutWordsSaysNoTextWasHeard() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let file = try await TranscriptFile(url: url)
+            let silent = TranscriptFile.Segment(side: .mine, start: 1, settled: "", pending: "")
+            let live = TranscriptFile.Segment(side: .theirs, start: 2, settled: "", pending: "words")
+            try await file.write(count: 2, finalCount: 1) { [silent, live][$0] }
+            try await file.write(count: 2, finalCount: 1) { [silent, live][$0] }
+            try await file.write(count: 1, finalCount: 1) { [silent][$0] }
+            #expect(try await transcriptText(url) == noTextTranscript)
+            try await file.write(count: 2, finalCount: 1) { [silent, live][$0] }
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:01\n\n\n**Them** 00:00:02\nwords\n")
+        }
+    }
+
+    @Test func aWriteThatFailsToRenderMakesTheNextWriteReplaceTheFileWhole() async throws {
+
+        try await withTranscriptFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let binding = FailingTranscriptBinding()
+            let file = try await TranscriptFile(url: url, binding: binding)
+            let final = TranscriptFile.Segment(side: .mine, start: 1, settled: "final", pending: "")
+            let live = TranscriptFile.Segment(side: .theirs, start: 2, settled: "", pending: "live")
+            try await file.write(count: 2, finalCount: 1) { [final, live][$0] }
+            await #expect(throws: TranscriptFile.Failure.invalidStart) {
+                try await file.write(count: 2, finalCount: 1) { [final, .init(side: .theirs, start: -1, settled: "", pending: "bad")][$0] }
+            }
+            _ = binding.taken()
+            try await file.write(count: 2, finalCount: 1) { [final, live][$0] }
+            #expect(binding.taken().steps == [.create, .write, .write, .flush, .rename])
+            #expect(try await transcriptText(url) == "# Transcript\n\n**Me** 00:00:01\nfinal\n\n**Them** 00:00:02\nlive\n")
         }
     }
 }
