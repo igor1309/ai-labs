@@ -8,7 +8,7 @@ description: "Audit local Claude Code and Codex session transcripts for context-
 
 A small Python tool that scans local agent transcripts and counts behaviors that bloat context: full-file reads, re-reads with no edit in between, unfiltered builds, polling, duplicate skill loads, subagent fan-out, and large tool results. It prints a summary per agent, ranks the sessions with the most of these behaviors, can group sessions by project, and emits a versioned JSON document for downstream tools.
 
-Requires only the Python 3 standard library (`pytest` is used for the tests only).
+Requires only the Python 3 standard library, tests included.
 
 ## Layout
 
@@ -20,11 +20,11 @@ Requires only the Python 3 standard library (`pytest` is used for the tests only
 | `codex_parser.py` | Codex adapter: rollout discovery and record parsing |
 | `audit_claude_sessions.py` | Compatibility wrapper for `sessions-audit claude` (old flags) |
 | `audit_codex_sessions.py` | Compatibility wrapper for `sessions-audit codex` (old flags) |
-| `test_sessions_audit.py` | Tests: `python3 -m pytest tools/sessions-audit -q` |
+| `test_sessions_audit.py` | Tests on synthetic JSONL fixtures (stdlib `unittest`): `cd tools/sessions-audit && python3 -m unittest` |
 
 | Agent | Reads | Default location |
 | --- | --- | --- |
-| `claude` | Claude Code JSONL transcripts, including `subagents/`; skips `*.orphaned-*` and `*.superseded-*` files | `$CLAUDE_CONFIG_DIR/projects/` or `~/.claude/projects/` |
+| `claude` | Claude Code JSONL transcripts; skips `*.orphaned-*` and `*.superseded-*` files. Subagent transcripts (`<session>/subagents/*.jsonl`) are counted inside their parent session (see below) | `$CLAUDE_CONFIG_DIR/projects/` or `~/.claude/projects/` |
 | `codex` | Codex rollout JSONL in `sessions/` and `archived_sessions/` | `$CODEX_HOME` or `~/.codex` |
 
 Neither transcript format is a stable interface. Both parsers rely only on the record shapes observed so far and skip records they don't recognize. The `parse errors` count in the output shows how many lines could not be parsed.
@@ -33,24 +33,44 @@ Neither transcript format is a stable interface. Both parsers rely only on the r
 
 | Metric | Claude Code | Codex |
 | --- | --- | --- |
-| Full reads | `Read` calls without `offset`/`limit` | `read_file`-style calls plus plain `cat <file>` shell commands ("likely full-file") |
-| Repeated reads | Re-reading a file with no observed edit to it since the last read (`Edit`/`Write`/`MultiEdit`/`NotebookEdit`) | same; edits are `write`/`edit`-style calls and `apply_patch` file headers |
-| Builds / unfiltered | `xcodebuild` or `swift build/test`; "unfiltered" means not piped through `xcsift`/`xcbeautify`/`xcpretty`/`-quiet` | same |
-| Polling candidates | `sleep`, `watch`, `gh run watch`, `gh pr checks --watch` | same |
+| Full reads | `Read` calls without `offset`/`limit` | `read_file`-style calls, plus each file printed by a `cat` or `nl` segment of a shell command (segments split on `&&`, `\|\|`, `;`; a segment with a pipe, and any command with redirection or `$(...)`, is not a read; `sed -n` ranges are not full reads) |
+| Repeated reads | Re-reading a file with no observed edit to it since the last read (`Edit`/`Write`/`MultiEdit`/`NotebookEdit`) | same; edits are `write`/`edit`-style calls and `apply_patch` file headers. Paths resolve against `workdir`, then a leading `cd dir`, then the session cwd |
+| Builds / unfiltered | `xcodebuild` or `swift build/test`; "unfiltered" means the output reaches the context whole: not piped through `xcsift`/`xcbeautify`/`xcpretty` or `head`/`tail`/`grep`/`rg`, not `-quiet`, and stdout not redirected to a file (`2>&1` alone does not count) | same |
+| Polling candidates | `sleep`, `watch`, `gh run watch`, `gh pr checks --watch` | same, plus calls to the dedicated `sleep` tool |
 | Repeated checks | The same `gh run view` / `gh pr checks` / `curl` / `wget` command run twice in a row | same |
 | Skill loads / duplicates | Skill invocations; the same skill loaded more than once in a session | same |
-| Subagents | `Agent`/`Task` calls, with the requested model | Calls that look like spawning an agent, with the requested model |
+| Subagents | `Agent`/`Task` calls, with the requested model | `spawn_agent`/`create_agent`/`delegate_to_agent` calls, with the requested model (`wait_agent`, `send_message` do not count) |
 | Large results | Tool results over `--large-result-chars` (default 20,000 chars); only results whose `tool_use_id` matches a call in the same file (or that have no id) | Function outputs over the threshold; each `response_item` output is counted once (even without a visible call), and `event_msg` copies are ignored |
 | Usage | Summed `usage` fields: input, cache-create, cache-read, output | Per-session max of the cumulative `token_count` totals, plus the peak last-turn input tokens |
 
-Each session gets a score:
+### Codex code mode
 
-```
-score = 4·repeated_reads + 5·unfiltered_builds + 3·duplicate_skill_loads
-      + 3·repeated_checks + 2·large_results + full_reads
-```
+Current Codex sends most tool calls as one `exec` custom tool call whose input is a JavaScript program; the real calls happen inside it (`tools.exec_command({cmd: "..."})`, `tools.apply_patch("...")`, `tools.write_stdin(...)`). The parser finds each nested `tools.<name>(` call and analyzes it like a direct call, taking its `cmd`/`workdir`/`path` from string literals. `tool_calls` counts the `exec` wrapper and each nested call. A nested call whose arguments are not string literals (`{cmd: someVariable}`) is counted but contributes no command. Before this, every command-based metric read 0 for Codex.
+
+Legacy `shell` calls with `["bash", "-lc", "<script>"]` are analyzed as the script.
+
+### Claude subagent transcripts
+
+A subagent's transcript is a separate file, `<session>/subagents/agent-*.jsonl`, next to its parent `<session>.jsonl`. It is attributed to the parent: each subagent file is analyzed on its own, since a subagent has its own context (a read in the parent does not make the same read in a subagent "repeated"), and its counters and usage are added to the parent session. So one user session is one row, and fan-out shows up where it was started. `extras.sidechain_files` counts the subagent files merged. A subagent file whose parent transcript no longer exists is reported as its own session. The time window uses the parent's mtime.
+
+### Score
+
+Each session gets a score, a weighted sum of its counters:
+
+| Counter | Weight | Why |
+| --- | --- | --- |
+| `unfiltered_builds` | 5 | A raw build log is usually the largest single dump into the context, and a filter almost always works |
+| `repeated_reads` | 4 | The whole file is already in context and unchanged; the second copy is pure waste |
+| `duplicate_skill_loads` | 3 | The same instructions loaded again |
+| `repeated_checks` | 3 | The same status output again, with nothing new |
+| `large_results` | 2 | Big, but sometimes the point of the call |
+| `full_reads` | 1 | The baseline: often necessary, so it counts lightly |
+
+Counters not listed (tool calls, builds, polling, skill loads, subagents) do not add to the score: they describe a session but are not waste on their own. The weights are `SCORE_WEIGHTS` in `sessions_audit_core.py`, and the JSON output records them in `options.score_weights`. To rank by other weights, change the dict or recompute from the JSON counters.
 
 The score is a rough way to rank sessions for a closer look. It is not a quality grade. Totals and per-project rows use the same formula on their summed counters.
+
+Text output prints session paths relative to the agent's root (Claude projects directory or `CODEX_HOME`), so the output does not repeat your home directory. JSON keeps the full path.
 
 ## Usage
 
@@ -128,7 +148,7 @@ python3 audit_codex_sessions.py --home ~/.codex --active-only --top 5
   "schema_version": 1,
   "generated_at": "2026-10-03T09:00:00+00:00",
   "window": {"since": "<ISO 8601 UTC>" | null, "until": "<ISO 8601 UTC>" | null, "basis": "file_mtime"},
-  "options": {"large_result_chars": 20000, "top": 15},
+  "options": {"large_result_chars": 20000, "top": 15, "score_weights": {"unfiltered_builds": 5, ...}},
   "agents": {
     "claude": { ...agent block... },
     "codex":  { ...agent block... }
@@ -147,6 +167,7 @@ Top level:
 | `window.basis` | string | Always `"file_mtime"`: filtering is on transcript mtime |
 | `options.large_result_chars` | int | Large-result threshold used |
 | `options.top` | int | `--top` value (affects text output only) |
+| `options.score_weights` | object | Counter → weight used for `score` |
 | `agents` | object | One block per agent actually run (`claude`, `codex`); a skipped agent is absent |
 | `totals` | object | Counters and `tokens` summed across the agents present, same keys as an agent's `totals` |
 
@@ -195,7 +216,7 @@ Session entry:
 
 Raw values stay in `extras`:
 
-- Claude session: `{"usage": {input_tokens, cache_creation_input_tokens, cache_read_input_tokens, output_tokens}}` summed over assistant messages. Agent block: the same keys summed over sessions.
+- Claude session: `{"usage": {input_tokens, cache_creation_input_tokens, cache_read_input_tokens, output_tokens}, "sidechain_files": int}`, usage summed over the assistant messages of the session and its subagent transcripts. Agent block: the same keys summed over sessions.
 - Codex session: `{"token_total": {raw cumulative keys, e.g. input_tokens, cached_input_tokens, output_tokens, reasoning_output_tokens, total_tokens}, "peak_last_input_tokens": int}`. Agent block: `{"token_totals": summed raw keys, "peak_last_input_tokens": max over sessions}`.
 
 Keys missing from a transcript are absent in raw `extras` (they are 0 in `tokens`).
@@ -207,4 +228,4 @@ Keys missing from a transcript are absent in raw `extras` (they are 0 in `tokens
 
 ## Privacy
 
-The tool only reads transcripts, and it never prints the contents of tool results. It measures result sizes but never outputs the text. The output does include transcript file paths, working directories, and project paths, and those contain project directory names. Review the output before you share it.
+The tool only reads transcripts, and it never prints the contents of tool results. It measures result sizes but never outputs the text. The output does include transcript file paths (relative to the agent's root in text output), working directories, and project paths, and those contain project directory names. Review the output before you share it.

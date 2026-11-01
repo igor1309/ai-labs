@@ -63,6 +63,25 @@ def x_tokens(total, last_input):
     }
 
 
+def x_exec(source, cid):
+    """A code-mode `exec` call, shaped like current Codex rollouts."""
+    return {"type": "response_item", "payload": {"type": "custom_tool_call", "name": "exec", "input": source, "call_id": cid}}
+
+
+def js_cmd(cmd, **extra):
+    props = ", ".join([f"cmd:{json.dumps(cmd)}", *(f"{k}:{json.dumps(v)}" for k, v in extra.items()), "max_output_tokens:10000"])
+    return f"tools.exec_command({{{props}}})"
+
+
+def codex_one(tmp_path, records, threshold=20_000):
+    f = write_jsonl(tmp_path / "rollout-m.jsonl", [{"type": "session_meta", "payload": {"cwd": str(tmp_path)}}, *records])
+    return codex_parser.analyze(f, threshold)
+
+
+def claude_one(tmp_path, records, threshold=20_000):
+    return claude_parser.analyze(write_jsonl(tmp_path / "s.jsonl", records), threshold)
+
+
 def run_cli(argv, now=NOW):
     out, err = io.StringIO(), io.StringIO()
     rc = core.main(argv, now=now, out=out, err=err)
@@ -213,7 +232,7 @@ class SessionsAuditTests(unittest.TestCase):
         s = claude_parser.analyze(f, 20_000)
         assert s.parse_errors == 1
         assert s.cwd == "/first"
-        assert s.extras == {"usage": {"input_tokens": 20, "cache_creation_input_tokens": 40, "cache_read_input_tokens": 600, "output_tokens": 14}}
+        assert s.extras == {"usage": {"input_tokens": 20, "cache_creation_input_tokens": 40, "cache_read_input_tokens": 600, "output_tokens": 14}, "sidechain_files": 0}
         assert s.tokens == {"input": 20, "cached": 600, "cache_creation": 40, "output": 14, "reasoning": 0}
 
 
@@ -335,7 +354,7 @@ class SessionsAuditTests(unittest.TestCase):
         assert d["schema_version"] == 1
         assert d["generated_at"] == NOW.isoformat()
         assert d["window"] == {"since": None, "until": None, "basis": "file_mtime"}
-        assert d["options"] == {"large_result_chars": 20_000, "top": 1}
+        assert d["options"] == {"large_result_chars": 20_000, "top": 1, "score_weights": core.SCORE_WEIGHTS}
         assert set(d["agents"]) == {"claude", "codex"}
         c, x = d["agents"]["claude"], d["agents"]["codex"]
         assert c["source"] == {"root": str(croot)}
@@ -343,7 +362,7 @@ class SessionsAuditTests(unittest.TestCase):
         assert "by_project" not in c
         assert c["totals"]["repeated_reads"] == 1 and c["totals"]["score"] == 6
         assert c["totals"]["tokens"] == {"input": 1, "cached": 3, "cache_creation": 2, "output": 4, "reasoning": 0}
-        assert c["extras"] == {"usage": usage_sum(1)}
+        assert c["extras"] == {"usage": usage_sum(1), "sidechain_files": 0}
         assert x["extras"]["peak_last_input_tokens"] == 100
         assert x["extras"]["token_totals"]["total_tokens"] == 110
         assert x["totals"]["unfiltered_builds"] == 1 and x["totals"]["score"] == 5
@@ -639,7 +658,7 @@ class SessionsAuditTests(unittest.TestCase):
             "parse_errors": 1, "score": 19,
             "tokens": {"input": 12, "cached": 36, "cache_creation": 24, "output": 48, "reasoning": 0},
         }
-        assert c["extras"] == {"usage": {"input_tokens": 12, "cache_creation_input_tokens": 24, "cache_read_input_tokens": 36, "output_tokens": 48}}
+        assert c["extras"] == {"usage": {"input_tokens": 12, "cache_creation_input_tokens": 24, "cache_read_input_tokens": 36, "output_tokens": 48}, "sidechain_files": 0}
         assert c["subagent_models"] == {"opus": 1, "unspecified": 1}
         assert c["top_tools"] == [["Bash", 4], ["Read", 2], ["Skill", 2], ["Agent", 1], ["Task", 1]]
 
@@ -674,6 +693,231 @@ class SessionsAuditTests(unittest.TestCase):
                     code, err = usage_error(["claude", "--claude-root", str(self.tmp_path), flag, value], now=None)
                     assert code == 2
                     assert "invalid date/datetime" in err
+
+
+    # ----------------------------------------------------------------------
+    # Metric matrix: one positive and one negative fixture per metric
+
+
+    def test_claude_metric_positive_and_negative(self):
+        cases = {
+            "full_reads": ([c_tool("Read", {"file_path": "/a"}, "1")], [c_tool("Read", {"file_path": "/a", "offset": 1, "limit": 5}, "1")]),
+            "repeated_reads": (
+                [c_tool("Read", {"file_path": "/a"}, "1"), c_tool("Read", {"file_path": "/a"}, "2")],
+                [c_tool("Read", {"file_path": "/a"}, "1"), c_tool("Edit", {"file_path": "/a"}, "2"), c_tool("Read", {"file_path": "/a"}, "3")],
+            ),
+            "builds": ([c_tool("Bash", {"command": "xcodebuild test"}, "1")], [c_tool("Bash", {"command": "echo xcodebuildish"}, "1")]),
+            "unfiltered_builds": (
+                [c_tool("Bash", {"command": "swift test"}, "1")],
+                [c_tool("Bash", {"command": "swift test 2>&1 | xcsift"}, "1")],
+            ),
+            "polling_candidates": ([c_tool("Bash", {"command": "sleep 30"}, "1")], [c_tool("Bash", {"command": "echo sleepy"}, "1")]),
+            "repeated_checks": (
+                [c_tool("Bash", {"command": "gh pr checks 1"}, "1"), c_tool("Bash", {"command": "gh pr checks 1"}, "2")],
+                [c_tool("Bash", {"command": "gh pr checks 1"}, "1"), c_tool("Bash", {"command": "git push"}, "2"), c_tool("Bash", {"command": "gh pr checks 1"}, "3")],
+            ),
+            "skill_loads": ([c_tool("Skill", {"skill": "s"}, "1")], [c_tool("Read", {"file_path": "/notes.md"}, "1")]),
+            "duplicate_skill_loads": (
+                [c_tool("Skill", {"skill": "s"}, "1"), c_tool("Skill", {"skill": "s"}, "2")],
+                [c_tool("Skill", {"skill": "s"}, "1"), c_tool("Skill", {"skill": "t"}, "2")],
+            ),
+            "subagents": ([c_tool("Agent", {"prompt": "p"}, "1")], [c_tool("Bash", {"command": "ls"}, "1")]),
+            "large_results": (
+                [c_tool("Bash", {"command": "ls"}, "1"), c_result("1", "x" * 100)],
+                [c_tool("Bash", {"command": "ls"}, "1"), c_result("1", "x" * 99), c_result("unknown", "y" * 500)],
+            ),
+        }
+        for metric, (pos, neg) in cases.items():
+            with self.subTest(metric=metric):
+                assert getattr(claude_one(self.tmp_path, pos, 100), metric) >= 1
+                assert getattr(claude_one(self.tmp_path, neg, 100), metric) == 0
+        with self.subTest(metric="parse_errors"):
+            assert claude_parser.analyze(write_jsonl(self.tmp_path / "e.jsonl", [], ["{nope"]), 100).parse_errors == 1
+            assert claude_one(self.tmp_path, [c_tool("Bash", {"command": "ls"}, "1")]).parse_errors == 0
+
+    def test_codex_metric_positive_and_negative(self):
+        t = self.tmp_path
+        patch = "*** Begin Patch\n*** Update File: a.swift\n@@\n-x\n+y\n*** End Patch\n"
+        cases = {
+            "full_reads": ([x_exec(js_cmd("cat a.swift"), "1")], [x_exec(js_cmd("sed -n 1,40p a.swift"), "1")]),
+            "repeated_reads": (
+                [x_exec(js_cmd("nl -ba a.swift") + ";\n" + js_cmd("cat a.swift"), "1")],
+                [x_exec(js_cmd("cat a.swift"), "1"), x_exec(f"tools.apply_patch({json.dumps(patch)})", "2"), x_exec(js_cmd("cat a.swift"), "3")],
+            ),
+            "builds": ([x_exec(js_cmd("swift build --build-tests"), "1")], [x_exec(js_cmd("swift package resolve"), "1")]),
+            "unfiltered_builds": (
+                [x_exec(js_cmd("xcodebuild -scheme App test"), "1")],
+                [x_exec(js_cmd("swift build --build-tests > /tmp/b.log 2>&1; tail -10 /tmp/b.log"), "1")],
+            ),
+            "polling_candidates": (
+                [x_call("sleep", {"duration_ms": 30000}, "1")],
+                [x_call("wait", {"cell_id": "c1", "max_tokens": 100}, "1")],
+            ),
+            "repeated_checks": (
+                [x_exec(js_cmd("gh pr checks 12"), "1"), x_exec(js_cmd("gh pr checks 12"), "2")],
+                [x_exec(js_cmd("gh pr checks 12"), "1"), x_exec(js_cmd("gh pr checks 13"), "2")],
+            ),
+            "skill_loads": (
+                [x_call("exec_command", {"cmd": "sed -n '1,240p' /p/dev/SKILL.md", "workdir": str(t)}, "1")],
+                [x_call("exec_command", {"cmd": "sed -n '1,240p' /p/dev/README.md", "workdir": str(t)}, "1")],
+            ),
+            "duplicate_skill_loads": (
+                [x_exec(js_cmd("cat /p/dev/SKILL.md"), "1"), x_exec(js_cmd("cat /p/dev/SKILL.md"), "2")],
+                [x_exec(js_cmd("cat /p/dev/SKILL.md"), "1"), x_exec(js_cmd("cat /p/ops/SKILL.md"), "2")],
+            ),
+            "subagents": (
+                [x_call("spawn_agent", {"agent_type": "worker", "message": "m", "task_name": "t"}, "1")],
+                [x_call("wait_agent", {"timeout_ms": 1000}, "1"), x_call("send_message", {"message": "m", "target": "a"}, "2")],
+            ),
+            "large_results": (
+                [{"type": "response_item", "payload": {"type": "custom_tool_call_output", "call_id": "1", "output": "x" * 100}}],
+                [{"type": "event_msg", "payload": {"type": "exec_command_end", "output": "x" * 500}}],
+            ),
+        }
+        for metric, (pos, neg) in cases.items():
+            with self.subTest(metric=metric):
+                assert getattr(codex_one(t, pos, 100), metric) >= 1
+                assert getattr(codex_one(t, neg, 100), metric) == 0
+        with self.subTest(metric="parse_errors"):
+            f = write_jsonl(t / "rollout-e.jsonl", [], ["{nope"])
+            assert codex_parser.analyze(f, 100).parse_errors == 1
+            assert codex_one(t, [x_call("exec_command", {"cmd": "ls"}, "1")]).parse_errors == 0
+
+    # ----------------------------------------------------------------------
+    # Codex code mode and shell commands
+
+
+    def test_codex_code_mode_unpacks_nested_tool_calls(self):
+        t = self.tmp_path
+        source = (
+            "const r = await Promise.allSettled([\n"
+            + js_cmd("cat a.swift; cat b.swift") + ",\n"
+            + js_cmd("cat c.swift", workdir=str(t / "sub")) + ",\n"
+            + "tools.exec_command({cmd:'nl -ba \\'d e.swift\\'', max_output_tokens:1}),\n"
+            + "tools.exec_command({cmd: someVariable}),\n"
+            + "tools.write_stdin({session_id: 3, chars: ''}),\n"
+            + "]);\ntext(JSON.stringify(r));"
+        )
+        s = codex_one(t, [x_exec(source, "1")])
+        assert s.tool_names["exec"] == 1
+        assert s.tool_names["exec_command"] == 4
+        assert s.tool_names["write_stdin"] == 1
+        assert s.tool_calls == 6
+        assert s.full_reads == 4  # a, b, sub/c, "d e"
+        assert s.repeated_reads == 0
+
+    def test_codex_code_mode_apply_patch_backtick_resets_reads(self):
+        t = self.tmp_path
+        patch = "`*** Begin Patch\n*** Update File: a.swift\n@@\n-x\n+y\n*** End Patch`"
+        s = codex_one(t, [
+            x_exec(js_cmd("cat a.swift"), "1"),
+            x_exec(f"await tools.apply_patch({patch});", "2"),
+            x_exec(js_cmd("cat " + str(t / "a.swift")), "3"),
+            x_exec(js_cmd("cat a.swift"), "4"),
+        ])
+        assert s.full_reads == 3
+        assert s.repeated_reads == 1
+
+    def test_codex_shell_reads_segments_cd_and_pipes(self):
+        cwd = "/w"
+        assert codex_parser.shell_reads("cat a && cat b || cat c; cat d", cwd) == ["/w/a", "/w/b", "/w/c", "/w/d"]
+        assert codex_parser.shell_reads("cd sub && cat a", cwd) == ["/w/sub/a"]
+        assert codex_parser.shell_reads("cat a | head -5; nl -ba b", cwd) == ["/w/b"]
+        assert codex_parser.shell_reads("cat a > b", cwd) == []
+        assert codex_parser.shell_reads("cat $(ls)", cwd) == []
+        assert codex_parser.shell_reads("cat 'unterminated", cwd) == []
+        assert codex_parser.shell_reads("sed -n 1,10p a", cwd) == []
+
+    def test_codex_legacy_shell_argv_unwraps_bash_lc(self):
+        s = codex_one(self.tmp_path, [
+            x_call("shell", {"command": ["bash", "-lc", "cat a.txt && xcodebuild test"]}, "1"),
+            x_call("shell", {"command": ["git", "status"]}, "2"),
+        ])
+        assert s.full_reads == 1
+        assert s.unfiltered_builds == 1
+
+    def test_codex_exec_command_workdir_is_the_read_base(self):
+        t = self.tmp_path
+        s = codex_one(t, [
+            x_call("exec_command", {"cmd": "cat a.txt", "workdir": str(t / "w")}, "1"),
+            x_call("exec_command", {"cmd": "cat " + str(t / "w" / "a.txt")}, "2"),
+            x_call("exec_command", {"cmd": "cat a.txt"}, "3"),  # session cwd: another file
+        ])
+        assert s.full_reads == 3
+        assert s.repeated_reads == 1
+
+    def test_codex_event_msg_duplicates_do_not_inflate_sizes(self):
+        s = codex_one(self.tmp_path, [
+            x_exec(js_cmd("ls"), "1"),
+            {"type": "response_item", "payload": {"type": "custom_tool_call_output", "call_id": "1", "output": [{"type": "input_text", "text": "x" * 50}]}},
+            {"type": "event_msg", "payload": {"type": "exec_command_end", "aggregated_output": "x" * 50}},
+            {"type": "event_msg", "payload": {"type": "item_completed", "item": {"output": "x" * 50}}},
+        ])
+        assert s.result_chars == len(json.dumps([{"type": "input_text", "text": "x" * 50}], separators=(",", ":")))
+
+    def test_codex_cumulative_token_count_is_not_summed(self):
+        total = {"input_tokens": 100, "cached_input_tokens": 40, "output_tokens": 10, "total_tokens": 110}
+        s = codex_one(self.tmp_path, [x_tokens(total, 70), x_tokens(total, 70), x_tokens(dict(total, input_tokens=90), 5)])
+        assert s.tokens["input"] == 60
+        assert s.tokens["output"] == 10
+        assert s.extras["peak_last_input_tokens"] == 70
+
+    # ----------------------------------------------------------------------
+    # Claude sidechains, build filters, score weights, display paths
+
+
+    def test_claude_subagent_transcripts_count_in_their_parent(self):
+        root = self.tmp_path / "projects" / "p"
+        parent = write_jsonl(root / "sess.jsonl", [
+            c_tool("Read", {"file_path": "/a"}, "1", usage={"input_tokens": 1, "output_tokens": 2}),
+            c_tool("Agent", {"prompt": "p"}, "2"),
+        ])
+        write_jsonl(root / "sess" / "subagents" / "agent-1.jsonl", [
+            c_tool("Read", {"file_path": "/a"}, "s1", usage={"input_tokens": 10, "output_tokens": 20}),  # own context: not repeated
+            c_tool("Read", {"file_path": "/a"}, "s2"),
+        ])
+        write_jsonl(root / "gone" / "subagents" / "agent-2.jsonl", [c_tool("Read", {"file_path": "/b"}, "o1")])
+        found = claude_parser.discover(self.tmp_path / "projects")
+        assert [p.relative_to(root).as_posix() for p in found] == ["gone/subagents/agent-2.jsonl", "sess.jsonl"]
+        s = claude_parser.analyze(parent, 100)
+        assert s.full_reads == 3
+        assert s.repeated_reads == 1
+        assert s.subagents == 1
+        assert s.tool_calls == 4
+        assert s.extras["sidechain_files"] == 1
+        assert s.extras["usage"] == {"input_tokens": 11, "output_tokens": 22}
+        assert s.tokens["output"] == 22
+        orphan = claude_parser.analyze(found[0], 100)
+        assert orphan.full_reads == 1 and orphan.extras["sidechain_files"] == 0
+
+    def test_build_filters(self):
+        filtered = [
+            "xcodebuild test | xcsift", "xcodebuild -quiet test", "swift build > /tmp/b.log 2>&1",
+            "swift build >>b.log", "swift build &> b.log", "swift test 2>&1 | tail -20", "swift test | grep error:",
+        ]
+        unfiltered = ["xcodebuild test", "swift build 2>&1", "swift build 2>/dev/null", "swift test 2>&1 | cat"]
+        for cmd in filtered + unfiltered:
+            with self.subTest(cmd=cmd):
+                assert core.RAW_BUILD.search(cmd)
+                assert bool(core.BUILD_FILTER.search(cmd)) == (cmd in filtered)
+
+    def test_score_uses_documented_weights(self):
+        counters = {k: 1 for k in core.SCORE_WEIGHTS}
+        assert core.score_of(counters) == sum(core.SCORE_WEIGHTS.values()) == 18
+        assert core.score_of({"repeated_reads": 2}, {"repeated_reads": 10}) == 20
+        assert core.score_of({"tool_calls": 50, "builds": 9, "polling_candidates": 9}) == 0
+        readme = (HERE / "README.md").read_text(encoding="utf-8")
+        for k, w in core.SCORE_WEIGHTS.items():
+            assert f"| `{k}` | {w} |" in readme
+
+    def test_text_output_prints_paths_relative_to_the_root(self):
+        croot, xhome = make_both(self.tmp_path)
+        rc, out, _ = run_cli(["all", "--claude-root", str(croot), "--codex-home", str(xhome)])
+        assert rc == 0
+        assert str(self.tmp_path) not in out
+        assert core.display_path("/r/x/s.jsonl", "/r") == "x/s.jsonl"
+        assert core.display_path(str(Path.home() / "s.jsonl"), "/elsewhere") == "~/s.jsonl"
+        assert core.display_path("/other/s.jsonl", "/r") == "/other/s.jsonl"
 
 
 if __name__ == "__main__":
