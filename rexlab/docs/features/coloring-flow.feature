@@ -160,3 +160,20 @@ Feature: Coloring full flow and durable progress
     And completing it again awards no additional star
     And NEW WORK from that drawing starts the same artwork under a fresh identity
     And returning to the gallery offers the Triceratops chosen by the current global age level
+
+  Scenario Outline: T-Rex age variants and saved drawings
+    Given the global age setting is <level>
+    When I choose T-Rex from the coloring gallery
+    Then the workshop opens <geometry> with matching preview and localized name
+    And broad enclosed regions color independently while outlines and small decorative details remain protected
+    And brush, fill, undo, save, completion rewards and navigation use the shared coloring behavior
+    When I paint, save and reopen this work after changing the global age setting
+    Then its original geometry, paint, undo history, thumbnail and earned star are retained
+    And existing creatures and their saved works remain unchanged
+    And both versions fit supported iPad landscape layouts
+
+    Examples:
+      | level          | geometry                |
+      | Hatchling      | trex-hatchling-1         |
+      | Explorer       | trex-explorer-1          |
+      | Paleontologist | trex-explorer-1          |

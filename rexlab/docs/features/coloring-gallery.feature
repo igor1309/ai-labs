@@ -76,3 +76,9 @@ Feature: Coloring gallery
     When I paint the Triceratops and return to the gallery
     Then each saved thumbnail and its accessible name match its own creature
     And CONTINUE restores the latest work with its own artwork
+
+  Scenario: Choose a recognizable T-Rex
+    When I enter the gallery at any age level
+    Then exactly one T-Rex choice has a matching vector preview and the uppercase localized name T-REX or ТИРАННОЗАВР
+    And its friendly silhouette has a large head, two small arms, strong hind legs and a long tail
+    And choosing it starts an independent unpainted work without changing existing works
