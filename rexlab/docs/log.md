@@ -2,6 +2,8 @@
 
 ## 2026-11-01
 
+- LAB-903: The document canvas and browser tint follow the active theme; the home app icon keeps its image in dark mode. iPhone Safari status-bar verification is pending.
+
 - LAB-899: A fixed, theme-matched top edge supplies an opaque system-bar background without taking space from games; installed iOS/iPadOS 27 verification is pending.
 
 - LAB-889: The gallery offers T-REX / ТИРАННОЗАВР with age-matched previews. Each drawing keeps its artwork, paint, undo history and single earned star across age changes and return visits.

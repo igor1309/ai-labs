@@ -555,6 +555,16 @@ describe("the home page", () => {
     expect(taps).toEqual([1, 1]);
   });
 
+  it.each(["light", "dark"])("keeps the app icon visible in %s mode", (theme) => {
+    document.documentElement.dataset.theme = theme;
+    try {
+      openHomePage();
+      expect(getComputedStyle(document.querySelector(".wordmark-mark")!).backgroundImage).toContain("/icons/icon-180.png");
+    } finally {
+      delete document.documentElement.dataset.theme;
+    }
+  });
+
   it("shows the RexLab wordmark, small, in the top-left corner", () => {
     const { card } = openHomePage();
 
