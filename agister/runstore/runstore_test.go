@@ -444,6 +444,10 @@ func TestAnEventIsTheLineOfItsKind(t *testing.T) {
 		event runstore.Event
 		want  string
 	}{
+		{runstore.Event{At: started, Step: "tests", Kind: runstore.ChildStarted, Workflow: "lens", Params: map[string]string{}, Inputs: []runstore.Input{}},
+			`{"at":"` + at + `","step":"tests","kind":"child_started","workflow":"lens","params":{},"inputs":[]}`},
+		{runstore.Event{At: started, Step: "tests", Kind: runstore.ChildStarted, Workflow: "lens", Params: map[string]string{"goal": "ship"}, Inputs: []runstore.Input{{Name: "brief", Value: "ship it", Identity: "digest"}}, Agent: "ignored", Status: "ignored"},
+			`{"at":"` + at + `","step":"tests","kind":"child_started","workflow":"lens","params":{"goal":"ship"},"inputs":[{"name":"brief","value":"ship it","identity":"digest"}]}`},
 		{runstore.Event{At: started, Step: "a", Kind: runstore.Started, Agent: "bash", Name: "x"},
 			`{"at":"` + at + `","step":"a","kind":"started","agent":"bash"}`},
 		{runstore.Event{At: started, Step: "a", Kind: runstore.Reused, Call: "r0/a", Agent: "x"},

@@ -5,7 +5,8 @@ import { App } from "../src/App.tsx";
 import type { HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
-import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { PROGRESS_KEY, localCareProgress, localDigProgress, localLabyrinthProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
+import { MARKS_HEIGHT, MARKS_WIDTH } from "../src/SandWritingPicture.tsx";
 import { topLine } from "./homeCorner.ts";
 import { TILE_COUNTS, TITLE_EMS, gamesWidths, linesOf, roomFor, tileTitles, widthOf } from "./homeTitles.ts";
 import { LEVEL_EMS } from "./levelEms.ts";
@@ -55,7 +56,7 @@ const UPRIGHT = [
   [712, 1000, 348, 360, 292, 24, false],
   [600, 1400, 604, 504, 310, 210, false],
   [1068, 1500, 688, 520, 305, 25, false],
-  [1400, 1500, 688, 520, 310, 0, false]
+  [1400, 1500, 688, 520, 306, 24, false]
 ] as const;
 
 // An iPad mini upright, home-portrait.feature's "Safe areas stay clear
@@ -89,6 +90,7 @@ function openUpright(
   const progress = () => storage;
   render(
     <App
+      labyrinthProgress={localLabyrinthProgress(progress)}
       {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -115,7 +117,7 @@ function openUpright(
       {...loadedPictures()}
     />
   );
-  return { viewport, user: userEvent.setup() };
+  return { viewport, user: userEvent.setup({ delay: null }) };
 }
 
 // The properties a sum reads or assumes, as the rules that match in a
@@ -339,7 +341,7 @@ describe("the home page upright", () => {
 
 // home-portrait.feature's "Every word fits the tightest tall windows": a
 // best of 7 in COMPARE, 8 in CARE, 6 in SORT and 3 in SKELETONS, 120
-// stars in FIND THE PAIR and 7 dinosaurs dug up in DIG.
+// stars in FIND THE PAIR, 9 in LABYRINTH and 7 dinosaurs dug up in DIG.
 const scored = () =>
   memoryStorage({
     [PROGRESS_KEY]: JSON.stringify({
@@ -350,23 +352,29 @@ const scored = () =>
         "sort-dinosaurs": { bestScore: 6, explorerBest: 6, paleontologistBest: null, roundsPlayed: 2 },
         "find-the-pair": { stars: 120, level: 1, boardsOnLevel: 0, best: {}, found: [] },
         "skeleton-assembly": { earned: ["tyrannosaurus", "triceratops", "stegosaurus"], bestScore: 3, rebuilding: [] },
-        dig: { dug: SHIPPED_DIG.slice(0, 7).map(({ id }) => id), badges: [] }
+        dig: { dug: SHIPPED_DIG.slice(0, 7).map(({ id }) => id), badges: [] },
+        labyrinth: { progress: { stars: 9, roundsPlayed: 3, best: { hatchling: null, explorer: 3, paleontologist: null } } }
       }
     })
   });
 
 // Each tile's count, in the tiles' order.
-const COUNTS: Record<HomeGame, string> = {
+const COUNTS: Record<HomeGame, string | undefined> = {
   compare: "7",
   catalogue: String(SHIPPED_CATALOGUE.length),
   pairs: "120",
   skeletons: "3",
   dig: "7",
+  sandWriting: undefined,
+  whoseJaw: undefined,
+  coloring: undefined,
+  picturePuzzle: "0",
   sort: "6",
-  care: "8"
+  care: "8",
+  labyrinth: "9"
 };
 
-const TILE_ORDER: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care"];
+const TILE_ORDER: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth"];
 
 // The outline's examples: the language, the window's width, 800 tall,
 // and the game the large card features.
@@ -376,7 +384,11 @@ const TIGHTEST: ReadonlyArray<readonly [Language, number, HomeGame]> = [
   ["ru", 600, "pairs"],
   ["ru", 677, "compare"],
   ["ru", 700, "compare"],
-  ["ru", 677, "skeletons"]
+  ["ru", 677, "skeletons"],
+  ["en", 600, "sandWriting"],
+  ["ru", 600, "sandWriting"],
+  ["en", 600, "labyrinth"],
+  ["ru", 600, "labyrinth"]
 ];
 
 // The large card's name: its size and the lines it takes in a card
@@ -410,7 +422,8 @@ describe("every word on the upright home page", () => {
       expect(upright.lines.length).toBeLessThanOrEqual(landscape.lines.length);
       expect([upright.wide, upright.wraps]).toEqual([[], true]);
       const badge = card.querySelector<HTMLElement>(".featured-card-badge");
-      expect([badge?.parentElement, badge && getComputedStyle(badge).position, badge && getComputedStyle(badge).top, badge && getComputedStyle(badge).right]).toEqual([card, "absolute", "24px", "24px"]);
+      if (featured === "sandWriting") expect(badge).toBeNull();
+      else expect([badge?.parentElement, badge && getComputedStyle(badge).position, badge && getComputedStyle(badge).top, badge && getComputedStyle(badge).right]).toEqual([card, "absolute", "24px", "24px"]);
 
       const row = tilesRow();
       const column = styleAt(row, [width, 800]).px("grid-auto-columns");
@@ -418,8 +431,8 @@ describe("every word on the upright home page", () => {
       const titles = tileTitles();
       const shown = TILE_ORDER.filter((game) => game !== featured);
       const words = (game: HomeGame) => TEXTS[language][game === "compare" ? "quizCard" : game === "catalogue" ? "catalogueTile" : game];
-      // FIND THE PAIR's title may wrap, so it is read apart below.
-      expect(titles.map((title) => title.textContent)).toEqual([...shown.filter((game) => game !== "pairs").map(words), TEXTS[language].moreComing]);
+      // The two longer names may wrap, so they are read apart below.
+      expect(titles.map((title) => title.textContent)).toEqual([...shown.filter((game) => game !== "pairs" && game !== "sandWriting").map(words), TEXTS[language].moreComing]);
       const overflowing = titles.flatMap((title) => {
         const style = getComputedStyle(title);
         const words = title.textContent ?? "";
@@ -434,20 +447,19 @@ describe("every word on the upright home page", () => {
       });
       expect(overflowing).toEqual([]);
 
-      const pairs = row.querySelector(".pairs-tile-title");
-      if (pairs) {
-        const style = getComputedStyle(pairs);
+      for (const title of row.querySelectorAll(".pairs-tile-title, .sand-writing-tile-title")) {
+        const style = getComputedStyle(title);
         const size = px(style.fontSize);
         const spacing = px(style.letterSpacing);
-        const room = roomFor(pairs, () => column);
-        const lines = linesOf(pairs.textContent ?? "", size, spacing, room);
+        const room = roomFor(title, () => column);
+        const lines = linesOf(title.textContent ?? "", size, spacing, room);
         expect(size).toBeGreaterThanOrEqual(24);
         expect(Array.isArray(lines) && lines.length <= 2 && lines.every((line) => widthOf(line, size, spacing) <= room)).toBe(true);
       }
 
       const counts = [...row.querySelectorAll<HTMLElement>(TILE_COUNTS)];
       expect(counts.map((count) => [count.textContent, count.parentElement === count.closest("button"), getComputedStyle(count).position, px(getComputedStyle(count).fontSize) >= 20])).toEqual(
-        shown.map((game) => [COUNTS[game], true, "absolute", true])
+        shown.filter((game) => COUNTS[game] !== undefined).map((game) => [COUNTS[game], true, "absolute", true])
       );
 
       const line = topLine(width, language);
@@ -566,6 +578,16 @@ function featuredPicture(card: { width: number; height: number }, size: WindowSi
         { left: inside.right - second.width, top: inside.bottom - second.height, right: inside.right, bottom: inside.bottom }
       ];
       return { boxes, height: room.height };
+    }
+
+    // Sand across the whole art inside its side margins, the marks at
+    // their own size in its middle.
+    if (picture.classList.contains("sand-writing-tile-art")) {
+      sized(picture, size, { ...grows, position: "relative", overflow: "hidden", "margin-left": "20px", "margin-right": "20px" });
+      const across = room.width - px(style.marginLeft) - px(style.marginRight);
+      expect(MARKS_WIDTH).toBeLessThanOrEqual(across);
+      expect(MARKS_HEIGHT).toBeLessThanOrEqual(room.height);
+      return { boxes: [{ left: (room.width - MARKS_WIDTH) / 2, top: (room.height - MARKS_HEIGHT) / 2, right: (room.width + MARKS_WIDTH) / 2, bottom: (room.height + MARKS_HEIGHT) / 2 }], height: room.height };
     }
 
     // The pairs' cards, each of the card's shape and its share of the

@@ -1,0 +1,68 @@
+name: Update Behind PRs
+
+# Trunk requires a branch to be up to date before it merges, so when one PR
+# lands, every other PR waiting on auto-merge falls behind and stays blocked.
+# On each push to trunk, bring each such PR up to date; its CI runs again and
+# auto-merge lands it when green. A PR that conflicts is named and left alone.
+#
+# The update must be pushed with a personal token: a push made with
+# GITHUB_TOKEN starts no workflow, so the PR's CI would never run again.
+# PR_UPDATE_TOKEN is a fine-grained token for this repository only, with
+# Contents and Pull requests read and write.
+
+on:
+  push:
+    branches: [trunk]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-behind-prs
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.PR_UPDATE_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Update each behind PR with auto-merge armed
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::PR_UPDATE_TOKEN is not set; no PR was updated"
+            exit 1
+          fi
+          failed=0
+          for n in $(gh pr list --base trunk --state open --limit 100 --json number,autoMergeRequest --jq '.[] | select(.autoMergeRequest != null) | .number'); do
+            head=$(gh pr view "$n" --json headRefOid --jq .headRefOid)
+            behind=$(gh api "repos/$GH_REPO/compare/$head...trunk" --jq .ahead_by)
+            if [ "$behind" = 0 ]; then
+              echo "#$n is up to date"
+              continue
+            fi
+            if out=$(gh api -X PUT "repos/$GH_REPO/pulls/$n/update-branch" -f expected_head_sha="$head" 2>&1); then
+              echo "#$n was $behind behind trunk; updated"
+            else
+              echo "::error::#$n could not be updated: $out"
+              failed=1
+            fi
+          done
+          exit $failed
+
+  notify:
+    if: ${{ always() && !cancelled() && needs.update.result == 'failure' }}
+    needs: [update]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "Update Behind PRs"
+      ref_label: "branch"
+      ref_value: "trunk"
+      job_results: |
+        update=${{ needs.update.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}

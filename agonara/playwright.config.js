@@ -11,8 +11,8 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  testDir: "..",
-  testMatch: /agonara\/tests\/.*\.playwright\.js/,
+  testDir: "./tests",
+  testMatch: /\.playwright\.js$/,
   timeout: 30_000,
   use: {
     trace: "retain-on-failure",

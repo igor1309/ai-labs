@@ -52,6 +52,14 @@ func (s *eventsSpy) Ended(step string, ended workflow.Ended) {
 	s.told = append(s.told, fmt.Sprintf("%s ended %s %s in %v", step, ended.Status, ended.Class, ended.Duration))
 }
 
+func (s *eventsSpy) ChildStarted(step, name string, _ map[string]string, _ map[string]string) {
+	s.told = append(s.told, step+" child "+name+" started")
+}
+
+func (s *eventsSpy) ChildEnded(step string, ended workflow.ChildEnd) {
+	s.told = append(s.told, fmt.Sprintf("%s child ended %s %s", step, ended.Status, ended.Class))
+}
+
 // progress.feature, "A step's start, tool calls and end, each a line".
 //
 // Contract test: the files home holds, as Agister ships them.
@@ -120,7 +128,7 @@ func TestAStepsCallGivesItsToolCallsOn(t *testing.T) {
 		t.Fatal(err)
 	}
 	var reported []workflow.Report
-	steps.Call(context.Background(), "a", map[string]string{"what": "hi"}, "", func(r workflow.Report) { reported = append(reported, r) })
+	steps.Call(context.Background(), "a", "a", map[string]string{"what": "hi"}, "", func(r workflow.Report) { reported = append(reported, r) })
 	want := []workflow.Report{{Started: true},
 		{Tool: &workflow.Tool{Name: "Bash", Input: "ls"}}, {Stale: &workflow.Stale{What: "no event for 1m", Recovering: true}},
 		{Tool: &workflow.Tool{Name: "Read", Input: "a.go"}}, {Stale: &workflow.Stale{What: "no event for 1m"}},
@@ -249,4 +257,16 @@ func TestTheProgressNeedsAWriter(t *testing.T) {
 	if _, err := newProgress(nil); err == nil {
 		t.Error("progress built with no writer, want an error")
 	}
+}
+
+func (s *eventsSpy) Branch(step, arm string, conditions []workflow.ConditionRead) {
+	s.told = append(s.told, fmt.Sprintf("%s took %s %v", step, arm, conditions))
+}
+
+func (s *eventsSpy) Pass(step string, pass int, state map[string]any) {
+	s.told = append(s.told, fmt.Sprintf("%s pass %d %v", step, pass, state))
+}
+
+func (s *eventsSpy) Stopped(step, why string, passes int) {
+	s.told = append(s.told, fmt.Sprintf("%s stopped %s after %d", step, why, passes))
 }

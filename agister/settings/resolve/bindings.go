@@ -390,7 +390,10 @@ func (s *scope) step(reference Read, a at) bool {
 		return problem("the item %q is no step, and has no session", name)
 	case reference.Root == RootOutputs && reference.Field != "" && item.Workflow.Value != "":
 		child, ok := s.walk.workflows[item.Workflow.Value]
-		if ok && !slices.ContainsFunc(child.Outputs, func(b Binding) bool { return b.Name == reference.Field }) {
+		if ok && len(child.Outputs) == 1 && child.Outputs[0].Name == "output" && reference.Field == "output" {
+			return problem("the workflow %q gives its output %q whole, read by its own fields", item.Workflow.Value, reference.Field)
+		}
+		if ok && !(len(child.Outputs) == 1 && child.Outputs[0].Name == "output") && !slices.ContainsFunc(child.Outputs, func(b Binding) bool { return b.Name == reference.Field }) {
 			return problem("the workflow %q gives the output %q", item.Workflow.Value, reference.Field)
 		}
 	case reference.Root == RootOutputs && reference.Field != "" && item.Branch != nil:

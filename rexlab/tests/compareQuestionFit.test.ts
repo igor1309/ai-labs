@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareQuestionType, compareQuestionWidth, PORTRAIT_QUESTION } from "../src/compareQuestionLayout.ts";
+import { compareQuestionType, compareQuestionWidth, NARROW_QUESTION, PORTRAIT_QUESTION } from "../src/compareQuestionLayout.ts";
 import { formatLength, formatMass } from "../src/formatValue.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { NAME_EMS } from "./nameWidths.ts";
@@ -83,5 +83,69 @@ describe("an upright question's words fit", () => {
     // The chip stands 24 pixels from the area's right edge, and leaves the
     // area's 24-pixel padding at its left.
     for (const value of values) expect(chipWidth(emWidth(value, VALUE_EMS)), value).toBeLessThanOrEqual(width - 2 * 24);
+  });
+});
+
+// A phone's widths, the narrowest 320 with no scrollbar.
+const NARROW_WIDTHS = [320, 375, 393, 430].map((width) => compareQuestionWidth(width, 0, 0, 0, NARROW_QUESTION));
+
+describe("a phone question's words fit", () => {
+  it.each(NARROW_WIDTHS)("fits every English and Russian prompt on one line beside its symbol at %i pixels", (width) => {
+    const { prompt } = compareQuestionType(width, NARROW_QUESTION);
+    for (const text of prompts) expect(emWidth(text, PROMPT_EMS) * prompt, text).toBeLessThanOrEqual(width - 56 - 16);
+  });
+
+  it.each(NARROW_WIDTHS)("fits every English and Russian name on one line in its 20-pixel-padded footer at %i pixels", (width) => {
+    const { name } = compareQuestionType(width, NARROW_QUESTION);
+    for (const text of names) expect(nameEms(text) * name, text).toBeLessThanOrEqual(width - 2 * 20);
+  });
+});
+
+// NEXT's labels at weight 700, rounded up: Lexend's advances for the
+// English ones, and the system face's for the Russian with 10% room.
+const NEXT_EMS: Record<string, number> = { NEXT: 2.82, "SEE RESULT": 6.18, ДАЛЬШЕ: 4.91, РЕЗУЛЬТАТ: 6.61 };
+
+// NEXT in a wide-short window: 24 pixels before its label at 20, the
+// 10-pixel gap, its 22-pixel symbol and 20 pixels after.
+const shortNextWidth = (label: string) => 24 + NEXT_EMS[label]! * 20 + 10 + 22 + 20;
+
+// Every width of a phone on its side, as the question has it: the window
+// less 20 pixels a side past the insets, from 568, the narrowest the
+// cards stand side by side in, with none, and from 812 with a notch's.
+const SHORT_WIDTHS = [
+  ...Array.from({ length: (932 - 568) / 4 + 1 }, (_, step) => 568 + 4 * step - 40),
+  ...Array.from({ length: (932 - 812) / 4 + 1 }, (_, step) => 812 + 4 * step - 40 - 2 * 59)
+];
+
+// The type the stylesheet gives a question `width` wide: the prompt 28
+// pixels, or what leaves 274 for its symbol, the gaps and NEXT; each card
+// half the row short of "VS" and its gaps, its name 20 pixels, or what
+// fits the longest in its footer.
+const shortType = (width: number) => {
+  const card = (width - 40 - 2 * 8) / 2;
+  return { prompt: Math.min(28, (width - 274) / 9.97), card, name: Math.min(20, (card - 24) / 12.7) };
+};
+
+describe("a question's words fit on a phone on its side", () => {
+  it("leaves NEXT room for its widest label in either language", () => {
+    for (const language of LANGUAGES) for (const label of [TEXTS[language].next, TEXTS[language].seeResult]) expect(shortNextWidth(label), label).toBeLessThanOrEqual(210);
+  });
+
+  it.each(SHORT_WIDTHS)("fits every English and Russian prompt beside its 40-pixel symbol and the widest NEXT at %i pixels", (width) => {
+    const { prompt } = shortType(width);
+    for (const text of prompts) expect(40 + 12 + emWidth(text, PROMPT_EMS) * prompt + 12 + 210, text).toBeLessThanOrEqual(width);
+  });
+
+  it.each(SHORT_WIDTHS)("fits every English and Russian name on one line in its card's footer at %i pixels", (width) => {
+    const { card, name } = shortType(width);
+    // 20 pixels from a 612-pixel row up, and never under 16.
+    expect(name).toBeGreaterThanOrEqual(width >= 612 ? 20 : 16);
+    // The longest fills its footer exactly where its type is cut to it.
+    for (const text of names) expect(nameEms(text) * name, text).toBeLessThanOrEqual(card - 2 * 12 + 1e-9);
+  });
+
+  it.each(SHORT_WIDTHS)("keeps every English and Russian value in its 17-pixel chip inside the picture's area at %i pixels", (width) => {
+    const { card } = shortType(width);
+    for (const value of values) expect(12 + 22 + 6 + emWidth(value, VALUE_EMS) * 17 + 12, value).toBeLessThanOrEqual(card - 2 * 12);
   });
 });

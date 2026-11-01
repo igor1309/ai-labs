@@ -1,0 +1,187 @@
+import Foundation
+import Root
+import ScriptedSettings
+import SessionCrypto
+import MessageCodec
+
+@MainActor final class ScriptedClient: ClientRadioPort {
+    @MainActor private final class Transaction {
+        enum Phase { case connecting, key, amount, decision, done }
+        let recordAir: Bool
+        let host: UUID
+        let settings: Settings.Host
+        let crypto = SessionCrypto()
+        let steps = PendingSteps()
+        var phase = Phase.connecting
+        init(host: UUID, settings: Settings.Host, recordAir: Bool) {
+            self.host = host; self.settings = settings; self.recordAir = recordAir
+        }
+    }
+    let events: AsyncStream<ClientRadioEvent>
+    private let continuation: AsyncStream<ClientRadioEvent>.Continuation
+    private let source: any SettingsSource
+    private let recorder: AirRecorder
+    private var recordAir = false
+    private let clock: any RadioClock
+    private let sealMessage: @MainActor (MessageCodec.Message, SessionCrypto) throws -> [UInt8]
+    private var updatesTask: Task<Void, Never>?
+    private var catalog: [UUID: Settings.Host] = [:]
+    private var scanning = false
+    private let readings = PendingSteps()
+    /// A host still on air is heard again at its last strength.
+    private var repeats: [UUID: any ScheduledStep] = [:]
+    static let repeatInterval = 0.2
+    private var transaction: Transaction?
+
+    init(source: any SettingsSource, clock: any RadioClock, recorder: AirRecorder,
+         sealMessage: @escaping @MainActor (MessageCodec.Message, SessionCrypto) throws -> [UInt8]) {
+        self.recorder = recorder
+        self.sealMessage = sealMessage
+        self.source = source; self.clock = clock
+        (events, continuation) = AsyncStream.makeStream()
+        continuation.yield(.bluetooth(source.current().clientState))
+        let updates = source.updates
+        updatesTask = Task.immediate { [weak self] in
+            for await result in updates {
+                guard let self else { return }
+                if result.clientState != .on { stopScanning(); drop() }
+                continuation.yield(.bluetooth(result.clientState))
+            }
+        }
+    }
+
+    func startScanning() {
+        guard !scanning, let settings = source.current().settings, settings.bluetooth == .on else { return }
+        recordAir = settings.recordAir
+        scanning = true
+        catalog.removeAll()
+        for host in settings.hosts {
+            let id = UUID()
+            catalog[id] = host
+            for reading in host.readings {
+                let isLast = reading == host.readings.max { $0.time < $1.time }
+                readings.add(clock.schedule(after: reading.time) { [weak self] in
+                    guard let self, scanning else { return }
+                    continuation.yield(.reading(host: id, name: host.name, rssi: reading.rssi, time: clock.now))
+                    if isLast, !host.goesQuiet { keepHearing(id, host: host, rssi: reading.rssi) }
+                })
+            }
+        }
+    }
+    private func keepHearing(_ id: UUID, host: Settings.Host, rssi: Int) {
+        repeats[id]?.cancel()
+        repeats[id] = clock.schedule(after: Self.repeatInterval) { [weak self] in
+            guard let self, scanning else { return }
+            continuation.yield(.reading(host: id, name: host.name, rssi: rssi, time: clock.now))
+            keepHearing(id, host: host, rssi: rssi)
+        }
+    }
+    func stopScanning() {
+        scanning = false
+        readings.cancel()
+        repeats.values.forEach { $0.cancel() }
+        repeats.removeAll()
+    }
+
+    func connect(to host: UUID) {
+        drop()
+        guard let settings = catalog[host], source.current().clientState == .on else {
+            continuation.yield(.couldNotConnect(host: host, reason: .unavailableHost)); return
+        }
+        let t = Transaction(host: host, settings: settings, recordAir: recordAir)
+        transaction = t
+        later(settings.delays.connect, in: t) { radio, t in
+            do {
+                let bytes = try MessageCodec.encodeSession(.init(publicKey: t.crypto.publicKey, sessionID: t.crypto.sessionID))
+                radio.recorder.record(bytes, direction: "hostToClient", enabled: t.recordAir)
+                t.phase = .key
+                radio.continuation.yield(.connected(host: t.host, session: bytes, largestWrite: 512))
+                if t.settings.drop == .beforeKey { radio.dropLater(t) }
+            } catch { radio.drop() }
+        }
+    }
+
+    func writeKey(_ bytes: [UInt8]) {
+        guard let t = transaction, t.phase == .key, t.settings.drop != .beforeKey else { return }
+        recorder.record(bytes, direction: "clientToHost", enabled: t.recordAir)
+        do { try t.crypto.derive(peerPublicKey: bytes) } catch { drop(); return }
+        t.phase = .amount
+        later(t.settings.delays.key, in: t) { radio, t in
+            radio.continuation.yield(.writeAnswered(.key, nil))
+            do {
+                // Seal before scheduling delivery: a link can be lost with a frame in flight.
+                let amount = try radio.sealMessage(.amount(t.settings.amount), t.crypto)
+                radio.recorder.record(amount, direction: "hostToClient", enabled: t.recordAir)
+                if t.settings.drop == .beforeAmountArrives { radio.drop(); return }
+                radio.later(t.settings.delays.amount, in: t) { radio, t in
+                    t.phase = .decision
+                    radio.continuation.yield(.message(host: t.host, bytes: amount))
+                    if t.settings.drop == .afterAmount { radio.dropLater(t) }
+                    else if t.settings.cancelsAfterAmount {
+                        radio.later(t.settings.delays.end, in: t) { radio, t in
+                            do {
+                                let end = try radio.sealMessage(.end, t.crypto)
+                                radio.recorder.record(end, direction: "hostToClient", enabled: t.recordAir)
+                                t.phase = .done
+                                radio.continuation.yield(.message(host: t.host, bytes: end))
+                            } catch { radio.drop() }
+                        }
+                    }
+                }
+            } catch { radio.drop() }
+        }
+    }
+
+    func write(_ bytes: [UInt8]) async -> ClientWriteResult {
+        guard let t = transaction else { return .failure(.notConnected) }
+        recorder.record(bytes, direction: "clientToHost", enabled: t.recordAir)
+        do {
+            let message = try Wire.open(bytes, with: t.crypto)
+            guard t.phase == .decision, case .decision(let decision) = message else { drop(); return .failure(.disconnected) }
+            t.phase = .done
+            if t.settings.drop == .afterAmount {
+                continuation.yield(.writeAnswered(.message, nil))
+                return .success(())
+            }
+            // The ATT response precedes the separately delayed notification.
+            continuation.yield(.writeAnswered(.message, nil))
+            later(t.settings.delays.acknowledgement, in: t) { radio, t in
+                do {
+                    let ack = try radio.sealMessage(.acknowledgement(.decision), t.crypto)
+                    radio.recorder.record(ack, direction: "hostToClient", enabled: t.recordAir)
+                    radio.continuation.yield(.message(host: t.host, bytes: ack))
+                    if t.settings.drop == .afterAcknowledgement { radio.dropLater(t); return }
+                    if decision == .confirm {
+                        radio.later(t.settings.delays.outcome, in: t) { radio, t in
+                            do {
+                                let result = try radio.sealMessage(.result(t.settings.outcome == .success ? .success : .failure), t.crypto)
+                                radio.recorder.record(result, direction: "hostToClient", enabled: t.recordAir)
+                                radio.continuation.yield(.message(host: t.host, bytes: result))
+                            } catch { radio.drop() }
+                        }
+                    }
+                } catch { radio.drop() }
+            }
+            return .success(())
+        } catch { drop(); return .failure(.disconnected) }
+    }
+
+    func drop() {
+        guard let t = transaction else { return }
+        t.steps.cancel()
+        t.crypto.close()
+        transaction = nil
+        continuation.yield(.dropped(host: t.host))
+    }
+    private func later(_ delay: Double, in t: Transaction,
+                       _ action: @escaping @MainActor (ScriptedClient, Transaction) -> Void) {
+        t.steps.add(clock.schedule(after: delay) { [weak self, weak t] in
+            guard let self, let t, transaction === t else { return }
+            action(self, t)
+        })
+    }
+    private func dropLater(_ t: Transaction) {
+        later(t.settings.delays.drop, in: t) { radio, _ in radio.drop() }
+    }
+    isolated deinit { updatesTask?.cancel(); readings.cancel(); drop(); continuation.finish() }
+}

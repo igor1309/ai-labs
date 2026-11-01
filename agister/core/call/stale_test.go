@@ -77,7 +77,8 @@ func TestTheWatchIsGivenTheLimitsAndEachReport(t *testing.T) {
 	if want := []call.Limits{limits}; !reflect.DeepEqual(staleness.limits, want) {
 		t.Errorf("watched against %+v, want %+v", staleness.limits, want)
 	}
-	if !reflect.DeepEqual(staleness.reports, reports) || !reflect.DeepEqual(seen, []int{0, 1, 2}) {
+	// The initial lifecycle report precedes the runtime and is not watched.
+	if !reflect.DeepEqual(staleness.reports, reports) || !reflect.DeepEqual(seen, []int{0, 0, 1, 2}) {
 		t.Errorf("the watch was given %+v, the call's report seeing %v of it; want %+v, each after the report", staleness.reports, seen, reports)
 	}
 }

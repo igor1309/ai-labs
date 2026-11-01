@@ -29,7 +29,16 @@ export const BASKET_EMS: Record<string, number> = {
   БЕЗ: 2.1,
   ПЕРЬЕВ: 4.2,
   ПОКА: 3.2,
-  НЕИЗВЕСТНО: 7.4
+  НЕИЗВЕСТНО: 7.4,
+  // The two-basket words, which only an upright board needs: set from
+  // the measured words' widths a letter, rounded up.
+  BIG: 2.2,
+  SMALL: 3.7,
+  HORNS: 3.8,
+  БОЛЬШИЕ: 5.4,
+  МАЛЕНЬКИЕ: 6.9,
+  РОГАМИ: 4.7,
+  РОГОВ: 3.9
 };
 
 // A space between two words of a name.

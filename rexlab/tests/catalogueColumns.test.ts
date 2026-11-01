@@ -34,9 +34,33 @@ describe("the catalogue's cards in a row", () => {
     expect(cardIn(windowWidth, 4)).toBe(card);
   });
 
-  it("are four in a short landscape window and under the picture of a tall-narrow one", () => {
-    expect(catalogueColumns(1024, "wide-short", NO_INSETS.left, NO_INSETS.right)).toBe(4);
-    expect(catalogueColumns(393, "tall-narrow", NO_INSETS.left, NO_INSETS.right)).toBe(4);
+  it.each([
+    [667, 0, 2],
+    [852, 59, 3],
+    [932, 59, 3]
+  ])("in a phone on its side %i wide, %i past each side, are %i, as many as keep each 213 wide on 20-pixel sides", (windowWidth, inset, columns) => {
+    expect(catalogueColumns(windowWidth, "wide-short", inset, inset)).toBe(columns);
+  });
+
+  it.each([
+    [320, 1, 280],
+    [375, 1, 335],
+    [430, 1, 390],
+    [486, 2, 213],
+    [599, 2, 269.5]
+  ])("in a tall-narrow window %i wide, on 20-pixel sides, are %i, each %s wide", (windowWidth, columns, card) => {
+    expect(catalogueColumns(windowWidth, "tall-narrow", NO_INSETS.left, NO_INSETS.right)).toBe(columns);
+    expect(catalogueRow(windowWidth, 0, 0, 20)).toBe(windowWidth - 40);
+    expect(((windowWidth - 40) - (columns - 1) * 20) / columns).toBe(card);
+  });
+
+  it("are, in every tall-narrow window, the most up to four that keep a card at least 213 wide", () => {
+    const broken = Array.from({ length: 599 - 320 + 1 }, (_, at) => 320 + at).flatMap((windowWidth) => {
+      const columns = catalogueColumns(windowWidth, "tall-narrow", NO_INSETS.left, NO_INSETS.right);
+      const most = [4, 3, 2, 1].find((count) => (windowWidth - 40 - (count - 1) * 20) / count >= 213) ?? 1;
+      return columns === most ? [] : [`${windowWidth} wide: ${columns}, not ${most}`];
+    });
+    expect(broken).toEqual([]);
   });
 
   it("go up by one exactly where a card of 213 fits one more, 791 wide for three and 1024 for four", () => {

@@ -175,7 +175,7 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := steps.Call(context.Background(), name, map[string]string{"what": "hi"}, "", discard)
+		got := steps.Call(context.Background(), name, name, map[string]string{"what": "hi"}, "", discard)
 		if got.Status != workflow.Completed || len(spy.steps) != 1 {
 			t.Errorf("%s: gave %+v, called %d times; want completed, called once", name, got, len(spy.steps))
 		}
@@ -195,7 +195,7 @@ func TestAStepsCallIsAdmittedBeforeItIsMade(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := steps.Call(context.Background(), "pinned", map[string]string{"what": "hi"}, "", discard)
+	got := steps.Call(context.Background(), "pinned", "pinned", map[string]string{"what": "hi"}, "", discard)
 	want := workflow.Result{Status: workflow.Failed, Class: workflow.Refused, Timing: workflow.Timing{Started: runStart, Ended: runStart},
 		Reason: `HEAD is "c0", not the pinned "c1"`, Warnings: []string{"w"}}
 	if !reflect.DeepEqual(got, want) || len(spy.steps) > 0 {

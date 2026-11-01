@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -78,7 +79,7 @@ async function openAnswered(from: Window, { reduced = false }: { reduced?: boole
   const animations: Recorded[] = [];
   const fades: Array<{ update: () => void; finished: () => void; size: string | undefined }> = [];
   render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -113,7 +114,7 @@ async function openAnswered(from: Window, { reduced = false }: { reduced?: boole
     />
   );
   act(() => pictures.finishAll());
-  const user = userEvent.setup();
+  const user = userEvent.setup({ delay: null });
   await user.click(gameDoor(TEXTS.en.quizCard));
   act(() => pictures.finishAll());
   const right = correctOf(shownQuestion());

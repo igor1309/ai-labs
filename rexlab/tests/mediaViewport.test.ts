@@ -19,7 +19,8 @@ describe("the browser viewport", () => {
     [600, 900, "tall"], [599, 900, "tall-narrow"],
     [900, 800, "wide"], [800, 800, "tall"],
     [1000, 600, "wide"], [1000, 599, "wide-short"],
-    [599, 599, "tall-narrow"], [600, 600, "tall"]
+    [599, 599, "tall-narrow"], [600, 600, "tall"],
+    [568, 320, "wide-short"], [567, 320, "tall-narrow"], [480, 320, "tall-narrow"]
   ])("classifies a %i by %i window as %s", (width, height, size) => {
     const media = mediaQueries({ [PORTRAIT]: height >= width, [NARROW]: width < 600, [SHORT]: height < 600 });
     const viewport = mediaViewport(media.matchMedia, undefined, manualWindow(width), rootStyle);

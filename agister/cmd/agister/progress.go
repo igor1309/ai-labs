@@ -98,6 +98,10 @@ func (p *progress) Ended(step string, ended workflow.Ended) {
 	p.line(step, fmt.Sprintf("ended %s in %s", how, took(ended.Duration)))
 }
 
+func (p *progress) ChildStarted(string, string, map[string]string, map[string]string) {}
+
+func (p *progress) ChildEnded(string, workflow.ChildEnd) {}
+
 // line writes "· <step>: <what>" and a newline.
 func (p *progress) line(step, what string) {
 	p.mu.Lock()
@@ -121,4 +125,16 @@ func took(d time.Duration) string {
 		return d.Round(time.Second).String()
 	}
 	return d.Round(time.Millisecond).String()
+}
+
+func (p *progress) Branch(step, arm string, _ []workflow.ConditionRead) {
+	p.line(step, "took "+inLine(arm))
+}
+
+func (p *progress) Pass(step string, pass int, _ map[string]any) {
+	p.line(step, fmt.Sprintf("ended pass %d", pass))
+}
+
+func (p *progress) Stopped(step, why string, passes int) {
+	p.line(step, fmt.Sprintf("stopped %s after %d passes", inLine(why), passes))
 }

@@ -14,6 +14,6 @@ Decides who does what across tools, skills, and sub-agents. Provider-agnostic co
 
 ## Stack
 
-- Swift 6.1
+- Swift 6.2
 - Swift Package
 - OpenRouter API

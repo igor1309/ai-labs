@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -46,6 +47,40 @@ func TestMain(m *testing.M) {
 		}
 		os.Stdout.WriteString("started\n")
 		os.Stderr.WriteString("diagnostics\n")
+		os.Exit(0)
+	case "term-parent":
+		// On SIGTERM waits for the child it started in its group, then ends by
+		// the signal. Go's handler, not sh's: macOS's bash 3.2 can crash with
+		// SIGSEGV when a trapped signal lands as its wait builtin calls setjmp.
+		terminated := make(chan os.Signal, 1)
+		signal.Notify(terminated, syscall.SIGTERM)
+		child := exec.Command(os.Args[0])
+		child.Env = append(os.Environ(), helperEnv+"=term-child")
+		if err := child.Start(); err != nil {
+			os.Exit(2)
+		}
+		if err := os.WriteFile("ready", []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
+			os.Exit(2)
+		}
+		<-terminated
+		_ = child.Wait()
+		signal.Reset(syscall.SIGTERM)
+		_ = syscall.Kill(os.Getpid(), syscall.SIGTERM)
+		select {}
+	case "term-child":
+		// Starts a sleeper in its group; on SIGTERM records it and exits 0.
+		terminated := make(chan os.Signal, 1)
+		signal.Notify(terminated, syscall.SIGTERM)
+		if err := exec.Command("sleep", "60").Start(); err != nil {
+			os.Exit(2)
+		}
+		if err := os.WriteFile("started", []byte(strconv.Itoa(os.Getpid())), 0o600); err != nil {
+			os.Exit(2)
+		}
+		<-terminated
+		if err := os.WriteFile("child", []byte("SIGTERM\n"), 0o600); err != nil {
+			os.Exit(2)
+		}
 		os.Exit(0)
 	case "sleep":
 		// Never ends by itself: its test kills it.
@@ -270,10 +305,9 @@ func TestAnEndedContextEndsTheProgramAndAllItStarted(t *testing.T) {
 	started, ready := fifo(t, dir, "started"), fifo(t, dir, "ready")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	child := `trap 'echo SIGTERM > child; exit 0' TERM; sleep 60 & echo $$ > started; wait`
-	done := runInBackground(ctx, s, sh(
-		`trap 'wait "$child"; trap - TERM; kill -TERM $$' TERM; sh -c "$CHILD" & child=$!; echo $$ > ready; wait`,
-		dir, "CHILD="+child))
+	done := runInBackground(ctx, s, supervisor.Program{
+		Name: os.Args[0], Dir: dir, Env: []string{helperEnv + "=term-parent"},
+	})
 	group, err := syscall.Getpgid(pidFrom(t, started))
 	if err != nil {
 		t.Fatal(err)

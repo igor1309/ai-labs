@@ -38,7 +38,7 @@ steps:
           next: {review: {from: steps.repair.outputs}}
           until: {all: {in: {from: state.review.findings}, where: {present: {from: item.fixed}}}}
           max: 3
-        outputs: {summary: {from: steps.fix.outputs.review}}
+        outputs: {summary: {from: steps.fix.outputs.state.review}}
       - name: done
         process: summarize
         agent: claude-opus
@@ -130,7 +130,7 @@ func validWorkflowDefinition() documents.WorkflowDefinition {
 				Of: []documents.Field[documents.Condition]{ofWorkflow(present, 24, untilAt+".all.where")}}, 24, untilAt),
 			Max: ofWorkflow(3, 25, repeatAt+".max"),
 		}, 19, repeatAt),
-		Outputs: bindings(26, fixAt+".outputs", binding(fixAt+".outputs", "summary", outputs("fix", "review"), 26)),
+		Outputs: bindings(26, fixAt+".outputs", binding(fixAt+".outputs", "summary", outputs("fix", "state", "review"), 26)),
 	}
 	done := documents.Item{
 		Name: "done", Process: ofWorkflow("summarize", 28, doneAt+".process"), Agent: ofWorkflow("claude-opus", 29, doneAt+".agent"),

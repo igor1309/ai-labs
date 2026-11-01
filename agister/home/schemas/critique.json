@@ -1,0 +1,25 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["verdict", "challenges"],
+  "properties": {
+    "verdict": {"type": "string", "enum": ["converged", "another_round"], "description": "converged when the review stands up to everything you can put to it, or another round would only repeat the last."},
+    "challenges": {
+      "type": "array",
+      "description": "What you put to the writer this round, and how each earlier challenge stands.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "finding", "challenge", "evidence", "settled_by", "status"],
+        "properties": {
+          "id": {"type": "string", "description": "Kept across rounds."},
+          "finding": {"type": ["integer", "null"], "description": "The 1-based finding it concerns, or null for something the review missed or its coverage."},
+          "challenge": {"type": "string"},
+          "evidence": {"type": "string", "description": "What you read, quoted by path:line, or where you looked and found nothing."},
+          "settled_by": {"type": "string", "description": "What would settle it."},
+          "status": {"type": "string", "enum": ["open", "settled"]}
+        }
+      }
+    }
+  }
+}

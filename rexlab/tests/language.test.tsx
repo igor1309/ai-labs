@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -86,7 +87,7 @@ function openApp({
   nameVersion?: (label: string) => void;
 }) {
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -108,7 +109,7 @@ function openApp({
       {...timers}
     />
   );
-  return { user: userEvent.setup(), unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), unmount: view.unmount };
 }
 
 // The app is in a language when the page says so and the home page's quiz
@@ -439,7 +440,7 @@ describe("the sorting board", () => {
   it.each(LANGUAGES.flatMap((language) => (Object.keys(BASKET_NAMES[language]) as Property[]).map((property) => [language, property] as const)))(
     "reads in %s, sorting by %s, every text for children in capitals",
     async (language, property) => {
-      const user = userEvent.setup();
+      const user = userEvent.setup({ delay: null });
       const sorting = sortingBy(property);
       openBoard(sorting, language);
       const [missed, ...rest] = boardState(sorting).cards;

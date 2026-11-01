@@ -1,0 +1,4 @@
+<trace-query-result><node><schema name="time-profile"/>
+<row><sample-time>0</sample-time><thread id="main" fmt="Main Thread 1"/><weight>4000000</weight><backtrace><frame name="leaf"><binary id="app" name="AudelinRehearsal"/></frame><frame name="caller"><binary ref="app"/></frame></backtrace></row>
+<row><sample-time>1000000</sample-time><thread fmt="Worker"/><weight>1000000</weight><backtrace><frame name="newOnly"><binary ref="app"/></frame><frame name="caller"><binary ref="app"/></frame></backtrace></row>
+</node></trace-query-result>

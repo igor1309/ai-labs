@@ -1,0 +1,21 @@
+schema: agister.process/v1alpha1
+extends: review
+prompt: code-review-critic
+guidance: [go-testing-seams, go-architecture]
+instruction: >-
+  Check the draft review given as input review against the exact
+  candidate, your working directory, and the base, following the prompt
+  given as input prompt. Read the change yourself: git diff
+  <base_revision> <candidate_revision>, whole or per file of
+  changed_files. Your critique of the draft before it, if any, is given
+  as input critique; on the first round it is none.
+
+params:
+  review: {}
+  critique: {}
+inputs:
+  review: {source: param, name: review}
+  critique: {source: param, name: critique}
+
+output:
+  schema: critique

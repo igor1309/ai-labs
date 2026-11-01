@@ -1,0 +1,41 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- tapOn: "Settings"
+- tapOn: "30 s"
+- tapOn: "Done"
+- extendedWaitUntil:
+    visible: "Lock & broadcast"
+    timeout: 15000
+- tapOn:
+    id: "key 1"
+- tapOn:
+    id: "key 2"
+- tapOn:
+    id: "key 3"
+- tapOn:
+    id: "key \\."
+- tapOn:
+    id: "key 4"
+- tapOn:
+    id: "key 5"
+- tapOn: "Lock & broadcast"
+- extendedWaitUntil:
+    visible: "2[0-6] seconds left"
+    timeout: 15000
+- assertVisible: "Advertising"
+- assertVisible: "123.45 Mizan"
+- tapOn: "Cancel"
+- extendedWaitUntil:
+    visible: "Lock & broadcast"
+    timeout: 15000
+- tapOn: "Client"
+- extendedWaitUntil:
+    visible: "Pay a nearby host"
+    timeout: 15000
+- tapOn: "Start handshake"
+- extendedWaitUntil:
+    visible: "Couldn’t connect"
+    timeout: 15000
+- assertVisible: "The link to MIZAN-CAFE dropped. You were not charged."

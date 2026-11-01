@@ -7,6 +7,30 @@ import { ru } from "./ru.ts";
 // typecheck. Children are just learning to read, so every text for them,
 // shown or read out, is written in capitals here rather than styled so.
 export type Texts = {
+  gameAudio: { mute: string; on: string; off: string };
+  coloring: string;
+  whoseJaw: string;
+  jawShelf: string;
+  jawCollection: string;
+  jawNewCollection: string;
+  jawProgress: string;
+  jawPick: string;
+  jawOw: string;
+  jawHmm: string;
+  jawFoods: { meat: string; plants: string };
+  labyrinth: string;
+  labyrinthResult: { title: string; earned: string; total: (stars: number) => string; again: string };
+  labyrinthBoard: {
+    title: string;
+    hint: string;
+    maze: string;
+    goal: string;
+    baby: string;
+    parent: string;
+    bringHome: string;
+    tapStep: string;
+    cell: (column: number, row: number) => string;
+  };
   greeting: string;
   quizCard: string;
   quizCardPicture: string;
@@ -27,6 +51,10 @@ export type Texts = {
   makeWindowWider: string;
   portraitLayoutComing: string;
   home: string;
+  sandWriting: string;
+  sandTipPicker: string;
+  sandTip: (width: number) => string;
+  sandClear: string;
   progress: string;
   // A group of creatures, dinosaurs or not, read out.
   creatures: string;
@@ -133,6 +161,21 @@ export type Texts = {
   // build, and its museum.
   skeletons: string;
   skeletonTitle: string;
+  picturePuzzle: string;
+  pictureCollection: string;
+  pictureAnother: string;
+  pictureFacts: Record<"tyrannosaurus" | "triceratops" | "stegosaurus", string>;
+  pictureNotCollected: string;
+  pictureBoard: string;
+  picturePieces: string;
+  picturePiece: (place: number) => string;
+  pictureSlot: (place: number) => string;
+  pictureFitted: string;
+  picturePrevious: string;
+  pictureNext: string;
+  pictureHint: string;
+  picturePreview: string;
+  pictureRetry: string;
   museum: string;
   // The skeleton being built and its tray of bones.
   skeleton: string;
@@ -178,6 +221,8 @@ export type Texts = {
   // The brush picker's two buttons, read out.
   brush: string;
   wideBrush: string;
+  // The name of the phone's menu of brushes.
+  brushMenu: string;
   // The FIELD GUIDE's page: its cards, read out, the kinds of treasure
   // found, read out on their count, and each kind's name.
   treasureCards: string;

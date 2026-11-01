@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, onTestFinished } from "vitest";
-import { compareResultType, compareResultWidth, PORTRAIT_RESULT } from "../src/compareResultLayout.ts";
+import { compareResultType, compareResultWidth, NARROW_RESULT, PORTRAIT_RESULT } from "../src/compareResultLayout.ts";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { LevelOfferDialog } from "../src/LevelOfferDialog.tsx";
@@ -186,5 +186,104 @@ describe("the offer of a level in a tall window", () => {
     const height = card.px("padding-top") + picture.px("height") + 2 * card.rowGap() + lines * 32 * Number(question.value("line-height"))
       + 2 * styleAt(buttons[0]!, size).px("height") + answers.rowGap() + card.px("padding-bottom");
     expect(height).toBeLessThanOrEqual(size[1] - 48);
+  });
+});
+
+// The document stands in a tall-narrow window, as App marks it.
+function narrowWindow(size: WindowSize) {
+  openWindow(...size);
+  document.documentElement.dataset.size = "tall-narrow";
+  onTestFinished(() => void delete document.documentElement.dataset.size);
+}
+
+describe("an upright result's words fit a 320-wide phone", () => {
+  it.each([["en"], ["ru"]] as const)("keeps every word of a %s result on its line", (language) => {
+    const size: WindowSize = [320, 568];
+    narrowWindow(size);
+    const width = compareResultWidth(320, 0, 0, 0, NARROW_RESULT);
+    expect(width).toBe(280);
+    const type = compareResultType(width, NARROW_RESULT);
+    const text = TEXTS[language];
+    render(
+      <LevelResultScreen
+        language={language} score={10} total={10} best={10} beaten={9} celebration="first-best"
+        hero={fakeBodyPicture("tyrannosaurus")} level="paleontologist" onLevel={() => {}}
+        onPlayAgain={() => {}} onHome={() => {}} type={type}
+      />,
+      withPictures
+    );
+    const at = (selector: string) => styleAt(element(selector), size);
+    expect([at(".result").px("padding-left"), at(".result").px("padding-right")]).toEqual([20, 20]);
+
+    // Ten stars on one line.
+    const star = styleAt(screen.getByRole("img", { name: text.stars(10, 10) }), size);
+    expect(10 * star.px("font-size") + 9 * star.columnGap()).toBeLessThanOrEqual(width + 1e-9);
+
+    // The title, the celebration and the best score each on one line.
+    expect(wordWidth(text.wellDone, at(".result-title").px("font-size"))).toBeLessThanOrEqual(width);
+    const chip = at(".celebration");
+    expect(wordWidth(text.celebrations["first-best"].text, chip.px("font-size")) + chip.px("padding-left") + chip.px("padding-right") + 30 + chip.columnGap()).toBeLessThanOrEqual(width);
+    const best = at(".best-score");
+    const value = at(".best-score-value");
+    expect(best.px("padding-left") + best.px("padding-right") + wordWidth(text.best, best.px("font-size")) + 0.75 * best.px("font-size") + 20 + 2 * 0.75 * value.px("font-size") + 3 * best.columnGap()).toBeLessThanOrEqual(width);
+
+    // Each level its picture alone, the name out of the row.
+    for (const name of document.querySelectorAll(".level-switch-name")) expect(styleAt(name, size).value("position")).toBe("absolute");
+
+    // PLAY AGAIN over HOME, each on one line across the column.
+    const actions = at(".result-actions");
+    expect([actions.value("flex-direction"), actions.value("align-self")]).toEqual(["column", "stretch"]);
+    for (const name of [text.playAgain, text.home]) {
+      const own = styleAt(screen.getByRole("button", { name }), size);
+      expect([own.value("white-space"), own.px("height")]).toEqual(["nowrap", 64]);
+      expect(own.px("padding-left") + own.px("padding-right") + 28 + own.columnGap() + wordWidth(name, own.px("font-size"))).toBeLessThanOrEqual(width);
+    }
+  });
+
+  it.each([
+    ["en", "paleontologist"], ["ru", "explorer"]
+  ] as const)("fits the offer of a level in %s, offering %s", (language: Language, level) => {
+    const size: WindowSize = [320, 568];
+    narrowWindow(size);
+    const text = TEXTS[language];
+    render(
+      <LevelOfferDialog
+        language={language}
+        offer={{ level, onYes: () => {}, onNotNow: () => {}, onShown: () => {}, startTimer: manualTimers().startTimer }}
+        leaving={false} onShown={() => {}} onAnswer={() => {}} onGone={() => {}}
+      />
+    );
+    const dialog = screen.getByRole("dialog", { name: text.levelOffer.question(text.ageLevels[level].name) });
+    const scrim = styleAt(element(".pairs-offer-scrim"), size);
+    const card = styleAt(dialog, size);
+    const inner = 320 - scrim.px("padding-left") - scrim.px("padding-right") - card.px("padding-left") - card.px("padding-right");
+    expect(inner).toBe(240);
+    const question = styleAt(within(dialog).getByRole("heading"), size);
+    const type = question.px("font-size");
+    let lines = 1;
+    let used = 0;
+    for (const word of (within(dialog).getByRole("heading").textContent ?? "").split(" ")) {
+      const next = glyphs(word, type);
+      expect(next, word).toBeLessThanOrEqual(inner);
+      if (used && used + 0.4 * type + next > inner) {
+        lines++;
+        used = next;
+      } else used += (used ? 0.4 * type : 0) + next;
+    }
+    expect(lines).toBeLessThanOrEqual(4);
+    const buttons = within(dialog).getAllByRole("button");
+    for (const button of buttons) {
+      const own = styleAt(button, size);
+      expect(own.px("height")).toBeGreaterThanOrEqual(44);
+      expect(glyphs(button.textContent ?? "", own.px("font-size")) + 30 + own.columnGap() + own.px("padding-left") + own.px("padding-right")).toBeLessThanOrEqual(inner);
+    }
+    // YES and NOT NOW one above the other, each across the offer.
+    const answers = styleAt(element(".pairs-offer-answers", dialog), size);
+    expect([answers.value("display"), answers.value("flex-direction")]).toEqual(["flex", "column"]);
+    for (const button of buttons) expect(styleAt(button, size).value("flex-shrink")).toBe("0");
+    const picture = styleAt(element(".pairs-offer-picture", dialog), size);
+    const height = card.px("padding-top") + picture.px("height") + 2 * card.rowGap() + lines * type * Number(question.value("line-height"))
+      + 2 * styleAt(buttons[0]!, size).px("height") + answers.rowGap() + card.px("padding-bottom");
+    expect(height).toBeLessThanOrEqual(size[1] - scrim.px("padding-top") - scrim.px("padding-bottom"));
   });
 });

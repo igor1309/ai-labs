@@ -1,3 +1,4 @@
+import { emptyLabyrinth } from "./support.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -62,7 +63,7 @@ function openApp(storage: MemoryStorage) {
   const local = () => storage;
   const featured = localFeatured(local, HOME_GAMES);
   const view = render(
-    <App
+    <App {...emptyLabyrinth()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
       bodyPicture={fakeBodyPicture}
@@ -96,7 +97,7 @@ function openApp(storage: MemoryStorage) {
       {...manualTimers()}
     />
   );
-  return { user: userEvent.setup(), container: view.container, unmount: view.unmount };
+  return { user: userEvent.setup({ delay: null }), container: view.container, unmount: view.unmount };
 }
 
 const button = (name: string) => screen.getByRole("button", { name });

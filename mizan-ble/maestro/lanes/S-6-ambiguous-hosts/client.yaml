@@ -1,0 +1,11 @@
+appId: dev.igor1309.mizan-ble.rehearsal
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Hold closer"
+    timeout: 15000
+- assertVisible: "Hold the phone right next to the host iPad, so Mizan can tell which one is yours."
+- assertVisible:
+    text: "Start handshake"
+    enabled: false
