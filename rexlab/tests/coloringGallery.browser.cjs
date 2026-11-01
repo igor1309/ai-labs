@@ -341,7 +341,7 @@ const { chromium } = require("playwright");
     // Explorer replaces the new-work Triceratops choice, while every saved
     // geometry stays editable and keeps its localized name at either level.
     await mount({ level: "explorer" });
-    assert.equal(await page.locator(".gallery-new").count(), 2);
+    assert.equal(await page.locator(".gallery-new").count(), 3);
     assert.equal(await page.getByRole("button", { name: "TRICERATOPS", exact: true }).count(), 1);
     await page.locator(`[data-work-id="${tric.id}"] button`).press("Enter");
     await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
@@ -374,7 +374,7 @@ const { chromium } = require("playwright");
     assert.deepEqual(await thumbnailPixel(rich.id, 602, 206), [239, 83, 80, 255]);
     assert.deepEqual(await thumbnailPixel(rich.id, 424, 370), [66, 165, 245, 255]);
     await page.reload(); await mount({ level: "hatchling", language: "ru" });
-    assert.equal(await page.locator(".gallery-new").count(), 2);
+    assert.equal(await page.locator(".gallery-new").count(), 3);
     assert.equal(await page.locator(`[data-work-id="${rich.id}"] img`).getAttribute("alt"), "ТРИЦЕРАТОПС · 1");
     await page.locator(`[data-work-id="${rich.id}"] button`).press("Enter");
     await page.locator('canvas[aria-label="ТРИЦЕРАТОПС"]').waitFor();
@@ -390,7 +390,7 @@ const { chromium } = require("playwright");
         await page.setViewportSize(viewport);
         for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
           await mount({ level, language, theme });
-          assert.equal(await page.locator(".gallery-new").count(), 2);
+          assert.equal(await page.locator(".gallery-new").count(), 3);
           const name = language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС";
           await press(name); await page.locator(`canvas[aria-label="${name}"]`).waitFor();
           const box = await page.locator("canvas").boundingBox();
@@ -491,7 +491,7 @@ const { chromium } = require("playwright");
       const [x, y, region] = level === "hatchling" ? [420, 330, "body"] : [440, 396, "flank"];
       const [otherX, otherY, otherRegion] = level === "hatchling" ? [326, 135, "plate-2"] : [460, 178, "plate-panel-4"];
       await mount({ level });
-      assert.equal(await page.locator(".gallery-new").count(), 2);
+      assert.equal(await page.locator(".gallery-new").count(), 3);
       assert(await page.locator(".gallery-new").first().locator("canvas").evaluate((canvas, version) => {
         const expected = window.gallery.painterFor(version).canvas(canvas.width, canvas.height);
         window.gallery.painterFor(version).render(expected, []);
@@ -588,6 +588,231 @@ const { chromium } = require("playwright");
         assert.equal((await page.evaluate(() => window.gallery.counts())).starts, starts + stegoWorks.length);
       }
     }
+    await mount({});
+    const ankyPreview = page.getByRole("button", { name: "ANKYLOSAURUS", exact: true }).locator("canvas");
+    assert.equal(await ankyPreview.evaluate(c => {
+      const painter = window.gallery.painterFor("ankylosaurus-hatchling-2"), expected = painter.canvas(c.width, c.height);
+      painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
+    }), true);
+    const ankyContract = await page.evaluate(() => {
+      const probes = window.gallery.ankylosaurusProbes;
+      const painter = window.gallery.painterFor("ankylosaurus-production-1"), canvas = painter.canvas();
+      const pixel = (x, y) => [...canvas.getContext("2d").getImageData(x, y, 1, 1).data];
+      painter.render(canvas, []);
+      const blank = painter.pixels(canvas);
+      const cases = probes.map(([x, y, region]) => {
+        painter.render(canvas, [{ kind: "fill", region, color: "#ef5350" }]);
+        return { region, hit: painter.regionAt({ x, y }), pixels: probes.map(([x, y]) => pixel(x, y)) };
+      });
+      painter.render(canvas, [
+        ...probes.map(([, , region]) => ({ kind: "fill", region, color: "#42a5f5" })),
+        { kind: "stroke", color: "#ef5350", size: 40, points: [{ x: -30, y: 384 }, { x: 940, y: 384 }] }
+      ]);
+      const covered = painter.pixels(canvas);
+      let protectedInk = 0;
+      for (let i = 0; i < blank.length; i += 4) {
+        if (blank[i] === 9 && blank[i + 1] === 30 && blank[i + 2] === 64 && blank[i + 3] === 255) {
+          if (!covered.slice(i, i + 4).every((v, c) => Math.abs(v - blank[i + c]) <= 1)) throw new Error(`Ankylosaurus ink lost at ${i / 4}`);
+          protectedInk++;
+        }
+      }
+      const eye = pixel(746, 386), highlight = pixel(745, 376), outside = pixel(0, 384);
+      const protectedHit = painter.regionAt({ x: 746, y: 386 }) ?? null;
+      painter.render(canvas, [{ kind: "stroke", color: "#ab67cb", size: 40, points: [{ x: 454, y: 384 }] }]);
+      return { cases, protectedInk, eye, highlight, outside, protectedHit, brush: pixel(454, 384) };
+    });
+    for (const [index, test] of ankyContract.cases.entries()) {
+      assert.equal(test.hit, test.region, `Ankylosaurus tap owns ${test.region}`);
+      for (const [other, sample] of test.pixels.entries()) assert.deepEqual(sample, index === other ? [239, 83, 80, 255] : [255, 240, 207, 255], `${test.region} fills independently of ${ankyContract.cases[other].region}`);
+    }
+    assert(ankyContract.protectedInk > 5000);
+    assert.deepEqual(ankyContract.eye, [9, 30, 64, 255]);
+    assert.deepEqual(ankyContract.highlight, [255, 255, 255, 255]);
+    assert.deepEqual(ankyContract.outside, [0, 0, 0, 0]);
+    assert.equal(ankyContract.protectedHit, null);
+    assert.deepEqual(ankyContract.brush, [171, 103, 203, 255]);
+    await page.evaluate(async () => {
+      const legacy = await window.gallery.newWork("legacy-anky", "ankylosaurus-production-1");
+      legacy.append({ kind: "fill", color: "#ef5350", region: "armor-6" }); await legacy.settled();
+      legacy.undo(); await legacy.settled();
+    });
+    await mount({});
+    await page.locator('[data-work-id="legacy-anky"] button').press("Enter");
+    await page.locator('canvas[aria-label="ANKYLOSAURUS"]').waitFor();
+    await press("FILL"); await tap(454, 384); await saved();
+    await press("COLOR"); await press("BLUE"); await tap(110, 280); await saved();
+    const anky = (await listed()).works.find(r => r.document.geometry === "ankylosaurus-production-1").document;
+    assert.deepEqual(anky.actions, [{ kind: "fill", color: "#ef5350", region: "armor-6" }, { kind: "fill", color: "#42a5f5", region: "tail-club" }]);
+    await back();
+    assert.equal(await page.locator(`[data-work-id="${anky.id}"] img`).getAttribute("alt"), "ANKYLOSAURUS · 1");
+    assert.deepEqual(await thumbnailPixel(anky.id, 454, 384), [239, 83, 80, 255]);
+    assert.deepEqual(await thumbnailPixel(anky.id, 110, 280), [66, 165, 245, 255]);
+    await page.reload(); await mount({}); await press("CONTINUE");
+    await page.locator('canvas[aria-label="ANKYLOSAURUS"]').waitFor();
+    assert.deepEqual(await surfacePixel(454, 384), [239, 83, 80, 255]);
+    assert.deepEqual(await surfacePixel(110, 280), [66, 165, 245, 255]);
+    await press("UNDO"); await saved();
+    assert.deepEqual(await surfacePixel(110, 280), [255, 240, 207, 255]);
+    await press("FILL"); await press("COLOR"); await press("BASE"); await tap(454, 384); await saved();
+    assert.equal(await page.getByRole("button", { name: "DONE", exact: true }).isDisabled(), true);
+    await press("UNDO"); await saved(); await press("DONE");
+    await page.getByRole("heading", { name: "YOUR ANKYLOSAURUS!", exact: true }).waitFor();
+    assert.equal((await listed()).completedCount, 6);
+    await press("NEW WORK"); await page.locator('canvas[aria-label="ANKYLOSAURUS"]').waitFor();
+    assert.equal(await page.getByRole("button", { name: "DONE", exact: true }).isDisabled(), true);
+    await press("FILL"); await tap(110, 280); await saved();
+    const another = (await listed()).works.find(r => r.document.id !== anky.id && r.document.geometry === "ankylosaurus-production-1").document;
+    assert.notEqual(another.id, anky.id);
+    assert.deepEqual((await listed()).works.find(r => r.document.id === anky.id).document.actions, [{ kind: "fill", color: "#ef5350", region: "armor-6" }]);
+    await back();
+    for (const level of ["hatchling", "explorer", "paleontologist"]) {
+      for (const viewport of [{ width: 1180, height: 820 }, { width: 1024, height: 768 }]) {
+        await page.setViewportSize(viewport);
+        for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
+          await mount({ level, language, theme });
+          const name = language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР";
+          assert.equal(await page.locator(".gallery-new").count(), 3);
+          assert.equal(await page.getByRole("button", { name, exact: true }).count(), 1);
+          await page.locator(`[data-work-id="${anky.id}"] button`).press("Enter");
+          await page.locator(`canvas[aria-label="${name}"]`).waitFor();
+          assert.deepEqual(await surfacePixel(454, 384), [239, 83, 80, 255]);
+          const boxes = await page.locator(".coloring-workshop").evaluate(s => [...s.querySelectorAll("button, canvas")].filter(e => e.getBoundingClientRect().width > 0).map(e => {
+            const b = e.getBoundingClientRect(); return { canvas: e.tagName === "CANVAS", x: b.x, y: b.y, w: b.width, h: b.height };
+          }));
+          const canvas = boxes.find(b => b.canvas);
+          for (const b of boxes) {
+            assert(b.x >= -1 && b.y >= -1 && b.x + b.w <= viewport.width + 1 && b.y + b.h <= viewport.height + 1);
+            if (!b.canvas) { assert(b.w >= 48 && b.h >= 48); assert(b.x + b.w <= canvas.x + 1 || b.x >= canvas.x + canvas.w - 1 || b.y + b.h <= canvas.y + 1 || b.y >= canvas.y + canvas.h - 1); }
+          }
+          assert.deepEqual(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]), [viewport.width, viewport.height]);
+          if (level === "hatchling" && viewport.width === 1180 && language === "en" && theme === "light") {
+            await press("FILL"); await press("COLOR"); await press("GREEN"); await tap(450, 454); await saved();
+            await press("COLOR"); await press("BLUE"); await tap(110, 280); await saved();
+            await page.screenshot({ path: join(artifacts, "ankylosaurus-legacy.png") });
+            await press("UNDO"); await saved(); await press("UNDO"); await saved();
+          }
+          await press(language === "en" ? "DONE" : "ГОТОВО");
+          await page.getByRole("heading", { name: language === "en" ? "YOUR ANKYLOSAURUS!" : "ТВОЙ АНКИЛОЗАВР!", exact: true }).waitFor();
+          assert.equal((await listed()).completedCount, 6);
+        }
+      }
+    }
+    console.log("PASS Ankylosaurus: every region isolated, protected ink/eyes, brush, preview/thumbnail, save/reload/undo/base, same-art new work, cross-age reopen/reward, 24 RU/EN/theme/age iPad layouts; archived artwork retained");
+    const newAnkylosaurusWorks = [];
+    for (const level of ["hatchling", "explorer"]) {
+      const version = level === "hatchling" ? "ankylosaurus-hatchling-2" : "ankylosaurus-explorer-1";
+      const probes = await page.evaluate(level => level === "hatchling" ? window.gallery.ankylosaurusHatchlingProbes : window.gallery.ankylosaurusExplorerProbes, level);
+      const contract = await page.evaluate(({ version, probes }) => {
+        const painter = window.gallery.painterFor(version), canvas = painter.canvas();
+        const pixel = (x, y) => [...canvas.getContext("2d").getImageData(x, y, 1, 1).data];
+        painter.render(canvas, []); const blank = painter.pixels(canvas);
+        const cases = probes.map(([x, y, region]) => {
+          painter.render(canvas, [{ kind: "fill", region, color: "#ef5350" }]);
+          return { region, hit: painter.regionAt({ x, y }), pixels: probes.map(([x, y]) => pixel(x, y)) };
+        });
+        const brushPoint = probes.find(([, , id]) => id === "scute-10");
+        painter.render(canvas, [{ kind: "stroke", color: "#ab67cb", size: 40, points: [{ x: brushPoint[0], y: brushPoint[1] }] }]);
+        const brush = pixel(brushPoint[0], brushPoint[1]);
+        painter.render(canvas, [
+          ...probes.map(([, , region]) => ({ kind: "fill", region, color: "#42a5f5" })),
+          { kind: "stroke", color: "#ef5350", size: 1000, points: [{ x: 460, y: 310 }] }
+        ]);
+        const covered = painter.pixels(canvas); let protectedInk = 0;
+        for (let i = 0; i < blank.length; i += 4) {
+          if (blank[i] === 9 && blank[i + 1] === 30 && blank[i + 2] === 64 && blank[i + 3] === 255) {
+            assertPixel(i); protectedInk++;
+          }
+          if (blank[i + 3] === 0 && covered[i + 3] !== 0) throw new Error(`${version}: brush escaped silhouette`);
+        }
+        function assertPixel(i) {
+          if ([0, 1, 2, 3].some(c => Math.abs(covered[i + c] - blank[i + c]) > 1)) throw new Error(`${version}: lost ink at ${i / 4}`);
+        }
+        return { cases, protectedInk, brush, eye: pixel(737, 400), highlight: pixel(732, 392), eyeHit: painter.regionAt({ x: 737, y: 400 }) ?? null };
+      }, { version, probes });
+      for (const [i, test] of contract.cases.entries()) {
+        assert.equal(test.hit, test.region, `${version}: tap owns ${test.region}`);
+        for (const [j, pixel] of test.pixels.entries()) assert.deepEqual(pixel, i === j ? [239, 83, 80, 255] : [255, 240, 207, 255], `${version}: ${test.region} fills independently of ${contract.cases[j].region}`);
+      }
+      assert(contract.protectedInk > 12000);
+      assert.deepEqual(contract.eye, [9, 30, 64, 255]);
+      assert.deepEqual(contract.highlight, [255, 255, 255, 255]);
+      assert.equal(contract.eyeHit, null);
+      assert.deepEqual(contract.brush, [171, 103, 203, 255]);
+      await page.setViewportSize({ width: 1180, height: 820 }); await mount({ level });
+      const preview = page.getByRole("button", { name: "ANKYLOSAURUS", exact: true }).locator("canvas");
+      assert.equal(await preview.evaluate((c, version) => {
+        const painter = window.gallery.painterFor(version), expected = painter.canvas(c.width, c.height);
+        painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
+      }, version), true);
+      await press("ANKYLOSAURUS"); await page.locator(".coloring-workshop canvas").waitFor();
+      const shield = probes.find(([, , id]) => id === "scute-10"), club = probes.find(([, , id]) => id === "tail-club");
+      await press("FILL"); await tap(shield[0], shield[1]); await saved();
+      await press("COLOR"); await press("BLUE"); await tap(club[0], club[1]); await saved();
+      const work = (await listed()).works.find(r => r.document.geometry === version).document;
+      assert.deepEqual(work.actions, [{ kind: "fill", color: "#ef5350", region: "scute-10" }, { kind: "fill", color: "#42a5f5", region: "tail-club" }]);
+      const body = probes.find(([, , id]) => id === "body");
+      await press("COLOR"); await press("GREEN"); await tap(body[0], body[1]); await saved();
+      await page.screenshot({ path: join(artifacts, `ankylosaurus-${level}-1180x820.png`) });
+      await press("UNDO"); await saved(); await back();
+      await thumbnailMatches(work.id, work.actions, await reference(work.actions, version));
+      await page.reload(); await mount({ level: level === "hatchling" ? "paleontologist" : "hatchling" });
+      await page.locator(`[data-work-id="${work.id}"] button`).press("Enter");
+      await page.locator(".coloring-workshop canvas").waitFor();
+      assert.deepEqual(await surfacePixel(shield[0], shield[1]), [239, 83, 80, 255]);
+      assert.deepEqual(await surfacePixel(club[0], club[1]), [66, 165, 245, 255]);
+      await press("UNDO"); await saved();
+      assert.deepEqual(await surfacePixel(club[0], club[1]), [255, 240, 207, 255]);
+      await press("FILL"); await press("COLOR"); await press("BASE"); await tap(shield[0], shield[1]); await saved();
+      assert.equal(await page.getByRole("button", { name: "DONE", exact: true }).isDisabled(), true);
+      await press("UNDO"); await saved(); await press("DONE"); await page.locator(".coloring-result").waitFor();
+      newAnkylosaurusWorks.push({ id: work.id, version, shield });
+      assert.equal((await listed()).completedCount, 6 + newAnkylosaurusWorks.length);
+      await press("NEW WORK"); await page.locator(".coloring-workshop canvas").waitFor();
+      assert.equal(await page.locator("canvas").evaluate((c, version) => {
+        const painter = window.gallery.painterFor(version), expected = painter.canvas();
+        painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
+      }, version), true, "result NEW WORK preserves the saved variant across age changes");
+      await press("FILL"); await tap(shield[0], shield[1]); await saved(); await back();
+      const another = (await listed()).works.find(r => r.document.geometry === version && r.document.id !== work.id).document;
+      assert.notEqual(another.id, work.id);
+      assert.deepEqual((await listed()).works.find(r => r.document.id === work.id).document.actions, [{ kind: "fill", color: "#ef5350", region: "scute-10" }]);
+    }
+    for (const level of ["hatchling", "explorer", "paleontologist"]) {
+      for (const viewport of [{ width: 1180, height: 820 }, { width: 1024, height: 768 }]) {
+        await page.setViewportSize(viewport);
+        for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
+          await mount({ level, language, theme });
+          const name = language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР";
+          const version = level === "hatchling" ? "ankylosaurus-hatchling-2" : "ankylosaurus-explorer-1";
+          assert.equal(await page.locator(".gallery-new").count(), 3);
+          assert.equal(await page.getByRole("button", { name, exact: true }).count(), 1);
+          await press(name); await page.locator(".coloring-workshop canvas").waitFor();
+          assert.equal(await page.locator("canvas").evaluate((c, version) => {
+            const painter = window.gallery.painterFor(version), expected = painter.canvas();
+            painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
+          }, version), true, `${level}: only the new age-selected artwork is offered`);
+          const boxes = await page.locator(".coloring-workshop").evaluate(s => [...s.querySelectorAll("button, canvas")].filter(e => e.getBoundingClientRect().width > 0).map(e => {
+            const b = e.getBoundingClientRect(); return { canvas: e.tagName === "CANVAS", x: b.x, y: b.y, w: b.width, h: b.height };
+          }));
+          const canvas = boxes.find(b => b.canvas);
+          for (const b of boxes) {
+            assert(b.x >= -1 && b.y >= -1 && b.x + b.w <= viewport.width + 1 && b.y + b.h <= viewport.height + 1);
+            if (!b.canvas) { assert(b.w >= 48 && b.h >= 48); assert(b.x + b.w <= canvas.x + 1 || b.x >= canvas.x + canvas.w - 1 || b.y + b.h <= canvas.y + 1 || b.y >= canvas.y + canvas.h - 1); }
+          }
+          assert.deepEqual(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]), [viewport.width, viewport.height]);
+          await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ"); await page.locator('.gallery-works[aria-busy="false"]').waitFor();
+          for (const work of newAnkylosaurusWorks) {
+            await page.locator(`[data-work-id="${work.id}"] button`).press("Enter"); await page.locator(".coloring-workshop canvas").waitFor();
+            assert.deepEqual(await surfacePixel(work.shield[0], work.shield[1]), [239, 83, 80, 255]);
+            assert.equal((await listed()).works.find(r => r.document.id === work.id).document.geometry, work.version);
+            await press(language === "en" ? "DONE" : "ГОТОВО"); await page.locator(".coloring-result").waitFor();
+            assert.equal((await listed()).completedCount, 8);
+            await press(language === "en" ? "GALLERY" : "ГАЛЕРЕЯ"); await page.locator('.gallery-works[aria-busy="false"]').waitFor();
+          }
+        }
+      }
+    }
+    console.log(`PASS new Ankylosaurus variants: every-region fill/hit/brush/ink, previews, save/reload/reset/undo, cross-age reward/reopen, 24 layouts; workshop captures ${artifacts}`);
     // Unknown versions retain their receipt and never borrow another renderer.
     await page.evaluate(async () => {
       const db = await new Promise(resolve => { const request = indexedDB.open("rexlab-coloring"); request.onsuccess = () => resolve(request.result); });
@@ -600,7 +825,7 @@ const { chromium } = require("playwright");
       } finally { db.close(); }
     });
     await mount({}); assert.deepEqual((await listed()).unavailable, ["legacy-stego"]);
-    assert.equal((await listed()).completedCount, 5);
+    assert.equal((await listed()).completedCount, 8);
     await page.evaluate(() => window.gallery.damage("legacy-stego", "history")); await mount({});
     await press("PARENT RECOVERY"); await press("RESET COLORING");
     await page.getByText("LET’S PAINT A DINOSAUR!", { exact: true }).waitFor();

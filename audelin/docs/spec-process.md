@@ -100,9 +100,9 @@ is committed to the reviewed branch while it runs. Start builders with
 `scripts/build-step.sh` and reviews with `scripts/review-step.sh`, never by
 hand. The first checks the brief's parts and adds `scripts/brief-rules.md`,
 so no builder edits another target after an unrelated test times out. The
-second merges trunk first, so no review reports trunk's newer work as
-removed (each happened three times on 2026-10-27). A brief's `## Open` reads
-exactly "None."; a rule for the builder goes in Intent.
+second reviews from the branch's merge-base with trunk, so no review reports
+trunk's newer work as removed (each happened three times on 2026-10-27). A
+brief's `## Open` reads exactly "None."; a rule for the builder goes in Intent.
 
 Gate a step with `scripts/gate-step.sh` and land it with
 `scripts/land-step.sh <issue> <title>`, never with a hand-written chain:

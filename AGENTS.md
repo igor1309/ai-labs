@@ -150,9 +150,8 @@ composes it.
 - After Codex stops on a quota limit, start a fresh run once it is back;
   do not resume the stopped one. When the `claude-opus` fallback is limited
   too, send one ntfy push and wait; do not try other agents.
-- Review a branch against its merge-base with trunk, after merging trunk
-  in. A base on a trunk that has moved on shows trunk's new work as the
-  branch deleting it.
+- Review a branch against its merge-base with trunk. A base on a trunk
+  that has moved on shows trunk's new work as the branch deleting it.
 - Review every Codex implement run of a larger task with agister's review
   processes before it merges. When sol is limited, run the reviewers one
   at a time, falling back to `claude-opus`.
