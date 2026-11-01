@@ -1,4 +1,4 @@
-import Compose
+import Composer
 import Foundation
 import Testing
 import TranscriptFile

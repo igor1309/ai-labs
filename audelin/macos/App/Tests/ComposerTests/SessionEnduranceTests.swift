@@ -11,7 +11,7 @@ import SessionRehearsal
 import Synchronization
 import struct SystemAudioCapture.AudioPiece
 import Testing
-@testable import Compose
+@testable import Composer
 
 /// A long call in compressed time through the composed session: both tracks
 /// recorded to their files, Live text on, the transcript written, with a

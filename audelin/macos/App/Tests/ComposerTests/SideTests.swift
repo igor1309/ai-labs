@@ -4,7 +4,7 @@ import protocol FillIn.WrittenTrack
 import struct SideText.Audio
 import struct SideText.Text
 import Testing
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct SideTests {

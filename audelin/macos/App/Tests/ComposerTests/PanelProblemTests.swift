@@ -4,7 +4,7 @@ import PanelUI
 import Reading
 import Session
 import Testing
-@testable import Compose
+@testable import Composer
 
 struct PanelProblemTests {
 

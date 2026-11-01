@@ -3,7 +3,7 @@ import Foundation
 import PanelUI
 import Reading
 import Testing
-@testable import Compose
+@testable import Composer
 
 /// The panel maps and reduces each text state on the main actor. A state late
 /// in a long call must cost about what one early does, or the panel's work

@@ -1,7 +1,7 @@
 import BlockingTestWork
 import Foundation
 import Testing
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct CallsFolderCreationTests {

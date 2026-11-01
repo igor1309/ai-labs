@@ -5,7 +5,7 @@ import Session
 import struct SideText.Audio
 import TrackFile
 import protocol TranscriptWriting.CallText
-@testable import Compose
+@testable import Composer
 
 struct SessionConstruction: Sendable {
 

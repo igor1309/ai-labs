@@ -2,7 +2,7 @@ import Testing
 import LiveText
 import struct SideText.Audio
 import struct SideText.Text
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct TrackTextDeltaTests {

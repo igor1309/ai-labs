@@ -1,4 +1,4 @@
-@testable import Compose
+@testable import Composer
 import CoreAudioProcesses
 import Foundation
 import struct MicrophoneCapture.AudioPiece

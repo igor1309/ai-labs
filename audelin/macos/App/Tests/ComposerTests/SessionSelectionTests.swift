@@ -8,7 +8,7 @@ import Synchronization
 import struct SystemAudioCapture.AudioPiece
 import enum SystemAudioCapture.ProcessSelection
 import Testing
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct SessionSelectionTests {

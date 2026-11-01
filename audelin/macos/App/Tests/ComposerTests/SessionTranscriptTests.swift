@@ -4,7 +4,7 @@ import Session
 import Synchronization
 import Testing
 import TranscriptFile
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct SessionTranscriptTests {

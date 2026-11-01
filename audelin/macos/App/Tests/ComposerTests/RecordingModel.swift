@@ -1,9 +1,9 @@
-import Compose
+import Composer
 import Recording
 @testable import Audelin
 
 let makeRecording: MakeRecordingModel = { initial, session, log, ready, released in
-    await Audelin.makeRecording(initial: initial, session: session, log: log, callAudioReady: ready, callAudioReleased: released)
+    await Composer.makeRecording(initial: initial, session: session, log: log, callAudioReady: ready, callAudioReleased: released)
 }
 
 /// Recording composed as the app composes it, with no state log.

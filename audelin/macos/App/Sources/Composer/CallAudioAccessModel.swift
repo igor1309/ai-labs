@@ -1,24 +1,9 @@
 import CallAudioAccess
-import CallAudioProbe
 import Foundation
 import IMRxObservation
 
-func makeCallAudioAccess() async -> AccessPolicy {
-    let environment = OutputEnvironment()
-    let probe = CallAudioProbe()
-    let model = CallAudioAccessModel(device: { await environment.device() }, now: { ProcessInfo.processInfo.systemUptime })
-    await model.start(probe: {
-        switch await probe.measure() {
-        case .heard: .heard
-        case .silent: .silent
-        case .refused: .refused
-        }
-    }, sleep: { try await ContinuousClock().sleep(for: $0) }, changes: environment.changes)
-    return await model.policy()
-}
-
 /// Each request reduces and reads on this actor before waiting for its particular generation.
-actor CallAudioAccessModel {
+public actor CallAudioAccessModel {
     private var model: SyncModel<AccessState, AccessEvent>?
     private var doer: AccessDoer?
     private let feed = StateFeed<AccessState>()
@@ -26,11 +11,11 @@ actor CallAudioAccessModel {
     private let device: @Sendable () async -> UInt32?
     private let now: @Sendable () -> Double
 
-    init(device: @escaping @Sendable () async -> UInt32?, now: @escaping @Sendable () -> Double) {
+    public init(device: @escaping @Sendable () async -> UInt32?, now: @escaping @Sendable () -> Double) {
         self.device = device; self.now = now
     }
 
-    func start(probe: @escaping @Sendable () async -> AccessEvidence,
+    public func start(probe: @escaping @Sendable () async -> AccessEvidence,
                sleep: @escaping @Sendable (Duration) async throws -> Void, changes: AsyncStream<Void>) {
         guard model == nil, !feed.finished else { return }
         model = SyncModel(initialState: AccessState(), reduce: AccessReducer.reduce)
@@ -40,7 +25,7 @@ actor CallAudioAccessModel {
         }
     }
 
-    func policy() -> AccessPolicy {
+    public func policy() -> AccessPolicy {
         AccessPolicy(refresh: { await self.refresh() }, reserve: { await self.reserve() },
                      release: { await self.release() }, states: { await self.states() },
                      invalidate: { await self.send(.invalidated) })

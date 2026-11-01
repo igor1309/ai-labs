@@ -1,7 +1,7 @@
 import struct SideText.Audio
 import Synchronization
 import Testing
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct DeferredAudioTests {

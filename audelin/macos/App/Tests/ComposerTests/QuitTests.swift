@@ -1,4 +1,4 @@
-@testable import Compose
+@testable import Composer
 import Lifecycle
 import Recording
 import Synchronization

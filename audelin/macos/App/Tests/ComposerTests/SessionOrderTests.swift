@@ -1,7 +1,7 @@
 import Session
 import Testing
 @testable import Audelin
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct SessionOrderTests {

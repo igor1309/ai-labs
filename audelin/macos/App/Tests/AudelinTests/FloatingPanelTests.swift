@@ -1,6 +1,6 @@
 import AppKit
 @testable import Audelin
-@testable import Compose
+@testable import Composer
 import PanelUI
 import Preferences
 import Recording

@@ -3,7 +3,7 @@ import Foundation
 import Testing
 import TranscriptFile
 @testable import CallText
-@testable import Compose
+@testable import Composer
 @testable import LiveText
 
 @Suite(.timeLimit(.minutes(1)))
@@ -21,11 +21,11 @@ struct FinishedTextSwitchTests {
             .success(.init(words: [.init("continuing", start: 0, end: 1)])),
         ], endings: [.success(.init(words: []))])
         let finished = SwitchObservedSide(side: CallSide(
-            audio: finishedAudio, text: Compose.TrackText(recognizerSource: { finishedRecognizer }),
+            audio: finishedAudio, text: Composer.TrackText(recognizerSource: { finishedRecognizer }),
             written: TextTrack(chunks: []), sampleRate: 1
         ))
         let open = SwitchObservedSide(side: CallSide(
-            audio: openAudio, text: Compose.TrackText(recognizerSource: { openRecognizer }),
+            audio: openAudio, text: Composer.TrackText(recognizerSource: { openRecognizer }),
             written: TextTrack(chunks: []), sampleRate: 1
         ))
         let call = CallText(microphone: onCallSide ? open : finished, call: onCallSide ? finished : open)

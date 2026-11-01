@@ -3,7 +3,7 @@ import Foundation
 import LiveText
 import Session
 import Testing
-@testable import Compose
+@testable import Composer
 
 actor HeldSessionRecognizer: Recognizer {
 

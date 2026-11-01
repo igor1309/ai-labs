@@ -1,6 +1,6 @@
 import BlockingTestWork
 import Testing
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct SessionPiecesExecutorTests {

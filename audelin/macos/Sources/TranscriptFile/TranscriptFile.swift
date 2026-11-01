@@ -59,7 +59,7 @@ public actor TranscriptFile {
         try await self.init(url: url, binding: DiskTranscriptBinding())
     }
 
-    package init(url: URL, binding: any TranscriptFileBinding) async throws {
+    public init(url: URL, binding: any TranscriptFileBinding) async throws {
 
         let queue = DispatchSerialQueue(label: "audelin.TranscriptFile")
         // The first write happens on the file's queue, not on the caller's thread.

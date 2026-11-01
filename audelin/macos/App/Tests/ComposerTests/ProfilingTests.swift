@@ -1,5 +1,5 @@
 @testable import CallText
-@testable import Compose
+@testable import Composer
 import LiveText
 import Reading
 import Synchronization

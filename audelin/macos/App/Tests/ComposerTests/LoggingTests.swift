@@ -13,7 +13,7 @@ import Preferences
 import Recording
 import Session
 import Testing
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct LoggingTests {

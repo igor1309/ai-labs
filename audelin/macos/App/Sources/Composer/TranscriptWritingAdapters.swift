@@ -43,7 +43,7 @@ public struct WritingTranscript: SessionTranscriptFile {
 
         let entries = state.entries
         try await file.write(count: entries.count, finalCount: state.finalCount) {
-            Compose.Transcript.segment(from: entries[$0])
+            Composer.Transcript.segment(from: entries[$0])
         }
     }
 

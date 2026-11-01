@@ -1,7 +1,7 @@
 import CallAppProcesses
 import struct CallText.State
 import CallFolder
-import Compose
+import Composer
 import Foundation
 import PanelUI
 import struct MicrophoneCapture.AudioPiece

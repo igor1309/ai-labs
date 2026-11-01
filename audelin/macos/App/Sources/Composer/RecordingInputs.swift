@@ -1,6 +1,6 @@
 import Recording
 
-/// What Compose needs from Recording's model; the app supplies it.
+/// Recording's model as used by the composer.
 public struct RecordingInputs: Sendable {
 
     public var send: @Sendable (RecordingEvent) async -> Void

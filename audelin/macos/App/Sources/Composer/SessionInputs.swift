@@ -1,6 +1,6 @@
 import Session
 
-/// What Compose needs from one Session's model; the app supplies it.
+/// One Session's model as used by the composer.
 public struct SessionInputs: Sendable {
 
     /// Returns once the event is queued behind every event whose `send` already returned.

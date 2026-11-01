@@ -2,7 +2,7 @@ import Foundation
 import Session
 import Testing
 import TrackFile
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct SessionCaptureReportingTests {

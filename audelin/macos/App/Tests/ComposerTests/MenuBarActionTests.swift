@@ -1,4 +1,4 @@
-@testable import Compose
+@testable import Composer
 import Foundation
 import MenuBar
 import PanelUI

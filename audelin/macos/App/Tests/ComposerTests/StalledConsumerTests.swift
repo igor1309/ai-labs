@@ -9,7 +9,7 @@ import SessionRehearsal
 import Synchronization
 import struct SystemAudioCapture.AudioPiece
 import Testing
-@testable import Compose
+@testable import Composer
 
 /// A reader that falls behind for a while: the panel on a busy main actor, or
 /// a recogniser that stalls. What waits behind it must stay small, the

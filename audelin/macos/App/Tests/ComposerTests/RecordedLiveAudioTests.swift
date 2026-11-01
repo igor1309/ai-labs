@@ -3,7 +3,7 @@ import class RecordedCapture.RecordedCapture
 import enum RecordedCapture.Failure
 import Synchronization
 import Testing
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct RecordedLiveAudioTests {

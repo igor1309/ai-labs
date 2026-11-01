@@ -9,7 +9,7 @@ import Recordings
 import Synchronization
 import Testing
 @testable import Audelin
-@testable import Compose
+@testable import Composer
 
 @MainActor
 @Suite(.timeLimit(.minutes(1)))

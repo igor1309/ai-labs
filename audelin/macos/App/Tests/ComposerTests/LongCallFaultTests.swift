@@ -6,7 +6,7 @@ import Session
 import SessionRehearsal
 import Synchronization
 import Testing
-@testable import Compose
+@testable import Composer
 
 /// A piece that fails partway through a long call: the user hears of it,
 /// once rather than for every word that follows, and the recording goes on.

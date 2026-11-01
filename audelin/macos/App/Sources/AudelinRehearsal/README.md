@@ -25,7 +25,7 @@ with the call. It cannot answer every question:
 
 From `audelin/macos`:
 
-    swift run -c release AudelinRehearsal --minutes 180 --speed 10
+    swift run --package-path App -c release AudelinRehearsal --minutes 180 --speed 10
 
 | Option | Default | Meaning |
 |---|---|---|

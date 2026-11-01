@@ -1,7 +1,7 @@
 import AppKit
 import CallAppProcesses
 import CallFolder
-import Compose
+import Composer
 import Foundation
 import LiveText
 import struct MicrophoneCapture.AudioPiece

@@ -6,7 +6,7 @@ import Recording
 import Synchronization
 import Testing
 @testable import Audelin
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct CallAudioAccessWiringTests {
@@ -174,7 +174,7 @@ private final class AccessCompositionRig: Sendable {
         }, makeConditions: { [policy] recording, _ in
             RecordingConditions(recording: recording, microphoneAccess: { true }, callsFolder: { true }, room: { true }, access: policy)
         }, panel: ReadingClockSpy().panel(), makeModel: { [session] initial, _, log, ready, released in
-            await Audelin.makeRecording(initial: initial, session: session, log: log,
+            await Composer.makeRecording(initial: initial, session: session, log: log,
                                         callAudioReady: ready, callAudioReleased: released)
         }, makeSession: makeSession)
         self.conditions.withLock { $0 = conditions }

@@ -2,7 +2,7 @@
 import PanelUI
 import Reading
 import Testing
-@testable import Compose
+@testable import Composer
 
 /// Reading the call from the final cursor must show what reading it whole shows.
 struct ReadingFinalCursorTests {

@@ -1,6 +1,6 @@
 import FillIn
 import Testing
-@testable import Compose
+@testable import Composer
 @testable import TrackFile
 
 @Suite(.timeLimit(.minutes(1)))
@@ -12,7 +12,7 @@ struct AudioTests {
             let track = try await TrackFile(url: folder.appendingPathComponent("track.caf"))
             try await track.write([0.25, -0.5, 0.125, 0.5], sampleRate: 48_000)
             try await track.close()
-            let adapter = Compose.WrittenTrack(track: track)
+            let adapter = Composer.WrittenTrack(track: track)
             let rate = 48_000.0
             let cases: [(Double, Double, [Float])] = [
                 (0, 4 / rate, [0.25, -0.5, 0.125, 0.5]),
@@ -41,7 +41,7 @@ struct AudioTests {
                 makeConversion: { _ in throw ScriptFailure.failed },
                 readWaiting: { began.send() }
             )
-            let adapter = Compose.WrittenTrack(track: track)
+            let adapter = Composer.WrittenTrack(track: track)
             let read = Task { try await adapter.read(from: 0, through: 1) }
             defer { read.cancel() }
             await began.next()

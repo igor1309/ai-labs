@@ -1,3 +1,4 @@
+@testable import Composer
 import CallAudioAccess
 import Synchronization
 import Testing

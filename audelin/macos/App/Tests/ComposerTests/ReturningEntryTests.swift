@@ -5,7 +5,7 @@ import struct SideText.Audio
 import struct SideText.Text
 import Synchronization
 import Testing
-@testable import Compose
+@testable import Composer
 
 /// The call text can fall behind a side while it merges a long call's
 /// entries. An entry the recogniser drops, whose id then comes back for new

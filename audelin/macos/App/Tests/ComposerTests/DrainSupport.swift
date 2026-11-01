@@ -3,7 +3,7 @@ import LiveText
 import Session
 import Synchronization
 import Testing
-@testable import Compose
+@testable import Composer
 
 /// A held dependency stays held even when its caller is cancelled.
 final class DrainGate: Sendable {

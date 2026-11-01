@@ -4,7 +4,7 @@ import Foundation
 import LiveText
 import Session
 import Testing
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct SessionRateTests {

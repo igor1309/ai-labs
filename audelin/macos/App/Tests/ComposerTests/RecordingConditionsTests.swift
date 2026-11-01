@@ -3,7 +3,7 @@ import Foundation
 import Recording
 import Synchronization
 import Testing
-@testable import Compose
+@testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingConditionsTests {
