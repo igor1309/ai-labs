@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -24,12 +25,20 @@ while [ $# -gt 0 ]; do
 done
 `
 
+// launchctlSpy stands in for launchctl, so a test never loads or unloads
+// the user's launch agents: it appends each call's arguments, a line each,
+// to launchctl.args beside it.
+const launchctlSpy = `#!/bin/sh
+echo "$*" >> "$(dirname "$0")/launchctl.args"
+`
+
 // installed is what a run of install.sh did: its exit code, its output,
 // and the directory and arguments go was run with, nil where it was not.
 type installed struct {
 	code           int
 	stdout, stderr string
 	goRun          []string
+	launchctl      []string
 }
 
 // install runs scripts/loop/install.sh with user its home directory and
@@ -38,6 +47,9 @@ func install(t *testing.T, user string) installed {
 	t.Helper()
 	bin := t.TempDir()
 	if err := os.WriteFile(filepath.Join(bin, "go"), []byte(goSpy), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bin, "launchctl"), []byte(launchctlSpy), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	command := exec.Command("bash", "scripts/loop/install.sh")
@@ -57,6 +69,13 @@ func install(t *testing.T, user string) installed {
 	switch {
 	case err == nil:
 		got.goRun = strings.Split(strings.TrimSuffix(string(args), "\n"), "\n")
+	case !errors.Is(err, fs.ErrNotExist):
+		t.Fatal(err)
+	}
+	calls, err := os.ReadFile(filepath.Join(bin, "launchctl.args"))
+	switch {
+	case err == nil:
+		got.launchctl = strings.Split(strings.TrimSuffix(string(calls), "\n"), "\n")
 	case !errors.Is(err, fs.ErrNotExist):
 		t.Fatal(err)
 	}
@@ -247,5 +266,32 @@ func TestInstallReplacesHomesSettingsAndKeepsTheRest(t *testing.T) {
 				t.Errorf("the backup\n got %q\nwant %q", got, want)
 			}
 		})
+	}
+}
+
+// An install writes the launch agent that keeps agister pages serving, over
+// the binary it built, and reloads it.
+//
+// Contract test: runs install.sh in bash, with go and launchctl spies.
+func TestInstallWritesAndReloadsThePagesLaunchAgent(t *testing.T) {
+	t.Parallel()
+	user := t.TempDir()
+	got := install(t, user)
+	if got.code != 0 {
+		t.Fatalf("exit %d, stderr %q", got.code, got.stderr)
+	}
+	label := "com.igormalyarov.agister-pages"
+	plist := filepath.Join(user, "Library", "LaunchAgents", label+".plist")
+	domain := "gui/" + strconv.Itoa(os.Getuid())
+	if want := []string{"bootout " + domain + "/" + label, "bootstrap " + domain + " " + plist}; !slices.Equal(got.launchctl, want) {
+		t.Errorf("launchctl %q, want %q", got.launchctl, want)
+	}
+	data, err := os.ReadFile(plist)
+	if err != nil {
+		t.Fatal(err)
+	}
+	program := "<string>" + filepath.Join(user, ".local", "bin", "agister") + "</string><string>pages</string><string>--no-open</string>"
+	if !strings.Contains(string(data), program) {
+		t.Errorf("the launch agent runs no %q:\n%s", program, data)
 	}
 }

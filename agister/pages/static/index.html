@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agister</title>
+<style>
+  :root { color-scheme: dark; --bg: #1b1c1f; --panel: #232428; --line: #34363c; --dim: #9a9ca3; --ok: #4caf50; --bad: #e5534b; --warn: #d4a72c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: #e8e8ea; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  header { display: flex; align-items: center; gap: 24px; padding: 14px 24px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; }
+  nav button { background: none; border: 1px solid var(--line); color: var(--dim); padding: 6px 14px; cursor: pointer; font: inherit; }
+  nav button:first-child { border-radius: 8px 0 0 8px; } nav button:last-child { border-radius: 0 8px 8px 0; border-left: 0; }
+  nav button.on { background: var(--panel); color: #fff; }
+  #read { margin-left: auto; color: var(--dim); }
+  #reload { background: none; border: 1px solid var(--line); color: #fff; border-radius: 8px; padding: 6px 10px; cursor: pointer; }
+  main { padding: 16px 24px; }
+  .note { color: var(--dim); margin: 0 0 12px; }
+  .filters { display: flex; gap: 16px; margin-bottom: 12px; color: var(--dim); }
+  select { background: var(--panel); color: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; font: inherit; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 10px; overflow: hidden; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--dim); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.wrap { white-space: normal; color: var(--dim); max-width: 40ch; }
+  tr.pick { cursor: pointer; } tr.pick:hover, tr.chosen { background: #2c2e33; }
+  .completed { color: var(--ok); } .failed, .lost, .refused { color: var(--bad); }
+  .running, .waiting, .interrupted, .unknown, .writer.stalled { color: var(--warn); }
+  #detail { margin-top: 16px; background: var(--panel); border-radius: 10px; padding: 16px; }
+  #detail h2 { margin: 0 0 8px; font-size: 16px; }
+  #detail dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; margin: 0 0 12px; }
+  #detail dt { color: var(--dim); } #detail dd { margin: 0; word-break: break-all; }
+  pre { background: var(--bg); padding: 12px; border-radius: 8px; overflow: auto; max-height: 480px; white-space: pre-wrap; }
+  .error { color: var(--bad); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Agister</h1>
+  <nav><button data-view="runs">Runs</button><button data-view="compare">Compare</button></nav>
+  <span id="read"></span>
+  <button id="reload" title="Read again">↻</button>
+</header>
+<main id="view"></main>
+<script>
+(() => {
+  const VIEW_KEY = 'agister-pages:view';
+  const state = { view: localStorage.getItem(VIEW_KEY) === 'compare' ? 'compare' : 'runs', list: null, filter: { name: '', status: '' }, chosen: null };
+  const $view = document.getElementById('view');
+
+  const el = (tag, props = {}, ...children) => {
+    const node = Object.assign(document.createElement(tag), props);
+    for (const child of children.flat()) if (child != null) node.append(child);
+    return node;
+  };
+  const duration = (ms) => {
+    if (typeof ms !== 'number' || ms < 0) return '';
+    if (ms < 1000) return `${Math.round(ms)}ms`;
+    const total = Math.round(ms / 1000), h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), s = total % 60;
+    return h ? `${h}h ${m}m` : m ? `${m}m ${s}s` : `${s}s`;
+  };
+  const cost = (usd) => (typeof usd === 'number' ? `$${usd.toFixed(2)}` : '');
+  const when = (iso) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime()) || d.getFullYear() < 2000) return '';
+    return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+  const nameOf = (r) => r.workflow || (r.process ? `${r.process}${r.agent ? ' on ' + r.agent : ''}` : '');
+  const status = (s, cls) => el('span', { className: s, textContent: cls ? `${s}: ${cls}` : s });
+  const get = async (path) => {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`${path}: ${res.status} ${(await res.text()).trim()}`);
+    return res.json();
+  };
+  const stamp = () => { document.getElementById('read').textContent = `read ${new Date().toLocaleTimeString()}`; };
+  const fail = (err) => $view.replaceChildren(el('p', { className: 'error', textContent: String(err.message || err) }));
+
+  async function showRuns() {
+    state.list = await get('api/runs');
+    stamp();
+    renderRuns();
+    if (state.chosen) openRun(state.chosen);
+  }
+
+  function renderRuns() {
+    const { list, filter } = state;
+    const names = [...new Set(list.runs.map(nameOf).filter(Boolean))].sort();
+    const statuses = [...new Set(list.runs.map((r) => r.status))].sort();
+    const select = (key, all, options) => {
+      const node = el('select', {}, el('option', { value: '', textContent: all }), options.map((o) => el('option', { value: o, textContent: o, selected: o === filter[key] })));
+      node.onchange = () => { filter[key] = node.value; renderRuns(); };
+      return node;
+    };
+    const shown = list.runs.filter((r) => (!filter.name || nameOf(r) === filter.name) && (!filter.status || r.status === filter.status));
+    const notes = [`Runs in Agister home, newest first; click a run to open it. ${list.runs.length} of ${list.total} read.`];
+    if (list.skipped) notes.push(`${list.skipped} could not be read and ${list.skipped === 1 ? 'is' : 'are'} left out.`);
+    const rows = shown.map((r) => {
+      const tr = el('tr', { className: `pick${r.id === state.chosen ? ' chosen' : ''}`, title: r.id },
+        el('td', { textContent: when(r.started) }), el('td', { textContent: nameOf(r) }), el('td', {}, status(r.status, r.class)),
+        el('td', { className: 'num', textContent: duration(r.duration_ms) }), el('td', { className: 'num', textContent: cost(r.cost) }),
+        el('td', { className: 'num', textContent: r.calls }), el('td', { className: 'wrap', textContent: r.reason || '' }));
+      tr.onclick = () => (state.chosen === r.id ? closeRun() : openRun(r.id));
+      return tr;
+    });
+    $view.replaceChildren(
+      el('p', { className: 'note', textContent: notes.join(' ') }),
+      el('div', { className: 'filters' }, el('label', {}, 'run ', select('name', 'all', names)), el('label', {}, 'status ', select('status', 'all', statuses))),
+      rows.length
+        ? el('table', {}, el('thead', {}, el('tr', {}, ['Started', 'Run', 'Status'].map((h) => el('th', { textContent: h })), ['Wall', 'Cost', 'Calls'].map((h) => el('th', { className: 'num', textContent: h })), el('th', { textContent: 'Reason' }))), el('tbody', {}, rows))
+        : el('p', { className: 'note', textContent: list.runs.length ? 'No runs match the filters.' : 'No runs yet.' }),
+      el('div', { id: 'detail', hidden: true }));
+  }
+
+  function closeRun() {
+    state.chosen = null;
+    renderRuns();
+  }
+
+  async function openRun(id) {
+    state.chosen = id;
+    for (const tr of document.querySelectorAll('tr.pick')) tr.classList.toggle('chosen', tr.title === id);
+    const box = document.getElementById('detail');
+    if (!box) return;
+    box.hidden = false;
+    box.replaceChildren(el('p', { className: 'note', textContent: 'Reading…' }));
+    let r;
+    try { r = await get(`api/runs/${encodeURIComponent(id)}`); } catch (err) { box.replaceChildren(el('p', { className: 'error', textContent: err.message })); return; }
+    if (state.chosen !== id) return;
+    const facts = [['id', r.id], ['run', nameOf(r)], ['started', when(r.started)], ['ended', r.ended ? when(r.ended) : ''], ['directory', r.dir || ''],
+      ...Object.entries(r.params || {}).map(([k, v]) => [`param ${k}`, v])].filter(([, v]) => v);
+    box.replaceChildren(
+      el('h2', {}, nameOf(r) || r.id, ' ', status(r.status, r.class)),
+      r.reason ? el('p', { className: 'error', textContent: r.reason }) : null,
+      el('dl', {}, facts.map(([k, v]) => [el('dt', { textContent: k }), el('dd', { textContent: v })])),
+      r.calls.length ? el('table', {}, el('thead', {}, el('tr', {}, ['Step', 'Process', 'Agent', 'Status'].map((h) => el('th', { textContent: h })), ['Wall', 'Cost'].map((h) => el('th', { className: 'num', textContent: h })))),
+        el('tbody', {}, r.calls.map((c) => el('tr', {}, el('td', { textContent: c.step }), el('td', { textContent: c.process }), el('td', { textContent: c.agent }), el('td', {}, status(c.status, c.class)),
+          el('td', { className: 'num', textContent: duration(c.duration_ms) }), el('td', { className: 'num', textContent: cost(c.cost) }))))) : null,
+      r.children.length ? el('p', { className: 'note', textContent: 'Child runs: ' }, r.children.map((c, i) => [i ? ', ' : '', `${c.workflow} `, status(c.status, c.class)])) : null,
+      r.output != null ? el('pre', { textContent: typeof r.output === 'string' ? r.output : JSON.stringify(r.output, null, 2) }) : null);
+  }
+
+  async function showCompare() {
+    const c = await get('api/runs/compare');
+    stamp();
+    const rows = c.groups.map((g) => el('tr', {}, el('td', { textContent: g.process }), el('td', { textContent: g.agent }),
+      ...[g.runs, g.completed, `${Math.round(g.pass_rate * 100)}%`, duration(g.median_ms), cost(g.total_cost) + (g.cost_unknown ? ` (+${g.cost_unknown} unknown)` : '')]
+        .map((v) => el('td', { className: 'num', textContent: v }))));
+    $view.replaceChildren(
+      el('p', { className: 'note', textContent: 'Calls that ended completed or failed, by process and agent, whatever their run’s status.' + (c.skipped ? ` ${c.skipped} runs could not be read.` : '') }),
+      rows.length ? el('table', {}, el('thead', {}, el('tr', {}, ['Process', 'Agent'].map((h) => el('th', { textContent: h })), ['Calls', 'Completed', 'Pass rate', 'Median wall', 'Cost'].map((h) => el('th', { className: 'num', textContent: h })))), el('tbody', {}, rows))
+        : el('p', { className: 'note', textContent: 'No ended calls yet.' }));
+  }
+
+  function show(view) {
+    state.view = view;
+    localStorage.setItem(VIEW_KEY, view);
+    for (const b of document.querySelectorAll('nav button')) b.classList.toggle('on', b.dataset.view === view);
+    (view === 'compare' ? showCompare() : showRuns()).catch(fail);
+  }
+
+  for (const b of document.querySelectorAll('nav button')) b.onclick = () => show(b.dataset.view);
+  document.getElementById('reload').onclick = () => show(state.view);
+  show(state.view);
+})();
+</script>
+</body>
+</html>

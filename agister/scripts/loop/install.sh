@@ -38,4 +38,27 @@ fi
 for from in "$src/home/"*; do
   cp -R "$from" "$home/"
 done
+# The launch agent that keeps agister pages serving at 127.0.0.1:7465,
+# rewritten and reloaded so it runs the binary just built.
+label=com.igormalyarov.agister-pages
+plist=$HOME/Library/LaunchAgents/$label.plist
+logs=$HOME/Library/Logs/agister
+mkdir -p "$HOME/Library/LaunchAgents" "$logs"
+cat > "$plist" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key><string>$label</string>
+	<key>ProgramArguments</key>
+	<array><string>$HOME/.local/bin/agister</string><string>pages</string><string>--no-open</string></array>
+	<key>RunAtLoad</key><true/>
+	<key>KeepAlive</key><true/>
+	<key>StandardOutPath</key><string>$logs/pages.out.log</string>
+	<key>StandardErrorPath</key><string>$logs/pages.err.log</string>
+</dict>
+</plist>
+PLIST
+launchctl bootout "gui/$(id -u)/$label" 2>/dev/null || true
+launchctl bootstrap "gui/$(id -u)" "$plist"
 echo "agister at $(git -C "$src" rev-parse --short HEAD)"
