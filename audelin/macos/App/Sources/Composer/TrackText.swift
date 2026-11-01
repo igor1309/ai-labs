@@ -2,20 +2,20 @@ import struct SideText.Audio
 import struct SideText.Text
 import LiveText
 
-public actor TrackText {
+actor TrackText {
 
-    public struct Update: Equatable, Sendable {
+    struct Update: Equatable, Sendable {
 
-        public let final: [Text]
-        public let tail: [Text]
+        let final: [Text]
+        let tail: [Text]
         /// No text still to come starts before this.
-        public var noTextBefore: Double? = nil
+        var noTextBefore: Double? = nil
 
         /// The downstream text stores still consume whole-call snapshots.
-        public var all: [Text] { final + tail }
+        var all: [Text] { final + tail }
     }
 
-    public enum Failure: Error, Equatable {
+    enum Failure: Error, Equatable {
 
         case notPrepared
         case updateFailed
@@ -128,12 +128,12 @@ public actor TrackText {
     private var noTextBefore: Double?
     private var appliedReply: Reply?
 
-    public init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer) {
+    init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer) {
 
         self.recognizerSource = recognizerSource
     }
 
-    public func prepare() async throws {
+    func prepare() async throws {
 
         try Task.checkCancellation()
         guard listening == nil else { return }
@@ -171,7 +171,7 @@ public actor TrackText {
         )
     }
 
-    public func hear(_ audio: Audio) async throws -> Update {
+    func hear(_ audio: Audio) async throws -> Update {
 
         try Task.checkCancellation()
         guard let listening else { throw Failure.notPrepared }
@@ -194,7 +194,7 @@ public actor TrackText {
         return try await nextUpdate(reply)
     }
 
-    public func finish() async throws -> Update {
+    func finish() async throws -> Update {
 
         try Task.checkCancellation()
         guard let session = listening else { throw Failure.notPrepared }
@@ -224,7 +224,7 @@ public actor TrackText {
     }
 
     /// Ends and joins the adapter's work without publishing another text update.
-    public func shutdown() async {
+    func shutdown() async {
 
         guard let session = listening else { return }
         listening = nil
@@ -277,7 +277,7 @@ public actor TrackText {
     }
 
     /// A segment runs to the next one's start, and the last to `end`.
-    public static func text(from segments: [Segments.Segment], through end: Double) -> [Text] {
+    static func text(from segments: [Segments.Segment], through end: Double) -> [Text] {
 
         segments.enumerated().map { index, segment in
             text(segment, index + 1 < segments.count ? segments[index + 1].start : end)

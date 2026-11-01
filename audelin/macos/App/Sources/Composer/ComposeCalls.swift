@@ -37,7 +37,7 @@ final class ComposeCalls: RecordingsCalls, Sendable {
 
 /// A failed mutation can leave a partially deleted folder; refresh the disk view
 /// after delivering the failure, retaining its reason until the next action.
-public func handleRecordingsEffect(_ handler: RecordingsEffectHandler, _ effect: RecordingsEffect) -> AsyncStream<RecordingsEvent> {
+func handleRecordingsEffect(_ handler: RecordingsEffectHandler, _ effect: RecordingsEffect) -> AsyncStream<RecordingsEvent> {
     AsyncStream { output in
         let task = Task {
             for await event in handler.handle(effect) {

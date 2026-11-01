@@ -6,13 +6,13 @@ import Reading
 import Session
 
 /// One recording's reading model as the panel uses it; the app makes it on the main actor.
-public struct ReadingInputs: Sendable {
+struct ReadingInputs: Sendable {
 
     let state: @MainActor @Sendable () -> ReadingState
     let send: @MainActor @Sendable (ReadingEvent) -> Void
 
     /// `state` must be observable, so the panel sees each change it reads.
-    public init(state: @escaping @MainActor @Sendable () -> ReadingState, send: @escaping @MainActor @Sendable (ReadingEvent) -> Void) {
+    init(state: @escaping @MainActor @Sendable () -> ReadingState, send: @escaping @MainActor @Sendable (ReadingEvent) -> Void) {
 
         self.state = state
         self.send = send
@@ -20,7 +20,7 @@ public struct ReadingInputs: Sendable {
 }
 
 /// The current recording's panel state and its reading actions.
-public actor AudelinPanel {
+actor AudelinPanel {
 
     private let makeReading: @MainActor @Sendable () -> ReadingInputs
     private let now: @Sendable () -> Double
@@ -33,21 +33,10 @@ public actor AudelinPanel {
     private var subscribers: [UInt64: AsyncStream<PanelState>.Continuation] = [:]
     private var nextSubscriber: UInt64 = 0
 
-    /// Each recording reads through a fresh model from `makeReading`.
-    public init(makeReading: @escaping @MainActor @Sendable () -> ReadingInputs) {
-
-        self.init(makeReading: makeReading, sink: SystemLogSink())
-    }
-
-    init(makeReading: @escaping @MainActor @Sendable () -> ReadingInputs, sink: any LogSink) {
-
-        self.init(makeReading: makeReading, now: { ProcessInfo.processInfo.systemUptime }, ticks: readingSeconds, sink: sink)
-    }
-
     init(
         makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
         now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink,
-        intervals: ProfileIntervals = .system
+        intervals: ProfileIntervals
     ) {
 
         self.makeReading = makeReading
@@ -58,7 +47,7 @@ public actor AudelinPanel {
     }
 
     /// Each subscriber immediately receives the current state.
-    public func states() -> AsyncStream<PanelState> {
+    func states() -> AsyncStream<PanelState> {
 
         let id = nextSubscriber
         nextSubscriber += 1
@@ -70,7 +59,7 @@ public actor AudelinPanel {
     }
 
     /// The menu wires recording controls; session controls and reading actions stay here.
-    public func send(_ event: PanelEvent) async {
+    func send(_ event: PanelEvent) async {
 
         if event == .switchLiveTextOn, let enableLiveText = current?.enableLiveText { await enableLiveText() }
         if let event = readingEvent(event), let reading = current?.reading { await reading.send(event) }
@@ -268,24 +257,5 @@ private final class ReadingTime {
     func tick() {
 
         if let origin { reading.send(.recordingChanged(.on(elapsed: now() - origin))) }
-    }
-}
-
-private func readingSeconds() -> AsyncStream<Void> {
-
-    AsyncStream { output in
-        let task = Task {
-            let clock = ContinuousClock()
-            var next = clock.now
-            do {
-                while true {
-                    next += .seconds(1)
-                    try await clock.sleep(until: next)
-                    output.yield(())
-                }
-            } catch {}
-            output.finish()
-        }
-        output.onTermination = { _ in task.cancel() }
     }
 }

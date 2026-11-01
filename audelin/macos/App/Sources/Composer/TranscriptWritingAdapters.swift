@@ -6,20 +6,20 @@ import protocol TranscriptWriting.CallText
 import protocol TranscriptWriting.Transcript
 import protocol TranscriptWriting.FailureReport
 
-public struct WritingCallText: TranscriptWriting.CallText {
+struct WritingCallText: TranscriptWriting.CallText {
 
     let text: CallReader
 
-    public init(text: CallReader) { self.text = text }
+    init(text: CallReader) { self.text = text }
 
-    public var updates: AsyncStream<State> { text.updates }
-    public func start(enabled: Bool) async { await text.start(enabled: enabled) }
-    public func setEnabled(_ enabled: Bool) async { await text.setEnabled(enabled) }
-    public func stop() async { await text.stop() }
+    var updates: AsyncStream<State> { text.updates }
+    func start(enabled: Bool) async { await text.start(enabled: enabled) }
+    func setEnabled(_ enabled: Bool) async { await text.setEnabled(enabled) }
+    func stop() async { await text.stop() }
 }
 
 /// A recording's transcript destination, kept open until its text has stopped.
-public protocol SessionTranscriptFile: Sendable {
+protocol SessionTranscriptFile: Sendable {
 
     func write(_ state: State) async throws
 
@@ -33,13 +33,13 @@ struct TranscriptDestination: TranscriptWriting.Transcript {
     func write(_ state: State) async throws { try await file.write(state) }
 }
 
-public struct WritingTranscript: SessionTranscriptFile {
+struct WritingTranscript: SessionTranscriptFile {
 
     let file: TranscriptFile
 
-    public init(file: TranscriptFile) { self.file = file }
+    init(file: TranscriptFile) { self.file = file }
 
-    public func write(_ state: State) async throws {
+    func write(_ state: State) async throws {
 
         let entries = state.entries
         try await file.write(count: entries.count, finalCount: state.finalCount) {
@@ -47,7 +47,7 @@ public struct WritingTranscript: SessionTranscriptFile {
         }
     }
 
-    public func close() async { await file.close() }
+    func close() async { await file.close() }
 }
 
 final class TranscriptFailureReport: FailureReport, Sendable {

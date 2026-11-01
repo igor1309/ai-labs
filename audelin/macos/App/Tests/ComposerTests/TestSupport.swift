@@ -6,7 +6,7 @@ import LiveText
 import Synchronization
 import Testing
 
-func withComposeFolder(_ body: (URL) async throws -> Void) async throws {
+func withComposeFolder(isolation: isolated (any Actor)? = #isolation, _ body: (URL) async throws -> Void) async throws {
 
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent("compose-test-\(UUID())")
     try await offPool { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false) }

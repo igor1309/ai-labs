@@ -4,11 +4,8 @@ import CallAppProcesses
 import CallFolder
 import Foundation
 import LiveText
-import struct MicrophoneCapture.AudioPiece
 import Session
 import Synchronization
-import struct SystemAudioCapture.AudioPiece
-import enum SystemAudioCapture.ProcessSelection
 import Testing
 @testable import Audelin
 @testable import Composer
@@ -98,11 +95,11 @@ struct SessionRig: Sendable {
     let pieces: SessionPieces
     let session: SessionInputs
     let subscription: Task<Void, Never>
-    let microphone: CaptureScript<MicrophoneCapture.AudioPiece>
-    let call: CaptureScript<SystemAudioCapture.AudioPiece>
+    let microphone: CaptureScript<CaptureBuffer>
+    let call: CaptureScript<CaptureBuffer>
     let mine: SessionRecognizer
     let theirs: SessionRecognizer
-    let selections = Values<SystemAudioCapture.ProcessSelection>()
+    let selections = Values<CaptureSelection>()
 
     init(
         root: URL, microphoneFails: Bool, processesFail: Bool, construction: SessionConstruction,

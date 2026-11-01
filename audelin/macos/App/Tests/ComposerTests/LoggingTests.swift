@@ -7,8 +7,6 @@ import CoreAudioProcesses
 import Foundation
 import protocol LiveAudio.Capture
 import struct LiveAudio.AudioPiece
-import struct MicrophoneCapture.AudioPiece
-import struct SystemAudioCapture.AudioPiece
 import Preferences
 import Recording
 import Session
@@ -212,7 +210,7 @@ struct LoggingTests {
             let rig = LogPieces(root: root, sink: sink)
             defer { rig.finish() }
             let recording = await composeRecording(initial: .init(automatic: true), access: testAccessPolicy(),
-                makePieces: { _ in rig.pieces }, liveText: { false }, sink: sink, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
+                makePieces: { _ in rig.pieces }, liveText: { false }, sink: sink, timeZone: { .gmt }, panel: ReadingClockSpy().panel(), makeModel: makeRecording, makeSession: makeSession)
             let conditions = RecordingConditions(recording: recording, microphoneAccess: { true },
                 callsFolder: { true }, room: { true }, access: testAccessPolicy())
             await conditions.refresh()
@@ -279,7 +277,7 @@ struct LoggingTests {
             let reports = Values<RecordingSessionReport>()
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
                 report: { id, report in #expect(id == 8); reports.append(report) },
-                connect: subscribe, sink: delivered, panel: ReadingClockSpy().panel(), makeSession: makeSession)
+                connect: subscribe, sink: delivered, timeZone: { .gmt }, panel: ReadingClockSpy().panel(), makeSession: makeSession)
             #expect(await sessions.begin(id: 8) == .ready)
             await sessions.end(id: 8)
             #expect(reports.all == [.callCreated(id: "1970.01.01-0000")])
@@ -321,7 +319,7 @@ struct LoggingTests {
             let sink = LogSpy()
             let session = await makeSession(handler: rig.pieces.handler())
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                report: { _, _ in }, connect: subscribe, sink: sink,
+                report: { _, _ in }, connect: subscribe, sink: sink, timeZone: { .gmt },
                 panel: ReadingClockSpy().panel(), makeSession: { _ in session })
             #expect(await sessions.begin(id: 1) == .ready)
             for index in 0..<20 {
@@ -475,14 +473,14 @@ private struct LogPreferencesStorage: PreferenceSettingsStorage {
 
 private struct LogPieces: Sendable {
     let pieces: SessionPieces
-    let microphone: CaptureScript<MicrophoneCapture.AudioPiece>
-    let call: CaptureScript<SystemAudioCapture.AudioPiece>
+    let microphone: CaptureScript<CaptureBuffer>
+    let call: CaptureScript<CaptureBuffer>
 
     init(root: URL, sink: any LogSink, missingModels: [String] = []) {
-        let microphone = CaptureScript<MicrophoneCapture.AudioPiece>(
+        let microphone = CaptureScript<CaptureBuffer>(
             first: .init(samples: [0.25, -0.5], sampleRate: 48_000),
             last: .init(samples: [0.125], sampleRate: 48_000), fails: false)
-        let call = CaptureScript<SystemAudioCapture.AudioPiece>(
+        let call = CaptureScript<CaptureBuffer>(
             first: .init(samples: [0.25, -0.5], sampleRate: 48_000),
             last: .init(samples: [0.125], sampleRate: 48_000), fails: false)
         self.microphone = microphone

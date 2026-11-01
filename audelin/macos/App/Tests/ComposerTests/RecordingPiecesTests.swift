@@ -3,13 +3,11 @@ import CoreAudioProcesses
 import Darwin
 import Foundation
 import LiveText
-import struct MicrophoneCapture.AudioPiece
 import Preferences
 import Recording
 import Session
+import SessionRehearsal
 import Synchronization
-import struct SystemAudioCapture.AudioPiece
-import enum SystemAudioCapture.ProcessSelection
 import Testing
 @testable import Audelin
 @testable import Composer
@@ -219,9 +217,9 @@ private struct RecordingPiecesRig: Sendable {
     let callsURL: URL
     let callApp = RecordingCallApp()
     let timeZone = RecordingPiecesTimeZone()
-    let microphones = Values<RecordingPiecesCapture<MicrophoneCapture.AudioPiece>>()
-    let calls = Values<RecordingPiecesCapture<SystemAudioCapture.AudioPiece>>()
-    let selections = Values<SystemAudioCapture.ProcessSelection>()
+    let microphones = Values<RecordingPiecesCapture<CaptureBuffer>>()
+    let calls = Values<RecordingPiecesCapture<CaptureBuffer>>()
+    let selections = Values<CaptureSelection>()
     let recognizers = Values<SessionRecognizer>()
     let makePieces: @Sendable (UInt64) -> SessionPieces
 
@@ -239,7 +237,7 @@ private struct RecordingPiecesRig: Sendable {
             now: { Date(timeIntervalSince1970: 0) }, timeZone: { timeZone.value.withLock { $0 } },
             startMicrophone: {
                 try await startProductionMicrophone(makeCapture: {
-                    let capture = RecordingPiecesCapture<MicrophoneCapture.AudioPiece>(
+                    let capture = RecordingPiecesCapture<CaptureBuffer>(
                         first: .init(samples: [0.25], sampleRate: 48_000), last: .init(samples: [0.5], sampleRate: 48_000)
                     )
                     microphones.append(capture)
@@ -249,7 +247,7 @@ private struct RecordingPiecesRig: Sendable {
             startCall: { selection in
                 try await startProductionCallAudio(selection, makeCapture: {
                     selections.append($0)
-                    let capture = RecordingPiecesCapture<SystemAudioCapture.AudioPiece>(
+                    let capture = RecordingPiecesCapture<CaptureBuffer>(
                         first: .init(samples: [-0.25], sampleRate: 48_000), last: .init(samples: [-0.5], sampleRate: 48_000)
                     )
                     calls.append(capture)

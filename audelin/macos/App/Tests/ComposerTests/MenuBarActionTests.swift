@@ -23,7 +23,7 @@ struct MenuBarActionTests {
                     sendPanel: { _ in Issue.record("Banner action was not handled") })
             },
             openFolder: { folders.append($0) }, openURL: { urls.append($0) },
-            terminate: {}, didDeliver: {}, sink: SystemLogSink(),
+            terminate: {}, didDeliver: {}, sink: TestLogSink(),
             presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
         )
         for (banner, pane): (PanelState.Banner, String) in [
@@ -114,7 +114,7 @@ struct MenuBarActionTests {
                 )
             },
             openFolder: { folders.append($0) }, openURL: { _ in Issue.record("Unexpected URL open") }, terminate: { terminations += 1 },
-            didDeliver: { Issue.record("No updates were sent") }, sink: SystemLogSink(),
+            didDeliver: { Issue.record("No updates were sent") }, sink: TestLogSink(),
             presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
         )
         #expect(factoryCalls == 1)
@@ -150,7 +150,7 @@ struct MenuBarActionTests {
             storage: MenuPreferenceStorage(readValue: { stored }, writeValue: { stored = $0 }),
             makeApplication: { factoryCalls += 1; throw ScriptFailure.failed },
             openFolder: { folders.append($0) }, openURL: { _ in Issue.record("Unexpected URL open") }, terminate: { terminations += 1 },
-            didDeliver: { Issue.record("A failed application has no streams") }, sink: SystemLogSink(),
+            didDeliver: { Issue.record("A failed application has no streams") }, sink: TestLogSink(),
             presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
         )
         #expect(factoryCalls == 2)
@@ -212,7 +212,7 @@ struct MenuBarActionTests {
                             panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in })
                     },
                     openFolder: { _ in Issue.record("Presentation does not open folders") }, openURL: { _ in Issue.record("Unexpected URL open") },
-                    terminate: { Issue.record("Presentation does not terminate") }, didDeliver: { delivered.send() }, sink: SystemLogSink(),
+                    terminate: { Issue.record("Presentation does not terminate") }, didDeliver: { delivered.send() }, sink: TestLogSink(),
                     presentPanel: { _ in }, sleep: { _ in throw CancellationError() }
                 )
                 for statusLine: String? in [nil, "Наблюдение за звонками остановлено: failed"] {

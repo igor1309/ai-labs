@@ -4,12 +4,10 @@ import struct CallText.State
 import Darwin
 import Foundation
 import LiveText
-import struct MicrophoneCapture.AudioPiece
 import Reading
 import Session
 import SessionRehearsal
 import Synchronization
-import struct SystemAudioCapture.AudioPiece
 import Testing
 @testable import Composer
 
@@ -54,8 +52,8 @@ struct SessionEnduranceTests {
             let step = 10.0
             var fed = 0.0
             var micSent = 0, callSent = 0
-            let micPiece = MicrophoneCapture.AudioPiece(samples: .init(repeating: 0.25, count: micFrames), sampleRate: rate)
-            let callPiece = SystemAudioCapture.AudioPiece(samples: .init(repeating: -0.25, count: callFrames), sampleRate: rate)
+            let micPiece = CaptureBuffer(samples: .init(repeating: 0.25, count: micFrames), sampleRate: rate)
+            let callPiece = CaptureBuffer(samples: .init(repeating: -0.25, count: callFrames), sampleRate: rate)
             while fed < seconds {
                 fed = min(seconds, fed + step)
                 let target = Int(fed * rate)

@@ -2,7 +2,7 @@ import protocol SideText.LiveAudio
 import struct SideText.Audio
 import Synchronization
 
-public protocol CaptureAudio: Sendable {
+protocol CaptureAudio: Sendable {
 
     var capturedThrough: Double { get }
     func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async

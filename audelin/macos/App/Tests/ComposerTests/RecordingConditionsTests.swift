@@ -168,7 +168,7 @@ private struct ConditionsRig {
         }
         checker = RecordingConditions(
             send: events.append,
-            microphoneAccess: { read(.microphoneAccess) }, callsFolder: { read(.callsFolder) }, room: { read(.room) }, sink: SystemLogSink(), access: testAccessPolicy(available: { available.get(.callAudioAccess) })
+            microphoneAccess: { read(.microphoneAccess) }, callsFolder: { read(.callsFolder) }, room: { read(.room) }, sink: TestLogSink(), access: testAccessPolicy(available: { available.get(.callAudioAccess) })
         )
     }
 }

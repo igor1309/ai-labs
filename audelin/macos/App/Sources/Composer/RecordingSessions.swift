@@ -4,7 +4,7 @@ import Recording
 import Session
 
 /// Builds and observes the Session belonging to each Recording id.
-public actor RecordingSessions: RecordingSession {
+actor RecordingSessions: RecordingSession {
 
     private struct Running {
 
@@ -27,30 +27,17 @@ public actor RecordingSessions: RecordingSession {
         var reports: [RecordingSessionReport] = []
     }
 
-    public nonisolated let panel: AudelinPanel
+    nonisolated let panel: AudelinPanel
     private let makePieces: @Sendable (UInt64) -> SessionPieces
     private let liveText: @Sendable () -> Bool
     private let report: @Sendable (UInt64, RecordingSessionReport) async -> Void
     private let connect: @Sendable (SessionPieces, SessionInputs) -> Task<Void, Never>
     private let makeSession: MakeSessionModel
+    private let timeZone: @Sendable () -> TimeZone
     private let sink: any LogSink
     private var running: [UInt64: Running] = [:]
     // Recording's effects run independently, so an end can arrive before its begin.
     private var endedBeforeBegin: Set<UInt64> = []
-
-    public init(
-        makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
-        liveText: @escaping @Sendable () -> Bool,
-        report: @escaping @Sendable (UInt64, RecordingSessionReport) async -> Void,
-        panel: AudelinPanel,
-        makeSession: @escaping MakeSessionModel
-    ) {
-
-        self.init(
-            makePieces: makePieces, liveText: liveText, report: report, connect: subscribe, sink: SystemLogSink(), panel: panel,
-            makeSession: makeSession
-        )
-    }
 
     init(
         makePieces: @escaping @Sendable (UInt64) -> SessionPieces,
@@ -58,10 +45,12 @@ public actor RecordingSessions: RecordingSession {
         report: @escaping @Sendable (UInt64, RecordingSessionReport) async -> Void,
         connect: @escaping @Sendable (SessionPieces, SessionInputs) -> Task<Void, Never>,
         sink: any LogSink,
+        timeZone: @escaping @Sendable () -> TimeZone,
         panel: AudelinPanel,
         makeSession: @escaping MakeSessionModel
     ) {
 
+        self.timeZone = timeZone
         self.panel = panel
         self.makePieces = makePieces
         self.liveText = liveText
@@ -71,7 +60,7 @@ public actor RecordingSessions: RecordingSession {
         self.makeSession = makeSession
     }
 
-    public func begin(id: UInt64) async -> RecordingSessionReport {
+    func begin(id: UInt64) async -> RecordingSessionReport {
 
         if endedBeforeBegin.remove(id) != nil { return .ended }
         if running[id] == nil {
@@ -111,7 +100,7 @@ public actor RecordingSessions: RecordingSession {
         }
     }
 
-    public func end(id: UInt64) async {
+    func end(id: UInt64) async {
 
         guard var entry = running[id] else {
             endedBeforeBegin.insert(id)
@@ -154,7 +143,7 @@ public actor RecordingSessions: RecordingSession {
     private func receive(_ state: SessionState, id: UInt64) async -> Bool {
 
         if let entry = running[id], !entry.reportedFolder, let folder = state.recordedFolder,
-           let callID = Calls.id(in: URL(fileURLWithPath: folder.id).lastPathComponent, timeZone: .current) {
+           let callID = Calls.id(in: URL(fileURLWithPath: folder.id).lastPathComponent, timeZone: timeZone()) {
             running[id]?.reportedFolder = true
             await report(id, .callCreated(id: callID))
         }

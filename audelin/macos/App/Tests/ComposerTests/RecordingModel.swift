@@ -1,4 +1,4 @@
-import Composer
+@testable import Composer
 import Recording
 @testable import Audelin
 

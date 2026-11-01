@@ -2,12 +2,10 @@ import AVFAudio
 import struct CallText.State
 import Foundation
 import LiveText
-import struct MicrophoneCapture.AudioPiece
 import Reading
 import Session
 import SessionRehearsal
 import Synchronization
-import struct SystemAudioCapture.AudioPiece
 import Testing
 @testable import Composer
 
@@ -126,8 +124,8 @@ func feed(
 
     let rate = StalledConsumerTests.rate
     let micFrames = 1024, callFrames = 512
-    let micPiece = MicrophoneCapture.AudioPiece(samples: .init(repeating: 0.25, count: micFrames), sampleRate: rate)
-    let callPiece = SystemAudioCapture.AudioPiece(samples: .init(repeating: -0.25, count: callFrames), sampleRate: rate)
+    let micPiece = CaptureBuffer(samples: .init(repeating: 0.25, count: micFrames), sampleRate: rate)
+    let callPiece = CaptureBuffer(samples: .init(repeating: -0.25, count: callFrames), sampleRate: rate)
     var fed = 0.0, micSent = 0, callSent = 0
     while fed < seconds {
         fed = min(seconds, fed + 10)

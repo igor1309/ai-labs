@@ -1,7 +1,7 @@
 import CoreAudioProcesses
 import Recording
 import Testing
-import Composer
+@testable import Composer
 import Synchronization
 
 @Suite(.timeLimit(.minutes(1)))

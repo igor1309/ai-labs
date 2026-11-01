@@ -1,99 +1,43 @@
-import CallAppProcesses
-import struct CallText.State
-import CallFolder
 import Composer
 import Foundation
-import PanelUI
-import struct MicrophoneCapture.AudioPiece
-import protocol RecordedCapture.Track
 import SessionRehearsal
-import struct SystemAudioCapture.AudioPiece
-import TranscriptFile
 
-// SessionCrashWriter ROOT: a call through the app's composition that never
-// ends, so the parent can kill it while the transcript is being saved. After
-// each save returns it reports how many entries are final and what the file
-// then holds.
-
-/// Reports each save of the real transcript once it returns.
-struct ReportingTranscript: SessionTranscriptFile {
-
-    let base: any SessionTranscriptFile
-    let url: URL
-
-    func write(_ state: State) async throws {
-
-        try await base.write(state)
-        let held = try Data(contentsOf: url).base64EncodedString()
-        try FileHandle.standardOutput.write(contentsOf: Data("wrote \(state.finalCount) \(held)\n".utf8))
-    }
-
-    func close() async { await base.close() }
-}
-
-/// Ends each pause after 10 ms, so saves come often enough to be killed between.
-struct QuickClock: Clock {
-
-    private let base = ContinuousClock()
-
-    var now: ContinuousClock.Instant { base.now }
-    var minimumResolution: Duration { base.minimumResolution }
-
-    func sleep(until deadline: ContinuousClock.Instant, tolerance: Duration?) async throws {
-
-        try await base.sleep(for: .milliseconds(10))
-    }
-}
-
-/// A capture fed by hand.
-final class Feed<Piece: Sendable>: Sendable {
-
-    private let source = AsyncThrowingStream<Piece, any Error>.makeStream()
-
-    func started() -> StartedCapture<Piece> {
-
-        StartedCapture(stream: source.stream, stop: { self.source.continuation.finish() })
-    }
-
-    func yield(_ piece: Piece) { source.continuation.yield(piece) }
-}
-
-private struct DroppedTrack: Track {
-
-    func write(_ samples: [Float], sampleRate: Double) async throws {}
-}
-
-private struct OneCallApp: ProcessList {
-
-    func processes() -> [AudioProcess] { [AudioProcess(pid: 72, bundleID: "meeting", name: "meeting", isAudelin: false)] }
-}
-
+// A call which keeps saving until its parent kills it.
 let root = URL(fileURLWithPath: CommandLine.arguments[1])
-let microphone = Feed<MicrophoneCapture.AudioPiece>()
-let call = Feed<SystemAudioCapture.AudioPiece>()
-let pieces = SessionPieces(
-    folder: CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: 0) }, timeZone: TimeZone(secondsFromGMT: 0)!),
-    processes: CallAppProcesses(app: "meeting", list: OneCallApp()),
-    startMicrophone: { microphone.started() },
-    startCall: { _ in call.started() },
-    microphoneRecognizer: SpeakingRecognizer(name: "mine", sentence: 2, pause: 3, offset: 0),
-    callRecognizer: SpeakingRecognizer(name: "theirs", sentence: 2, pause: 3, offset: 2.5),
-    missingModels: { [] },
-    recordingTrack: { _, _ in DroppedTrack() },
-    openTranscript: { url in
-        ReportingTranscript(base: WritingTranscript(file: try await TranscriptFile(url: url)), url: url)
-    },
-    transcriptClock: QuickClock()
+private let microphone = Feed(), call = Feed()
+let reporting = DispatchQueue(label: "audelin.crash-writer.reporting")
+let transcript = root.appendingPathComponent("1970.01.01-0000/transcript.md")
+let boundary = rehearsalBoundary(
+        capturePersistence: .transient,
+    microphone: { microphone.started() }, call: { _ in call.started() },
+    mine: RehearsalRecognizer(SpeakingRecognizer(name: "mine", sentence: 2, pause: 3, offset: 0)),
+    theirs: RehearsalRecognizer(SpeakingRecognizer(name: "theirs", sentence: 2, pause: 3, offset: 2.5)),
+    now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt },
+    sleep: { delay in try await ContinuousClock().sleep(for: delay == .seconds(5) ? .milliseconds(10) : delay) },
+    intervals: ProfileIntervals { name in
+        guard String(describing: name) == "TranscriptWrite" else { return {} }
+        return {
+            reporting.async {
+                guard let data = try? Data(contentsOf: transcript), let text = String(data: data, encoding: .utf8) else { return }
+                // Each side can still be revising its last entry; report only the settled prefix.
+                let count = max(0, text.components(separatedBy: "\n\n**").count - 3)
+                try? FileHandle.standardOutput.write(contentsOf: Data("wrote \(count) \(data.base64EncodedString())\n".utf8))
+            }
+        }
+    }
 )
-let sessions = RecordingSessions(
-    makePieces: { _ in pieces }, liveText: { true }, report: { _, _ in }, panel: AudelinPanel(makeReading: makeReading),
-    makeSession: { await makeSession(handler: $0) }
-)
-guard await sessions.begin(id: 1) == .ready else { exit(1) }
-// 0.4 s of audio a step, both sides, until the parent kills the process.
+let composition = try await startRehearsal(boundary: boundary, root: root)
 let frames = 19_200
 while true {
     microphone.yield(.init(samples: .init(repeating: 0.25, count: frames), sampleRate: 48_000))
     call.yield(.init(samples: .init(repeating: -0.25, count: frames), sampleRate: 48_000))
     try await Task.sleep(for: .milliseconds(5))
+}
+
+private final class Feed: Sendable {
+    private let source = AsyncThrowingStream<CaptureBuffer, any Error>.makeStream()
+    func started() -> StartedCapture<CaptureBuffer> {
+        StartedCapture(stream: source.stream, stop: { self.source.continuation.finish() })
+    }
+    func yield(_ piece: CaptureBuffer) { source.continuation.yield(piece) }
 }

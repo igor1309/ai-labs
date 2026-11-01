@@ -107,7 +107,7 @@ struct PanelWindowWiringTests {
                     report: { _, _ in }, connect: { pieces, session in
                         connected.append(session)
                         return subscribe(pieces, to: session)
-                    }, sink: PanelLogSpy(), panel: panel, makeSession: makeSession
+                    }, sink: PanelLogSpy(), timeZone: { .gmt }, panel: panel, makeSession: makeSession
                 )
                 do {
                     #expect(await sessions.begin(id: 1) == .ready)

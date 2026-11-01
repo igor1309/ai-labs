@@ -1,10 +1,8 @@
 import CallAppProcesses
 import CallFolder
 import Foundation
-import struct MicrophoneCapture.AudioPiece
 import Session
 import Synchronization
-import struct SystemAudioCapture.AudioPiece
 import Testing
 @testable import Audelin
 @testable import Composer
@@ -59,7 +57,7 @@ struct SessionStatisticsTests {
             let session = await makeSession(handler: rig.pieces.handler())
             let sink = StatisticsLog()
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                report: { _, _ in }, connect: subscribe, sink: sink,
+                report: { _, _ in }, connect: subscribe, sink: sink, timeZone: { .gmt },
                 panel: ReadingClockSpy().panel(), makeSession: { _ in session })
             #expect(await sessions.begin(id: 1) == .ready)
             rig.call.source.continuation.yield(.init(samples: Array(repeating: 0, count: 15_000), sampleRate: 50))
@@ -130,8 +128,8 @@ private struct StatisticsTrack: RecordingTrack {
 
 private struct StatisticsPieces {
     let pieces: SessionPieces
-    let microphone: StatisticsCapture<MicrophoneCapture.AudioPiece>
-    let call: StatisticsCapture<SystemAudioCapture.AudioPiece>
+    let microphone: StatisticsCapture<CaptureBuffer>
+    let call: StatisticsCapture<CaptureBuffer>
 }
 
 private func withStatisticsPieces(
@@ -140,10 +138,10 @@ private func withStatisticsPieces(
 ) async throws {
 
     try await withComposeFolder { root in
-        let microphone = StatisticsCapture<MicrophoneCapture.AudioPiece>(
+        let microphone = StatisticsCapture<CaptureBuffer>(
             first: initialPieces ? .init(samples: [0.5, 0.5, 0.5, 0.5], sampleRate: 100) : nil,
             last: initialPieces ? .init(samples: [0.25, 0.25], sampleRate: 100) : nil, stopFails: stopFails)
-        let call = StatisticsCapture<SystemAudioCapture.AudioPiece>(
+        let call = StatisticsCapture<CaptureBuffer>(
             first: initialPieces ? .init(samples: [0, 0, 0, 0], sampleRate: 100) : nil,
             last: initialPieces ? .init(samples: [0, 0.25], sampleRate: 100) : nil, stopFails: stopFails)
         let pieces = SessionPieces(

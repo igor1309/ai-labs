@@ -1,25 +1,25 @@
 import Session
 
-public extension SessionPieces {
+extension SessionPieces {
 
     struct MicrophonePort: SessionMicrophoneCapture {
 
         let pieces: SessionPieces
 
-        public func start() async throws { try await pieces.startMicrophoneCapture() }
-        public func stop() async throws { try await pieces.stopCapture(.microphone) }
+        func start() async throws { try await pieces.startMicrophoneCapture() }
+        func stop() async throws { try await pieces.stopCapture(.microphone) }
     }
 
     struct CallPort: SessionCallCapture {
 
         let pieces: SessionPieces
 
-        public func start(selection: SessionCallCaptureSelection) async throws {
+        func start(selection: SessionCallCaptureSelection) async throws {
 
             try await pieces.startCallCapture(selection: selection)
         }
 
-        public func stop() async throws { try await pieces.stopCapture(.call) }
+        func stop() async throws { try await pieces.stopCapture(.call) }
     }
 
     struct TrackPort: SessionTrackFile {
@@ -27,16 +27,16 @@ public extension SessionPieces {
         let pieces: SessionPieces
         let side: SessionSide
 
-        public func open(in folder: SessionCallFolder) async throws { try await pieces.openTrack(side, in: folder) }
-        public func close() async throws { try await pieces.closeTrack(side) }
+        func open(in folder: SessionCallFolder) async throws { try await pieces.openTrack(side, in: folder) }
+        func close() async throws { try await pieces.closeTrack(side) }
     }
 
     struct TranscriptPort: SessionTranscript {
 
         let pieces: SessionPieces
 
-        public func open(in folder: SessionCallFolder) async throws { try await pieces.openTranscript(in: folder) }
-        public func close() async throws { try await pieces.closeTranscript() }
+        func open(in folder: SessionCallFolder) async throws { try await pieces.openTranscript(in: folder) }
+        func close() async throws { try await pieces.closeTranscript() }
     }
 
     nonisolated var microphoneCapture: MicrophonePort { MicrophonePort(pieces: self) }
@@ -47,7 +47,7 @@ public extension SessionPieces {
 
     nonisolated func handler() -> SessionEffectHandler {
 
-        handler(sink: SystemLogSink())
+        handler(sink: captureLogSink)
     }
 }
 

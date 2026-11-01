@@ -3,18 +3,17 @@ import struct SideText.Audio
 import class LiveAudio.LiveAudio
 import RecordedCapture
 import Session
-import enum SystemAudioCapture.ProcessSelection
 import TrackFile
 
-public struct LiveCaptureAudio: CaptureAudio {
+struct LiveCaptureAudio: CaptureAudio {
 
     let capture: LiveAudio
 
-    public init(capture: LiveAudio) { self.capture = capture }
+    init(capture: LiveAudio) { self.capture = capture }
 
-    public var capturedThrough: Double { capture.capturedThrough }
+    var capturedThrough: Double { capture.capturedThrough }
 
-    public func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async {
+    func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async {
 
         for await piece in await capture.listen() {
             await receive(Audio(start: piece.start, samples: piece.samples, sampleRate: piece.sampleRate))
@@ -34,7 +33,7 @@ extension SessionPieces {
 
     func startCallCapture(selection: SessionCallCaptureSelection) async throws {
 
-        let resolved: SystemAudioCapture.ProcessSelection
+        let resolved: CaptureSelection
         switch selection {
         case let .chosen(selection):
             guard let known = selections[selection.id] else { throw Failure.unknownSelection(selection.id) }

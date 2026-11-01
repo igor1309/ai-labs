@@ -2,11 +2,8 @@ import CallAppProcesses
 import CallFolder
 import Darwin
 import Foundation
-import struct MicrophoneCapture.AudioPiece
 import Session
 import Synchronization
-import struct SystemAudioCapture.AudioPiece
-import enum SystemAudioCapture.ProcessSelection
 import Testing
 @testable import Composer
 
@@ -32,14 +29,14 @@ struct SessionSelectionTests {
         try await withComposeFolder { root in
             let list = ChangingProcesses()
             let processes = CallAppProcesses(app: "meeting", list: list)
-            let microphone = CaptureScript<MicrophoneCapture.AudioPiece>(
+            let microphone = CaptureScript<CaptureBuffer>(
                 first: .init(samples: [], sampleRate: 48_000), last: .init(samples: [], sampleRate: 48_000), fails: false
             )
-            let call = CaptureScript<SystemAudioCapture.AudioPiece>(
+            let call = CaptureScript<CaptureBuffer>(
                 first: .init(samples: [0.5], sampleRate: 48_000), last: .init(samples: [0.25], sampleRate: 48_000), fails: false
             )
             defer { microphone.end(); call.end() }
-            let selections = Values<SystemAudioCapture.ProcessSelection>()
+            let selections = Values<CaptureSelection>()
             func pieces() -> SessionPieces {
                 SessionPieces(
                     folder: CallFolder(callsURL: root, now: { Date(timeIntervalSince1970: 0) }, timeZone: TimeZone(secondsFromGMT: 0)!),

@@ -1,11 +1,10 @@
 import Dispatch
-import AVFoundation
 import Foundation
 import Recording
 import Synchronization
 import CallAudioAccess
 
-public final class RecordingConditions: Sendable {
+final class RecordingConditions: Sendable {
 
     private let checks: [(RecordingCondition, @Sendable () -> Bool)]
     private let send: @Sendable (RecordingEvent) async -> Void
@@ -16,18 +15,19 @@ public final class RecordingConditions: Sendable {
     // The checks read the disk and access status, which block, so they run here.
     private let checking = DispatchQueue(label: "audelin.RecordingConditions")
 
-    public convenience init(
+    convenience init(
         recording: RecordingInputs,
         microphoneAccess: @escaping @Sendable () -> Bool,
         callsFolder: @escaping @Sendable () -> Bool,
         room: @escaping @Sendable () -> Bool,
-        access: AccessPolicy
+        access: AccessPolicy,
+        sink: any LogSink
     ) {
 
         self.init(
             send: recording.send,
             microphoneAccess: microphoneAccess,
-            callsFolder: callsFolder, room: room, sink: SystemLogSink(), access: access
+            callsFolder: callsFolder, room: room, sink: sink, access: access
         )
     }
 
@@ -57,7 +57,7 @@ public final class RecordingConditions: Sendable {
         } }
     }
 
-    public func refresh() async {
+    func refresh() async {
         _ = await access.refresh()
         await turn.take()
         let checks = checks
@@ -132,20 +132,17 @@ private final class Turn: Sendable {
     }
 }
 
-public func composeRecordingConditions(recording: RecordingInputs, callsURL: URL, access: AccessPolicy) -> RecordingConditions {
+func composeRecordingConditions(recording: RecordingInputs, callsURL: URL, boundary: ComposerBoundary) -> RecordingConditions {
 
     RecordingConditions(
         recording: recording,
-        microphoneAccess: { AVCaptureDevice.authorizationStatus(for: .audio) == .authorized },
+        microphoneAccess: { boundary.microphonePermission.authorized() },
         callsFolder: {
             isCallsDirectory(callsURL) && FileManager.default.isWritableFile(atPath: callsURL.path)
         },
         room: {
-            callsFolderHasRoom(at: callsURL, availableCapacity: { url in
-                try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-                    .volumeAvailableCapacityForImportantUsage
-            })
-        }, access: access
+            callsFolderHasRoom(at: callsURL, availableCapacity: { boundary.capacity.available(at: $0) })
+        }, access: accessPolicy(boundary.access), sink: boundary.log
     )
 }
 

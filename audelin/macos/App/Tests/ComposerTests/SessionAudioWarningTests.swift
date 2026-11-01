@@ -17,7 +17,7 @@ struct SessionAudioWarningTests {
             )])
             let panel = ReadingClockSpy().panel()
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
-                report: { _, _ in }, connect: { _, _ in Task {} }, sink: SystemLogSink(), panel: panel,
+                report: { _, _ in }, connect: { _, _ in Task {} }, sink: TestLogSink(), timeZone: { .gmt }, panel: panel,
                 makeSession: { _ in await session.inputs() })
             #expect(await sessions.begin(id: 1) == .ready)
             var states = await panel.states().makeAsyncIterator()
@@ -79,7 +79,7 @@ struct SessionAudioWarningTests {
             let reports = Values<RecordingSessionReport>()
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
                 report: { id, report in #expect(id == 7); reports.append(report) },
-                connect: { _, _ in Task {} }, sink: SystemLogSink(), panel: ReadingClockSpy().panel(),
+                connect: { _, _ in Task {} }, sink: TestLogSink(), timeZone: { .gmt }, panel: ReadingClockSpy().panel(),
                 makeSession: { _ in await session.inputs() })
             #expect(await sessions.begin(id: 7) == .ready)
             await sessions.end(id: 7)
@@ -99,7 +99,7 @@ struct SessionAudioWarningTests {
             let reports = Values<RecordingSessionReport>()
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { false },
                 report: { _, report in reports.append(report) }, connect: { _, _ in Task {} },
-                sink: SystemLogSink(), panel: ReadingClockSpy().panel(), makeSession: { _ in await session.inputs() })
+                sink: TestLogSink(), timeZone: { .gmt }, panel: ReadingClockSpy().panel(), makeSession: { _ in await session.inputs() })
             #expect(await sessions.begin(id: 1) == (cannotRecord ? .cannotRecord("no audio") : .ready))
             await sessions.end(id: 1)
             #expect(reports.all.isEmpty)

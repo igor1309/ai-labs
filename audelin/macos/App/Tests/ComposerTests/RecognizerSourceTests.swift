@@ -2,9 +2,7 @@ import CallAppProcesses
 import CallFolder
 import Foundation
 import LiveText
-import struct MicrophoneCapture.AudioPiece
 import Session
-import struct SystemAudioCapture.AudioPiece
 import Testing
 @testable import Audelin
 @testable import Composer
@@ -102,11 +100,11 @@ struct RecognizerSourceTests {
     @Test func sessionRecordsWhileGettingReadyThenReadsBothTracksFromStart() async throws {
 
         try await withComposeFolder { root in
-            let microphone = CaptureScript<MicrophoneCapture.AudioPiece>(
+            let microphone = CaptureScript<CaptureBuffer>(
                 first: .init(samples: [0.25, -0.5], sampleRate: 48_000),
                 last: .init(samples: [0.125], sampleRate: 48_000), fails: false
             )
-            let call = CaptureScript<SystemAudioCapture.AudioPiece>(
+            let call = CaptureScript<CaptureBuffer>(
                 first: .init(samples: [-0.25, 0.5], sampleRate: 48_000),
                 last: .init(samples: [-0.125], sampleRate: 48_000), fails: false
             )

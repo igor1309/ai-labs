@@ -224,7 +224,7 @@ struct ReadingCompositionTests {
             await release.next()
         }) { rig, _ in
             let sessions = RecordingSessions(makePieces: { _ in rig.pieces }, liveText: { true },
-                                             report: { _, _ in }, connect: subscribe, sink: sink, panel: panel, makeSession: makeSession)
+                                             report: { _, _ in }, connect: subscribe, sink: sink, timeZone: { .gmt }, panel: panel, makeSession: makeSession)
             let begin = Task { await sessions.begin(id: 11) }
             await starting.next()
             await observed.next()
