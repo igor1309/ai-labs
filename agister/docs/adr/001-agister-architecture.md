@@ -51,7 +51,7 @@ added later that keeps the rules below needs no revision.
 | `supervisor` | A wrapper that starts a program at the worktree root with an environment, streams its output, keeps a bounded head and tail of each stream with a digest of the whole, ends the program and all it started on every exit path, and ends what a dead owner left running. |
 | `git` | A wrapper over git, with its own types. Knows nothing of settings or core. |
 | `runstore` | A wrapper that persists runs, with its own types. |
-| `pages` | A read-only viewer of settings and runs. Its design is open (backlog). |
+| `pages` | A read-only viewer of settings and runs (ADR-015). |
 | `cmd/agister` | The composition root. |
 
 ## Rules
