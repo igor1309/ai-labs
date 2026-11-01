@@ -17,7 +17,8 @@ const { chromium } = require("playwright");
       build: { write: false, rolldownOptions: { preserveEntrySignatures: "strict", input: resolve(__dirname, "coloringGalleryHarness.tsx"), output: { entryFileNames: "harness.js" } } } });
     const files = new Map(bundle.output.map(file => [file.fileName, file.type === "chunk" ? file.code : file.source]));
     const css = [...files.keys()].filter(name => name.endsWith(".css"));
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true,
+      ...(process.env.CHROMIUM_SINGLE_PROCESS === "1" ? { args: ["--single-process", "--in-process-gpu"] } : {}) });
     const page = await browser.newPage({ viewport: { width: 1180, height: 820 } });
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     await page.route("http://gallery.test/**", route => {
@@ -341,7 +342,7 @@ const { chromium } = require("playwright");
     // Explorer replaces the new-work Triceratops choice, while every saved
     // geometry stays editable and keeps its localized name at either level.
     await mount({ level: "explorer" });
-    assert.equal(await page.locator(".gallery-new").count(), 3);
+    assert.equal(await page.locator(".gallery-new").count(), 4);
     assert.equal(await page.getByRole("button", { name: "TRICERATOPS", exact: true }).count(), 1);
     await page.locator(`[data-work-id="${tric.id}"] button`).press("Enter");
     await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
@@ -374,7 +375,7 @@ const { chromium } = require("playwright");
     assert.deepEqual(await thumbnailPixel(rich.id, 602, 206), [239, 83, 80, 255]);
     assert.deepEqual(await thumbnailPixel(rich.id, 424, 370), [66, 165, 245, 255]);
     await page.reload(); await mount({ level: "hatchling", language: "ru" });
-    assert.equal(await page.locator(".gallery-new").count(), 3);
+    assert.equal(await page.locator(".gallery-new").count(), 4);
     assert.equal(await page.locator(`[data-work-id="${rich.id}"] img`).getAttribute("alt"), "ТРИЦЕРАТОПС · 1");
     await page.locator(`[data-work-id="${rich.id}"] button`).press("Enter");
     await page.locator('canvas[aria-label="ТРИЦЕРАТОПС"]').waitFor();
@@ -390,7 +391,7 @@ const { chromium } = require("playwright");
         await page.setViewportSize(viewport);
         for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
           await mount({ level, language, theme });
-          assert.equal(await page.locator(".gallery-new").count(), 3);
+          assert.equal(await page.locator(".gallery-new").count(), 4);
           const name = language === "en" ? "TRICERATOPS" : "ТРИЦЕРАТОПС";
           await press(name); await page.locator(`canvas[aria-label="${name}"]`).waitFor();
           const box = await page.locator("canvas").boundingBox();
@@ -491,7 +492,7 @@ const { chromium } = require("playwright");
       const [x, y, region] = level === "hatchling" ? [420, 330, "body"] : [440, 396, "flank"];
       const [otherX, otherY, otherRegion] = level === "hatchling" ? [326, 135, "plate-2"] : [460, 178, "plate-panel-4"];
       await mount({ level });
-      assert.equal(await page.locator(".gallery-new").count(), 3);
+      assert.equal(await page.locator(".gallery-new").count(), 4);
       assert(await page.locator(".gallery-new").first().locator("canvas").evaluate((canvas, version) => {
         const expected = window.gallery.painterFor(version).canvas(canvas.width, canvas.height);
         window.gallery.painterFor(version).render(expected, []);
@@ -671,7 +672,7 @@ const { chromium } = require("playwright");
         for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
           await mount({ level, language, theme });
           const name = language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР";
-          assert.equal(await page.locator(".gallery-new").count(), 3);
+          assert.equal(await page.locator(".gallery-new").count(), 4);
           assert.equal(await page.getByRole("button", { name, exact: true }).count(), 1);
           await page.locator(`[data-work-id="${anky.id}"] button`).press("Enter");
           await page.locator(`canvas[aria-label="${name}"]`).waitFor();
@@ -784,7 +785,7 @@ const { chromium } = require("playwright");
           await mount({ level, language, theme });
           const name = language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР";
           const version = level === "hatchling" ? "ankylosaurus-hatchling-2" : "ankylosaurus-explorer-1";
-          assert.equal(await page.locator(".gallery-new").count(), 3);
+          assert.equal(await page.locator(".gallery-new").count(), 4);
           assert.equal(await page.getByRole("button", { name, exact: true }).count(), 1);
           await press(name); await page.locator(".coloring-workshop canvas").waitFor();
           assert.equal(await page.locator("canvas").evaluate((c, version) => {
@@ -813,6 +814,99 @@ const { chromium } = require("playwright");
       }
     }
     console.log(`PASS new Ankylosaurus variants: every-region fill/hit/brush/ink, previews, save/reload/reset/undo, cross-age reward/reopen, 24 layouts; workshop captures ${artifacts}`);
+    const beforeTrex = await listed();
+    const trexWorks = [];
+    for (const level of ["hatchling", "explorer"]) {
+      const version = level === "hatchling" ? "trex-hatchling-1" : "trex-explorer-1";
+      await page.setViewportSize({ width: 1180, height: 820 }); await mount({ level });
+      const choice = page.getByRole("button", { name: "T-REX", exact: true });
+      assert.equal(await choice.count(), 1);
+      assert.equal(await choice.locator("canvas").evaluate((c, version) => {
+        const painter = window.gallery.painterFor(version), expected = painter.canvas(c.width, c.height);
+        painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
+      }, version), true, "T-Rex preview uses the selected age geometry");
+      const starts = (await page.evaluate(() => window.gallery.counts())).starts;
+      await press("T-REX"); await page.locator('canvas[aria-label="T-REX"]').waitFor();
+      assert.equal(await page.locator("canvas").evaluate((c, version) => {
+        const painter = window.gallery.painterFor(version), expected = painter.canvas();
+        painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
+      }, version), true, "new T-Rex is unpainted");
+      assert.equal((await page.evaluate(() => window.gallery.counts())).starts, starts + 1);
+      const protectedPixels = () => page.locator("canvas").evaluate(c => window.gallery.trexProtectedProbes.map(([x, y]) =>
+        [...c.getContext("2d").getImageData(x, y, 1, 1).data]));
+      const ink = await protectedPixels();
+      await press("FILL"); await press("COLOR"); await press("GREEN"); await tap(704, 179); await saved();
+      const body = level === "hatchling" ? [456, 366] : [490, 359];
+      await press("COLOR"); await press("BLUE"); await tap(...body); await saved();
+      const fills = [{ kind: "fill", color: "#9ccc65", region: "head" }, { kind: "fill", color: "#42a5f5", region: "body" }];
+      const work = (await listed()).works.find(r => r.document.geometry === version).document;
+      assert.deepEqual(work.actions, fills);
+      for (const [width, height, language, theme] of [[1180, 820, "en", "light"], [1024, 768, "ru", "dark"]]) {
+        await page.setViewportSize({ width, height });
+        await page.evaluate(({ language, theme }) => window.gallery.appearance(language, theme), { language, theme });
+        await page.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });
+        const boxes = await page.locator(".coloring-workshop").evaluate(s => [...s.querySelectorAll("button, canvas")].filter(e => e.getBoundingClientRect().width > 0).map(e => {
+          const b = e.getBoundingClientRect(); return { canvas: e.tagName === "CANVAS", x: b.x, y: b.y, w: b.width, h: b.height };
+        }));
+        const canvas = boxes.find(b => b.canvas);
+        for (const b of boxes) {
+          assert(b.x >= -1 && b.y >= -1 && b.x + b.w <= width + 1 && b.y + b.h <= height + 1, `${version} fits ${width} × ${height}`);
+          if (!b.canvas) { assert(b.w >= 48 && b.h >= 48); assert(b.x + b.w <= canvas.x + 1 || b.x >= canvas.x + canvas.w - 1 || b.y + b.h <= canvas.y + 1 || b.y >= canvas.y + canvas.h - 1); }
+        }
+        assert.deepEqual(await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.scrollHeight]), [width, height]);
+        await page.screenshot({ path: join(artifacts, `${version}-workshop-${width}x${height}.png`) });
+      }
+      await page.setViewportSize({ width: 1180, height: 820 });
+      await page.evaluate(() => window.gallery.appearance("en", "light"));
+      await press("BRUSH"); await press("COLOR"); await press("PURPLE");
+      const box = await page.locator("canvas").boundingBox();
+      await page.mouse.move(box.x + 570 * box.width / 920, box.y + 174 * box.height / 620);
+      await page.mouse.down(); await page.mouse.move(box.x + 704 * box.width / 920, box.y + 179 * box.height / 620, { steps: 6 }); await page.mouse.up(); await saved();
+      const painted = (await listed()).works.find(r => r.document.id === work.id).document;
+      assert.equal(painted.actions.length, 3); assert.equal(painted.actions[2].kind, "stroke");
+      assert.deepEqual(await protectedPixels(), ink, "workshop brush and fills preserve outlines and decorative details");
+      assert.deepEqual(await surfacePixel(704, 179), [171, 103, 203, 255]);
+      await back(); await thumbnailMatches(work.id, painted.actions, await reference(painted.actions, version));
+      assert.match(await page.locator(`[data-work-id="${work.id}"] img`).getAttribute("alt"), /^T-REX/);
+      await page.reload(); await mount({ level: level === "hatchling" ? "paleontologist" : "hatchling" });
+      await press("CONTINUE"); await page.locator('canvas[aria-label="T-REX"]').waitFor();
+      assert.deepEqual(await surfacePixel(...body), [66, 165, 245, 255]);
+      assert.deepEqual(await surfacePixel(704, 179), [171, 103, 203, 255]);
+      assert.equal((await listed()).works.find(r => r.document.id === work.id).document.geometry, version);
+      await press("UNDO"); await saved();
+      assert.deepEqual(await surfacePixel(704, 179), [156, 204, 101, 255]);
+      await press("UNDO"); await saved();
+      assert.deepEqual(await surfacePixel(...body), [255, 240, 207, 255]);
+      await press("DONE"); await page.locator(".coloring-result").waitFor();
+      trexWorks.push(work);
+      assert.equal((await listed()).completedCount, beforeTrex.completedCount + trexWorks.length);
+      assert.equal(await page.locator(".coloring-result-earned").count(), 1);
+      await press("HOME"); await press("ENTER COLORING"); await page.locator('.gallery-works[aria-busy="false"]').waitFor();
+      await page.reload(); await mount({ level: level === "hatchling" ? "explorer" : "hatchling", language: "ru" });
+      const currentPreview = page.getByRole("button", { name: "ТИРАННОЗАВР", exact: true }).locator("canvas");
+      assert.equal(await currentPreview.evaluate((c, version) => {
+        const painter = window.gallery.painterFor(version), expected = painter.canvas(c.width, c.height);
+        painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
+      }, level === "hatchling" ? "trex-explorer-1" : "trex-hatchling-1"), true, "returning gallery offers the current age variant");
+      assert.match(await page.locator(`[data-work-id="${work.id}"] img`).getAttribute("alt"), /^ТИРАННОЗАВР/);
+      await page.locator(`[data-work-id="${work.id}"] button`).press("Enter"); await page.locator('canvas[aria-label="ТИРАННОЗАВР"]').waitFor();
+      await press("ГОТОВО"); await page.locator(".coloring-result").waitFor();
+      assert.equal((await listed()).completedCount, beforeTrex.completedCount + trexWorks.length);
+      assert.equal(await page.locator(".coloring-result-earned").count(), 0);
+      await press("НОВЫЙ РИСУНОК"); await page.locator(".coloring-workshop").waitFor();
+      assert.equal(await page.locator("canvas").evaluate((c, version) => {
+        const painter = window.gallery.painterFor(version), expected = painter.canvas();
+        painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
+      }, version), true, "result NEW WORK keeps the saved T-Rex geometry after an age change");
+      await press("ЗАЛИВКА"); await tap(704, 179);
+      await page.waitForFunction(() => document.querySelector(".coloring-save")?.textContent === "СОХРАНЕНО");
+      const other = (await listed()).works.find(r => r.document.geometry === version && r.document.id !== work.id).document;
+      assert.notEqual(other.id, work.id);
+      assert.deepEqual((await listed()).works.find(r => r.document.id === work.id).document.actions, fills.slice(0, 1));
+    }
+    const afterTrex = await listed();
+    for (const record of beforeTrex.works) assert.deepEqual(afterTrex.works.find(r => r.document.id === record.document.id), record, "T-Rex leaves every older work unchanged");
+    console.log("PASS T-Rex gallery: age-selected preview, independent works, fill/brush/protected ink, undo, reload, thumbnails, cross-age geometry, returning navigation and one reward per work");
     // Unknown versions retain their receipt and never borrow another renderer.
     await page.evaluate(async () => {
       const db = await new Promise(resolve => { const request = indexedDB.open("rexlab-coloring"); request.onsuccess = () => resolve(request.result); });
@@ -825,7 +919,7 @@ const { chromium } = require("playwright");
       } finally { db.close(); }
     });
     await mount({}); assert.deepEqual((await listed()).unavailable, ["legacy-stego"]);
-    assert.equal((await listed()).completedCount, 8);
+    assert.equal((await listed()).completedCount, 10);
     await page.evaluate(() => window.gallery.damage("legacy-stego", "history")); await mount({});
     await press("PARENT RECOVERY"); await press("RESET COLORING");
     await page.getByText("LET’S PAINT A DINOSAUR!", { exact: true }).waitFor();

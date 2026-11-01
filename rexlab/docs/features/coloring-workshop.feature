@@ -1,6 +1,6 @@
 @next
 Feature: Coloring workshop
-  Free creativity with Stegosaurus and age-appropriate Triceratops artwork. There is no model to
+  Free creativity with Stegosaurus, Triceratops, Ankylosaurus and T-Rex artwork. There is no model to
   copy, time limit, coverage target or judgement of artistic quality.
   An action means one accepted brush contact from press to release, or
   one fill. A work is nonempty when its current editable paint differs
@@ -175,3 +175,35 @@ Feature: Coloring workshop
     When I choose Triceratops in the gallery
     Then the simple Triceratops with its belly and two spots opens
     And its geometry and appearance match existing simple Triceratops drawings
+
+  Scenario: Simple T-Rex for Hatchling
+    Given I start a new T-Rex work at Hatchling
+    Then the workshop renders the original trex-hatchling-1 vector scene
+    And a friendly large-headed T-Rex has two little two-finger arms, two powerful hind legs and a long curved tail
+    And the head, body, tail and hind legs offer broad independent coloring regions
+    And its eyes, smile, fingers and toes remain protected decorative details
+    And a simple ground and plant frame leave the dinosaur clear and prominent
+    And the entire scene fits supported iPad landscape viewports without clipping
+    And the canvas has the localized uppercase accessible name T-REX or ТИРАННОЗАВР
+
+  Scenario: Rich T-Rex prehistoric scene
+    Given I start a new T-Rex work at Explorer or Paleontologist
+    Then the workshop renders the original trex-explorer-1 vector scene
+    And the same recognizable creature appears in a richer prehistoric landscape
+    And its belly and broad body markings add independent coloring regions beyond the Hatchling version
+    And prehistoric plants, rocks, clouds and distant hills offer additional broad independent coloring regions
+    And small facial details, fingers, toes and plant veins remain protected rather than tiny fill targets
+    And the entire scene fits supported iPad landscape viewports without clipping
+
+  Scenario Outline: Independent T-Rex fills preserve the drawing
+    Given I open a T-Rex work using <artwork>
+    When I fill any enclosed animal or scenery region
+    Then only that visible region changes, including when it lies inside a larger region
+    And its outline, eye highlights and decorative ink remain visible above fills and brush paint
+    And every coloring region has a broad visible interior rather than a hidden or hair-thin target
+    And the shared palette, brush, base color and undo remain available
+
+    Examples:
+      | artwork          |
+      | trex-hatchling-1 |
+      | trex-explorer-1  |
