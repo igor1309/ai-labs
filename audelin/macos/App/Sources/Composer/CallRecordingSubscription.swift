@@ -13,8 +13,8 @@ final class CallRecordingSubscription: Sendable {
 
     init(
         calls: AsyncThrowingStream<CallEvent, any Error>, recording: RecordingInputs,
-        beforeCallStarted: (@Sendable () async -> Void)? = nil,
-        startedApp: (@Sendable (String) -> Void)? = nil,
+        beforeCallStarted: @escaping @Sendable () async -> Void,
+        startedApp: @escaping @Sendable (String) -> Void,
         sink: any LogSink
     ) {
         let destination = Mutex(Destination())
@@ -30,7 +30,7 @@ final class CallRecordingSubscription: Sendable {
                         case let .started(app):
                             sink.write(.init(category: .calls, message: "started app=\(app)"))
                             state.callOn = true
-                            startedApp?(app)
+                            startedApp(app)
                             return .callStarted
                         case .ended:
                             sink.write(.init(category: .calls, message: "ended"))
@@ -40,7 +40,7 @@ final class CallRecordingSubscription: Sendable {
                     }
                     guard let forwarded else { return }
                     if forwarded == .callStarted {
-                        await beforeCallStarted?()
+                        await beforeCallStarted()
                         // A cancel during the refresh must still keep the start from being sent.
                         guard !destination.withLock({ $0.stopped }) else { return }
                     }
@@ -78,9 +78,6 @@ final class CallRecordingSubscription: Sendable {
         await task.value
     }
 
-    /// Joins consumption after stream termination or cancellation, including a send in flight.
-    func wait() async { await task.value }
-
     private struct Destination: Sendable {
 
         var callOn = false
@@ -91,14 +88,14 @@ final class CallRecordingSubscription: Sendable {
 /// The caller owns the detector's lifetime and stops it when detection is no longer needed.
 func composeCalls(
     _ processes: CoreAudioProcesses, to recording: RecordingInputs,
-    conditions: RecordingConditions?,
-    startedApp: (@Sendable (String) -> Void)? = nil,
+    conditions: RecordingConditions,
+    startedApp: @escaping @Sendable (String) -> Void,
     sink: any LogSink
 ) async throws -> CallRecordingSubscription {
 
     try await processes.start()
     return CallRecordingSubscription(
         calls: processes.calls, recording: recording,
-        beforeCallStarted: { await conditions?.refresh() }, startedApp: startedApp, sink: sink
+        beforeCallStarted: { await conditions.refresh() }, startedApp: startedApp, sink: sink
     )
 }

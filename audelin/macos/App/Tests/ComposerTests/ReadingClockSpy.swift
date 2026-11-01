@@ -1,14 +1,9 @@
-@testable import Composer
 import Synchronization
 
 final class ReadingClockSpy: Sendable {
 
     private let time = Mutex(100.0)
     private let outputs = Mutex<[AsyncStream<Void>.Continuation]>([])
-
-    func panel() -> AudelinPanel {
-        AudelinPanel(now: now, ticks: ticks, sink: TestLogSink(), intervals: testIntervals)
-    }
 
     func now() -> Double { time.withLock { $0 } }
 

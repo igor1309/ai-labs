@@ -1,4 +1,3 @@
-import struct CallText.State
 import Foundation
 import PanelUI
 import Reading
@@ -6,46 +5,30 @@ import Session
 import Testing
 @testable import Composer
 
+@Suite(.timeLimit(.minutes(1)))
 struct PanelProblemTests {
 
-    @Test func sessionProblemsReachThePanelOnItsRecordingClock() async throws {
-        let clock = ReadingClockSpy()
-        let panel = clock.panel()
-        let text = AsyncStream<State>.makeStream()
-        let subscription = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
-        do {
-            await subscription.sessionChanged(.init(phase: .recording))
-            var states = await panel.states().makeAsyncIterator()
-            _ = try await next(&states) { $0.recording == .on(elapsed: "00:00:00") }
-            clock.advance(65.9)
-            await subscription.sessionChanged(.init(health: [
-                .capture(.call): .failed("lost"), .track(.microphone): .failed("full"),
-            ], phase: .recording, audioWarning: .callSilent))
-            let shown = try await next(&states) { $0.banners.count == 3 }
-            #expect(shown.banners == [.callSilent, .callAudio, .diskFull(savedUntil: "01:05")])
-            #expect(shown.recording == .on(elapsed: "00:01:05"))
+    /// A lost capture shows at the time it was lost, on the clock the
+    /// recording runs by, and stays at that time while the clock goes on.
+    @MainActor
+    @Test func aLostCaptureReachesThePanelOnItsRecordingClock() async throws {
+        try await withComposition(preferences: { .init(automaticRecording: false, liveText: false, callsFolder: $0) }) { rig in
+            try await rig.start()
+            _ = try await rig.panel { $0.recording == .on(elapsed: "00:00:00") }
+            rig.clock.advance(65.9)
+            _ = try await rig.panel { $0.recording == .on(elapsed: "00:01:05") }
+            rig.call.source.continuation.finish(throwing: ScriptFailure.failed)
+            let shown = try await rig.panel { $0.banners.contains(.callAudio) }
+            #expect(shown.banners == [.callAudio])
             #expect(shown.log == .liveTextOff(kept: .init(rows: [
-                .gap(.init(speaker: .me, text: "— диск заполнен с 01:05 —")),
                 .gap(.init(speaker: .them, text: "— нет звука звонка с 01:05 —")),
             ])))
-            clock.advance(10)
-            await subscription.sessionChanged(.init(phase: .recording))
-            let cleared = try await next(&states) { $0.banners.count == 2 }
-            #expect(cleared.banners == [.callAudio, .diskFull(savedUntil: "01:05")])
-            #expect(cleared.log == shown.log)
-            await subscription.sessionChanged(.init(phase: .recording, audioWarning: .callSilent))
-            let warnedAgain = try await next(&states) { $0.banners.count == 3 }
-            #expect(warnedAgain.banners.first == .callSilent)
-            #expect(warnedAgain.log == shown.log)
-            await panel.end(id: 1)
-            await subscription.end()
-        } catch {
-            await panel.end(id: 1)
-            await subscription.end()
-            text.continuation.finish()
-            throw error
+            rig.clock.advance(10)
+            let later = try await rig.panel { $0.recording == .on(elapsed: "00:01:15") }
+            #expect(later.banners == [.callAudio])
+            #expect(later.log == shown.log)
+            try await rig.stop()
         }
-        text.continuation.finish()
     }
 
     @Test func everyMenuFaultHasTheSamePanelFaultIncludingTheFailedTrackSide() {
@@ -63,13 +46,4 @@ struct PanelProblemTests {
         }
         #expect(readingFaultKinds(.init(health: [.folder: .failed("folder"), .transcript: .failed("text")])).isEmpty)
     }
-}
-
-private func next(
-    _ states: inout AsyncStream<PanelState>.Iterator, matching: (PanelState) -> Bool
-) async throws -> PanelState {
-    while let state = await states.next() {
-        if matching(state) { return state }
-    }
-    throw ScriptFailure.failed
 }

@@ -1,6 +1,5 @@
-import CallAudioAccess
-
 import BlockingTestWork
+import Composer
 import Foundation
 import LiveText
 import Synchronization
@@ -46,6 +45,9 @@ struct Signal: Sendable {
         _ = await iterator.next()
     }
 }
+
+struct TestLogSink: LogSink { func write(_ entry: LogEntry) {} }
+let testIntervals = ProfileIntervals { _ in {} }
 
 enum ScriptFailure: Error, Equatable { case failed }
 
@@ -103,14 +105,3 @@ actor ScriptRecognizer: Recognizer {
     return FileManager.default.fileExists(atPath: path, isDirectory: &directory) && directory.boolValue
 }
 
-/// A policy snapshot for tests of condition mapping and unrelated composition.
-func testAccessPolicy(available: @escaping @Sendable () -> Bool = { true }) -> AccessPolicy {
-    AccessPolicy(refresh: { available() }, reserve: { available() }, release: {}, states: {
-        AsyncStream { output in
-            var state = AccessState()
-            state.evidence = available() ? .heard : .silent
-            output.yield(state)
-            output.finish()
-        }
-    }, invalidate: {})
-}

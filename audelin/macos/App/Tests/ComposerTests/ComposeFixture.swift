@@ -92,18 +92,43 @@ struct ComposeFixture {
     nonisolated func folder(_ name: String = "1970.01.01-0000") -> URL { root.appendingPathComponent(name) }
 }
 
+func transcriptText(of rig: ComposeFixture, folder: String = "1970.01.01-0000") async throws -> String {
+    let url = rig.folder(folder).appendingPathComponent("transcript.md")
+    return try await offPool { try String(contentsOf: url, encoding: .utf8) }
+}
+
+/// A capture the test feeds itself, with no pieces but the ones it sends.
+struct FedCapture: Sendable {
+    let audio = AsyncThrowingStream<CaptureBuffer, any Error>.makeStream()
+    var started: StartedCapture<CaptureBuffer> {
+        StartedCapture(stream: audio.stream, stop: { audio.continuation.finish() })
+    }
+    func send(_ samples: [Float], rate: Double = 48_000) {
+        audio.continuation.yield(.init(samples: samples, sampleRate: rate))
+    }
+    func end() { audio.continuation.finish() }
+}
+
+/// The panel's rows once it shows lines; nothing while it shows none.
+func entries(of state: PanelState) -> [PanelState.Entry] {
+    if case let .lines(lines) = state.log { lines.entries } else { [] }
+}
+
 @MainActor
 func withComposition(
     preferences: ((URL) -> Preferences)? = nil,
     microphoneFails: Bool = false, stopFailure: ComposerSide? = nil, stopEndsStream: Bool = true,
     rates: [Double]? = nil, recognizers: (any Recognizer, any Recognizer)? = nil,
     configure: (inout ComposerBoundary) -> Void = { _ in },
-    _ body: (ComposeFixture) async throws -> Void
+    openFolder: @escaping (URL) -> Bool = { _ in false }, presentCalls: @escaping () -> Void = {},
+    terminate: @escaping @Sendable () async -> Void = {},
+    _ body: @MainActor (ComposeFixture) async throws -> Void
 ) async throws {
     try await withComposeFolder { root in
         let fixture = try await ComposeFixture.make(root: root, preferences: preferences?(root),
             microphoneFails: microphoneFails, stopFailure: stopFailure, stopEndsStream: stopEndsStream,
-            rates: rates, recognizers: recognizers, configure: configure)
+            rates: rates, recognizers: recognizers, configure: configure,
+            openFolder: openFolder, presentCalls: presentCalls, terminate: terminate)
         do { try await body(fixture); await fixture.finish() }
         catch { await fixture.finish(); throw error }
     }

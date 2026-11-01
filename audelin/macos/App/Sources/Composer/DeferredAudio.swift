@@ -15,14 +15,12 @@ final class DeferredAudio: SideText.LiveAudio, Sendable {
     private let attachment = AsyncStream<any CaptureAudio>.makeStream()
     private let audio = AsyncStream<Audio>.makeStream()
     private let translating: Task<Void, Never>
-    private let listening: @Sendable () -> Void
 
     var capturedThrough: Double { capture.withLock { $0?.capturedThrough ?? 0 } }
     var hasCapture: Bool { capture.withLock { $0 != nil } }
 
-    init(listening: @escaping @Sendable () -> Void = {}) {
+    init() {
 
-        self.listening = listening
         let attachment = attachment.stream, audio = audio.continuation
         translating = Task {
             defer { audio.finish() }
@@ -41,7 +39,6 @@ final class DeferredAudio: SideText.LiveAudio, Sendable {
 
     func listen(_ receive: @escaping @Sendable (Audio) async -> Void) async {
 
-        listening()
         for await piece in audio.stream {
             guard !Task.isCancelled else { return }
             await receive(piece)

@@ -116,7 +116,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func openTranscript(in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        transcriptFile = try await WritingTranscript(file: TranscriptFile(url: made.transcriptURL))
+        transcriptFile = try await WritingTranscript(file: TranscriptFile(url: made.transcriptURL), sink: boundary.log)
     }
 
     func closeTranscript() async throws {

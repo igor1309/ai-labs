@@ -36,15 +36,19 @@ struct TranscriptDestination: TranscriptWriting.Transcript {
 struct WritingTranscript: SessionTranscriptFile {
 
     let file: TranscriptFile
+    let sink: any LogSink
 
-    init(file: TranscriptFile) { self.file = file }
+    init(file: TranscriptFile, sink: any LogSink) { self.file = file; self.sink = sink }
 
+    /// Logs each save with the final count it wrote, so a reader of the log knows
+    /// how many entries on disk will not change again.
     func write(_ state: State) async throws {
 
-        let entries = state.entries
-        try await file.write(count: entries.count, finalCount: state.finalCount) {
+        let entries = state.entries, finalCount = state.finalCount
+        try await file.write(count: entries.count, finalCount: finalCount) {
             Composer.Transcript.segment(from: entries[$0])
         }
+        sink.write(.init(category: .session, message: "transcript saved finalCount=\(finalCount)"))
     }
 
     func close() async { await file.close() }

@@ -33,6 +33,28 @@ struct RecordingConditionsTests {
         }
     }
 
+    /// The launch reads the conditions, asks for the microphone, and reads them
+    /// again only once the answer is in, so a grant shows without another event.
+    @Test func startupAsksForTheMicrophoneOnceThenReadsTheAnswer() async throws {
+        let granted = Mutex(false), prompts = Values<Bool>(), held = DrainGate()
+        defer { held.release() }
+        try await withComposition(configure: { boundary in
+            boundary.microphonePermission = FixturePermission(status: { granted.withLock { $0 } }, prompt: {
+                prompts.append(true)
+                await held.wait()
+                granted.withLock { $0 = true }
+            })
+        }) { rig in
+            await held.waitUntilEntered()
+            let asking = try await rig.state { $0.missing == [.microphoneAccess] }
+            #expect(asking.missing.contains(.microphoneAccess))
+            #expect(prompts.all == [true])
+            held.release()
+            _ = try await rig.state { $0.missing.isEmpty }
+            #expect(prompts.all == [true])
+        }
+    }
+
     @Test func refreshSendsChangesOnceAndRestoresAvailableConditions() async throws {
         let permission = Mutex(true), room = Mutex(true)
         let binding = CallBinding(fails: false, input: false)

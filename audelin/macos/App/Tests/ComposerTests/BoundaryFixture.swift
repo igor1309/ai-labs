@@ -2,6 +2,7 @@ import Composer
 import CoreAudioProcesses
 import Foundation
 import SessionRehearsal
+import Synchronization
 
 struct FixtureMicrophone: MicrophoneSource {
     let begin: @Sendable () async throws -> StartedCapture<CaptureBuffer>
@@ -44,4 +45,28 @@ struct FixturePermission: MicrophonePermission {
 struct FixtureCapacity: FolderCapacity {
     let read: @Sendable (URL) -> Int64?
     func available(at folder: URL) -> Int64? { read(folder) }
+}
+
+/// Keeps each delay the composition schedules until the test fires it.
+final class FixtureDeadlines: Sendable {
+    private let pending = Mutex<[@Sendable () -> Void]>([])
+    private let scheduled = Signal()
+
+    func time(over base: any ComposerClock) -> ComposerTime {
+        ComposerTime(now: base.now, timeZone: base.timeZone, monotonicNow: base.monotonicNow, sleep: base.sleep,
+                     after: { _, fire in
+                         self.pending.withLock { $0.append(fire) }
+                         self.scheduled.send()
+                         return BoundaryCancellation {}
+                     }, ticks: base.ticks)
+    }
+
+    /// Waits until a delay is scheduled, then fires every one scheduled so far.
+    func fire() async {
+        while pending.withLock({ $0.isEmpty }) { await scheduled.next() }
+        let fires = pending.withLock { pending in defer { pending.removeAll() }; return pending }
+        for fire in fires { fire() }
+    }
+
+    func end() { scheduled.end() }
 }

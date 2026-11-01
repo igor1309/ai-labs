@@ -276,14 +276,6 @@ actor TrackText {
         listening?.stop()
     }
 
-    /// A segment runs to the next one's start, and the last to `end`.
-    static func text(from segments: [Segments.Segment], through end: Double) -> [Text] {
-
-        segments.enumerated().map { index, segment in
-            text(segment, index + 1 < segments.count ? segments[index + 1].start : end)
-        }
-    }
-
     private static func text(_ segment: Segments.Segment, _ end: Double) -> Text {
 
         Text(id: segment.id, start: segment.start, end: end, settled: segment.settled, pending: segment.pending)

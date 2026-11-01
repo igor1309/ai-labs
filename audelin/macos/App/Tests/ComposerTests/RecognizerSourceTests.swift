@@ -1,115 +1,110 @@
-import CallAppProcesses
-import CallFolder
+import Composer
 import Foundation
 import LiveText
-import Session
+import SessionRehearsal
 import Testing
-@testable import Audelin
-@testable import Composer
 
+/// The recogniser reaches a side through the boundary's source, at the time
+/// the session asks for it.
+@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct RecognizerSourceTests {
 
-    @Test func prepareWaitsForSourceThenHears() async throws {
+    @Test func aSideWaitsForItsSourceThenHearsFromTheStart() async throws {
 
-        let began = Signal(), release = DrainGate()
-        let profiling = ProfileIntervalSpy()
-        let recognizer = SessionRecognizer(name: "ready", onHear: {
-            #expect(profiling.active("Hearing") == 1)
-        })
-        let adapter = TrackText(recognizerSource: {
-            began.send()
-            await release.wait()
-            return SignpostedRecognizer(base: recognizer, intervals: profiling.intervals)
-        })
-        let preparing = Task { try await adapter.prepare() }
-        defer { release.release(); preparing.cancel(); began.end() }
-        await began.next()
-        await #expect(throws: TrackText.Failure.notPrepared) {
-            try await adapter.hear(.init(start: 0, samples: [0.25], sampleRate: 48_000))
-        }
-        release.release()
-        try await preparing.value
-        #expect(try await adapter.hear(.init(start: 0, samples: [0.25], sampleRate: 48_000)).all == [
-            .init(id: 0, start: 0, end: 1.0 / 48_000, pending: "ready pending"),
-        ])
-        #expect(await recognizer.chunks == [.init(samples: [0.25], sampleRate: 48_000)])
-        await adapter.shutdown()
-        #expect(profiling.began.all == ["Hearing"])
-        #expect(profiling.ended.all == ["Hearing"])
-    }
-
-    @Test func sourceFailureIsThrownByPrepare() async {
-
-        let adapter = TrackText(recognizerSource: { throw ScriptFailure.failed })
-        await #expect(throws: ScriptFailure.failed) { try await adapter.prepare() }
-        await #expect(throws: TrackText.Failure.notPrepared) {
-            try await adapter.hear(.init(start: 0, samples: [0.25], sampleRate: 48_000))
+        let held = DrainGate(), profiling = ProfileIntervalSpy()
+        defer { held.release() }
+        let mine = SessionRecognizer(name: "ready", onHear: { #expect(profiling.active("Hearing") >= 1) })
+        try await withComposition(configure: { boundary in
+            boundary.intervals = profiling.intervals
+            boundary.recognizers = source { side in
+                guard side == .microphone else { return SessionRecognizer(name: "theirs") }
+                await held.wait()
+                return mine
+            }
+        }) { rig in
+            try await rig.start()
+            await held.waitUntilEntered()
+            #expect(await mine.chunks.isEmpty)
+            held.release()
+            await mine.heard.next()
+            #expect(await mine.chunks.first == .init(samples: [0.25, -0.5], sampleRate: 48_000))
+            try await rig.stop()
+            #expect(await mine.chunks.flatMap(\.samples) == [0.25, -0.5, 0.125])
+            let hearing = profiling.began.all.filter { $0 == "Hearing" }
+            #expect(!hearing.isEmpty)
+            #expect(profiling.ended.all.filter { $0 == "Hearing" }.count == hearing.count)
         }
     }
 
-    @Test func cancellationEndsPrepareWhileSourceRemainsPending() async throws {
+    @Test func aSourceFailureLeavesTheRecordingAndTheOtherSideGoing() async throws {
 
-        let began = Signal(), release = DrainGate(), builds = Values<Bool>()
-        let recognizer = SessionRecognizer(name: "ready")
-        let adapter = TrackText(recognizerSource: {
-            builds.append(true)
-            began.send()
-            await release.wait()
-            return recognizer
-        })
-        let preparing = Task { try await adapter.prepare() }
-        defer { release.release(); preparing.cancel(); began.end() }
-        await began.next()
-        preparing.cancel()
-        await #expect(throws: CancellationError.self) { try await preparing.value }
-        release.release()
-        try await adapter.prepare()
-        #expect(builds.all == [true])
-        #expect(try await adapter.hear(.init(start: 0, samples: [0.5], sampleRate: 48_000)).all.first?.pending == "ready pending")
-        await adapter.shutdown()
+        let theirs = SessionRecognizer(name: "theirs")
+        try await withComposition(configure: { boundary in
+            boundary.recognizers = source { side in
+                guard side == .call else { throw ScriptFailure.failed }
+                return theirs
+            }
+        }) { rig in
+            try await rig.start()
+            _ = try await rig.panel { entries(of: $0).contains { $0.speaker == .them } }
+            #expect(try await rig.state { _ in true }.phase == .recording)
+            try await rig.stop()
+            let transcript = try await transcriptText(of: rig)
+            #expect(transcript.contains("theirs final"))
+            #expect(!transcript.contains("mine"))
+            #expect(try await recordedSamples(rig.folder().appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.125])
+        }
     }
 
-    @Test func concurrentAndRepeatedPreparesBuildOnce() async throws {
+    @Test func stoppingWhileTheSourceIsHeldEndsTheSessionAndHearsNothingLater() async throws {
 
-        let began = Signal(), release = DrainGate(), builds = Values<Bool>()
-        let recognizer = SessionRecognizer(name: "once")
-        let adapter = TrackText(recognizerSource: {
-            builds.append(true)
-            began.send()
-            await release.wait()
-            return recognizer
-        })
-        let first = Task { try await adapter.prepare() }
-        let second = Task { try await adapter.prepare() }
-        defer { release.release(); first.cancel(); second.cancel(); began.end() }
-        await began.next()
-        release.release()
-        try await first.value
-        try await second.value
-        _ = try await adapter.hear(.init(start: 0, samples: [0.25], sampleRate: 48_000))
-        #expect(try await adapter.finish().all.first?.settled == "once final")
-        try await adapter.prepare()
-        _ = try await adapter.hear(.init(start: 0, samples: [0.5], sampleRate: 48_000))
-        #expect(try await adapter.finish().all.first?.settled == "once final")
-        #expect(builds.all == [true])
-        #expect(await recognizer.chunks.map(\.samples) == [[0.25], [0.5]])
-        #expect(await recognizer.finishes == 2)
+        let held = DrainGate()
+        defer { held.release() }
+        let mine = SessionRecognizer(name: "late")
+        try await withComposition(configure: { boundary in
+            boundary.recognizers = source { side in
+                guard side == .microphone else { return SessionRecognizer(name: "theirs") }
+                await held.wait()
+                return mine
+            }
+        }) { rig in
+            try await rig.start()
+            await held.waitUntilEntered()
+            try await rig.stop()
+            held.release()
+            #expect(await mine.chunks.isEmpty)
+        }
     }
 
-    @Test func launchStartsLoadingWithoutWaiting() async throws {
+    /// Each side asks once per session, including when Live text comes on later.
+    @Test(arguments: [true, false])
+    func eachSessionAsksForEachSidesRecognizerOnce(liveText: Bool) async throws {
 
-        let began = Signal(), release = DrainGate()
-        let recognizer = SessionRecognizer(name: "launch")
-        let loading = startLiveModelLoading(recognizerSource: {
-            began.send()
-            await release.wait()
-            return recognizer
-        })
-        defer { release.release(); loading.cancel(); began.end() }
-        await began.next()
-        #expect(await recognizer.chunks.isEmpty)
-        release.release()
-        try await loading.value
+        let builds = Values<ComposerSide>()
+        try await withComposition(preferences: { .init(automaticRecording: false, liveText: liveText, callsFolder: $0) }, configure: { boundary in
+            boundary.recognizers = source { side in
+                builds.append(side)
+                return SessionRecognizer(name: String(describing: side))
+            }
+        }) { rig in
+            for session in 1...2 {
+                try await rig.start()
+                if !liveText {
+                    #expect(builds.all.count == (session - 1) * 2)
+                    await rig.menu.sendPanel(.switchLiveTextOn)
+                }
+                _ = try await rig.panel { entries(of: $0).count == 2 }
+                try await rig.stop()
+                #expect(builds.all.filter { $0 == .microphone }.count == session)
+                #expect(builds.all.filter { $0 == .call }.count == session)
+            }
+        }
     }
+}
+
+private func source(_ recognizer: @escaping @Sendable (ComposerSide) async throws -> any Recognizer) -> FixtureRecognizers {
+
+    FixtureRecognizers(source: { RehearsalRecognizer(try await recognizer($0)) }, missing: { [] },
+                       load: { Task {} })
 }
