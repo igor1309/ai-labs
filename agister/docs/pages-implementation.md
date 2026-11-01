@@ -36,15 +36,14 @@ grouped by process and agent: runs, completed, pass rate, median
 duration, total cost, and how many had no cost. It reads all runs, on
 request only.
 
-**The page.** Runs and Compare from `archive/pages` (`index.html`,
-`page.js`, `runs.js`), embedded, with their table narrowed to the columns
-above. Verify, Skills and Tool calls go: the current record does not hold
-them as such. The Settings and Knowledge tabs, the picker and their code
-are not served. The page's JS logic keeps its tests in `node --test`.
+**The page.** One embedded `index.html` with the Runs and Compare views
+over these endpoints, written anew: the archive's page reads the archive's
+record and settings shapes. The run list's columns are those of a row; a
+click opens the run with its calls, child runs and output. The Settings
+and Knowledge tabs and the folder picker are not served.
 
-**Install.** `scripts/loop/install.sh` also renders the launch agent from
-`deploy/launchagent.plist.in` (from the archive) with `agister pages
---no-open`, and reloads it.
+**Install.** `scripts/loop/install.sh` also writes the launch agent running
+`agister pages --no-open`, and reloads it.
 
 ## Decisions
 
