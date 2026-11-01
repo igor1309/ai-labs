@@ -2,6 +2,8 @@
 
 ## 2026-11-01
 
+- LAB-889: T-Rex workshop artwork has a simple scene and a richer prehistoric landscape, with a friendly expressive head, two-finger arms, strong legs, a long tail and independent coloring regions.
+
 - LAB-825: Ankylosaurus coloring has new curved armor, cheek horns, sturdy feet and prehistoric scenery, with larger regions for Hatchling and extra armor and landscape details for Explorer and Paleontologist. Saved drawings retain their original artwork.
 
 ## 2026-10-31

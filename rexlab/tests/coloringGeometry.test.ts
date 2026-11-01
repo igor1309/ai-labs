@@ -1,4 +1,6 @@
 import { artworkFor } from "../src/coloring/artworks.ts";
+import { TREX_HATCHLING, TREX_EXPLORER } from "../src/coloring/trexScene.ts";
+import { trexHatchlingProbes, trexExplorerProbes } from "./trexSceneProbes.ts";
 import { ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER } from "../src/coloring/ankylosaurusScene.ts";
 import { ankylosaurusHatchlingProbes, ankylosaurusExplorerProbes } from "./ankylosaurusSceneProbes.ts";
 import { ANKYLOSAURUS } from "../src/coloring/ankylosaurus.ts";
@@ -37,6 +39,53 @@ async function illustration(geometry: Geometry = STEGOSAURUS, filled?: string, m
   return sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}">
     <g transform="scale(${VECTOR_SCALE})" stroke-linecap="round" stroke-linejoin="round"><defs>${defs}</defs>${regions}${details}</g></svg>`)).ensureAlpha().raw().toBuffer();
 }
+
+describe("T-Rex workshop scenes", () => {
+  it.each([
+    [TREX_HATCHLING, "trex-hatchling-1", trexHatchlingProbes],
+    [TREX_EXPLORER, "trex-explorer-1", trexExplorerProbes]
+  ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
+    expect(geometry.artwork.version).toBe(version);
+    expect(artworkFor(version)).toEqual({ geometry, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } });
+    expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
+    expect(new Set(geometry.artwork.regions).size).toBe(geometry.regions.length);
+    expect(geometry.regions.filter(({ id }) => id.startsWith("arm-")).map(({ id }) => id)).toEqual(["arm-far", "arm-near"]);
+    expect(geometry.regions.filter(({ id }) => id.startsWith("leg-")).map(({ id }) => id)).toEqual(["leg-far", "leg-near"]);
+    for (const region of geometry.regions) {
+      expect(region.outline).toBeGreaterThanOrEqual(1.7);
+      expect("path" in region && region.path.endsWith(" Z")).toBe(true);
+      const visited = new Set([region.id]);
+      let parent = region.parent;
+      while (parent) {
+        expect(visited.has(parent), `${region.id} has no parent cycle`).toBe(false);
+        visited.add(parent);
+        const container = geometry.regions.find(({ id }) => id === parent);
+        expect(container).toBeDefined();
+        parent = container?.parent;
+      }
+    }
+    expect(geometry.regions.filter(({ parent }) => parent).map(({ id, parent }) => [id, parent])).toEqual(
+      geometry === TREX_HATCHLING ? [] : [
+        ["tail-mark", "tail"], ["belly", "body"], ["back-mark", "body"], ["thigh-mark", "leg-near"], ["rock-face", "rock"]
+      ]
+    );
+  });
+
+  it.each([
+    ["Hatchling", TREX_HATCHLING, trexHatchlingProbes],
+    ["Explorer", TREX_EXPLORER, trexExplorerProbes]
+  ] as const)("keeps every %s animal and landscape target independently fillable", async (_, geometry, probes) => {
+    for (const [, , id] of probes) {
+      const painted = await illustration(geometry, id);
+      for (const [px, py, other] of probes) {
+        const offset = (py * WIDTH + px) * 4;
+        expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
+      }
+    }
+    expect(TREX_EXPLORER.regions.length).toBeGreaterThan(TREX_HATCHLING.regions.length * 2);
+    expect(TREX_HATCHLING.artwork.regions).not.toContain("belly");
+  });
+});
 
 describe("production dinosaur vectors", () => {
   it("preserves the design silhouette, four feet, staggered plates and long spiked tail", async () => {
