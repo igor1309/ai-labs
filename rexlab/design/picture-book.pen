@@ -8069,6 +8069,1283 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "Z1S7B",
+      "x": 6005,
+      "y": -320,
+      "name": "Trail stop · compact",
+      "reusable": true,
+      "width": 150,
+      "layout": "vertical",
+      "gap": 6,
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "A25uq",
+          "name": "Medallion",
+          "width": 150,
+          "height": 134,
+          "layout": "none",
+          "children": [
+            {
+              "type": "ellipse",
+              "id": "D8gVu",
+              "x": 16,
+              "y": 16,
+              "name": "Disc",
+              "fill": "#11807C",
+              "width": 118,
+              "height": 118,
+              "stroke": "#1E1B18",
+              "strokeWidth": 3,
+              "strokeAlignment": "inner"
+            },
+            {
+              "type": "ellipse",
+              "id": "Gu4O7",
+              "x": 76,
+              "y": 22,
+              "name": "Overprint",
+              "fill": {
+                "type": "color",
+                "color": "#F4B41A",
+                "enabled": true,
+                "blendMode": "multiply"
+              },
+              "width": 66,
+              "height": 66
+            },
+            {
+              "type": "rectangle",
+              "id": "e5lTCy",
+              "x": 0,
+              "y": 0,
+              "name": "Picture",
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/stegosaurus.webp",
+                "mode": "contain"
+              },
+              "width": 150,
+              "height": 123
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "CeUjB",
+          "name": "Label",
+          "gap": 5,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "IOkL8",
+              "name": "Symbol",
+              "width": 18,
+              "height": 18,
+              "icon": "book-open",
+              "library": "lucide",
+              "fill": "#1E1B18"
+            },
+            {
+              "type": "text",
+              "id": "Hu3c5",
+              "name": "Name",
+              "fill": "#1E1B18",
+              "content": "EXPLORE",
+              "fontFamily": "Dela Gothic One",
+              "fontSize": 17,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ondWz",
+          "name": "Stars",
+          "gap": 3,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "path",
+              "id": "yZkuj",
+              "name": "Star 1",
+              "geometry": "M12 2l2.9 6.9 7.1 0.6-5.4 4.7 1.6 7-6.2-3.9-6.2 3.9 1.6-7-5.4-4.7 7.1-0.6z",
+              "viewBox": [
+                0,
+                0,
+                24,
+                24
+              ],
+              "fill": "#F4B41A",
+              "width": 17,
+              "height": 17,
+              "stroke": "#1E1B18",
+              "strokeWidth": 1.5,
+              "strokeLinejoin": "round"
+            },
+            {
+              "type": "path",
+              "id": "MsEhs",
+              "name": "Star 2",
+              "geometry": "M12 2l2.9 6.9 7.1 0.6-5.4 4.7 1.6 7-6.2-3.9-6.2 3.9 1.6-7-5.4-4.7 7.1-0.6z",
+              "viewBox": [
+                0,
+                0,
+                24,
+                24
+              ],
+              "fill": "#F4B41A",
+              "width": 17,
+              "height": 17,
+              "stroke": "#1E1B18",
+              "strokeWidth": 1.5,
+              "strokeLinejoin": "round"
+            },
+            {
+              "type": "path",
+              "id": "jsVxF",
+              "name": "Star 3",
+              "geometry": "M12 2l2.9 6.9 7.1 0.6-5.4 4.7 1.6 7-6.2-3.9-6.2 3.9 1.6-7-5.4-4.7 7.1-0.6z",
+              "viewBox": [
+                0,
+                0,
+                24,
+                24
+              ],
+              "fill": "#F4B41A",
+              "width": 17,
+              "height": 17,
+              "stroke": "#1E1B18",
+              "strokeWidth": 1.5,
+              "strokeLinejoin": "round"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "LXhAf",
+      "x": 6005,
+      "y": 0,
+      "name": "Home proposal · Dino trail · EN · iPhone 15 Pro portrait 393×852 · Light · whole page scrolled (1920)",
+      "clip": true,
+      "width": 393,
+      "height": 1920,
+      "fill": "#F7EFDC",
+      "layout": "none",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "KQoQM",
+          "x": -150,
+          "y": 420,
+          "name": "Overprint · teal hill",
+          "fill": {
+            "type": "color",
+            "color": "#11807C33",
+            "enabled": true,
+            "blendMode": "multiply"
+          },
+          "width": 300,
+          "height": 300
+        },
+        {
+          "type": "ellipse",
+          "id": "RUovS",
+          "x": 270,
+          "y": 1180,
+          "name": "Overprint · pink hill",
+          "fill": {
+            "type": "color",
+            "color": "#F2A1B44D",
+            "enabled": true,
+            "blendMode": "multiply"
+          },
+          "width": 280,
+          "height": 280
+        },
+        {
+          "type": "ellipse",
+          "id": "l66j6F",
+          "x": -120,
+          "y": 1560,
+          "name": "Overprint · sun hill",
+          "fill": {
+            "type": "color",
+            "color": "#F4B41A40",
+            "enabled": true,
+            "blendMode": "multiply"
+          },
+          "width": 300,
+          "height": 300
+        },
+        {
+          "type": "path",
+          "id": "w6hQ9",
+          "x": 0,
+          "y": 0,
+          "name": "Trail",
+          "geometry": "M150 470c-9.2 49.5-62.7 241.8-55 297 7.7 55.2 67.2 34 101 34 33.8 0 70.7-44.7 102-34 31.3 10.7 90 65.3 86 98-4 32.7-78.7 76-110 98-31.3 22-52.2 34-78 34-25.8 0-45.8-44.7-77-34-31.2 10.7-106 65.3-110 98-4 32.7 54.8 76 86 98 31.2 22 67.2 34 101 34 33.8 0 70.7-44.7 102-34 31.3 10.7 90 65.3 86 98-4 32.7-78.7 76-110 98-31.3 22-52.2 34-78 34-25.8 0-45.8-44.7-77-34-31.2 10.7-106 65.3-110 98-4 32.7 54.8 76 86 98 31.2 22 67.2 34 101 34 33.8 0 70.7-44.7 102-34 31.3 10.7 90 65.3 86 98-4 32.7-78.7 76-110 98-31.3 22-52.2 34-78 34-25.8 0-64.2-28.3-77-34",
+          "viewBox": [
+            0,
+            0,
+            393,
+            1920
+          ],
+          "width": 393,
+          "height": 1920,
+          "stroke": "#EADBB4",
+          "strokeWidth": 30,
+          "strokeLinejoin": "round",
+          "strokeLinecap": "round"
+        },
+        {
+          "type": "path",
+          "id": "XdR6d",
+          "x": 0,
+          "y": 0,
+          "name": "Walked thread",
+          "geometry": "M150 470c-9.2 49.5-62.7 241.8-55 297 7.7 55.2 67.2 34 101 34 33.8 0 70.7-44.7 102-34 31.3 10.7 90 65.3 86 98-4 32.7-78.7 76-110 98-31.3 22-52.2 34-78 34-25.8 0-45.8-44.7-77-34-31.2 10.7-106 65.3-110 98-4 32.7 54.8 76 86 98 31.2 22 67.2 34 101 34 33.8 0 85-28.3 102-34",
+          "viewBox": [
+            0,
+            0,
+            393,
+            1920
+          ],
+          "width": 393,
+          "height": 1920,
+          "stroke": "#F4B41A",
+          "strokeWidth": 8,
+          "strokeLinejoin": "round",
+          "strokeLinecap": "round"
+        },
+        {
+          "type": "frame",
+          "id": "g43OFF",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 393,
+          "height": 54,
+          "padding": [
+            18,
+            32,
+            0,
+            40
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "rc5eG",
+              "name": "Time",
+              "fill": "#1E1B18",
+              "content": "9:41",
+              "fontFamily": "Inter",
+              "fontSize": 17,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "tShxa",
+              "name": "Indicators",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "W9W1Z",
+                  "name": "signal",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "#1E1B18"
+                },
+                {
+                  "type": "icon",
+                  "id": "osveq",
+                  "name": "wifi",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "#1E1B18"
+                },
+                {
+                  "type": "icon",
+                  "id": "gB3ci",
+                  "name": "battery-full",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "#1E1B18"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Pzyzj",
+          "x": 20,
+          "y": 62,
+          "name": "Header",
+          "width": 353,
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "YpyKL",
+              "name": "Brand",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "fd7qW",
+                  "name": "Logo",
+                  "width": 22,
+                  "height": 22,
+                  "icon": "footprints",
+                  "library": "lucide",
+                  "fill": "#1E1B18"
+                },
+                {
+                  "type": "text",
+                  "id": "cfzEA",
+                  "name": "Wordmark",
+                  "fill": "#1E1B18",
+                  "content": "RexLab",
+                  "fontFamily": "Dela Gothic One",
+                  "fontSize": 19,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "OJ1gL",
+              "name": "Controls",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "oIa7O",
+                  "name": "Museum button",
+                  "width": 48,
+                  "height": 48,
+                  "fill": "#1E1B18",
+                  "cornerRadius": 9999,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "S90QEZ",
+                      "name": "Landmark",
+                      "width": 22,
+                      "height": 22,
+                      "icon": "landmark",
+                      "library": "lucide",
+                      "fill": "#F4B41A"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "M86wTy",
+                  "name": "Parent settings",
+                  "height": 48,
+                  "cornerRadius": 9999,
+                  "stroke": "#1E1B1840",
+                  "strokeWidth": 2,
+                  "gap": 14,
+                  "padding": [
+                    0,
+                    14
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "iF9W2",
+                      "name": "Language",
+                      "fill": "#1E1B18",
+                      "content": "🇬🇧 EN",
+                      "fontFamily": "Golos Text",
+                      "fontSize": 14,
+                      "fontWeight": "600"
+                    },
+                    {
+                      "type": "icon",
+                      "id": "laEFh",
+                      "name": "Theme",
+                      "width": 18,
+                      "height": 18,
+                      "icon": "sun",
+                      "library": "lucide",
+                      "fill": "#1E1B18"
+                    },
+                    {
+                      "type": "text",
+                      "id": "B5UPN",
+                      "name": "Age level",
+                      "fill": "#1E1B18",
+                      "content": "🦖",
+                      "fontFamily": "Golos Text",
+                      "fontSize": 16,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "C8EKH0",
+          "x": 20,
+          "y": 130,
+          "name": "Statement",
+          "gap": 12,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "OOHmU",
+              "name": "Scale",
+              "width": 40,
+              "height": 40,
+              "icon": "scale",
+              "library": "lucide",
+              "fill": "#1E1B18"
+            },
+            {
+              "type": "text",
+              "id": "G36g3n",
+              "name": "Title",
+              "fill": "#1E1B18",
+              "content": "COMPARE",
+              "fontFamily": "Dela Gothic One",
+              "fontSize": 44,
+              "fontWeight": "normal",
+              "letterSpacing": -0.5
+            }
+          ]
+        },
+        {
+          "type": "ellipse",
+          "id": "Dl9XQ",
+          "x": 56,
+          "y": 212,
+          "name": "Hero disc",
+          "fill": "#F4B41A",
+          "width": 296,
+          "height": 296,
+          "stroke": "#1E1B18",
+          "strokeWidth": 4,
+          "strokeAlignment": "inner"
+        },
+        {
+          "type": "ellipse",
+          "id": "FSJJH",
+          "x": 214,
+          "y": 200,
+          "name": "Overprint · red sun",
+          "fill": {
+            "type": "color",
+            "color": "#E2442F",
+            "enabled": true,
+            "blendMode": "multiply"
+          },
+          "width": 168,
+          "height": 168
+        },
+        {
+          "type": "rectangle",
+          "id": "vcmyO",
+          "x": 196,
+          "y": 214,
+          "name": "Brachiosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/brachiosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 186,
+          "height": 268
+        },
+        {
+          "type": "rectangle",
+          "id": "bvKx7",
+          "x": -8,
+          "y": 292,
+          "name": "Tyrannosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 290,
+          "height": 240
+        },
+        {
+          "type": "frame",
+          "id": "U7CRs5",
+          "x": 24,
+          "y": 216,
+          "name": "Today sticker",
+          "rotation": 8,
+          "fill": "#E2442F",
+          "cornerRadius": 9999,
+          "stroke": "#1E1B18",
+          "strokeWidth": 3,
+          "gap": 8,
+          "padding": [
+            10,
+            18,
+            10,
+            14
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "Q4E70Y",
+              "name": "Sparkles",
+              "width": 22,
+              "height": 22,
+              "icon": "sparkles",
+              "library": "lucide",
+              "fill": "#FFFFFF"
+            },
+            {
+              "type": "text",
+              "id": "YdGEx",
+              "name": "Label",
+              "fill": "#FFFFFF",
+              "content": "TODAY",
+              "fontFamily": "Dela Gothic One",
+              "fontSize": 18,
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "V9po2",
+          "x": 20,
+          "y": 548,
+          "name": "Actions",
+          "gap": 16,
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "frame",
+              "id": "bvSsb",
+              "name": "Play button",
+              "fill": "#1E1B18",
+              "cornerRadius": 9999,
+              "gap": 12,
+              "padding": [
+                16,
+                30,
+                16,
+                24
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "JperY",
+                  "name": "Play",
+                  "width": 28,
+                  "height": 28,
+                  "icon": "play",
+                  "library": "lucide",
+                  "fill": "#F4B41A"
+                },
+                {
+                  "type": "text",
+                  "id": "ZQE3h",
+                  "name": "Label",
+                  "fill": "#FFFFFF",
+                  "content": "PLAY",
+                  "fontFamily": "Dela Gothic One",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "LEBX3",
+              "name": "Best score",
+              "gap": 8,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "OieuF",
+                  "name": "Trophy",
+                  "width": 26,
+                  "height": 26,
+                  "icon": "trophy",
+                  "library": "lucide",
+                  "fill": "#E2442F"
+                },
+                {
+                  "type": "text",
+                  "id": "BrHp4",
+                  "name": "Best",
+                  "fill": "#1E1B18",
+                  "content": "8",
+                  "fontFamily": "Dela Gothic One",
+                  "fontSize": 28,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "x8XB5",
+                  "name": "Of",
+                  "fill": "#1E1B18B3",
+                  "content": "/10",
+                  "fontFamily": "Golos Text",
+                  "fontSize": 17,
+                  "fontWeight": "600"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "id": "XkWi8",
+          "x": 331,
+          "y": 1880,
+          "name": "Version",
+          "fill": "#8C8782",
+          "content": "v0.10.91",
+          "fontFamily": "Golos Text",
+          "fontSize": 11,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 3,
+          "id": "f8hyQ",
+          "x": 130,
+          "y": 1905,
+          "name": "Home indicator",
+          "fill": "#1E1B18",
+          "width": 134,
+          "height": 5
+        },
+        {
+          "id": "vzcd6",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · EXPLORE",
+          "x": 20,
+          "y": 692,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#11807C"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#F4B41A",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/stegosaurus.webp",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "book-open"
+            },
+            "Hu3c5": {
+              "content": "EXPLORE"
+            }
+          }
+        },
+        {
+          "id": "zImpg",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · PAIRS",
+          "x": 223,
+          "y": 692,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#F2A1B4"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#F4B41A",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/triceratops.webp",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "copy"
+            },
+            "Hu3c5": {
+              "content": "PAIRS"
+            },
+            "jsVxF": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            }
+          }
+        },
+        {
+          "id": "Mk70H",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · BONES",
+          "x": 199,
+          "y": 888,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#1E1B18"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#E2442F",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/skeleton-triceratops.webp",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "bone"
+            },
+            "Hu3c5": {
+              "content": "BONES"
+            }
+          }
+        },
+        {
+          "id": "AVyZI",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · DIG",
+          "x": 44,
+          "y": 888,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#E2442F"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#F4B41A",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/dig-treasure-golden-fossil.webp",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "brush"
+            },
+            "Hu3c5": {
+              "content": "DIG"
+            },
+            "MsEhs": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "jsVxF": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            }
+          }
+        },
+        {
+          "id": "S5je4",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · SORT",
+          "x": 20,
+          "y": 1084,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#2B4CC0"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#F2A1B4",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/silhouette-tyrannosaurus.webp",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "shapes"
+            },
+            "Hu3c5": {
+              "content": "SORT"
+            },
+            "jsVxF": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            }
+          }
+        },
+        {
+          "id": "tMRsu",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · CARE",
+          "x": 223,
+          "y": 1084,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#F4B41A"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#F2A1B4",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/care-bowl.webp",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "heart"
+            },
+            "Hu3c5": {
+              "content": "CARE"
+            },
+            "yZkuj": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "MsEhs": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "jsVxF": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            }
+          }
+        },
+        {
+          "id": "BbqWH",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · DRAW",
+          "x": 199,
+          "y": 1280,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#5E9F4E"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#F4B41A",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/parasaurolophus.webp",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "pencil"
+            },
+            "Hu3c5": {
+              "content": "DRAW"
+            },
+            "MsEhs": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "jsVxF": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            }
+          }
+        },
+        {
+          "id": "m60CA",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · MAZE",
+          "x": 44,
+          "y": 1280,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#F2A1B4"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#11807C",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/ankylosaurus.webp",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "route"
+            },
+            "Hu3c5": {
+              "content": "MAZE"
+            },
+            "yZkuj": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "MsEhs": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "jsVxF": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            }
+          }
+        },
+        {
+          "id": "HLkr8",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · PUZZLE",
+          "x": 20,
+          "y": 1476,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#E2442F"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#F2A1B4",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/spinosaurus.webp",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "puzzle"
+            },
+            "Hu3c5": {
+              "content": "PUZZLE"
+            },
+            "yZkuj": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "MsEhs": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "jsVxF": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            }
+          }
+        },
+        {
+          "id": "BmmBC",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · TEETH",
+          "x": 223,
+          "y": 1476,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#11807C"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#F2A1B4",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/whose-jaw-jaw-tyrannosaurus.webp",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "dentistry",
+              "library": "Material Symbols Rounded"
+            },
+            "Hu3c5": {
+              "content": "TEETH"
+            },
+            "yZkuj": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "MsEhs": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "jsVxF": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            }
+          }
+        },
+        {
+          "id": "rIRkt",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · COLOR",
+          "x": 199,
+          "y": 1672,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#2B4CC0"
+            },
+            "Gu4O7": {
+              "fill": {
+                "type": "color",
+                "color": "#F4B41A",
+                "enabled": true,
+                "blendMode": "multiply"
+              }
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/colour/SNc97.png",
+                "mode": "contain"
+              }
+            },
+            "IOkL8": {
+              "icon": "palette"
+            },
+            "Hu3c5": {
+              "content": "COLOR"
+            },
+            "yZkuj": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "MsEhs": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            },
+            "jsVxF": {
+              "fill": "#1E1B1814",
+              "stroke": "#1E1B1826"
+            }
+          }
+        },
+        {
+          "id": "bi6fp",
+          "type": "ref",
+          "ref": "Z1S7B",
+          "name": "Stop · SOON",
+          "x": 44,
+          "y": 1672,
+          "descendants": {
+            "D8gVu": {
+              "fill": "#EFE3C4",
+              "stroke": "#1E1B1833"
+            },
+            "Gu4O7": {
+              "enabled": false
+            },
+            "e5lTCy": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/silhouette-brachiosaurus.webp",
+                "mode": "contain"
+              },
+              "opacity": 0.25
+            },
+            "IOkL8": {
+              "icon": "lock",
+              "fill": "#8C8782"
+            },
+            "Hu3c5": {
+              "content": "SOON",
+              "fill": "#8C8782"
+            },
+            "ondWz": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "aQFtZ",
+          "x": 225,
+          "y": 1086,
+          "name": "Next stop marker",
+          "width": 46,
+          "height": 46,
+          "fill": "#E2442F",
+          "cornerRadius": 9999,
+          "stroke": "#1E1B18",
+          "strokeWidth": 3,
+          "padding": [
+            0,
+            0,
+            0,
+            4
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "icon",
+              "id": "h6jXOG",
+              "name": "Go",
+              "width": 24,
+              "height": 24,
+              "icon": "play",
+              "library": "lucide",
+              "fill": "#FFFFFF"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "HkPK5",
+          "x": 290,
+          "y": 636,
+          "name": "Star total",
+          "fill": "#FFFFFF",
+          "cornerRadius": 9999,
+          "stroke": "#1E1B18",
+          "strokeWidth": 2,
+          "gap": 8,
+          "padding": [
+            10,
+            18,
+            10,
+            14
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "path",
+              "id": "qRc3q",
+              "name": "Star",
+              "geometry": "M12 2l2.9 6.9 7.1 0.6-5.4 4.7 1.6 7-6.2-3.9-6.2 3.9 1.6-7-5.4-4.7 7.1-0.6z",
+              "viewBox": [
+                0,
+                0,
+                24,
+                24
+              ],
+              "fill": "#F4B41A",
+              "width": 24,
+              "height": 24,
+              "stroke": "#1E1B18",
+              "strokeWidth": 1.5,
+              "strokeLinejoin": "round"
+            },
+            {
+              "type": "text",
+              "id": "klg84",
+              "name": "Count",
+              "fill": "#1E1B18",
+              "content": "12",
+              "fontFamily": "Dela Gothic One",
+              "fontSize": 20,
+              "fontWeight": "normal"
+            }
+          ]
+        }
+      ]
     }
   ],
   "themes": {
