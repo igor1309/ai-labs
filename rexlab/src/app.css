@@ -1280,9 +1280,24 @@ body:has(.result) #version {
   padding:
     calc(100px + env(safe-area-inset-top))
     calc(20px + var(--screen-right))
-    calc(48px + env(safe-area-inset-bottom))
+    calc(28px + env(safe-area-inset-bottom))
     calc(20px + var(--screen-left));
   gap: 20px;
+}
+
+/* On an iPhone upright every pixel counts: no bands of rock along the
+   bottom, and the version stands at the very bottom of the window, in a
+   strip of its own that no screen covers. The room this frees goes to
+   the screen itself. */
+[data-size="tall-narrow"] .stratum {
+  display: none;
+}
+
+[data-size="tall-narrow"] #version,
+[data-size="tall-narrow"] body:has(.home) #version {
+  right: calc(20px + var(--screen-right));
+  bottom: calc(6px + env(safe-area-inset-bottom) / 2);
+  font-size: 11px;
 }
 
 [data-size="tall-narrow"] .wordmark {
@@ -12916,4 +12931,14 @@ body:has(.picture-puzzle-board-screen) {
   height: clamp(320px, 36dvh, 420px);
   margin-block: -24px;
   padding-block: 24px;
+}
+
+/* Upright on a phone the row of small tiles scrolls across the whole
+   width of the window, edge to edge; the ribbon inside it keeps the
+   page's sides as its own leading and trailing padding, so the first
+   and the last tile line up with the large card when scrolled to. */
+[data-size="tall-narrow"] .games-tiles {
+  margin-inline: calc(-20px - var(--screen-left)) calc(-20px - var(--screen-right));
+  padding-inline: calc(20px + var(--screen-left)) calc(20px + var(--screen-right));
+  scroll-padding-inline: calc(20px + var(--screen-left)) calc(20px + var(--screen-right));
 }

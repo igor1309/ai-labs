@@ -121,7 +121,7 @@ describe("the home page in a tall-narrow window", () => {
     // A best score, so the large card shows its badge.
     openNarrow(width, height, { storage: memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 7, explorerBest: 7, paleontologistBest: null, roundsPlayed: 3 } } }) }) });
     const values = (selector: string, properties: string[]) => properties.map((property) => styleAt(part(selector), [width, height]).value(property));
-    expect(values(".home", ["padding-top", "padding-bottom", "gap"])).toEqual(["100px", "48px", "20px"]);
+    expect(values(".home", ["padding-top", "padding-bottom", "gap"])).toEqual(["100px", "28px", "20px"]);
     expect(values(".greeting", ["font-size", "line-height"])).toEqual(["30px", "36px"]);
     expect(values(".featured-card", ["min-height"])).toEqual(["240px"]);
     expect(values(".featured-card-footer", ["padding", "gap"])).toEqual(["18px 18px 22px", "12px"]);

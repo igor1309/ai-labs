@@ -11,7 +11,7 @@ const labels = {
 const games = ['compare', 'catalogue', 'pairs', 'skeletons', 'dig', 'sort', 'care', 'sandWriting', 'labyrinth', 'picturePuzzle', 'whoseJaw', 'coloring'];
 // Approved hero frames in CSS pixels; small tiles cannot influence them.
 const sizes = [
-  [390, 844, [20, 156, 350, 292]],
+  [390, 844, [20, 156, 350, 312]],
   [844, 390, [20, 80, 404, 290]],
   [820, 1180, [56, 192, 708, 463.203125]],
   [1180, 820, [56, 222, 445.71875, 440]],
