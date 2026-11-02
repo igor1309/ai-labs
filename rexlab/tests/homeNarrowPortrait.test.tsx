@@ -121,15 +121,15 @@ describe("the home page in a tall-narrow window", () => {
     // A best score, so the large card shows its badge.
     openNarrow(width, height, { storage: memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 7, explorerBest: 7, paleontologistBest: null, roundsPlayed: 3 } } }) }) });
     const values = (selector: string, properties: string[]) => properties.map((property) => styleAt(part(selector), [width, height]).value(property));
-    expect(values(".home", ["padding-top", "padding-bottom", "gap"])).toEqual(["100px", "28px", "20px"]);
+    expect(values(".home", ["padding-top", "padding-bottom", "gap"]).map(v => v.replace(/^calc\((.*)\)$/, "$1"))).toEqual(["100px", height >= 640 ? "24px" : "28px", "20px"]);
     expect(values(".greeting", ["font-size", "line-height"])).toEqual(["30px", "36px"]);
-    expect(values(".featured-card", ["min-height"])).toEqual(["240px"]);
+    expect(values(".featured-card", ["min-height"])).toEqual([height >= 640 ? "0px" : "240px"]);
     expect(values(".featured-card-footer", ["padding", "gap"])).toEqual(["18px 18px 22px", "12px"]);
     expect(values(".featured-card-title", ["font-size"])).toEqual([width < 360 ? "26px" : "28px"]);
     expect(values(".featured-card-badge", ["top", "right", "padding", "font-size"])).toEqual(["16px", "16px", "8px 14px", "22px"]);
-    expect(values(".home", ["height", "min-height"])).toEqual(["auto", `${height}px`]);
+    expect(values(".home", ["height", "min-height"])).toEqual(height >= 640 ? ["100vh", "0px"] : ["auto", `${height}px`]);
     expect(values(".games", ["min-height", "flex", "gap"])).toEqual(["0px", "1 1 0px", "28px"]);
-    expect(values(".games-tiles", ["height", "min-height", "margin-right"])).toEqual([`${Math.max(320, Math.min(height * .36,420))}px`, "0px", "-20px"]);
+    expect(values(".games-tiles", ["height", "min-height", "margin-right"])).toEqual(height >= 640 ? ["auto", "300px", "-20px"] : [`${Math.max(320, Math.min(height * .36, 420))}px`, "0px", "-20px"]);
   });
 
   it("names RexLab and the museum for screen readers while showing their symbols alone", () => {
