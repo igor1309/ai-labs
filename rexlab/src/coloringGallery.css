@@ -131,3 +131,6 @@
   .gallery-actions .gallery-new { flex: 1 1 calc(33% - 8px); min-height: 60px; }
   .gallery-actions .gallery-artwork-preview { display: none; }
 }
+/* On an iPhone upright the version stands at the window's very bottom:
+   the gallery ends just above it. */
+[data-size="tall-narrow"] .coloring-gallery { padding-bottom: calc(20px + env(safe-area-inset-bottom) / 2); }
