@@ -376260,15 +376260,17 @@
                 {
                   "type": "frame",
                   "id": "rmV4f",
-                  "name": "Landscape and narrow: picture over ← →",
+                  "name": "iPad: picture edge to edge, ← → under it",
                   "layout": "vertical",
                   "gap": 8,
                   "children": [
                     {
                       "type": "frame",
-                      "id": "VdwnD",
+                      "id": "kEjyz",
                       "name": "Stage",
-                      "width": 560,
+                      "clip": true,
+                      "width": 640,
+                      "height": 596,
                       "fill": "$ds-stage",
                       "cornerRadius": 28,
                       "effect": {
@@ -376282,15 +376284,11 @@
                         "blur": 14
                       },
                       "layout": "vertical",
-                      "gap": 16,
-                      "padding": 20,
-                      "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
                         {
                           "type": "rectangle",
-                          "cornerRadius": 16,
-                          "id": "OEirz",
+                          "id": "xTzHz",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -376298,18 +376296,24 @@
                             "url": "images/tyrannosaurus.webp",
                             "mode": "contain"
                           },
-                          "width": 520,
-                          "height": 390
+                          "width": "fill_container",
+                          "height": 480
                         },
                         {
                           "type": "frame",
-                          "id": "PpgCs",
+                          "id": "XXgFg",
                           "name": "Arrows",
                           "width": "fill_container",
+                          "height": "fill_container",
+                          "padding": [
+                            0,
+                            20
+                          ],
                           "justifyContent": "space_between",
+                          "alignItems": "center",
                           "children": [
                             {
-                              "id": "tVKxe",
+                              "id": "Xv4FK",
                               "type": "ref",
                               "ref": "ImooT",
                               "name": "Previous",
@@ -376324,7 +376328,7 @@
                               }
                             },
                             {
-                              "id": "hTtWn",
+                              "id": "hzl9E",
                               "type": "ref",
                               "ref": "ImooT",
                               "name": "Next",
@@ -376347,7 +376351,7 @@
                       "id": "fKtjV",
                       "name": "Caption",
                       "fill": "$ds-ink-soft",
-                      "content": "Landscape and narrow: picture over ← →",
+                      "content": "iPad: the picture fills the stage edge to edge, ← → under it",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -376357,16 +376361,16 @@
                 {
                   "type": "frame",
                   "id": "pkmsx",
-                  "name": "Upright: ← picture → across the width",
+                  "name": "Upright iPad: picture across the width, ← → under it",
                   "layout": "vertical",
                   "gap": 8,
                   "children": [
                     {
                       "type": "frame",
-                      "id": "WUgUq",
+                      "id": "MAFDh",
                       "name": "Stage",
+                      "clip": true,
                       "width": 632,
-                      "height": 329,
                       "fill": "$ds-stage",
                       "cornerRadius": 28,
                       "effect": {
@@ -376379,30 +376383,11 @@
                         },
                         "blur": 14
                       },
-                      "gap": 16,
-                      "padding": 20,
-                      "justifyContent": "center",
-                      "alignItems": "center",
+                      "layout": "vertical",
                       "children": [
                         {
-                          "id": "d7AeC",
-                          "type": "ref",
-                          "ref": "ImooT",
-                          "name": "Previous",
-                          "width": 64,
-                          "height": 64,
-                          "descendants": {
-                            "Y1YWBe": {
-                              "icon": "arrow-left",
-                              "width": 30,
-                              "height": 30
-                            }
-                          }
-                        },
-                        {
                           "type": "rectangle",
-                          "cornerRadius": 16,
-                          "id": "nc8hu",
+                          "id": "X7c8w",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -376410,23 +376395,52 @@
                             "url": "images/pachycephalosaurus.webp",
                             "mode": "contain"
                           },
-                          "width": 385,
-                          "height": 289
+                          "width": "fill_container",
+                          "height": 424
                         },
                         {
-                          "id": "gMMKA",
-                          "type": "ref",
-                          "ref": "ImooT",
-                          "name": "Next",
-                          "width": 64,
-                          "height": 64,
-                          "descendants": {
-                            "Y1YWBe": {
-                              "icon": "arrow-right",
-                              "width": 30,
-                              "height": 30
+                          "type": "frame",
+                          "id": "CmyzD",
+                          "name": "Arrows",
+                          "width": "fill_container",
+                          "padding": [
+                            8,
+                            20
+                          ],
+                          "justifyContent": "space_between",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "id": "z9OSF",
+                              "type": "ref",
+                              "ref": "ImooT",
+                              "name": "Previous",
+                              "width": 64,
+                              "height": 64,
+                              "descendants": {
+                                "Y1YWBe": {
+                                  "icon": "arrow-left",
+                                  "width": 30,
+                                  "height": 30
+                                }
+                              }
+                            },
+                            {
+                              "id": "kh0TC",
+                              "type": "ref",
+                              "ref": "ImooT",
+                              "name": "Next",
+                              "width": 64,
+                              "height": 64,
+                              "descendants": {
+                                "Y1YWBe": {
+                                  "icon": "arrow-right",
+                                  "width": 30,
+                                  "height": 30
+                                }
+                              }
                             }
-                          }
+                          ]
                         }
                       ]
                     },
@@ -376435,7 +376449,7 @@
                       "id": "GI8OP",
                       "name": "Caption",
                       "fill": "$ds-ink-soft",
-                      "content": "Upright: ← picture → across the width",
+                      "content": "Upright iPad: the picture across the whole width, ← → under it",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -376451,9 +376465,11 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "HlrZp",
+                      "id": "KqY6f",
                       "name": "Stage",
-                      "width": 560,
+                      "clip": true,
+                      "width": 640,
+                      "height": 596,
                       "fill": "$ds-stage",
                       "cornerRadius": 28,
                       "effect": {
@@ -376467,15 +376483,11 @@
                         "blur": 14
                       },
                       "layout": "vertical",
-                      "gap": 16,
-                      "padding": 20,
-                      "justifyContent": "center",
                       "alignItems": "center",
                       "children": [
                         {
                           "type": "rectangle",
-                          "cornerRadius": 16,
-                          "id": "SpKAv",
+                          "id": "aYbLd",
                           "name": "Picture · shimmer",
                           "fill": {
                             "type": "gradient",
@@ -376500,18 +376512,24 @@
                               }
                             ]
                           },
-                          "width": 520,
-                          "height": 390
+                          "width": "fill_container",
+                          "height": 480
                         },
                         {
                           "type": "frame",
-                          "id": "JsM1G",
+                          "id": "fH6xu",
                           "name": "Arrows",
                           "width": "fill_container",
+                          "height": "fill_container",
+                          "padding": [
+                            0,
+                            20
+                          ],
                           "justifyContent": "space_between",
+                          "alignItems": "center",
                           "children": [
                             {
-                              "id": "IN7Lt",
+                              "id": "O5YZw",
                               "type": "ref",
                               "ref": "ImooT",
                               "name": "Previous",
@@ -376526,7 +376544,7 @@
                               }
                             },
                             {
-                              "id": "BazGN",
+                              "id": "vrR8n",
                               "type": "ref",
                               "ref": "ImooT",
                               "name": "Next",
@@ -376550,6 +376568,103 @@
                       "name": "Caption",
                       "fill": "$ds-ink-soft",
                       "content": "Loading: the picture shimmers on the stage",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "bVITm",
+                  "name": "Phone and side: picture over ← →",
+                  "layout": "vertical",
+                  "gap": 8,
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "kNUTo",
+                      "name": "Stage",
+                      "width": 353,
+                      "fill": "$ds-stage",
+                      "cornerRadius": 28,
+                      "effect": {
+                        "type": "shadow",
+                        "shadowType": "inner",
+                        "color": "#00000040",
+                        "offset": {
+                          "x": 0,
+                          "y": 6
+                        },
+                        "blur": 14
+                      },
+                      "layout": "vertical",
+                      "gap": 16,
+                      "padding": 20,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "rectangle",
+                          "cornerRadius": 16,
+                          "id": "kOPM1",
+                          "name": "Picture",
+                          "fill": {
+                            "type": "image",
+                            "enabled": true,
+                            "url": "images/tyrannosaurus.webp",
+                            "mode": "contain"
+                          },
+                          "width": 313,
+                          "height": 235
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Z1hMU2",
+                          "name": "Arrows",
+                          "width": "fill_container",
+                          "justifyContent": "space_between",
+                          "children": [
+                            {
+                              "id": "fYjXR",
+                              "type": "ref",
+                              "ref": "ImooT",
+                              "name": "Previous",
+                              "width": 64,
+                              "height": 64,
+                              "descendants": {
+                                "Y1YWBe": {
+                                  "icon": "arrow-left",
+                                  "width": 30,
+                                  "height": 30
+                                }
+                              }
+                            },
+                            {
+                              "id": "l7oFV",
+                              "type": "ref",
+                              "ref": "ImooT",
+                              "name": "Next",
+                              "width": 64,
+                              "height": 64,
+                              "descendants": {
+                                "Y1YWBe": {
+                                  "icon": "arrow-right",
+                                  "width": 30,
+                                  "height": 30
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "c5NnxW",
+                      "name": "Caption",
+                      "fill": "$ds-ink-soft",
+                      "content": "Phone and side: the picture inset on the stage, ← → under it",
                       "fontFamily": "$ds-font",
                       "fontSize": 12,
                       "fontWeight": "normal"
@@ -381360,7 +381475,7 @@
       "id": "SyaXK",
       "x": 0,
       "y": 87546,
-      "name": "EXPLORE · page · Tyrannosaurus 1 / 52: picture on the navy stage, ← → under it, name, MEAT tag, TALL and HEAVY · iPad mini 1133×744 · Light",
+      "name": "EXPLORE · page · Tyrannosaurus 1 / 52: the picture fills the navy stage edge to edge, ← → under it, then name, MEAT tag, TALL and HEAVY · iPad mini 1133×744 · Light",
       "theme": {
         "mode": "light",
         "device": "ipad"
@@ -381551,13 +381666,15 @@
           "y": 120,
           "name": "Page",
           "width": 1021,
-          "gap": 40,
+          "gap": 32,
           "children": [
             {
               "type": "frame",
               "id": "qwFHN",
               "name": "Stage",
-              "width": 560,
+              "clip": true,
+              "width": 640,
+              "height": 596,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -381571,14 +381688,10 @@
                 "blur": 14
               },
               "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "rpjbq",
                   "name": "Picture",
                   "fill": {
@@ -381587,15 +381700,21 @@
                     "url": "images/tyrannosaurus.webp",
                     "mode": "contain"
                   },
-                  "width": 520,
-                  "height": 390
+                  "width": "fill_container",
+                  "height": 480
                 },
                 {
                   "type": "frame",
                   "id": "kAXw6",
                   "name": "Arrows",
                   "width": "fill_container",
+                  "height": "fill_container",
+                  "padding": [
+                    0,
+                    20
+                  ],
                   "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "id": "f0N3i",
@@ -381663,7 +381782,7 @@
                       "fill": "$ds-ink",
                       "content": "TYRANNOSAURUS",
                       "fontFamily": "$ds-font",
-                      "fontSize": 32,
+                      "fontSize": 27,
                       "fontWeight": "800",
                       "letterSpacing": -0.5
                     }
@@ -381724,7 +381843,7 @@
                   "content": "A HUGE HUNTER WITH A BIG HEAD AND TINY ARMS. ITS TEETH WERE AS LONG AS BANANAS.",
                   "lineHeight": 1.46,
                   "fontFamily": "$ds-font",
-                  "fontSize": 24,
+                  "fontSize": 22,
                   "fontWeight": "500"
                 },
                 {
@@ -381732,7 +381851,8 @@
                   "id": "zCLNF",
                   "name": "Facts",
                   "width": "fill_container",
-                  "gap": 16,
+                  "layout": "vertical",
+                  "gap": 12,
                   "children": [
                     {
                       "id": "Iz2ov",
@@ -382001,13 +382121,15 @@
           "y": 120,
           "name": "Page",
           "width": 1021,
-          "gap": 40,
+          "gap": 32,
           "children": [
             {
               "type": "frame",
               "id": "T91Vf2",
               "name": "Stage",
-              "width": 560,
+              "clip": true,
+              "width": 640,
+              "height": 596,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -382021,14 +382143,10 @@
                 "blur": 14
               },
               "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "m7DoY",
                   "name": "Picture",
                   "fill": {
@@ -382037,15 +382155,21 @@
                     "url": "images/pachycephalosaurus.webp",
                     "mode": "contain"
                   },
-                  "width": 520,
-                  "height": 390
+                  "width": "fill_container",
+                  "height": 480
                 },
                 {
                   "type": "frame",
                   "id": "KzAxj",
                   "name": "Arrows",
                   "width": "fill_container",
+                  "height": "fill_container",
+                  "padding": [
+                    0,
+                    20
+                  ],
                   "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "id": "JBAJL",
@@ -382113,7 +382237,7 @@
                       "fill": "$ds-ink",
                       "content": "PACHYCEPHALOSAURUS",
                       "fontFamily": "$ds-font",
-                      "fontSize": 32,
+                      "fontSize": 27,
                       "fontWeight": "800",
                       "letterSpacing": -0.5
                     }
@@ -382174,7 +382298,7 @@
                   "content": "A VERY THICK, DOME-SHAPED SKULL WITH LITTLE BUMPS AROUND IT.",
                   "lineHeight": 1.46,
                   "fontFamily": "$ds-font",
-                  "fontSize": 24,
+                  "fontSize": 22,
                   "fontWeight": "500"
                 },
                 {
@@ -382182,7 +382306,8 @@
                   "id": "hFpWx",
                   "name": "Facts",
                   "width": "fill_container",
-                  "gap": 16,
+                  "layout": "vertical",
+                  "gap": 12,
                   "children": [
                     {
                       "id": "ad9Ef",
@@ -382451,13 +382576,15 @@
           "y": 120,
           "name": "Page",
           "width": 1021,
-          "gap": 40,
+          "gap": 32,
           "children": [
             {
               "type": "frame",
               "id": "dK3lD",
               "name": "Stage",
-              "width": 560,
+              "clip": true,
+              "width": 640,
+              "height": 596,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -382471,14 +382598,10 @@
                 "blur": 14
               },
               "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "WMuGw",
                   "name": "Picture",
                   "fill": {
@@ -382487,15 +382610,21 @@
                     "url": "images/quetzalcoatlus.webp",
                     "mode": "contain"
                   },
-                  "width": 520,
-                  "height": 390
+                  "width": "fill_container",
+                  "height": 480
                 },
                 {
                   "type": "frame",
                   "id": "SJCeX",
                   "name": "Arrows",
                   "width": "fill_container",
+                  "height": "fill_container",
+                  "padding": [
+                    0,
+                    20
+                  ],
                   "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "id": "sDpmO",
@@ -382586,7 +382715,7 @@
                       "fill": "$ds-ink",
                       "content": "QUETZALCOATLUS",
                       "fontFamily": "$ds-font",
-                      "fontSize": 32,
+                      "fontSize": 27,
                       "fontWeight": "800",
                       "letterSpacing": -0.5
                     }
@@ -382647,7 +382776,7 @@
                   "content": "NOT A DINOSAUR! ONE OF THE BIGGEST FLIERS EVER. ITS WINGS WERE AS WIDE AS A SMALL PLANE'S.",
                   "lineHeight": 1.46,
                   "fontFamily": "$ds-font",
-                  "fontSize": 24,
+                  "fontSize": 22,
                   "fontWeight": "500"
                 },
                 {
@@ -382655,7 +382784,8 @@
                   "id": "QQ9Sl",
                   "name": "Facts",
                   "width": "fill_container",
-                  "gap": 16,
+                  "layout": "vertical",
+                  "gap": 12,
                   "children": [
                     {
                       "id": "PuPSQ",
@@ -382924,13 +383054,15 @@
           "y": 120,
           "name": "Page",
           "width": 1021,
-          "gap": 40,
+          "gap": 32,
           "children": [
             {
               "type": "frame",
               "id": "fGI6E",
               "name": "Stage",
-              "width": 560,
+              "clip": true,
+              "width": 640,
+              "height": 596,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -382944,14 +383076,10 @@
                 "blur": 14
               },
               "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "xtAWE",
                   "name": "Picture",
                   "fill": {
@@ -382960,15 +383088,21 @@
                     "url": "images/mosasaurus.webp",
                     "mode": "contain"
                   },
-                  "width": 520,
-                  "height": 390
+                  "width": "fill_container",
+                  "height": 480
                 },
                 {
                   "type": "frame",
                   "id": "h57QqB",
                   "name": "Arrows",
                   "width": "fill_container",
+                  "height": "fill_container",
+                  "padding": [
+                    0,
+                    20
+                  ],
                   "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "id": "HPcHg",
@@ -383059,7 +383193,7 @@
                       "fill": "$ds-ink",
                       "content": "MOSASAURUS",
                       "fontFamily": "$ds-font",
-                      "fontSize": 32,
+                      "fontSize": 27,
                       "fontWeight": "800",
                       "letterSpacing": -0.5
                     }
@@ -383120,7 +383254,7 @@
                   "content": "NOT A DINOSAUR, BUT A GIANT SEA LIZARD. IT ATE FISH, SQUID AND EVEN SHARKS.",
                   "lineHeight": 1.46,
                   "fontFamily": "$ds-font",
-                  "fontSize": 24,
+                  "fontSize": 22,
                   "fontWeight": "500"
                 },
                 {
@@ -383128,7 +383262,8 @@
                   "id": "fQTos",
                   "name": "Facts",
                   "width": "fill_container",
-                  "gap": 16,
+                  "layout": "vertical",
+                  "gap": 12,
                   "children": [
                     {
                       "id": "bqOBm",
@@ -383397,13 +383532,15 @@
           "y": 120,
           "name": "Page",
           "width": 1021,
-          "gap": 40,
+          "gap": 32,
           "children": [
             {
               "type": "frame",
               "id": "G1841U",
               "name": "Stage",
-              "width": 560,
+              "clip": true,
+              "width": 640,
+              "height": 596,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -383417,14 +383554,10 @@
                 "blur": 14
               },
               "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "E3hjPb",
                   "name": "Picture · shimmer",
                   "fill": {
@@ -383450,15 +383583,21 @@
                       }
                     ]
                   },
-                  "width": 520,
-                  "height": 390
+                  "width": "fill_container",
+                  "height": 480
                 },
                 {
                   "type": "frame",
                   "id": "V9hYu",
                   "name": "Arrows",
                   "width": "fill_container",
+                  "height": "fill_container",
+                  "padding": [
+                    0,
+                    20
+                  ],
                   "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "id": "DqxWm",
@@ -383526,7 +383665,7 @@
                       "fill": "$ds-ink",
                       "content": "VELOCIRAPTOR",
                       "fontFamily": "$ds-font",
-                      "fontSize": 32,
+                      "fontSize": 27,
                       "fontWeight": "800",
                       "letterSpacing": -0.5
                     }
@@ -383587,7 +383726,7 @@
                   "content": "A FEATHERED HUNTER THE SIZE OF A TURKEY, WITH A BIG CURVED CLAW ON EACH FOOT.",
                   "lineHeight": 1.46,
                   "fontFamily": "$ds-font",
-                  "fontSize": 24,
+                  "fontSize": 22,
                   "fontWeight": "500"
                 },
                 {
@@ -383595,7 +383734,8 @@
                   "id": "x22ni",
                   "name": "Facts",
                   "width": "fill_container",
-                  "gap": 16,
+                  "layout": "vertical",
+                  "gap": 12,
                   "children": [
                     {
                       "id": "vGcuj",
@@ -383864,13 +384004,15 @@
           "y": 120,
           "name": "Page",
           "width": 1021,
-          "gap": 40,
+          "gap": 32,
           "children": [
             {
               "type": "frame",
               "id": "Jt6wu",
               "name": "Stage",
-              "width": 560,
+              "clip": true,
+              "width": 640,
+              "height": 596,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -383884,14 +384026,10 @@
                 "blur": 14
               },
               "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "xLMct",
                   "name": "Picture",
                   "fill": {
@@ -383900,15 +384038,21 @@
                     "url": "images/pterodactylus.webp",
                     "mode": "contain"
                   },
-                  "width": 520,
-                  "height": 390
+                  "width": "fill_container",
+                  "height": 480
                 },
                 {
                   "type": "frame",
                   "id": "ANUtw",
                   "name": "Arrows",
                   "width": "fill_container",
+                  "height": "fill_container",
+                  "padding": [
+                    0,
+                    20
+                  ],
                   "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "id": "BXRJI",
@@ -383999,7 +384143,7 @@
                       "fill": "$ds-ink",
                       "content": "PTERODACTYLUS",
                       "fontFamily": "$ds-font",
-                      "fontSize": 32,
+                      "fontSize": 27,
                       "fontWeight": "800",
                       "letterSpacing": -0.5
                     }
@@ -384060,7 +384204,7 @@
                   "content": "NOT A DINOSAUR! THE FIRST FLYING REPTILE EVER FOUND. ITS WINGS WERE AS WIDE AS YOUR ARMS.",
                   "lineHeight": 1.46,
                   "fontFamily": "$ds-font",
-                  "fontSize": 24,
+                  "fontSize": 22,
                   "fontWeight": "500"
                 },
                 {
@@ -384068,7 +384212,8 @@
                   "id": "HA7Q5",
                   "name": "Facts",
                   "width": "fill_container",
-                  "gap": 16,
+                  "layout": "vertical",
+                  "gap": 12,
                   "children": [
                     {
                       "id": "bu2fJ",
@@ -385646,7 +385791,7 @@
       "id": "siNSG",
       "x": 1688,
       "y": 88390,
-      "name": "EXPLORE · page · Pachycephalosaurus 10 / 52: navy stage across, picture 385×289 between ← and →, the name in 49-px type · upright iPad 744×1133 · Light",
+      "name": "EXPLORE · page · Pachycephalosaurus 10 / 52: the picture across the whole width, ← → under it, the name in 49-px type · upright iPad 744×1133 · Light",
       "theme": {
         "mode": "light",
         "device": "ipad"
@@ -385838,14 +385983,14 @@
           "name": "Page",
           "width": 632,
           "layout": "vertical",
-          "gap": 32,
+          "gap": 24,
           "children": [
             {
               "type": "frame",
               "id": "Ahzkk",
               "name": "Stage",
+              "clip": true,
               "width": "fill_container",
-              "height": 329,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -385858,29 +386003,10 @@
                 },
                 "blur": 14
               },
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
-              "alignItems": "center",
+              "layout": "vertical",
               "children": [
                 {
-                  "id": "r9uSG",
-                  "type": "ref",
-                  "ref": "ImooT",
-                  "name": "Previous",
-                  "width": 64,
-                  "height": 64,
-                  "descendants": {
-                    "Y1YWBe": {
-                      "icon": "arrow-left",
-                      "width": 30,
-                      "height": 30
-                    }
-                  }
-                },
-                {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "lIsCj",
                   "name": "Picture",
                   "fill": {
@@ -385889,23 +386015,52 @@
                     "url": "images/pachycephalosaurus.webp",
                     "mode": "contain"
                   },
-                  "width": 385,
-                  "height": 289
+                  "width": "fill_container",
+                  "height": 424
                 },
                 {
-                  "id": "bLiQF",
-                  "type": "ref",
-                  "ref": "ImooT",
-                  "name": "Next",
-                  "width": 64,
-                  "height": 64,
-                  "descendants": {
-                    "Y1YWBe": {
-                      "icon": "arrow-right",
-                      "width": 30,
-                      "height": 30
+                  "type": "frame",
+                  "id": "m9GqDj",
+                  "name": "Arrows",
+                  "width": "fill_container",
+                  "padding": [
+                    8,
+                    20
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "r9uSG",
+                      "type": "ref",
+                      "ref": "ImooT",
+                      "name": "Previous",
+                      "width": 64,
+                      "height": 64,
+                      "descendants": {
+                        "Y1YWBe": {
+                          "icon": "arrow-left",
+                          "width": 30,
+                          "height": 30
+                        }
+                      }
+                    },
+                    {
+                      "id": "bLiQF",
+                      "type": "ref",
+                      "ref": "ImooT",
+                      "name": "Next",
+                      "width": 64,
+                      "height": 64,
+                      "descendants": {
+                        "Y1YWBe": {
+                          "icon": "arrow-right",
+                          "width": 30,
+                          "height": 30
+                        }
+                      }
                     }
-                  }
+                  ]
                 }
               ]
             },
@@ -385915,7 +386070,7 @@
               "name": "Words",
               "width": "fill_container",
               "layout": "vertical",
-              "gap": 24,
+              "gap": 20,
               "children": [
                 {
                   "type": "frame",
@@ -386280,14 +386435,14 @@
           "name": "Page",
           "width": 632,
           "layout": "vertical",
-          "gap": 32,
+          "gap": 24,
           "children": [
             {
               "type": "frame",
               "id": "CnWUh",
               "name": "Stage",
+              "clip": true,
               "width": "fill_container",
-              "height": 329,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -386300,29 +386455,10 @@
                 },
                 "blur": 14
               },
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
-              "alignItems": "center",
+              "layout": "vertical",
               "children": [
                 {
-                  "id": "ngQZE",
-                  "type": "ref",
-                  "ref": "ImooT",
-                  "name": "Previous",
-                  "width": 64,
-                  "height": 64,
-                  "descendants": {
-                    "Y1YWBe": {
-                      "icon": "arrow-left",
-                      "width": 30,
-                      "height": 30
-                    }
-                  }
-                },
-                {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "VN5Xa",
                   "name": "Picture",
                   "fill": {
@@ -386331,23 +386467,52 @@
                     "url": "images/quetzalcoatlus.webp",
                     "mode": "contain"
                   },
-                  "width": 385,
-                  "height": 289
+                  "width": "fill_container",
+                  "height": 424
                 },
                 {
-                  "id": "q3W6W",
-                  "type": "ref",
-                  "ref": "ImooT",
-                  "name": "Next",
-                  "width": 64,
-                  "height": 64,
-                  "descendants": {
-                    "Y1YWBe": {
-                      "icon": "arrow-right",
-                      "width": 30,
-                      "height": 30
+                  "type": "frame",
+                  "id": "TCDwW",
+                  "name": "Arrows",
+                  "width": "fill_container",
+                  "padding": [
+                    8,
+                    20
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "ngQZE",
+                      "type": "ref",
+                      "ref": "ImooT",
+                      "name": "Previous",
+                      "width": 64,
+                      "height": 64,
+                      "descendants": {
+                        "Y1YWBe": {
+                          "icon": "arrow-left",
+                          "width": 30,
+                          "height": 30
+                        }
+                      }
+                    },
+                    {
+                      "id": "q3W6W",
+                      "type": "ref",
+                      "ref": "ImooT",
+                      "name": "Next",
+                      "width": 64,
+                      "height": 64,
+                      "descendants": {
+                        "Y1YWBe": {
+                          "icon": "arrow-right",
+                          "width": 30,
+                          "height": 30
+                        }
+                      }
                     }
-                  }
+                  ]
                 }
               ]
             },
@@ -386357,7 +386522,7 @@
               "name": "Words",
               "width": "fill_container",
               "layout": "vertical",
-              "gap": 24,
+              "gap": 20,
               "children": [
                 {
                   "type": "frame",
@@ -391945,13 +392110,15 @@
           "y": 120,
           "name": "Page",
           "width": 1021,
-          "gap": 40,
+          "gap": 32,
           "children": [
             {
               "type": "frame",
               "id": "V11hR",
               "name": "Stage",
-              "width": 560,
+              "clip": true,
+              "width": 640,
+              "height": 596,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -391965,14 +392132,10 @@
                 "blur": 14
               },
               "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "dc0Mg",
                   "name": "Picture",
                   "fill": {
@@ -391981,15 +392144,21 @@
                     "url": "images/quetzalcoatlus.webp",
                     "mode": "contain"
                   },
-                  "width": 520,
-                  "height": 390
+                  "width": "fill_container",
+                  "height": 480
                 },
                 {
                   "type": "frame",
                   "id": "IWZvZ",
                   "name": "Arrows",
                   "width": "fill_container",
+                  "height": "fill_container",
+                  "padding": [
+                    0,
+                    20
+                  ],
                   "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "id": "i3UJX",
@@ -392080,7 +392249,7 @@
                       "fill": "$ds-ink",
                       "content": "QUETZALCOATLUS",
                       "fontFamily": "$ds-font",
-                      "fontSize": 32,
+                      "fontSize": 27,
                       "fontWeight": "800",
                       "letterSpacing": -0.5
                     }
@@ -392141,7 +392310,7 @@
                   "content": "NOT A DINOSAUR! ONE OF THE BIGGEST FLIERS EVER. ITS WINGS WERE AS WIDE AS A SMALL PLANE'S.",
                   "lineHeight": 1.46,
                   "fontFamily": "$ds-font",
-                  "fontSize": 24,
+                  "fontSize": 22,
                   "fontWeight": "500"
                 },
                 {
@@ -392149,7 +392318,8 @@
                   "id": "R94dq2",
                   "name": "Facts",
                   "width": "fill_container",
-                  "gap": 16,
+                  "layout": "vertical",
+                  "gap": 12,
                   "children": [
                     {
                       "id": "RIjU3",
@@ -394269,13 +394439,15 @@
           "y": 120,
           "name": "Page",
           "width": 1021,
-          "gap": 40,
+          "gap": 32,
           "children": [
             {
               "type": "frame",
               "id": "OL0Tr",
               "name": "Stage",
-              "width": 560,
+              "clip": true,
+              "width": 640,
+              "height": 596,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -394289,14 +394461,10 @@
                 "blur": 14
               },
               "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "z3UKT",
                   "name": "Picture",
                   "fill": {
@@ -394305,15 +394473,21 @@
                     "url": "images/gallimimus.webp",
                     "mode": "contain"
                   },
-                  "width": 520,
-                  "height": 390
+                  "width": "fill_container",
+                  "height": 480
                 },
                 {
                   "type": "frame",
                   "id": "J9ChO",
                   "name": "Arrows",
                   "width": "fill_container",
+                  "height": "fill_container",
+                  "padding": [
+                    0,
+                    20
+                  ],
                   "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "id": "EtlIO",
@@ -394381,7 +394555,7 @@
                       "fill": "$ds-ink",
                       "content": "ГАЛЛИМИМ",
                       "fontFamily": "$ds-font",
-                      "fontSize": 32,
+                      "fontSize": 27,
                       "fontWeight": "800",
                       "letterSpacing": -0.5
                     }
@@ -394442,7 +394616,7 @@
                   "content": "БЫСТРЫЙ БЕГУН С ДЛИННЫМИ НОГАМИ И КЛЮВОМ, ПОХОЖ НА БОЛЬШОГО СТРАУСА.",
                   "lineHeight": 1.46,
                   "fontFamily": "$ds-font",
-                  "fontSize": 24,
+                  "fontSize": 22,
                   "fontWeight": "500"
                 },
                 {
@@ -394450,7 +394624,8 @@
                   "id": "EcCy5",
                   "name": "Facts",
                   "width": "fill_container",
-                  "gap": 16,
+                  "layout": "vertical",
+                  "gap": 12,
                   "children": [
                     {
                       "id": "O9QTZ6",
@@ -394719,13 +394894,15 @@
           "y": 120,
           "name": "Page",
           "width": 1021,
-          "gap": 40,
+          "gap": 32,
           "children": [
             {
               "type": "frame",
               "id": "njuHp",
               "name": "Stage",
-              "width": 560,
+              "clip": true,
+              "width": 640,
+              "height": 596,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -394739,14 +394916,10 @@
                 "blur": 14
               },
               "layout": "vertical",
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
               "alignItems": "center",
               "children": [
                 {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "FOaTh",
                   "name": "Picture",
                   "fill": {
@@ -394755,15 +394928,21 @@
                     "url": "images/pachycephalosaurus.webp",
                     "mode": "contain"
                   },
-                  "width": 520,
-                  "height": 390
+                  "width": "fill_container",
+                  "height": 480
                 },
                 {
                   "type": "frame",
                   "id": "TTMc5",
                   "name": "Arrows",
                   "width": "fill_container",
+                  "height": "fill_container",
+                  "padding": [
+                    0,
+                    20
+                  ],
                   "justifyContent": "space_between",
+                  "alignItems": "center",
                   "children": [
                     {
                       "id": "tEVji",
@@ -394831,7 +395010,7 @@
                       "fill": "$ds-ink",
                       "content": "ПАХИЦЕФАЛОЗАВР",
                       "fontFamily": "$ds-font",
-                      "fontSize": 32,
+                      "fontSize": 27,
                       "fontWeight": "800",
                       "letterSpacing": -0.5
                     }
@@ -394892,7 +395071,7 @@
                   "content": "ОЧЕНЬ ТОЛСТЫЙ ЧЕРЕП В ФОРМЕ КУПОЛА, С МАЛЕНЬКИМИ ШИШКАМИ ВОКРУГ.",
                   "lineHeight": 1.46,
                   "fontFamily": "$ds-font",
-                  "fontSize": 24,
+                  "fontSize": 22,
                   "fontWeight": "500"
                 },
                 {
@@ -394900,7 +395079,8 @@
                   "id": "JaINo",
                   "name": "Facts",
                   "width": "fill_container",
-                  "gap": 16,
+                  "layout": "vertical",
+                  "gap": 12,
                   "children": [
                     {
                       "id": "VJVBR",
@@ -396141,14 +396321,14 @@
           "name": "Page",
           "width": 632,
           "layout": "vertical",
-          "gap": 32,
+          "gap": 24,
           "children": [
             {
               "type": "frame",
               "id": "ju6EX",
               "name": "Stage",
+              "clip": true,
               "width": "fill_container",
-              "height": 329,
               "fill": "$ds-stage",
               "cornerRadius": 28,
               "effect": {
@@ -396161,29 +396341,10 @@
                 },
                 "blur": 14
               },
-              "gap": 16,
-              "padding": 20,
-              "justifyContent": "center",
-              "alignItems": "center",
+              "layout": "vertical",
               "children": [
                 {
-                  "id": "t8LBI",
-                  "type": "ref",
-                  "ref": "ImooT",
-                  "name": "Previous",
-                  "width": 64,
-                  "height": 64,
-                  "descendants": {
-                    "Y1YWBe": {
-                      "icon": "arrow-left",
-                      "width": 30,
-                      "height": 30
-                    }
-                  }
-                },
-                {
                   "type": "rectangle",
-                  "cornerRadius": 16,
                   "id": "Jptyn",
                   "name": "Picture",
                   "fill": {
@@ -396192,23 +396353,52 @@
                     "url": "images/gallimimus.webp",
                     "mode": "contain"
                   },
-                  "width": 385,
-                  "height": 289
+                  "width": "fill_container",
+                  "height": 424
                 },
                 {
-                  "id": "jEXGs",
-                  "type": "ref",
-                  "ref": "ImooT",
-                  "name": "Next",
-                  "width": 64,
-                  "height": 64,
-                  "descendants": {
-                    "Y1YWBe": {
-                      "icon": "arrow-right",
-                      "width": 30,
-                      "height": 30
+                  "type": "frame",
+                  "id": "ifuJh",
+                  "name": "Arrows",
+                  "width": "fill_container",
+                  "padding": [
+                    8,
+                    20
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "t8LBI",
+                      "type": "ref",
+                      "ref": "ImooT",
+                      "name": "Previous",
+                      "width": 64,
+                      "height": 64,
+                      "descendants": {
+                        "Y1YWBe": {
+                          "icon": "arrow-left",
+                          "width": 30,
+                          "height": 30
+                        }
+                      }
+                    },
+                    {
+                      "id": "jEXGs",
+                      "type": "ref",
+                      "ref": "ImooT",
+                      "name": "Next",
+                      "width": 64,
+                      "height": 64,
+                      "descendants": {
+                        "Y1YWBe": {
+                          "icon": "arrow-right",
+                          "width": 30,
+                          "height": 30
+                        }
+                      }
                     }
-                  }
+                  ]
                 }
               ]
             },
@@ -396218,7 +396408,7 @@
               "name": "Words",
               "width": "fill_container",
               "layout": "vertical",
-              "gap": 24,
+              "gap": 20,
               "children": [
                 {
                   "type": "frame",
@@ -397060,7 +397250,7 @@
           "fill": "$ds-ink-soft",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "ANCIENT REPTILES with the book symbol goes back to the list; the position counts in the list the child came from (2 / 26 under MEAT). The navy stage holds the picture at 4:3, with ← and → that go round the list. Under or beside it: the group line (FLYING REPTILE or SEA REPTILE, kept empty for a dinosaur), the name in one type on every page of a window, the food tag with its word, the description, two fact cards (TALL, WINGS or LONG, and HEAVY) and the small note for parents.",
+          "content": "ANCIENT REPTILES with the book symbol goes back to the list; the position counts in the list the child came from (2 / 26 under MEAT). The navy stage holds the picture, with ← and → under it that go round the list. On an iPad the picture is as big as the screen allows: it fills the stage edge to edge, beside the words in landscape and across the whole width when upright. On a phone it sits inset on the stage. Beside or under the stage: the group line (FLYING REPTILE or SEA REPTILE, kept empty for a dinosaur), the name in one type on every page of a window, the food tag with its word, the description, two fact cards (TALL, WINGS or LONG, and HEAVY) and the small note for parents.",
           "lineHeight": 1.45,
           "fontFamily": "$ds-font",
           "fontSize": 14,
