@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-02
+
+- LAB-908: Coloring gallery shows each work's status as a symbol on the picture's top-leading corner (a dashed circle for drafts, a star when completed) instead of a pencil and text. The whole card opens the work, and iPhone portrait shows two columns.
+
 ## 2026-11-01
 
 - LAB-893: Coloring gallery choices keep equal button heights on iPhone when dinosaur names wrap.

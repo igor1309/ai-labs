@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore, type KeyboardEvent } from "react";
-import { ArrowLeft, Home, Images, LockKeyhole, Paintbrush, Pencil, Plus, RotateCcw, Star, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Home, CircleDashed, Images, LockKeyhole, Paintbrush, Plus, RotateCcw, Star, TriangleAlert } from "lucide-react";
 import { Button } from "./Button.tsx";
 import type { ColoringGallerySession, GalleryWork } from "./coloringGallery.ts";
 import type { Language } from "./language/language.ts";
@@ -69,9 +69,12 @@ export function ColoringGalleryScreen({ session, language, home, artworks, offer
       {collection && !collection.works.length && !collection.unavailable.length && !state.warning && <div className="gallery-empty"><Paintbrush aria-hidden="true" /><h2>{text.empty}</h2></div>}
       {collection?.works.map((record, index) => {
         const failed = failedImages.get(record.document.id) === record.thumbnail;
-        return <article className="gallery-card" key={record.document.id} data-work-id={record.document.id}>
-          <div className="gallery-thumbnail">{failed ? <TriangleAlert aria-hidden="true" /> : <SavedThumbnail record={record} label={`${dinosaurName(record.document.geometry)} · ${index + 1}`} unavailable={() => setFailedImages(current => new Map(current).set(record.document.id, record.thumbnail))} />}</div>
-          <h2>{failed ? <TriangleAlert aria-hidden="true" /> : record.document.completed ? <Star className="gallery-earned-star" aria-label="★" fill="currentColor" /> : <Pencil aria-hidden="true" />}{failed ? text.unavailable : record.document.completed ? text.completed : text.draft} · {index + 1}</h2>
+        // A tap anywhere on the card acts as its one button, so the button's own guards still apply.
+        return <article className="gallery-card" key={record.document.id} data-work-id={record.document.id}
+          onClick={event => { if (!(event.target as Element).closest("button")) event.currentTarget.querySelector("button")?.click(); }}>
+          <div className="gallery-thumbnail">{failed ? <TriangleAlert aria-hidden="true" /> : <SavedThumbnail record={record} label={`${dinosaurName(record.document.geometry)} · ${index + 1}`} unavailable={() => setFailedImages(current => new Map(current).set(record.document.id, record.thumbnail))} />}
+            <span className="gallery-status" data-status={failed ? "failed" : record.document.completed ? "completed" : "draft"} aria-hidden="true">{failed ? <TriangleAlert /> : record.document.completed ? <Star className="gallery-earned-star" fill="currentColor" /> : <CircleDashed />}</span></div>
+          <h2 className="gallery-visually-hidden">{failed ? text.unavailable : record.document.completed ? text.completed : text.draft} · {index + 1}</h2>
           <Button disabled={state.busy} onClick={() => failed ? retry() : readOnly ? session.view(record) : void session.enter(record.document.id)}>
             {failed ? <RotateCcw aria-hidden="true" /> : readOnly ? <Images aria-hidden="true" /> : <Paintbrush aria-hidden="true" />}
             {failed ? text.retry : readOnly ? text.view : collection.recentId === record.document.id ? text.continue : text.edit}

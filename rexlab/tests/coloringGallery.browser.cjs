@@ -149,8 +149,21 @@ const { chromium } = require("playwright");
         for (const image of await page.locator(".gallery-thumbnail img").all()) {
           const box = await image.boundingBox(); assert(box && box.width > 50 && box.height > 35, context);
         }
+        // Statuses are symbol-only badges on the picture's top-leading corner; iPhone portrait shows two columns.
+        const cards = await page.locator(".gallery-card").evaluateAll(cards => cards.map(card => {
+          const c = card.getBoundingClientRect(), t = card.querySelector(".gallery-thumbnail").getBoundingClientRect(), s = card.querySelector(".gallery-status").getBoundingClientRect();
+          return { top: c.top, left: c.left, thumb: [t.left, t.top], status: [s.left, s.top, s.width] };
+        }));
+        for (const card of cards) assert(card.status[0] - card.thumb[0] <= 8 && card.status[1] - card.thumb[1] <= 8 && card.status[2] === 28, context);
+        if (viewport.width < 600 && viewport.height > viewport.width) assert(Math.abs(cards[0].top - cards[1].top) < 1 && cards[1].left > cards[0].left, JSON.stringify({ viewport, cards }));
       }
     }
+    // A tap anywhere on a card, its picture or badge included, opens the work.
+    await page.setViewportSize({ width: 390, height: 844 }); await mount({});
+    const badge = await page.locator(".gallery-card .gallery-status").first().boundingBox();
+    await page.mouse.click(badge.x + badge.width / 2, badge.y + badge.height / 2);
+    await page.locator(".coloring-gallery").waitFor({ state: "detached" });
+    await mount({});
     await page.emulateMedia({ reducedMotion: "reduce" }); await mount({});
     assert.equal(await page.locator(".coloring-gallery").evaluate(el => getComputedStyle(el).animationName), "fade-in");
 
