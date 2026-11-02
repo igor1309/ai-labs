@@ -110871,13 +110871,13 @@
       "type": "color",
       "value": [
         {
-          "value": "#C9583D",
+          "value": "#C15036",
           "theme": {
             "mode": "light"
           }
         },
         {
-          "value": "#D9694C",
+          "value": "#E57A5D",
           "theme": {
             "mode": "dark"
           }
@@ -110894,7 +110894,7 @@
           }
         },
         {
-          "value": "#FFFDF8",
+          "value": "#1D2742",
           "theme": {
             "mode": "dark"
           }
