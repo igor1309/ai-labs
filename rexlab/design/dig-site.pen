@@ -244903,6 +244903,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 32,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -245763,6 +245769,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 32,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -246673,6 +246685,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 32,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -247560,6 +247578,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 24,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -248696,6 +248720,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 20,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -250176,6 +250206,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 32,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -250966,6 +251002,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 24,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -252096,6 +252138,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 32,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -255075,6 +255123,8 @@
           "gap": 20,
           "padding": [
             16,
+            32,
+            17,
             32
           ],
           "justifyContent": "center",
@@ -255978,6 +256028,8 @@
           "gap": 16,
           "padding": [
             8,
+            32,
+            9,
             32
           ],
           "justifyContent": "center",
@@ -257180,6 +257232,8 @@
           "gap": 16,
           "padding": [
             8,
+            32,
+            9,
             32
           ],
           "justifyContent": "center",
@@ -259544,6 +259598,8 @@
           "gap": 12,
           "padding": [
             8,
+            16,
+            9,
             16
           ],
           "justifyContent": "center",
@@ -259556,6 +259612,12 @@
               "width": "fill_container",
               "layout": "vertical",
               "gap": 12,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -261664,7 +261726,7 @@
                     {
                       "type": "frame",
                       "id": "lD7YA",
-                      "x": -427.5,
+                      "x": -427,
                       "y": 0,
                       "name": "Maze · tunnels in the earth",
                       "width": 832,
@@ -264359,6 +264421,8 @@
           "gap": 10,
           "padding": [
             4,
+            16,
+            5,
             16
           ],
           "justifyContent": "center",
@@ -264371,6 +264435,12 @@
               "width": "fill_container",
               "layout": "vertical",
               "gap": 32,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -265193,6 +265263,8 @@
           "gap": 10,
           "padding": [
             4,
+            16,
+            5,
             16
           ],
           "justifyContent": "center",
@@ -266924,7 +266996,7 @@
           "padding": [
             4,
             60,
-            14,
+            15,
             60
           ],
           "justifyContent": "center",
@@ -267746,7 +267818,7 @@
           "padding": [
             4,
             60,
-            14,
+            15,
             60
           ],
           "justifyContent": "center",
@@ -269450,6 +269522,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 32,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -270360,6 +270438,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 24,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -271496,6 +271580,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 20,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -274083,6 +274173,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 32,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -274943,6 +275039,12 @@
               "name": "Room",
               "width": "fill_container",
               "gap": 24,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -277208,6 +277310,8 @@
           "gap": 12,
           "padding": [
             8,
+            16,
+            9,
             16
           ],
           "justifyContent": "center",
@@ -277220,6 +277324,12 @@
               "width": "fill_container",
               "layout": "vertical",
               "gap": 12,
+              "padding": [
+                0,
+                1,
+                0,
+                0
+              ],
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
