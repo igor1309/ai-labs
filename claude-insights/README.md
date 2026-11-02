@@ -92,11 +92,47 @@ A macOS launchd agent runs the push every Sunday at 8:40 AM local time. Use `--r
 
 - **Supabase project**: `uvnxjuzofcdxhdkrsocq` (West EU)
 - **Table**: `public.claude_insights` (RLS enabled)
-- **Table**: `public.keepalive` (RLS enabled, single row id=1) — heartbeat target for the `Supabase Keep-Alive` workflow (`.github/workflows/supabase-keepalive.yml`), which PATCHes `last_ping_at` every 3 days so a real DB write resets the free-tier inactivity timer
+- **Table**: `public.keepalive` (RLS enabled, single row id=1) — heartbeat target for the `Supabase Keep-Alive` workflow (`.github/workflows/supabase-keepalive.yml`), which PATCHes `last_ping_at` every 4 hours and fails unless the row comes back updated; Supabase pauses a Free project for too little activity over a week, and a write every 3 days was paused anyway
 - **DB trigger**: `on_insights_change` → `notify_insights_webhook()` via `pg_net`
 - **Edge Functions**: `notify-insights`, `telegram-bot` (both no-verify-jwt)
 - **Secrets**: `BOT_TOKEN`, `INBOX_CHAT_ID`, `NOMOS_BASE_URL`, `NOMOS_API_KEY` (set via `supabase secrets`)
 - **Local credentials**: `claude-insights/.env` (gitignored)
+
+## Pauses and health
+
+The project is on the Free plan (NANO compute). Supabase pauses a Free project for
+too little database activity over a week and does not say what counts. It was
+paused on 2026-10-26 01:13 UTC and 2026-11-02 03:41 UTC, each less than a day after
+a confirmed keep-alive write, when the keep-alive wrote every 3 days (LAB-910). The
+Nov 2 restore left the database unresponsive for about 4.5 hours, through a manual
+restart, and set off a "depleting its Disk IO Budget" email; a Supabase support
+ticket was filed. If it pauses again on the 4-hour keep-alive, the cause is
+something else.
+
+How to check:
+
+- **Dashboard status is the truth.** `supabase projects list` kept showing
+  `ACTIVE_HEALTHY` while the database, PostgREST, Auth, Realtime and Storage were
+  Unhealthy.
+- **Keep-alive runs**: `gh run list --workflow supabase-keepalive.yml`. A good run logs
+  `Supabase keepalive PATCH returned: [{"id":1}]`; a paused or hung project fails
+  with `curl: (28)` timeouts or `curl: (6)` DNS errors and alerts on Telegram.
+- **Logs** (works when the database does not): `GET
+  https://api.supabase.com/v1/projects/uvnxjuzofcdxhdkrsocq/analytics/endpoints/logs`
+  with `Authorization: Bearer <access token>` and `sql`, `iso_timestamp_start`,
+  `iso_timestamp_end` (at most 24 hours apart). The SQL is ClickHouse over one
+  `logs` table filtered by `source` (`edge_logs`, `postgres_logs`, ...); fields are
+  in `log_attributes['request.path']`, `['response.status_code']` and so on. The
+  old `logs.all` endpoint and `edge_logs` table are gone. The CLI's access token is
+  in the macOS keychain item `Supabase CLI`, stored as `go-keyring-base64:`
+  followed by base64.
+- **A pause in the logs**: `postgres_logs` shows `restore point
+  "restore_uvnxjuzofcdxhdkrsocq_..."`, then a shutdown; the restore shows
+  `starting PostgreSQL` and `ready to accept connections`.
+- **Database queries**: `supabase db query --linked --project-ref
+  uvnxjuzofcdxhdkrsocq "<sql>"`. It leaves a `supabase/.temp/` directory in the
+  current directory; delete it, or the pre-push hook flags an unknown top-level
+  directory.
 
 ## Deploying Edge Functions
 
