@@ -7,7 +7,8 @@
     d.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;visibility:hidden;" + css;
     document.body.appendChild(d);
     var r = d.getBoundingClientRect();
-    var s = getComputedStyle(d);
+    var cs = getComputedStyle(d);
+    var s = { paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom };
     d.remove();
     return { h: Math.round(r.height), s: s };
   };
