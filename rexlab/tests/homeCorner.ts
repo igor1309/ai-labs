@@ -58,15 +58,15 @@ export function topLine(width: number, language: Language, { wordsHidden = false
   const button = partOf(".home-museum");
   const museumStyle = styleOf(button);
   const museum = boxWidth(button, rowWidth(button, [drawnWidth(button.querySelector("svg")), ...shownWidth(button.querySelector(".narrow-hidden"), TEXTS[language].museum, museumStyle, wordsHidden)]));
-  // Each button shows its face: a symbol or a picture, and at most a code.
+  // Each button shows its face: a symbol, picture or flag.
   const menuButtons = [...partOf(".parent-menus").querySelectorAll(".parent-menu-button")].map((menuButton) => {
     const style = styleOf(menuButton);
     const face = menuButton.querySelector(".parent-menu-face");
     if (!face) throw new Error("A parents' menu button shows nothing");
     const symbol = menuButton.querySelector("svg");
     const picture = menuButton.querySelector(".parent-menu-picture");
-    const code = menuButton.querySelector(".parent-menu-code")?.textContent;
-    const parts = [...(symbol ? [drawnWidth(symbol)] : []), ...(picture ? [px(styleOf(picture).width)] : []), ...(code ? [wordWidth(code, style)] : [])];
+    const flag = menuButton.querySelector(".language-flag");
+    const parts = [...(symbol ? [drawnWidth(symbol)] : []), ...(picture ? [px(styleOf(picture).width)] : []), ...(flag ? [px(styleOf(flag).width)] : [])];
     expect(parts.length).toBeGreaterThan(0);
     return boxWidth(menuButton, rowWidth(menuButton, [rowWidth(face, parts)]));
   });
