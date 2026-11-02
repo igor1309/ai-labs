@@ -3,6 +3,8 @@
 ## 2026-11-02
 
 - LAB-908: Coloring gallery shows each work's status as a symbol on the picture's top-leading corner (a dashed circle for drafts, a star when completed) instead of a pencil and text. The whole card opens the work, and iPhone portrait shows two columns.
+- LAB-905: The upright iPhone home fits the available screen height, keeping both tile rows visible and horizontal game browsing.
+- LAB-907: The closed language picker shows only a flag; its open menu pairs each flag with the language name. Parent controls have equal widths and spacing.
 
 ## 2026-11-01
 

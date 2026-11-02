@@ -61,6 +61,7 @@ jobs:
           - coloringGallery
           - coloringResult
           - coloringFlow
+          - homePhone
           - nativeTouch
           - browserChrome
     runs-on: ubuntu-latest
