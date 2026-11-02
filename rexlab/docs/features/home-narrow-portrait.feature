@@ -39,3 +39,10 @@ Feature: The home page in a tall-narrow window
     Given the home page in a tall-narrow window
     When the window grows to 768 by 1024
     Then the page takes the tall layout, RexLab's word shown again
+
+  Scenario: The whole home page fits the phone
+    Given a tall-narrow window, including a small iPhone or visible Safari bars
+    When I open the home page at any age level
+    Then the greeting, featured card, both rows of tiles and version fit in the available height
+    And the document does not scroll vertically
+    And I can still swipe the tiles horizontally to reach every game

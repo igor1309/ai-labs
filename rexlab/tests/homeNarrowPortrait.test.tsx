@@ -123,12 +123,13 @@ describe("the home page in a tall-narrow window", () => {
     const values = (selector: string, properties: string[]) => properties.map((property) => styleAt(part(selector), [width, height]).value(property));
     expect(values(".home", ["padding-top", "padding-bottom", "gap"])).toEqual(["100px", "48px", "20px"]);
     expect(values(".greeting", ["font-size", "line-height"])).toEqual(["30px", "36px"]);
-    expect(values(".featured-card", ["min-height"])).toEqual(["240px"]);
+    expect(values(".featured-card", ["min-height"])).toEqual(["0px"]);
     expect(values(".featured-card-footer", ["padding", "gap"])).toEqual(["18px 18px 22px", "12px"]);
     expect(values(".featured-card-title", ["font-size"])).toEqual([width < 360 ? "26px" : "28px"]);
     expect(values(".featured-card-badge", ["top", "right", "padding", "font-size"])).toEqual(["16px", "16px", "8px 14px", "22px"]);
-    // The row takes 36% of the height, 320 to 420.
-    expect(values(".games-tiles", ["height", "margin-right"]).map(px)).toEqual([Math.min(420, Math.max(320, (height * 36) / 100)), -20]);
+    expect(values(".home", ["height", "min-height"])).toEqual([`${height}px`, "0px"]);
+    expect(values(".games", ["min-height", "flex", "gap"])).toEqual(["0px", "1 1 0px", "16px"]);
+    expect(values(".games-tiles", ["height", "min-height", "margin-right"])).toEqual(["auto", "0px", "-20px"]);
   });
 
   it("names RexLab and the museum for screen readers while showing their symbols alone", () => {

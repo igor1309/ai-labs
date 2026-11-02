@@ -26,6 +26,15 @@ Feature: Coloring gallery
     When I choose NEW WORK
     Then a new unpainted work opens without overwriting either work
 
+  Scenario: Status badges and whole-card taps
+    Given I have a completed work and a draft
+    When I open GALLERY
+    Then each thumbnail shows only a status symbol on its top-leading corner: a star when completed, a dashed circle for a draft
+    And no status text is shown on the card, while screen readers still hear the status and number
+    When I tap a work's picture instead of its button
+    Then that work opens as its button would
+    And on a phone held upright the works are shown in two columns
+
   Scenario: Continue a completed work
     Given I open a completed work from the gallery
     When I change its paint and return to GALLERY
