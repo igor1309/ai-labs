@@ -12932,3 +12932,13 @@ body:has(.picture-puzzle-board-screen) {
   margin-block: -24px;
   padding-block: 24px;
 }
+
+/* Upright on a phone the row of small tiles scrolls across the whole
+   width of the window, edge to edge; the ribbon inside it keeps the
+   page's sides as its own leading and trailing padding, so the first
+   and the last tile line up with the large card when scrolled to. */
+[data-size="tall-narrow"] .games-tiles {
+  margin-inline: calc(-20px - var(--screen-left)) calc(-20px - var(--screen-right));
+  padding-inline: calc(20px + var(--screen-left)) calc(20px + var(--screen-right));
+  scroll-padding-inline: calc(20px + var(--screen-left)) calc(20px + var(--screen-right));
+}
