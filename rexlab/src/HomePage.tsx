@@ -1,5 +1,6 @@
 import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Pencil, Play, Puzzle, Scale, Shapes, Star, Sun, Sparkles, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import type { HomeMotion } from "./homeMotion.ts";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
@@ -26,6 +27,7 @@ export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs",
 type Badge = { symbol: LucideIcon; value: number | string };
 
 export type HomePageProps = {
+  motion: HomeMotion;
   newGames: readonly string[];
   version: string;
   language: Language;
@@ -94,6 +96,7 @@ function Tooth() {
 type Menu = "language" | "theme" | "ageLevel";
 
 export function HomePage({
+  motion,
   newGames,
   version,
   language,
@@ -128,6 +131,8 @@ export function HomePage({
   onSandWriting,
   onLabyrinth
 }: HomePageProps) {
+  const page = useRef<HTMLElement>(null);
+  useLayoutEffect(() => motion(page.current!), [motion]);
   const text = TEXTS[language];
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
@@ -246,7 +251,7 @@ export function HomePage({
   const today = games[featuredGame] ?? games.compare;
   const FeaturedSymbol = today.symbol;
   return (
-    <main className="home home-dig-site">
+    <main ref={page} className="home home-dig-site">
       <header className="home-header">
         <p className="wordmark" data-turn-part="wordmark">
           <span className="wordmark-mark" aria-hidden="true" />

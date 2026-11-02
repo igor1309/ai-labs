@@ -12365,7 +12365,12 @@ html .home.home-dig-site {
 }
 .home.home-dig-site .parent-menus { gap: var(--ds-space-m); padding: 0; background: transparent; }
 .home.home-dig-site .parent-menu-button { width: var(--ds-round); height: var(--ds-round); padding: 0; }
-.home.home-dig-site .home-sky { color: var(--ds-ink); position: relative; min-height: 280px; flex: none; }
+.home.home-dig-site .home-sky {
+  color: var(--ds-ink); position: relative; min-height: 280px; flex: none;
+  /* The halo may reach behind the header; slower sky art stops at earth. */
+  clip-path: inset(-100vh 0 0);
+  clip-path: inset(-100dvh 0 0);
+}
 .home.home-dig-site .home-sky-body {
   position: absolute; width: 320px; height: 320px; left: 52%; top: -72px;
   border-radius: 50%; background: var(--ds-sky-halo);
@@ -12428,6 +12433,8 @@ html .home.home-dig-site {
 .home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::before { width: 37%; }
 .home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::after { display: block; left: 59%; width: 36%; }
 .home.home-dig-site .home-today-art > * { position: relative; z-index: 1; }
+.home.home-dig-site .home-sky-body,
+.home.home-dig-site .home-today-art > * { translate: 0 var(--home-parallax, 0px); }
 .home.home-dig-site .home-today-art > .picture,
 .home.home-dig-site .home-today-art > .picture-puzzle-tile-art,
 .home.home-dig-site .home-today-art > .sand-writing-tile-art {
@@ -12488,14 +12495,24 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
 .home.home-dig-site .home-today-art .pairs-tile-card { height: min(65cqh, 32cqw); background: var(--ds-label); box-shadow: 0 4px 12px var(--ds-ground-shadow); }
 .home.home-dig-site .home-today-art .pairs-tile-back { background: var(--ds-strong); color: var(--ds-on-strong); }
 
-@media (prefers-reduced-motion: reduce) {
+.home-ground .home-ground-tile[data-home-entrance="pending"] { opacity: 0; }
+.home-ground .home-ground-tile[data-home-entrance="revealed"] {
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
 
+@media (prefers-reduced-motion: reduce) {
   :root {
     --motion-standard: 160ms;
     --motion-screen: 160ms;
     --motion-count: 0ms;
     --motion-stagger: 0ms;
     --motion-amount: 0;
+  }
+
+  .home.home-dig-site .home-sky-body,
+  .home.home-dig-site .home-today-art > * { translate: none; }
+  .home-ground .home-ground-tile[data-home-entrance="revealed"] {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
   }
 
   .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }

@@ -90,6 +90,7 @@ const nothing = () => {};
 function renderHomePage(taps: number[]) {
   render(
     <HomePage
+      motion={() => () => {}}
 
       language="en"
       onLanguage={nothing}

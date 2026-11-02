@@ -19,6 +19,7 @@ import { dinosaurWordsWidth, keptLines, NARROW_PAGE, PORTRAIT_PAGE } from "./din
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import type { ChipWidths } from "./FoodChips.tsx";
 import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
+import type { HomeMotion } from "./homeMotion.ts";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useLayoutTurns } from "./layoutTurns.ts";
@@ -135,6 +136,7 @@ export type AppProps = CareGameProps &
     skeletonSounds?: SkeletonSounds;
     // Unstarted games added after the first visit, none when storage is unavailable.
     newHomeGames: () => readonly string[];
+    homeMotion: HomeMotion;
     viewport: Viewport;
     portraitLayouts: PortraitLayouts;
     // How the catalogue's food chips' parts are measured as laid out.
@@ -233,6 +235,7 @@ export function App({
   random,
   viewport,
   newHomeGames,
+  homeMotion,
   portraitLayouts,
   chipWidths,
   layoutMotion,
@@ -705,6 +708,7 @@ export function App({
       case "home":
         return (
           <HomePage
+            motion={homeMotion}
             language={language}
             onLanguage={chooseLanguage}
             theme={themeChoice}

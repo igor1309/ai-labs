@@ -180,7 +180,7 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
   let clock = 0;
   onTestFinished(() => void (document.documentElement.scrollTop = 0));
   render(
-    <App newHomeGames={() => []} {...emptyLabyrinth()}
+    <App homeMotion={() => () => {}} newHomeGames={() => []} {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

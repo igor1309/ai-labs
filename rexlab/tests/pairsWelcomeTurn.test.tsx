@@ -70,7 +70,7 @@ function openWelcome(from: Window, { reduced = false }: { reduced?: boolean } = 
   const animations: Recorded[] = [];
   const fades: Array<{ update: () => void; finished: () => void; size: string | undefined }> = [];
   render(
-    <App newHomeGames={() => []} {...emptyLabyrinth()}
+    <App homeMotion={() => () => {}} newHomeGames={() => []} {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

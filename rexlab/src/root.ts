@@ -17,6 +17,7 @@ import { SLIDE_DISTANCE } from "./dinosaurSlide.ts";
 import { bodyPictures, skeletonPictures, wholeSkeletons } from "./dinosaurPictures.ts";
 import { readCatalogue, readDinosaurs, readPals, readPictureDinosaurs, readSkeletons, readSortables, readVisitors } from "./dinosaurs.ts";
 import { HOME_GAMES } from "./HomePage.tsx";
+import { homeMotion } from "./homeMotion.ts";
 import { itemPictures } from "./itemPictures.ts";
 import { localAgeLevel } from "./localAgeLevel.ts";
 import { localLanguage } from "./localLanguage.ts";
@@ -76,6 +77,38 @@ export type Browser = {
 // easing out. Under reduced motion it fades by the root view transition,
 // timed by the stylesheet.
 export const TURN_TIMING = { glide: 240, easing: "cubic-bezier(0.22, 1, 0.36, 1)" };
+
+function browserHomeMotion(page: HTMLElement): () => void {
+  const view = page.ownerDocument.defaultView!;
+  const motion = view.matchMedia("(prefers-reduced-motion: reduce)");
+  return homeMotion(page, {
+    scrollToTop: () => view.scrollTo({ top: 0, left: 0, behavior: "instant" }),
+    scrollY: () => view.scrollY,
+    reducedMotion: () => motion.matches,
+    subscribeScroll: (update) => {
+      view.addEventListener("scroll", update, { passive: true });
+      return () => view.removeEventListener("scroll", update);
+    },
+    subscribeMotion: (update) => {
+      motion.addEventListener("change", update);
+      return () => motion.removeEventListener("change", update);
+    },
+    nextFrame: (update) => {
+      const id = view.requestAnimationFrame(update);
+      return () => view.cancelAnimationFrame(id);
+    },
+    watchVisible: (tiles, reveal) => {
+      const observer = new view.IntersectionObserver(entries => {
+        for (const entry of entries) if (entry.isIntersecting) {
+          reveal(entry.target as HTMLElement);
+          observer.unobserve(entry.target);
+        }
+      });
+      tiles.forEach(tile => observer.observe(tile));
+      return () => observer.disconnect();
+    }
+  });
+}
 
 // A colour that paints nothing, as a browser gives it computed.
 const CLEAR = /^(transparent|rgba\(0, 0, 0, 0\))$/;
@@ -295,6 +328,7 @@ export function appProps(browser: Browser): AppProps {
     random: Math.random,
     viewport,
     newHomeGames: featured.newGames,
+    homeMotion: browserHomeMotion,
     portraitLayouts: { "whoseJaw-welcome": ["tall", "tall-narrow"], "whoseJaw-board": ["tall", "tall-narrow"], "whoseJaw-shelf": ["tall", "tall-narrow"], "whoseJaw-result": ["tall", "tall-narrow"], coloring: ["tall", "tall-narrow"], home: ["tall", "tall-narrow"], catalogue: ["tall", "tall-narrow"], dinosaur: ["tall", "tall-narrow"], "compare-question": ["tall", "tall-narrow"], "compare-result": ["tall", "tall-narrow"], "pairs-welcome": ["tall", "tall-narrow"], "pairs-board": ["tall", "tall-narrow"], "pairs-result": ["tall", "tall-narrow"], "sorting-board": ["tall", "tall-narrow"], "sorting-result": ["tall", "tall-narrow"], "skeletons-choice": ["tall", "tall-narrow"], "skeletons-museum": ["tall", "tall-narrow"], "skeletons-puzzle": ["tall", "tall-narrow"], "skeletons-guess": ["tall", "tall-narrow"], "skeletons-result": ["tall", "tall-narrow"], "dig-board": ["tall", "tall-narrow"], "dig-question": ["tall", "tall-narrow"], "dig-reveal": ["tall", "tall-narrow"], "dig-guide": ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-visit": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"], "care-result": ["tall", "tall-narrow"], sandWriting: ["tall", "tall-narrow"] },
     pictureMotion: {
       now: () => browser.performance.now(),

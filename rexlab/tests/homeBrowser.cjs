@@ -12,6 +12,109 @@ async function settle(page) {
     await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {})));
   });
 }
+
+async function scrollTo(page, y) {
+  await page.evaluate(async y => {
+    scrollTo({ top: y, left: 0, behavior: 'instant' });
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  }, y);
+  await settle(page);
+}
+
+async function fullFlow(page, { width, height, language, theme, reduced }) {
+  const label = `${width}x${height} ${language} ${theme} ${reduced ? 'reduced' : 'full'} motion`;
+  await page.emulateMedia({ reducedMotion: reduced ? 'reduce' : 'no-preference' });
+  await page.reload();
+  await settle(page);
+  const geometry = () => page.evaluate(() => {
+    const y = selector => document.querySelector(selector).getBoundingClientRect().top;
+    return {
+      scroll: scrollY,
+      header: y('.home-header'), sun: y('.home-sky-body'), dinosaur: y('.home-today-art > :first-child'),
+      ground: y('.home-ground'),
+      max: document.scrollingElement.scrollHeight - innerHeight
+    };
+  });
+  const start = await geometry();
+  assert.equal(start.scroll, 0, `${label}: visit starts at top`);
+  const pageRules = await page.evaluate(() => {
+    const home = document.querySelector('.home');
+    const elements = [home, ...home.querySelectorAll('*')];
+    return {
+      overscroll: [document.documentElement, document.body].map(e => getComputedStyle(e).overscrollBehaviorY),
+      snap: [document.documentElement, document.body, ...elements].some(e => getComputedStyle(e).scrollSnapType !== 'none'),
+      pinned: elements.filter(e => ['sticky', 'fixed'].includes(getComputedStyle(e).position)).map(e => e.className),
+      nestedScroll: elements.some(e => /auto|scroll/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1),
+      skyTop: home.getBoundingClientRect().top,
+      initialTiles: [...home.querySelectorAll('.home-ground-tile')].map(e => e.getBoundingClientRect().toJSON())
+    };
+  });
+  assert.deepEqual(pageRules.overscroll, ['none', 'none'], `${label}: no bounce or scroll chaining`);
+  assert(!pageRules.snap && !pageRules.nestedScroll, `${label}: one continuous page scroll`);
+  assert.deepEqual(pageRules.pinned, [], `${label}: nothing sticks`);
+  assert.equal(pageRules.skyTop, 0, `${label}: sky reaches top edge`);
+  if (width === 1180 || width === 1133) assert(pageRules.initialTiles.every(b => b.bottom <= height), `${label}: all iPad games on first screen`);
+  if (width === 393 && height === 852) {
+    const nextRow = pageRules.initialTiles[3];
+    assert(nextRow.y < height && nextRow.bottom > height, `${label}: next row peeks into first screen`);
+  }
+
+  await scrollTo(page, Math.min(120, start.max));
+  const moved = await geometry();
+  for (const part of ['header', 'ground']) assert(Math.abs(start[part] - moved[part] - moved.scroll) < 1, `${label}: ${part} follows page`);
+  for (const part of ['sun', 'dinosaur']) assert(Math.abs(start[part] - moved[part] - moved.scroll * (reduced ? 1 : .5)) < 1, `${label}: ${part} scroll speed`);
+
+  // Each tile is reached through the page's sole scroll, including SOON.
+  for (const tile of await page.locator('.home-ground-tile').all()) {
+    await tile.scrollIntoViewIfNeeded();
+    await page.waitForFunction(element => element.dataset.homeEntrance === 'revealed', await tile.elementHandle());
+    await settle(page);
+    assert.equal(await tile.evaluate(e => getComputedStyle(e).animationName), reduced ? 'fade-in' : 'rise-in', `${label}: tile entrance`);
+    const box = await tile.boundingBox();
+    assert(box.x >= 0 && box.x + box.width <= width + 1 && box.y >= 0 && box.y + box.height <= height + 1, `${label}: reachable whole tile`);
+  }
+  await scrollTo(page, Number.MAX_SAFE_INTEGER);
+  const bottom = await page.evaluate(() => ({
+    scroll: scrollY, max: document.scrollingElement.scrollHeight - innerHeight,
+    bedrock: document.querySelector('.home-bedrock').getBoundingClientRect().bottom,
+    footer: ['.home-parent-note', '.home-version'].map(selector => document.querySelector(selector).getBoundingClientRect().toJSON()),
+    overflow: document.scrollingElement.scrollWidth > innerWidth
+  }));
+  assert.equal(bottom.scroll, bottom.max, `${label}: bottom clamps`);
+  assert(Math.abs(bottom.bedrock - height) < 1, `${label}: bedrock reaches bottom edge`);
+  assert(bottom.footer.every(b => b.y >= 0 && b.bottom <= height), `${label}: footer reachable`);
+  assert(!bottom.overflow, `${label}: no horizontal overflow at bottom`);
+  await scrollTo(page, -100);
+  assert.equal((await geometry()).scroll, 0, `${label}: top clamps`);
+
+  // Seen tiles and today's card keep their entrances through a turn.
+  await page.evaluate(() => {
+    window.homeEntranceReplays = [];
+    document.querySelector('.home').addEventListener('animationstart', event => {
+      if (event.target.matches('.home-ground-tile, .home-today-copy, .home-today-art')) window.homeEntranceReplays.push(event.animationName);
+    });
+  });
+  const featured = await page.locator('.featured-card').getAttribute('data-game');
+  await page.locator('.parent-menu-button').first().click();
+  for (const size of [{ width: height, height: width }, { width, height }]) {
+    await page.setViewportSize(size);
+    await settle(page);
+    assert.equal(await page.getByRole('menu').count(), 1, `${label}: open menu survives turn`);
+    assert.equal(await page.locator('.featured-card').getAttribute('data-game'), featured, `${label}: today's game survives turn`);
+    assert.deepEqual(await page.evaluate(() => window.homeEntranceReplays), [], `${label}: entrances never replay on turn`);
+  }
+  await page.getByRole('menuitemradio').first().press('Escape');
+  await settle(page);
+  await scrollTo(page, Number.MAX_SAFE_INTEGER);
+  await page.locator('.catalogue-tile').press('Enter');
+  await page.locator('.catalogue').waitFor();
+  await settle(page);
+  await page.locator('.catalogue .home-button').press('Enter');
+  await page.locator('.home').waitFor();
+  await settle(page);
+  assert.equal((await geometry()).scroll, 0, `${label}: returning home starts at top`);
+  assert.equal(await page.locator('.featured-card').getAttribute('data-game'), featured, `${label}: returning keeps today's game`);
+}
 exports.runHome = async function(sizes) {
   const { build } = await import('vite');
   const bundle = await build({ root: resolve(__dirname, '..'), logLevel: 'error', build: { write: false } });
@@ -121,11 +224,15 @@ exports.runHome = async function(sizes) {
           await settle(page);
         }
         if (language === 'en' && process.env.HOME_SCREENSHOTS) {
+          for (const tile of await page.locator('.home-ground-tile').all()) {
+            await tile.scrollIntoViewIfNeeded();
+            await page.waitForFunction(element => element.dataset.homeEntrance === 'revealed', await tile.elementHandle());
+          }
+          await scrollTo(page, 0);
           await page.screenshot({ path: join(process.env.HOME_SCREENSHOTS, `sky-${width}x${height}-${theme}-${level}.png`), fullPage: true });
         }
-        if (language === 'en' && theme === 'light' && level === 'explorer') {
-          await page.emulateMedia({ reducedMotion: 'no-preference' });
-          assert.deepEqual(await page.locator('.home-today-copy, .home-today-art').evaluateAll(elements => elements.map(e => getComputedStyle(e).animationName)), ['rise-in', 'rise-in']);
+        if (level === 'explorer') {
+          for (const reduced of [true, false]) await fullFlow(page, { width, height, language, theme, reduced });
           await page.emulateMedia({ reducedMotion: 'reduce' });
         }
         if (language === 'en' && theme === 'light' && level === 'explorer') {
@@ -161,6 +268,6 @@ exports.runHome = async function(sizes) {
         await page.locator('.skeleton-museum-screen').waitFor();
       } finally { await context.close(); }
     }
-    console.log(`PASS ${checked} Home configurations: sky, pocket tiles, earth bands, bedrock, menus and museum`);
+    console.log(`PASS ${checked} Home configurations: sky, ground, page scroll, parallax, entrances, turning and return`);
   } finally { await browser.close(); }
 };

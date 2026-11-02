@@ -43,6 +43,7 @@ export type SkeletonsAppOptions = {
   // Where progress, the language and the theme are kept: one storage, as
   // in a browser.
   storage?: MemoryStorage;
+  homeMotion?: AppProps["homeMotion"];
   pictures?: ManualPictures;
   viewport?: ManualViewport;
   portraitLayouts?: AppProps["portraitLayouts"];
@@ -83,6 +84,7 @@ export function openHomeApp({
   appearance = "light",
   startCounter,
   newHomeGames,
+  homeMotion,
   ageLevels = memoryStorage(),
   skeletons = SHIPPED_SKELETONS,
   loadHome = true,
@@ -117,6 +119,7 @@ export function openHomeApp({
     skeletonPicture: fakeSkeletonPicture,
     ...emptyDig(),
     ...pageAtRest(),
+    ...(homeMotion && { homeMotion }),
     skeletonProgress: localSkeletonProgress(() => storage),
     reducedMotion: () => reducedMotion,
     ...featuring(),

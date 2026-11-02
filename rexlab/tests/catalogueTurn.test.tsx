@@ -202,7 +202,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   const shared = recordedSharedPictures();
   let clock = 0;
   render(
-    <App newHomeGames={() => []} {...emptyLabyrinth()}
+    <App homeMotion={() => () => {}} newHomeGames={() => []} {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

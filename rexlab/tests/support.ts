@@ -508,8 +508,9 @@ export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "san
 // are not about them: every part is measured where it stands in any
 // layout, so nothing glides, and a fade changes the layout and ends at
 // once; every chip's parts take no width, so the chips stand on one row.
-export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths" | "pictureMotion" | "newHomeGames"> {
+export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths" | "pictureMotion" | "newHomeGames" | "homeMotion"> {
   return {
+    homeMotion: () => () => {},
     pictureMotion: { now: () => 0, duration: 320, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
     newHomeGames: () => [],
     chipWidths: { width: () => 0, subscribe: () => () => {} },

@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
+import type { HomeMotion } from "../src/homeMotion.ts";
 import type { Language } from "../src/language/language.ts";
 import { SHIPPED_CATALOGUE, fakeBodyPicture, fakeSkeletonPicture } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
@@ -20,15 +21,17 @@ export const HOME_GAMES: Array<[HomeGame, "quizCard" | "catalogueTile" | "care" 
 ];
 
 const nothing = () => {};
+const still: HomeMotion = () => nothing;
 
 // The home page alone, featuring `featured`, with every game's badge
 // filled in when `scored` and every one that can be empty left empty
 // when not; each game's opening counted in `opened`.
-export function renderHomePageFeaturing(featured: HomeGame, { language = "en", scored = true, allGames = false, best = 7, newGames = [] }: { language?: Language; scored?: boolean; allGames?: boolean; best?: number; newGames?: readonly string[] } = {}) {
+export function renderHomePageFeaturing(featured: HomeGame, { language = "en", scored = true, allGames = false, best = 7, newGames = [], motion = still }: { motion?: HomeMotion; language?: Language; scored?: boolean; allGames?: boolean; best?: number; newGames?: readonly string[] } = {}) {
   const opened: HomeGame[] = [];
   const score = (value: number) => (scored ? value : undefined);
   const view = render(
     <HomePage
+      motion={motion}
       language={language}
       onLanguage={nothing}
       theme="light"
