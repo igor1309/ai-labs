@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-02
+
+- LAB-907: The closed language picker shows only a flag; its open menu pairs each flag with the language name.
+
 ## 2026-11-01
 
 - LAB-893: Coloring gallery choices keep equal button heights on iPhone when dinosaur names wrap.

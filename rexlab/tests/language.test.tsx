@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { AGE_LEVEL_PICTURES } from "../src/ageLevelPictures.ts";
 import { App } from "../src/App.tsx";
 import { NEEDS } from "../src/care/index.ts";
-import { LANGUAGE_NAMES, LANGUAGES, type Language } from "../src/language/language.ts";
+import { LANGUAGE_FLAGS, LANGUAGE_NAMES, LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { LANGUAGE_KEY, localLanguage } from "../src/localLanguage.ts";
 import { PROGRESS_KEY, localProgress } from "../src/localProgress.ts";
@@ -170,16 +170,16 @@ describe("the first language", () => {
 
 describe("the language menu", () => {
   it.each([
-    ["en-GB", "en", "EN", "Language", "COMPARE"],
-    ["ru-RU", "ru", "RU", "Язык", "СРАВНИ"]
+    ["en-GB", "en", "Language", "COMPARE"],
+    ["ru-RU", "ru", "Язык", "СРАВНИ"]
   ] as const)(
-    "is a small globe button in the soft ink in the top-right corner of the home page only, on a %s device",
-    async (device, language, code, label, card) => {
+    "is a flag-only button in the soft ink in the top-right corner of the home page only, on a %s device",
+    async (device, language, label, card) => {
       const { user } = openApp({ device });
       const button = screen.getByRole("button", { name: label });
 
-      expect(button.textContent).toBe(code);
-      expect(symbolOf(button)).toBe("globe");
+      expect(button.textContent).toBe(LANGUAGE_FLAGS[language]);
+      expect(button.querySelector(".language-flag")?.getAttribute("aria-hidden")).toBe("true");
       const corner = getComputedStyle(button.closest(".home-corner") ?? button);
       expect(corner.position).toBe("fixed");
       expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
@@ -210,6 +210,10 @@ describe("the language menu", () => {
 
       const menu = await openMenu(user, label);
 
+      for (const option of LANGUAGES) {
+        const choice = within(menu).getByRole("menuitemradio", { name: LANGUAGE_NAMES[option] });
+        expect(choice.querySelector(".language-flag")?.textContent).toBe(LANGUAGE_FLAGS[option]);
+      }
       expect(choicesIn(menu)).toEqual(
         LANGUAGES.map((option) => ({ name: LANGUAGE_NAMES[option], checked: option === language, tick: option === language }))
       );
@@ -229,7 +233,7 @@ describe("the language menu", () => {
     await chooseFrom(user, "Language", "Русский");
 
     expect(screen.queryByRole("menu")).toBeNull();
-    expect(screen.getByRole("button", { name: "Язык" }).textContent).toBe("RU");
+    expect(screen.getByRole("button", { name: "Язык" }).textContent).toBe(LANGUAGE_FLAGS.ru);
     expect(choicesIn(await openMenu(user, "Язык")).filter(({ tick }) => tick)).toEqual([{ name: "Русский", checked: true, tick: true }]);
   });
 
@@ -873,7 +877,7 @@ const OWN_NAMES = new Set(Object.values(LANGUAGE_NAMES));
 
 // The age levels' pictures, on the age level menu's button and choices,
 // have no letters and no case.
-const PICTURES = new Set(Object.values(AGE_LEVEL_PICTURES));
+const PICTURES = new Set([...Object.values(AGE_LEVEL_PICTURES), ...Object.values(LANGUAGE_FLAGS)]);
 
 // The app's strings are checked by script: a text left in English shows up
 // as Latin letters in Russian, and the other way round. Only the language
