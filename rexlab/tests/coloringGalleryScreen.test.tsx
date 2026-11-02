@@ -192,3 +192,21 @@ it.each(["en", "ru"] as Language[])("matches Stegosaurus previews, localized lab
     view.unmount();
   }
 });
+it("marks each work with a symbol-only status badge over its picture and keeps the status for screen readers", async () => {
+  const f = fixture(); await f.load();
+  const [draft, completed] = [...f.container.querySelectorAll("article")];
+  for (const [card, status, name] of [[draft!, "draft", "DRAFT · 1"], [completed!, "completed", "COMPLETED · 2"]] as const) {
+    const badge = card.querySelector(".gallery-thumbnail > .gallery-status")!;
+    expect(badge.getAttribute("data-status")).toBe(status);
+    expect(badge.getAttribute("aria-hidden")).toBe("true");
+    expect(badge.textContent).toBe("");
+    expect(within(card).getByRole("heading").textContent).toBe(name);
+    expect(within(card).getByRole("heading").className).toBe("gallery-visually-hidden");
+  }
+  expect(f.container.querySelector(".lucide-pencil")).toBeNull();
+});
+it("opens a work when its card is tapped outside the button", async () => {
+  const f = fixture(); await f.load();
+  await act(async () => fireEvent.click(f.container.querySelector('[data-work-id="blue"] .gallery-thumbnail')!));
+  expect(f.source.open).toHaveBeenCalledWith("blue", expect.any(Function));
+});
