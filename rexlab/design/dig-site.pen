@@ -28472,195 +28472,303 @@
           "layout": "vertical",
           "gap": 16,
           "padding": [
-            0,
+            16,
             20,
-            60,
+            40,
             20
           ],
-          "justifyContent": "center",
+          "justifyContent": "space_between",
           "children": [
             {
-              "id": "q10FWW",
-              "type": "ref",
-              "ref": "XJOtY",
-              "name": "Board",
-              "width": 353,
-              "height": 265,
-              "cornerRadius": 20,
-              "fill": {
-                "type": "image",
-                "enabled": true,
-                "url": "images/dig-paleontologist-spinosaurus-clues.webp",
-                "mode": "cover"
-              }
-            },
-            {
               "type": "frame",
-              "id": "XWYNl",
-              "name": "Choices",
+              "id": "ks54p",
+              "name": "Dig",
               "width": "fill_container",
               "layout": "vertical",
-              "gap": 8,
+              "gap": 16,
               "children": [
                 {
+                  "id": "q10FWW",
+                  "type": "ref",
+                  "ref": "XJOtY",
+                  "name": "Board",
+                  "width": 353,
+                  "height": 265,
+                  "cornerRadius": 20,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-paleontologist-spinosaurus-clues.webp",
+                    "mode": "cover"
+                  }
+                },
+                {
                   "type": "frame",
-                  "id": "AD9NW",
-                  "name": "Row 1",
+                  "id": "XWYNl",
+                  "name": "Choices",
                   "width": "fill_container",
+                  "layout": "vertical",
                   "gap": 8,
                   "children": [
                     {
-                      "id": "JUtEk",
-                      "type": "ref",
-                      "ref": "H9jkc",
-                      "name": "Card · SPINOSAURUS",
+                      "type": "frame",
+                      "id": "AD9NW",
+                      "name": "Row 1",
                       "width": "fill_container",
-                      "height": 86,
-                      "layout": "vertical",
-                      "padding": [
-                        6,
-                        8
-                      ],
-                      "gap": 0,
-                      "alignItems": "center",
-                      "cornerRadius": 16,
-                      "descendants": {
-                        "ElYxN": {
+                      "gap": 8,
+                      "children": [
+                        {
+                          "id": "JUtEk",
+                          "type": "ref",
+                          "ref": "H9jkc",
+                          "name": "Card · SPINOSAURUS",
                           "width": "fill_container",
-                          "height": "fill_container",
-                          "fill": {
-                            "type": "image",
-                            "enabled": true,
-                            "url": "images/dig-site/grey-spinosaurus.webp",
-                            "mode": "contain"
+                          "height": 86,
+                          "layout": "vertical",
+                          "padding": [
+                            6,
+                            8
+                          ],
+                          "gap": 0,
+                          "alignItems": "center",
+                          "cornerRadius": 16,
+                          "descendants": {
+                            "ElYxN": {
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "fill": {
+                                "type": "image",
+                                "enabled": true,
+                                "url": "images/dig-site/grey-spinosaurus.webp",
+                                "mode": "contain"
+                              }
+                            },
+                            "MgpTj": {
+                              "alignItems": "center"
+                            },
+                            "PsUDI": {
+                              "content": "SPINOSAURUS",
+                              "fontSize": 13,
+                              "textAlign": "center"
+                            }
                           }
                         },
-                        "MgpTj": {
-                          "alignItems": "center"
-                        },
-                        "PsUDI": {
-                          "content": "SPINOSAURUS",
-                          "fontSize": 13,
-                          "textAlign": "center"
+                        {
+                          "id": "KInXe",
+                          "type": "ref",
+                          "ref": "H9jkc",
+                          "name": "Card · BARYONYX",
+                          "width": "fill_container",
+                          "height": 86,
+                          "layout": "vertical",
+                          "padding": [
+                            6,
+                            8
+                          ],
+                          "gap": 0,
+                          "alignItems": "center",
+                          "cornerRadius": 16,
+                          "descendants": {
+                            "ElYxN": {
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "fill": {
+                                "type": "image",
+                                "enabled": true,
+                                "url": "images/dig-site/grey-baryonyx.webp",
+                                "mode": "contain"
+                              }
+                            },
+                            "MgpTj": {
+                              "alignItems": "center"
+                            },
+                            "PsUDI": {
+                              "content": "BARYONYX",
+                              "fontSize": 13,
+                              "textAlign": "center"
+                            }
+                          }
                         }
-                      }
+                      ]
                     },
                     {
-                      "id": "KInXe",
-                      "type": "ref",
-                      "ref": "H9jkc",
-                      "name": "Card · BARYONYX",
+                      "type": "frame",
+                      "id": "LUNGo",
+                      "name": "Row 2",
                       "width": "fill_container",
-                      "height": 86,
-                      "layout": "vertical",
-                      "padding": [
-                        6,
-                        8
-                      ],
-                      "gap": 0,
-                      "alignItems": "center",
-                      "cornerRadius": 16,
-                      "descendants": {
-                        "ElYxN": {
+                      "gap": 8,
+                      "children": [
+                        {
+                          "id": "L19vb",
+                          "type": "ref",
+                          "ref": "H9jkc",
+                          "name": "Card · ALLOSAURUS",
                           "width": "fill_container",
-                          "height": "fill_container",
-                          "fill": {
-                            "type": "image",
-                            "enabled": true,
-                            "url": "images/dig-site/grey-baryonyx.webp",
-                            "mode": "contain"
+                          "height": 86,
+                          "layout": "vertical",
+                          "padding": [
+                            6,
+                            8
+                          ],
+                          "gap": 0,
+                          "alignItems": "center",
+                          "cornerRadius": 16,
+                          "descendants": {
+                            "ElYxN": {
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "fill": {
+                                "type": "image",
+                                "enabled": true,
+                                "url": "images/dig-site/grey-allosaurus.webp",
+                                "mode": "contain"
+                              }
+                            },
+                            "MgpTj": {
+                              "alignItems": "center"
+                            },
+                            "PsUDI": {
+                              "content": "ALLOSAURUS",
+                              "fontSize": 13,
+                              "textAlign": "center"
+                            }
                           }
                         },
-                        "MgpTj": {
-                          "alignItems": "center"
-                        },
-                        "PsUDI": {
-                          "content": "BARYONYX",
-                          "fontSize": 13,
-                          "textAlign": "center"
+                        {
+                          "id": "Y9YrzZ",
+                          "type": "ref",
+                          "ref": "H9jkc",
+                          "name": "Card · CARNOTAURUS",
+                          "width": "fill_container",
+                          "height": 86,
+                          "layout": "vertical",
+                          "padding": [
+                            6,
+                            8
+                          ],
+                          "gap": 0,
+                          "alignItems": "center",
+                          "cornerRadius": 16,
+                          "descendants": {
+                            "ElYxN": {
+                              "width": "fill_container",
+                              "height": "fill_container",
+                              "fill": {
+                                "type": "image",
+                                "enabled": true,
+                                "url": "images/dig-site/grey-carnotaurus.webp",
+                                "mode": "contain"
+                              }
+                            },
+                            "MgpTj": {
+                              "alignItems": "center"
+                            },
+                            "PsUDI": {
+                              "content": "CARNOTAURUS",
+                              "fontSize": 13,
+                              "textAlign": "center"
+                            }
+                          }
                         }
-                      }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "NTCzx",
+              "name": "Brushes",
+              "width": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "rYPXn",
+                  "name": "BRUSH",
+                  "width": "fill_container",
+                  "height": 64,
+                  "fill": "$ds-reward",
+                  "cornerRadius": "$ds-radius-pill",
+                  "gap": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "mQOsF",
+                      "name": "Swatch",
+                      "width": 32,
+                      "height": 32,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "G7IYH",
+                          "name": "Dot",
+                          "fill": "$ds-ink",
+                          "width": 12,
+                          "height": 12
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "NXuCr",
+                      "name": "Label",
+                      "fill": "$ds-on-reward",
+                      "content": "BRUSH",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 17,
+                      "fontWeight": "800"
                     }
                   ]
                 },
                 {
                   "type": "frame",
-                  "id": "LUNGo",
-                  "name": "Row 2",
+                  "id": "H6FKl",
+                  "name": "WIDE BRUSH",
                   "width": "fill_container",
-                  "gap": 8,
+                  "height": 64,
+                  "fill": "$ds-label",
+                  "cornerRadius": "$ds-radius-pill",
+                  "stroke": "$ds-outline",
+                  "strokeWidth": 2,
+                  "strokeAlignment": "inner",
+                  "gap": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
                   "children": [
                     {
-                      "id": "L19vb",
-                      "type": "ref",
-                      "ref": "H9jkc",
-                      "name": "Card · ALLOSAURUS",
-                      "width": "fill_container",
-                      "height": 86,
-                      "layout": "vertical",
-                      "padding": [
-                        6,
-                        8
-                      ],
-                      "gap": 0,
+                      "type": "frame",
+                      "id": "opmm5",
+                      "name": "Swatch",
+                      "width": 32,
+                      "height": 32,
+                      "justifyContent": "center",
                       "alignItems": "center",
-                      "cornerRadius": 16,
-                      "descendants": {
-                        "ElYxN": {
-                          "width": "fill_container",
-                          "height": "fill_container",
-                          "fill": {
-                            "type": "image",
-                            "enabled": true,
-                            "url": "images/dig-site/grey-allosaurus.webp",
-                            "mode": "contain"
-                          }
-                        },
-                        "MgpTj": {
-                          "alignItems": "center"
-                        },
-                        "PsUDI": {
-                          "content": "ALLOSAURUS",
-                          "fontSize": 13,
-                          "textAlign": "center"
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "xPExF",
+                          "name": "Dot",
+                          "fill": "$ds-ink",
+                          "width": 24,
+                          "height": 24
                         }
-                      }
+                      ]
                     },
                     {
-                      "id": "Y9YrzZ",
-                      "type": "ref",
-                      "ref": "H9jkc",
-                      "name": "Card · CARNOTAURUS",
-                      "width": "fill_container",
-                      "height": 86,
-                      "layout": "vertical",
-                      "padding": [
-                        6,
-                        8
-                      ],
-                      "gap": 0,
-                      "alignItems": "center",
-                      "cornerRadius": 16,
-                      "descendants": {
-                        "ElYxN": {
-                          "width": "fill_container",
-                          "height": "fill_container",
-                          "fill": {
-                            "type": "image",
-                            "enabled": true,
-                            "url": "images/dig-site/grey-carnotaurus.webp",
-                            "mode": "contain"
-                          }
-                        },
-                        "MgpTj": {
-                          "alignItems": "center"
-                        },
-                        "PsUDI": {
-                          "content": "CARNOTAURUS",
-                          "fontSize": 13,
-                          "textAlign": "center"
-                        }
-                      }
+                      "type": "text",
+                      "id": "js4Kz",
+                      "name": "Label",
+                      "fill": "$ds-ink",
+                      "content": "WIDE BRUSH",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 17,
+                      "fontWeight": "800"
                     }
                   ]
                 }
@@ -28807,42 +28915,6 @@
                   "height": 26
                 }
               }
-            },
-            {
-              "type": "frame",
-              "id": "vTSAF",
-              "name": "Brush menu",
-              "width": 48,
-              "height": 48,
-              "fill": "$ds-reward",
-              "cornerRadius": 24,
-              "layout": "none",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "NUPja",
-                  "x": 10,
-                  "y": 9,
-                  "name": "Icon",
-                  "width": 26,
-                  "height": 26,
-                  "icon": "paint-brush-broad",
-                  "library": "phosphor",
-                  "fill": "$ds-on-reward"
-                },
-                {
-                  "type": "ellipse",
-                  "id": "J3tNyt",
-                  "x": 31,
-                  "y": 31,
-                  "name": "Dot",
-                  "fill": "$ds-ink",
-                  "width": 10,
-                  "height": 10,
-                  "stroke": "$ds-reward",
-                  "strokeWidth": 2
-                }
-              ]
             },
             {
               "id": "CjzDc",
@@ -31085,7 +31157,7 @@
     {
       "type": "frame",
       "id": "xG0SN",
-      "x": 2219,
+      "x": 2959,
       "y": 15444,
       "name": "DIG · Paleontologist · WHO IS IT? · iPhone on its side 852×393 · Light",
       "theme": {
@@ -31490,7 +31562,7 @@
     {
       "type": "frame",
       "id": "yrtPD",
-      "x": 3171,
+      "x": 3911,
       "y": 15444,
       "name": "DIG · Hatchling · brushing · iPad mini upright 744×1133 · Light",
       "theme": {
@@ -31747,7 +31819,7 @@
     {
       "type": "frame",
       "id": "MXd8Y",
-      "x": 4015,
+      "x": 4755,
       "y": 15444,
       "name": "DIG · how it plays",
       "theme": {
@@ -31792,7 +31864,7 @@
           "fill": "$ds-ink-soft",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "HOME and the title on the left; on the right the ⭐ DUG UP count, the brush picker (two dot buttons, the picked one amber) and the 📖 FIELD GUIDE with its count. The title sits beside HOME, not centred, so WHO IS IT?, FIELD GUIDE and the Russian titles fit. On a phone upright the picker folds into the amber brush menu and DUG UP leaves the bar; HOME and BACK become 48 px round symbols.",
+          "content": "HOME and the title on the left; on the right the ⭐ DUG UP count, the brush picker (two dot buttons, the picked one amber) and the 📖 FIELD GUIDE with its count. The title sits beside HOME, not centred, so WHO IS IT?, FIELD GUIDE and the Russian titles fit. On a phone upright the bar keeps only HOME, the title and the FIELD GUIDE; DUG UP leaves it, and both brushes stand as a pair of wide buttons at the bottom of the sand, under the thumb, each a dot with its words, the picked one amber. HOME and BACK become 48 px round symbols.",
           "lineHeight": 1.45,
           "fontFamily": "$ds-font",
           "fontSize": 14,
