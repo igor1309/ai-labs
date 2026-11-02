@@ -2,7 +2,7 @@
 
 ## 2026-11-02
 
-- LAB-907: The closed language picker shows only a flag; its open menu pairs each flag with the language name.
+- LAB-907: The closed language picker shows only a flag; its open menu pairs each flag with the language name. Parent controls have equal widths and spacing.
 
 ## 2026-11-01
 

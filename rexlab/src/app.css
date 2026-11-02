@@ -778,6 +778,11 @@ img {
   font-weight: 500;
 }
 
+.parent-menus .parent-menu-button {
+  width: 48px;
+  padding: 0;
+}
+
 .parent-menu-button[aria-expanded="true"] {
   background: #fffdf8;
   color: #1d2742;
