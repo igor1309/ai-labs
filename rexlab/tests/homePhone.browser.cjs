@@ -49,7 +49,7 @@ const games = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "car
           return {
             overflow: [document.documentElement.scrollWidth > innerWidth, document.documentElement.scrollHeight > innerHeight],
             boxes: [".greeting", ".featured-card", ".games-tiles", "#version"].map((selector) => box(document.querySelector(selector))),
-            tiles: [...row.children].map(box),
+            tiles: [...row.querySelector(".tiles-grid").children].map(box),
             swipe: row.scrollWidth > row.clientWidth,
             title: box(document.querySelector(".featured-card-title")),
             card: box(document.querySelector(".featured-card"))

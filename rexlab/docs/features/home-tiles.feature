@@ -7,7 +7,7 @@ Feature: Home game tiles
 
   Scenario Outline: Tiles keep their proportions and footer
     Given the screen is <width> by <height> CSS pixels
-    And the app is in English or Russian at any age level
+    And the app is in <language> at any age level
     And every game has earned progress
     When I open Home with each game appearing as a small tile
     Then every small tile including SOON has width:height 4:3
@@ -23,12 +23,17 @@ Feature: Home game tiles
     And no small tile shows a progress, count, best-score or star badge
 
     Examples:
-      | width | height |
-      | 390   | 844    |
-      | 844   | 390    |
-      | 820   | 1180   |
-      | 1180  | 820    |
-      | 1440  | 900    |
+      | width | height | language |
+      | 390   | 844    | English  |
+      | 390   | 844    | Russian  |
+      | 844   | 390    | English  |
+      | 844   | 390    | Russian  |
+      | 820   | 1180   | English  |
+      | 820   | 1180   | Russian  |
+      | 1180  | 820    | English  |
+      | 1180  | 820    | Russian  |
+      | 1440  | 900    | English  |
+      | 1440  | 900    | Russian  |
 
   Scenario Outline: Home uses short labels without renaming game screens or the featured card
     When I open Home in <language>
@@ -62,3 +67,13 @@ Feature: Home game tiles
     Given I scrolled the Home tiles
     When I open a game and return Home
     Then the row starts at its first column
+
+  Scenario Outline: SOON remains readable in both themes
+    Given the app uses the <theme> theme
+    When I open Home
+    Then SOON has at least 4.5:1 text contrast against its footer
+
+    Examples:
+      | theme |
+      | light |
+      | dark  |

@@ -5,8 +5,8 @@ Feature: The home page in a tall-narrow window
   the large card under them, and the row of tiles under it, scrolling
   sideways to the window's right edge. Under
   360 wide (an iPhone with its display zoomed, or a window in Slide Over)
-  the corner closes up, the large card's name is a little smaller, and
-  the small tiles keep their short labels on one line.
+  the corner closes up and the large card's name is a little smaller.
+  Small tiles use short labels in every narrow window.
 
   Scenario: The home page stands upright on an iPhone
     Given a tall-narrow window 320 by 568, 375 by 667, 390 by 844, 393 by 852 or 430 by 932
@@ -26,7 +26,7 @@ Feature: The home page in a tall-narrow window
   Scenario: The tiles' columns fit the narrow row
     Given a tall-narrow window
     When I open the home page
-    Then the tiles have width:height 4:3 derived from the existing row height
+    Then the tiles have width:height 4:3 derived from half the available tile-row height less half the row gap
     And columns are 16 pixels apart and scroll to the window's right edge
 
   Scenario: Every word fits at 320 and 375 wide
