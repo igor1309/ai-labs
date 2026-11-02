@@ -1,5 +1,9 @@
 # claude-insights log
 
+## 2026-11-02
+
+- Supabase keep-alive now writes every 4 hours instead of every 3 days, and fails unless the heartbeat row was actually updated. The project was paused on 2026-10-26 and 2026-11-02 within a day of a successful write: Supabase judges activity over a week, and two or three writes a week were too few (LAB-910).
+
 ## 2026-06-21
 
 - Hardened the push path against degraded digests. The 08:40 weekly run hit the Claude session limit, so `claude /insights` produced a charts-only report with no "At a Glance" narrative, and that narrative-less row was pushed — the Telegram digest dropped all four narrative blocks. Added `resolve_push_row()` (pure, 6 tests in `test_claude_insights.py`): an empty narrative never overwrites an existing one, and a degraded first-push (empty narrative, no existing row) is skipped with a loud warning so the DB webhook never fires a thin message. New `--allow-empty-narrative` flag forces a metrics-only push. Re-pushed the current week to restore the full narrative. The launchd `PATH` already includes `~/.local/bin` (old "claude not found" log lines predate that fix); no plist change needed.
