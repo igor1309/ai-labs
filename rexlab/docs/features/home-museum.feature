@@ -22,10 +22,10 @@ Feature: The museum from the home page
       | Russian  | МУЗЕЙ  |
 
   Scenario: The button opens the museum, and HOME comes back
-    Given I have finished Triceratops but neither of the other skeletons
+    Given I am at Hatchling and have finished Triceratops and no other skeleton
     When I tap "MUSEUM" on the home page
     Then I see the museum hall with the Triceratops skeleton on its stand
-    And my collection score is "1/5"
+    And my collection score is "1/3"
     When I tap "HOME"
     Then I see the home page
     When I tap "SKELETONS"

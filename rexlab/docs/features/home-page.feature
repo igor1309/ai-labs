@@ -32,13 +32,25 @@ Feature: Home page: one page from the sky down
     Given an iPad 11 or an iPad mini in landscape
     When I open the home page
     Then every tile and SOON are in view before I scroll
-    And scrolling only uncovers the bedrock with the parents' note
+    And scrolling only uncovers the bedrock with the parents' note and the version
 
   Scenario: On a phone the next row shows there is more
     Given an iPhone upright
     When I open the home page
     Then the first screen shows today's game and the first row of tiles
     And part of the next row shows above the home indicator
+
+  Scenario Outline: On a phone the museum shows its symbol alone
+    Given an iPhone <orientation>
+    When I open the home page in English or Russian
+    Then the museum button shows the museum symbol without its word
+    And screen readers read it as "MUSEUM" or "МУЗЕЙ"
+    And a tap on it opens the museum
+
+    Examples:
+      | orientation    |
+      | upright        |
+      | on its side    |
 
   Scenario: The header scrolls away with the sky
     Given I am on the home page
@@ -69,7 +81,7 @@ Feature: Home page: one page from the sky down
     Given I am on the home page with a parents' menu open
     When the window turns or changes size
     Then today's game and the open menu stay as they were
-    And today's game does not rise in again
+    And neither today's game nor the rows of tiles already seen rise in again
 
   Scenario Outline: Words read in either theme
     Given the app uses the <theme> theme

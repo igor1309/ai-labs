@@ -10,7 +10,7 @@ Feature: Home page: the game tiles in the ground
     And <featured> is today's featured game
     When I open the home page
     Then the tiles show <labels> in that order, reading each row left to right and the rows top to bottom
-    And tapping each tile opens the same game PLAY would open for it
+    And tapping each game's tile opens the same game PLAY would open for it; SOON opens nothing
 
     Examples:
       | language | featured | labels                                                                                      |
@@ -23,23 +23,35 @@ Feature: Home page: the game tiles in the ground
     When I open the home page
     Then no tile shows a score, count, star or trophy
 
-  Scenario: A whole tile is one button
-    When I tap a tile's picture, its name or the ground between them
+  Scenario: A whole game tile is one button
+    When I tap a game tile's picture, its name or the ground between them
     Then its game opens once, however quickly I tap twice
     And a tap that closes an open parents' menu opens nothing
 
-  Scenario: A tile shows it is pressed
-    When I press a tile and hold
+  Scenario: A game tile shows it is pressed
+    When I press a game tile and hold
     Then it shows pressed from the moment of contact
     And under a pointer it brightens, and a finger leaves no hover behind
 
-  Scenario: A new game says it is new
-    Given the app gained TEETH after my first visit
-    And I have not started TEETH yet
+  Scenario Outline: A new game says it is new until it is started
+    Given the app is in <language>
+    And CARE is today's featured game
+    And the app gained TEETH and COLOR after my first visit, and I have started neither
     When I open the home page
-    Then the TEETH tile carries a NEW tag ("НОВИНКА" in Russian)
+    Then the TEETH and COLOR tiles each carry a "<new>" tag, and no other tile does
     When I start TEETH and come back home
-    Then no tile carries a NEW tag
+    Then only the COLOR tile carries a "<new>" tag
+
+    Examples:
+      | language | new     |
+      | English  | NEW     |
+      | Russian  | НОВИНКА |
+
+  Scenario: A new game featured today shows no tag
+    Given the app gained TEETH after my first visit, and I have not started it
+    When TEETH is today's featured game
+    Then the sky shows TEETH as on any day, with no NEW tag
+    And no tile carries a NEW tag
 
   Scenario: Games there on the first visit are not new
     Given this is my first visit

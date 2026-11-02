@@ -10,15 +10,15 @@ Feature: Home page: today's game in the sky
     Given the app is in <language>
     And <game> is today's featured game
     When I open the home page
-    Then the sky shows a TODAY tag, <game>'s symbol, its full name "<name>" in large capitals and its dinosaurs
-    And beside PLAY it shows <game>'s saved progress, as below
+    Then the sky shows a "<today>" tag, <game>'s symbol, its full name "<name>" in large capitals and its dinosaurs
+    And PLAY reads "<play>"
 
     Examples:
-      | language | game    | name     |
-      | English  | COMPARE | COMPARE  |
-      | Russian  | COMPARE | СРАВНИ   |
-      | English  | CARE    | CARE     |
-      | Russian  | CARE    | ЗАБОТА   |
+      | language | game    | name    | today   | play   |
+      | English  | COMPARE | COMPARE | TODAY   | PLAY   |
+      | Russian  | COMPARE | СРАВНИ  | СЕГОДНЯ | ИГРАТЬ |
+      | English  | CARE    | CARE    | TODAY   | PLAY   |
+      | Russian  | CARE    | ЗАБОТА  | СЕГОДНЯ | ИГРАТЬ |
 
   Scenario Outline: Today's game keeps its progress
     Given <game> has <progress> in its saved progress
