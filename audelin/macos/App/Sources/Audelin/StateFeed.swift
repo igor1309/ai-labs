@@ -1,6 +1,7 @@
 import Synchronization
 
 /// Hands each subscriber the current state and then every change, in order, until finished.
+/// The owner serializes subscription, publication and finish; cancellation may run on any thread.
 final class StateFeed<State: Sendable>: Sendable {
 
     private struct Subscribers {
@@ -35,9 +36,11 @@ final class StateFeed<State: Sendable>: Sendable {
 
     func publish(_ state: State) {
 
-        subscribers.withLock { subscribers in
-            for subscriber in subscribers.all.values { subscriber.yield(state) }
-        }
+        // A stream ends a cancelled subscriber holding its own lock, and the
+        // subscriber's removal then takes this one: yielding under this lock
+        // would take the two the other way round and could deadlock.
+        let current = subscribers.withLock { Array($0.all.values) }
+        for subscriber in current { subscriber.yield(state) }
     }
 
     func finish() {
