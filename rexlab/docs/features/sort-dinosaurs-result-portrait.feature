@@ -1,18 +1,16 @@
 Feature: Sort dinosaurs: the result in a tall window
-  In a tall window, portrait and at least 600 CSS pixels wide, sort's
-  result stands upright as the compare quiz's does: the cheering dinosaur
-  at the top, and under it, in one centred column, the celebration, the
-  score, the stars, "WELL DONE!", the best score, the level switch and
-  "PLAY AGAIN" and "HOME" side by side. Its parts take the shared result
-  parts' upright sizes (compare-dinosaurs-result-portrait.feature); the
-  rest is as sort-dinosaurs-result.feature tells. A tall-narrow window
-  has its own sizes (sort-dinosaurs-result-narrow-portrait.feature).
+  In a tall window (an iPad upright, a tall Stage Manager or Mac window)
+  sort's result shows upright, with no ask to turn sideways, and as the
+  compare quiz's result does in the same window; the rest is as
+  sort-dinosaurs-result.feature tells. A phone upright is in
+  sort-dinosaurs-result-narrow-portrait.feature. Where the parts sit and
+  their sizes are the design's call, not this spec's.
 
-  Scenario Outline: The result stands upright
+  Scenario Outline: The result shows upright
     Given a window of <width> by <height> CSS pixels, with no safe areas and scrollbars that take no room
     When I finish a <level> board
     Then I see no picture asking to turn sideways or to make the window wider
-    And the result stands in one centred column at the shared result parts' upright sizes for the width
+    And I see the cheering dinosaur, the score, the stars, the praise, the best score, the level switch, "PLAY AGAIN" and "HOME", none cut
 
     Examples:
       | width | height | level          |
@@ -20,12 +18,12 @@ Feature: Sort dinosaurs: the result in a tall window
       | 820   | 1180   | Explorer       |
       | 600   | 1000   | Paleontologist |
 
-  Scenario Outline: Every word fits the narrowest width
+  Scenario Outline: Every word fits a narrow tall window
     Given the app is in <language>
     And a window of 600 by 1000 CSS pixels, with no safe areas and scrollbars that take no room
     When I finish a Paleontologist board with every card right
-    Then its stars stand on one line, at the stars' upright size
-    And the level names, "PLAY AGAIN" and "HOME" take the shared parts' type, as on the compare quiz's result
+    Then every star shows, none cut
+    And the level names, "PLAY AGAIN" and "HOME" read in full, no word cut or broken
 
     Examples:
       | language |
