@@ -78,4 +78,4 @@ Feature: Dig: starting a round and the board
     Examples:
       | language | dig      | who        |
       | English  | DIG      | WHO IS IT? |
-      | Russian  | РАСКОПКИ | КТО ЭТО?   |
+      | Russian  | КОПАЙ    | КТО ЭТО?   |

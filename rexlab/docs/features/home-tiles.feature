@@ -1,6 +1,7 @@
 Feature: Home game tiles
   Igor approved the short labels, uniform footers and removal of small-tile
-  progress badges on 2026-11-02 (LAB-906). In-game rewards are unchanged.
+  progress badges on 2026-11-02 (LAB-906). The fixed ratio replaces the
+  minimum peek rule; columns may end flush with the viewport. In-game rewards are unchanged.
   Every game except today's featured game appears in fixed order in two
   horizontally scrolling rows. The featured card keeps its full title,
   picture, symbol and progress badge and stays in place while tiles scroll.
@@ -9,7 +10,7 @@ Feature: Home game tiles
     Given the screen is <width> by <height> CSS pixels
     And the app is in <language> at any age level
     And every game has earned progress
-    When I open Home with each game appearing as a small tile
+    When I open Home on days that together show every game as a small tile
     Then every small tile including SOON has width:height 4:3
     And row heights and featured-card geometry follow the Home portrait, narrow-portrait and short-landscape specifications
     And columns are 16 CSS pixels apart

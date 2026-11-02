@@ -41,7 +41,7 @@ Feature: The home page in a wide-short window
     Given a wide-short window
     When I open the home page in English or Russian, featuring any game
     Then the large card's name fits its card
-    And every tile's title fits its column
+    And every small tile's title fits on one line in its 48-pixel footer
 
   Scenario: The parents' menus open whole
     Given a wide-short window

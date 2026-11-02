@@ -58,7 +58,7 @@ Feature: A screen moves to its other layout as the window turns
       | swiped                                         | kept                                                     |
       | so "BONES" stands exactly at its left edge | "BONES" stands at the row's left edge                |
       | so 60 pixels of "BONES" are hidden         | "BONES" stands at the row's left edge                |
-      | so 200 of "EXPLORE" are hidden        | "BONES" stands at the row's left edge                |
+      | so 200 pixels of "EXPLORE" are hidden        | "BONES" stands at the row's left edge                |
       | to their end                                   | the row is at its end, "SOON" whole at its right  |
 
   Scenario: Taps and keys during the motion do nothing

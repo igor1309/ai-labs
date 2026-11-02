@@ -6,7 +6,7 @@ Feature: Home page: choosing the featured game
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
+    And this scenario fixture provides only these eight games, in tile order: COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
 
   Scenario: The games started least have twice the chance
     Given I have started COMPARE 9 times, ANCIENT REPTILES 4, CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2, DIG 2 and SAND WRITING 2

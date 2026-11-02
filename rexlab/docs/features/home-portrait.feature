@@ -26,7 +26,7 @@ Feature: The home page in a tall window
     And "RexLab", the museum button and the parents' menus stand on one line at the top, the greeting under them
     And the large card spans the width under the greeting, <card> CSS pixels tall with its name strip, its whole picture shown
     And under the large card the row of tiles is <row> CSS pixels tall, showing "EXPLORE" over "PAIRS" first
-    And every tile is half of the row less the 28-pixel gap, with width:height 4:3
+    And every tile is half the available tile-row height less half the 28-pixel row gap, with width:height 4:3
     And the page <scrolls> up and down, and the version footer overlaps no tile
 
     Examples:

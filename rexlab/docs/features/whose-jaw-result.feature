@@ -39,7 +39,7 @@ Feature: Celebrate five jaws returned to their dinosaurs
     When I choose JAW SHELF from a result
     Then the shelf destination opens
     When I choose HOME from a result
-    Then Home opens with the saved collection count on the featured card when it features TEETH
+    Then Home opens with the saved collection count on the featured card when it features WHOSE JAW?
     And the small TEETH tile has no badge
     And bests, collected jaws and my level choice survive reload
 
