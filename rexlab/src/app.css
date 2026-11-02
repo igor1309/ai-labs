@@ -306,7 +306,7 @@ body:has(.sand-writing-screen) #version {
   --ds-quiet: #E6E2D9;
   --ds-strong: #1F2B4D;
   --ds-on-strong: #F6F2E9;
-  --ds-action: #C9583D;
+  --ds-action: #C15036;
   --ds-on-action: #FFFDF8;
   --ds-reward: #E39B2D;
   --ds-on-reward: #1D2742;
@@ -386,8 +386,8 @@ body:has(.sand-writing-screen) #version {
   --ds-quiet: #3A4568;
   --ds-strong: #EDE5D2;
   --ds-on-strong: #1D2742;
-  --ds-action: #D9694C;
-  --ds-on-action: #FFFDF8;
+  --ds-action: #E57A5D;
+  --ds-on-action: #1D2742;
   --ds-reward: #F0AE45;
   --ds-on-reward: #1D2742;
   --ds-good: #5DB27A;
@@ -909,15 +909,20 @@ img {
   align-items: center;
   justify-content: center;
   font-weight: 500;
+  padding: 0 13px;
+  gap: 6px;
+  font-size: 14px;
 }
 .parent-menus .parent-menu-button {
   width: 48px;
+  padding: 0;
 }
 
 /* What a button shows, which grows in anew as the choice changes. */
 .parent-menu-face {
   display: flex;
   align-items: center;
+  gap: 6px;
 }
 .parent-menu-face[data-changed] {
   animation: grow-in var(--motion-small) var(--ease-out) both;
@@ -947,6 +952,8 @@ img {
   flex-direction: column;
   transform-origin: top right;
   animation: grow-in var(--motion-small) var(--ease-out) both;
+  padding: 8px;
+  gap: 2px;
 }
 
 /* However a menu closes, it shrinks back the way it came, still catching
@@ -966,6 +973,9 @@ img {
   align-items: center;
   font-weight: 400;
   text-align: left;
+  padding: 0 14px;
+  gap: 12px;
+  font-size: 16px;
 }
 .parent-menu-choice[aria-checked="true"] {
   font-weight: 600;
@@ -1008,6 +1018,7 @@ img {
    ink. */
 .parent-menu-note {
   font-weight: 400;
+  font-size: 13px;
 }
 
 
@@ -2856,17 +2867,35 @@ html[data-size="wide-short"] .catalogue-art {
 }
 
 /* A small tag carries only its symbols. */
+.diet-tag[data-size="small"] {
+  font-size: 15px;
+}
+
 .diet-tag[data-size="small"] .diet-tag-face {
   height: 32px;
+  padding: 0 8px;
+  gap: 5px;
 }
+.diet-tag[data-size="small"] .diet-tag-symbols {
+  gap: 2px;
+}
+
+.diet-tag[data-size="medium"] {
+  font-size: 24px;
+}
+
 .diet-tag[data-size="medium"] .diet-tag-face {
   height: 56px;
+  padding: 0 22px 0 8px;
+  gap: 10px;
 }
 .diet-tag[data-size="medium"] .diet-tag-symbols {
   min-width: 40px;
   height: 40px;
   box-sizing: border-box;
   justify-content: center;
+  padding: 0 9px;
+  gap: 2px;
 }
 
 /* A dinosaur's page: its picture on the navy stage, with the arrows to
@@ -3476,12 +3505,16 @@ html[data-size="wide-short"] .dinosaur-fact-value {
   align-items: center;
   font-weight: 700;
   animation: pop-in var(--motion-screen) var(--ease-overshoot) both;
+  padding: 0 28px 0 22px;
+  gap: 12px;
+  font-size: 26px;
 }
 .result-score {
   margin: 0;
   display: flex;
   align-items: baseline;
   line-height: 1;
+  gap: 12px;
 }
 
 /* The score counts up from 0, drawn over its own digits. */
@@ -3503,6 +3536,8 @@ html[data-size="wide-short"] .dinosaur-fact-value {
   counter-reset: score var(--count);
   font-weight: 700;
   animation: count-up var(--motion-count) var(--ease-out) both;
+  font-size: min(220px, 24vh);
+  font-size: min(220px, 24dvh);
 }
 
 .result-score-value::before {
@@ -3516,12 +3551,14 @@ html[data-size="wide-short"] .dinosaur-fact-value {
 }
 .result-score-total {
   font-weight: 600;
+  font-size: 60px;
 }
 .result-stars {
   margin: 0;
   display: flex;
   font-size: 48px;
   line-height: 1;
+  gap: 8px;
 }
 
 /* The stars won pop in one by one. */
@@ -3542,9 +3579,13 @@ html[data-size="wide-short"] .dinosaur-fact-value {
   display: flex;
   align-items: center;
   font-weight: 600;
+  padding: 0 20px;
+  gap: 12px;
+  font-size: 20px;
 }
 .best-score-value {
   font-weight: 700;
+  font-size: 24px;
 }
 
 .result-actions {
@@ -3558,7 +3599,13 @@ html[data-size="wide-short"] .dinosaur-fact-value {
   display: flex;
   align-items: center;
   font-weight: 700;
+  gap: 14px;
+  font-size: 26px;
 }
+.play-again-button {
+  padding: 0 40px;
+}
+
 .result-actions .home-button {
   padding: 0 32px;
 }
@@ -3601,6 +3648,12 @@ html[data-size="tall-narrow"] .result-content {
   align-self: stretch;
   gap: 16px;
 }
+html[data-size="tall"] .result-score-value,
+html[data-size="tall-narrow"] .result-score-value {
+  font-size: min(180px, 15vh);
+  font-size: min(180px, 15dvh);
+}
+
 html[data-size="tall"] .result-stars,
 html[data-size="tall-narrow"] .result-stars {
   font-size: var(--star-size);
@@ -3629,6 +3682,16 @@ html[data-size="tall-narrow"] .result-content {
   gap: 12px;
 }
 
+html[data-size="tall-narrow"] .result-score-value {
+  font-size: min(180px, 12vh);
+  font-size: min(180px, 12dvh);
+}
+
+html[data-size="tall-narrow"] .celebration {
+  padding: 0 20px 0 16px;
+  font-size: 18px;
+}
+
 html[data-size="tall-narrow"] .result-title {
   font-size: 34px;
 }
@@ -3642,6 +3705,7 @@ html[data-size="tall-narrow"] .play-again-button,
 html[data-size="tall-narrow"] .result-actions .home-button {
   height: 64px;
   justify-content: center;
+  padding: 0 20px;
 }
 
 /* Dinosaur care's tile, amber, under the catalogue's, in its shape. The
@@ -4518,6 +4582,7 @@ html[data-size="tall-narrow"] .tray-label {
   margin: 0;
   display: flex;
   line-height: 0;
+  gap: 14px;
 }
 
 /* The hearts earned fill one by one. */
@@ -4563,6 +4628,9 @@ html[data-size="tall-narrow"] .tray-label {
 .care-result .play-again-button,
 .care-result .result-actions .home-button {
   white-space: nowrap;
+  padding: 0 22px;
+  gap: 10px;
+  font-size: 22px;
 }
 
 /* Upright, a care result stands in the result's centred column: the
@@ -5039,6 +5107,10 @@ html[data-size="tall-narrow"] .friend-name {
 html[data-size="tall-narrow"] .care-result .result-hero {
   max-height: min(480px, (100vw - 40px) * 3 / 4);
 }
+html[data-size="tall-narrow"] .result-hearts {
+  gap: 4px;
+}
+
 html[data-size="tall-narrow"] .result-heart svg {
   width: 28px;
   height: 28px;
@@ -5056,6 +5128,8 @@ html[data-size="tall-narrow"] .care-result .result-actions {
 html[data-size="tall-narrow"] .care-result .play-again-button,
 html[data-size="tall-narrow"] .care-result .result-actions .home-button {
   height: 64px;
+  padding: 0 16px;
+  font-size: 20px;
 }
 
 /* The sorting board: the prompt, a tray of six to ten cards and the two or
@@ -6122,11 +6196,15 @@ html[data-size="wide-short"] .pairs-chip svg {
   width: 22px;
   height: 22px;
 }
+html[data-size="wide-short"] .pairs-welcome .level-switch {
+  padding: 4px;
+}
+
 html[data-size="wide-short"] .pairs-welcome .level-switch-mark {
-  top: var(--ds-level-pad);
-  bottom: var(--ds-level-pad);
-  left: var(--ds-level-pad);
-  width: calc((100% - calc(2 * var(--ds-level-pad) + 2 * var(--ds-space-xs))) / 3);
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 16px) / 3);
 }
 html[data-size="wide-short"] .pairs-welcome .level-switch-level {
   height: 44px;
@@ -6156,14 +6234,16 @@ html[data-size="wide-short"] .pairs-play-button svg {
   box-sizing: border-box;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
+  padding: 6px;
+  gap: 4px;
 }
 .level-switch-mark {
   position: absolute;
   z-index: -1;
-  top: var(--ds-level-pad);
-  bottom: var(--ds-level-pad);
-  left: var(--ds-level-pad);
-  width: calc((100% - calc(2 * var(--ds-level-pad) + 2 * var(--ds-space-xs))) / 3);
+  top: 6px;
+  bottom: 6px;
+  left: 6px;
+  width: calc((100% - 20px) / 3);
   translate: calc(var(--chosen) * (100% + 4px)) 0;
   transition: translate var(--motion-standard) var(--ease-out);
 }
@@ -6180,6 +6260,9 @@ html[data-size="wide-short"] .pairs-play-button svg {
     color var(--motion-standard) var(--ease-out),
     background-color var(--motion-standard) var(--ease-out),
     filter var(--motion-small) var(--ease-out);
+  padding: 0 6px;
+  gap: 6px;
+  font-size: 16px;
 }
 .level-switch-level[aria-pressed="true"] {
   font-weight: 700;
@@ -6211,6 +6294,12 @@ html[data-size="wide-short"] .pairs-play-button svg {
 }
 .result-with-levels .celebration {
   height: 52px;
+  font-size: 22px;
+}
+
+.result-with-levels .result-score-value {
+  font-size: min(180px, 20vh);
+  font-size: min(180px, 20dvh);
 }
 
 .result-with-levels .result-title {
@@ -6234,11 +6323,14 @@ html[data-size="tall-narrow"] .level-switch {
   align-self: center;
   width: 100%;
   max-width: 648px;
+  border: none;
 }
 html[data-size="tall"] .level-switch-level,
 html[data-size="tall-narrow"] .level-switch-level {
   height: 64px;
   flex-direction: column;
+  gap: 4px;
+  font-size: var(--level-name-size);
 }
 
 /* In a wide-short window, an iPhone on its side, a result with the level
@@ -6283,6 +6375,12 @@ html[data-size="wide-short"] .result-with-levels .best-score {
   justify-self: center;
   height: 36px;
 }
+html[data-size="wide-short"] .result-with-levels .celebration {
+  padding: 0 16px 0 12px;
+  gap: 8px;
+  font-size: 16px;
+}
+
 html[data-size="wide-short"] .result-with-levels .celebration svg {
   width: 20px;
   height: 20px;
@@ -6290,6 +6388,15 @@ html[data-size="wide-short"] .result-with-levels .celebration svg {
 html[data-size="wide-short"] .result-with-levels .result-score {
   grid-column: 1;
   grid-row: span 2;
+  gap: 8px;
+}
+
+html[data-size="wide-short"] .result-with-levels .result-score-value {
+  font-size: 56px;
+}
+
+html[data-size="wide-short"] .result-with-levels .result-score-total {
+  font-size: 24px;
 }
 
 html[data-size="wide-short"] .result-with-levels .result-title {
@@ -6304,17 +6411,29 @@ html[data-size="wide-short"] .result-with-levels .result-stars {
   order: 1;
   grid-column: 2;
   font-size: 20px;
+  gap: 4px;
 }
+html[data-size="wide-short"] .result-with-levels .best-score {
+  padding: 0 14px;
+  gap: 8px;
+  font-size: 15px;
+}
+
+html[data-size="wide-short"] .result-with-levels .best-score-value {
+  font-size: 18px;
+}
+
 html[data-size="wide-short"] .result-with-levels .level-switch,
 html[data-size="wide-short"] .dig-reveal-screen .level-switch {
   grid-column: 1 / -1;
+  padding: 4px;
 }
 html[data-size="wide-short"] .result-with-levels .level-switch-mark,
 html[data-size="wide-short"] .dig-reveal-screen .level-switch-mark {
-  top: var(--ds-level-pad);
-  bottom: var(--ds-level-pad);
-  left: var(--ds-level-pad);
-  width: calc((100% - calc(2 * var(--ds-level-pad) + 2 * var(--ds-space-xs))) / 3);
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 16px) / 3);
 }
 html[data-size="wide-short"] .result-with-levels .level-switch-level,
 html[data-size="wide-short"] .dig-reveal-screen .level-switch-level {
@@ -6332,6 +6451,9 @@ html[data-size="wide-short"] .result-with-levels .result-actions .home-button {
   min-width: 0;
   height: 48px;
   justify-content: center;
+  padding: 0 16px;
+  gap: 8px;
+  font-size: 18px;
 }
 
 html[data-size="wide-short"] .result-with-levels .result-actions svg {
@@ -6922,6 +7044,9 @@ html[data-size="wide-short"] .pairs-bar .home-button .upright-hidden {
   align-items: center;
   font-weight: 700;
   animation: pop-in var(--motion-screen) var(--ease-overshoot) both;
+  padding: 0 20px;
+  gap: 12px;
+  font-size: 26px;
 }
 
 .pairs-next-board {
@@ -7073,6 +7198,10 @@ html[data-size="tall-narrow"] .pairs-result-hand {
   height: 64px;
 }
 
+html[data-size="tall-narrow"] .pairs-result-stars {
+  font-size: 40px;
+}
+
 html[data-size="tall-narrow"] .pairs-result .result-title {
   font-size: 34px;
 }
@@ -7169,6 +7298,9 @@ html[data-size="wide-short"] .pairs-badges {
 html[data-size="wide-short"] .pairs-result .celebration,
 html[data-size="wide-short"] .pairs-level-up {
   height: 32px;
+  padding: 0 14px 0 10px;
+  gap: 8px;
+  font-size: 16px;
 }
 html[data-size="wide-short"] .pairs-result .celebration svg,
 html[data-size="wide-short"] .pairs-level-up svg {
@@ -7219,10 +7351,17 @@ html[data-size="wide-short"] .pairs-result .best-score {
   grid-column: 1 / -1;
   justify-self: center;
   height: 32px;
+  padding: 0 14px;
+  gap: 8px;
+  font-size: 14px;
 }
 html[data-size="wide-short"] .pairs-result .best-score svg {
   width: 18px;
   height: 18px;
+}
+
+html[data-size="wide-short"] .pairs-result .best-score-value {
+  font-size: 16px;
 }
 
 html[data-size="wide-short"] .pairs-result .result-actions {
@@ -7263,6 +7402,7 @@ html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
   display: grid;
   place-items: center;
   animation: fade-in var(--motion-screen) var(--ease-out) both;
+  padding: 24px;
 }
 
 .pairs-offer-scrim::before {
@@ -7283,6 +7423,8 @@ html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
   flex-direction: column;
   align-items: center;
   animation: rise-in var(--motion-screen) var(--ease-out) both;
+  gap: 28px;
+  padding: 44px 40px 40px;
 }
 .pairs-offer-picture {
   display: grid;
@@ -7291,6 +7433,7 @@ html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
   width: 132px;
   height: 132px;
   line-height: 1;
+  font-size: 72px;
 }
 .pairs-offer-question {
   width: 100%;
@@ -7298,10 +7441,12 @@ html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
+  font-size: min(36px, 3.125vw);
 }
 .pairs-offer-answers {
   display: flex;
   width: 100%;
+  gap: 16px;
 }
 .pairs-offer-answers button {
   flex: 1 1 0;
@@ -7312,6 +7457,9 @@ html[data-size="wide-short"] .pairs-result .result-actions .play-again-button {
   justify-content: center;
   font-weight: 700;
   white-space: nowrap;
+  padding: 0 16px;
+  gap: 14px;
+  font-size: 28px;
 }
 .pairs-offer-scrim[data-leaving] {
   animation: fade-out var(--motion-small) var(--ease-out) both;
@@ -7329,6 +7477,11 @@ html[data-size="tall"] .pairs-offer,
 html[data-size="tall-narrow"] .pairs-offer {
   width: 100%;
 }
+html[data-size="tall"] .pairs-offer-question,
+html[data-size="tall-narrow"] .pairs-offer-question {
+  font-size: 32px;
+}
+
 html[data-size="tall"] .pairs-offer-answers,
 html[data-size="tall-narrow"] .pairs-offer-answers {
   flex-direction: column;
@@ -7341,12 +7494,27 @@ html[data-size="tall-narrow"] .pairs-offer-answers button {
 /* In a tall-narrow window the offer is the window less 16 a side, its
    padding 32 at the top and 24 elsewhere, its picture 96, its question
    in 22-pixel type and YES and NOT NOW in 22. */
+html[data-size="tall-narrow"] .pairs-offer-scrim {
+  padding: 16px;
+}
+
+html[data-size="tall-narrow"] .pairs-offer {
+  padding: 32px 24px 24px;
+  gap: 20px;
+}
+
 html[data-size="tall-narrow"] .pairs-offer-picture {
   width: 96px;
   height: 96px;
+  font-size: 52px;
 }
+html[data-size="tall-narrow"] .pairs-offer-question {
+  font-size: 22px;
+}
+
 html[data-size="tall-narrow"] .pairs-offer-answers button {
   height: 64px;
+  font-size: 22px;
 }
 
 /* In a wide-short window, an iPhone on its side, the offer is at most 520
@@ -7354,15 +7522,32 @@ html[data-size="tall-narrow"] .pairs-offer-answers button {
    its parts 12 apart: the picture 64, the question in 22-pixel type on
    at most two lines, and YES beside NOT NOW, each 52 tall in 20, so it
    fits the shortest window, 320 tall. */
+html[data-size="wide-short"] .pairs-offer-scrim {
+  padding: 12px;
+}
+
 html[data-size="wide-short"] .pairs-offer {
   width: min(520px, 100%);
+  padding: 20px 16px 16px;
+  gap: 12px;
 }
 html[data-size="wide-short"] .pairs-offer-picture {
   width: 64px;
   height: 64px;
+  font-size: 36px;
 }
+html[data-size="wide-short"] .pairs-offer-question {
+  font-size: 22px;
+}
+
+html[data-size="wide-short"] .pairs-offer-answers {
+  gap: 12px;
+}
+
 html[data-size="wide-short"] .pairs-offer-answers button {
   height: 52px;
+  gap: 10px;
+  font-size: 20px;
 }
 html[data-size="wide-short"] .pairs-offer-answers svg {
   width: 24px;
@@ -7459,11 +7644,8 @@ html[data-size="wide-short"] .pairs-offer-answers svg {
 
 /* Every card and button keeps a touch target of at least 48 by 48 CSS
    pixels, whatever its words. */
+.skeleton-bar .home-button,
 .skeleton-choice {
-  min-width: 48px;
-  min-height: 48px;
-}
-.skeleton-bar .home-button {
   min-width: 48px;
   min-height: 48px;
 }
@@ -7633,6 +7815,11 @@ html[data-size="wide-short"] .pairs-offer-answers svg {
 }
 .dig-brush-menu .parent-menu-button {
   height: 48px;
+  padding: 0 12px;
+}
+
+.dig-brush-menu .parent-menu-face {
+  gap: 4px;
 }
 
 .dig-brush-menu .parent-menu-face .dig-brush-dot {
@@ -7727,6 +7914,8 @@ html[data-size="wide-short"] .pairs-offer-answers svg {
   white-space: nowrap;
   pointer-events: none;
   animation: pop-in var(--motion-small) var(--ease-overshoot) both;
+  padding: 0 12px;
+  font-size: 16px;
 }
 
 .dig-reveal-screen .dig-field-guide-button {
@@ -8577,6 +8766,7 @@ main.dig-reveal-screen[data-arrived] .result-actions > button {
 .dig-reveal-screen .celebration {
   height: 52px;
   animation: none;
+  font-size: 22px;
 }
 
 /* The level switch above DIG AGAIN and HOME, which take no tap until the
@@ -8875,6 +9065,10 @@ html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-but
   height: 48px;
   min-height: 48px;
   box-sizing: border-box;
+}
+
+html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu .parent-menu-button {
+  padding: 0 8px;
 }
 
 html[data-size="tall-narrow"] .dig-board-screen .dig-brush-menu {
@@ -9218,9 +9412,13 @@ html[data-size="wide-short"] .dig-card-count {
 html[data-size="wide-short"] .dig-card .level-badge {
   width: 28px;
   height: 28px;
+  font-size: 16px;
 }
 html[data-size="wide-short"] .dig-reveal-screen .celebration {
   height: 36px;
+  padding: 0 16px 0 12px;
+  gap: 8px;
+  font-size: 16px;
 }
 html[data-size="wide-short"] .dig-reveal-screen .celebration svg {
   width: 20px;
@@ -9241,6 +9439,9 @@ html[data-size="wide-short"] .dig-reveal-screen .result-actions .home-button {
   flex: 1 1 auto;
   height: 48px;
   justify-content: center;
+  padding: 0 14px;
+  gap: 8px;
+  font-size: 18px;
 }
 
 html[data-size="wide-short"] .dig-reveal-screen .result-actions svg {
@@ -9401,6 +9602,7 @@ html[data-size="tall-narrow"] .dig-card-count {
 }
 html[data-size="tall-narrow"] .dig-reveal-screen .celebration {
   height: 44px;
+  font-size: 18px;
 }
 
 html[data-size="tall-narrow"] .dig-reveal-ways {
@@ -9944,6 +10146,8 @@ html[data-size="tall-narrow"] .skeleton-puzzle .skeleton-tray {
 }
 .skeleton-reward .celebration {
   height: 52px;
+  padding: 0 22px 0 16px;
+  font-size: 22px;
 }
 
 .skeleton-reveal-name {
@@ -10149,6 +10353,9 @@ html[data-size="tall-narrow"] .skeleton-guess-choices {
   font-weight: 700;
   letter-spacing: 1px;
   white-space: nowrap;
+  padding: 0 12px;
+  gap: 12px;
+  font-size: 22px;
 }
 
 /* Upright, the finished skeleton stands over its reward: the board as
@@ -10350,6 +10557,9 @@ html[data-size="tall-narrow"] .skeleton-actions {
 html[data-size="tall-narrow"] .skeleton-build-another,
 html[data-size="tall-narrow"] .skeleton-actions .home-button {
   height: 56px;
+  padding: 0 8px;
+  gap: 8px;
+  font-size: 17px;
 }
 
 /* The museum: a hall of one stand for each dinosaur, rising in one after
@@ -10435,6 +10645,7 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   display: grid;
   place-items: center;
   line-height: 1;
+  font-size: 22px;
 }
 
 /* A stand's badges sit in its exhibit's top corner, over the skeleton. */
@@ -10453,6 +10664,8 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   align-items: center;
   font-weight: 700;
   animation: rise-in var(--motion-standard) var(--ease-out) both;
+  gap: 12px;
+  font-size: 22px;
 }
 
 .skeleton-exhibit-picture {
@@ -10816,7 +11029,7 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   align-items: center;
   gap: 16px;
 }
-.labyrinth-record .celebration { height: 52px; }
+.labyrinth-record .celebration { height: 52px; font-size: 22px; }
 
 .labyrinth-reunion-levels { width: 648px; }
 
@@ -10831,6 +11044,9 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
   height: 72px;
   font-weight: 800;
   white-space: nowrap;
+  gap: 12px;
+  padding: 0 24px;
+  font-size: 24px;
 }
 
 .labyrinth-result-screen button:focus-visible { outline: 3px solid #c9583d; outline-offset: 3px; }
@@ -10869,7 +11085,7 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 .jaw-result-find { width: 20%; animation: jaw-to-shelf var(--motion-count) var(--ease-out) calc(var(--motion-screen) + var(--jaw) * var(--motion-stagger)) both; }
 .jaw-result-find .picture { display: block; width: 100%; height: auto; }
 .jaw-result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; animation: rise-in var(--motion-screen) var(--ease-out) both; }
-.jaw-result-actions button { display: flex; align-items: center; justify-content: center; min-height: 56px; font-weight: 700; }
+.jaw-result-actions button { display: flex; align-items: center; justify-content: center; min-height: 56px; font-weight: 700; gap: 10px; padding: 14px 20px; font-size: clamp(18px, 2vw, 26px); }
 @keyframes jaw-to-shelf { from { opacity: 0; transform: translateY(calc(-60px * var(--motion-amount))) scale(calc(1 + .3 * var(--motion-amount))); } to { opacity: 1; transform: translateY(calc(0px * var(--motion-amount))) scale(calc(1 + 0 * var(--motion-amount))); } }
 @media (max-width: 540px) {
   .whose-jaw-result { gap: 12px; }
@@ -10879,10 +11095,10 @@ html[data-size="tall-narrow"] .skeleton-actions .home-button {
 html[data-size="tall-narrow"] .whose-jaw-result { gap: 12px; }
 html[data-size="tall-narrow"] .whose-jaw-result h1 { font-size: 28px; line-height: 1.2; }
 html[data-size="tall-narrow"] .jaw-result-record { width: 100%; }
-html[data-size="tall-narrow"] .jaw-result-record .celebration { height: 48px; }
+html[data-size="tall-narrow"] .jaw-result-record .celebration { height: 48px; padding: 0 16px; gap: 8px; font-size: 20px; }
 html[data-size="tall-narrow"] .jaw-result-collection p { line-height: 1.3; }
 html[data-size="tall-narrow"] .jaw-result-actions { flex-direction: column; width: 100%; }
-html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; }
+html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-size: 18px; }
 @media (max-height: 540px) and (min-width: 541px) {
   .whose-jaw-result { gap: 8px; padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
   .jaw-result-jaws { width: min(65%, 520px); }
@@ -10928,7 +11144,7 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; }
   50% { transform: scaleY(calc(1 - .3 * var(--motion-amount))) rotate(calc(-8deg * var(--motion-amount))); }
 }
 .whose-jaw-start { --level-name-size: 16px; display: flex; flex-direction: column; gap: 20px; min-width: 0; text-align: center; }
-.whose-jaw-start .level-switch-level { flex-direction: column; height: 64px; }
+.whose-jaw-start .level-switch-level { flex-direction: column; height: 64px; gap: 4px; font-size: var(--level-name-size); }
 .whose-jaw-start h1 { margin: 0; font-size: clamp(28px, 4vw, 54px); line-height: 1.15; }
 .whose-jaw-badges { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
 .whose-jaw-badges p { margin: 0; padding: 8px 16px; border-radius: 24px; background: #e6e2d9; display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 700; }
@@ -11125,7 +11341,7 @@ html[data-size="tall-narrow"] .jaw-shelf-picture { height: calc(100% - 42px); }
 .jaw-card-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .jaw-shelf-status { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
 .jaw-shelf-status .jaw-shelf-count { margin: 0; }
-.game-audio-button { flex-shrink: 0; min-width: 48px; min-height: 48px; }
+.game-audio-button { flex-shrink: 0; min-width: 48px; min-height: 48px; gap: 8px; font-size: 16px; }
 .game-audio-button svg { animation: fade-in var(--motion-small) var(--ease-out) both; }
 .jaw-result-audio { display: flex; justify-content: flex-end; width: 100%; }
 .whose-jaw-board-bar[data-audio] { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; }
@@ -11134,6 +11350,10 @@ html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] { grid-template-c
 html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .home-button { box-sizing: border-box; width: 48px; min-width: 48px; height: 48px; padding: 12px; gap: 0; }
 html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .home-button span { display: none; }
 html[data-size="tall-narrow"] .whose-jaw-board-bar[data-audio] .jaw-socket { box-sizing: border-box; width: clamp(22px, 6vw, 32px); flex-shrink: 0; border-width: 2px; font-size: 18px; }
+html[data-size="tall-narrow"] .game-audio-button {
+  padding: 8px 12px;
+}
+
 html[data-size="tall-narrow"] .whose-jaw-welcome header > .home-button:first-child,
 html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child { box-sizing: border-box; width: 48px; min-width: 48px; padding: 12px; gap: 0; }
 html[data-size="tall-narrow"] .whose-jaw-welcome header > .home-button:first-child span,
@@ -11152,15 +11372,8 @@ html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span
 [data-theme="dark"] .jaw-shelf-silhouette { filter: brightness(0) invert(1) opacity(.2); }
 [data-theme="dark"] .jaw-shelf-place:disabled .jaw-shelf-name { color: #9ca3b6; }
 
-.pairs-offer-scrim { padding: 24px; }
-.pairs-offer-picture { font-size: 72px; }
-html[data-size="tall-narrow"] .pairs-offer-scrim { padding: 16px; }
-html[data-size="tall-narrow"] .pairs-offer-picture { font-size: 52px; }
-html[data-size="wide-short"] .pairs-offer-scrim { padding: 12px; }
-html[data-size="wide-short"] .pairs-offer-picture { font-size: 36px; }
-
-/* Shared controls keep their placement in each screen; their faces use
-   the same tokens on paper, sky and earth. */
+/* Shared controls use token colours, radii and fonts; each screen owns
+   their sizes and spacing. */
 .home-button {
   border: none;
   outline: none;
@@ -11181,21 +11394,14 @@ html[data-size="wide-short"] .pairs-offer-picture { font-size: 36px; }
 .coloring-result .coloring-result-actions button,
 .pairs-offer-answers button,
 .coloring-workshop .coloring-error button {
-  box-sizing: border-box;
-  padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x);
-  gap: var(--ds-btn-gap);
   border: none;
   outline: none;
   border-radius: var(--ds-radius-pill);
   background-color: var(--ds-strong);
   color: var(--ds-on-strong);
   font-family: var(--ds-font);
-  font-size: var(--ds-size-action);
   box-shadow: none;
 }
-
-.result-actions .home-button,
-.skeleton-actions .home-button { width: auto; }
 
 .play-again-button:not(.no-friends-button),
 .skeleton-build-another,
@@ -11209,49 +11415,35 @@ html[data-size="wide-short"] .pairs-offer-picture { font-size: 36px; }
   color: var(--ds-on-action);
 }
 
+/* An inset outline leaves the button's measured dimensions unchanged. */
 .pairs-offer-answers .pairs-offer-not-now,
 .coloring-result .coloring-result-actions .coloring-result-edit,
 .coloring-workshop .coloring-error:has(button:nth-of-type(2):last-child) button:first-of-type {
   background: transparent;
   color: var(--ds-ink);
-  border: 3px solid var(--ds-ink);
+  border: 0 solid var(--ds-ink);
+  outline: 3px solid;
+  outline-color: var(--ds-ink);
+  outline-offset: -3px;
 }
 
-.result-actions button svg,
-.skeleton-actions button svg,
-.jaw-result-actions button svg,
-.labyrinth-reunion-actions button svg,
-.picture-puzzle-result-actions button svg,
-.coloring-result .coloring-result-actions button svg,
-.pairs-offer-answers button svg,
-.coloring-workshop .coloring-error button svg { width: var(--ds-icon-action); height: var(--ds-icon-action); }
-
 .level-switch {
-  padding: var(--ds-level-pad);
-  gap: var(--ds-space-xs);
-  border: none;
+  border: 1px solid var(--ds-outline);
   border-radius: var(--ds-radius-pill);
   background-color: var(--ds-quiet);
 }
 
 .level-switch-mark {
-  top: var(--ds-level-pad);
-  bottom: var(--ds-level-pad);
-  left: var(--ds-level-pad);
-  width: calc((100% - calc(2 * var(--ds-level-pad) + 2 * var(--ds-space-xs))) / 3);
   border-radius: var(--ds-radius-pill);
   background-color: var(--ds-strong);
 }
 
 .level-switch-level {
-  padding: var(--ds-level-pad-y) var(--ds-level-pad-tail) var(--ds-level-pad-y) var(--ds-level-pad-lead);
-  gap: var(--ds-space-s);
   border: none;
   border-radius: var(--ds-radius-pill);
   background: transparent;
   color: var(--ds-ink);
   font-family: var(--ds-font);
-  font-size: var(--ds-size-tag);
 }
 
 .level-switch-level[aria-pressed="true"] {
@@ -11266,14 +11458,11 @@ html[data-size="wide-short"] .pairs-offer-picture { font-size: 36px; }
 .pairs-level-up,
 .skeleton-badge-earned,
 .dig-field-guide-new {
-  padding: var(--ds-tag-pad-y) var(--ds-space-m) var(--ds-tag-pad-y) var(--ds-tag-pad-lead);
-  gap: var(--ds-tag-gap);
   border-radius: var(--ds-radius-tag);
   outline: none;
   background-color: var(--ds-strong);
   color: var(--ds-on-strong);
   font-family: var(--ds-font);
-  font-size: var(--ds-size-tag);
   box-shadow: none;
 }
 
@@ -11281,27 +11470,20 @@ html[data-size="wide-short"] .pairs-offer-picture { font-size: 36px; }
 .pairs-level-up,
 .dig-field-guide-new { background-color: var(--ds-reward); color: var(--ds-on-reward); }
 
-.diet-tag-face { padding: 0; gap: var(--ds-tag-gap); background: transparent; }
-.diet-tag-symbols { padding: 0; gap: var(--ds-space-xs); }
+.diet-tag-face { background: transparent; }
 
 .parent-menu-button {
-  padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x);
-  gap: var(--ds-chip-gap);
   border: none;
   border-radius: var(--ds-radius-pill);
   background-color: var(--ds-quiet);
   color: var(--ds-ink);
   font-family: var(--ds-font);
-  font-size: var(--ds-size-label);
   box-shadow: none;
 }
 
 .parent-menu-button[aria-expanded="true"] { background-color: var(--ds-quiet); color: var(--ds-ink); }
-.parent-menu-face { gap: var(--ds-chip-gap); }
-.parent-menu-button svg { width: var(--ds-icon-label); height: var(--ds-icon-label); }
+
 .parent-menu-list {
-  padding: var(--ds-space-s);
-  gap: var(--ds-menu-gap);
   border-radius: var(--ds-radius-panel);
   outline: 1px solid;
   outline-color: var(--ds-outline);
@@ -11312,25 +11494,20 @@ html[data-size="wide-short"] .pairs-offer-picture { font-size: 36px; }
 }
 
 .parent-menu-choice {
-  padding: var(--ds-space-m) var(--ds-menu-pad-x);
-  gap: var(--ds-space-m);
   border: none;
   border-radius: var(--ds-radius-pill);
   background: transparent;
   color: var(--ds-ink);
   font-family: var(--ds-font);
-  font-size: var(--ds-size-label);
 }
 
 .parent-menu-choice[aria-checked="true"] { background-color: var(--ds-quiet); }
-.parent-menu-note { font-size: var(--ds-size-foot); color: var(--ds-ink-soft); }
+.parent-menu-note { color: var(--ds-ink-soft); }
 .parent-menu-tick { color: var(--ds-action); }
 
 .pairs-offer-scrim::before { background-color: var(--ds-scrim); opacity: 1; }
 .pairs-offer,
 .coloring-workshop .coloring-error {
-  padding: var(--ds-dialog-pad);
-  gap: var(--ds-dialog-gap);
   border-radius: var(--ds-radius-panel);
   background-color: var(--ds-label);
   color: var(--ds-on-label);
@@ -11338,36 +11515,40 @@ html[data-size="wide-short"] .pairs-offer-picture { font-size: 36px; }
   box-shadow: none;
 }
 .pairs-offer-question,
-.coloring-workshop .coloring-error h2 { color: var(--ds-ink); font-size: var(--ds-size-title); }
+.coloring-workshop .coloring-error h2 { color: var(--ds-ink); }
 .pairs-offer-picture { background-color: var(--ds-pocket-1); color: var(--ds-ink); border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom); }
-.pairs-offer-answers { gap: var(--ds-space-l); }
+
 .coloring-overlay { background-color: var(--ds-scrim); }
 .coloring-workshop .coloring-error > svg { color: var(--ds-ink); }
-.coloring-error p { font-size: var(--ds-size-foot); color: var(--ds-ink-soft); }
+.coloring-error p { color: var(--ds-ink-soft); }
 
-.result-score { gap: var(--ds-score-gap); font-family: var(--ds-font); color: var(--ds-ink); }
-.result-score-value { font-size: var(--ds-size-display); }
-.result-score-total { font-size: var(--ds-size-title); color: var(--ds-ink-soft); }
-.result-stars,
-.pairs-result-stars,
-.result-hearts { gap: var(--ds-tag-gap); }
+.result-score { font-family: var(--ds-font); color: var(--result-ink, var(--ds-ink)); }
+
+.result-score-total { color: var(--result-ink-soft, var(--ds-ink-soft)); }
+
+/* The result screens still on their navy ground until their game moves
+   onto the sky: score and best keep the ground's light words there. */
+.result,
+.dig-reveal-screen,
+.whose-jaw-result {
+  --result-ink: #f6f2e9;
+  --result-ink-soft: #f6f2e9;
+}
+
 .star,
 .result-heart { color: var(--ds-ink-soft); }
 .star-won,
 .pairs-result-star { color: var(--ds-reward); }
 .result-heart-won { color: var(--ds-bad); }
 .best-score {
-  padding: 0;
-  gap: var(--ds-score-gap);
   border-radius: 0;
   background: transparent;
-  color: var(--ds-ink-soft);
+  color: var(--result-ink-soft, var(--ds-ink-soft));
   font-family: var(--ds-font);
-  font-size: var(--ds-size-label);
 }
 .best-score svg { color: var(--ds-reward); }
-.best-score-beaten { color: var(--ds-ink-soft); }
-.best-score-value { color: var(--ds-ink); font-size: var(--ds-size-number); }
+.best-score-beaten { color: var(--result-ink-soft, var(--ds-ink-soft)); }
+.best-score-value { color: var(--result-ink, var(--ds-ink)); }
 .orientation-gate { background-color: var(--ds-sky-bottom); color: var(--ds-ink); font-family: var(--ds-font); }
 
 .orientation-gate-note { color: var(--ds-ink-soft); }

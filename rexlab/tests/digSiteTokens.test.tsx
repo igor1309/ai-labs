@@ -23,6 +23,7 @@ afterEach(() => {
 function token(name: string) { return getComputedStyle(document.documentElement).getPropertyValue(`--ds-${name}`).trim(); }
 function literal(property: string, value: string) {
   const element = document.createElement("span");
+  if (property === "border-top-width") element.style.borderStyle = "solid";
   element.style.setProperty(property, value);
   return getComputedStyle(element).getPropertyValue(property);
 }
@@ -65,38 +66,60 @@ for (const theme of ["light", "dark"]) for (const size of ["wide", "tall", "tall
     </>);
     matches(part(".game-audio-button"), { "background-color": "quiet", color: "ink", "border-radius": "radius-pill" });
     matches(part(".level-badge"), { "background-color": "strong", color: "on-strong", "border-radius": "radius-tag" });
-    matches(part(".celebration"), { "background-color": "reward", color: "on-reward", "border-radius": "radius-tag", "font-size": "size-tag" });
-    matches(part(".level-switch"), { "background-color": "quiet", "border-radius": "radius-pill", padding: "level-pad" });
-    matches(part('.level-switch-level[aria-pressed="true"]'), { "background-color": "strong", color: "on-strong", "font-size": "size-tag" });
+    matches(part(".celebration"), { "background-color": "reward", color: "on-reward", "border-radius": "radius-tag" });
+    matches(part(".level-switch"), { "background-color": "quiet", "border-radius": "radius-pill" });
+    matches(part('.level-switch-level[aria-pressed="true"]'), { "background-color": "strong", color: "on-strong" });
     matches(part('.level-switch-level[aria-pressed="false"]'), { color: "ink" });
     expect(getComputedStyle(part('.level-switch-level[aria-pressed="false"]')).backgroundColor).toBe("rgba(0, 0, 0, 0)");
-    matches(part(".result-score-value"), { "font-size": "size-display" });
-    matches(part(".result-score-total"), { color: "ink-soft", "font-size": "size-title" });
-    matches(part(".best-score-value"), { color: "ink", "font-size": "size-number" });
+    matches(part(".result-score-total"), { color: "ink-soft" });
+    matches(part(".best-score-value"), { color: "ink" });
     matches(part(".best-score-beaten"), { color: "ink-soft" });
-    matches(part(".parent-menu-button"), { "background-color": "quiet", color: "ink", "border-radius": "radius-pill", "font-size": "size-label" });
+    matches(part(".parent-menu-button"), { "background-color": "quiet", color: "ink", "border-radius": "radius-pill" });
     matches(part(".parent-menu-list"), { "background-color": "label", "outline-color": "outline", "border-radius": "radius-panel" });
     matches(part('.parent-menu-choice[aria-checked="true"]'), { "background-color": "quiet", color: "ink" });
     matches(part(".parent-menu-tick"), { color: "action" });
-    matches(part(".parent-menu-note"), { color: "ink-soft", "font-size": "size-foot" });
+    matches(part(".parent-menu-note"), { color: "ink-soft" });
     matches(part(".pairs-offer"), { "background-color": "label", color: "on-label", "border-radius": "radius-panel" });
-    matches(part(".pairs-offer-question"), { "font-size": "size-title" });
     matches(part(".pairs-offer-yes"), { "background-color": "action", color: "on-action", "border-radius": "radius-pill" });
-    matches(part(".pairs-offer-not-now"), { color: "ink", "border-top-color": "ink" });
+    matches(part(".pairs-offer-not-now"), { color: "ink", "border-top-color": "ink", "outline-color": "ink" });
     expect(getComputedStyle(part(".pairs-offer-not-now")).backgroundColor).toBe("rgba(0, 0, 0, 0)");
     matches(part(".orientation-gate"), { "background-color": "sky-bottom", color: "ink" });
     matches(part(".orientation-gate-note"), { color: "ink-soft" });
+    // Shared faces adopt the tokens without changing the screens' geometry.
+    const dimensions: [string, string, string][] = [
+      [".celebration", "font-size", size === "tall-narrow" ? "18px" : "26px"],
+      [".level-switch", "padding", "6px"],
+      [".level-switch", "gap", "4px"],
+      [".level-switch", "border-top-width", size === "tall" || size === "tall-narrow" ? "0px" : "1px"],
+      [".level-switch-level", "font-size", size === "tall" || size === "tall-narrow" ? "var(--level-name-size)" : "16px"],
+      [".level-badge", "font-size", "22px"],
+      [".result-score", "gap", "12px"],
+      [".result-score-value", "font-size", size === "tall-narrow" ? "min(180px, 12vh)" : size === "tall" ? "min(180px, 15vh)" : "min(220px, 24vh)"],
+      [".result-score-total", "font-size", "60px"],
+      [".best-score", "padding", "0px 20px"],
+      [".best-score-value", "font-size", "24px"],
+      [".parent-menu-button", "font-size", "14px"],
+      [".parent-menu-choice", "padding", "0px 14px"],
+      [".parent-menu-note", "font-size", "13px"],
+      [".pairs-offer", "padding", size === "tall-narrow" ? "32px 24px 24px" : size === "wide-short" ? "20px 16px 16px" : "44px 40px 40px"],
+      [".pairs-offer-question", "font-size", size === "tall" ? "32px" : size === "tall-narrow" || size === "wide-short" ? "22px" : "min(36px, 3.125vw)"],
+      [".pairs-offer-yes", "font-size", size === "tall-narrow" ? "22px" : size === "wide-short" ? "20px" : "28px"],
+      [".pairs-offer-not-now", "border-top-width", "0px"],
+    ];
+    for (const [selector, property, value] of dimensions) {
+      expect(getComputedStyle(part(selector)).getPropertyValue(property), `${selector}: ${property}`).toBe(literal(property, value));
+    }
     expect(screen.getByRole("button", { name: /SOUND/ })).toBeTruthy();
   });
 }
 
-test("shared faces follow inherited token overrides", () => {
+test("shared faces follow inherited token overrides without resizing", () => {
   const { container } = render(<div style={{ "--ds-strong": "#123456", "--ds-on-strong": "#fedcba", "--ds-size-tag": "19px", "--ds-radius-tag": "11px" } as CSSProperties}>
     <LevelBadge language="en" badge="explorer" />
   </div>);
   const badge = container.querySelector(".level-badge")!;
   const style = getComputedStyle(badge);
   expect([style.backgroundColor, style.color, style.fontSize, style.borderRadius]).toEqual([
-    "rgb(18, 52, 86)", "rgb(254, 220, 186)", "19px", "11px"
+    "rgb(18, 52, 86)", "rgb(254, 220, 186)", "22px", "11px"
   ]);
 });

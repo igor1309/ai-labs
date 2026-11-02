@@ -40,7 +40,7 @@ describe("Whose Jaw welcome", () => {
         for (const level of levels) {
           const style = getComputedStyle(level);
           expect(style.flexDirection).toBe("column");
-          expect(style.fontSize).toBe(style.getPropertyValue("--ds-size-tag"));
+          expect(style.fontSize).toBe("var(--level-name-size)");
           const name = level.querySelector(".level-switch-name")!.textContent!;
           const textWidth = LEVEL_EMS[name]! * size + name.length * sizes.letterSpacing;
           expect(textWidth + 2 * sizes.sidePadding).toBeLessThanOrEqual(third);

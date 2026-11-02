@@ -133,7 +133,7 @@ const textContrast = (text: Element) => {
 };
 
 // The screen is in `theme` when the page and every surface on it take the
-// theme's own colours of the design, or a translucent layer both themes
+// theme's colours from the game palette and shared tokens, or a layer both themes
 // lay over the navy, and every text read on it keeps text contrast with
 // what it is seen on. The two themes share no colour but the words on the
 // navy, so a surface left in the other theme shows. Symbols hidden from
@@ -146,7 +146,10 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
       !element.closest('[aria-hidden="true"]') &&
       [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
   );
-  const colours = [...Object.values(PALETTE[theme]), ...OVERLAYS];
+  const tokens = getComputedStyle(document.documentElement);
+  const sharedColours = ["quiet", "strong", "action", "label", "reward", "pocket-1", "sky-bottom"]
+    .map((name) => tokens.getPropertyValue(`--ds-${name}`));
+  const colours = [...Object.values(PALETTE[theme]), ...sharedColours, ...OVERLAYS];
 
   expect(sameColour(getComputedStyle(document.body).backgroundColor, PALETTE[theme].bg ?? "")).toBe(true);
   expect(texts.length).toBeGreaterThan(0);
@@ -666,7 +669,7 @@ describe("the theme menu", () => {
   };
 
   it.each(["en", "ru"] as const)(
-    "is a small button in the soft ink with the current theme's symbol in the top-right corner of the home page only, in %s",
+    "is a small button in the token ink with the current theme's symbol in the top-right corner of the home page only, in %s",
     async (language) => {
       const { user } = openApp({ language: language === "ru" ? "ru-RU" : "en-GB" });
       const button = screen.getByRole("button", { name: LABELS[language].menu });
@@ -679,8 +682,7 @@ describe("the theme menu", () => {
       expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
       expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);
       const style = getComputedStyle(button);
-      // Faded as the design fades what is for parents: in its soft ink.
-      expect(sameColour(style.color, PALETTE.light["ink-soft"] ?? "")).toBe(true);
+      expect(sameColour(style.color, style.getPropertyValue("--ds-ink"))).toBe(true);
       // A tap area for a parent's finger around the small symbol.
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);
       expect(parseFloat(style.minHeight)).toBeGreaterThanOrEqual(44);

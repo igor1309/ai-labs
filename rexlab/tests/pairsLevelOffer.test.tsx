@@ -194,7 +194,7 @@ describe.each(CASES)("$language $theme $level offer at $width×$height", ({ widt
     expect(contrast(qs.color, surfaceOf(question))).toBeGreaterThanOrEqual(4.5);
     const picture = dialog.querySelector(".pairs-offer-picture");
     if (!picture) throw new Error("No picture");
-    expect(getComputedStyle(picture).borderRadius).toBe("50%");
+    expect(getComputedStyle(picture).borderRadius).toBe("48px 48px 24px 24px");
     const height = px(card.paddingTop) + px(getComputedStyle(picture).height) + 2 * px(card.gap) + lines * size * Number(qs.lineHeight) + px(getComputedStyle(buttons[0]!).height) + px(card.paddingBottom);
     expect(height + 48).toBeLessThanOrEqual(windowHeight);
   });

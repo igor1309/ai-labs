@@ -2,6 +2,7 @@
 
 ## 2026-11-02
 
+- LAB-913: Shared parts (main buttons, round home and hear buttons, level switch and badge, level offer and dialogs, parent menu, result score, stars and best, orientation gate) take the dig-site colours, corners and font in light and dark; sizes and layouts stay until each game moves.
 - LAB-906: Home games use 4:3 tiles, short English/Russian labels and matching icon footers. Small tiles omit progress badges; the featured card keeps its full title and rewards.
 
 - LAB-908: Coloring gallery shows each work's status as a symbol on the picture's top-leading corner (a dashed circle for drafts, a star when completed) instead of a pencil and text. The whole card opens the work, and iPhone portrait shows two columns.
