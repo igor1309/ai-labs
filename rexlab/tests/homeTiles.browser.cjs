@@ -11,7 +11,7 @@ const labels = {
 const games = ['compare', 'catalogue', 'pairs', 'skeletons', 'dig', 'sort', 'care', 'sandWriting', 'labyrinth', 'picturePuzzle', 'whoseJaw', 'coloring'];
 // Approved hero frames in CSS pixels; small tiles cannot influence them.
 const sizes = [
-  [390, 844, [20, 156, 350, 271.296875]],
+  [390, 844, [20, 156, 350, 292]],
   [844, 390, [20, 80, 404, 290]],
   [820, 1180, [56, 192, 708, 463.203125]],
   [1180, 820, [56, 222, 445.71875, 440]],
@@ -50,6 +50,7 @@ async function check(browser, files, width, height, hero, language, level, featu
     const measured = await page.evaluate(() => {
       const box = el => { const { x, y, width, height } = el.getBoundingClientRect(); return { x, y, width, height }; };
       return {
+        gap: getComputedStyle(document.querySelector(".tiles-grid")).rowGap,
         hero: box(document.querySelector('.featured-card')),
         tiles: [...document.querySelector('.tiles-grid').children].map(card => {
           const footer = card.querySelector('.home-tile-footer'), icon = footer.querySelector('.home-tile-symbol'), title = footer.querySelector('.home-tile-title');
@@ -61,8 +62,11 @@ async function check(browser, files, width, height, hero, language, level, featu
     });
     for (const [index, property] of ['x', 'y', 'width', 'height'].entries()) near(measured.hero[property], hero[index], `hero ${property}`);
     assert.equal(measured.badges, 0);
+    assert.equal(measured.gap, height < 600 && width > height ? "16px" : "28px");
+    const expected = {390:[194.6667,146],844:[182.6667,137],820:[264.5333,198.4],1180:[274.6667,206],1440:[328,246]}[width];
     assert.deepEqual(measured.tiles.map(t => t.name), labels[language].filter((_, index) => games[index] !== featured));
     for (const tile of measured.tiles) {
+      near(tile.card.width, expected[0], "approved width"); near(tile.card.height, expected[1], "approved height");
       near(tile.card.width, tile.card.height * 4 / 3, `${tile.name} aspect ratio`);
       near(tile.footer.height, 48, 'footer height'); near(tile.footer.width, tile.card.width, 'footer width');
       near(tile.footer.y + tile.footer.height, tile.card.y + tile.card.height, 'footer bottom');

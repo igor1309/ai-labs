@@ -43,6 +43,13 @@ Feature: The home page in a tall-narrow window
   Scenario: The whole home page fits the phone
     Given a tall-narrow window, including a small iPhone or visible Safari bars
     When I open the home page at any age level
-    Then the greeting, featured card, both rows of tiles and version fit in the available height
-    And the document does not scroll vertically
+    Then the greeting, featured card, both rows of tiles and version remain reachable
+    And the document scrolls vertically only when their minimum readable sizes need it
     And I can still swipe the tiles horizontally to reach every game
+
+  Scenario: Small phones retain readable game choices
+    Given a 320 by 568 CSS-pixel window
+    When I open Home in English or Russian
+    Then small tiles keep 4:3 proportions and complete 20-pixel titles
+    And the page scrolls vertically when the hero and two tile rows need more height
+    And the tiles still scroll together horizontally

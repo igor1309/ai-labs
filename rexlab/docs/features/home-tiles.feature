@@ -26,8 +26,8 @@ Feature: Home game tiles
 
     Examples:
       | width | height | language | tile width | tile height | hero width | hero height |
-      | 390   | 844    | English  | 216.47 | 162.35 | 350 | 271.30 |
-      | 390   | 844    | Russian  | 216.47 | 162.35 | 350 | 271.30 |
+      | 390   | 844    | English  | 194.67 | 146 | 350 | 292 |
+      | 390   | 844    | Russian  | 194.67 | 146 | 350 | 292 |
       | 844   | 390    | English  | 182.67 | 137 | 404 | 290 |
       | 844   | 390    | Russian  | 182.67 | 137 | 404 | 290 |
       | 820   | 1180   | English  | 264.53 | 198.40 | 708 | 463.20 |

@@ -37,6 +37,7 @@ it.each((["en", "ru"] as const).flatMap(language => games.map(featured => ({ lan
   const shown = games.filter(game => game !== featured);
   for (const game of shown) {
     const tile = row.querySelector<HTMLButtonElement>(`[data-turn-part="tile-${game}"]`)!;
+    expect(tile.textContent).toBe(labels[language][games.indexOf(game)]);
     expect(tile.getAttribute("aria-label")).toBe(labels[language][games.indexOf(game)]);
     await user.click(tile);
   }

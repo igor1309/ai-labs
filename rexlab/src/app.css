@@ -12904,3 +12904,16 @@ body:has(.picture-puzzle-board-screen) {
   letter-spacing: 0;
   white-space: nowrap;
 }
+
+/* Keep the approved phone hero and two readable rows. Shorter phones
+   scroll vertically rather than clipping game names or reducing tap targets. */
+[data-size="tall-narrow"] .home { height: auto; min-height: 100vh; min-height: 100dvh; }
+[data-size="tall-narrow"] .games { flex: 1 1 0; min-height: 0; gap: 28px; }
+[data-size="tall-narrow"] .featured-card { flex: 1 1 0; min-height: 240px; }
+[data-size="tall-narrow"] .games-tiles {
+  flex: 0 0 auto;
+  height: clamp(320px, 36vh, 420px);
+  height: clamp(320px, 36dvh, 420px);
+  margin-block: -24px;
+  padding-block: 24px;
+}
