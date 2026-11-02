@@ -27,7 +27,9 @@ describe("the fonts", () => {
   });
 
   it("named in the stylesheet are each bundled, or a fallback every device has", () => {
-    const named = families(STYLESHEET, /font-family:\s*([^;]+);/g);
+    const fontTokens = new Map([...STYLESHEET.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map(([, name, value]) => [name, value]));
+    const resolved = STYLESHEET.replace(/var\((--[\w-]+)\)/g, (read, name: string) => fontTokens.get(name) ?? read);
+    const named = families(resolved, /font-family:\s*([^;]+);/g);
     const bundled = bundledFamilies();
 
     expect(named).toContain("Lexend Variable");

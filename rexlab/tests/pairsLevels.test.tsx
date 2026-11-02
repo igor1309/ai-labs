@@ -81,14 +81,14 @@ describe("the level switch", () => {
     expect(levels).toEqual(NAMES.map((name) => within(levelSwitch()).getByRole("button", { name })));
   });
 
-  it("sets the chosen level apart by more than colour: bolder and raised", async () => {
+  it("sets the chosen level apart by more than colour: bolder on a flat strong segment", async () => {
     await openPairs();
 
     const [hatchling, explorer, paleontologist] = within(levelSwitch()).getAllByRole("button").map((level) => getComputedStyle(level));
     if (!hatchling || !explorer || !paleontologist) throw new Error("A level is missing");
     expect([hatchling.fontWeight, explorer.fontWeight, paleontologist.fontWeight]).toEqual(["700", "600", "600"]);
     expect([explorer.boxShadow, paleontologist.boxShadow]).toEqual(["none", "none"]);
-    expect(hatchling.boxShadow).not.toBe("none");
+    expect(hatchling.boxShadow).toBe("none");
   });
 
   it.each([

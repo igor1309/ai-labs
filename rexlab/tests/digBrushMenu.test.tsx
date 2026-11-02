@@ -5,7 +5,7 @@ import { twoLines } from "../src/DigBar.tsx";
 import { MENU_EXIT } from "../src/ParentMenu.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { board, brushAll, choiceCard, clearCells, openDigApp, placeBoard } from "./digApp.tsx";
-import { homeTile, manualViewport } from "./support.ts";
+import { homeTile, manualViewport, sameColour } from "./support.ts";
 import { openWindow } from "./windowSizes.ts";
 
 // dig-brush-choice.feature, as a phone upright meets it: DIG's brushes are
@@ -63,15 +63,15 @@ describe("the phone's brush menu", () => {
   });
 
   it.each([
-    ["light", "rgb(227, 155, 45)", "rgb(29, 39, 66)"],
-    ["dark", "rgb(242, 178, 75)", "rgb(24, 30, 46)"]
-  ] as const)("is DIG's amber brush in the %s theme, closed and open, its dot dark", (theme, amber, dot) => {
+    ["light", "rgb(29, 39, 66)"],
+    ["dark", "rgb(24, 30, 46)"]
+  ] as const)("is DIG's quiet brush chip in the %s theme, closed and open, its dot dark", (theme, dot) => {
     openPhone("hatchling", "en", theme);
-    const look = () => [getComputedStyle(menuButton()).backgroundColor, getComputedStyle(face()).backgroundColor];
+    const look = () => [sameColour(getComputedStyle(menuButton()).backgroundColor, getComputedStyle(menuButton()).getPropertyValue("--ds-quiet")), getComputedStyle(face()).backgroundColor];
 
-    expect(look()).toEqual([amber, dot]);
+    expect(look()).toEqual([true, dot]);
     fireEvent.click(menuButton());
-    expect(look()).toEqual([amber, dot]);
+    expect(look()).toEqual([true, dot]);
   });
 
   it("closes on a tap outside it, which brushes nothing and keeps the brush", () => {

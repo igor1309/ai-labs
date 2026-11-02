@@ -84,7 +84,7 @@ describe("the level switch", () => {
 
     const styles = within(levelSwitch()).getAllByRole("button").map((level) => getComputedStyle(level));
     expect(styles.map(({ fontWeight }) => fontWeight)).toEqual(["600", "700", "600"]);
-    expect(styles.map(({ boxShadow }) => boxShadow !== "none")).toEqual([false, true, false]);
+    expect(styles.map(({ boxShadow }) => boxShadow)).toEqual(["none", "none", "none"]);
     const style = getComputedStyle(levelSwitch());
     const room = px(getComputedStyle(levelSwitch().parentElement ?? document.body).width) - px(style.paddingLeft) - px(style.paddingRight) - 2 * px(style.borderLeftWidth);
     expect((room - columnGapOf(style) * 2) / 3).toBeGreaterThanOrEqual(48);

@@ -306,5 +306,7 @@ it.each(["light", "dark"])("keeps the previous best legible in %s", (theme) => {
     onReplay={vi.fn()} onAnother={vi.fn()} onHome={vi.fn()} /></div>, withPictures);
   const previous = view.container.querySelector(".best-score-beaten")!;
   expect(previous.textContent).toBe("1");
-  expect(getComputedStyle(previous).color).toBe(theme === "dark" ? "rgb(156, 163, 182)" : "rgb(92, 100, 122)");
+  const colour = document.createElement("span");
+  colour.style.color = getComputedStyle(previous).getPropertyValue("--ds-ink-soft");
+  expect(getComputedStyle(previous).color).toBe(getComputedStyle(colour).color);
 });

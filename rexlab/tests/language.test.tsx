@@ -185,8 +185,8 @@ describe("the language menu", () => {
       expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
       expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);
       const style = getComputedStyle(button);
-      // Faded as the design fades what is for parents: in its soft ink.
-      expect(sameColour(style.color, PALETTE.light["ink-soft"] ?? "")).toBe(true);
+      // The quiet chip carries its symbol in the design ink.
+      expect(sameColour(style.color, style.getPropertyValue("--ds-ink"))).toBe(true);
       expect(parseFloat(style.fontSize)).toBeLessThan(parseFloat(getComputedStyle(within(featuredCard()).getByText(card)).fontSize) / 2);
       // A tap area for a parent's finger around the small symbol.
       expect(parseFloat(style.minWidth)).toBeGreaterThanOrEqual(44);

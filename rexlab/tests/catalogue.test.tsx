@@ -172,19 +172,19 @@ describe("the list of every dinosaur", () => {
   });
 
   it.each([
-    ["light", "tyrannosaurus", "terra", ["beef"], "MEAT"],
-    ["light", "triceratops", "good", ["leaf"], "PLANTS"],
-    ["light", "gallimimus", "amber", ["beef", "leaf"], "BOTH"],
-    ["dark", "tyrannosaurus", "terra", ["beef"], "MEAT"],
-    ["dark", "triceratops", "good", ["leaf"], "PLANTS"],
-    ["dark", "oviraptor", "amber", ["beef", "leaf"], "BOTH"]
-  ] as const)("in the %s theme tags %s in the design's %s, with %j and no word, %s read out", async (theme, id, colour, symbols, word) => {
+    ["light", "tyrannosaurus", ["beef"], "MEAT"],
+    ["light", "triceratops", ["leaf"], "PLANTS"],
+    ["light", "gallimimus", ["beef", "leaf"], "BOTH"],
+    ["dark", "tyrannosaurus", ["beef"], "MEAT"],
+    ["dark", "triceratops", ["leaf"], "PLANTS"],
+    ["dark", "oviraptor", ["beef", "leaf"], "BOTH"]
+  ] as const)("in the %s theme tags %s on the strong surface, with %j and no word, %s read out", async (theme, id, symbols, word) => {
     const user = openApp({ theme });
     await openCatalogue(user);
 
     const tag = cardOf(id).querySelector<HTMLElement>(".diet-tag");
     if (!tag) throw new Error(`No food tag on ${id}`);
-    expect(sameColour(getComputedStyle(tag).backgroundColor, PALETTE[theme][colour] ?? "")).toBe(true);
+    expect(sameColour(getComputedStyle(tag).backgroundColor, getComputedStyle(tag).getPropertyValue("--ds-strong"))).toBe(true);
     expect(symbolsOf(tag)).toEqual(symbols);
     expect([words(tag), tag.getAttribute("role"), tag.getAttribute("aria-label")]).toEqual(["", "img", word]);
   });
