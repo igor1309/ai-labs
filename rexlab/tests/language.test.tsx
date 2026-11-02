@@ -116,7 +116,7 @@ function openApp({
 // tile reads in it.
 function expectShownIn(language: Language) {
   expect(document.documentElement.lang).toBe(language);
-  expect(words(gameDoor(QUIZ_CARD[language]))).toBe(QUIZ_CARD[language]);
+  expect(gameDoor(QUIZ_CARD[language]).querySelector(".featured-card-title")?.textContent).toBe(QUIZ_CARD[language]);
 }
 
 function renderQuestion(
@@ -181,9 +181,8 @@ describe("the language menu", () => {
       expect(button.textContent).toBe(LANGUAGE_FLAGS[language]);
       expect(button.querySelector(".language-flag")?.getAttribute("aria-hidden")).toBe("true");
       const corner = getComputedStyle(button.closest(".home-corner") ?? button);
-      expect(corner.position).toBe("fixed");
-      expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
-      expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);
+      expect(corner.position).toBe("static");
+      expect(button.closest("header")).not.toBeNull();
       const style = getComputedStyle(button);
       // The quiet chip carries its symbol in the design ink.
       expect(sameColour(style.color, style.getPropertyValue("--ds-ink"))).toBe(true);
@@ -335,7 +334,7 @@ describe("Russian text", () => {
       "quiz tile",
       () => {
         openApp({ device: "ru-RU" });
-        return gameDoor("СРАВНИ");
+        return gameDoor("СРАВНИ").querySelector<HTMLElement>(".featured-card-title")!;
       },
       "СРАВНИ"
     ],

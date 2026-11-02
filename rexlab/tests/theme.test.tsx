@@ -127,9 +127,9 @@ const describeElement = (element: Element) =>
   `<${element.tagName.toLowerCase()} class="${element.className}">${element.textContent?.trim().slice(0, 20) ?? ""}`;
 
 // The contrast of a text with what it is seen on.
-const textContrast = (text: Element) => {
-  const surface = surfaceOf(text);
-  return contrast(seenOn(getComputedStyle(text).color, surface), surface);
+const textContrast = (text: Element, styleOf: typeof getComputedStyle = getComputedStyle) => {
+  const surface = surfaceOf(text, styleOf);
+  return contrast(seenOn(styleOf(text).color, surface), surface);
 };
 
 // The screen is in `theme` when the page and every surface on it take the
@@ -140,26 +140,34 @@ const textContrast = (text: Element) => {
 // reading, such as the faded stars, are pictures, not text. Given a part,
 // only its surfaces and texts are checked, beside the page's own colour.
 function expectScreenIn(theme: Theme, part: Element = document.body) {
-  const surfaces = surfacesIn(part);
+  const styles = new Map<Element, CSSStyleDeclaration>();
+  const styleOf: typeof getComputedStyle = element => {
+    const cached = styles.get(element);
+    if (cached) return cached;
+    const style = getComputedStyle(element);
+    styles.set(element, style);
+    return style;
+  };
+  const surfaces = surfacesIn(part, styleOf);
   const texts = [part, ...part.querySelectorAll("*")].filter(
     (element) =>
       !element.closest('[aria-hidden="true"]') &&
       [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
   );
-  const tokens = getComputedStyle(document.documentElement);
-  const sharedColours = ["quiet", "strong", "action", "label", "reward", "pocket-1", "sky-bottom"]
+  const tokens = styleOf(document.documentElement);
+  const sharedColours = ["quiet", "strong", "action", "label", "reward", "pocket-1", "sky-top", "sky-bottom", "sky-halo", "sky-core"]
     .map((name) => tokens.getPropertyValue(`--ds-${name}`));
   const colours = [...Object.values(PALETTE[theme]), ...sharedColours, ...OVERLAYS];
 
-  expect(sameColour(getComputedStyle(document.body).backgroundColor, PALETTE[theme].bg ?? "")).toBe(true);
+  expect(sameColour(styleOf(document.body).backgroundColor, PALETTE[theme].bg ?? "")).toBe(true);
   expect(texts.length).toBeGreaterThan(0);
   expect(
     surfaces
-      .filter((surface) => !colours.some((colour) => sameColour(getComputedStyle(surface).backgroundColor, colour)))
-      .map((surface) => `${describeElement(surface)}: ${getComputedStyle(surface).backgroundColor}`)
+      .filter((surface) => !colours.some((colour) => sameColour(styleOf(surface).backgroundColor, colour)))
+      .map((surface) => `${describeElement(surface)}: ${styleOf(surface).backgroundColor}`)
   ).toEqual([]);
   expect(
-    texts.filter((text) => textContrast(text) < TEXT_CONTRAST).map((text) => `${describeElement(text)}: ${textContrast(text).toFixed(2)}`)
+    texts.filter((text) => textContrast(text, styleOf) < TEXT_CONTRAST).map((text) => `${describeElement(text)}: ${styleOf(text).color} on ${surfaceOf(text, styleOf)} = ${textContrast(text, styleOf).toFixed(2)}`)
   ).toEqual([]);
 }
 
@@ -678,9 +686,8 @@ describe("the theme menu", () => {
       expect(button.textContent).toBe("");
       expect(symbolOf(button)).toBe("monitor");
       const corner = getComputedStyle(button.closest(".home-corner") ?? button);
-      expect(corner.position).toBe("fixed");
-      expect(corner.top).toMatch(/^[\d.]+(px|rem)$/);
-      expect(corner.right).toMatch(/^[\d.]+(px|rem)$/);
+      expect(corner.position).toBe("static");
+      expect(button.closest("header")).not.toBeNull();
       const style = getComputedStyle(button);
       expect(sameColour(style.color, style.getPropertyValue("--ds-ink"))).toBe(true);
       // A tap area for a parent's finger around the small symbol.
@@ -734,27 +741,21 @@ describe("the theme menu", () => {
 // The large card is shown through the home page's props, each game
 // featured in turn, in the theme the app sets on the page.
 describe("the large card", () => {
-  // The colours a part is drawn in: its surface, its words, and its
-  // symbol's.
-  const look = (part: Element | null) =>
-    part && [part, part.querySelector("svg") ?? part].map((element) => [getComputedStyle(element).backgroundColor, getComputedStyle(element).color]);
-
-  it.each(["light", "dark"] as const)("is in the %s theme with every game featured, in its own tile's colours", (theme) => {
+  it.each((["light", "dark"] as const).flatMap(theme => HOME_GAMES.map(([game]) => [theme, game] as const)))("is in the %s sky with %s featured", (theme, game) => {
     document.documentElement.dataset.theme = theme;
     try {
-      for (const [game, key] of HOME_GAMES) {
-        const { unmount } = renderHomePageFeaturing(game);
-        expectScreenIn(theme);
+      const { unmount } = renderHomePageFeaturing(game);
+      expectScreenIn(theme);
 
-        const card = featuredCard();
-        const tile = gameDoor(TEXTS.en[key]);
-        const parts = (of: Element) => [look(of), look(symbolSquareOf(of)), look(badgeOf(of)), look(of.querySelector('[class$="-title"]'))];
-        expect({ game, parts: parts(card) }).toEqual({ game, parts: parts(tile) });
-        // The shade the name stands on, the tile's row's or none.
-        const footer = getComputedStyle(nameRowOf(card) ?? card).backgroundColor;
-        expect({ game, footer }).toEqual({ game, footer: getComputedStyle(nameRowOf(tile) ?? tile).backgroundColor });
-        unmount();
-      }
+      const card = featuredCard();
+      const tokens = getComputedStyle(document.documentElement);
+      expect(getComputedStyle(card).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+      expect(sameColour(getComputedStyle(card).color, tokens.getPropertyValue("--ds-ink"))).toBe(true);
+      const symbol = symbolSquareOf(card)!;
+      expect(sameColour(getComputedStyle(symbol).backgroundColor, tokens.getPropertyValue("--ds-pocket-1"))).toBe(true);
+      expect(sameColour(getComputedStyle(symbol).color, tokens.getPropertyValue("--ds-action"))).toBe(true);
+      expect(getComputedStyle(nameRowOf(card)!).backgroundColor).toBe("rgba(0, 0, 0, 0)");
+      unmount();
     } finally {
       delete document.documentElement.dataset.theme;
     }

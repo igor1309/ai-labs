@@ -107,6 +107,7 @@ export const ru: Texts = {
   },
   pairs: "НАЙДИ ПАРУ",
   moreComing: "СКОРО ЕЩЁ",
+  today: "СЕГОДНЯ",
   play: "ИГРАТЬ",
   level: "УРОВЕНЬ",
   ageLevelSwitch: "ВОЗРАСТНОЙ УРОВЕНЬ",

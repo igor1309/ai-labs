@@ -24,7 +24,7 @@ const nothing = () => {};
 // The home page alone, featuring `featured`, with every game's badge
 // filled in when `scored` and every one that can be empty left empty
 // when not; each game's opening counted in `opened`.
-export function renderHomePageFeaturing(featured: HomeGame, { language = "en", scored = true, allGames = false }: { language?: Language; scored?: boolean; allGames?: boolean } = {}) {
+export function renderHomePageFeaturing(featured: HomeGame, { language = "en", scored = true, allGames = false, best = 7 }: { language?: Language; scored?: boolean; allGames?: boolean; best?: number } = {}) {
   const opened: HomeGame[] = [];
   const score = (value: number) => (scored ? value : undefined);
   const view = render(
@@ -40,7 +40,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       layoutKeeping={keptNothing}
       featured={featured}
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
-      best={score(7)}
+      best={score(best)}
       catalogue={{ picture: fakeBodyPicture("stegosaurus"), count: SHIPPED_CATALOGUE.length }}
       care={{ picture: fakeBodyPicture("parasaurolophus"), best: score(8) }}
       sort={{ picture: fakeBodyPicture("triceratops"), best: score(6) }}

@@ -103,6 +103,7 @@ export const en: Texts = {
   },
   pairs: "FIND THE PAIR",
   moreComing: "MORE COMING",
+  today: "TODAY",
   play: "PLAY",
   level: "LEVEL",
   ageLevelSwitch: "AGE LEVEL",

@@ -75,7 +75,8 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     const app = openApp(storage, language, theme, featured);
     expect(document.documentElement.dataset.theme).toBe(theme);
     const door = button(text.picturePuzzle);
-    expect(getComputedStyle(door).backgroundColor).toBe(theme === "dark" ? "rgb(37, 59, 55)" : "rgb(220, 234, 222)");
+    // The featured game stands in the sky; small tiles keep their own face.
+    expect(getComputedStyle(door).backgroundColor).toBe(featured === "picturePuzzle" ? "rgba(0, 0, 0, 0)" : "rgb(220, 234, 222)");
     expect(door.querySelector(".picture-puzzle-backdrop")).not.toBeNull();
     expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "0/3" : undefined);
     fireEvent.click(door);

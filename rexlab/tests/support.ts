@@ -682,20 +682,18 @@ export function seenOn(color: string, under: string): string {
   return format([0, 1, 2].map((at) => (top[at] ?? 0) * alpha + (bottom[at] ?? 0) * (1 - alpha)));
 }
 
-const hasBackground = (element: Element) => rgba(getComputedStyle(element).backgroundColor)[3] > 0;
-
 // The elements with a background of their own, translucent or not.
-export function surfacesIn(root: Element): Element[] {
-  return [root, ...root.querySelectorAll("*")].filter(hasBackground);
+export function surfacesIn(root: Element, styleOf: typeof getComputedStyle = getComputedStyle): Element[] {
+  return [root, ...root.querySelectorAll("*")].filter(element => rgba(styleOf(element).backgroundColor)[3] > 0);
 }
 
 // The colour an element is seen on: its own background, or the nearest
 // one behind it, with each translucent layer laid over what is behind it.
-export function surfaceOf(element: Element): string {
+export function surfaceOf(element: Element, styleOf: typeof getComputedStyle = getComputedStyle): string {
   const layers: string[] = [];
   for (let at: Element | null = element; at; at = at.parentElement) {
-    const background = getComputedStyle(at).backgroundColor;
-    if (!hasBackground(at)) continue;
+    const background = styleOf(at).backgroundColor;
+    if (rgba(background)[3] === 0) continue;
     if (rgba(background)[3] < 1) {
       layers.push(background);
       continue;

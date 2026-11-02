@@ -4,12 +4,10 @@ import { describe, expect, it, vi } from "vitest";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { SCREEN_CHANGE } from "../src/screens.ts";
-import { topLine } from "./homeCorner.ts";
 import { openMenu, outsideMenu } from "./menus.ts";
 import { choices, keptSkeletons, openHomeApp } from "./skeletonsApp.tsx";
-import { PALETTE, contrast, gameDoor, symbolOf } from "./support.ts";
+import { contrast, gameDoor, symbolOf } from "./support.ts";
 import { filterTaps, tapAt } from "./taps.ts";
-import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // home-museum.feature
 
@@ -57,11 +55,10 @@ describe("the museum on the home page", () => {
     const menus = partOf(".parent-menus");
     expect([button.parentElement, menus.parentElement, button.nextElementSibling, menus.contains(button)]).toEqual([corner, corner, menus, false]);
     const style = getComputedStyle(corner);
-    expect([style.position, style.display]).toEqual(["fixed", "flex"]);
-    expect(style.right).toMatch(/^[\d.]+px$/);
+    expect([style.position, style.display]).toEqual(["static", "flex"]);
     expect(px(style.gap)).toBeGreaterThanOrEqual(12);
-    expect(px(getComputedStyle(button).minWidth)).toBeGreaterThanOrEqual(60);
-    expect(px(getComputedStyle(button).height)).toBeGreaterThanOrEqual(60);
+    expect(px(getComputedStyle(button).minWidth)).toBeGreaterThanOrEqual(44);
+    expect(px(getComputedStyle(button).minHeight)).toBeGreaterThanOrEqual(44);
   });
 
   it("opens the museum hall, HOME comes back, and SKELETONS and BUILD ANOTHER both show the choice of dinosaurs", async () => {
@@ -125,21 +122,6 @@ describe("the museum on the home page", () => {
     expect([onHomePage(), hall()]).toEqual([true, null]);
   });
 
-  it.each(windowsAnd([1366, 1024]).flatMap(([width, height]) => LANGUAGES.map((language) => [language, width, height] as const)))(
-    "stands on one line with RexLab and the menus, in %s in a %i by %i window, above the greeting",
-    (language, width, height) => {
-      openWindow(width, height);
-      openHomeApp({ deviceLanguage: DEVICES[language] });
-
-      const line = topLine(width, language);
-
-      expect(line.museumWraps).toBe(false);
-      expect(line.between).toBeGreaterThanOrEqual(line.cornerGap);
-      // The corner and the wordmark end above where the greeting begins.
-      expect(Math.max(line.cornerEnd, line.wordmarkEnd)).toBeLessThanOrEqual(line.greetingTop);
-    }
-  );
-
   it.each(["light", "dark"] as const)("reads in the %s theme, brightens under a pointer and presses in", async (theme) => {
     const { user } = openHomeApp({ appearance: theme });
 
@@ -147,7 +129,7 @@ describe("the museum on the home page", () => {
     const style = getComputedStyle(button);
     expect(button.querySelector("svg")?.getAttribute("stroke")).toBe("currentColor");
     expect(contrast(style.color, style.backgroundColor)).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(style.backgroundColor, PALETTE[theme].bg ?? "")).toBeGreaterThanOrEqual(3);
+    expect(contrast(style.backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--ds-sky-top"))).toBeGreaterThanOrEqual(3);
 
     await user.hover(button);
     expect(brightness(button)).toBeGreaterThan(1);

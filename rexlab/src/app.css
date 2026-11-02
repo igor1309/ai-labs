@@ -11564,122 +11564,7 @@ html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span
 .labyrinth-reunion-actions button:focus-visible,
 .picture-puzzle-result-actions button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
 
-@media (prefers-reduced-motion: reduce) {
-  :root {
-    --motion-standard: 160ms;
-    --motion-screen: 160ms;
-    --motion-count: 0ms;
-    --motion-stagger: 0ms;
-    --motion-amount: 0;
-  }
 
-  .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
-  .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }
-
-  .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
-
-  .whose-jaw-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
-
-
-  .labyrinth-board-screen,
-  .labyrinth-step {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .sand-writing-options {
-    transition-property: opacity, visibility;
-  }
-
-  ::view-transition-old(.dig-reveal-change) {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-reveal-screen[data-motion] .dig-reveal-art,
-  .dig-reveal-screen[data-motion] .dig-reveal-name,
-  .dig-reveal-screen[data-motion] .dig-card,
-  .dig-reveal-screen[data-motion] .dig-reveal-celebration,
-  .dig-reveal-screen[data-motion] .dig-reveal-level,
-  .dig-reveal-screen[data-motion] .result-actions > button {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-landing {
-    display: none;
-  }
-
-  .dig-board[data-blown]:not([data-lifting]) .dig-sand {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-board[data-lifting] .dig-picture,
-  .dig-board-star {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-
-  .dig-help-window[data-motion] {
-    animation-duration: var(--motion-small);
-  }
-.pairs-offer-scrim,
-.pairs-offer {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-.pairs-offer-scrim[data-leaving] {
-    animation: fade-out var(--motion-small) var(--ease-out) both;
-  }
-
-  /* A pressed card and the progress steps change size at once. */
-  .card {
-    transition-property: filter, opacity;
-  }
-
-  .step {
-    transition-property: background-color;
-  }
-
-  /* So does the need asked now. */
-  .need {
-    transition-property: background-color;
-  }
-
-  /* Find the pair's climb level folds and unfolds at once, only fading. */
-  .pairs-climb {
-    transition-property: opacity;
-  }
-
-  /* The chosen mark does not travel: the chosen level's own fill fades in
-     where it is. */
-.level-switch-mark {
-    visibility: hidden;
-    transition-property: none;
-  }
-
-  /* A card on the sorting board lifts and puts down in place, and slides
-     back only by fading in where it belongs. */
-  .sort-card {
-    transition-property: filter, opacity, box-shadow, outline;
-  }
-
-  /* A dinosaur's picture does not travel between its card and its page:
-     the two only cross-fade, in place. */
-  ::view-transition-group(.dinosaur-share) {
-    animation: none;
-  }
-
-  .whose-jaw-board .jaw-dinosaur, .whose-jaw-board[data-phase] .jaw-dinosaur,
-  .whose-jaw-board .jaw-loose, .whose-jaw-board[data-phase] .jaw-loose,
-  .whose-jaw-board .jaw-feedback p, .whose-jaw-board .jaw-next, .whose-jaw-board .jaw-socket[data-filled],
-  .whose-jaw-board[data-phase] .jaw-dinosaur[data-target] .jaw-fitted,
-  .whose-jaw-board[data-phase] .jaw-dinosaur .jaw-food {
-    animation: fade-in var(--motion-small) var(--ease-out) both;
-  }
-  .jaw-dinosaur { transition-property: opacity; }
-  .jaw-breath, .jaw-loose[data-inviting] .jaw-loose-art { animation: none; }
-
-}
 
 /* The dark theme: each fm-* colour takes its dark value, in the same
    shapes. */
@@ -12870,3 +12755,277 @@ body:has(.picture-puzzle-board-screen) {
 }
 
 [data-theme="dark"] .no-friends-button { background: #f2b24b; }
+
+/* The sky and the game row share one page. */
+html .home.home-dig-site {
+  padding: calc(36px + env(safe-area-inset-top)) var(--screen-right) calc(72px + env(safe-area-inset-bottom)) var(--screen-left);
+  height: auto; min-height: 100vh; min-height: 100dvh; gap: 10px;
+  font-family: var(--ds-font);
+  --home-sky-fade: 376px;
+  background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) var(--home-sky-fade));
+}
+.home.home-dig-site .home-header {
+  color: var(--ds-ink);
+  position: relative; z-index: 2;
+  margin-inline: var(--ds-page);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-m); min-height: 50px;
+}
+.home.home-dig-site .wordmark {
+  position: static; height: auto; gap: var(--ds-space-m); flex-shrink: 0;
+  font-size: 26px; font-weight: 800; letter-spacing: -.5px;
+}
+.home.home-dig-site .wordmark-mark { width: 34px; height: 34px; border-radius: 0; background-color: var(--ds-quiet); }
+.home.home-dig-site .home-corner { position: static; gap: var(--ds-space-m); }
+.home.home-dig-site .home-museum {
+  width: auto; min-width: 44px; height: auto; min-height: 44px;
+  padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x); gap: var(--ds-chip-gap);
+  border-radius: var(--ds-radius-pill); background: var(--ds-strong); color: var(--ds-on-strong);
+  font-size: var(--ds-size-label); letter-spacing: 0;
+}
+.home.home-dig-site .parent-menus { gap: var(--ds-space-m); padding: 0; background: transparent; }
+.home.home-dig-site .parent-menu-button { width: var(--ds-round); height: var(--ds-round); padding: 0; }
+.home.home-dig-site .home-sky { color: var(--ds-ink); position: relative; min-height: 280px; flex: none; }
+.home.home-dig-site .home-sky-body {
+  position: absolute; width: 320px; height: 320px; left: 52%; top: -72px;
+  border-radius: 50%; background: var(--ds-sky-halo);
+}
+.home.home-dig-site .home-sky-body span { position: absolute; inset: 90px; border-radius: 50%; background: var(--ds-sky-core); }
+.home.home-dig-site .home-sky .featured-card {
+  position: relative; display: block; width: 100%; height: auto; min-height: inherit; flex: none;
+  padding: 0; border: 0; border-radius: 0; outline: none; box-shadow: none;
+  background: transparent; color: var(--ds-ink); overflow: visible; container-type: normal;
+  transform: none; animation: none;
+}
+.home.home-dig-site .home-sky .featured-card:focus-visible { outline: 3px solid var(--ds-action); outline-offset: -3px; }
+.home.home-dig-site .home-today-copy {
+  position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start;
+  width: min(460px, 42%); margin-left: var(--ds-page); gap: 20px;
+  animation: rise-in var(--motion-screen) var(--ease-out) both;
+}
+.home.home-dig-site .home-today-tag {
+  display: flex; align-items: center; gap: 6px; padding: 7px 12px 7px 10px;
+  border-radius: var(--ds-radius-tag); background: var(--ds-strong); color: var(--ds-on-strong);
+  font-size: var(--ds-size-tag); font-weight: 700; letter-spacing: 1.5px;
+}
+.home.home-dig-site .home-today-tag svg { color: var(--ds-reward); }
+.home.home-dig-site .home-sky .featured-card .featured-card-footer { display: flex; align-items: center; gap: 20px; width: 100%; padding: 0; margin: 0; background: transparent; }
+.home.home-dig-site .home-sky .featured-card .featured-card-symbol {
+  display: grid; place-items: center; flex: none; width: 72px; height: 72px; border-radius: 36px 36px 18px 18px;
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); background: var(--ds-pocket-1); color: var(--ds-action);
+}
+.home.home-dig-site .home-sky .featured-card .featured-card-symbol svg { width: 36px; height: 36px; }
+.home.home-dig-site .home-sky .featured-card .featured-card-title {
+  min-width: 0; font-size: var(--ds-size-display); line-height: 1.1; font-weight: 800;
+  letter-spacing: -1px; white-space: normal; overflow-wrap: anywhere;
+}
+.home.home-dig-site .home-today-progress { display: flex; align-items: center; gap: 10px; }
+.home.home-dig-site .home-progress-total { color: var(--ds-ink-soft); font-size: var(--ds-size-label); font-weight: 700; }
+.home.home-dig-site .home-today-actions { display: flex; align-items: center; gap: 20px; }
+.home.home-dig-site .home-play {
+  display: flex; align-items: center; gap: var(--ds-btn-gap); padding: var(--ds-btn-pad-y) var(--ds-btn-pad-x);
+  border-radius: var(--ds-radius-pill); background: var(--ds-action); color: var(--ds-on-action);
+  font-size: var(--ds-size-action); font-weight: 800;
+}
+.home.home-dig-site .home-play svg { width: var(--ds-icon-action); height: var(--ds-icon-action); }
+.home.home-dig-site .home-sky .featured-card[data-pressed] .home-play { transform: scale(0.97); }
+.home.home-dig-site .home-sky .featured-card .featured-card-badge {
+  position: static; display: flex; align-items: center; gap: 10px; padding: 0;
+  background: transparent; color: var(--ds-ink); font-size: var(--ds-size-number); font-weight: 800;
+}
+.home.home-dig-site .home-sky .featured-card .featured-card-badge svg { color: var(--ds-reward); }
+.home.home-dig-site .home-today-art {
+  position: absolute; display: flex; align-items: flex-end; justify-content: center;
+  right: 7%; bottom: 14px; width: 49%; height: 276px;
+  animation: rise-in var(--motion-screen) var(--ease-out) var(--motion-stagger) both;
+}
+.home.home-dig-site .home-today-art::before,
+.home.home-dig-site .home-today-art::after {
+  content: ""; position: absolute; bottom: -6px; left: 6%; width: 78%; height: 18px;
+  border-radius: 50%; background: var(--ds-ground-shadow);
+}
+.home.home-dig-site .home-today-art::after { display: none; }
+.home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::before { width: 37%; }
+.home.home-dig-site .home-sky .featured-card[data-game="compare"] .home-today-art::after { display: block; left: 59%; width: 36%; }
+.home.home-dig-site .home-today-art > * { position: relative; z-index: 1; }
+.home.home-dig-site .home-today-art > .picture,
+.home.home-dig-site .home-today-art > .picture-puzzle-tile-art,
+.home.home-dig-site .home-today-art > .sand-writing-tile-art {
+  flex: none; width: 100%; height: 100%; max-height: none; margin: 0; padding: 0; object-fit: contain;
+}
+.home.home-dig-site .home-today-art .face-off { width: 100%; height: 100%; padding: 0; flex: none; }
+.home.home-dig-site .home-today-art .face-off-left { width: 49.15%; height: 80%; }
+.home.home-dig-site .home-today-art .face-off-right { width: 44.07%; height: 100%; }
+.home.home-dig-site .home-sky-wave { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; fill: var(--ds-strata-1); pointer-events: none; }
+html .home.home-dig-site .games {
+  flex: none; height: 360px; min-height: 0; width: auto; max-width: none;
+  margin-inline: var(--ds-page);
+}
+html .home.home-dig-site .games-tiles { flex: 1 1 0px; }
+@media (min-height: 800px) {
+  html .home.home-dig-site { gap: 14px; --home-sky-fade: 410px; }
+  .home.home-dig-site .home-sky { min-height: 310px; }
+  .home.home-dig-site .home-today-art { right: 5.93%; width: 50%; height: 300px; bottom: 18px; }
+  .home.home-dig-site .home-sky-body { top: -70px; }
+}
+html[data-size="tall"] .home.home-dig-site .home-sky,
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky { height: auto; min-height: 0; }
+html[data-size="tall"] .home.home-dig-site .home-sky .featured-card,
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card { padding-bottom: 151px; }
+html[data-size="tall"] .home.home-dig-site .home-today-art,
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-art { width: 100%; height: 160px; right: 0; }
+html[data-size="tall"] .home.home-dig-site .home-today-copy,
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-copy { width: calc(100% - var(--ds-page) * 2); }
+html[data-size="tall-narrow"] .home.home-dig-site { padding-top: calc(62px + env(safe-area-inset-top)); gap: 20px; --home-sky-fade: 480px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-header { min-height: 44px; }
+html[data-size="tall-narrow"] .home.home-dig-site .wordmark { font-size: 22px; }
+html[data-size="tall-narrow"] .home.home-dig-site .wordmark-mark { width: 28px; height: 28px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-corner,
+html[data-size="tall-narrow"] .home.home-dig-site .parent-menus { gap: 8px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-copy { gap: 24px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card .featured-card-footer { gap: 14px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card .featured-card-symbol { width: 64px; height: 64px; border-radius: 32px 32px 16px 16px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky .featured-card .featured-card-symbol svg { width: 32px; height: 32px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky-body { top: 110px; left: calc(100% - 203px); width: 240px; height: 240px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-sky-body span { inset: 70px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-art::before,
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-art::after { height: 16px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-art .face-off-left { width: 51%; height: 140px; }
+html[data-size="tall-narrow"] .home.home-dig-site .home-today-art .face-off-right { width: 45%; height: 144px; }
+/* The museum keeps its accessible name when its word leaves the row. */
+html[data-size="tall-narrow"] .home.home-dig-site .home-museum-word,
+html[data-size="wide-short"] .home.home-dig-site .home-museum-word {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+html[data-size="tall-narrow"] .home.home-dig-site .home-museum,
+html[data-size="wide-short"] .home.home-dig-site .home-museum { padding: 11px; }
+html[data-size="wide-short"] .home.home-dig-site .home-sky .featured-card { min-height: 340px; }
+html[data-size="wide-short"] .home.home-dig-site .home-sky { height: auto; min-height: 0; }
+html[data-size="wide-short"] .home.home-dig-site .home-today-copy { width: 46%; }
+html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; right: var(--ds-page); }
+@media (max-width: 359px) {
+  .home.home-dig-site .home-brand-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}
+
+.home.home-dig-site .home-today-art .pairs-tile-art { flex: none; width: 100%; height: 100%; container-type: size; }
+.home.home-dig-site .home-today-art .pairs-tile-card { height: min(65cqh, 32cqw); background: var(--ds-label); box-shadow: 0 4px 12px var(--ds-ground-shadow); }
+.home.home-dig-site .home-today-art .pairs-tile-back { background: var(--ds-strong); color: var(--ds-on-strong); }
+
+@media (prefers-reduced-motion: reduce) {
+
+  :root {
+    --motion-standard: 160ms;
+    --motion-screen: 160ms;
+    --motion-count: 0ms;
+    --motion-stagger: 0ms;
+    --motion-amount: 0;
+  }
+
+  .jaw-shelf-row, .jaw-shelf-card, .jaw-card-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
+  .jaw-card-scrim[data-leaving] { animation: fade-out var(--motion-small) var(--ease-out) both; }
+
+  .whose-jaw-result h1, .jaw-result-jaws li, .jaw-result-find, .jaw-result-actions { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+  .whose-jaw-chomp[data-ready] { animation: fade-in var(--motion-small) var(--ease-out) both; }
+
+
+  .labyrinth-board-screen,
+  .labyrinth-step {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .sand-writing-options {
+    transition-property: opacity, visibility;
+  }
+
+  ::view-transition-old(.dig-reveal-change) {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-reveal-screen[data-motion] .dig-reveal-art,
+  .dig-reveal-screen[data-motion] .dig-reveal-name,
+  .dig-reveal-screen[data-motion] .dig-card,
+  .dig-reveal-screen[data-motion] .dig-reveal-celebration,
+  .dig-reveal-screen[data-motion] .dig-reveal-level,
+  .dig-reveal-screen[data-motion] .result-actions > button {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-screen[data-motion] .dig-board:not([data-lifting]):not([data-dropped]) {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-landing {
+    display: none;
+  }
+
+  .dig-board[data-blown]:not([data-lifting]) .dig-sand {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-board[data-lifting] .dig-picture,
+  .dig-board-star {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+
+  .dig-help-window[data-motion] {
+    animation-duration: var(--motion-small);
+  }
+.pairs-offer-scrim,
+.pairs-offer {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+.pairs-offer-scrim[data-leaving] {
+    animation: fade-out var(--motion-small) var(--ease-out) both;
+  }
+
+  /* A pressed card and the progress steps change size at once. */
+  .card {
+    transition-property: filter, opacity;
+  }
+
+  .step {
+    transition-property: background-color;
+  }
+
+  /* So does the need asked now. */
+  .need {
+    transition-property: background-color;
+  }
+
+  /* Find the pair's climb level folds and unfolds at once, only fading. */
+  .pairs-climb {
+    transition-property: opacity;
+  }
+
+  /* The chosen mark does not travel: the chosen level's own fill fades in
+     where it is. */
+.level-switch-mark {
+    visibility: hidden;
+    transition-property: none;
+  }
+
+  /* A card on the sorting board lifts and puts down in place, and slides
+     back only by fading in where it belongs. */
+  .sort-card {
+    transition-property: filter, opacity, box-shadow, outline;
+  }
+
+  /* A dinosaur's picture does not travel between its card and its page:
+     the two only cross-fade, in place. */
+  ::view-transition-group(.dinosaur-share) {
+    animation: none;
+  }
+
+  .whose-jaw-board .jaw-dinosaur, .whose-jaw-board[data-phase] .jaw-dinosaur,
+  .whose-jaw-board .jaw-loose, .whose-jaw-board[data-phase] .jaw-loose,
+  .whose-jaw-board .jaw-feedback p, .whose-jaw-board .jaw-next, .whose-jaw-board .jaw-socket[data-filled],
+  .whose-jaw-board[data-phase] .jaw-dinosaur[data-target] .jaw-fitted,
+  .whose-jaw-board[data-phase] .jaw-dinosaur .jaw-food {
+    animation: fade-in var(--motion-small) var(--ease-out) both;
+  }
+  .jaw-dinosaur { transition-property: opacity; }
+  .jaw-breath, .jaw-loose[data-inviting] .jaw-loose-art { animation: none; }
+
+  .home.home-dig-site .home-today-copy,
+  .home.home-dig-site .home-today-art { animation: fade-in var(--motion-small) var(--ease-out) both; }
+}

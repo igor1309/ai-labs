@@ -137,6 +137,7 @@ export type Texts = {
   moreComing: string;
   // Find the pair: its title, also on its home tile.
   pairs: string;
+  today: string;
   play: string;
   // The climb level reached, read out on its chip.
   level: string;

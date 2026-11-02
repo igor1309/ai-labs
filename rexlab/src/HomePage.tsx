@@ -1,4 +1,4 @@
-import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Pencil, Puzzle, Scale, Shapes, Star, Sun, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
+import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Pencil, Play, Puzzle, Scale, Shapes, Star, Sun, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -152,7 +152,7 @@ export function HomePage({
       onOpen: onCompareDinosaurs
     },
     catalogue: {
-      name: text.catalogueTile,
+      name: text.catalogue,
       symbol: BookOpen,
       picture: <Picture className="catalogue-tile-picture" src={catalogue.picture} alt="" width={800} height={600} />,
       badge: { symbol: Footprints, value: catalogue.count },
@@ -249,104 +249,107 @@ export function HomePage({
   const tilesRow = useKeptRow(layoutKeeping, readTileColumns);
   const today = games[featuredGame] ?? games.compare;
   const FeaturedSymbol = today.symbol;
-  // Each part both layouts share is marked, so it glides to its place in
-  // the other as the window turns; a tile's name holds its game, so it
-  // pairs with itself wherever it stands. The bands of rock, along the
-  // bottom of a page each layout makes otherwise tall, fade in where the
-  // new one puts them; upright their holder draws no box to fade.
   return (
-    <main className="home">
-      <div className="strata" aria-hidden="true">
-        <div className="stratum stratum-1" data-turn-fade="" />
-        <div className="stratum stratum-2" data-turn-fade="" />
-        <div className="stratum stratum-3" data-turn-fade="" />
-      </div>
-      <p className="wordmark" data-turn-part="wordmark">
-        <span className="wordmark-mark" aria-hidden="true" />
-        <span className="narrow-hidden">{BRAND}</span>
-      </p>
-      {/* The corner holds the museum, for the child, beside the menus for
-          parents. An open menu's backdrop is stacked here too, over the
-          museum and under the menus, so a tap on the museum then only
-          closes the menu. An open menu hangs in it, so it moves with its
-          button as the window turns. */}
-      <div className="home-corner" data-turn-part="corner">
-        {/* An open menu is closed by a tap anywhere outside it, and that tap
-            does nothing else: a parent closing a menu never starts a round. */}
-        {openMenu && <div className="menu-backdrop" onClick={() => setOpenMenu(undefined)} />}
-        <Button className="card home-museum" onClick={onMuseum}>
-          <Landmark size={24} aria-hidden="true" />
-          <span className="narrow-hidden">{text.museum}</span>
-        </Button>
-        {/* The menus are for parents: small, in the soft ink and out of the
-            way in the top-right corner, and only here, never during a round. */}
-        <div className="parent-menus">
-          <ParentMenu
-            label={text.languageMenu}
-            button={<span className="language-flag" aria-hidden="true">{LANGUAGE_FLAGS[language]}</span>}
-            choices={LANGUAGES.map((option) => ({
-              value: option,
-              name: LANGUAGE_NAMES[option],
-              lang: option,
-              symbol: (
-                <span className="language-flag" aria-hidden="true">
-                  {LANGUAGE_FLAGS[option]}
-                </span>
-              )
-            }))}
-            chosen={language}
-            onChoose={onLanguage}
-            {...menu("language")}
-          />
-          <ParentMenu
-            label={text.themeMenu}
-            button={<ThemeSymbol size={18} />}
-            choices={THEME_CHOICES.map((choice) => {
-              const ChoiceSymbol = THEME_SYMBOLS[choice];
-              return { value: choice, name: text.themes[choice], symbol: <ChoiceSymbol size={18} /> };
-            })}
-            chosen={theme}
-            onChoose={onTheme}
-            {...menu("theme")}
-          />
-          <ParentMenu
-            label={text.ageLevelMenu}
-            button={<AgeLevelPicture level={ageLevel} />}
-            choices={AGE_LEVELS.map((level) => ({
-              value: level,
-              name: text.ageLevels[level].name,
-              note: text.ageLevels[level].age,
-              symbol: <AgeLevelPicture level={level} />
-            }))}
-            chosen={ageLevel}
-            onChoose={onAgeLevel}
-            {...menu("ageLevel")}
-          />
+    <main className="home home-dig-site">
+      <header className="home-header">
+        <p className="wordmark" data-turn-part="wordmark">
+          <span className="wordmark-mark" aria-hidden="true" />
+          <span className="home-brand-name">{BRAND}</span>
+        </p>
+        {/* The corner holds the museum, for the child, beside the menus for
+            parents. An open menu's backdrop is stacked here too, over the
+            museum and under the menus, so a tap on the museum then only
+            closes the menu. An open menu hangs in it, so it moves with its
+            button as the window turns. */}
+        <div className="home-corner" data-turn-part="corner">
+          {/* An open menu is closed by a tap anywhere outside it, and that tap
+              does nothing else: a parent closing a menu never starts a round. */}
+          {openMenu && <div className="menu-backdrop" onClick={() => setOpenMenu(undefined)} />}
+          <Button className="card home-museum" onClick={onMuseum}>
+            <Landmark size={18} aria-hidden="true" />
+            <span className="home-museum-word">{text.museum}</span>
+          </Button>
+          {/* The menus are for parents: small, in the soft ink and out of the
+              way in the top-right corner, and only here, never during a round. */}
+          <div className="parent-menus">
+            <ParentMenu
+              label={text.languageMenu}
+              button={<span className="language-flag" aria-hidden="true">{LANGUAGE_FLAGS[language]}</span>}
+              choices={LANGUAGES.map((option) => ({
+                value: option,
+                name: LANGUAGE_NAMES[option],
+                lang: option,
+                symbol: (
+                  <span className="language-flag" aria-hidden="true">
+                    {LANGUAGE_FLAGS[option]}
+                  </span>
+                )
+              }))}
+              chosen={language}
+              onChoose={onLanguage}
+              {...menu("language")}
+            />
+            <ParentMenu
+              label={text.themeMenu}
+              button={<ThemeSymbol size={18} />}
+              choices={THEME_CHOICES.map((choice) => {
+                const ChoiceSymbol = THEME_SYMBOLS[choice];
+                return { value: choice, name: text.themes[choice], symbol: <ChoiceSymbol size={18} /> };
+              })}
+              chosen={theme}
+              onChoose={onTheme}
+              {...menu("theme")}
+            />
+            <ParentMenu
+              label={text.ageLevelMenu}
+              button={<AgeLevelPicture level={ageLevel} />}
+              choices={AGE_LEVELS.map((level) => ({
+                value: level,
+                name: text.ageLevels[level].name,
+                note: text.ageLevels[level].age,
+                symbol: <AgeLevelPicture level={level} />
+              }))}
+              chosen={ageLevel}
+              onChoose={onAgeLevel}
+              {...menu("ageLevel")}
+            />
+          </div>
         </div>
-      </div>
-      <h1 className="greeting" data-turn-part="greeting">{text.greeting}</h1>
-      <div className="games">
-        {/* The large card is today's game's door, its tile left out of
-            the row. It stays as the tiles scroll. */}
+      </header>
+      <section className="home-sky" aria-label={text.today}>
+        <div className="home-sky-body" aria-hidden="true"><span /></div>
         <Button
-          className="card featured-card"
+          className="featured-card"
           data-game={featuredGame}
           data-turn-part="featured-card"
           aria-label={today.name}
           onClick={today.onOpen}
         >
-          {today.picture}
-          <span className="featured-card-footer">
-            <span className="featured-card-symbol" aria-hidden="true">
-              <FeaturedSymbol size={28} />
+          <span className="home-today-copy">
+            <span className="home-today-tag"><Sun size={14} aria-hidden="true" />{text.today}</span>
+            <span className="featured-card-footer">
+              <span className="featured-card-symbol" aria-hidden="true">
+                {featuredGame === "whoseJaw" ? <Tooth /> : <FeaturedSymbol size={36} />}
+              </span>
+              <span className="featured-card-title">{today.name}</span>
             </span>
-            <span className="featured-card-title">{today.name}</span>
+            <span className="home-today-actions">
+              <span className="home-play"><Play aria-hidden="true" />{text.play}</span>
+              {today.badge && <span className="home-today-progress">
+                <BadgeChip badge={today.badge} className="featured-card-badge" size={18} />
+                {featuredGame === "compare" && <span className="home-progress-total">/ 10</span>}
+              </span>}
+            </span>
           </span>
-          {/* The badge sits in the card's corner, over the picture: the footer keeps its width for the name. */}
-          <BadgeChip badge={today.badge} className="featured-card-badge" size={22} />
+          <span className="home-today-art">{today.picture}</span>
         </Button>
+        <svg className="home-sky-wave" viewBox="0 0 1440 30" preserveAspectRatio="none" aria-hidden="true">
+          <path d="M0 10q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0l0 20-1440 0z" />
+        </svg>
+      </section>
+      <div className="games">
         {/* The other games stand in columns of two, in a fixed order, and
-            scroll sideways beside the large card when they do not fit. The
+            scroll sideways below the sky when they do not fit. The
             games still to come stand under the last of them. */}
         <div
           ref={tilesRow.ref}

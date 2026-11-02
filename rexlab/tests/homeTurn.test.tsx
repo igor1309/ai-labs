@@ -61,19 +61,19 @@ const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 // The parts of the home page both layouts share, `featured` on the large
 // card and every other game a tile, in the page's order.
-const partsFeaturing = (featured: HomeGame, withOptionalGames = false) => ["wordmark", "corner", "greeting", "featured-card", "tiles", ...(withOptionalGames ? ALL_GAMES : HOME_GAMES).filter((game) => game !== featured).map((game) => `tile-${game}`), "more-coming"];
+const partsFeaturing = (featured: HomeGame, withOptionalGames = false) => ["wordmark", "corner", "featured-card", "tiles", ...(withOptionalGames ? ALL_GAMES : HOME_GAMES).filter((game) => game !== featured).map((game) => `tile-${game}`), "more-coming"];
 
 // Those parts with COMPARE featured.
 const PARTS = partsFeaturing("compare");
 
 // Every part the home page may mark, whichever game it features.
-const ANY_PART = ["wordmark", "corner", "greeting", "featured-card", "tiles", ...ALL_GAMES.map((game) => `tile-${game}`), "more-coming"];
+const ANY_PART = ["wordmark", "corner", "featured-card", "tiles", ...ALL_GAMES.map((game) => `tile-${game}`), "more-coming"];
 
 // Those that stand on the page itself, not in another part.
-const OUTER = ["wordmark", "corner", "greeting", "featured-card", "tiles"];
+const OUTER = ["wordmark", "corner", "featured-card", "tiles"];
 
 // Those that paint a frame of their own, by the stylesheet.
-const FRAMED = PARTS.filter((name) => name === "featured-card" || name.startsWith("tile-") || name === "more-coming");
+const FRAMED = PARTS.filter((name) => name.startsWith("tile-") || name === "more-coming");
 
 type Recorded = TurnAnimation & { name: string; keyframes: Keyframe[]; options: KeyframeAnimationOptions; progress: number; cancelled: boolean };
 
@@ -327,21 +327,17 @@ describe("the home page glides to its other layout", () => {
     const glide = app.glides().find(({ name }) => name === "featured-card");
     const frame = app.animations.find(({ name }) => name === "frame of featured-card");
     expect([app.own.has("featured-card"), app.waiting()]).toEqual([false, []]);
-    expect([glide?.keyframes.map(({ translate, opacity }) => [translate, opacity]), frame?.keyframes.map(({ translate, opacity }) => [translate, opacity])]).toEqual([
-      [
-        [`${before.left - after.left}px ${before.top + 8 - after.top}px`, 0.5],
-        ["0px 0px", 1]
-      ],
-      [
-        [`${before.left - after.left}px ${before.top + 8 - after.top}px`, 0.5],
-        ["0px 0px", 1]
-      ]
+    expect(glide?.keyframes.map(({ translate, opacity }) => [translate, opacity])).toEqual([
+      [`${before.left - after.left}px ${before.top + 8 - after.top}px`, 0.5],
+      ["0px 0px", 1]
     ]);
+    // The sky has no card surface to copy under the moving content.
+    expect(frame).toBeUndefined();
   });
 
   it("draws a part's frame as a copy of the part alone under it, hidden from taps and assistive technology, its own frame taken off, and the row's window widened by padding as it shrinks", () => {
     const app = openTurning(820, 1180, "tall");
-    const card = featuredCard();
+    const card = document.querySelector<HTMLElement>('[data-turn-part="tile-catalogue"]')!;
     const row = tilesRow();
 
     app.resize([1180, 820, "wide"]);
@@ -353,7 +349,7 @@ describe("the home page glides to its other layout", () => {
     expect([card.hasAttribute("data-turn-framed"), getComputedStyle(card).boxShadow, card.parentElement?.hasAttribute("data-turn-frames")]).toEqual([true, "none", true]);
     // The row, positioned statically, holds its tiles' frames where they
     // stand by containing its layout.
-    expect([row.querySelectorAll(".tiles-grid > [data-turn-frame]").length, getComputedStyle(row).position, getComputedStyle(row.querySelector(".tiles-grid")!).contain]).toEqual([FRAMED.length - 1, "static", "layout"]);
+    expect([row.querySelectorAll(".tiles-grid > [data-turn-frame]").length, getComputedStyle(row).position, getComputedStyle(row.querySelector(".tiles-grid")!).contain]).toEqual([FRAMED.length, "static", "layout"]);
     expect([row.style.paddingRight, row.style.marginRight, row.style.paddingBottom, row.style.marginBottom]).toEqual([`${right}px`, `${-right}px`, `${bottom}px`, `${-bottom}px`]);
 
     act(() => app.pictures.fire(GLIDE));
@@ -378,14 +374,14 @@ describe("the home page glides to its other layout", () => {
     expect(app.glides().find(({ name }) => name === "tile-skeletons")?.keyframes[0]?.translate).toBe(`${left! - x!}px ${top! - y!}px`);
   });
 
-  it("fades in what both layouts do not share, the bands of rock and the version footer, where the new layout puts them, over the same motion", () => {
+  it("fades in the version footer, where the new layout puts it, over the same motion", () => {
     const app = openTurning(1180, 820, "wide");
 
     app.resize([820, 1180, "tall"]);
 
     const faded = app.animations.filter(({ name }) => name.startsWith("faded "));
     expect(faded.map(({ name, keyframes, options }) => [name, keyframes, options])).toEqual(
-      ["stratum stratum-1", "stratum stratum-2", "stratum stratum-3", "version"].map((name) => [`faded ${name}`, [{ opacity: 0 }, { opacity: 1 }], { duration: GLIDE, easing: EASE_OUT }])
+      ["version"].map((name) => [`faded ${name}`, [{ opacity: 0 }, { opacity: 1 }], { duration: GLIDE, easing: EASE_OUT }])
     );
 
     act(() => app.pictures.fire(GLIDE));

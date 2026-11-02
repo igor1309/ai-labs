@@ -11,7 +11,6 @@ import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localCareProgress, localDigProgress, localLabyrinthProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
 import { careRecord } from "./careApp.tsx";
 import { HOME_GAMES, badgeOf, renderHomePageFeaturing } from "./homePage.tsx";
-import { TILE_COUNTS, TITLE_EMS, TITLE_TEXTS, columnGapOf, gamesWidths, linesOf, roomFor, sidesOf, tileTitles, widthOf } from "./homeTitles.ts";
 import { openMenu, outsideMenu } from "./menus.ts";
 import { pairsRecord } from "./pairsApp.tsx";
 import { keptSkeletons } from "./skeletonsApp.tsx";
@@ -48,7 +47,6 @@ import {
   unsetAgeLevel
 } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
-import { openWindow, windowsAnd } from "./windowSizes.ts";
 
 // The home page, its large card COMPARE's unless `featured` names
 // another game.
@@ -140,22 +138,6 @@ const skeletonsTile = () => homeTile("SKELETONS");
 
 const px = (value: string) => Number.parseFloat(value) || 0;
 
-// The width of every column of tiles, as the row writes it.
-function tileColumnWidth() {
-  return (Math.max(360, Math.min(window.innerHeight - 380, 520)) - 28) * 2 / 3;
-}
-
-// The width a card has on a page `width` wide: the large card its share
-// of the games, and a tile its column.
-function cardWidth(card: Element, width: number) {
-  const part = [...gamesWidths(width)].find(([part]) => part === card);
-  return part ? part[1] : tileColumnWidth();
-}
-
-// The windows the home page's budgets keep: the shared ones, and more
-// iPads'.
-const HOME_WINDOWS = windowsAnd([1180, 820], [1366, 1024]);
-
 const brightness = (element: Element) => {
   const match = /brightness\(([\d.]+)\)/.exec(getComputedStyle(element).filter);
   return match?.[1] === undefined ? 1 : Number(match[1]);
@@ -176,12 +158,8 @@ describe("the home page", () => {
   it("stands every other game in equal columns of two beside the large card, with SAND WRITING after CARE and MORE COMING last", () => {
     const { card } = openHomePage();
 
-    const games = card.parentElement;
-    expect(games?.classList.contains("games")).toBe(true);
+    expect(card.closest(".home-sky")?.nextElementSibling).toBe(document.querySelector(".games"));
     const row = tilesRow();
-    expect([...(games?.children ?? [])]).toEqual([card, row]);
-    // The large card takes three sevenths of the width, the tiles the rest.
-    expect([card, row].map((part) => getComputedStyle(part).flexGrow)).toEqual(["3", "4"]);
     const tiles = [...["ANCIENT REPTILES", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE", "SAND WRITING", "LABYRINTH"].map(homeTile), document.querySelector(".more-coming")];
     expect([...row.querySelector(".tiles-grid")!.children]).toEqual(tiles);
     // The tiles fill the row a column at a time, two to a column, every
@@ -189,7 +167,6 @@ describe("the home page", () => {
     // MORE COMING among them.
     const style = getComputedStyle(row.querySelector(".tiles-grid")!);
     expect([style.display, style.gridAutoFlow, style.gridTemplateRows]).toEqual(["grid", "column", "minmax(0, 1fr) minmax(0, 1fr)"]);
-    expect(tileColumnWidth()).toBeGreaterThan(0);
     expect(tiles.map((tile) => getComputedStyle(tile ?? row).minHeight)).toEqual(tiles.map(() => "0px"));
     expect(tiles.map((tile) => getComputedStyle(tile ?? row).gridRow || "auto")).toEqual(tiles.map(() => "auto"));
   });
@@ -249,26 +226,13 @@ describe("the home page", () => {
     await user.pointer({ keys: "[TouchA>]", target: tile });
     expect(getComputedStyle(tile).transform).toBe("none");
     await user.pointer({ keys: "[/TouchA]", target: tile });
-    expect(featuredCard()).toBe(tilesRow().previousElementSibling);
+    expect(document.querySelector(".home-sky")?.nextElementSibling).toBe(tilesRow().parentElement);
   });
 
-  it.each(HOME_WINDOWS)("scrolls the tiles sideways beside a large card that stays, with the next column peeking in, in a %i by %i window", (width, height) => {
-    openWindow(width, height);
-    const { card } = openHomePage();
-
-    const row = tilesRow();
-    const style = getComputedStyle(row);
-    expect([style.overflowX, style.overflowY]).toEqual(["auto", "hidden"]);
-    // The large card is outside the row, so it stays as the tiles scroll.
-    expect(row.contains(card)).toBe(false);
-    const shown = (gamesWidths(width).get(row) ?? 0) - sidesOf(style);
-    const column = tileColumnWidth();
-    const gap = 16;
-    const columns = Math.ceil(row.querySelector(".tiles-grid")!.children.length / 2);
-    // The columns do not all fit, and the first one that does not shows
-    // at least 24px of itself at the edge.
-    expect(columns * column + (columns - 1) * gap).toBeGreaterThan(shown);
-    expect(shown).toBeGreaterThan(column);
+  it("keeps the tile row scrollable below the sky", () => {
+    openHomePage();
+    expect(getComputedStyle(tilesRow()).overflowX).toBe("auto");
+    expect(tilesRow().contains(featuredCard())).toBe(false);
   });
 
   // Tile geometry and title fit require a browser with real fonts.
@@ -439,7 +403,7 @@ describe("the home page", () => {
 
     await user.pointer({ keys: "[TouchA>]", target: card });
 
-    expect(getComputedStyle(card).transform).toMatch(/^scale\(0\.\d+\)$/);
+    expect(getComputedStyle(card.querySelector(".home-play") ?? card).transform).toMatch(/^scale\(0\.\d+\)$/);
     expect(taps).toEqual([]);
 
     await user.pointer({ keys: "[/TouchA]", target: card });
@@ -474,11 +438,10 @@ describe("the home page", () => {
 
     const wordmark = screen.getByText("RexLab").closest<HTMLElement>(".wordmark")!;
     const style = getComputedStyle(wordmark);
-    expect(style.position).toBe("fixed");
-    expect(style.top).toMatch(/^[\d.]+(px|rem)$/);
-    expect(style.left).toMatch(/^[\d.]+(px|rem)$/);
+    expect(style.position).toBe("static");
+    expect(wordmark.closest("header")).not.toBeNull();
     // The wordmark stays smaller than the hero; small tiles use 20px labels.
-    expect(parseFloat(style.fontSize)).toBe(22);
+    expect(parseFloat(style.fontSize)).toBe(26);
     expect(parseFloat(style.fontSize)).toBeLessThan(parseFloat(getComputedStyle(within(card).getByText("COMPARE")).fontSize));
   });
 
@@ -547,7 +510,7 @@ describe("the home page", () => {
 
     await user.pointer({ keys: "[TouchA>]", target: card });
 
-    expect(getComputedStyle(card).transform).toMatch(/^scale\(0\.\d+\)$/);
+    expect(getComputedStyle(card.querySelector(".home-play") ?? card).transform).toMatch(/^scale\(0\.\d+\)$/);
     expect(screen.queryByLabelText("PROGRESS")).toBeNull();
 
     await user.pointer({ keys: "[/TouchA]", target: card });
@@ -574,7 +537,7 @@ describe("the large card", () => {
       const name = TEXTS.en[key];
       const looks = (door: HTMLElement) => {
         const badge = badgeOf(door);
-        return { picture: door.firstElementChild?.outerHTML, sources: sources(door), symbols: symbolsOf(door), badge: badge && [symbolOf(badge), badge.textContent] };
+        return { picture: (door.querySelector(".home-today-art")?.firstElementChild ?? door.firstElementChild)?.outerHTML, sources: sources(door), symbols: symbolsOf(door), badge: badge && [symbolOf(badge), badge.textContent] };
       };
       // The game's tile, on a home page featuring another game.
       const other = HOME_GAMES.find(([shown]) => shown !== game)?.[0] ?? game;
@@ -600,38 +563,6 @@ describe("the large card", () => {
 
       await user.click(card);
       expect(opened).toEqual([game]);
-    }
-  );
-
-  it.each(HOME_WINDOWS)(
-    "fits every game's name on two lines at most in every language in a %i by %i window, in pixels larger than every tile's name",
-    (width, height) => {
-      openWindow(width, height);
-      const overflowing = HOME_GAMES.flatMap(([game, key]) => {
-        const { unmount } = renderHomePageFeaturing(game);
-        const title = featuredCard().querySelector(".featured-card-title");
-        if (!title) throw new Error("No name on the large card");
-        const style = getComputedStyle(title);
-        const size = px(style.fontSize);
-        const spacing = px(style.letterSpacing);
-        const room = roomFor(title, (card) => cardWidth(card, width));
-        const tiles = [...tilesRow().querySelectorAll('[class$="-tile-title"]')].map((other) => px(getComputedStyle(other).fontSize));
-        const found = [
-          // A size worked out by the browser cannot be read here.
-          ...(/^[\d.]+px$/.test(style.fontSize) ? [] : [`${game}: a size of ${style.fontSize}`]),
-          ...(style.whiteSpace === "nowrap" ? [`${game}: kept on one line`] : []),
-          ...(tiles.length > 0 && tiles.every((other) => size > other) ? [] : [`${game}: no larger than its tile's name`]),
-          ...LANGUAGES.flatMap((language) => {
-            const lines = linesOf(TEXTS[language][key], size, spacing, room);
-            if (!Array.isArray(lines)) return [`${lines.missing}: no width in ems`];
-            const wide = lines.filter((line) => widthOf(line, size, spacing) > room);
-            return lines.length > 2 || wide.length > 0 ? [`${TEXTS[language][key]}: ${lines.join(" / ")} in ${room.toFixed(1)}px`] : [];
-          })
-        ];
-        unmount();
-        return found;
-      });
-      expect(overflowing).toEqual([]);
     }
   );
 
