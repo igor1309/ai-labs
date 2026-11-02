@@ -52,6 +52,27 @@ const { chromium } = require("playwright");
         const ctx = canvas.getContext("2d"); ctx.drawImage(img, 0, 0); return [...ctx.getImageData(126, 99, 1, 1).data];
       });
     };
+    for (const [width, height] of [[320, 568], [390, 844], [393, 852], [430, 932], [844, 390]]) {
+      await page.setViewportSize({ width, height });
+      for (const language of ["en", "ru"]) {
+        await mount({ language, theme: "dark" });
+        const bounds = await page.locator(".gallery-new").evaluateAll(buttons => buttons.map(button => {
+          const r = button.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom, width: r.width, left: r.left, right: r.right,
+            clipped: button.scrollHeight > button.clientHeight + 1 };
+        }));
+        assert.equal(bounds.length, 5);
+        for (const b of bounds) {
+          const context = JSON.stringify({ width, height, language, bounds });
+          const row = bounds.filter(other => Math.abs(other.top - b.top) < 1);
+          assert(row.every(other => Math.abs(other.bottom - b.bottom) < 1), context);
+          assert(b.bottom - b.top >= 60 && b.width >= 60, context);
+          assert(b.left >= 0 && b.right <= width + 1 && b.bottom <= height, context);
+          assert(!b.clipped, context);
+        }
+      }
+    }
+    await page.setViewportSize({ width: 1180, height: 820 });
     await mount({});
     assert.equal((await listed()).works.length, 0);
     assert.equal(await page.getByRole("button", { name: "CONTINUE", exact: true }).count(), 0);

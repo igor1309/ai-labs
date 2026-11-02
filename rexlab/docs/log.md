@@ -1,6 +1,12 @@
 # rexlab — Change Log
 
+## 2026-11-02
+
+- LAB-907: The closed language picker shows only a flag; its open menu pairs each flag with the language name. Parent controls have equal widths and spacing.
+
 ## 2026-11-01
+
+- LAB-893: Coloring gallery choices keep equal button heights on iPhone when dinosaur names wrap.
 
 - LAB-903: The document canvas and browser tint follow the active theme; the home app icon keeps its image in dark mode. iPhone Safari status-bar verification is pending.
 
