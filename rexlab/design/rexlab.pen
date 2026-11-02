@@ -145294,6 +145294,108 @@
         "mode": "stretch"
       },
       "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "Y1XI1",
+      "x": -1536,
+      "y": 82338,
+      "name": "LAB-906 · v3 · EN portrait · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/en-explorer-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "uOUgS",
+      "x": -1536,
+      "y": 83282,
+      "name": "LAB-906 · v3 · RU portrait · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/ru-explorer-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "OagRu",
+      "x": -1536,
+      "y": 84226,
+      "name": "LAB-906 · v3 · EN landscape · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 844,
+      "height": 390,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/en-explorer-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "Y2oiHv",
+      "x": -1536,
+      "y": 84716,
+      "name": "LAB-906 · v3 · RU landscape · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 844,
+      "height": 390,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/ru-explorer-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "GRDno",
+      "x": -1536,
+      "y": 85206,
+      "name": "LAB-906 · v3 · EN all small tiles · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 756,
+      "height": 608,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/en-all-small-tiles-v3.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "B0iSxG",
+      "x": -1536,
+      "y": 85914,
+      "name": "LAB-906 · v3 · RU all small tiles · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 756,
+      "height": 608,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/ru-all-small-tiles-v3.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
     }
   ],
   "themes": {
