@@ -6,7 +6,6 @@ import type { HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY, localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
-import { PEEK, TILE_GAP, tileColumnWidth } from "../src/tileColumns.ts";
 import { topLine } from "./homeCorner.ts";
 import { TITLE_EMS, linesOf, roomFor, tileTitles, widthOf } from "./homeTitles.ts";
 import {
@@ -122,15 +121,15 @@ describe("the home page in a tall-narrow window", () => {
     // A best score, so the large card shows its badge.
     openNarrow(width, height, { storage: memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore: 7, explorerBest: 7, paleontologistBest: null, roundsPlayed: 3 } } }) }) });
     const values = (selector: string, properties: string[]) => properties.map((property) => styleAt(part(selector), [width, height]).value(property));
-    expect(values(".home", ["padding-top", "padding-bottom", "gap"])).toEqual(["100px", "48px", "20px"]);
+    expect(values(".home", ["padding-top", "padding-bottom", "gap"])).toEqual(["100px", "28px", "20px"]);
     expect(values(".greeting", ["font-size", "line-height"])).toEqual(["30px", "36px"]);
-    expect(values(".featured-card", ["min-height"])).toEqual(["0px"]);
+    expect(values(".featured-card", ["min-height"])).toEqual(["240px"]);
     expect(values(".featured-card-footer", ["padding", "gap"])).toEqual(["18px 18px 22px", "12px"]);
     expect(values(".featured-card-title", ["font-size"])).toEqual([width < 360 ? "26px" : "28px"]);
     expect(values(".featured-card-badge", ["top", "right", "padding", "font-size"])).toEqual(["16px", "16px", "8px 14px", "22px"]);
-    expect(values(".home", ["height", "min-height"])).toEqual([`${height}px`, "0px"]);
-    expect(values(".games", ["min-height", "flex", "gap"])).toEqual(["0px", "1 1 0px", "16px"]);
-    expect(values(".games-tiles", ["height", "min-height", "margin-right"])).toEqual(["auto", "0px", "-20px"]);
+    expect(values(".home", ["height", "min-height"])).toEqual(["auto", `${height}px`]);
+    expect(values(".games", ["min-height", "flex", "gap"])).toEqual(["0px", "1 1 0px", "28px"]);
+    expect(values(".games-tiles", ["height", "min-height", "margin-right"])).toEqual([`${Math.max(320, Math.min(height * .36,420))}px`, "0px", "-20px"]);
   });
 
   it("names RexLab and the museum for screen readers while showing their symbols alone", () => {
@@ -169,27 +168,6 @@ describe("the home page in a tall-narrow window", () => {
     expect([styleAt(mark, [width, 667]).px("height"), styleAt(part(".home-museum"), [width, 667]).px("height"), menuHeight]).toEqual([60, 60, 60]);
   });
 
-  it.each(PHONES)("sizes the tiles' columns from the 20-pixel side in a %i by %i window, the next column peeking in", (width, height) => {
-    openNarrow(width, height);
-    const row = tilesRow();
-    // The row starts at the page's own left side.
-    const rowStart = px(getComputedStyle(part(".home")).paddingLeft);
-    const column = tileColumnWidth(width, COLUMNS, rowStart);
-    expect(row.style.getPropertyValue("--tile-column")).toBe(`${column}px`);
-    // The width the grid gives each column, and the gap it leaves.
-    const at = styleAt(row, [width, height]);
-    expect(at.px("grid-auto-columns")).toBe(column);
-    expect(at.columnGap()).toBe(TILE_GAP);
-    expect(at.px("margin-right")).toBe(-20);
-    // From the row's start at the page's side to the window's right edge.
-    const shown = width - rowStart;
-    const whole = Math.floor((shown + TILE_GAP) / (column + TILE_GAP));
-    const peek = shown - whole * (column + TILE_GAP);
-    expect(whole).toBeGreaterThanOrEqual(1);
-    expect(peek).toBeGreaterThanOrEqual(PEEK);
-    expect(peek).toBeLessThanOrEqual(column - PEEK);
-  });
-
   it.each((["en", "ru"] as const).flatMap((language) => [320, 375].flatMap((width) => GAMES.map((featured) => [language, width, featured] as const))))("fits every word in %s at %i wide, featuring %s", (language, width, featured) => {
     openNarrow(width, 667, { language, featured });
     // Every style as the window's media rules leave it.
@@ -206,25 +184,7 @@ describe("the home page in a tall-narrow window", () => {
     if (!Array.isArray(lines)) throw new Error(`${lines.missing}: no width in ems`);
     expect(lines.filter((line) => widthOf(line, size, px(style.letterSpacing)) > room)).toEqual([]);
 
-    const column = tileColumnWidth(width, COLUMNS, px(home.paddingLeft));
-    // Under 360 wide ANCIENT REPTILES may wrap with the two longer names.
-    const wrapping = [".pairs-tile-title", ".sand-writing-tile-title", ...(width < 360 ? [".catalogue-tile-title"] : [])].join(", ");
-    const overflowing = tileTitles().filter((tile) => !tile.matches(wrapping)).flatMap((tile) => {
-      const tileStyle = styleOf(tile);
-      const words = tile.textContent ?? "";
-      const needed = (TITLE_EMS[words] ?? Number.NaN) * px(tileStyle.fontSize) + px(tileStyle.letterSpacing) * words.length;
-      const tileRoom = roomFor(tile, () => column, styleOf);
-      if (tileStyle.whiteSpace !== "nowrap") return [`${words}: may wrap`];
-      return needed <= tileRoom ? [] : [`${words}: ${needed.toFixed(1)}px in ${tileRoom.toFixed(1)}px`];
-    });
-    expect(overflowing).toEqual([]);
-    for (const tile of tilesRow().querySelectorAll(wrapping)) {
-      const tileStyle = styleOf(tile);
-      expect(tileStyle.whiteSpace).not.toBe("nowrap");
-      const tileRoom = roomFor(tile, () => column, styleOf);
-      const tileLines = linesOf(tile.textContent ?? "", px(tileStyle.fontSize), px(tileStyle.letterSpacing), tileRoom);
-      expect(Array.isArray(tileLines) && tileLines.length <= 2 && tileLines.every((line) => widthOf(line, px(tileStyle.fontSize), px(tileStyle.letterSpacing)) <= tileRoom)).toBe(true);
-    }
+
   });
 
   it("goes back to the tall layout when the window grows past 600 wide", () => {

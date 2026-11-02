@@ -12,10 +12,11 @@ Feature: Dig: starting a round and the board
 
   Scenario: The home page offers the dig game as a tile
     When I open the home page
-    Then I see a "DIG" tile with a dinosaur half under sand and a 🖌️ brush symbol
+    Then I see a "DIG" tile with a dinosaur half under sand and an outline brush symbol
     And the sand picture has rounded corners, as the cards around it do
-    And it stands under "SKELETONS", before "SORT" (home-tiles.feature)
-    And the tile shows how many dinosaurs I have dug up once there is one
+    And it stands under "BONES", before "SORT" (home-tiles.feature)
+    And the small tile shows no count
+    And on a day DIG is featured its card shows how many dinosaurs I have dug up
 
   Scenario: The dig tile brightens under a pointer and shows it is pressed
     Given I am on the home page
@@ -43,7 +44,7 @@ Feature: Dig: starting a round and the board
   Scenario: A round digs up a dinosaur not dug up yet
     Given I have dug up 4 of the dinosaurs
     When a round starts
-    Then its dinosaur is one of the other 38, at random
+    Then its dinosaur is one of the other 48, at random
     But once I have dug up every dinosaur, a round digs up any of them but the last round finished while the app is open
 
   Scenario: The sand covers the whole picture at the start
@@ -77,4 +78,4 @@ Feature: Dig: starting a round and the board
     Examples:
       | language | dig      | who        |
       | English  | DIG      | WHO IS IT? |
-      | Russian  | РАСКОПКИ | КТО ЭТО?   |
+      | Russian  | КОПАЙ    | КТО ЭТО?   |

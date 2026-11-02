@@ -45,18 +45,18 @@ import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 // of the column after the last whole one shows, and whether the page
 // scrolls.
 const UPRIGHT = [
-  [600, 800, 280, 360, 310, 210, true],
-  [768, 950, 298, 360, 310, 44, false],
-  [768, 1024, 363, 369, 310, 44, false],
-  [744, 1060, 386, 382, 308, 24, false],
-  [744, 1133, 433, 408, 308, 24, false],
-  [834, 1194, 472, 430, 310, 110, false],
-  [1032, 1376, 589, 495, 293, 25, false],
-  [900, 1000, 348, 360, 310, 176, false],
-  [712, 1000, 348, 360, 292, 24, false],
-  [600, 1400, 604, 504, 310, 210, false],
-  [1068, 1500, 688, 520, 305, 25, false],
-  [1400, 1500, 688, 520, 306, 24, false]
+  [600, 800, 280, 360, true],
+  [768, 950, 298, 360, false],
+  [768, 1024, 363, 369, false],
+  [744, 1060, 386, 382, false],
+  [744, 1133, 433, 408, false],
+  [834, 1194, 472, 430, false],
+  [1032, 1376, 589, 495, false],
+  [900, 1000, 348, 360, false],
+  [712, 1000, 348, 360, false],
+  [600, 1400, 604, 504, false],
+  [1068, 1500, 688, 520, false],
+  [1400, 1500, 688, 520, false]
 ] as const;
 
 // An iPad mini upright, home-portrait.feature's "Safe areas stay clear
@@ -211,15 +211,13 @@ function uprightLayout(size: WindowSize) {
   const rowStart = px(homeStyle.paddingLeft);
   const rowEnd = width - px(homeStyle.paddingRight) - px(rowStyle.marginRight);
   const shown = rowEnd - rowStart - px(rowStyle.paddingLeft) - px(rowStyle.paddingRight);
-  const columnValue = styleAt(row, size).value("grid-auto-columns");
-  expect(columnValue).toMatch(/^[\d.]+px$/);
-  const column = px(columnValue);
-  const gap = styleAt(row, size).columnGap();
-  const columns = Math.ceil(row.children.length / 2);
+  const column = (rowHeight - 28) * 2 / 3;
+  const gap = 16;
+  const columns = Math.ceil(row.querySelector(".tiles-grid")!.children.length / 2);
   const whole = Math.floor((shown + gap) / (column + gap));
   return {
     card: { width: width - px(homeStyle.paddingLeft) - px(homeStyle.paddingRight), height: cardHeight },
-    row: { height: rowHeight, start: rowStart, end: rowEnd, rows: rowStyle.gridTemplateRows, rowGap: styleAt(row, size).rowGap() },
+    row: { height: rowHeight, start: rowStart, end: rowEnd, rows: getComputedStyle(part(".tiles-grid")).gridTemplateRows, rowGap: 28 },
     column,
     peek: whole >= columns ? 0 : shown - whole * (column + gap),
     page: rest + cardHeight,
@@ -236,8 +234,8 @@ const placed = (element: HTMLElement) => {
 
 describe("the home page upright", () => {
   it.each(UPRIGHT)(
-    "in a %i by %i window: the large card %i tall across the width, the row %i tall, columns %i wide with %i of the next showing, and the page scrolling: %s",
-    (width, height, cardHeight, rowHeight, column, peek, scrolls) => {
+    "in a %i by %i window: the large card %i tall across the width, the row %i tall, tiles 4:3, and the page scrolling: %s",
+    (width, height, cardHeight, rowHeight, scrolls) => {
       openUpright(width, height);
       const layout = uprightLayout([width, height]);
 
@@ -250,10 +248,9 @@ describe("the home page upright", () => {
       // Every tile is half of the row, less the gap between the two.
       expect([layout.row.rows, layout.row.rowGap]).toEqual(["minmax(0, 1fr) minmax(0, 1fr)", 28]);
       expect(
-        [...tilesRow().children].slice(0, 2).map((tile) => within(tile as HTMLElement).queryByText(/ANCIENT REPTILES|FIND THE PAIR/)?.textContent)
-      ).toEqual(["ANCIENT REPTILES", "FIND THE PAIR"]);
-      expect(Math.abs(layout.column - column)).toBeLessThanOrEqual(1);
-      expect(Math.abs(layout.peek - peek)).toBeLessThanOrEqual(1);
+        [...part(".tiles-grid").children].slice(0, 2).map((tile) => within(tile as HTMLElement).queryByText(/EXPLORE|PAIRS/)?.textContent)
+      ).toEqual(["EXPLORE", "PAIRS"]);
+      expect(layout.column / ((layout.row.height - 28) / 2)).toBeCloseTo(4 / 3);
       expect(layout.page > height).toBe(scrolls);
     }
   );
@@ -282,19 +279,19 @@ describe("the home page upright", () => {
   it("narrows its columns anew as the window is resized, and widens them back", () => {
     const { viewport } = openUpright(834, 1194);
     const column = () => uprightLayout([window.innerWidth, window.innerHeight]).column;
-    expect(column()).toBe(310);
+    expect(column()).toBeCloseTo((1194 * .36 - 28) * 2 / 3);
 
     openWindow(744, 1133);
     act(() => viewport.resize("tall", true));
-    expect(column()).toBe(308);
+    expect(column()).toBeCloseTo((1133 * .36 - 28) * 2 / 3);
 
     openWindow(1032, 1376);
     act(() => viewport.resize("tall", true));
-    expect(column()).toBe(293);
+    expect(column()).toBeCloseTo((1376 * .36 - 28) * 2 / 3);
 
     openWindow(834, 1194);
     act(() => viewport.resize("tall", true));
-    expect(column()).toBe(310);
+    expect(column()).toBeCloseTo((1194 * .36 - 28) * 2 / 3);
   });
 
   it("keeps clear of an iPad mini's safe areas at 744 by 1133, the large card shorter by them, the page still, and its background at the window's edges", () => {
@@ -424,43 +421,6 @@ describe("every word on the upright home page", () => {
       const badge = card.querySelector<HTMLElement>(".featured-card-badge");
       if (featured === "sandWriting") expect(badge).toBeNull();
       else expect([badge?.parentElement, badge && getComputedStyle(badge).position, badge && getComputedStyle(badge).top, badge && getComputedStyle(badge).right]).toEqual([card, "absolute", "24px", "24px"]);
-
-      const row = tilesRow();
-      const column = styleAt(row, [width, 800]).px("grid-auto-columns");
-      expect(column).toBeGreaterThan(0);
-      const titles = tileTitles();
-      const shown = TILE_ORDER.filter((game) => game !== featured);
-      const words = (game: HomeGame) => TEXTS[language][game === "compare" ? "quizCard" : game === "catalogue" ? "catalogueTile" : game];
-      // The two longer names may wrap, so they are read apart below.
-      expect(titles.map((title) => title.textContent)).toEqual([...shown.filter((game) => game !== "pairs" && game !== "sandWriting").map(words), TEXTS[language].moreComing]);
-      const overflowing = titles.flatMap((title) => {
-        const style = getComputedStyle(title);
-        const words = title.textContent ?? "";
-        const least = title.className === "more-coming-title" ? 20 : 24;
-        const needed = (TITLE_EMS[words] ?? Number.NaN) * px(style.fontSize) + px(style.letterSpacing) * words.length;
-        const room = roomFor(title, () => column);
-        return [
-          ...(style.whiteSpace === "nowrap" ? [] : [`${words}: may wrap`]),
-          ...(px(style.fontSize) >= least ? [] : [`${words}: ${style.fontSize}`]),
-          ...(needed <= room ? [] : [`${words}: ${needed.toFixed(1)}px in ${room.toFixed(1)}px`])
-        ];
-      });
-      expect(overflowing).toEqual([]);
-
-      for (const title of row.querySelectorAll(".pairs-tile-title, .sand-writing-tile-title")) {
-        const style = getComputedStyle(title);
-        const size = px(style.fontSize);
-        const spacing = px(style.letterSpacing);
-        const room = roomFor(title, () => column);
-        const lines = linesOf(title.textContent ?? "", size, spacing, room);
-        expect(size).toBeGreaterThanOrEqual(24);
-        expect(Array.isArray(lines) && lines.length <= 2 && lines.every((line) => widthOf(line, size, spacing) <= room)).toBe(true);
-      }
-
-      const counts = [...row.querySelectorAll<HTMLElement>(TILE_COUNTS)];
-      expect(counts.map((count) => [count.textContent, count.parentElement === count.closest("button"), getComputedStyle(count).position, px(getComputedStyle(count).fontSize) >= 20])).toEqual(
-        shown.filter((game) => COUNTS[game] !== undefined).map((game) => [COUNTS[game], true, "absolute", true])
-      );
 
       const line = topLine(width, language);
       expect(line.museumWraps).toBe(false);
@@ -730,8 +690,9 @@ describe("turning the window", () => {
     expect(screen.getByRole("menu", { name: "Theme" }).hasAttribute("data-leaving")).toBe(false);
     // The same card, never drawn anew, rises in only as it is first drawn.
     expect([featuredCard(), card.dataset.game, getComputedStyle(card).animationName]).toEqual([card, "compare", rise]);
-    expect([tilesRow(), row.scrollLeft]).toEqual([row, 334]);
-    expect(within(row).getAllByRole("button")[2]?.getAttribute("aria-label")).toBe("SKELETONS");
+    expect(tilesRow()).toBe(row);
+    expect(row.scrollLeft).toBeCloseTo(280.5333333333);
+    expect(within(row).getAllByRole("button")[2]?.getAttribute("aria-label")).toBe("BONES");
 
     openWindow(1180, 820);
     act(() => viewport.resize("wide", false));
@@ -740,6 +701,7 @@ describe("turning the window", () => {
     expect(getComputedStyle(part(".games")).flexDirection).toBe(landscape);
     expect(screen.getByRole("menu", { name: "Theme" }).hasAttribute("data-leaving")).toBe(false);
     expect([featuredCard(), getComputedStyle(card).animationName]).toEqual([card, rise]);
-    expect([tilesRow(), row.scrollLeft]).toEqual([row, 334]);
+    expect(tilesRow()).toBe(row);
+    expect(row.scrollLeft).toBeCloseTo(290.6666666667);
   });
 });

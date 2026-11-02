@@ -90,7 +90,8 @@ while :; do
   echo "RETRY: try $n $class: $reason"
   if [ -n "$(git status --porcelain)" ]; then
     git -C "$top" ls-files -z --others --exclude-standard | (cd "$top" && xargs -0 git add -N --)
-    git -C "$top" diff > "$out/left$n.patch" && git -C "$top" apply -R "$out/left$n.patch" && git -C "$top" reset -q
+    # Against HEAD, so work the run staged (a git mv or git rm) is saved too.
+    git -C "$top" diff --binary HEAD > "$out/left$n.patch" && git -C "$top" reset -q && git -C "$top" apply -R "$out/left$n.patch"
     [ -z "$(git status --porcelain)" ] || { echo "STOP: could not clear try $n's leftovers"; exit 1; }
     echo "RETRY: try $n leftovers saved to $out/left$n.patch"
   fi

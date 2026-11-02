@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -96,7 +97,7 @@ async function openShort(width: number, height: number, insets: SafeArea, langua
       chipWidths={emChipWidths()}
     />
   );
-  await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
+  await user.click(gameDoor(TEXTS[language].catalogueTile));
   return { viewport, user };
 }
 
@@ -200,7 +201,7 @@ describe("the catalogue in a wide-short window", () => {
     await user.click(within(chipGroup(language)).getByRole("button", { name: TEXTS[language].diets.meat }));
     expect(cards(language).map((card) => card.getAttribute("aria-label"))).toEqual(SHIPPED_CATALOGUE.filter(({ diet }) => diet === "meat").map(({ name }) => name[language]));
     await user.click(screen.getByRole("button", { name: TEXTS[language].home }));
-    expect(screen.getByRole("button", { name: TEXTS[language].catalogueTile })).toBeDefined();
+    expect(gameDoor(TEXTS[language].catalogueTile)).toBeDefined();
   });
 
   it("goes back to four to a row when the window grows past 600 tall", async () => {

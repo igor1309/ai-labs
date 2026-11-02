@@ -46,7 +46,7 @@ describe("the CARE tile", () => {
     // The row fills two tiles to a column, COMPARE's tile left out for
     // the large card: the sixth tile is still under SORT. Sand writing
     // and labyrinth occupy the next column before MORE COMING.
-    expect([...tilesRow().children].indexOf(tile)).toBe(5);
+    expect([...tilesRow().querySelector(".tiles-grid")!.children].indexOf(tile)).toBe(5);
     expect(tile.previousElementSibling).toBe(gameDoor("SORT"));
     expect(tile.nextElementSibling).toBe(gameDoor("SAND WRITING"));
     expect(tile.nextElementSibling?.nextElementSibling).toBe(gameDoor("LABYRINTH"));
@@ -54,15 +54,14 @@ describe("the CARE tile", () => {
     expect(tile.querySelector(".care-tile-best")).toBeNull();
   });
 
-  it("shows the care best score with a trophy once a visit is finished", async () => {
+  it("omits a badge from CARE even after a visit is finished", async () => {
     const { user, clock } = openCareApp();
 
     await welcomeVisitor(user);
     await playVisit(user, clock, ["hungry"]);
     await user.click(button("HOME"));
 
-    const best = button("CARE").querySelector(".care-tile-best");
-    expect(best && [symbolOf(best), best.textContent]).toEqual(["trophy", "7"]);
+    expect(button("CARE").querySelector(".care-tile-best")).toBeNull();
   });
 
   it("opens the care welcome screen: NEW VISITOR, FRIENDS with the number of friends, and HOME", async () => {

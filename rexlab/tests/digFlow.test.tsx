@@ -117,7 +117,7 @@ describe("the board's lift and collection star", () => {
       act(() => app.timers.fire(STAR_LANDS[timing]));
       expect(again.disabled).toBe(false);
       fireEvent.click(screen.getByRole("button", { name: "HOME" }));
-      expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe("1");
+      expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe(undefined);
       expect(app.timers.timers()).toEqual([]);
     }
   );
@@ -233,7 +233,7 @@ describe("the board's lift and collection star", () => {
       act(() => app.timers.fire(STAR_LANDS[reducedMotion ? "reduced" : "motion"]));
       expect(screen.getByRole<HTMLButtonElement>("button", { name: "DIG AGAIN" }).disabled).toBe(false);
       fireEvent.click(screen.getByRole("button", { name: "HOME" }));
-      expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe("1");
+      expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe(undefined);
       expect(app.timers.timers()).toEqual([]);
     } finally {
       geometry.mockRestore();
@@ -262,7 +262,7 @@ describe("the board's lift and collection star", () => {
       act(() => app.timers.fire(STAR_LANDS[timing]));
     }
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
-    expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe(finished ? "1" : undefined);
+    expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe(undefined);
     expect(app.timers.timers()).toEqual([]);
     fireEvent.click(homeTile("DIG"));
     for (const wait of [1000, GUST[timing], LIFT[timing], COUNT_SETTLE[timing], STAR_LANDS[timing]]) act(() => app.timers.deliverStopped(wait));
@@ -328,7 +328,7 @@ describe("dig reveals through the app", () => {
 
     land(app);
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
-    expect(screen.getByRole("button", { name: "DIG" }).querySelector(".dig-tile-count")?.textContent).toBe("1");
+    expect(screen.getByRole("button", { name: "DIG" }).querySelector(".dig-tile-count")?.textContent).toBe(undefined);
   });
 
   it.each(
@@ -379,7 +379,7 @@ describe("dig reveals through the app", () => {
       expect(document.querySelector(".dig-board")?.getAttribute("data-level")).toBe("paleontologist");
       expect(app.featured.history().timesStarted.get("dig")).toBe(2);
     } else {
-      expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe("1");
+      expect(homeTile("DIG").querySelector(".dig-tile-count")?.textContent).toBe(undefined);
     }
   });
 
@@ -485,11 +485,11 @@ describe("dig progress through the app", () => {
     expect(screen.getByRole("status", { name: TEXTS.en.celebrations["new-best"].label })).toBeDefined();
     land(app);
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
-    expect(tileCount()).toBe("5");
+    expect(tileCount()).toBeUndefined();
     app.unmount();
 
     openDigApp({ storage });
-    expect(tileCount()).toBe("4");
+    expect(tileCount()).toBeUndefined();
   });
 
   it("names the dinosaur with no count and no celebration when storage cannot be read", () => {

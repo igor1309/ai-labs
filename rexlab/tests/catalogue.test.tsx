@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -97,7 +98,7 @@ const chipsOf = (card: HTMLElement) =>
   [...card.querySelectorAll<HTMLElement>(".catalogue-chip, .diet-tag")].map((chip) => ({ symbols: symbolsOf(chip), words: words(chip) || `(${chip.getAttribute("aria-label")})` }));
 
 async function openCatalogue(user: ReturnType<typeof userEvent.setup>, language: Language = "en") {
-  await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
+  await user.click(gameDoor(TEXTS[language].catalogueTile));
 }
 
 async function openPage(user: ReturnType<typeof userEvent.setup>, id: string, language: Language = "en") {
@@ -109,11 +110,11 @@ describe("the catalogue's tile on the home page", () => {
   it("reads ANCIENT REPTILES beside a book, with a Stegosaurus and the count of every dinosaur, first in the row beside the large COMPARE card, before the FIND THE PAIR tile", () => {
     openApp();
 
-    const tile = screen.getByRole("button", { name: "ANCIENT REPTILES" });
-    expect(words(tile)).toBe("ANCIENT REPTILES52");
-    expect(symbolsOf(tile)).toEqual(["book-open", "footprints"]);
+    const tile = gameDoor("ANCIENT REPTILES");
+    expect(words(tile)).toBe("EXPLORE");
+    expect(symbolsOf(tile)).toEqual(["book-open"]);
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("stegosaurus"));
-    expect(tile.querySelector(".catalogue-tile-count")?.textContent).toBe(String(SHIPPED_CATALOGUE.length));
+    expect(tile.querySelector(".catalogue-tile-count")).toBeNull();
     expect(SHIPPED_CATALOGUE).toHaveLength(52);
     expect(tile.parentElement?.firstElementChild).toBe(tile);
     expect(tile.nextElementSibling).toBe(homeTile("FIND THE PAIR"));
@@ -212,7 +213,7 @@ describe("a dinosaur's page", () => {
       { symbol: "ruler", label: "TALL", value: "3.1 M" },
       { symbol: "weight", label: "HEAVY", value: "8 T" }
     ]);
-    const back = screen.getByRole("button", { name: "ANCIENT REPTILES" });
+    const back = gameDoor("ANCIENT REPTILES");
     expect([words(back), symbolOf(back)]).toEqual(["ANCIENT REPTILES", "book-open"]);
     expect(position()).toBe("1 / 52");
   });
@@ -330,7 +331,7 @@ describe("a dinosaur's page", () => {
     expect(HTMLElement.prototype.scrollIntoView).not.toHaveBeenCalled();
     await user.click(cardOf(LAST.id));
 
-    await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await user.click(gameDoor("ANCIENT REPTILES"));
 
     expect(cards()).toHaveLength(52);
     expect(grid().dataset.rise).toBeUndefined();
@@ -411,7 +412,7 @@ describe("creatures that are not dinosaurs", () => {
 describe("the catalogue in Russian", () => {
   it("reads its tile, its food tags and its descriptions in Russian, the tile's title short", async () => {
     const user = openApp({ language: "ru" });
-    expect(words(screen.getByRole("button", { name: "ВСЕ" }))).toBe("ВСЕ52");
+    expect(words(gameDoor("ВСЕ"))).toBe("ЯЩЕРЫ");
 
     await openPage(user, "gallimimus", "ru");
 

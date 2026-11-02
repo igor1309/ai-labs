@@ -10,9 +10,10 @@ Feature: Skeleton assembly: choosing a dinosaur
 
   Scenario: The home page offers the skeleton game
     When I open the home page
-    Then I see a "SKELETONS" tile with a skeleton picture
-    And once I have earned a skeleton star it shows my best collection score with a trophy symbol
-    When I tap "SKELETONS"
+    Then I see a "BONES" tile with a skeleton picture
+    And the small tile has no progress badge
+    And on a day SKELETONS is featured its card shows my best collection score with a trophy symbol
+    When I tap "BONES"
     Then I see the dinosaur selection screen
     And I see "MUSEUM" with a museum symbol and "HOME" with a house symbol
 
@@ -56,7 +57,7 @@ Feature: Skeleton assembly: choosing a dinosaur
     When I choose a skeleton, finish it and visit the museum
     Then the controls use these words
       | control        | text        |
-      | game tile      | <skeletons> |
+      | featured card  | <skeletons> |
       | museum         | <museum>    |
       | build another  | <another>   |
       | rebuild        | <rebuild>   |

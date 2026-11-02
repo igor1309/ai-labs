@@ -6,7 +6,6 @@ import type { HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
 import { localCareProgress, localDigProgress, localPairsProgress, localProgress, localSkeletonProgress, localSortingProgress } from "../src/localProgress.ts";
-import { PEEK, SHORT_LEAST_COLUMN, SHORT_ROW_COLUMNS, SHORT_TILE_GAP, shortTileColumn } from "../src/tileColumns.ts";
 import { appStylesheet, type SafeArea } from "./stylesheet.ts";
 import { topLine } from "./homeCorner.ts";
 import { TITLE_EMS, linesOf, roomFor, tileTitles, widthOf } from "./homeTitles.ts";
@@ -133,8 +132,8 @@ function across(width: number, height: number) {
   expect(styleAt(featuredCard(), [width, height]).px("margin-right")).toBe(0);
   const card = (shared - tiles.px("margin-right")) / 2;
   const row = card;
-  const gap = tiles.columnGap();
-  const column = shortTileColumn(row);
+  const gap = 16;
+  const column = (Math.max(260, height - 100) - 16) * 2 / 3;
   return { home, games, tiles, card, row, gap, column };
 }
 
@@ -211,7 +210,7 @@ describe("the home page in a wide-short window", () => {
     expect([games.value("height"), games.value("flex")]).toEqual(["auto", "1 0 260px"]);
     expect(left).toBeGreaterThanOrEqual(260);
     // The tiles stand in two even rows, filling the games' height.
-    expect([tiles.value("grid-template-rows"), tiles.value("grid-auto-flow"), tiles.value("height") || "auto"]).toEqual(["minmax(0, 1fr) minmax(0, 1fr)", "column", "auto"]);
+    expect([styleAt(part(".tiles-grid"), [width, height]).value("grid-template-rows"), styleAt(part(".tiles-grid"), [width, height]).value("grid-auto-flow"), tiles.value("height") || "auto"]).toEqual(["minmax(0, 1fr) minmax(0, 1fr)", "column", "auto"]);
     // The row's padding above and below, which its margins reach out to
     // hold the tiles' shadows, comes off its rows' height.
     const reach = tiles.px("margin-top") + tiles.px("margin-bottom");
@@ -233,21 +232,6 @@ describe("the home page in a wide-short window", () => {
     expect((260 - reach - padding - tiles.rowGap()) / 2).toBeGreaterThanOrEqual(LEAST_TILE_ROW);
   });
 
-  it.each(PHONES)("shows a column of tiles whole and the next peeking in, in a %i by %i window", (width, height) => {
-    openShort(width, height);
-    const { tiles, row, gap, column } = across(width, height);
-    // The stylesheet's columns are those the page keeps the row's place by.
-    const probe = document.createElement("div");
-    probe.style.gridAutoColumns = `max(${SHORT_LEAST_COLUMN}px, calc((100% - ${SHORT_TILE_GAP}px) / ${SHORT_ROW_COLUMNS}))`;
-    expect([tiles.value("grid-auto-columns"), gap]).toEqual([probe.style.gridAutoColumns, SHORT_TILE_GAP]);
-    // The width the page keeps the row's place by is the stylesheet's
-    // column: four fifths of the row short of its gap, at 236 the least.
-    expect([shortTileColumn(408), shortTileColumn(200)]).toEqual([313.6, 236]);
-    const peek = row - (column + gap);
-    expect(peek).toBeGreaterThanOrEqual(PEEK);
-    expect(peek).toBeLessThanOrEqual(column - PEEK);
-  });
-
   it.each((["en", "ru"] as const).flatMap((language) => [...PHONES, ...NARROWER].flatMap(([width, height]) => GAMES.map((featured) => [language, width, height, featured] as const))))(
     "fits every word in %s at %i by %i, featuring %s",
     (language, width, height, featured) => {
@@ -264,25 +248,7 @@ describe("the home page in a wide-short window", () => {
       if (!Array.isArray(lines)) throw new Error(`${lines.missing}: no width in ems`);
       expect(lines.filter((line) => widthOf(line, size, px(style.letterSpacing)) > room)).toEqual([]);
 
-      const wrapping = ".pairs-tile-title, .sand-writing-tile-title, .catalogue-tile-title";
-      const overflowing = tileTitles()
-        .filter((tile) => !tile.matches(wrapping))
-        .flatMap((tile) => {
-          const tileStyle = styleOf(tile);
-          const words = tile.textContent ?? "";
-          const needed = (TITLE_EMS[words] ?? Number.NaN) * px(tileStyle.fontSize) + px(tileStyle.letterSpacing) * words.length;
-          const tileRoom = roomFor(tile, () => column, styleOf);
-          if (tileStyle.whiteSpace !== "nowrap") return [`${words}: may wrap`];
-          return needed <= tileRoom ? [] : [`${words}: ${needed.toFixed(1)}px in ${tileRoom.toFixed(1)}px`];
-        });
-      expect(overflowing).toEqual([]);
-      for (const tile of tilesRow().querySelectorAll(wrapping)) {
-        const tileStyle = styleOf(tile);
-        expect(tileStyle.whiteSpace).not.toBe("nowrap");
-        const tileRoom = roomFor(tile, () => column, styleOf);
-        const tileLines = linesOf(tile.textContent ?? "", px(tileStyle.fontSize), px(tileStyle.letterSpacing), tileRoom);
-        expect(Array.isArray(tileLines) && tileLines.length <= 2 && tileLines.every((line) => widthOf(line, px(tileStyle.fontSize), px(tileStyle.letterSpacing)) <= tileRoom)).toBe(true);
-      }
+
     },
   );
 

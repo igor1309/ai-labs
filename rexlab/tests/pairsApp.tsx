@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
@@ -183,7 +184,7 @@ export async function turnCard(user: UserEvent, place: number) {
 // Opens the game and deals a board, its pictures loaded at once: at the
 // level named on its switch, or else at the level the game starts at.
 export async function playPairs(user: UserEvent, level?: string) {
-  await user.click(screen.getByRole("button", { name: "FIND THE PAIR" }));
+  await user.click(gameDoor("FIND THE PAIR"));
   if (level !== undefined) await user.click(screen.getByRole("button", { name: level }));
   await user.click(screen.getByRole("button", { name: "PLAY" }));
 }

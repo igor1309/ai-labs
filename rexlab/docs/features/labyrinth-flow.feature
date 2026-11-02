@@ -1,7 +1,7 @@
 Feature: Labyrinth belongs to RexLab
   Scenario: Open and return
     Given the home page is open
-    Then a LABYRINTH tile with a dinosaur picture and route symbol is available
+    Then a MAZE tile with a dinosaur picture and route symbol is available
     And the Russian title is ЛАБИРИНТ
     When the child taps the tile or its featured card
     Then the maze opens directly with no welcome screen
@@ -13,7 +13,8 @@ Feature: Labyrinth belongs to RexLab
     When a labyrinth round is completed
     Then the total stars and best score are saved in the shared progress record
     And the other game's progress is unchanged
-    And the home tile and featured card show the labyrinth total stars
+    And on a day labyrinth is featured its card shows the total stars
+    And on a day another game is featured the MAZE tile shows no progress badge
     And no labyrinth progress appears on catalogue or dinosaur pages
     When the app reloads
     Then the labyrinth reward is restored

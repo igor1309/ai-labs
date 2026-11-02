@@ -138867,7 +138867,8 @@
           "width": "fill_container",
           "content": "Не закрывайте приложение до сохранения. Освободите место на устройстве.",
           "fontFamily": "Nunito",
-          "fontSize": 14
+          "fontSize": 14,
+          "fontWeight": "normal"
         },
         {
           "type": "frame",
@@ -139046,7 +139047,8 @@
           "width": "fill_container",
           "content": "Keep the app open until saved. Free some device storage.",
           "fontFamily": "Nunito",
-          "fontSize": 14
+          "fontSize": 14,
+          "fontWeight": "normal"
         },
         {
           "type": "frame",
@@ -145224,6 +145226,482 @@
           ]
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "F2Dex",
+      "x": -1536,
+      "y": 79470,
+      "name": "LAB-906 · EN · iPhone portrait · Hero unchanged · Review capture",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906/en-explorer-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "E1nQSJ",
+      "x": -1536,
+      "y": 80414,
+      "name": "LAB-906 · RU · iPhone portrait · Hero unchanged · Review capture",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906/ru-explorer-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "e4BgeI",
+      "x": -1536,
+      "y": 81358,
+      "name": "LAB-906 · EN · iPhone landscape · Hero unchanged · Review capture",
+      "clip": true,
+      "width": 844,
+      "height": 390,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906/en-explorer-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "qppug",
+      "x": -1536,
+      "y": 81848,
+      "name": "LAB-906 · RU · iPhone landscape · Hero unchanged · Review capture",
+      "clip": true,
+      "width": 844,
+      "height": 390,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906/ru-explorer-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "Y1XI1",
+      "x": -1536,
+      "y": 82338,
+      "name": "LAB-906 · v3 · EN portrait · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/en-explorer-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "uOUgS",
+      "x": -1536,
+      "y": 83282,
+      "name": "LAB-906 · v3 · RU portrait · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/ru-explorer-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "OagRu",
+      "x": -1536,
+      "y": 84226,
+      "name": "LAB-906 · v3 · EN landscape · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 844,
+      "height": 390,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/en-explorer-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "Y2oiHv",
+      "x": -1536,
+      "y": 84716,
+      "name": "LAB-906 · v3 · RU landscape · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 844,
+      "height": 390,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/ru-explorer-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "GRDno",
+      "x": -1536,
+      "y": 85206,
+      "name": "LAB-906 · v3 · EN all small tiles · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 756,
+      "height": 608,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/en-all-small-tiles-v3.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "B0iSxG",
+      "x": -1536,
+      "y": 85914,
+      "name": "LAB-906 · v3 · RU all small tiles · deployed v0.10.91 baseline · Review capture",
+      "clip": true,
+      "width": 756,
+      "height": 608,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v3/ru-all-small-tiles-v3.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "ctnRY",
+      "x": -1536,
+      "y": 86622,
+      "name": "LAB-906 · v4 · EN portrait · No small tile badges · Review capture",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v4/en-explorer-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "oJex6",
+      "x": -1536,
+      "y": 87566,
+      "name": "LAB-906 · v4 · RU portrait · No small tile badges · Review capture",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v4/ru-explorer-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "N9QYIj",
+      "x": -1536,
+      "y": 88510,
+      "name": "LAB-906 · v4 · EN landscape · No small tile badges · Review capture",
+      "clip": true,
+      "width": 844,
+      "height": 390,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v4/en-explorer-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "W8nSRR",
+      "x": -1536,
+      "y": 89000,
+      "name": "LAB-906 · v4 · RU landscape · No small tile badges · Review capture",
+      "clip": true,
+      "width": 844,
+      "height": 390,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v4/ru-explorer-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "lQPvc",
+      "x": -1536,
+      "y": 89490,
+      "name": "LAB-906 · v4 · EN all small tiles · No small tile badges · Review capture",
+      "clip": true,
+      "width": 756,
+      "height": 608,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v4/en-all-small-tiles-v4.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "XYAg2",
+      "x": -1536,
+      "y": 90198,
+      "name": "LAB-906 · v4 · RU all small tiles · No small tile badges · Review capture",
+      "clip": true,
+      "width": 756,
+      "height": 608,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v4/ru-all-small-tiles-v4.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "pP2wr",
+      "x": -1536,
+      "y": 90906,
+      "name": "LAB-906 · v5 · EN portrait · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v5/en-explorer-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "XJ6v6",
+      "x": -1536,
+      "y": 91850,
+      "name": "LAB-906 · v5 · RU portrait · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 390,
+      "height": 844,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v5/ru-explorer-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "TlTfw",
+      "x": -1536,
+      "y": 92794,
+      "name": "LAB-906 · v5 · EN landscape · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 844,
+      "height": 390,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v5/en-explorer-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "r5O3rB",
+      "x": -1536,
+      "y": 93284,
+      "name": "LAB-906 · v5 · RU landscape · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 844,
+      "height": 390,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v5/ru-explorer-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "U6jv07",
+      "x": -1536,
+      "y": 93774,
+      "name": "LAB-906 · v5 · EN all small tiles · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 648,
+      "height": 660,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v5/en-all-small-tiles-v5.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "Hk4av",
+      "x": -1536,
+      "y": 94534,
+      "name": "LAB-906 · v5 · RU all small tiles · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 648,
+      "height": 660,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v5/ru-all-small-tiles-v5.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "add1l",
+      "x": -1536,
+      "y": 95294,
+      "name": "LAB-906 · v6 · EN · ipad-portrait · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 820,
+      "height": 1180,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v6/en-explorer-ipad-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "wNZzr",
+      "x": -1536,
+      "y": 96574,
+      "name": "LAB-906 · v6 · EN · ipad-landscape · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 1180,
+      "height": 820,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v6/en-explorer-ipad-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "A9hExG",
+      "x": -1536,
+      "y": 97494,
+      "name": "LAB-906 · v6 · EN · desktop · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v6/en-explorer-desktop.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "nVPdn",
+      "x": -1536,
+      "y": 98494,
+      "name": "LAB-906 · v6 · RU · ipad-portrait · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 820,
+      "height": 1180,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v6/ru-explorer-ipad-portrait.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "bILxC",
+      "x": -1536,
+      "y": 99774,
+      "name": "LAB-906 · v6 · RU · ipad-landscape · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 1180,
+      "height": 820,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v6/ru-explorer-ipad-landscape.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
+    },
+    {
+      "type": "frame",
+      "id": "bSAok",
+      "x": -1536,
+      "y": 100694,
+      "name": "LAB-906 · v6 · RU · desktop · 3 high × 4 wide · Review capture",
+      "clip": true,
+      "width": 1440,
+      "height": 900,
+      "fill": {
+        "type": "image",
+        "enabled": true,
+        "url": "images/lab-906-v6/ru-explorer-desktop.png",
+        "mode": "stretch"
+      },
+      "layout": "none"
     }
   ],
   "themes": {

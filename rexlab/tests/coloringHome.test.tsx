@@ -1,3 +1,4 @@
+import { shortHomeName } from "./support.ts";
 import { ARTWORKS, artworkFor } from "../src/coloring/artworks.ts";
 import { StrictMode } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
@@ -42,16 +43,16 @@ function fixture({ language = "en", featured = "compare", level = "explorer" }: 
     coloring: { source, artworks: ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names })), painterFor: () => ({ width: 920, height: 620, render: vi.fn(), preview: vi.fn(), regionAt: () => "body" }), identity: () => `work-${++identity}` }, startCounter: { countStart }
   };
   const view = render(<StrictMode><InputArbitrationContext value={input.arbitrate}><App {...props} /></InputArbitrationContext></StrictMode>);
-  const click = async (name: string) => { await act(async () => { fireEvent.click(screen.getByRole("button", { name })); }); };
+  const click = async (name: string) => { await act(async () => { fireEvent.click(screen.getByRole("button", { name: document.querySelector(".home") && !document.querySelector(`.featured-card[aria-label="${name}"]`) ? shortHomeName(name) : name })); }); };
   return { ...view, artworks: props.coloring.artworks, defer: (value: Promise<GalleryCollection>) => { deferred = value; }, viewport, click, countStart, source, saveAge, dot, active: () => active, fail: (value: boolean) => { failure = value; }, collection: (value: GalleryCollection) => { collection = value; } };
 }
 
-it.each(["en", "ru"] as Language[])("shares the durable count and drawing symbol between the %s tile and featured card", async language => {
+it.each(["en", "ru"] as Language[])("keeps the count on the featured card and the drawing symbol on both %s doors", async language => {
   for (const featured of ["compare", "coloring"] as const) {
     const f = fixture({ language, featured }); await act(async () => {});
-    const entry = screen.getByRole("button", { name: language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА" });
+    const entry = screen.getByRole("button", { name: featured === "coloring" ? (language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА") : (language === "en" ? "COLOR" : "РАСКРАСЬ") });
     expect(entry.querySelector(".lucide-pencil")).not.toBeNull();
-    expect(entry.querySelector(".coloring-tile-count, .featured-card-badge")?.textContent).toBe("4");
+    expect(entry.querySelector(".coloring-tile-count, .featured-card-badge")?.textContent).toBe(featured === "coloring" ? "4" : undefined);
     await act(async () => { fireEvent.click(entry); });
     expect(screen.getByRole("region", { name: language === "en" ? "MY ART" : "МОИ РАБОТЫ" })).toBeTruthy();
     expect(f.countStart).not.toHaveBeenCalled(); f.unmount();
@@ -59,7 +60,7 @@ it.each(["en", "ru"] as Language[])("shares the durable count and drawing symbol
 });
 
 it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("counts only new work, refreshes Home after completion and retains the parent's %s setting", async level => {
-  const f = fixture({ level }); await act(async () => {});
+  const f = fixture({ level, featured: "coloring" }); await act(async () => {});
   await f.click("COLOR A DINOSAUR"); await f.click("NEW WORK");
   expect(f.countStart.mock.calls).toEqual([["coloring"]]);
   const session = f.active();
@@ -69,7 +70,7 @@ it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("counts only 
   await f.click("DONE"); await act(async () => { await session.settled(); });
   expect(screen.getByLabelText("COLLECTION").textContent).toContain("5");
   await f.click("HOME");
-  expect(f.container.querySelector(".coloring-tile-count")?.textContent).toBe("5");
+  expect(f.container.querySelector(".featured-card-badge")?.textContent).toBe("5");
   expect(f.countStart.mock.calls).toEqual([["coloring"]]); expect(f.saveAge).not.toHaveBeenCalled();
   await f.click("ANCIENT REPTILES");
   expect(f.container.querySelector(".coloring-tile-count, .gallery-count, .coloring-result-count")).toBeNull();
@@ -77,33 +78,33 @@ it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("counts only 
 });
 
 it("shows unknown history as unknown, keeps coloring reachable, and refreshes after retry", async () => {
-  const f = fixture(); await act(async () => {});
+  const f = fixture({ featured: "coloring" }); await act(async () => {});
   await f.click("COLOR A DINOSAUR"); f.fail(true); await f.click("HOME");
-  expect(f.container.querySelector(".coloring-tile-count")?.textContent).toBe("?");
+  expect(f.container.querySelector(".featured-card-badge")?.textContent).toBe("?");
   await f.click("COLOR A DINOSAUR");
   expect(screen.getByRole("alert")).toBeTruthy();
   expect((screen.getByRole("button", { name: "NEW WORK" }) as HTMLButtonElement).disabled).toBe(true);
   f.fail(false); await f.click("RETRY"); await f.click("HOME");
-  expect(f.container.querySelector(".coloring-tile-count")?.textContent).toBe("4");
+  expect(f.container.querySelector(".featured-card-badge")?.textContent).toBe("4");
   expect(f.countStart).not.toHaveBeenCalled();
 });
 
 it("uses the source's history count even when a completed work has unreadable paint", async () => {
-  const f = fixture(); await act(async () => {});
+  const f = fixture({ featured: "coloring" }); await act(async () => {});
   await f.click("COLOR A DINOSAUR"); f.collection({ works: [], unavailable: ["damaged"], recentId: "damaged", completedCount: 7 });
-  await f.click("HOME"); expect(f.container.querySelector(".coloring-tile-count")?.textContent).toBe("7");
+  await f.click("HOME"); expect(f.container.querySelector(".featured-card-badge")?.textContent).toBe("7");
   await f.click("COLOR A DINOSAUR"); f.collection({ works: [], unavailable: ["damaged"], recentId: "damaged", completedCount: null });
-  await f.click("HOME"); expect(f.container.querySelector(".coloring-tile-count")?.textContent).toBe("?");
+  await f.click("HOME"); expect(f.container.querySelector(".featured-card-badge")?.textContent).toBe("?");
 });
 
 it.each([4, null])("shows no warning while Home history is pending, then shows its settled %s result", async completedCount => {
-  const f = fixture(); await act(async () => {}); await f.click("COLOR A DINOSAUR");
+  const f = fixture({ featured: "coloring" }); await act(async () => {}); await f.click("COLOR A DINOSAUR");
   let resolve!: (value: GalleryCollection) => void;
   f.defer(new Promise(done => { resolve = done; }));
   await f.click("HOME");
-  expect(f.container.querySelector(".coloring-tile-count")).toBeNull();
+  expect(f.container.querySelector(".featured-card-badge")).toBeNull();
   await act(async () => { resolve({ works: [], unavailable: [], recentId: null, completedCount }); });
-  expect(f.container.querySelector(".coloring-tile-count")?.textContent).toBe(completedCount === null ? "?" : "4");
+  expect(f.container.querySelector(".featured-card-badge")?.textContent).toBe(completedCount === null ? "?" : "4");
 });
 
 

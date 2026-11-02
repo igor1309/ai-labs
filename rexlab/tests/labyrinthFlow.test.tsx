@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
@@ -6,7 +7,7 @@ import { localLabyrinthProgress, PROGRESS_KEY } from "../src/localProgress.ts";
 import { clickTwice, mazeBoard, mazeLayout, mazeRoute, openLabyrinthApp, solveMaze } from "./labyrinthApp.tsx";
 import { fakeBodyPicture, featuredCard, homeTile, memoryStorage } from "./support.ts";
 
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 const chosen = (level: AgeLevel) => within(screen.getByRole("group", { name: TEXTS.en.ageLevelSwitch })).getByRole("button", { name: TEXTS.en.ageLevels[level].name });
 const saved = (app: ReturnType<typeof openLabyrinthApp>) => localLabyrinthProgress(() => app.storage).load()!;
 const total = () => document.querySelector(".labyrinth-reward")?.textContent;
@@ -55,7 +56,7 @@ describe("labyrinth through the app", () => {
     clickTwice(button("AGAIN"));
     expect(app.featured.history().timesStarted.get("labyrinth")).toBe(3);
     fireEvent.click(button("HOME"));
-    expect(homeTile("LABYRINTH").querySelector(".labyrinth-tile-best")?.textContent).toBe("6");
+    expect(homeTile("LABYRINTH").querySelector(".labyrinth-tile-best")?.textContent).toBe(undefined);
     expect(saved(app).progress.roundsPlayed).toBe(2);
   });
 
@@ -141,12 +142,12 @@ describe("labyrinth through the app", () => {
     fireEvent.click(homeTile("LABYRINTH")); solveMaze({ hint: true });
     expect(total()).toBe("+3 STARS · TOTAL 3");
     fireEvent.click(button("HOME"));
-    expect(homeTile("LABYRINTH").querySelector(".labyrinth-tile-best")?.textContent).toBe("3");
+    expect(homeTile("LABYRINTH").querySelector(".labyrinth-tile-best")?.textContent).toBe(undefined);
     fireEvent.click(homeTile("LABYRINTH")); solveMaze({ hint: true });
     expect(total()).toBe("+3 STARS · TOTAL 6");
     app.unmount();
     openLabyrinthApp({ storage });
-    expect(homeTile("LABYRINTH").querySelector(".labyrinth-tile-best")?.textContent).toBe(failure === "malformed" ? "6" : undefined);
+    expect(homeTile("LABYRINTH").querySelector(".labyrinth-tile-best")?.textContent).toBe(undefined);
   });
 
   it("names the Russian tile and opens its board", () => {

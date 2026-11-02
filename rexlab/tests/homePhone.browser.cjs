@@ -49,17 +49,19 @@ const games = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "car
           return {
             overflow: [document.documentElement.scrollWidth > innerWidth, document.documentElement.scrollHeight > innerHeight],
             boxes: [".greeting", ".featured-card", ".games-tiles", "#version"].map((selector) => box(document.querySelector(selector))),
-            tiles: [...row.children].map(box),
+            tiles: [...row.querySelector(".tiles-grid").children].map(box),
+            titlesFit: [...row.querySelectorAll(".home-tile-title")].every(title => title.scrollWidth <= title.clientWidth + .5),
             swipe: row.scrollWidth > row.clientWidth,
             title: box(document.querySelector(".featured-card-title")),
             card: box(document.querySelector(".featured-card"))
           };
         });
         const label = `${width}x${height} ${language} ${level} ${game || "daily"}`;
-        assert.deepEqual(result.overflow, [false, false], label);
+        assert.equal(result.overflow[0], false, label);
         for (const box of [...result.boxes, ...result.tiles]) {
-          assert(box.top >= 0 && box.bottom <= height && box.height > 0, `${label}: ${JSON.stringify(box)}`);
+          assert(box.top >= 0 && box.height > 0, `${label}: ${JSON.stringify(box)}`);
         }
+        assert(result.titlesFit, `${label}: complete tile titles`);
         assert(result.tiles.every((tile) => tile.height >= 44), `${label}: tile hit targets`);
         assert(result.title.bottom <= result.card.bottom && result.title.top >= result.card.top, `${label}: featured title clipped`);
         assert(result.swipe, `${label}: tiles must remain horizontally scrollable`);
@@ -78,7 +80,7 @@ const games = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "car
       }
       await page.close();
     }
-    console.log(`PASS ${checked} phone home configurations: no document overflow, cards visible, horizontal browsing works`);
+    console.log(`PASS ${checked} phone home configurations: no horizontal overflow, cards visible, horizontal browsing works`);
   } finally {
     await browser?.close();
     await server.close();

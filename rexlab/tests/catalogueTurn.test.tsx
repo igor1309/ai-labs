@@ -1,3 +1,5 @@
+import { homeTileGeometry } from "./support.ts";
+import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -201,7 +203,7 @@ function openCatalogue(width = 1180, height = 820, { reduced = false, language =
   const shared = recordedSharedPictures();
   let clock = 0;
   render(
-    <App {...emptyLabyrinth()}
+    <App readTileColumns={homeTileGeometry} {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -380,7 +382,7 @@ function expectBox(actual: Box, expected: Box) {
 }
 
 async function closeBaryonyx(app: ReturnType<typeof openCatalogue>, loaded = false) {
-  await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogueTile }));
+  await app.user.click(gameDoor(TEXTS.en.catalogueTile));
   expect(app.pictures.loading()).toContain("/pictures/baryonyx.webp");
   if (loaded) act(() => app.pictures.finish("/pictures/baryonyx.webp"));
   await app.user.click(card("baryonyx"));
@@ -472,7 +474,7 @@ describe("the picture's close interrupted by a turn", () => {
     const app = openCatalogue();
     await closeBaryonyx(app);
     await app.user.click(screen.getByRole("button", { name: "HOME" }));
-    await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogueTile }));
+    await app.user.click(gameDoor(TEXTS.en.catalogueTile));
     app.resize([820, 1180, "tall"]);
     expect(app.animations.some(({ name }) => name === "closing-picture")).toBe(false);
     app.settle();
@@ -484,7 +486,7 @@ describe("the production shared picture binding", () => {
     const app = openCatalogue(1180, 820, { productionPictures: true });
     const pictures = () => [...new Map(vi.mocked(ViewTransition).mock.calls.map(([props]) => props).filter(({ name }) => name?.startsWith("dinosaur-")).map((props) => [props.name, props])).values()];
     vi.mocked(ViewTransition).mockClear();
-    await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogueTile }));
+    await app.user.click(gameDoor(TEXTS.en.catalogueTile));
     const cards = pictures();
     expect(new Set(cards.map(({ name }) => name))).toEqual(new Set(IDS.map((id) => `dinosaur-${id}`)));
     expect(cards.every(({ children }) => (children as { props: { className: string } }).props.className === "catalogue-picture")).toBe(true);
@@ -522,7 +524,7 @@ describe("catalogue turn styles", () => {
 describe("catalogue's shared turn", () => {
   it("keeps HOME still while chips, list and all 26 MEAT cards glide", async () => {
     const app = openCatalogue();
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     await app.user.click(screen.getByRole("button", { name: "MEAT" }));
     expect(app.grid().querySelectorAll("[data-turn-part^='catalogue-card-']")).toHaveLength(26);
     const chips = document.querySelector<HTMLElement>(".food-chips");
@@ -586,13 +588,13 @@ describe("catalogue's shared turn", () => {
     const app = openCatalogue(1180, 820, { portraitLayouts: { home: ["tall"], catalogue: ["tall"] } });
     app.resize([768, 1024, "tall"]);
     app.settle();
-    await app.user.click(screen.getByRole("button", { name: TEXTS.en.catalogueTile }));
+    await app.user.click(gameDoor(TEXTS.en.catalogueTile));
     expect(document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement).toBe("spaced");
     await app.user.click(screen.getByRole("button", { name: TEXTS.en.home }));
     await chooseFrom(app.user, "Language", "Русский");
     app.animations.length = 0;
 
-    await app.user.click(screen.getByRole("button", { name: TEXTS.ru.catalogueTile }));
+    await app.user.click(gameDoor(TEXTS.ru.catalogueTile));
 
     expect(document.querySelector<HTMLElement>(".food-chips")?.dataset.arrangement).toBe("closed");
     expect(app.animations.filter(own)).toEqual([]);
@@ -603,7 +605,7 @@ describe("catalogue's shared turn", () => {
   it("takes a card's glide from where its entrance is drawn, without restarting the entrance", async () => {
     const entrance: Rising = { y: 0, opacity: 1, running: true };
     const app = openCatalogue(1180, 820, { rising: new Map([["catalogue-card-tyrannosaurus", entrance]]) });
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     const [list, tyrannosaurus] = [app.grid(), card("tyrannosaurus")];
     Object.assign(entrance, { y: 18, opacity: 0.4 });
     app.paint();
@@ -622,7 +624,7 @@ describe("catalogue's shared turn", () => {
 
   it("under reduced motion only fades the old list into the upright list for 160 ms", async () => {
     const app = openCatalogue(1180, 820, { reduced: true });
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     app.resize([820, 1180, "tall"]);
     expect([app.animations.filter(own), app.fades.length, document.documentElement.dataset.size]).toEqual([[], 1, "wide"]);
     expect(getComputedStyle(document.documentElement).getPropertyValue("--motion-small")).toBe("160ms");
@@ -637,7 +639,7 @@ describe("catalogue's shared turn", () => {
     [[700, 1000, "tall"], [744, 1000, "tall"], { columns: "2", chips: "stacked" }, { columns: "2", chips: "closed" }]
   ] as const)("captures the old Russian arrangement from %j before fading to %j", async (from, to, before, after) => {
     const app = openCatalogue(from[0], from[1], { reduced: true, language: "ru" });
-    await app.user.click(screen.getByRole("button", { name: TEXTS.ru.catalogueTile }));
+    await app.user.click(gameDoor(TEXTS.ru.catalogueTile));
     app.resize(from);
     app.updateFade();
     app.endFade();
@@ -666,7 +668,7 @@ describe("catalogue's shared turn", () => {
     ["end", 99999, 0, "ophthalmosaurus", "ophthalmosaurus"]
   ] as const)("keeps the %s row there and back", async (_, scroll, hidden, uprightId, backId) => {
     const app = openCatalogue();
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     const list = app.grid();
     listMetrics(list);
     const landscape = listGeometry(1180, 820, "wide");
@@ -692,7 +694,7 @@ describe("catalogue's shared turn", () => {
     const app = openCatalogue(852, 393, { portraitLayouts: { catalogue: ["tall", "tall-narrow"] } });
     app.resize([852, 393, "wide-short"]);
     app.settle();
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     const list = app.grid();
     listMetrics(list);
     list.scrollTop = rowScroll(id, 852, 393, "wide-short");
@@ -717,10 +719,10 @@ describe("catalogue's shared turn", () => {
 
   it("keeps Baryonyx whole when returning from its page, then turning", async () => {
     const app = openCatalogue();
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     await app.user.click(card("baryonyx"));
     expect([screen.getByRole("heading", { level: 1 }).textContent, screen.getByLabelText("NUMBER").textContent]).toEqual(["BARYONYX", "29 / 52"]);
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     const list = app.grid();
     listMetrics(list);
     app.settle();
@@ -733,9 +735,9 @@ describe("catalogue's shared turn", () => {
 
   it("keeps the row the child scrolled to after coming back from Baryonyx, not Baryonyx", async () => {
     const app = openCatalogue();
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     await app.user.click(card("baryonyx"));
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     const list = app.grid();
     listMetrics(list);
     app.settle();
@@ -751,10 +753,10 @@ describe("catalogue's shared turn", () => {
     ["just back from Baryonyx", "baryonyx"]
   ] as const)("starts a food chosen in a list %s at its own top when the next turn begins", async (_, from) => {
     const app = openCatalogue();
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     if (from === "baryonyx") {
       await app.user.click(card("baryonyx"));
-      await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+      await app.user.click(gameDoor("ANCIENT REPTILES"));
       listMetrics(app.grid());
       app.settle();
     } else {
@@ -776,7 +778,7 @@ describe("catalogue's shared turn", () => {
 
   it("pairs Baryonyx's card and page on open and Back, keeping the card whole when a turn starts during close", async () => {
     const app = openCatalogue();
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     const cataloguePictures = app.shared.pictures();
     const openingFrom = app.shared.picture("dinosaur-baryonyx");
     expect(openingFrom.element.closest(".catalogue-card")).toBe(card("baryonyx"));
@@ -790,7 +792,7 @@ describe("catalogue's shared turn", () => {
     expectSharedPair(cataloguePictures, pagePictures, openingTypes);
 
     clearScreenTransitions();
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     const closingTypes = screenTransitionTypes(CLOSE_DINOSAUR);
     expectSharedPair(pagePictures, app.shared.pictures(), closingTypes);
     const list = app.grid();
@@ -816,7 +818,7 @@ describe("catalogue's shared turn", () => {
     ["next", NEXT_DINOSAUR]
   ] as const)("does not share pictures when the %s dinosaur takes the page", async (step, type) => {
     const app = openCatalogue();
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     await app.user.click(card("baryonyx"));
     const before = app.shared.pictures();
 
@@ -839,7 +841,7 @@ describe("catalogue's shared turn", () => {
     [[820, 1180, "tall"], [834, 1194, "tall"], false]
   ] as const)("resizing Russian catalogue from %j to %j moves as specified", async (from, to, glides) => {
     const app = openCatalogue(from[0], from[1], { language: "ru" });
-    await app.user.click(screen.getByRole("button", { name: TEXTS.ru.catalogueTile }));
+    await app.user.click(gameDoor(TEXTS.ru.catalogueTile));
     app.resize(from);
     app.settle();
     app.animations.length = 0;
@@ -874,7 +876,7 @@ describe("catalogue's shared turn", () => {
 
   it("continues a catalogue turn from its drawn parts through a second resize and keeps the list anchor", async () => {
     const app = openCatalogue(744, 1133, { language: "ru" });
-    await app.user.click(screen.getByRole("button", { name: TEXTS.ru.catalogueTile }));
+    await app.user.click(gameDoor(TEXTS.ru.catalogueTile));
     app.resize([744, 1133, "tall"]);
     app.settle();
     app.animations.length = 0;
@@ -912,7 +914,7 @@ describe("catalogue's shared turn", () => {
 
   it("holds taps and keys during the turn, keeping Triceratops focused", async () => {
     const app = openCatalogue();
-    await app.user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await app.user.click(gameDoor("ANCIENT REPTILES"));
     const triceratops = card("triceratops");
     act(() => triceratops.focus());
     app.resize([820, 1180, "tall"]);

@@ -6,7 +6,7 @@ Feature: Home page: choosing the featured game
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
+    And this scenario fixture provides only these eight games, in tile order: COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
 
   Scenario: The games started least have twice the chance
     Given I have started COMPARE 9 times, ANCIENT REPTILES 4, CARE 2, SORT 5, FIND THE PAIR 3, SKELETONS 2, DIG 2 and SAND WRITING 2
@@ -72,7 +72,7 @@ Feature: Home page: choosing the featured game
     And I have started every game at least once
     When an update adds a new game and I reopen the app the same day
     Then CARE is still featured
-    And the new game's tile goes last, before "MORE COMING"
+    And the new game's tile goes last, before "SOON"
     And from the next day the new game, never started, has a weight of 2
 
 

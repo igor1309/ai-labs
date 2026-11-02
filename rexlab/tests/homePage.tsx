@@ -24,11 +24,12 @@ const nothing = () => {};
 // The home page alone, featuring `featured`, with every game's badge
 // filled in when `scored` and every one that can be empty left empty
 // when not; each game's opening counted in `opened`.
-export function renderHomePageFeaturing(featured: HomeGame, { language = "en", scored = true }: { language?: Language; scored?: boolean } = {}) {
+export function renderHomePageFeaturing(featured: HomeGame, { language = "en", scored = true, allGames = false }: { language?: Language; scored?: boolean; allGames?: boolean } = {}) {
   const opened: HomeGame[] = [];
   const score = (value: number) => (scored ? value : undefined);
   const view = render(
     <HomePage
+      readTileColumns={() => ({ column: 274.6667, gap: 16 })}
       language={language}
       onLanguage={nothing}
       theme="light"
@@ -36,8 +37,6 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       ageLevel="explorer"
       onAgeLevel={nothing}
       startTimer={() => nothing}
-      viewport={manualViewport("landscape")}
-      upright={false}
       layoutKeeping={keptNothing}
       featured={featured}
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
@@ -49,6 +48,11 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       skeletons={{ picture: fakeSkeletonPicture("triceratops", "skeleton"), best: score(3) }}
       dig={{ picture: fakeBodyPicture("stegosaurus"), dugUp: score(4) }}
       labyrinth={{ picture: fakeBodyPicture("triceratops"), stars: score(9) }}
+      {...(allGames && {
+        coloring: { picture: fakeBodyPicture("triceratops"), completed: scored ? 4 : undefined, onOpen: () => opened.push("coloring") },
+        whoseJaw: { picture: "jaw.webp", collected: scored ? 5 : 0, total: 16, onOpen: () => opened.push("whoseJaw") },
+        picturePuzzle: { picture: fakeBodyPicture("triceratops"), collected: scored ? 2 : 0, onOpen: () => opened.push("picturePuzzle") }
+      })}
       moreComing={fakeBodyPicture("triceratops")}
       onCompareDinosaurs={() => opened.push("compare")}
       onCatalogue={() => opened.push("catalogue")}

@@ -10,12 +10,12 @@ Feature: The dinosaur catalogue
 
   Scenario: The home page offers the catalogue as a tile
     When I open the home page
-    Then I see an "ANCIENT REPTILES" tile with a 📖 symbol, a dinosaur and the count "52"
-    And it is under the "COMPARE" tile, in the row's first column
+    Then I see an "EXPLORE" tile with a book symbol beside its title, a dinosaur and no count
+    And it is first when COMPARE is featured
 
   Scenario: The tile opens the list of every dinosaur
     Given I am on the home page
-    When I tap the "ANCIENT REPTILES" tile
+    When I tap the "EXPLORE" tile
     Then I see a "HOME" button with a 🏠 symbol and the food chips beside it, in one row
     And I see no title and no count above the cards
     And I see 52 cards, four to a row, in the order of the dinosaur list
@@ -82,8 +82,8 @@ Feature: The dinosaur catalogue
 
     Examples:
       | language | tile          | title         | food |
-      | English  | ANCIENT REPTILES | ANCIENT REPTILES | BOTH |
-      | Russian  | ВСЕ           | ДРЕВНИЕ ЯЩЕРЫ | ВСЁ  |
+      | English  | EXPLORE       | ANCIENT REPTILES | BOTH |
+      | Russian  | ЯЩЕРЫ         | ДРЕВНИЕ ЯЩЕРЫ | ВСЁ  |
 
   Scenario: Every dinosaur has a food type and a description
     Given the dinosaur list the app ships with
