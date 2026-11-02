@@ -6,6 +6,8 @@
 
 ## 2026-11-01
 
+- LAB-893: Coloring gallery choices keep equal button heights on iPhone when dinosaur names wrap.
+
 - LAB-903: The document canvas and browser tint follow the active theme; the home app icon keeps its image in dark mode. iPhone Safari status-bar verification is pending.
 
 - LAB-899: A fixed, theme-matched top edge supplies an opaque system-bar background without taking space from games; installed iOS/iPadOS 27 verification is pending.
