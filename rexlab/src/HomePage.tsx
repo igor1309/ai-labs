@@ -1,9 +1,9 @@
-import { Route, Bone, BookOpen, Brush, Copy, Footprints, Globe, Heart, Landmark, Lock, Monitor, Moon, Pencil, Puzzle, Scale, Shapes, Star, Sun, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
+import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Pencil, Puzzle, Scale, Shapes, Star, Sun, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
 import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
-import { LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
+import { LANGUAGE_FLAGS, LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
@@ -417,19 +417,14 @@ export function HomePage({
         <div className="parent-menus">
           <ParentMenu
             label={text.languageMenu}
-            button={
-              <>
-                <Globe size={18} />
-                <span className="parent-menu-code">{language.toUpperCase()}</span>
-              </>
-            }
+            button={<span className="language-flag" aria-hidden="true">{LANGUAGE_FLAGS[language]}</span>}
             choices={LANGUAGES.map((option) => ({
               value: option,
               name: LANGUAGE_NAMES[option],
               lang: option,
               symbol: (
-                <span className="parent-menu-choice-code" aria-hidden="true">
-                  {option.toUpperCase()}
+                <span className="language-flag" aria-hidden="true">
+                  {LANGUAGE_FLAGS[option]}
                 </span>
               )
             }))}

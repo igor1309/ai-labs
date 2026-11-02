@@ -20,9 +20,9 @@ Feature: English and Russian
 
   Scenario: The language menu is for parents
     When I open the home page
-    Then I see a small globe button showing "EN" or "RU" in the top-right corner
+    Then I see a small button showing only the chosen language flag in the top-right corner
     When I tap it
-    Then a menu lists "English" and "Русский", each in its own language
+    Then a menu lists "English" and "Русский", each in its own language beside its flag
     And the language shown has a ✓
     When I tap outside the menu
     Then the menu closes and the language is unchanged

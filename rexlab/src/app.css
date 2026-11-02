@@ -778,6 +778,11 @@ img {
   font-weight: 500;
 }
 
+.parent-menus .parent-menu-button {
+  width: 48px;
+  padding: 0;
+}
+
 .parent-menu-button[aria-expanded="true"] {
   background: #fffdf8;
   color: #1d2742;
@@ -858,21 +863,13 @@ img {
   font-weight: 600;
 }
 
-.parent-menu-choice-code {
-  display: grid;
-  place-items: center;
+.language-flag {
   width: 32px;
   height: 24px;
-  border-radius: 6px;
-  background: #e6e2d9;
-  color: #5c647a;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.parent-menu-choice[aria-checked="true"] .parent-menu-choice-code {
-  background: #e39b2d;
-  color: #1d2742;
+  display: inline-grid;
+  place-items: center;
+  font-size: 24px;
+  line-height: 1;
 }
 
 .parent-menu-list[data-notes] .parent-menu-choice {
