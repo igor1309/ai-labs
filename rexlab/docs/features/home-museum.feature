@@ -1,9 +1,10 @@
 Feature: The museum from the home page
-  The skeleton museum (skeleton-assembly-museum.feature) is the child's
+  The skeleton museum is the child's
   collection, so the home page opens it directly, from a button in the
   header just before the parents' language, theme and age-level menus.
   Unlike those menus it is for the child: its word is in capitals beside
-  the museum symbol, where the window has room for the word. It carries
+  the museum symbol, wherever the window's shorter side is at least 600
+  CSS pixels; in a phone-sized window the symbol stands alone. It carries
   no count: the collection score is the museum's own, shown inside it.
   How it looks is the dig-site design's.
 
@@ -78,7 +79,7 @@ Feature: The museum from the home page
     Given the app uses the <theme> theme
     When I open the home page
     Then the museum button's word and symbol keep at least 4.5:1 contrast with the button
-    And the button keeps at least 3:1 contrast with the page
+    And the button keeps at least 3:1 contrast with the ground around it
     And under a pointer it brightens, and when pressed it shows a pressed state, as the game tiles do
 
     Examples:

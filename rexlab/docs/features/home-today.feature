@@ -1,9 +1,9 @@
 Feature: Home page: today's game in the sky
   The top of the home page is the sky of a dig site. It holds one game a
-  day, today's game, chosen as home-featured-choice.feature says, with
+  day, today's game, chosen by the app's daily featured-game rule, with
   its picture, its full name, its saved progress and PLAY. Today's game
-  is not among the game tiles under the sky (home-games.feature), so no
-  game is on the page twice. How each part looks is the dig-site
+  is not among the game tiles under the sky, so no game is on the page
+  twice. How each part looks is the dig-site
   design's; this feature says what it does.
 
   Scenario Outline: Today's game names itself in the sky
@@ -38,6 +38,10 @@ Feature: Home page: today's game in the sky
       | SKELETONS        | a collection best of 2 with a trophy symbol |
       | DIG              | 7 dinosaurs dug up with a star symbol       |
       | SAND WRITING     | no score or badge                           |
+      | MAZE             | 2 stars with a star symbol                  |
+      | PUZZLE           | "1/3" pictures with a star symbol           |
+      | TEETH            | "5/16" jaws with a museum symbol            |
+      | COLOR            | 2 finished works with a star symbol         |
 
   Scenario Outline: PLAY starts today's game once
     Given <game> is today's featured game
@@ -53,6 +57,7 @@ Feature: Home page: today's game in the sky
       | SORT             | a sorting round, at once, whatever its pictures are doing |
       | DIG              | a dig round, at once                                      |
       | SAND WRITING     | a blank full-screen sand canvas                           |
+      | MAZE             | the maze, at once, with no welcome screen                 |
 
   Scenario Outline: PLAY opens a game's first screen
     Given <game> is today's featured game
@@ -68,6 +73,9 @@ Feature: Home page: today's game in the sky
       | CARE          | the care welcome screen          | tap "NEW VISITOR" |
       | FIND THE PAIR | the find-the-pair welcome screen | tap "PLAY"        |
       | SKELETONS     | the skeleton selection screen    | choose a dinosaur |
+      | PUZZLE        | the picture choice screen        | choose a dinosaur |
+      | TEETH         | the Whose Jaw welcome screen     | tap "PLAY"        |
+      | COLOR         | the coloring gallery             | tap "NEW WORK"    |
 
   Scenario: The game's name and dinosaurs open it too
     Given COMPARE is today's featured game

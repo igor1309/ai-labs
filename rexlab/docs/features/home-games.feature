@@ -53,6 +53,12 @@ Feature: Home page: the game tiles in the ground
     Then the sky shows TEETH as on any day, with no NEW tag
     And no tile carries a NEW tag
 
+  Scenario: Another new game keeps its tag while one is featured
+    Given the app gained TEETH and COLOR after my first visit, and I have started neither
+    When TEETH is today's featured game
+    Then the sky shows TEETH with no NEW tag
+    And the COLOR tile carries a "NEW" tag
+
   Scenario: Games there on the first visit are not new
     Given this is my first visit
     When I open the home page
@@ -77,3 +83,14 @@ Feature: Home page: the game tiles in the ground
     Given the device asks for reduced motion
     When a row of tiles first comes into view
     Then it appears with a short fade
+
+  Scenario: The games of my first visit are remembered with my progress
+    Given this is my first visit
+    When I open the home page and later reload the app
+    Then the games present at my first visit are still not new
+    And the record is saved on this device with the rest of my progress
+
+  Scenario: A browser that cannot keep the record shows no NEW tag
+    Given the browser cannot read or cannot save progress
+    When I open the home page
+    Then no tile carries a NEW tag, and every tile still opens its game

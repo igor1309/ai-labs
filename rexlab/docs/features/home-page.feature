@@ -8,25 +8,27 @@ Feature: Home page: one page from the sky down
 
   Scenario Outline: Every game can be reached in every window
     Given a window of <width> by <height> CSS pixels, with its safe areas
-    And the app is in English or Russian
+    And the app is in <language>
     When I open the home page
     Then I see no picture asking to turn the device or to widen the window
     And scrolling down reaches every tile, SOON, the parents' note and the version
-    And every word in the header, the sky and the tiles shows whole, on one line where it is a name
+    And every word in the header, the sky and the tiles shows whole
+    And each game's name stays on one line, in smaller type where a long name needs it
     And nothing a child taps sits under a notch, a rounded corner or the home indicator
 
     Examples:
-      | width | height |
-      | 1180  | 820    |
-      | 1133  | 744    |
-      | 744   | 1133   |
-      | 820   | 1180   |
-      | 393   | 852    |
-      | 375   | 667    |
-      | 320   | 568    |
-      | 852   | 393    |
-      | 667   | 375    |
-      | 1440  | 900    |
+      | width | height | language |
+      | 1180  | 820    | English  |
+      | 1133  | 744    | Russian  |
+      | 744   | 1133   | English  |
+      | 820   | 1180   | Russian  |
+      | 393   | 852    | Russian  |
+      | 375   | 667    | English  |
+      | 320   | 568    | Russian  |
+      | 320   | 568    | English  |
+      | 852   | 393    | English  |
+      | 667   | 375    | Russian  |
+      | 1440  | 900    | English  |
 
   Scenario: On an iPad every game is on the first screen
     Given an iPad 11 or an iPad mini in landscape
@@ -35,22 +37,23 @@ Feature: Home page: one page from the sky down
     And scrolling only uncovers the bedrock with the parents' note and the version
 
   Scenario: On a phone the next row shows there is more
-    Given an iPhone upright
+    Given an iPhone 15, 393 by 852, upright
     When I open the home page
     Then the first screen shows today's game and the first row of tiles
     And part of the next row shows above the home indicator
 
-  Scenario Outline: On a phone the museum shows its symbol alone
-    Given an iPhone <orientation>
-    When I open the home page in English or Russian
-    Then the museum button shows the museum symbol without its word
-    And screen readers read it as "MUSEUM" or "МУЗЕЙ"
-    And a tap on it opens the museum
+  Scenario Outline: The museum word shows where the window's shorter side has room
+    Given a window of <width> by <height> CSS pixels, in <language>
+    When I open the home page
+    Then the museum button shows its symbol <word>
+    And screen readers read it as "<name>", and a tap on it opens the museum
 
     Examples:
-      | orientation    |
-      | upright        |
-      | on its side    |
+      | width | height | language | word            | name  |
+      | 1180  | 820    | English  | and "MUSEUM"    | MUSEUM |
+      | 744   | 1133   | Russian  | and "МУЗЕЙ"     | МУЗЕЙ |
+      | 393   | 852    | English  | without a word  | MUSEUM |
+      | 852   | 393    | Russian  | without a word  | МУЗЕЙ |
 
   Scenario: The header scrolls away with the sky
     Given I am on the home page
