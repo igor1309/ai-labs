@@ -12942,3 +12942,13 @@ body:has(.picture-puzzle-board-screen) {
   padding-inline: calc(20px + var(--screen-left)) calc(20px + var(--screen-right));
   scroll-padding-inline: calc(20px + var(--screen-left)) calc(20px + var(--screen-right));
 }
+
+/* Upright on a shorter phone (a home-screen app loses the notch and the
+   home indicator to its safe areas) the large card and the row of tiles
+   both give way, so the whole page still fits the window: the row's
+   tiles never run under its bottom edge nor under the version. */
+[data-size="tall-narrow"] .featured-card { min-height: 160px; }
+[data-size="tall-narrow"] .games-tiles {
+  flex: 0 1 auto;
+  min-height: 260px;
+}
