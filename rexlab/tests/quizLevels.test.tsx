@@ -142,7 +142,7 @@ describe("the compare quiz's levels across the app", () => {
     expect(chosen()).toEqual(["paleontologist"]);
   });
 
-  it("celebrates a level's first best, keeps the other levels' bests, and shows it on the COMPARE tile", async () => {
+  it("celebrates a level's first best, keeps the other levels' bests, and omits the COMPARE tile badge", async () => {
     const storage = recordAt("paleontologist", { ...EMPTY_ENTRY, explorerBest: 6, roundsPlayed: 3 });
     const { user } = openApp(storage);
     await user.click(gameDoor("COMPARE"));
@@ -150,7 +150,7 @@ describe("the compare quiz's levels across the app", () => {
     expect([celebrations(), shownBest()]).toEqual([["FIRST BEST SCORE"], "4"]);
     expect(storedQuiz(storage)).toEqual({ ...EMPTY_ENTRY, explorerBest: 6, paleontologistBest: 4, roundsPlayed: 4 });
     await user.click(button("HOME"));
-    expect(tileBest()).toBe("4");
+    expect(tileBest()).toBeUndefined();
   });
 
   it("reads a best saved before the quiz had levels as Hatchling's", async () => {
@@ -162,7 +162,7 @@ describe("the compare quiz's levels across the app", () => {
     expect(celebrations()).toEqual(["FIRST BEST SCORE"]);
     await user.click(switchButton("hatchling"));
     await user.click(button("HOME"));
-    expect(tileBest()).toBe("8");
+    expect(tileBest()).toBeUndefined();
     expect(storedQuiz(storage)).toEqual({ bestScore: 8, explorerBest: 3, paleontologistBest: null, roundsPlayed: 3, levelChoice: { level: "hatchling", revision: "parent-pick" } });
   });
 

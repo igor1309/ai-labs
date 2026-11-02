@@ -25,7 +25,7 @@ const NAMES = AGE_LEVELS.map((level) => TEXTS.en.ageLevels[level].name);
 
 const picked = (level: AgeLevel, revision = `picked-${level}`): AgeLevelSetting => ({ level, revision });
 
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 const levelSwitch = (language: Language = "en") => screen.getByRole("group", { name: TEXTS[language].ageLevelSwitch });
 const chosen = () =>
   within(levelSwitch())

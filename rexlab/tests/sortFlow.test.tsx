@@ -117,7 +117,7 @@ describe("the sorting game from the home page", () => {
     expect([symbolOf(home), tray().contains(home)]).toEqual(["house", false]);
   });
 
-  it("plays a board to its result, keeps its score, and goes home to a SORT card showing it as the best", async () => {
+  it("plays a board to its result, keeps its score, and goes home to a SORT tile without a badge", async () => {
     const storage = memoryStorage();
     const { user } = openApp({ storage });
     await user.click(button("SORT"));
@@ -132,7 +132,7 @@ describe("the sorting game from the home page", () => {
     await user.click(button("HOME"));
 
     expect(onHomePage()).toBe(true);
-    expect(button("SORT").querySelector(".sort-tile-best")?.textContent).toBe(right);
+    expect(button("SORT").querySelector(".sort-tile-best")?.textContent).toBe(undefined);
   });
 
   it("goes home from a board left early, recording nothing", async () => {
@@ -529,7 +529,7 @@ describe("the sorting levels across the app", () => {
     expect(within(tray()).getAllByRole("button")).toHaveLength(8);
   });
 
-  it.each(AGE_LEVELS)("shows %s's best on the SORT tile and on the large card featuring SORT when it is the setting or the child's choice", async (level) => {
+  it.each(AGE_LEVELS)("shows %s's best only on the featured SORT card for the setting or the child's choice", async (level) => {
     const bests = { bestScore: 5, explorerBest: 7, paleontologistBest: 9, roundsPlayed: 3 };
     for (const byChoice of [false, true]) {
       const best = String({ hatchling: 5, explorer: 7, paleontologist: 9 }[level]);
@@ -540,7 +540,7 @@ describe("the sorting levels across the app", () => {
         unmount();
         return badge;
       });
-      expect(shown).toEqual([best, best]);
+      expect(shown).toEqual([best, undefined]);
     }
   });
 

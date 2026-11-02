@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -119,7 +120,7 @@ async function openList(
       chipWidths={chipWidths}
     />
   );
-  await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
+  await user.click(gameDoor(TEXTS[language].catalogueTile));
   return { viewport, user };
 }
 

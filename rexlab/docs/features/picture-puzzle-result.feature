@@ -6,7 +6,7 @@ Feature: Completing a dinosaur picture
   at that level, from zero to three, independently of the shared collection.
   Round stars are immediate feedback only, not an accumulated currency.
   Choice stars mark the shared collection and do not change with level.
-  The home tile and featured card show the shared distinct-dinosaur count out of 3.
+  The featured card shows the shared distinct-dinosaur count out of 3. The small Home tile shows no badge.
   The result shows the played-level count, plus the shared collection count.
   Its first completion celebrates a first best; a larger count celebrates
   a new best. Repeating a dinosaur at that level keeps the count unchanged.
@@ -34,7 +34,7 @@ Feature: Completing a dinosaur picture
   Scenario: Progress survives a new session
     Given I have completed a dinosaur
     When I reload the app
-    Then its star appears on the picture choice screen and puzzle home tile
+    Then its star appears on the picture choice screen and its count on the featured card
     And its completion contributes to the featured puzzle card
     And puzzle progress never appears on catalogue or dinosaur pages
 

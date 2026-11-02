@@ -1,85 +1,62 @@
-Feature: The home page's game tiles
-  Beside the large card every other game stands in a row of columns, two
-  tiles to a column, every column as wide as the others, in a fixed order
-  less the game the large card features (home-featured-card.feature).
-  The columns do not all fit beside the large card on any iPad, so the
-  row scrolls sideways under the finger, and the next column peeks in at
-  the edge to show there is more.
+Feature: Home game tiles
+  Every game except today's featured game appears in fixed order in two
+  horizontally scrolling rows. The featured card keeps its full title,
+  picture, symbol and progress badge and stays in place while tiles scroll.
 
-  Background:
-    Given an iPad in landscape
-
-  Scenario: The tiles stand in equal columns of two beside the large card
-    Given the large card features COMPARE
-    When I open the home page
-    Then beside the large card I see "ANCIENT REPTILES" over "FIND THE PAIR"
-    And then "SKELETONS" over "DIG"
-    And then "SORT" over "CARE"
-    And then "SAND WRITING" over "MORE COMING", last
-    And every column of tiles is as wide as the others
-    And every tile, "MORE COMING" too, is as tall as the others, half its column
-
-  Scenario: MORE COMING is a picture, not a game
-    When I open the home page
-    Then "MORE COMING" shows a faded dinosaur's shape over a lock
-    And it neither brightens under a pointer nor shows a pressed state
-    And tapping it opens nothing
-    And in Russian its words read "СКОРО ЕЩЁ"
-
-  Scenario Outline: The tiles scroll sideways
+  Scenario Outline: Tiles keep their proportions and footer
     Given the screen is <width> by <height> CSS pixels
-    When I open the home page
-    Then the row shows "COMPARE" and "ANCIENT REPTILES" at its left edge
-    And at least 24 pixels of the first column that does not fit peek in at the right edge
-    When I swipe the tiles to the left until they stop
-    Then I see "MORE COMING" at the right edge
-    And the large card stays in place
-    When I swipe back to the right
-    Then I see "COMPARE" and "ANCIENT REPTILES" again
+    And the app is in English or Russian at any age level
+    And every game has earned progress
+    When I open Home with each game appearing as a small tile
+    Then every small tile including SOON has width:height 4:3
+    And the existing row heights and featured card geometry are preserved
+    And columns are 16 CSS pixels apart
+    And the gap between rows is 16 CSS pixels on a short landscape phone and 28 otherwise
+    And every game footer is 48 CSS pixels high with 8-pixel padding and a 4-pixel gap
+    And every footer has translucent black background with opacity 0.1
+    And a 20-pixel outline icon sits in a 24-pixel badge beside the title
+    And every title is bold 20-pixel text with 24-pixel line height and zero letter spacing
+    And every title fits on one line
+    And the catalogue book sits in its footer and TEETH uses an outline tooth
+    And no small tile shows a progress, count, best-score or star badge
 
     Examples:
       | width | height |
-      | 1024  | 768    |
-      | 1133  | 744    |
+      | 390   | 844    |
+      | 844   | 390    |
+      | 820   | 1180   |
       | 1180  | 820    |
-      | 1366  | 1024   |
-      | 1376  | 1032   |
+      | 1440  | 900    |
 
-  Scenario: A swipe across a tile only scrolls
-    Given I am on the home page
-    When I swipe the tiles to the left, starting on the "SORT" card
-    Then the tiles scroll
-    And no game opens
-    And no tile is left pressed
-
-  Scenario: The tiles stand at their start again on coming home
-    Given I swiped the tiles to "MORE COMING"
-    When I swipe back until I can tap "FIND THE PAIR"
-    And I open "FIND THE PAIR" and go back home
-    Then the row shows "COMPARE" and "ANCIENT REPTILES" at its left edge
-
-  Scenario Outline: Every tile's words fit it
-    Given the app is in <language>
-    And the screen is <width> by <height> CSS pixels
-    And I have a best score of 7 in COMPARE, 8 in CARE, 6 in SORT and 3 in SKELETONS, 120 stars in FIND THE PAIR and 7 dinosaurs dug up in DIG
-    When I open the home page
-    Then every tile keeps its title on one line, but "FIND THE PAIR" on two at most
-    And every title is at least 24 pixels tall, and "MORE COMING" at least 20
-    And every count is at least 20 pixels tall and stays in its tile's picture corner
+  Scenario Outline: Home uses short labels without renaming game screens or the featured card
+    When I open Home in <language>
+    Then its small tiles use <labels> in game order, omitting the featured game
+    And tapping each tile opens the same game as its featured card
+    And game screens and the featured card retain their full labels
 
     Examples:
-      | language | width | height |
-      | English  | 1024  | 768    |
-      | English  | 1366  | 1024   |
-      | Russian  | 1024  | 768    |
-      | Russian  | 1180  | 820    |
+      | language | labels                                                                                                    |
+      | English  | COMPARE, EXPLORE, PAIRS, BONES, DIG, SORT, CARE, DRAW, MAZE, PUZZLE, TEETH, COLOR, SOON                       |
+      | Russian  | СРАВНИ, ЯЩЕРЫ, ПАРЫ, КОСТИ, КОПАЙ, СОРТИРУЙ, ЗАБОТА, РИСУЙ, ЛАБИРИНТ, ПАЗЛ, ЗУБЫ, РАСКРАСЬ, СКОРО         |
 
-  Scenario Outline: MORE COMING reads well in both themes
-    Given the app uses the <theme> theme
-    When I open the home page
-    Then the words "MORE COMING" keep at least 4.5:1 contrast with their tile
+  Scenario: SOON is a picture, not a game
+    When I open Home
+    Then SOON shows a faded dinosaur silhouette and a lock in its footer
+    And it has no pressed state and opens nothing when tapped
 
-    Examples:
-      | theme |
-      | light |
-      | dark  |
+  Scenario: Swiping only scrolls the tiles
+    When I swipe the tiles starting on SORT
+    Then the row scrolls sideways without opening a game or leaving a tile pressed
+    And the featured card stays in place
+    And I can scroll to SOON and back to the first column
+
+  Scenario: Rotating keeps the scrolled column
+    Given I scrolled to a column or to the end of the row
+    When the viewport changes orientation or size
+    Then the same column or row end remains at the edge using the rendered column widths and gaps
+    And the featured game and open parent menu remain unchanged
+
+  Scenario: Returning Home starts the row again
+    Given I scrolled the Home tiles
+    When I open a game and return Home
+    Then the row starts at its first column

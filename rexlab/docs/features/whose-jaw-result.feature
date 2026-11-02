@@ -39,7 +39,8 @@ Feature: Celebrate five jaws returned to their dinosaurs
     When I choose JAW SHELF from a result
     Then the shelf destination opens
     When I choose HOME from a result
-    Then home opens with the saved collection count
+    Then Home opens with the saved collection count on the featured card when it features TEETH
+    And the small TEETH tile has no badge
     And bests, collected jaws and my level choice survive reload
 
   Scenario: Strong rounds offer the next level after the rewards

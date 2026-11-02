@@ -42,7 +42,8 @@ Feature: Find the pair: progress at each age level
   Scenario Outline: Every level earns a star and finds dinosaurs alike
     Given the level switch shows <level> chosen
     When I finish a board
-    Then I earn one star, and the FIND THE PAIR tile counts it
+    Then I earn one star, and the featured FIND THE PAIR card counts it
+    And the small PAIRS tile has no badge
     And the board's dinosaurs are found
 
     Examples:

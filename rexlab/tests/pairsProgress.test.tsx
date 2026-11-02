@@ -11,7 +11,7 @@ import { SHIPPED_PALS, gameDoor, manualTimers, memoryStorage, quizSaved, symbolO
 
 // find-the-pair-progress.feature at every age level, and the full flow
 // of find-the-pair-level-progress.feature.
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
 const bestShown = () => screen.queryByLabelText("BEST SCORE")?.textContent ?? null;
 const entry = (progress: Partial<StoredPairs> = {}): StoredPairs => ({ stars: 0, level: 1, boardsOnLevel: 0, best: {}, found: [], ...progress });
@@ -31,7 +31,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
   const ids = board.pals.map(({ id }) => id);
   const played = level === "hatchling" ? 1 : level;
 
-  it("earns one star on the result and home tile, and keeps its found dinosaurs after reopening", async () => {
+  it("earns one star on the result, omits a tile badge, and keeps found dinosaurs after reopening", async () => {
     const storage = memoryStorage();
     const app = openPairsApp({ storage, ageLevel: picked(level), clock: manualTimers(), random: () => 0 });
     await playPairs(app.user);
@@ -42,7 +42,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
     expect(storedPairs(storage)).toEqual(entry({ stars: 1, boardsOnLevel: level === "hatchling" ? 1 : 0, best: { [played]: ids.length }, found: ordered(ids), offer: { level, strong: level === "hatchling" ? 0 : 1, declined: [] } }));
     await app.user.click(button("HOME"));
     const tile = gameDoor("FIND THE PAIR").querySelector(".pairs-tile-stars");
-    expect(tile && [tile.textContent, symbolOf(tile)]).toEqual(["1", "star"]);
+    expect(tile).toBeNull();
     app.unmount();
 
     const reopened = openPairsApp({ storage, ageLevel: picked(level), clock: manualTimers(), random: () => 0 });
@@ -128,7 +128,7 @@ describe.each(AGE_LEVELS)("progress while playing %s", (level) => {
 
     expect([screen.getByLabelText("TRIES").textContent, screen.getByLabelText("STARS").textContent, bestShown(), celebrations()]).toEqual([String(ids.length + 3), "★1", null, []]);
     await app.user.click(button("HOME"));
-    expect(gameDoor("FIND THE PAIR").querySelector(".pairs-tile-stars")?.textContent).toBe("1");
+    expect(gameDoor("FIND THE PAIR").querySelector(".pairs-tile-stars")?.textContent).toBe(undefined);
     await app.user.click(button("ANCIENT REPTILES"));
     expectCatalogueUnmarked();
     expect(storage.items.get(PROGRESS_KEY)).toBe(raw);

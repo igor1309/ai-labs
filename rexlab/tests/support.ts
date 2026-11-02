@@ -1,3 +1,4 @@
+import { vi, onTestFinished } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { existsSync } from "node:fs";
@@ -25,7 +26,6 @@ import { attributeOf, correctOf, QUESTION_KINDS, ROUND_LENGTH, type Question } f
 import { TEXTS } from "../src/language/texts.ts";
 import { boardState, startBoard, type Dinosaur as Sortable, type Property, type Sorting } from "../src/sorting/index.ts";
 import type { Theme } from "../src/theme.ts";
-import { shortTileColumn } from "../src/tileColumns.ts";
 import type { LayoutKeeping } from "../src/useKeptRow.ts";
 import { styleAt } from "./windowSizes.ts";
 
@@ -768,7 +768,7 @@ export const PALETTE: Record<Theme, Record<string, string>> = {
 
 // The translucent layers the design lays over the navy, the terracotta
 // and the amber in both themes.
-export const OVERLAYS = ["#00000026", "#00000033", "#FFFFFF1A", "#FFFFFF1F", "#FFFFFF33", "#FFFFFF59"];
+export const OVERLAYS = ["rgba(0, 0, 0, 0.1)", "rgba(255, 255, 255, 0.18)", "#00000026", "#00000033", "#FFFFFF1A", "#FFFFFF1F", "#FFFFFF33", "#FFFFFF59"];
 
 // The name of the first symbol an element shows, such as "sun" or "globe".
 export function symbolOf(element: Element): string | undefined {
@@ -813,12 +813,23 @@ export function tilesRow(): HTMLElement {
 export function layOutTilesRow(): HTMLElement {
   const row = tilesRow();
   const size = () => document.documentElement.dataset.size;
-  const style = () => styleAt(row, [window.innerWidth, window.innerHeight]);
   const width = () => (size() === "tall" ? window.innerWidth - 56 : size() === "tall-narrow" ? window.innerWidth - 20 : size() === "wide-short" ? Math.round((window.innerWidth - 40 - 16 + 20) / 2) : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
-  const column = () => (size() === "wide-short" ? shortTileColumn(width()) : style().px("grid-auto-columns"));
+  const grid = row.querySelector<HTMLElement>(".tiles-grid")!;
+  const gap = () => size() === "wide-short" ? 16 : 28;
+  const height = () => size() === "tall" ? Math.max(360, Math.min(window.innerHeight * .36, 520)) : size() === "tall-narrow" ? Math.max(320, Math.min(window.innerHeight * .36, 420)) : size() === "wide-short" ? Math.max(260, window.innerHeight - 100) : Math.max(360, Math.min(window.innerHeight - 380, 520));
+  const column = () => (height() - gap()) * 2 / 3;
+  // jsdom has no layout or container units; supply the rendered grid
+  // values at the browser boundary, leaving scroll anchoring real.
+  const originalStyle = window.getComputedStyle.bind(window);
+  const styleSpy = vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
+    const computed = originalStyle(element, pseudo);
+    if (element !== grid) return computed;
+    return new Proxy(computed, { get: (target, key) => key === "gridAutoColumns" ? `${column()}px` : key === "columnGap" ? "16px" : Reflect.get(target, key) });
+  });
+  onTestFinished(() => styleSpy.mockRestore());
   const scrollWidth = () => {
-    const columns = Math.ceil([...row.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);
-    return Math.round(columns * column() + (columns - 1) * style().columnGap());
+    const columns = Math.ceil([...grid.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);
+    return Math.round(columns * column() + (columns - 1) * 16);
   };
   Object.defineProperties(row, { clientWidth: { get: width }, scrollWidth: { get: scrollWidth } });
   return row;
@@ -833,11 +844,15 @@ export function swipeTiles(row: HTMLElement, scroll: number) {
 
 // A game's own tile on the home page, apart from the large card. The
 // large card's game has no tile.
-export const homeTile = (name: string) => within(tilesRow()).getByRole("button", { name });
+export const shortHomeName = (name: string) => ({
+  "COMPARE": "COMPARE", "ANCIENT REPTILES": "EXPLORE", "CARE": "CARE", "SORT": "SORT", "FIND THE PAIR": "PAIRS", "SKELETONS": "BONES", "DIG": "DIG", "SAND WRITING": "DRAW", "LABYRINTH": "MAZE", "PICTURE PUZZLE": "PUZZLE", "WHOSE JAW?": "TEETH", "COLOR A DINOSAUR": "COLOR",
+  "СРАВНИ": "СРАВНИ", "ВСЕ": "ЯЩЕРЫ", "ЗАБОТА": "ЗАБОТА", "РАЗЛОЖИ": "СОРТИРУЙ", "НАЙДИ ПАРУ": "ПАРЫ", "СКЕЛЕТЫ": "КОСТИ", "РАСКОПКИ": "КОПАЙ", "РИСОВАНИЕ НА ПЕСКЕ": "РИСУЙ", "ЛАБИРИНТ": "ЛАБИРИНТ", "СОБЕРИ КАРТИНКУ": "ПАЗЛ", "ЧЬЯ ЧЕЛЮСТЬ?": "ЗУБЫ", "РАСКРАСЬ ДИНОЗАВРА": "РАСКРАСЬ"
+} as Record<string, string>)[name] ?? name;
+export const homeTile = (name: string) => within(tilesRow()).getByRole("button", { name: shortHomeName(name) });
 
 // The way into a game from the home page: its tile, or the large card
 // when it features the game.
-export const gameDoor = (name: string) => within(document.body).getByRole("button", { name });
+export const gameDoor = (name: string) => within(document.body).getByRole("button", { name: !document.querySelector(".home") || document.querySelector(".featured-card")?.getAttribute("aria-label") === name ? name : shortHomeName(name) });
 
 // The home page's large card, featuring today's game, not the frame drawn
 // under it as it glides.

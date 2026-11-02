@@ -1,5 +1,5 @@
 import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Pencil, Puzzle, Scale, Shapes, Star, Sun, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
-import { useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
@@ -10,7 +10,7 @@ import { Picture } from "./Picture.tsx";
 import { PicturePuzzlePicture } from "./PicturePuzzlePicture.tsx";
 import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
-import { NARROW_ROW_START, ROW_START, SHORT_TILE_GAP, TILE_COLUMN, TILE_GAP, shortTileColumn, tileColumnWidth } from "./tileColumns.ts";
+import { tileColumns } from "./tileColumns.ts";
 import { useKeptRow, type LayoutKeeping } from "./useKeptRow.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
@@ -24,15 +24,8 @@ export type HomeGame = "compare" | "catalogue" | "care" | "sort" | "pairs" | "sk
 // The games in their tiles' order, which never changes.
 export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "care", "sandWriting", "labyrinth", "picturePuzzle", "whoseJaw", "coloring"];
 
-// What a game's tile shows in its picture's corner: a number beside its
-// symbol.
+// The featured card's progress or catalogue count beside its symbol.
 type Badge = { symbol: LucideIcon; value: number | string };
-
-// The window's width and its changes.
-export type WindowWidth = {
-  width(): number;
-  subscribe(onChange: () => void): () => void;
-};
 
 export type HomePageProps = {
   language: Language;
@@ -43,19 +36,10 @@ export type HomePageProps = {
   onAgeLevel: (level: AgeLevel) => void;
   // Times each menu's way out.
   startTimer: ParentMenuProps<string>["startTimer"];
-  // The window, whose width the tiles' columns follow upright.
-  viewport: WindowWidth;
-  // Whether the window stands upright, where the tiles' columns narrow
-  // with its width, and whether it is narrow too, as an iPhone upright,
-  // where the page's sides are narrower, and whether it is short, as an
-  // iPhone on its side, where the columns are a share of the row's width.
-  upright: boolean;
-  narrow?: boolean;
-  short?: boolean;
   // Where the page keeps where the tiles' row was swiped to, through each
   // change of its layout.
   layoutKeeping: LayoutKeeping;
-  // The game the large card features today, beside its own tile.
+  // Today's featured game, whose small tile is omitted.
   featured: HomeGame;
   // The pictures of the two dinosaurs facing off, the quiz's picture.
   faceOff: { left: string; right: string };
@@ -79,7 +63,7 @@ export type HomePageProps = {
   // The dig game's tile: the dinosaur on it and how many dinosaurs have
   // been dug up, undefined until one has.
   dig: { picture: string; dugUp: number | undefined };
-  // Its tile and featured card share the collection across all levels.
+  // The featured card shows the collection across all levels.
   whoseJaw?: { picture: string; collected: number; total: number; onOpen: () => void } | undefined;
   coloring?: { picture: string; completed: number | null | undefined; onOpen: () => void } | undefined;
   picturePuzzle?: { picture: string; collected: number; onOpen: () => void } | undefined;
@@ -100,6 +84,16 @@ export type HomePageProps = {
   onLabyrinth: () => void;
 };
 
+const HOME_TILE_LABELS: Record<Language, Record<HomeGame | "moreComing", string>> = {
+  en: { compare: "COMPARE", catalogue: "EXPLORE", care: "CARE", sort: "SORT", pairs: "PAIRS", skeletons: "BONES", dig: "DIG", coloring: "COLOR", whoseJaw: "TEETH", picturePuzzle: "PUZZLE", labyrinth: "MAZE", sandWriting: "DRAW", moreComing: "SOON" },
+  ru: { compare: "СРАВНИ", catalogue: "ЯЩЕРЫ", care: "ЗАБОТА", sort: "СОРТИРУЙ", pairs: "ПАРЫ", skeletons: "КОСТИ", dig: "КОПАЙ", coloring: "РАСКРАСЬ", whoseJaw: "ЗУБЫ", picturePuzzle: "ПАЗЛ", labyrinth: "ЛАБИРИНТ", sandWriting: "РИСУЙ", moreComing: "СКОРО" }
+};
+
+// The tooth uses the same outline stroke as the other tile symbols.
+function Tooth() {
+  return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5C10 2 4 2 4 7c0 3 2 4 2 7 0 3 1 6 2 6s1-7 4-7 3 7 4 7 2-3 2-6c0-3 2-4 2-7 0-5-6-5-8-2Z" /></svg>;
+}
+
 type Menu = "language" | "theme" | "ageLevel";
 
 export function HomePage({
@@ -110,10 +104,6 @@ export function HomePage({
   ageLevel,
   onAgeLevel,
   startTimer,
-  viewport,
-  upright,
-  narrow = false,
-  short = false,
   layoutKeeping,
   featured,
   faceOff,
@@ -141,7 +131,6 @@ export function HomePage({
   onLabyrinth
 }: HomePageProps) {
   const text = TEXTS[language];
-  const windowWidth = useSyncExternalStore(viewport.subscribe, viewport.width);
   const [openMenu, setOpenMenu] = useState<Menu>();
   const menu = (name: Menu) => ({
     open: openMenu === name,
@@ -150,8 +139,7 @@ export function HomePage({
     startTimer
   });
   const ThemeSymbol = THEME_SYMBOLS[theme];
-  // Each game's own parts, which its tile and the large card both show,
-  // so the two never tell the child different things.
+  // Both doors share artwork and navigation; rewards belong to the hero.
   type GameEntry = { name: string; symbol: LucideIcon; picture: ReactNode; badge: Badge | undefined; onOpen: () => void };
   const games: Record<Exclude<HomeGame, "picturePuzzle" | "whoseJaw" | "coloring">, GameEntry> & { picturePuzzle: GameEntry | undefined; whoseJaw: GameEntry | undefined; coloring: GameEntry | undefined } = {
     compare: {
@@ -236,151 +224,27 @@ export function HomePage({
       onOpen: onSandWriting
     }
   };
-  // Each game's tile. The large card's game has none in the row, so no
-  // game is on the page twice.
-  const tiles: Record<HomeGame, ReactNode> = {
-    compare: (
-      <Button key="compare" className="card compare-tile" data-turn-part="tile-compare" aria-label={games.compare.name} onClick={games.compare.onOpen}>
-        {games.compare.picture}
-        <span className="compare-tile-row">
-          <span className="compare-tile-symbol" aria-hidden="true">
-            <Scale size={20} />
+  const labels = HOME_TILE_LABELS[language];
+  const tiles = Object.fromEntries(HOME_GAMES.map((game) => {
+    const entry = games[game];
+    if (!entry) return [game, undefined];
+    const prefix = game.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+    const Symbol = entry.symbol;
+    return [game, (
+      <Button key={game} className={`card ${prefix}-tile`} data-turn-part={`tile-${game}`} aria-label={labels[game]} onClick={entry.onOpen}>
+        {entry.picture}
+        <span className={`${prefix}-tile-row home-tile-footer`}>
+          <span className={`${prefix}-tile-symbol home-tile-symbol`} aria-hidden="true">
+            {game === "whoseJaw" ? <Tooth /> : <Symbol size={20} />}
           </span>
-          <span className="compare-tile-title">{games.compare.name}</span>
-        </span>
-        <BadgeChip badge={games.compare.badge} className="compare-tile-best" size={18} />
-      </Button>
-    ),
-    catalogue: (
-      <Button key="catalogue" className="card catalogue-tile" data-turn-part="tile-catalogue" aria-label={games.catalogue.name} onClick={games.catalogue.onOpen}>
-        {games.catalogue.picture}
-        {/* The book sits in the picture's other corner: beside the
-            title it would leave ANCIENT REPTILES too little of the row on
-            the smallest iPad. */}
-        <span className="catalogue-tile-symbol" aria-hidden="true">
-          <BookOpen size={20} />
-        </span>
-        <span className="catalogue-tile-row">
-          <span className="catalogue-tile-title">{games.catalogue.name}</span>
-        </span>
-        {/* The counts sit in the tiles' corners, over the pictures: the
-            rows keep their width for the titles. */}
-        <BadgeChip badge={games.catalogue.badge} className="catalogue-tile-count" size={18} />
-      </Button>
-    ),
-    care: (
-      <Button key="care" className="card care-tile" data-turn-part="tile-care" aria-label={games.care.name} onClick={games.care.onOpen}>
-        {games.care.picture}
-        <span className="care-tile-row">
-          <span className="care-tile-symbol" aria-hidden="true">
-            <Heart size={20} />
-          </span>
-          <span className="care-tile-title">{games.care.name}</span>
-        </span>
-        <BadgeChip badge={games.care.badge} className="care-tile-best" size={18} />
-      </Button>
-    ),
-    sort: (
-      <Button key="sort" className="card sort-tile" data-turn-part="tile-sort" aria-label={games.sort.name} onClick={games.sort.onOpen}>
-        {games.sort.picture}
-        <span className="sort-tile-row">
-          <span className="sort-tile-symbol" aria-hidden="true">
-            <Shapes size={20} />
-          </span>
-          <span className="sort-tile-title">{games.sort.name}</span>
-        </span>
-        <BadgeChip badge={games.sort.badge} className="sort-tile-best" size={18} />
-      </Button>
-    ),
-    pairs: (
-      <Button key="pairs" className="card pairs-tile" data-turn-part="tile-pairs" aria-label={games.pairs.name} onClick={games.pairs.onOpen}>
-        {games.pairs.picture}
-        <span className="pairs-tile-row">
-          <span className="pairs-tile-symbol" aria-hidden="true">
-            <Copy size={24} />
-          </span>
-          <span className="pairs-tile-title">{games.pairs.name}</span>
-        </span>
-        <BadgeChip badge={games.pairs.badge} className="pairs-tile-stars" size={18} />
-      </Button>
-    ),
-    skeletons: (
-      <Button key="skeletons" className="card skeletons-tile" data-turn-part="tile-skeletons" aria-label={games.skeletons.name} onClick={games.skeletons.onOpen}>
-        {games.skeletons.picture}
-        <span className="skeletons-tile-row">
-          <span className="skeletons-tile-symbol" aria-hidden="true">
-            <Bone size={20} />
-          </span>
-          <span className="skeletons-tile-title">{games.skeletons.name}</span>
-        </span>
-        <BadgeChip badge={games.skeletons.badge} className="skeletons-tile-best" size={18} />
-      </Button>
-    ),
-    dig: (
-      <Button key="dig" className="card dig-tile" data-turn-part="tile-dig" aria-label={games.dig.name} onClick={games.dig.onOpen}>
-        {games.dig.picture}
-        <span className="dig-tile-row">
-          <span className="dig-tile-symbol" aria-hidden="true">
-            <Brush size={20} />
-          </span>
-          <span className="dig-tile-title">{games.dig.name}</span>
-        </span>
-        <BadgeChip badge={games.dig.badge} className="dig-tile-count" size={18} />
-      </Button>
-    ),
-    coloring: games.coloring && (
-      <Button key="coloring" className="card coloring-tile" data-turn-part="tile-coloring" aria-label={games.coloring.name} onClick={games.coloring.onOpen}>
-        {games.coloring.picture}
-        <span className="coloring-tile-row"><span className="coloring-tile-symbol" aria-hidden="true"><Pencil size={20} /></span><span>{games.coloring.name}</span></span>
-        <BadgeChip badge={games.coloring.badge} className="coloring-tile-count" size={18} />
-      </Button>
-    ),
-    whoseJaw: games.whoseJaw && (
-      <Button key="whoseJaw" className="card whose-jaw-tile" data-turn-part="tile-whoseJaw" aria-label={games.whoseJaw.name} onClick={games.whoseJaw.onOpen}>
-        {games.whoseJaw.picture}
-        <span className="whose-jaw-tile-row"><span aria-hidden="true">🦷</span><span>{games.whoseJaw.name}</span></span>
-        <BadgeChip badge={games.whoseJaw.badge} className="whose-jaw-tile-count" size={18} />
-      </Button>
-    ),
-    picturePuzzle: games.picturePuzzle && (
-      <Button key="picturePuzzle" className="card picture-puzzle-tile" data-turn-part="tile-picturePuzzle" aria-label={games.picturePuzzle.name} onClick={games.picturePuzzle.onOpen}>
-        {games.picturePuzzle.picture}
-        <span className="picture-puzzle-tile-row">
-          <span className="picture-puzzle-tile-symbol" aria-hidden="true"><Puzzle size={20} /></span>
-          <span className="picture-puzzle-tile-title">{games.picturePuzzle.name}</span>
-        </span>
-        <BadgeChip badge={games.picturePuzzle.badge} className="picture-puzzle-tile-count" size={18} />
-      </Button>
-    ),
-    labyrinth: (
-      <Button key="labyrinth" className="card labyrinth-tile" data-turn-part="tile-labyrinth" aria-label={games.labyrinth.name} onClick={games.labyrinth.onOpen}>
-        {games.labyrinth.picture}
-        <span className="labyrinth-tile-row">
-          <span className="labyrinth-tile-symbol" aria-hidden="true"><Route size={20} /></span>
-          <span className="labyrinth-tile-title">{games.labyrinth.name}</span>
-        </span>
-        <BadgeChip badge={games.labyrinth.badge} className="labyrinth-tile-best" size={18} />
-      </Button>
-    ),
-    sandWriting: (
-      <Button key="sandWriting" className="card sand-writing-tile" data-turn-part="tile-sandWriting" aria-label={games.sandWriting.name} onClick={games.sandWriting.onOpen}>
-        {games.sandWriting.picture}
-        <span className="sand-writing-tile-row">
-          <span className="sand-writing-tile-symbol" aria-hidden="true">
-            <Pencil size={20} />
-          </span>
-          <span className="sand-writing-tile-title">{games.sandWriting.name}</span>
+          <span className={`${prefix}-tile-title home-tile-title`}>{labels[game]}</span>
         </span>
       </Button>
-    )
-  };
+    )];
+  }));
   const featuredGame = (featured === "picturePuzzle" && !picturePuzzle) || (featured === "whoseJaw" && !whoseJaw) || (featured === "coloring" && !coloring) ? "compare" : featured;
   const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined) && (game !== "coloring" || coloring !== undefined));
-  // The tiles and the games still to come, in columns of two.
-  const columns = Math.ceil((shown.length + 1) / 2);
-  const rowStart = narrow ? NARROW_ROW_START : ROW_START;
-  const column = upright ? tileColumnWidth(windowWidth, columns, rowStart) : TILE_COLUMN;
-  const tilesRow = useKeptRow(layoutKeeping, short ? { column: shortTileColumn, gap: SHORT_TILE_GAP } : { column, gap: TILE_GAP });
+  const tilesRow = useKeptRow(layoutKeeping, tileColumns);
   const today = games[featuredGame] ?? games.compare;
   const FeaturedSymbol = today.symbol;
   // Each part both layouts share is marked, so it glides to its place in
@@ -476,31 +340,29 @@ export function HomePage({
             </span>
             <span className="featured-card-title">{today.name}</span>
           </span>
-          {/* The badge sits in the card's corner, over the picture, as on
-              the tiles: the footer keeps its width for the name. */}
+          {/* The badge sits in the card's corner, over the picture: the footer keeps its width for the name. */}
           <BadgeChip badge={today.badge} className="featured-card-badge" size={22} />
         </Button>
         {/* The other games stand in columns of two, in a fixed order, and
             scroll sideways beside the large card when they do not fit. The
-            games still to come stand under the last of them. Upright,
-            the columns narrow by the window's width so the next one
-            peeks in, which the stylesheet cannot work out. */}
+            games still to come stand under the last of them. */}
         <div
           ref={tilesRow.ref}
           className="games-tiles"
           data-turn-part="tiles"
-          style={{ "--tile-column": `${tileColumnWidth(windowWidth, columns, rowStart)}px` } as CSSProperties}
           onScroll={tilesRow.onScroll}
         >
-          {shown.map((game) => tiles[game])}
-          {/* The games still to come are a picture, not a button: a tap on
-              it does nothing, and nothing on it invites one. */}
-          <div className="more-coming" data-turn-part="more-coming">
-            <Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} />
-            <span className="more-coming-row">
-              <Lock size={22} aria-hidden="true" />
-              <span className="more-coming-title">{text.moreComing}</span>
-            </span>
+          <div className="tiles-grid">
+            {shown.map((game) => tiles[game])}
+            {/* The games still to come are a picture, not a button: a tap on
+                it does nothing, and nothing on it invites one. */}
+            <div className="more-coming" data-turn-part="more-coming">
+              <Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} />
+              <span className="more-coming-row home-tile-footer">
+                <span className="home-tile-symbol" aria-hidden="true"><Lock size={20} /></span>
+                <span className="more-coming-title home-tile-title">{labels.moreComing}</span>
+              </span>
+            </div>
           </div>
         </div>
       </div>

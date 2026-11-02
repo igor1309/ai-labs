@@ -67,7 +67,7 @@ describe("sand writing through Home", () => {
     const app = openFlow(language, portrait, featured, reduced);
     const text = TEXTS[language];
     const door = featured ? featuredCard() : homeTile(text.sandWriting);
-    expect(door.getAttribute("aria-label")).toBe(text.sandWriting);
+    expect(door.getAttribute("aria-label")).toBe(featured ? text.sandWriting : (language === "en" ? "DRAW" : "РИСУЙ"));
     expect(text.sandWriting).toBe(text.sandWriting.toLocaleUpperCase(language));
     expect(symbolOf(door)).toBe("pencil");
     expect(door.querySelector("img")).toBeNull();

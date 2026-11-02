@@ -72,7 +72,7 @@ Feature: Home page: choosing the featured game
     And I have started every game at least once
     When an update adds a new game and I reopen the app the same day
     Then CARE is still featured
-    And the new game's tile goes last, before "MORE COMING"
+    And the new game's tile goes last, before "SOON"
     And from the next day the new game, never started, has a weight of 2
 
 

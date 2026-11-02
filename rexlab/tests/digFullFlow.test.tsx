@@ -46,9 +46,10 @@ it.each(["compare", "dig"])("shows the stored count on DIG's door with %s featur
   // On DIG's day the large card is its only door.
   const door = () => gameDoor("DIG");
   expect(door() === featuredCard()).toBe(featured === "dig");
-  expect([badgeOf(door())?.textContent, symbolOf(badgeOf(door())!)]).toEqual(["7", "star"]);
+  if (featured === "dig") expect([badgeOf(door())?.textContent, symbolOf(badgeOf(door())!)]).toEqual(["7", "star"]);
+  else expect(badgeOf(door())).toBeNull();
   fireEvent.click(door()); finish(app); fireEvent.click(button("HOME"));
-  expect(badgeOf(door())?.textContent).toBe("8");
+  expect(badgeOf(door())?.textContent).toBe(featured === "dig" ? "8" : undefined);
 });
 
 it.each(["tile", "featured", "DIG AGAIN"])("a quick double tap from %s counts one start and brushes no sand", (door) => {

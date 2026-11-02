@@ -6,7 +6,7 @@ Feature: The home page in a tall-narrow window
   sideways to the window's right edge. Under
   360 wide (an iPhone with its display zoomed, or a window in Slide Over)
   the corner closes up, the large card's name is a little smaller, and
-  ANCIENT REPTILES may take two lines.
+  the small tiles keep their short labels on one line.
 
   Scenario: The home page stands upright on an iPhone
     Given a tall-narrow window 320 by 568, 375 by 667, 390 by 844, 393 by 852 or 430 by 932
@@ -26,14 +26,14 @@ Feature: The home page in a tall-narrow window
   Scenario: The tiles' columns fit the narrow row
     Given a tall-narrow window
     When I open the home page
-    Then the tiles' columns are sized from the 20-pixel side
-    And the next column peeks in at the window's right edge
+    Then the tiles have width:height 4:3 derived from the existing row height
+    And columns are 16 pixels apart and scroll to the window's right edge
 
   Scenario: Every word fits at 320 and 375 wide
     Given a tall-narrow window 320 or 375 wide
     When I open the home page in English or Russian, featuring any game
     Then the large card's name fits its card
-    And every tile's title fits its column, FIND THE PAIR's and SAND WRITING's on at most two lines, and ANCIENT REPTILES's too under 360 wide
+    And every small tile's short title fits on one line in its 48-pixel footer
 
   Scenario: Growing past 600 wide brings back the tall layout
     Given the home page in a tall-narrow window

@@ -2,6 +2,8 @@
 
 ## 2026-11-02
 
+- LAB-906: Home games use 4:3 tiles, short English/Russian labels and matching icon footers. Small tiles omit progress badges; the featured card keeps its full title and rewards.
+
 - LAB-907: The closed language picker shows only a flag; its open menu pairs each flag with the language name. Parent controls have equal widths and spacing.
 
 ## 2026-11-01

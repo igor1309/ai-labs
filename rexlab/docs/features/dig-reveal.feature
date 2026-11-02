@@ -51,7 +51,7 @@ Feature: Dig: the reveal and its star
   Scenario: Home from the reveal returns to the home page
     Given I am on the reveal
     When I tap "HOME"
-    Then I am on the home page and the "DIG" tile shows my count
+    Then I am on Home, where only the featured DIG card shows my count
 
   Scenario Outline: The reveal fits and reads in either language and theme
     Given the app is in <language> and uses the <theme> theme

@@ -1,3 +1,4 @@
+import { shortHomeName } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { App, type AppProps } from "../src/App.tsx";
@@ -19,7 +20,7 @@ import { openWindow } from "./windowSizes.ts";
 
 // These flow tests identify controls; visibility and layout have separate
 // contracts. Avoid repeated computed-style walks through the whole App.
-const button = (name: string) => screen.getByRole("button", { name, hidden: true });
+const button = (name: string) => screen.getByRole("button", { name: document.querySelector(".home") && !document.querySelector(`.featured-card[aria-label="${name}"]`) ? shortHomeName(name) : name, hidden: true });
 
 function openApp(storage: MemoryStorage, language: Language, theme: Theme, featured: HomeGame = "compare", reduced = false) {
   openWindow(1180, 820);
@@ -76,7 +77,7 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     const door = button(text.picturePuzzle);
     expect(getComputedStyle(door).backgroundColor).toBe(theme === "dark" ? "rgb(37, 59, 55)" : "rgb(220, 234, 222)");
     expect(door.querySelector(".picture-puzzle-backdrop")).not.toBeNull();
-    expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("0/3");
+    expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "0/3" : undefined);
     fireEvent.click(door);
     expect(app.countStart).not.toHaveBeenCalled();
     fireEvent.click(button(text.ageLevels.hatchling.name));
@@ -116,14 +117,14 @@ describe.each(LANGUAGES)("the picture puzzle full flow in %s", (language) => {
     expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("1/3");
     expect(within(button(readPictureDinosaurs(records)[0]!.name[language].toLocaleUpperCase(language))).getByRole("img", { name: text.star })).not.toBeNull();
     fireEvent.click(button(text.home));
-    expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("1/3");
+    expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "1/3" : undefined);
     fireEvent.click(button(text.catalogueTile));
     expect(screen.getByRole("main", { name: text.catalogue })).not.toBeNull();
     expect(screen.queryByLabelText(text.pictureCollection)).toBeNull();
     fireEvent.click(button(text.home));
     app.unmount();
     const reloaded = openApp(storage, language, theme, featured);
-    expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("1/3");
+    expect(button(text.picturePuzzle).querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "1/3" : undefined);
     fireEvent.click(button(text.picturePuzzle));
     expect(button(text.ageLevels.hatchling.name).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("1/3");
@@ -176,7 +177,7 @@ it.each(["hatchling", "explorer", "paleontologist"] as const)("keeps a %s board 
   act(() => app.viewport.turn("landscape"));
   expect(screen.getByLabelText(TEXTS.en.pictureFitted).textContent).toBe(fitted);
   fireEvent.click(button(TEXTS.en.home));
-  expect(button(TEXTS.en.picturePuzzle).querySelector(".picture-puzzle-tile-count")!.textContent).toBe("0/3");
+  expect(button(TEXTS.en.picturePuzzle).querySelector(".picture-puzzle-tile-count")?.textContent).toBe(undefined);
   expect(storage.items.get(PROGRESS_KEY)).toBeUndefined();
   fireEvent.click(button(TEXTS.en.picturePuzzle));
   fireEvent.click(button("TRICERATOPS"));
@@ -190,7 +191,7 @@ it.each(["compare", "picturePuzzle"] as const)("shows the collection across leve
   const app = openApp(storage, "en", "dark", featured);
   const text = TEXTS.en;
   const door = button(text.picturePuzzle);
-  expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")!.textContent).toBe("2/3");
+  expect(door.querySelector(".picture-puzzle-tile-count, .featured-card-badge")?.textContent).toBe(featured === "picturePuzzle" ? "2/3" : undefined);
   fireEvent.click(door);
   fireEvent.click(button(text.ageLevels.paleontologist.name));
   expect(screen.getByLabelText(text.pictureCollection).textContent).toBe("2/3");

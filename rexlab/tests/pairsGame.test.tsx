@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { readFileSync } from "node:fs";
 import { TEXTS } from "../src/language/texts.ts";
 import { join } from "node:path";
@@ -63,7 +64,7 @@ const LEVEL_BOARDS: [string, PairsAppOptions<ManualTimers>, Board][] = [
   ["Paleontologist", { ageLevel: picked("paleontologist") }, dealt({ large: "paleontologist" })]
 ];
 
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 const stored = (progress: Partial<StoredPairs>, games: Record<string, unknown> = {}) =>
   memoryStorage({ [PROGRESS_KEY]: pairsRecord({ stars: 0, level: 1, boardsOnLevel: 0, best: {}, found: [], ...progress }, games) });
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
@@ -666,7 +667,7 @@ describe("the result", () => {
     expect(storedPairs(app.storage)).toEqual(recorded);
   });
 
-  it("shows the home tile's stars once a board is finished", async () => {
+  it("omits the home tile's badge even after a board is finished", async () => {
     const app = openPairsApp({ pals: THREE });
     expect(document.querySelector(".pairs-tile-stars")).toBeNull();
 
@@ -674,7 +675,7 @@ describe("the result", () => {
     await app.user.click(button("HOME"));
 
     const stars = document.querySelector(".pairs-tile-stars");
-    expect(stars && [stars.textContent, symbolOf(stars)]).toEqual(["1", "star"]);
+    expect(stars).toBeNull();
   });
 });
 

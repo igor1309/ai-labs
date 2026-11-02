@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { act, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
@@ -5,7 +6,7 @@ import { PROGRESS_KEY } from "../src/localProgress.ts";
 import { dealt, endWave, namesOf, openPairsApp, pairsRecord, placesOf, playDealt, playPairs, storedPairs, turnCard } from "./pairsApp.tsx";
 import { SHIPPED_PALS, memoryStorage, symbolOf } from "./support.ts";
 
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 const bestShown = () => screen.queryByLabelText("BEST SCORE")?.textContent ?? null;
 const celebrations = () => screen.queryAllByRole("status").map((status) => status.getAttribute("aria-label"));
 

@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -217,7 +218,7 @@ async function openPage(from: Window, { id = "baryonyx", language = "en", reduce
   );
   act(() => pictures.finishAll());
   const user = userEvent.setup({ delay: null });
-  await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
+  await user.click(gameDoor(TEXTS[language].catalogueTile));
   act(() => pictures.finishAll());
   const card = document.querySelector<HTMLElement>(`.catalogue-card[data-id="${id}"]`)!;
   if (!list) {

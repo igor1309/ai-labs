@@ -23,7 +23,7 @@ Feature: Coloring full flow and durable progress
   Scenario: Home entry and progress
     When I open Home
     Then a drawing symbol accompanies COLOR A DINOSAUR or РАСКРАСЬ ДИНОЗАВРА
-    And its tile and featured card show the number of distinct completed works
+    And its featured card shows the number of distinct completed works and its small tile shows no badge
     When I open coloring and choose NEW WORK
     Then one game start is counted for that new work
     And navigating the gallery, continuing, retrying or repeating DONE adds no start

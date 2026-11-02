@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, onTestFinished } from "vitest";
 import { AGE_LEVELS, type AgeLevel } from "../src/ageLevel.ts";
@@ -12,7 +13,7 @@ import { JAWS } from "./whoseJaw.ts";
 import { openWhoseJawApp } from "./whoseJawApp.tsx";
 import { filterTaps, tapAt } from "./taps.ts";
 
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 const result = () => document.querySelector<HTMLElement>(".whose-jaw-result")!;
 const saved = (app: { storage: MemoryStorage }) => localWhoseJawProgress(() => app.storage, JAWS.map(({ id }) => id)).load()!;
 const record = (entry: unknown) => memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "whose-jaw": entry } }) });
@@ -98,7 +99,7 @@ describe("Whose Jaw result and rewards", () => {
     expect(screen.queryByRole("status")).toBeNull();
     expect(saved(app).best.explorer).toBe(3);
     fireEvent.click(button(TEXTS[language].home));
-    expect(homeTile(TEXTS[language].whoseJaw).textContent).toContain("5/16");
+    expect(homeTile(TEXTS[language].whoseJaw).querySelector(".whose-jaw-tile-count")).toBeNull();
   });
 
   it("celebrates a higher best once, preserves other levels and reloads rewards", () => {
