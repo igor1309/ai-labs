@@ -97,4 +97,9 @@ Feature: A screen moves to its other layout as the window turns
     Examples:
       | screen              | from width | from height | to width | to height |
       | care welcome screen | 1180       | 820         | 820      | 1180      |
-      | home page           | 852        | 393         | 393      | 852       |
+
+
+  Scenario: Home supports rotating a phone upright
+    Given Home is open in an 852 by 393 CSS-pixel window
+    When the window becomes 393 by 852 CSS pixels
+    Then Home glides to its supported portrait layout without a turn-sideways gate

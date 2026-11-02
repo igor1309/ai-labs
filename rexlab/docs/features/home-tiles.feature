@@ -1,10 +1,10 @@
 Feature: Home game tiles
-  Igor approved the short labels, uniform footers and removal of small-tile
-  progress badges on 2026-11-02 (LAB-906). The fixed ratio replaces the
-  minimum peek rule; columns may end flush with the viewport. In-game rewards are unchanged.
-  Every game except today's featured game appears in fixed order in two
-  horizontally scrolling rows. The featured card keeps its full title,
-  picture, symbol and progress badge and stays in place while tiles scroll.
+  Small tiles share one horizontal scroller with equal columns of two.
+  Game order runs down each column before advancing right; SOON is last.
+  The featured game is omitted from the tile order and keeps its full title,
+  picture, symbol and progress badge. Small tiles have no progress badges.
+  Fixed proportions may leave a column flush with the viewport edge.
+  In-game rewards and saved progress remain unchanged.
 
   Scenario Outline: Tiles keep their proportions and footer
     Given the screen is <width> by <height> CSS pixels
@@ -12,7 +12,8 @@ Feature: Home game tiles
     And every game has earned progress
     When I open Home on days that together show every game as a small tile
     Then every small tile including SOON has width:height 4:3
-    And row heights and featured-card geometry follow the Home portrait, narrow-portrait and short-landscape specifications
+    And each small tile is <tile width> by <tile height> CSS pixels within one pixel
+    And the featured card is <hero width> by <hero height> CSS pixels within one pixel
     And columns are 16 CSS pixels apart
     And the gap between rows is 16 CSS pixels on a wide-short window and 28 otherwise
     And every game footer is 48 CSS pixels high with 8-pixel padding and a 4-pixel gap
@@ -24,17 +25,17 @@ Feature: Home game tiles
     And no small tile shows a progress, count, best-score or star badge
 
     Examples:
-      | width | height | language |
-      | 390   | 844    | English  |
-      | 390   | 844    | Russian  |
-      | 844   | 390    | English  |
-      | 844   | 390    | Russian  |
-      | 820   | 1180   | English  |
-      | 820   | 1180   | Russian  |
-      | 1180  | 820    | English  |
-      | 1180  | 820    | Russian  |
-      | 1440  | 900    | English  |
-      | 1440  | 900    | Russian  |
+      | width | height | language | tile width | tile height | hero width | hero height |
+      | 390   | 844    | English  | 216.47 | 162.35 | 350 | 271.30 |
+      | 390   | 844    | Russian  | 216.47 | 162.35 | 350 | 271.30 |
+      | 844   | 390    | English  | 182.67 | 137 | 404 | 290 |
+      | 844   | 390    | Russian  | 182.67 | 137 | 404 | 290 |
+      | 820   | 1180   | English  | 264.53 | 198.40 | 708 | 463.20 |
+      | 820   | 1180   | Russian  | 264.53 | 198.40 | 708 | 463.20 |
+      | 1180  | 820    | English  | 274.67 | 206 | 445.72 | 440 |
+      | 1180  | 820    | Russian  | 274.67 | 206 | 445.72 | 440 |
+      | 1440  | 900    | English  | 328 | 246 | 557.14 | 520 |
+      | 1440  | 900    | Russian  | 328 | 246 | 557.14 | 520 |
 
   Scenario Outline: Home uses short labels without renaming game screens or the featured card
     When I open Home in <language>
@@ -72,7 +73,7 @@ Feature: Home game tiles
   Scenario Outline: SOON remains readable in both themes
     Given the app uses the <theme> theme
     When I open Home
-    Then SOON has at least 4.5:1 text contrast against its footer
+    Then SOON has at least 4.5:1 text contrast against the rendered composite of its translucent footer and tile background
 
     Examples:
       | theme |

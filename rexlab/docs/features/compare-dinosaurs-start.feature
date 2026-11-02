@@ -12,8 +12,9 @@ Feature: Compare dinosaurs quiz: starting a round and asking
   Scenario: The home page offers the quiz as a tile
     When I open the home page
     Then I see a "COMPARE" tile with a scales symbol and a picture of two dinosaurs
-    And on a day another game is featured it is the first tile of the row, above "ANCIENT REPTILES"
-    And it shows my best score with a trophy symbol when there is one
+    And on a day another game is featured it is the first tile of the row, above "EXPLORE"
+    And the small tile has no progress badge
+    And when COMPARE is featured its card shows my best score with a trophy symbol when there is one
 
   Scenario: The quiz tile brightens under a pointer
     Given I am on the home page
