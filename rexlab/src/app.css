@@ -12947,24 +12947,29 @@ body:has(.picture-puzzle-board-screen) {
    height. The large card and the row of tiles share what the corner, the
    greeting and the version line leave; neither has a floor that could
    push the row past the page's bottom edge, where .home clips it. The
-   row's 24-pixel band for shadows stays inside the page at the bottom. */
-[data-size="tall-narrow"] .home {
-  height: 100dvh;
-  min-height: 0;
-  padding-bottom: calc(24px + env(safe-area-inset-bottom));
-}
-[data-size="tall-narrow"] .games { flex: 1 1 0; min-height: 0; }
-[data-size="tall-narrow"] .featured-card { flex: 1 1 0; min-height: 0; }
-[data-size="tall-narrow"] .games-tiles {
-  flex: 1.15 1 0;
-  height: auto;
-  min-height: 0;
-  margin-top: -24px;
-  margin-bottom: 0;
-  padding-top: 24px;
-  padding-bottom: 0;
-}
-[data-size="tall-narrow"] #version,
-[data-size="tall-narrow"] body:has(.home) #version {
-  bottom: calc(4px + env(safe-area-inset-bottom));
+   row's 24-pixel band for shadows stays inside the page at the bottom.
+   Shorter phones, an iPhone SE, keep the page that scrolls, where
+   both stay readable. */
+@media (min-height: 640px) {
+  [data-size="tall-narrow"] .home {
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+  [data-size="tall-narrow"] .games { flex: 1 1 0; min-height: 0; }
+  [data-size="tall-narrow"] .featured-card { flex: 1 1 0; min-height: 0; }
+  [data-size="tall-narrow"] .games-tiles {
+    flex: 0 1 clamp(320px, 36dvh, 420px);
+    height: auto;
+    min-height: 300px;
+    margin-top: -24px;
+    margin-bottom: 0;
+    padding-top: 24px;
+    padding-bottom: 0;
+  }
+  [data-size="tall-narrow"] #version,
+  [data-size="tall-narrow"] body:has(.home) #version {
+    bottom: calc(4px + env(safe-area-inset-bottom));
+  }
 }
