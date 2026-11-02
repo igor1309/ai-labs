@@ -397258,6 +397258,29 @@
         },
         {
           "type": "text",
+          "id": "afaYV",
+          "name": "Head · How big the stage is",
+          "fill": "$ds-ink",
+          "content": "How big the stage is",
+          "fontFamily": "$ds-font",
+          "fontSize": 15,
+          "fontWeight": "700"
+        },
+        {
+          "type": "text",
+          "id": "pE1Q3",
+          "name": "Body · How big the stage is",
+          "fill": "$ds-ink-soft",
+          "textGrowth": "fixed-width",
+          "width": "fill_container",
+          "content": "The words are measured first and the stage takes what they leave, so nothing moves from one page to the next in a window. The words keep room for the longest of the 52 creatures in either language: the name in one type, the description and the note in fixed lines.\n\niPad landscape: the words take a third of the width inside the margins (349 of 1021); the stage takes the rest, less a 32 gap, and the whole height from 24 under the bar to 28 above the bottom edge. The picture spans the stage edge to edge at 4:3 (640×480 on an iPad mini); ← and → share the strip left under it, centred in its height and 20 from the sides.\n\nUpright iPad: the stage spans the width and the picture spans the stage edge to edge, with ← and → in an 80-high strip under it. The picture is as tall as the window leaves after the bar, the words, that strip and the gaps (632×424 on an iPad mini), but never taller than 4:3; when it is wider than 4:3, it is cut evenly at top and bottom, and every picture has sky enough round its creature for that.\n\nPhone: the picture keeps 4:3 inside the stage's 20 padding, ← and → 16 under it; the stage is as tall as these and the page scrolls. Phone on its side: the stage and the words take half the width each; the picture is as big at 4:3 as the stage's height allows, centred over ← and →, and the words scroll.",
+          "lineHeight": 1.45,
+          "fontFamily": "$ds-font",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "text",
           "id": "q3IDsr",
           "name": "Head · Loading and motion",
           "fill": "$ds-ink",
