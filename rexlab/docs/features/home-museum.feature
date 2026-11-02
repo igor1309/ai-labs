@@ -1,10 +1,11 @@
 Feature: The museum from the home page
   The skeleton museum (skeleton-assembly-museum.feature) is the child's
   collection, so the home page opens it directly, from a button in the
-  top-right corner just left of the parents' language and theme menus.
+  header just before the parents' language, theme and age-level menus.
   Unlike those menus it is for the child: its word is in capitals beside
-  the museum symbol, and it is sized for a child's tap. It carries no
-  count: the collection score is the museum's own, shown inside it.
+  the museum symbol, where the window has room for the word. It carries
+  no count: the collection score is the museum's own, shown inside it.
+  How it looks is the dig-site design's.
 
   Background:
     Given an iPad in landscape
@@ -12,11 +13,8 @@ Feature: The museum from the home page
   Scenario Outline: The home page offers the museum
     Given the app is in <language>
     When I open the home page
-    Then I see "<museum>" in the top-right corner
+    Then I see "<museum>" in the header, before the parents' menus
     And beside it the symbol of the skeleton game's MUSEUM button
-    And it stands outside the shaded group of the parents' menus, to its left
-    And it is at least 60 by 60 CSS pixels
-    And at least 12 CSS pixels lie between it and the group
 
     Examples:
       | language | museum |
@@ -64,9 +62,9 @@ Feature: The museum from the home page
     Given the app is in <language>
     And the screen is <width> by <height> CSS pixels
     When I open the home page
-    Then "RexLab", the museum button and the parents' menus stand on one line
+    Then "RexLab", the museum button and the parents' menus stand on one line in the header
     And the museum button keeps its word on one line
-    And nothing in the corner overlaps the greeting or the large card
+    And nothing in the header overlaps another part of it or today's game
 
     Examples:
       | language | width | height |
