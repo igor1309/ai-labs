@@ -29,6 +29,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
   const score = (value: number) => (scored ? value : undefined);
   const view = render(
     <HomePage
+      readTileColumns={() => ({ column: 274.6667, gap: 16 })}
       language={language}
       onLanguage={nothing}
       theme="light"

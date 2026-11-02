@@ -10,7 +10,7 @@ import { Picture } from "./Picture.tsx";
 import { PicturePuzzlePicture } from "./PicturePuzzlePicture.tsx";
 import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
-import { tileColumns } from "./tileColumns.ts";
+import type { RowColumns } from "./rowAnchor.ts";
 import { useKeptRow, type LayoutKeeping } from "./useKeptRow.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
@@ -28,6 +28,7 @@ export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs",
 type Badge = { symbol: LucideIcon; value: number | string };
 
 export type HomePageProps = {
+  readTileColumns: (row: HTMLElement) => RowColumns;
   language: Language;
   onLanguage: (language: Language) => void;
   theme: ThemeChoice;
@@ -97,6 +98,7 @@ function Tooth() {
 type Menu = "language" | "theme" | "ageLevel";
 
 export function HomePage({
+  readTileColumns,
   language,
   onLanguage,
   theme,
@@ -244,7 +246,7 @@ export function HomePage({
   }));
   const featuredGame = (featured === "picturePuzzle" && !picturePuzzle) || (featured === "whoseJaw" && !whoseJaw) || (featured === "coloring" && !coloring) ? "compare" : featured;
   const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined) && (game !== "coloring" || coloring !== undefined));
-  const tilesRow = useKeptRow(layoutKeeping, tileColumns);
+  const tilesRow = useKeptRow(layoutKeeping, readTileColumns);
   const today = games[featuredGame] ?? games.compare;
   const FeaturedSymbol = today.symbol;
   // Each part both layouts share is marked, so it glides to its place in

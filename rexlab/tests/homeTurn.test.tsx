@@ -1,3 +1,4 @@
+import { homeTileGeometry } from "./support.ts";
 import { galleryArtworkFixtures } from "./coloringFixture.ts";
 import { jawGameParts } from "./whoseJaw.ts";
 import { emptyLabyrinth } from "./support.ts";
@@ -151,7 +152,7 @@ function openTurning(
     return box;
   };
   render(
-    <App {...emptyLabyrinth()}
+    <App readTileColumns={homeTileGeometry} {...emptyLabyrinth()}
       {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

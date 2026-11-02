@@ -9,6 +9,6 @@ it.each([[194.6667, 16], [182.6667, 16], [264.52, 16], [274.6667, 16], [328, 16]
   grid.style.columnGap = `${gap}px`;
   row.append(grid);
   document.body.append(row);
-  try { expect(tileColumns(row).column).toBeCloseTo(column, 2); expect(tileColumns(row).gap).toBe(gap); }
+  try { expect(tileColumns(element => window.getComputedStyle(element))(row).column).toBeCloseTo(column, 2); expect(tileColumns(element => window.getComputedStyle(element))(row).gap).toBe(gap); }
   finally { row.remove(); }
 });

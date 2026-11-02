@@ -17,7 +17,7 @@ import { dinosaurSlide } from "./dinosaurSlide.ts";
 import { dinosaurWordsWidth, keptLines, NARROW_PAGE, PORTRAIT_PAGE } from "./dinosaurPageLayout.ts";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import type { ChipWidths } from "./FoodChips.tsx";
-import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
+import { HOME_GAMES, HomePage, type HomePageProps, type HomeGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useLayoutTurns } from "./layoutTurns.ts";
@@ -132,6 +132,7 @@ export type AppProps = CareGameProps &
     whoseJaw?: WhoseJawGameProps;
     // The skeleton game's sounds, silent if none.
     skeletonSounds?: SkeletonSounds;
+    readTileColumns: HomePageProps["readTileColumns"];
     viewport: Viewport;
     portraitLayouts: PortraitLayouts;
     // How the catalogue's food chips' parts are measured as laid out.
@@ -229,6 +230,7 @@ export function App({
   bodyPicture,
   random,
   viewport,
+  readTileColumns,
   portraitLayouts,
   chipWidths,
   layoutMotion,
@@ -705,6 +707,7 @@ export function App({
             onLanguage={chooseLanguage}
             theme={themeChoice}
             onTheme={chooseTheme}
+            readTileColumns={readTileColumns}
             ageLevel={ageLevel.level}
             onAgeLevel={chooseAgeLevel}
             startTimer={startTimer}

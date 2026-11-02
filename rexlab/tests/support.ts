@@ -1,4 +1,3 @@
-import { vi, onTestFinished } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { existsSync } from "node:fs";
@@ -509,9 +508,10 @@ export function emptyDig(): Pick<AppProps, "digDinosaurs" | "digProgress" | "san
 // are not about them: every part is measured where it stands in any
 // layout, so nothing glides, and a fade changes the layout and ends at
 // once; every chip's parts take no width, so the chips stand on one row.
-export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths" | "pictureMotion"> {
+export function pageAtRest(): Pick<AppProps, "layoutMotion" | "chipWidths" | "pictureMotion" | "readTileColumns"> {
   return {
     pictureMotion: { now: () => 0, duration: 320, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
+    readTileColumns: () => homeTileGeometry(),
     chipWidths: { width: () => 0, subscribe: () => () => {} },
     layoutMotion: {
       parts: document,
@@ -810,23 +810,20 @@ export function tilesRow(): HTMLElement {
 // and as far apart as the stylesheet sets them in the test's window, a
 // share of the row's width in a wide-short one. A tile's frame, drawn
 // under it as it glides, takes no place in them.
+// jsdom has no layout; tests supply measured columns at the app boundary.
+export function homeTileGeometry() {
+  const size = document.documentElement.dataset.size;
+  const gap = size === "wide-short" ? 16 : 28;
+  const height = size === "tall" ? Math.max(360, Math.min(window.innerHeight * .36, 520)) : size === "tall-narrow" ? Math.max(320, Math.min(window.innerHeight * .36, 420)) : size === "wide-short" ? Math.max(260, window.innerHeight - 100) : Math.max(360, Math.min(window.innerHeight - 380, 520));
+  return { column: (height - gap) * 2 / 3, gap: 16 };
+}
+
 export function layOutTilesRow(): HTMLElement {
   const row = tilesRow();
   const size = () => document.documentElement.dataset.size;
   const width = () => (size() === "tall" ? window.innerWidth - 56 : size() === "tall-narrow" ? window.innerWidth - 20 : size() === "wide-short" ? Math.round((window.innerWidth - 40 - 16 + 20) / 2) : Math.round(((window.innerWidth - 112 - 28) * 4) / 7));
   const grid = row.querySelector<HTMLElement>(".tiles-grid")!;
-  const gap = () => size() === "wide-short" ? 16 : 28;
-  const height = () => size() === "tall" ? Math.max(360, Math.min(window.innerHeight * .36, 520)) : size() === "tall-narrow" ? Math.max(320, Math.min(window.innerHeight * .36, 420)) : size() === "wide-short" ? Math.max(260, window.innerHeight - 100) : Math.max(360, Math.min(window.innerHeight - 380, 520));
-  const column = () => (height() - gap()) * 2 / 3;
-  // jsdom has no layout or container units; supply the rendered grid
-  // values at the browser boundary, leaving scroll anchoring real.
-  const originalStyle = window.getComputedStyle.bind(window);
-  const styleSpy = vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
-    const computed = originalStyle(element, pseudo);
-    if (element !== grid) return computed;
-    return new Proxy(computed, { get: (target, key) => key === "gridAutoColumns" ? `${column()}px` : key === "columnGap" ? "16px" : Reflect.get(target, key) });
-  });
-  onTestFinished(() => styleSpy.mockRestore());
+  const column = () => homeTileGeometry().column;
   const scrollWidth = () => {
     const columns = Math.ceil([...grid.children].filter((child) => !child.hasAttribute("data-turn-frame")).length / 2);
     return Math.round(columns * column() + (columns - 1) * 16);

@@ -1,3 +1,4 @@
+import { homeTileGeometry } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -93,6 +94,7 @@ const nothing = () => {};
 function renderHomePage(taps: number[]) {
   render(
     <HomePage
+      readTileColumns={homeTileGeometry}
       language="en"
       onLanguage={nothing}
       theme="light"
