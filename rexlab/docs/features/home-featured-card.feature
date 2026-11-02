@@ -7,23 +7,24 @@ Feature: Home page: the featured card and the tiles
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
+    And the games, in tile order, are compare, catalogue, pairs, skeletons, dig, sort, care, sand writing, labyrinth, picture puzzle, whose jaw and coloring
 
   Scenario: The featured game has the large card and no tile
     Given CARE is today's featured game
     When I open the home page
     Then the large card on the left shows CARE with its picture and its name in large capitals
-    And the tiles show COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT and SAND WRITING in that order, then "MORE COMING"
+    And the tiles show COMPARE, EXPLORE, PAIRS, BONES, DIG, SORT and DRAW in that order, followed by the remaining games and "SOON"
     When SKELETONS is featured on another day
-    Then the tiles show COMPARE, ANCIENT REPTILES, FIND THE PAIR, DIG, SORT, CARE and SAND WRITING in that order, then "MORE COMING"
+    Then the tiles show COMPARE, EXPLORE, PAIRS, DIG, SORT, CARE and DRAW in that order, followed by the remaining games and "SOON"
 
 
-  Scenario Outline: The featured card shows what its tile would show
-    Given <game>'s tile shows <badge> on a day another game is featured
+  Scenario Outline: The featured card retains game progress
+    Given <game> has <badge> in its saved progress
     When <game> is today's featured game and I open the home page
-    Then the large card shows <badge> too
+    Then the large card shows <badge>
+    And small tiles show no progress badges
     When I play it and come back home
-    Then the large card shows the value its tile would, updated if playing changed it
+    Then the large card shows the updated saved progress
 
     Examples:
       | game          | badge                                       |
@@ -73,7 +74,7 @@ Feature: Home page: the featured card and the tiles
   Scenario: The large card stays while the tiles scroll
     Given I am on the home page
     When I swipe the tiles to the left until they stop
-    Then I see "MORE COMING" at the right edge
+    Then I see "SOON" at the right edge
     And the large card stays in place, showing today's featured game
 
 

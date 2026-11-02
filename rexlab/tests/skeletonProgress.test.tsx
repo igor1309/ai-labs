@@ -27,7 +27,7 @@ import { memoryStorage, quizSaved, type MemoryStorage, gameDoor, symbolOf } from
 
 type Opened = ReturnType<typeof openSkeletonsApp>;
 
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 
 const starsChip = () => screen.getByLabelText("STARS").textContent;
 const bestScore = () => screen.queryByLabelText("BEST SCORE")?.textContent;

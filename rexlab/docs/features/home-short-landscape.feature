@@ -30,17 +30,18 @@ Feature: The home page in a wide-short window
     And each of the two rows of tiles is at least 122 pixels tall
     And in a window too short for that the page scrolls instead
 
-  Scenario: A column of tiles stands whole and the next peeks in
+  Scenario: Tiles retain their proportions when the window changes
     Given a wide-short window
     When I open the home page
-    Then one column of tiles shows whole and the next peeks in
+    Then tiles have width:height 4:3 derived from their actual row height
+    And columns and rows are 16 pixels apart
     And a swipe of the row stays at its column when the window changes size
 
   Scenario: Every word fits
     Given a wide-short window
     When I open the home page in English or Russian, featuring any game
     Then the large card's name fits its card
-    And every tile's title fits its column
+    And every small tile's title fits on one line in its 48-pixel footer
 
   Scenario: The parents' menus open whole
     Given a wide-short window

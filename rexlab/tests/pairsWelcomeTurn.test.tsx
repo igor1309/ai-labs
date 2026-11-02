@@ -1,3 +1,4 @@
+import { homeTileGeometry } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -70,7 +71,7 @@ function openWelcome(from: Window, { reduced = false }: { reduced?: boolean } = 
   const animations: Recorded[] = [];
   const fades: Array<{ update: () => void; finished: () => void; size: string | undefined }> = [];
   render(
-    <App {...emptyLabyrinth()}
+    <App readTileColumns={homeTileGeometry} {...emptyLabyrinth()}
       {...featuring()}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}

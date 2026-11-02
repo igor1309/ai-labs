@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -58,7 +59,7 @@ async function openPage(size: WindowSize, {
     {...emptySkeletons()} {...emptyDig()} {...pageAtRest()}
     pictureTransition={pictures.Transition}
   />);
-  await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
+  await user.click(gameDoor(TEXTS[language].catalogueTile));
   const cardPicture = pictures.picture(`dinosaur-${id}`);
   const card = part(`[data-id="${id}"]`);
   await user.click(card);

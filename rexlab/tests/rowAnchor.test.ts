@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { anchoredScroll, rowAnchor, type RowAnchor } from "../src/rowAnchor.ts";
-import { tileColumnWidth } from "../src/tileColumns.ts";
 
 // The home page's row with COMPARE featured: ANCIENT REPTILES and FIND
 // THE PAIR, SKELETONS and DIG, SORT and CARE, then MORE COMING, in four
@@ -14,7 +13,7 @@ const runOf = (column: number) => COLUMNS * column + (COLUMNS - 1) * GAP;
 const LANDSCAPE = { width: 594, scrollWidth: runOf(310), columns: { column: 310, gap: GAP } };
 // 820 by 1180, upright: the row runs from the page's 56-pixel padding to
 // the window's right edge, its columns as narrow as the window asks.
-const UPRIGHT_COLUMN = tileColumnWidth(820, COLUMNS);
+const UPRIGHT_COLUMN = 310;
 const UPRIGHT = { width: 764, scrollWidth: runOf(UPRIGHT_COLUMN), columns: { column: UPRIGHT_COLUMN, gap: GAP } };
 
 const anchorIn = (row: typeof LANDSCAPE, scroll: number) => rowAnchor({ scroll, width: row.width, scrollWidth: row.scrollWidth }, row.columns);

@@ -217,7 +217,7 @@ async function quizResult({ theme, user }: Walk) {
 // The whole list, with every food type's card, is checked once; a food
 // chosen shows only cards already on it, so then only the choice is.
 async function catalogueList({ theme, user }: Walk) {
-  await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+  await user.click(gameDoor("ANCIENT REPTILES"));
   expectScreenIn(theme);
   for (const food of ["MEAT", "PLANTS", "BOTH", "ALL"]) {
     const foods = screen.getByRole("group", { name: "FOOD" });
@@ -228,7 +228,7 @@ async function catalogueList({ theme, user }: Walk) {
 
 async function cataloguePages({ theme, user }: Walk) {
   for (const name of ["Tyrannosaurus", "Triceratops", "Gallimimus"]) {
-    await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+    await user.click(gameDoor("ANCIENT REPTILES"));
     await user.click(within(screen.getByRole("group", { name: "ANCIENT REPTILES" })).getByRole("button", { name }));
     expectScreenIn(theme);
   }
@@ -280,7 +280,7 @@ async function careResult({ theme, user, timers }: Walk) {
 }
 
 async function pairsWelcome({ theme, user }: Walk) {
-  await user.click(screen.getByRole("button", { name: "FIND THE PAIR" }));
+  await user.click(gameDoor("FIND THE PAIR"));
   expectScreenIn(theme);
 }
 
@@ -328,7 +328,7 @@ async function pairsFound({ theme, user, timers }: Walk) {
   endWave(timers);
   await user.click(screen.getByRole("button", { name: "HOME" }));
   expectScreenIn(theme);
-  await user.click(screen.getByRole("button", { name: "ANCIENT REPTILES" }));
+  await user.click(gameDoor("ANCIENT REPTILES"));
   expect(screen.queryAllByRole("img", { name: "FOUND" })).toHaveLength(0);
   expectScreenIn(theme);
   const grid = screen.getByRole("group", { name: "ANCIENT REPTILES" });
@@ -338,7 +338,7 @@ async function pairsFound({ theme, user, timers }: Walk) {
 }
 
 async function skeletonChoice({ theme, user }: Walk) {
-  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(gameDoor("SKELETONS"));
   expectScreenIn(theme);
 }
 
@@ -347,7 +347,7 @@ async function skeletonChoice({ theme, user }: Walk) {
 const skeletonPuzzle =
   (name: string) =>
   async ({ theme, user }: Walk) => {
-    await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+    await user.click(gameDoor("SKELETONS"));
     await user.click(screen.getByRole("button", { name }));
     expect(within(screen.getByRole("group", { name: "BONES" })).getAllByRole("img")).toHaveLength(spots().length);
     expectScreenIn(theme);
@@ -357,7 +357,7 @@ const skeletonPuzzle =
 // once the child has waited, each step of help on the bone to fit next.
 async function skeletonAtWork({ theme, user, timers }: Walk) {
   const stegosaurus = skeletonOf("stegosaurus");
-  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(gameDoor("SKELETONS"));
   await user.click(screen.getByRole("button", { name: "STEGOSAURUS" }));
   layOutPuzzle();
   const [, second = ""] = spotPieces();
@@ -383,7 +383,7 @@ async function skeletonAtWork({ theme, user, timers }: Walk) {
 // another dinosaur's bone dropped, its line saying whose it is.
 async function skeletonPaleontologist({ theme, user }: Walk) {
   const tyrannosaurus = skeletonOf("tyrannosaurus");
-  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(gameDoor("SKELETONS"));
   await user.click(screen.getByRole("button", { name: "PALEONTOLOGIST" }));
   await user.click(screen.getByRole("button", { name: "TYRANNOSAURUS" }));
   layOutPuzzle();
@@ -397,7 +397,7 @@ async function skeletonPaleontologist({ theme, user }: Walk) {
 // second skeleton's reveal with the best it beat, and the home page with
 // the best on the SKELETONS tile.
 async function skeletonReveals({ theme, user, timers }: Walk) {
-  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(gameDoor("SKELETONS"));
   for (const [id, celebration] of [
     ["triceratops", "FIRST BEST SCORE"],
     ["stegosaurus", "NEW BEST SCORE"]
@@ -414,7 +414,7 @@ async function skeletonReveals({ theme, user, timers }: Walk) {
     expectScreenIn(theme);
   }
   await user.click(screen.getByRole("button", { name: "HOME" }));
-  expect(screen.getByRole("button", { name: "SKELETONS" }).querySelector(".skeletons-tile-best")?.textContent).toBe("2");
+  expect(gameDoor("SKELETONS").querySelector(".skeletons-tile-best")).toBeNull();
   expectScreenIn(theme);
 }
 
@@ -424,7 +424,7 @@ async function skeletonReveals({ theme, user, timers }: Walk) {
 // the museum with that stand awaiting it.
 async function skeletonMuseum({ theme, user, timers }: Walk) {
   const triceratops = skeletonOf("triceratops");
-  await user.click(screen.getByRole("button", { name: "SKELETONS" }));
+  await user.click(gameDoor("SKELETONS"));
   await user.click(screen.getByRole("button", { name: "MUSEUM" }));
   expectScreenIn(theme);
   await user.click(within(screen.getByRole("region", { name: "TRICERATOPS" })).getByRole("button", { name: "BUILD" }));
@@ -469,7 +469,7 @@ async function dig({ theme, user, timers }: Walk) {
   expectScreenIn(theme);
   act(() => timers.fire(STAR_LANDS.motion));
   await user.click(screen.getByRole("button", { name: "HOME" }));
-  expect(screen.getByRole("button", { name: "DIG" }).querySelector(".dig-tile-count")?.textContent).toBe("1");
+  expect(screen.getByRole("button", { name: "DIG" }).querySelector(".dig-tile-count")).toBeNull();
   expectScreenIn(theme);
 }
 
@@ -905,7 +905,7 @@ describe("marks", () => {
 });
 
 describe("the SORT card", () => {
-  it.each(["light", "dark"] as const)("is on the %s theme's paper, its shapes on terracotta and its words and best score at text contrast", (theme) => {
+  it.each(["light", "dark"] as const)("is on the %s theme's paper with the shared icon badge and its title at text contrast", (theme) => {
     const sortingStorage = memoryStorage({
       [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore: 4, explorerBest: 4, roundsPlayed: 2 } } })
     });
@@ -919,14 +919,13 @@ describe("the SORT card", () => {
     const colours = PALETTE[theme];
     const parts = {
       card: [getComputedStyle(card).backgroundColor, colours.surface],
-      symbol: [getComputedStyle(symbol).backgroundColor, colours.terra],
+      symbol: [getComputedStyle(symbol).backgroundColor, "rgba(255, 255, 255, 0.18)"],
       words: [getComputedStyle(title).color, colours.ink],
-      best: [getComputedStyle(best).backgroundColor, colours["surface-2"]],
-      trophy: [getComputedStyle(best.querySelector("svg") ?? best).color, colours.amber]
     };
     expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
-    expect([title.textContent, best.textContent]).toEqual(["SORT", "4"]);
-    expect([title, best].map((text) => textContrast(text) >= TEXT_CONTRAST)).toEqual([true, true]);
+    expect(title.textContent).toBe("SORT");
+    expect(card.querySelector(".sort-tile-best")).toBeNull();
+    expect(textContrast(title)).toBeGreaterThanOrEqual(TEXT_CONTRAST);
   });
 });
 
@@ -935,7 +934,7 @@ describe("the FIND THE PAIR tile", () => {
     openApp({ device: manualAppearance(theme) });
 
     expectScreenIn(theme);
-    const tile = screen.getByRole("button", { name: "FIND THE PAIR" });
+    const tile = gameDoor("FIND THE PAIR");
     const title = tile.querySelector(".pairs-tile-title") ?? tile;
     const colours = PALETTE[theme];
     const parts = {

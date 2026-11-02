@@ -72,10 +72,10 @@ const { chromium } = require("playwright");
       finally { db.close(); }
     });
     const starts = () => page.evaluate(() => JSON.parse(localStorage.getItem("rexlab-progress")).games["home-featured"].starts.coloring ?? 0);
-    const entry = () => page.getByRole("button", { name: /^(COLOR A DINOSAUR|РАСКРАСЬ ДИНОЗАВРА)$/ });
+    const entry = () => page.locator('[data-turn-part="tile-coloring"], .featured-card[data-game="coloring"]');
     const homeCount = async count => {
       await home();
-      await page.waitForFunction(count => document.querySelector('.coloring-tile-count, .featured-card[data-game="coloring"] .featured-card-badge')?.textContent === String(count), count);
+      await page.waitForFunction(count => document.querySelector('[data-turn-part="tile-coloring"]') ? !document.querySelector('.coloring-tile-count') : document.querySelector('.featured-card[data-game="coloring"] .featured-card-badge')?.textContent === String(count), count);
       assert.equal(await entry().locator("svg.lucide-pencil").count(), 1);
     };
     const paint = async (color, fill = true) => {
@@ -197,7 +197,7 @@ const { chromium } = require("playwright");
             localStorage.setItem("rexlab-language", language); localStorage.setItem("rexlab-theme", theme);
             localStorage.setItem("rexlab-age-level", JSON.stringify({ level, revision: "parent" }));
           }, { language, theme, level });
-          await p.goto(url); await p.getByRole("button", { name: language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА", exact: true }).press("Enter");
+          await p.goto(url); await p.locator('[data-turn-part="tile-coloring"], .featured-card[data-game="coloring"]').press("Enter");
           await p.locator('.gallery-works[aria-busy="false"]').waitFor();
           const checkLayout = async () => {
             await p.evaluate(async () => { await Promise.all(document.getAnimations().filter(a => a.effect?.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => {}))); });

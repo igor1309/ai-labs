@@ -230,7 +230,7 @@ describe("the featured game in the app", () => {
     expect(featuredGame()).toBe("skeletons");
 
     clock.time = new Date(2026, 9, 19, 8, 0);
-    await user.click(within(tilesRow()).getByRole("button", { name: "ANCIENT REPTILES" }));
+    await user.click(within(tilesRow()).getByRole("button", { name: "EXPLORE" }));
     await user.click(screen.getByRole("button", { name: "HOME" }));
 
     expect(featuredGame()).toBe("skeletons");

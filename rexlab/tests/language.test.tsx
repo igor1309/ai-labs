@@ -271,7 +271,7 @@ describe("the language menu", () => {
 
         await chooseFrom(user, menu, choice);
         expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
-        await user.click(screen.getByRole("button", { name: tile }));
+        await user.click(gameDoor(tile));
         await screen.findByRole("button", { name: home });
         expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
 
@@ -672,7 +672,7 @@ async function catalogue(language: Language): Promise<Seen> {
   const play = openPlay(language);
   const { user, look } = play;
   const text = TEXTS[language];
-  await user.click(screen.getByRole("button", { name: text.catalogueTile }));
+  await user.click(gameDoor(text.catalogueTile));
   look();
   await user.click(within(screen.getByRole("group", { name: text.catalogue })).getByRole("button", { name: byName("Gallimimus").name[language] }));
   look();
@@ -738,7 +738,7 @@ async function sortingRounds(language: Language): Promise<Seen> {
   const play = openPlay(language);
   const { user, look } = play;
   const text = TEXTS[language];
-  await user.click(screen.getByRole("button", { name: text.sort }));
+  await user.click(gameDoor(text.sort));
   look();
   await sortByTrying(user, language, look);
   await user.click(screen.getByRole("button", { name: text.seeResult }));
@@ -759,7 +759,7 @@ async function findThePair(language: Language): Promise<Seen> {
   const play = openPlay(language);
   const { user, timers, look } = play;
   const text = TEXTS[language];
-  await user.click(screen.getByRole("button", { name: text.pairs }));
+  await user.click(gameDoor(text.pairs));
   look();
   await user.click(screen.getByRole("button", { name: text.ageLevels.hatchling.name }));
   look();
@@ -777,7 +777,7 @@ async function findThePair(language: Language): Promise<Seen> {
   expect(screen.getAllByRole("status")).toHaveLength(1);
   await user.click(screen.getByRole("button", { name: text.home }));
   look();
-  await user.click(screen.getByRole("button", { name: text.catalogueTile }));
+  await user.click(gameDoor(text.catalogueTile));
   look();
   const catalogue = screen.getByRole("group", { name: text.catalogue });
   await user.click(within(catalogue).getAllByRole("button")[0] as HTMLElement);
@@ -796,7 +796,7 @@ async function skeletons(language: Language): Promise<Seen> {
   const text = TEXTS[language];
   const triceratops = skeletonOf("triceratops");
   look();
-  await user.click(screen.getByRole("button", { name: text.skeletons }));
+  await user.click(gameDoor(text.skeletons));
   look();
   await user.click(screen.getByRole("button", { name: triceratops.name[language].toLocaleUpperCase(language) }));
   expect(screen.getByRole("group", { name: text.bones })).toBeDefined();
@@ -818,7 +818,7 @@ async function skeletons(language: Language): Promise<Seen> {
   expect(screen.getByRole("button", { name: text.keepBuilding })).toBeDefined();
   look();
   await user.click(screen.getByRole("button", { name: text.home }));
-  expect(screen.getByRole("button", { name: text.skeletons }).textContent).toBe(`${text.skeletons}1`);
+  expect(gameDoor(text.skeletons).textContent).toBe(language === "en" ? "BONES" : "КОСТИ");
   look();
   return play.seen;
 }

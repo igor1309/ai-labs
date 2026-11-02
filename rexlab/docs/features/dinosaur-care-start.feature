@@ -9,8 +9,9 @@ Feature: Dinosaur care: welcoming a visitor
   Scenario: The home page offers the care game
     When I open the home page
     Then I see a "CARE" tile with a heart symbol and a dinosaur
-    And on a day COMPARE is featured it stands under the "SORT" card, the last game before "MORE COMING"
-    And once I have finished a visit it shows my care best score with a trophy symbol
+    And on a day COMPARE is featured it stands under the "SORT" card
+    And the small tile shows no progress badge
+    And when CARE is featured its card shows my care best score with a trophy symbol
     When I tap "CARE"
     Then I see the care welcome screen
     And I see "NEW VISITOR" with a dinosaur symbol

@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -89,7 +90,7 @@ async function openNarrow(width: number, height: number, language: Language = "e
       chipWidths={emChipWidths()}
     />
   );
-  await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
+  await user.click(gameDoor(TEXTS[language].catalogueTile));
   return { viewport, user };
 }
 
@@ -151,7 +152,7 @@ describe("the catalogue in a tall-narrow window", () => {
     }
     await user.click(screen.getByRole("button", { name: TEXTS[language].home }));
     expect(screen.queryByRole("group", { name: TEXTS[language].foodChoice })).toBeNull();
-    expect(screen.getByRole("button", { name: TEXTS[language].catalogueTile })).toBeDefined();
+    expect(gameDoor(TEXTS[language].catalogueTile)).toBeDefined();
   });
 
   it.each((["en", "ru"] as const).flatMap((language) => [320, 375].map((width) => [language, width] as const)))("fits every word in %s at %i wide: every card's name on one line as large as in landscape, and its height, weight and food tag", async (language, width) => {

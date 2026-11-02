@@ -19,7 +19,7 @@ export type LayoutKeeping = {
 // at its start where the row no longer scrolls.
 // `columns` are the row's columns as the page now lays them out. Gives
 // the row's ref and its scroll handler.
-export function useKeptRow(keeping: LayoutKeeping, columns: RowColumns) {
+export function useKeptRow(keeping: LayoutKeeping, columns: (element: HTMLElement) => RowColumns) {
   const row = useRef<HTMLDivElement>(null);
   const anchor = useRef<RowAnchor>(0);
   const laidOut = useRef(columns);
@@ -33,7 +33,7 @@ export function useKeptRow(keeping: LayoutKeeping, columns: RowColumns) {
     laidOut.current = columns;
   });
 
-  const standing = (element: HTMLElement) => rowAnchor({ scroll: element.scrollLeft, width: element.clientWidth, scrollWidth: element.scrollWidth }, laidOut.current);
+  const standing = (element: HTMLElement) => rowAnchor({ scroll: element.scrollLeft, width: element.clientWidth, scrollWidth: element.scrollWidth }, laidOut.current(element));
 
   useLayoutEffect(
     () =>
@@ -43,7 +43,7 @@ export function useKeptRow(keeping: LayoutKeeping, columns: RowColumns) {
           return () => {
             const element = row.current;
             if (!element) return;
-            element.scrollLeft = anchoredScroll(kept, { width: element.clientWidth, scrollWidth: element.scrollWidth }, laidOut.current);
+            element.scrollLeft = anchoredScroll(kept, { width: element.clientWidth, scrollWidth: element.scrollWidth }, laidOut.current(element));
             restored.current = element.scrollLeft;
           };
         },

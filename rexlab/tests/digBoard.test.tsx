@@ -262,7 +262,7 @@ describe("a round's start", () => {
     act(() => timers.fire(STAR_LANDS.motion));
 
     fireEvent.click(screen.getByRole("button", { name: "HOME" }));
-    expect(within(homeTile("DIG")).getByText("1")).toBeDefined();
+    expect(homeTile("DIG").querySelector(".dig-tile-count")).toBeNull();
     fireEvent.click(homeTile("DIG"));
     placeBoard(800);
 

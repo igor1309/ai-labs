@@ -1,3 +1,4 @@
+import { gameDoor } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -60,7 +61,7 @@ async function openPage(size: WindowSize, { language = "en", id = "pachycephalos
     {...emptyCare()} {...emptySorting()} {...emptyPairs()}
     {...emptySkeletons()} {...emptyDig()} {...pageAtRest()}
   />);
-  await user.click(screen.getByRole("button", { name: TEXTS[language].catalogueTile }));
+  await user.click(gameDoor(TEXTS[language].catalogueTile));
   await user.click(part(`[data-id="${id}"]`));
   return { user, viewport };
 }

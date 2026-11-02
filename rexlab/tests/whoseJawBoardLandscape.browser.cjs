@@ -86,7 +86,7 @@ async function check(browser, url, screenshots, width, height, language, theme, 
       Math.random = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
     }, { language, theme, level });
     await page.goto(url);
-    await page.getByRole("button", { name: language === "en" ? "WHOSE JAW?" : "ЧЬЯ ЧЕЛЮСТЬ?", exact: true }).click();
+    await page.locator('[data-turn-part="tile-whoseJaw"], .featured-card[data-game="whoseJaw"]').click();
     await settle(page);
     await page.waitForTimeout(600);
     await page.locator(".whose-jaw-play").click();

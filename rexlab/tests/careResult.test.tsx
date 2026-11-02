@@ -267,7 +267,7 @@ describe("care progress", () => {
     const storage = stored(7, 3, ["triceratops"]);
     const { user, clock } = openCareApp({ storage });
 
-    expect(button("CARE").querySelector(".care-tile-best")?.textContent).toBe("7");
+    expect(button("CARE").querySelector(".care-tile-best")?.textContent).toBe(undefined);
     await openCare(user);
     expect([screen.getByLabelText("BEST SCORE").textContent, friendCount()]).toEqual(["7/8", "1"]);
     await user.click(button("FRIENDS"));

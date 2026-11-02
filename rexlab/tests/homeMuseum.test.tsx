@@ -27,7 +27,7 @@ const hall = () => screen.queryByRole("group", { name: "STANDS" });
 
 const onHomePage = () => document.querySelector(".games-tiles") !== null;
 
-const button = (name: string) => screen.getByRole("button", { name });
+const button = (name: string) => document.querySelector(".home") ? gameDoor(name) : screen.getByRole("button", { name });
 
 const px = (value: string) => Number.parseFloat(value) || 0;
 

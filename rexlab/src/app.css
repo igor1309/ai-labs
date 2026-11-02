@@ -1144,21 +1144,14 @@ body:has(.result) #version {
   color: #e39b2d;
 }
 
-/* The columns that do not fit scroll sideways under the finger, and the
-   next one peeks in at the edge. The columns are narrower than the
-   design's 330px, which fill the row with two at 1366px and leave nothing
-   to peek in. The row reaches past the games above and below, so the
+/* The scrolling row reaches past the games above and below so its
    tiles' shadows are not cut off. */
 .games-tiles {
   flex: 4 1 0;
   min-width: 0;
   margin-block: -24px;
   padding-block: 24px;
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  grid-auto-columns: 310px;
-  gap: 28px 24px;
+  container-type: size;
   overflow-x: auto;
   overflow-y: hidden;
   overscroll-behavior: none;
@@ -1174,7 +1167,7 @@ body:has(.result) #version {
    both parts shrink to the available height. The wordmark, the corner
    and the version footer then scroll with it, so they stand on the page
    rather than the window, which is the same where it does not scroll.
-   HomePage gives the columns' width, narrowed so the next one peeks in. */
+ */
 [data-size="tall"] .wordmark,
 [data-size="tall"] .home-corner,
 [data-size="tall-narrow"] .wordmark,
@@ -1273,7 +1266,6 @@ body:has(.result) #version {
   height: clamp(360px, 36vh, 520px);
   height: clamp(360px, 36dvh, 520px);
   margin-right: -56px;
-  grid-auto-columns: var(--tile-column);
 }
 
 /* In a tall-narrow window, an iPhone upright, the page stands as in a
@@ -1370,9 +1362,8 @@ body:has(.result) #version {
 
 /* Under 360 wide (an iPhone with its display zoomed, or a window in
    Slide Over) the corner closes up, every tap still 44 pixels or more,
-   the large card's name is smaller, the games still to come keep
-   narrower sides, and ANCIENT REPTILES may take two lines in its
-   narrower column. From 360 wide they stand as above. */
+   the large card's name is smaller. Small tiles keep their short labels
+   on one line. From 360 wide the corner has more room. */
 [data-size="tall-narrow"] .home-corner {
   gap: 6px;
 }
@@ -1392,11 +1383,6 @@ body:has(.result) #version {
 
 [data-size="tall-narrow"] .more-coming {
   padding: 20px;
-}
-
-[data-size="tall-narrow"] .catalogue-tile-title {
-  white-space: normal;
-  line-height: 1.15;
 }
 
 @media (min-width: 360px) {
@@ -1421,11 +1407,6 @@ body:has(.result) #version {
   [data-size="tall-narrow"] .more-coming {
     padding: 20px 24px;
   }
-
-  [data-size="tall-narrow"] .catalogue-tile-title {
-    white-space: nowrap;
-    line-height: normal;
-  }
 }
 
 /* In a wide-short window, an iPhone on its side, the page keeps the
@@ -1436,10 +1417,8 @@ body:has(.result) #version {
    card and the tiles take the height the bar leaves, with 20-pixel sides
    past the notch, the tiles in two rows of 122 pixels or more: in a
    window too short for that the page scrolls. The card and the tiles
-   share the row evenly, and the tiles' columns are a share of their
-   row's width, so one stands whole and the next peeks in, past the
-   page's side to the notch's, and never under 236 pixels, the least a
-   tile's name fits in. The parents' menus open under the bar,
+   share the row evenly. Tile columns follow their row height and scroll
+   past the page's side to the notch's. The parents' menus open under the bar,
    and one taller than a short window leaves scrolls within it. */
 [data-size="wide-short"] .home {
   padding:
@@ -1506,17 +1485,11 @@ body:has(.result) #version {
 
 [data-size="wide-short"] .games-tiles {
   margin-right: -20px;
-  gap: 16px;
-  grid-auto-columns: max(236px, calc((100% - 16px) / 1.25));
+
 }
 
 [data-size="wide-short"] .more-coming {
   padding: 16px 12px;
-}
-
-[data-size="wide-short"] .catalogue-tile-title {
-  white-space: normal;
-  line-height: 1.15;
 }
 
 [data-size="wide-short"] .parent-menu-list {
@@ -1558,7 +1531,7 @@ body:has(.result) #version {
   outline: 2px solid #1d27421f;
   outline-offset: -2px;
   background: #e6e2d9;
-  color: #5c647a;
+  color: #1d2742;
 }
 
 .more-coming-picture {
@@ -1613,54 +1586,6 @@ body:has(.result) #version {
   padding: 16px 20px 10px;
 }
 
-.compare-tile-row {
-  padding: 12px 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #00000026;
-}
-
-.compare-tile-symbol {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  background: #e39b2d;
-  color: #1d2742;
-}
-
-.compare-tile-title {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  white-space: nowrap;
-}
-
-.compare-tile-best {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  height: 40px;
-  box-sizing: border-box;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 20px;
-  background: #ffffff1f;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.compare-tile-best svg {
-  color: #e39b2d;
-}
-
 /* The catalogue's tile is terracotta. White words keep text contrast on
    terracotta only under the shade the quiz card's footer also has. */
 .catalogue-tile {
@@ -1687,18 +1612,7 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding: 16px 20px 10px;
   object-fit: contain;
-}
-
-.catalogue-tile-row {
-  padding: 12px 12px 14px;
-  display: flex;
-  align-items: center;
-  background: #00000026;
-}
-
-/* The book sits in the picture's corner, across from the count, the
-   height of the count's chip. */
-.catalogue-tile-symbol {
+}/* The book sits in the picture's corner,  across from the count {
   position: absolute;
   top: 12px;
   left: 12px;
@@ -1708,21 +1622,7 @@ body:has(.result) #version {
   height: 40px;
   border-radius: 12px;
   background: #ffffff33;
-}
-
-/* A title is never smaller than a child can read: the row is left to it
-   instead. The CARE and SORT tiles' titles are no smaller. */
-.catalogue-tile-title {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: 24px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-/* The count sits in the tile's corner, over the picture: beside the
-   title it would leave the title too little of the row. */
-.catalogue-tile-count {
+}/* The count sits in the tile's corner {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -1738,7 +1638,7 @@ body:has(.result) #version {
   font-weight: 700;
 }
 
-/* Sorting and labyrinth use paper cards with terracotta symbols. */
+/* Sorting and labyrinth use paper cards. */
 .sort-tile,
 .labyrinth-tile {
   position: relative;
@@ -1768,61 +1668,9 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-.sort-tile-row,
-.labyrinth-tile-row {
-  padding: 12px 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sort-tile-symbol,
-.labyrinth-tile-symbol {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  background: #c9583d;
-  color: #ffffff;
-}
-
-.sort-tile-title,
-.labyrinth-tile-title {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  white-space: nowrap;
-}
-
-.sort-tile-best,
-.labyrinth-tile-best {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  height: 40px;
-  box-sizing: border-box;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 20px;
-  background: #e6e2d9;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.sort-tile-best svg,
-.labyrinth-tile-best svg {
-  color: #e39b2d;
-}
-
 /* Find the pair's tile, sky, under SORT and as tall: two cards of one
    dinosaur with a face-down card between them, sized by the tile's
-   height. The ink keeps its contrast on sky with no shade under it. */
+   height. The ink keeps its contrast on sky. */
 .pairs-tile {
   position: relative;
   flex: 1 1 0;
@@ -1889,49 +1737,6 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* Its title takes a second line where the column is too narrow for it
-   at 24px. */
-.pairs-tile-row {
-  padding: 12px 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.pairs-tile-symbol {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  background: #ffffff33;
-}
-
-.pairs-tile-title {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.15;
-}
-
-.pairs-tile-stars {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  height: 40px;
-  box-sizing: border-box;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 20px;
-  background: #00000026;
-  font-size: 20px;
-  font-weight: 700;
-}
-
 /* The skeleton game's tile, over MORE COMING, in the other tiles'
    shape. The design's forest green is no colour of either theme,
    so the tile takes the navy, as the skeleton screens' mark does, and the
@@ -1960,52 +1765,6 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding: 16px 20px 10px;
   object-fit: contain;
-}
-
-.skeletons-tile-row {
-  padding: 12px 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.skeletons-tile-symbol {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  background: #ffffff33;
-}
-
-.skeletons-tile-title {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  white-space: nowrap;
-}
-
-.skeletons-tile-best {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  height: 40px;
-  box-sizing: border-box;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 20px;
-  background: #ffffff1f;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.skeletons-tile-best svg {
-  color: #e39b2d;
 }
 
 /* The dig game's tile, over MORE COMING, in the other tiles' shape. The
@@ -2048,36 +1807,8 @@ body:has(.result) #version {
   background: #d0c5b2;
   color: #1d2742;
 }
-
-.sand-writing-tile-symbol,
 .featured-card[data-game="sandWriting"] .featured-card-symbol {
   background: #ffffff59;
-}
-
-.sand-writing-tile-row {
-  padding: 12px 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.sand-writing-tile-symbol {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-}
-
-/* The Russian name needs two lines at the smallest tablet column. */
-.sand-writing-tile-title {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  line-height: 1.1;
 }
 
 /* The sand picture is a rounded card of its own, as wide as its height
@@ -2092,48 +1823,6 @@ body:has(.result) #version {
   margin: 16px 20px 10px;
   border-radius: 16px;
   object-fit: cover;
-}
-
-.dig-tile-row {
-  padding: 12px 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dig-tile-symbol {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  background: #ffffff59;
-}
-
-.dig-tile-title {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  white-space: nowrap;
-}
-
-.dig-tile-count {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  height: 40px;
-  box-sizing: border-box;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 20px;
-  background: #ffffff59;
-  font-size: 20px;
-  font-weight: 700;
 }
 
 /* The question fills the screen, and the cards take what is left of it. */
@@ -4007,47 +3696,6 @@ html[data-size="tall-narrow"] .result-actions .home-button {
   box-sizing: border-box;
   padding: 16px 20px 10px;
   object-fit: contain;
-}
-
-.care-tile-row {
-  padding: 12px 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.care-tile-symbol {
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 11px;
-  background: #ffffff59;
-}
-
-.care-tile-title {
-  flex: 1 1 0;
-  min-width: 0;
-  font-size: 24px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.care-tile-best {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  height: 40px;
-  box-sizing: border-box;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 20px;
-  background: #ffffff59;
-  font-size: 20px;
-  font-weight: 700;
 }
 
 /* Care's welcome, its friends and a visit fill the screen under a bar
@@ -11685,8 +11333,6 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
 .featured-card[data-game="whoseJaw"] { background: #e39b2d; color: #1d2742; }
 .whose-jaw-tile { position: relative; flex: 1 1 0; min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; border: 0; border-radius: 28px; text-align: left; }
 .whose-jaw-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
-.whose-jaw-tile-row { display: flex; align-items: center; gap: 8px; padding: 12px; font-size: 22px; font-weight: 700; }
-.whose-jaw-tile-count { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 24px; background: #fffdf8; color: #1d2742; font-size: 20px; }
 .featured-card[data-game="whoseJaw"] .whose-jaw-tile-picture { height: 100%; }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-welcome-body {
   max-width: 560px;
@@ -11719,8 +11365,8 @@ html[data-size="wide-short"] .whose-jaw-welcome-actions svg { width: 24px; heigh
 [data-theme="dark"] .whose-jaw-welcome,
 [data-theme="dark"] .whose-jaw-shelf-screen { background: #0f1320; color: #ece8de; }
 [data-theme="dark"] .whose-jaw-badges p { background: #222a3d; }
-[data-theme="dark"] .whose-jaw-shelf,
-[data-theme="dark"] .whose-jaw-tile-count { background: #181e2e; color: #ece8de; }
+
+[data-theme="dark"] .whose-jaw-shelf { background: #181e2e; color: #ece8de; }
 [data-theme="dark"] .whose-jaw-play,
 [data-theme="dark"] .whose-jaw-tile,
 [data-theme="dark"] .featured-card[data-game="whoseJaw"] { background: #f2b24b; color: #1d2742; }
@@ -12080,8 +11726,6 @@ html[data-theme="dark"],
 
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"],
 [data-theme="dark"] .parent-menu-choice-code,
-[data-theme="dark"] .sort-tile-best,
-[data-theme="dark"] .labyrinth-tile-best,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge,
 [data-theme="dark"] .catalogue-art,
@@ -12093,7 +11737,6 @@ html[data-theme="dark"],
 
 [data-theme="dark"] .parent-menu-choice[aria-checked="true"] .parent-menu-choice-code,
 [data-theme="dark"] .featured-card[data-game="compare"] .featured-card-symbol,
-[data-theme="dark"] .compare-tile-symbol,
 [data-theme="dark"] .step[data-step="current"],
 [data-theme="dark"] .prompt-symbol,
 [data-theme="dark"] .confetti-amber,
@@ -12104,10 +11747,6 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .parent-menu-tick,
-[data-theme="dark"] .compare-tile-best svg,
-[data-theme="dark"] .sort-tile-best svg,
-[data-theme="dark"] .labyrinth-tile-best svg,
-[data-theme="dark"] .skeletons-tile-best svg,
 [data-theme="dark"] .featured-card[data-game="compare"] .featured-card-badge svg,
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-badge svg,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-badge svg,
@@ -12235,15 +11874,11 @@ html[data-theme="dark"],
 
 [data-theme="dark"] .food-chip[data-food="both"][aria-pressed="true"] {
   background: #f2b24b;
-}
-
-/* White words would fade on the dark theme's lighter terracotta and
-   green, so the tiles and tags there take the dark page's ink, as the
+}/* White words would fade on the dark theme's lighter terracotta and
+   green,  so the tiles and tags there take the dark page's ink,  as the
    marks do. */
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .diet-tag,
-[data-theme="dark"] .sort-tile-symbol,
-[data-theme="dark"] .labyrinth-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
@@ -12252,8 +11887,6 @@ html[data-theme="dark"],
 
 [data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .diet-tag[data-diet="meat"],
-[data-theme="dark"] .sort-tile-symbol,
-[data-theme="dark"] .labyrinth-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
@@ -12267,9 +11900,6 @@ html[data-theme="dark"],
 [data-theme="dark"] .diet-tag[data-diet="plants"] {
   background: #63c98c;
 }
-
-/* The dark page's ink needs no shade under it. */
-[data-theme="dark"] .catalogue-tile-row,
 [data-theme="dark"] .featured-card[data-game="catalogue"] .featured-card-footer,
 [data-theme="dark"] .diet-tag[data-diet="meat"] .diet-tag-face {
   background: none;
@@ -12732,9 +12362,7 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .featured-card[data-game="dig"] .featured-card-symbol,
-[data-theme="dark"] .featured-card[data-game="dig"] .featured-card-badge,
-[data-theme="dark"] .dig-tile-symbol,
-[data-theme="dark"] .dig-tile-count {
+[data-theme="dark"] .featured-card[data-game="dig"] .featured-card-badge {
   background: #ffffff1f;
 }
 
@@ -13171,44 +12799,21 @@ body:has(.picture-puzzle-board-screen) {
 }
 .picture-puzzle-tile-art { display: block; flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
 .picture-puzzle-tile-art > .picture-puzzle-crop { width: 100%; height: 100%; }
-.picture-puzzle-tile-row { padding: 10px 12px 14px; display: flex; align-items: center; gap: 8px; }
-.picture-puzzle-tile-symbol {
-  flex-shrink: 0; display: grid; place-items: center; width: 36px; height: 36px;
-  border-radius: 11px; background: #ffffff80;
-}
-.picture-puzzle-tile-title { min-width: 0; font-size: clamp(16px, 1.8vw, 24px); font-weight: 700; letter-spacing: 1px; }
-.picture-puzzle-tile-count {
-  position: absolute; top: 12px; right: 12px; padding: 8px 12px; display: flex; align-items: center; gap: 6px;
-  border-radius: 20px; background: #fffdf8; color: #1d2742; font-size: 20px; font-weight: 700;
-}
 .featured-card[data-game="picturePuzzle"] { background: #dceade; color: #1d2742; }
 .featured-card[data-game="picturePuzzle"] .featured-card-symbol { background: #ffffff80; }
 .featured-card[data-game="picturePuzzle"] .featured-card-badge { background: #fffdf8; color: #1d2742; }
-.picture-puzzle-tile-count svg,
 .featured-card[data-game="picturePuzzle"] .featured-card-badge svg { color: #a66c16; }
 [data-theme="dark"] .picture-puzzle-tile,
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] { background: #253b37; color: #ece8de; }
-[data-theme="dark"] .picture-puzzle-tile-symbol,
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-symbol { background: #ffffff1f; }
-[data-theme="dark"] .picture-puzzle-tile-count,
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-badge { background: #181e2e; color: #ece8de; }
-[data-theme="dark"] .picture-puzzle-tile-count svg,
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-badge svg { color: #f2b24b; }
-/* The maze name keeps its route symbol beside it at tablet tile widths. */
-.labyrinth-tile-title {
-  font-size: 24px;
-  letter-spacing: 1px;
-}
 
 .coloring-tile, .featured-card[data-game="coloring"] { background: #dceade; color: #1d2742; }
 .coloring-tile { position: relative; flex: 1 1 0; min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; border: 0; border-radius: 28px; text-align: left; }
 .coloring-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
-.coloring-tile-row { display: flex; align-items: center; gap: 8px; padding: 12px; font-size: clamp(16px, 1.8vw, 24px); font-weight: 700; }
-.coloring-tile-symbol { flex-shrink: 0; }
-.coloring-tile-count { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 24px; background: #fffdf8; color: #1d2742; font-size: 20px; }
 .featured-card[data-game="coloring"] .coloring-tile-picture { height: 100%; }
 [data-theme="dark"] .coloring-tile, [data-theme="dark"] .featured-card[data-game="coloring"] { background: #253b37; color: #ece8de; }
-[data-theme="dark"] .coloring-tile-count { background: #181e2e; color: #ece8de; }
 
 /* A viewport-attached opaque edge lets WebKit extend a solid colour into
    its system top bar. Keep it outside screen transforms and transitions;
@@ -13226,4 +12831,89 @@ body:has(.picture-puzzle-board-screen) {
 
 [data-theme="dark"] .app-top-edge {
   background: #0f1320;
+}
+
+/* Size containment keeps the tiles' intrinsic widths out of the hero's
+   flex allocation. Columns follow the two rows' actual available height. */
+.tiles-grid {
+  height: 100%;
+  width: max-content;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-auto-columns: calc((100cqh - 28px) * 2 / 3);
+  row-gap: 28px;
+  column-gap: 16px;
+}
+
+[data-size="wide-short"] .tiles-grid {
+  grid-auto-columns: calc((100cqh - 16px) * 2 / 3);
+  row-gap: 16px;
+}
+
+.games-tiles .home-tile-footer {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 8px;
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  flex: 0 0 48px;
+  margin: 0;
+  background: rgba(0, 0, 0, .1);
+}
+
+.games-tiles .more-coming {
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.games-tiles .more-coming-picture {
+  box-sizing: border-box;
+  padding: 20px 24px 10px;
+}
+
+.games-tiles .home-tile-symbol {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .18);
+  color: inherit;
+}
+
+.games-tiles .home-tile-symbol svg {
+  width: 20px;
+  height: 20px;
+}
+
+.games-tiles .home-tile-title {
+  min-width: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+/* Keep the approved phone hero and two readable rows. Shorter phones
+   scroll vertically rather than clipping game names or reducing tap targets. */
+[data-size="tall-narrow"] .home { height: auto; min-height: 100vh; min-height: 100dvh; }
+[data-size="tall-narrow"] .games { flex: 1 1 0; min-height: 0; gap: 28px; }
+[data-size="tall-narrow"] .featured-card { flex: 1 1 0; min-height: 240px; }
+[data-size="tall-narrow"] .games-tiles {
+  flex: 0 0 auto;
+  height: clamp(320px, 36vh, 420px);
+  height: clamp(320px, 36dvh, 420px);
+  margin-block: -24px;
+  padding-block: 24px;
 }

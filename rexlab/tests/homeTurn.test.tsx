@@ -1,3 +1,4 @@
+import { homeTileGeometry } from "./support.ts";
 import { galleryArtworkFixtures } from "./coloringFixture.ts";
 import { jawGameParts } from "./whoseJaw.ts";
 import { emptyLabyrinth } from "./support.ts";
@@ -151,7 +152,7 @@ function openTurning(
     return box;
   };
   render(
-    <App {...emptyLabyrinth()}
+    <App readTileColumns={homeTileGeometry} {...emptyLabyrinth()}
       {...featuring(featured)}
       dinosaurs={SHIPPED_DINOSAURS}
       catalogue={SHIPPED_CATALOGUE}
@@ -352,12 +353,12 @@ describe("the home page glides to its other layout", () => {
     expect([card.hasAttribute("data-turn-framed"), getComputedStyle(card).boxShadow, card.parentElement?.hasAttribute("data-turn-frames")]).toEqual([true, "none", true]);
     // The row, positioned statically, holds its tiles' frames where they
     // stand by containing its layout.
-    expect([row.querySelectorAll(":scope > [data-turn-frame]").length, getComputedStyle(row).position, getComputedStyle(row).contain]).toEqual([FRAMED.length - 1, "static", "layout"]);
+    expect([row.querySelectorAll(".tiles-grid > [data-turn-frame]").length, getComputedStyle(row).position, getComputedStyle(row.querySelector(".tiles-grid")!).contain]).toEqual([FRAMED.length - 1, "static", "layout"]);
     expect([row.style.paddingRight, row.style.marginRight, row.style.paddingBottom, row.style.marginBottom]).toEqual([`${right}px`, `${-right}px`, `${bottom}px`, `${-bottom}px`]);
 
     act(() => app.pictures.fire(GLIDE));
 
-    expect([document.querySelectorAll("[data-turn-frame]").length, card.hasAttribute("data-turn-framed"), card.parentElement?.hasAttribute("data-turn-frames"), row.getAttribute("style")]).toEqual([0, false, false, "--tile-column: 310px;"]);
+    expect([document.querySelectorAll("[data-turn-frame]").length, card.hasAttribute("data-turn-framed"), card.parentElement?.hasAttribute("data-turn-frames"), row.getAttribute("style")]).toEqual([0, false, false, ""]);
   });
 
   it("starts each tile from where the child's swipe left it", () => {
@@ -502,15 +503,12 @@ describe("under reduced motion", () => {
 });
 
 describe("a turn keeps the tiles the child was looking at, there and back", () => {
-  // The row with COMPARE featured holds five columns 310 wide and 24
-  // apart, upright as in landscape at these windows: SKELETONS stands at
-  // its left edge at 334, and its end is at 1052 in landscape and 882
-  // upright.
+  // Column anchoring uses the rendered 4:3 widths and 16-pixel gaps.
   it.each([
-    ['so "SKELETONS" stands exactly at its left edge', 334, 334, 334],
-    ['so 60 pixels of "SKELETONS" are hidden', 334 + 60, 334, 334],
-    ['so 200 of "ANCIENT REPTILES" are hidden', 200, 334, 334],
-    ["to their end", 1052, 882, 1052]
+    ['so "BONES" stands exactly at its left edge', 290.6666666666667, 280.53333333333336, 290.6666666666667],
+    ['so 60 pixels of "BONES" are hidden', 350.6666666666667, 280.53333333333336, 290.6666666666667],
+    ['so 200 of "EXPLORE" are hidden', 200, 280.53333333333336, 290.6666666666667],
+    ["to their end", 843, 623, 843]
   ] as const)("swiped %s", (_, swiped, upright, back) => {
     const app = openTurning(1180, 820, "wide");
     const row = layOutTilesRow();
@@ -518,26 +516,23 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
 
     app.resize([820, 1180, "tall"]);
 
-    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([upright, 882]);
+    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([upright, 623]);
     act(() => app.pictures.fire(GLIDE));
     app.resize([1180, 820, "wide"]);
 
-    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([back, 1052]);
+    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([back, 843]);
   });
 
-  // At 375 wide, on 20-pixel sides, the columns are 307 wide and 24
-  // apart: swiped 450, "SKELETONS", the second column, has 119 of its 307
-  // hidden past the row's left edge, so most of it shows, and the tall
-  // row, its columns 310 wide, keeps it at its left edge, at 334.
+  // Column anchoring uses the rendered 4:3 widths and 16-pixel gaps.
   it("keeps the column swiped to from a tall-narrow window into a tall one, by the narrow row's own columns", () => {
     const app = openTurning(375, 667, "tall-narrow", { narrow: true });
     const row = layOutTilesRow();
-    expect(styleAt(row, [375, 667]).px("grid-auto-columns")).toBe(307);
-    swipeTiles(row, 450);
+    expect(row.querySelector(".tiles-grid")).not.toBeNull();
+    swipeTiles(row, 250);
 
     app.resize([768, 1024, "tall"]);
 
-    expect(row.scrollLeft).toBe(334);
+    expect(row.scrollLeft).toBeCloseTo(243.0933333333);
   });
 
   it("judges where the row stands from before the motion began, through every change that cuts it short", () => {
@@ -550,7 +545,7 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
     app.halfWay(0.5);
     app.resize([1180, 820, "wide"]);
 
-    expect(row.scrollLeft).toBe(334);
+    expect(row.scrollLeft).toBeCloseTo(290.6666666667);
   });
 
   // Upright in a window 1800 wide, the five columns stand 310 wide and
@@ -565,7 +560,7 @@ describe("a turn keeps the tiles the child was looking at, there and back", () =
 
     app.resize([1800, 1900, "tall"]);
 
-    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([0, -98]);
+    expect([row.scrollLeft, row.scrollWidth - row.clientWidth]).toEqual([0, -40]);
     act(() => app.pictures.fire(GLIDE));
     app.resize([1180, 820, "wide"]);
 
@@ -721,14 +716,11 @@ describe("taps and keys during the motion", () => {
 });
 
 describe("a resize that keeps the layout", () => {
-  // SKELETONS's column is the second: it stands at the row's left edge
-  // one column and its gap in, upright 310 wide, then 292 at 712; on a
-  // phone on its side, four fifths of the row short of its 16-pixel gap:
-  // 313.6 of 408 at 852, then 345.6 of 448 at 932.
+  // Column anchoring uses the rendered 4:3 widths and 16-pixel gaps.
   it.each([
-    [[820, 1180, "tall"], [712, 1180, "tall"], 334, 316],
-    [[1440, 900, "wide"], [1440, 700, "wide"], 334, 334],
-    [[852, 393, "wide-short"], [932, 430, "wide-short"], 330, 361.6]
+    [[820, 1180, "tall"], [712, 1180, "tall"], 280.5333333333, 280.5333333333],
+    [[1440, 900, "wide"], [1440, 700, "wide"], 344, 237.3333333333],
+    [[852, 393, "wide-short"], [932, 430, "wide-short"], 200.6666666667, 225.3333333333]
   ] as const)("from %j to %j moves nothing, SKELETONS still at the row's left edge", (from, to, before, after) => {
     const app = openTurning(from[0], from[1], from[2]);
     const row = layOutTilesRow();
@@ -737,7 +729,7 @@ describe("a resize that keeps the layout", () => {
     app.resize(to);
 
     expect([app.animations, app.fades, turning(), app.pictures.timers(), sizeShown()]).toEqual([[], [], false, [], to[2]]);
-    expect(row.scrollLeft).toBe(after);
+    expect(row.scrollLeft).toBeCloseTo(after);
   });
 });
 
@@ -868,14 +860,14 @@ describe("the page's marked parts", () => {
 
     expect([...document.querySelectorAll("[data-turn-part]")].map(nameOf)).toEqual(PARTS);
     expect(within(tilesRow()).getAllByRole("button").map((tile) => [tile.getAttribute("aria-label"), nameOf(tile)])).toEqual([
-      ["ANCIENT REPTILES", "tile-catalogue"],
-      ["FIND THE PAIR", "tile-pairs"],
-      ["SKELETONS", "tile-skeletons"],
+      ["EXPLORE", "tile-catalogue"],
+      ["PAIRS", "tile-pairs"],
+      ["BONES", "tile-skeletons"],
       ["DIG", "tile-dig"],
       ["SORT", "tile-sort"],
       ["CARE", "tile-care"],
-      ["SAND WRITING", "tile-sandWriting"],
-      ["LABYRINTH", "tile-labyrinth"]
+      ["DRAW", "tile-sandWriting"],
+      ["MAZE", "tile-labyrinth"]
     ]);
   });
 });

@@ -4,8 +4,7 @@ Feature: The level a game starts at
   child's own choice in a game wins until a parent picks a different
   level. Rewards are the same at every level, and each level keeps its
   own best score (docs/age-levels.md); a best saved before a game had
-  levels is its Hatchling best, shown on its tile or, when it is
-  featured, on the large card in its place.
+  levels is its Hatchling best, shown on the large card when the game is featured. Small tiles show no progress badges.
 
   Find the pair, the sorting game, the skeleton game, the dig game and
   the compare quiz have levels (find-the-pair-levels.feature,
@@ -35,7 +34,7 @@ Feature: The level a game starts at
     And my best compare quiz score at <level> is 6
     When I answer every question of a compare quiz round right
     Then I score 10 and see the new best score celebration
-    And the COMPARE tile shows my best score 10, the best of the level the quiz plays
+    And on a day COMPARE is featured its card shows my best score 10 for the level the quiz plays
 
     Examples:
       | level          |

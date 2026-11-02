@@ -63,6 +63,7 @@ jobs:
           - coloringFlow
           - homePhone
           - nativeTouch
+          - homeTiles
           - browserChrome
     runs-on: ubuntu-latest
     timeout-minutes: 10

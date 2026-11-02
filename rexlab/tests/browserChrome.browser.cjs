@@ -48,7 +48,7 @@ const { webkit } = require('playwright');
         });
         assert(image, `${theme}/${level}/${name}: app icon missing`);
         if (screenshots) await page.screenshot({ path: join(screenshots, `${theme}-${level}-${name}-home.png`) });
-        await page.getByRole('button', { name: 'COLOR A DINOSAUR', exact: true }).press('Enter');
+        await page.locator('[data-turn-part="tile-coloring"], .featured-card[data-game="coloring"]').press('Enter');
         await page.locator('.gallery-works[aria-busy="false"]').waitFor();
         await check();
         if (screenshots) await page.screenshot({ path: join(screenshots, `${theme}-${level}-${name}-gallery.png`) });
