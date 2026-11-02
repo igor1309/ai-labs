@@ -34,7 +34,7 @@ Feature: Completing a dinosaur picture
   Scenario: Progress survives a new session
     Given I have completed a dinosaur
     When I reload the app
-    Then its star appears on the picture choice screen and its count on the featured card
+    Then its star appears on the picture choice screen and its count on its card on a day the game is featured
     And its completion contributes to the featured puzzle card
     And puzzle progress never appears on catalogue or dinosaur pages
 

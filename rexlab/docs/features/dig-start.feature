@@ -14,8 +14,9 @@ Feature: Dig: starting a round and the board
     When I open the home page
     Then I see a "DIG" tile with a dinosaur half under sand and a 🖌️ brush symbol
     And the sand picture has rounded corners, as the cards around it do
-    And it stands under "SKELETONS", before "SORT" (home-tiles.feature)
-    And the tile shows how many dinosaurs I have dug up once there is one
+    And it stands under "BONES", before "SORT" (home-tiles.feature)
+    And the small tile shows no count
+    And on a day DIG is featured its card shows how many dinosaurs I have dug up
 
   Scenario: The dig tile brightens under a pointer and shows it is pressed
     Given I am on the home page

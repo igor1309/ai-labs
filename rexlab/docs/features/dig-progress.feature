@@ -52,7 +52,8 @@ Feature: Dig: stored progress
   Scenario: A dinosaur no longer in the game is not counted
     Given my stored progress holds a dinosaur id the app no longer ships among 5 dug up
     When I open the home page
-    Then the featured DIG card shows 4 and the small DIG tile has no badge
+    Then on a day DIG is featured its card shows 4
+    And on a day another game is featured the small DIG tile has no badge
 
   Scenario: Progress that cannot be saved is still celebrated
     Given I have dug up 4 dinosaurs

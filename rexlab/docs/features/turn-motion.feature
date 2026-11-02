@@ -56,10 +56,10 @@ Feature: A screen moves to its other layout as the window turns
 
     Examples:
       | swiped                                         | kept                                                     |
-      | so "SKELETONS" stands exactly at its left edge | "SKELETONS" stands at the row's left edge                |
-      | so 60 pixels of "SKELETONS" are hidden         | "SKELETONS" stands at the row's left edge                |
-      | so 200 of "ANCIENT REPTILES" are hidden        | "SKELETONS" stands at the row's left edge                |
-      | to their end                                   | the row is at its end, "MORE COMING" whole at its right  |
+      | so "BONES" stands exactly at its left edge | "BONES" stands at the row's left edge                |
+      | so 60 pixels of "BONES" are hidden         | "BONES" stands at the row's left edge                |
+      | so 200 of "EXPLORE" are hidden        | "BONES" stands at the row's left edge                |
+      | to their end                                   | the row is at its end, "SOON" whole at its right  |
 
   Scenario: Taps and keys during the motion do nothing
     Given a window of 1180 by 820 CSS pixels on the home page, the large card focused
@@ -69,9 +69,9 @@ Feature: A screen moves to its other layout as the window turns
     And pressing Enter then opens its game, as would a tap more than 500 ms after the first's release
 
   Scenario Outline: A resize that keeps the layout moves nothing
-    Given a window of <from width> by <from height> CSS pixels on the home page, "SKELETONS" at the row's left edge
+    Given a window of <from width> by <from height> CSS pixels on the home page, "BONES" at the row's left edge
     When the window becomes <to width> by <to height> CSS pixels
-    Then the page follows the window with no glide or fade, "SKELETONS" still at the row's left edge
+    Then the page follows the window with no glide or fade, "BONES" still at the row's left edge
 
     Examples:
       | from width | from height | to width | to height |

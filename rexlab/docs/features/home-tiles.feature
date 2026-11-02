@@ -1,4 +1,6 @@
 Feature: Home game tiles
+  Igor approved the short labels, uniform footers and removal of small-tile
+  progress badges on 2026-11-02 (LAB-906). In-game rewards are unchanged.
   Every game except today's featured game appears in fixed order in two
   horizontally scrolling rows. The featured card keeps its full title,
   picture, symbol and progress badge and stays in place while tiles scroll.
@@ -9,12 +11,12 @@ Feature: Home game tiles
     And every game has earned progress
     When I open Home with each game appearing as a small tile
     Then every small tile including SOON has width:height 4:3
-    And the existing row heights and featured card geometry are preserved
+    And row heights and featured-card geometry follow the Home portrait, narrow-portrait and short-landscape specifications
     And columns are 16 CSS pixels apart
-    And the gap between rows is 16 CSS pixels on a short landscape phone and 28 otherwise
+    And the gap between rows is 16 CSS pixels on a wide-short window and 28 otherwise
     And every game footer is 48 CSS pixels high with 8-pixel padding and a 4-pixel gap
     And every footer has translucent black background with opacity 0.1
-    And a 20-pixel outline icon sits in a 24-pixel badge beside the title
+    And a 20-pixel outline icon sits in a 24-pixel icon holder beside the title
     And every title is bold 20-pixel text with 24-pixel line height and zero letter spacing
     And every title fits on one line
     And the catalogue book sits in its footer and TEETH uses an outline tooth

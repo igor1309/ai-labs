@@ -41,8 +41,8 @@ Feature: The home page in a tall window
       | 900   | 1000   | 348  | 360 | does not scroll | Mac window, nearly square      |
       | 712   | 1000   | 348  | 360 | does not scroll | Stage Manager window           |
       | 600   | 1400   | 604  | 504 | does not scroll | tall Mac window                |
-      | 1068  | 1500   | 688  | 520 | does not scroll | Mac window, fourth column in   |
-      | 1400  | 1500   | 688  | 520 | does not scroll | Mac window, all tiles whole    |
+      | 1068  | 1500   | 688  | 520 | does not scroll | Mac window, wide portrait   |
+      | 1400  | 1500   | 688  | 520 | does not scroll | Mac window, large portrait    |
 
   Scenario Outline: Every word fits the tightest tall windows
     Given the app is in <language>

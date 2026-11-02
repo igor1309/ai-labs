@@ -7,7 +7,7 @@ Feature: Home page: the featured card and the tiles
 
   Background:
     Given an iPad in landscape
-    And the games, in tile order, are COMPARE, ANCIENT REPTILES, FIND THE PAIR, SKELETONS, DIG, SORT, CARE and SAND WRITING
+    And the games, in tile order, are compare, catalogue, pairs, skeletons, dig, sort, care, sand writing, labyrinth, picture puzzle, whose jaw and coloring
 
   Scenario: The featured game has the large card and no tile
     Given CARE is today's featured game
