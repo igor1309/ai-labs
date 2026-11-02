@@ -58,12 +58,13 @@ Feature: Home page: one page from the sky down
   Scenario: The header scrolls away with the sky
     Given I am on the home page
     When I scroll down
-    Then RexLab, MUSEUM and the parents' menus scroll away with the sky
+    Then RexLab, the museum button and the parents' menus scroll away with the sky
     And when I scroll back up they are where they were
 
-  Scenario: The edges show more of the dig site
-    When I pull the page past its top or past its bottom
-    Then more sky or more bedrock shows, never a blank edge
+  Scenario: The page ends in sky and bedrock
+    When I scroll to the top or to the bottom of the home page
+    Then the sky reaches the window's top edge and the bedrock its bottom edge
+    And the page does not bounce past either end
 
   Scenario: The sky moves slower than the ground
     Given the device does not ask for reduced motion

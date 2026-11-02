@@ -19,6 +19,7 @@ Feature: Home page: today's game in the sky
       | Russian  | COMPARE | СРАВНИ  | СЕГОДНЯ | ИГРАТЬ |
       | English  | CARE    | CARE    | TODAY   | PLAY   |
       | Russian  | CARE    | ЗАБОТА  | СЕГОДНЯ | ИГРАТЬ |
+      | English  | ANCIENT REPTILES | ANCIENT REPTILES | TODAY | PLAY |
 
   Scenario Outline: Today's game keeps its progress
     Given <game> has <progress> in its saved progress
@@ -38,7 +39,7 @@ Feature: Home page: today's game in the sky
       | SKELETONS        | a collection best of 2 with a trophy symbol |
       | DIG              | 7 dinosaurs dug up with a star symbol       |
       | SAND WRITING     | no score or badge                           |
-      | MAZE             | 2 stars with a star symbol                  |
+      | MAZE             | 6 stars with a star symbol                  |
       | PUZZLE           | "1/3" pictures with a star symbol           |
       | TEETH            | "5/16" jaws with a museum symbol            |
       | COLOR            | 2 finished works with a star symbol         |
@@ -79,6 +80,7 @@ Feature: Home page: today's game in the sky
 
   Scenario: The game's name and dinosaurs open it too
     Given COMPARE is today's featured game
+    And I am on the home page
     When I tap its name or one of its dinosaurs
     Then I see question "1/10", as PLAY would open it
 
