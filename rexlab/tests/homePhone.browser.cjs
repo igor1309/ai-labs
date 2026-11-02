@@ -68,6 +68,11 @@ const games = ["compare", "catalogue", "pairs", "skeletons", "dig", "sort", "car
         await page.locator(".games-tiles").evaluate((row) => { row.scrollLeft = 0; });
         checked++;
       }
+      await page.evaluate(async () => {
+        await Promise.all(document.getAnimations().filter((animation) =>
+          animation.effect?.getComputedTiming().iterations !== Infinity
+        ).map((animation) => animation.finished.catch(() => {})));
+      });
       if (output && width === 390 && height === 844 && language === "en") {
         await page.screenshot({ path: join(output, `home-phone-${level}.png`) });
       }
