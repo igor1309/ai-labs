@@ -39,10 +39,13 @@ struct PanelLoadTests {
     /// The panel's own steps apart from the session around them.
     @Test func eachStepOfATextStateCostsAboutTheSameLateAsEarly() {
 
+        // A state costs microseconds, so one preempted state can outweigh the
+        // rest of a run: the median state of the quickest of three runs is
+        // the cost, and a cost growing with the call raises every state's.
         var early = Double.infinity, late = Double.infinity
         for _ in 0..<3 {
-            early = min(early, seconds(steps(entries: 20).reduce(.zero, +)))
-            late = min(late, seconds(steps(entries: 1_620).reduce(.zero, +)))
+            early = min(early, median(stateTimes(entries: 20)))
+            late = min(late, median(stateTimes(entries: 1_620)))
         }
         let names = ["mapping the text", "reducing", "comparing reading states", "mapping the panel", "comparing panel states"]
         let perStep = zip(names, steps(entries: 1_620)).map { name, time in
@@ -67,9 +70,24 @@ struct PanelLoadTests {
     /// Where a state's time goes: each step the panel takes, timed apart.
     private func steps(entries count: Int) -> [Duration] {
 
+        var times = [Duration](repeating: .zero, count: 5)
+        for state in panelSteps(entries: count) {
+            for (step, time) in state.enumerated() { times[step] += time }
+        }
+        return times
+    }
+
+    /// Each state's time through all the panel's steps, in seconds.
+    private func stateTimes(entries count: Int) -> [Double] {
+        panelSteps(entries: count).map { seconds($0.reduce(.zero, +)) }
+    }
+
+    /// Each state after the first, with the time each of the panel's steps took on it.
+    private func panelSteps(entries count: Int) -> [[Duration]] {
+
         let feed = feed(entries: count)
         var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
-        var times = [Duration](repeating: .zero, count: 5)
+        var states: [[Duration]] = []
         let clock = ContinuousClock()
         // The call is already there: only the states after it are the cost of a late state.
         reading = ReadingReducer.reduce(reading, .textUpdated(readingText(feed[0]))).0
@@ -77,6 +95,7 @@ struct PanelLoadTests {
         var shown = panelState(reading, rows: &rows)
         var mapped = feed[0].finalCount
         for state in feed.dropFirst() {
+            var times = [Duration](repeating: .zero, count: 5)
             var update: ReadingTextUpdate?
             times[0] += clock.measure { update = readingText(state, from: mapped) }
             mapped = state.finalCount
@@ -87,8 +106,9 @@ struct PanelLoadTests {
             times[3] += clock.measure { next = panelState(reading, rows: &rows) }
             times[4] += clock.measure { _ = next == shown }
             shown = next!
+            states.append(times)
         }
-        return times
+        return states
     }
 
     /// States that each carry the whole call's `entries` with its last one
@@ -166,6 +186,11 @@ struct PanelLoadTests {
         }
         return mean
     }
+}
+
+private func median(_ values: [Double]) -> Double {
+    let sorted = values.sorted()
+    return sorted[sorted.count / 2]
 }
 
 private func seconds(_ duration: Duration) -> Double {
