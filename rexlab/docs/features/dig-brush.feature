@@ -43,7 +43,7 @@ Feature: Dig: the brush, and Hatchling's free brushing
   Scenario Outline: Two brushes, each a size a finger can steer
     Given a <level> round has started
     Then the brush is <size> CSS pixels across, whatever the board's size
-    And the wide brush is <wide> CSS pixels across, twice the brush, as dig-brush-picker.feature picks
+    And the wide brush is <wide> CSS pixels across, twice the brush, as dig-brush-choice.feature picks
 
     Examples:
       | level          | size | wide |

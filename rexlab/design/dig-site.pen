@@ -27948,7 +27948,7 @@
       "id": "VW3sM",
       "x": 2466,
       "y": 14544,
-      "name": "DIG · Hatchling · brush menu open · iPhone 393×852 · Light",
+      "name": "DIG · Hatchling · brushing · iPhone 393×852 · Light",
       "theme": {
         "mode": "light",
         "device": "phone"
@@ -28011,28 +28011,138 @@
           "height": 660,
           "fill": "$ds-strata-1",
           "layout": "vertical",
+          "gap": 16,
           "padding": [
-            0,
+            16,
             20,
-            60,
+            40,
             20
           ],
-          "justifyContent": "center",
           "children": [
             {
-              "id": "xBspv",
-              "type": "ref",
-              "ref": "XJOtY",
-              "name": "Board",
-              "width": 353,
-              "height": 265,
-              "cornerRadius": 20,
-              "fill": {
-                "type": "image",
-                "enabled": true,
-                "url": "images/dig-hatchling-stegosaurus.webp",
-                "mode": "cover"
-              }
+              "type": "frame",
+              "id": "cYMfV",
+              "name": "Dig",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "gap": 16,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "xBspv",
+                  "type": "ref",
+                  "ref": "XJOtY",
+                  "name": "Board",
+                  "width": 353,
+                  "height": 265,
+                  "cornerRadius": 20,
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-hatchling-stegosaurus.webp",
+                    "mode": "cover"
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Nt1m7",
+              "name": "Brushes",
+              "width": "fill_container",
+              "gap": 12,
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "bTHBS",
+                  "name": "BRUSH",
+                  "width": "fill_container",
+                  "height": 64,
+                  "fill": "$ds-reward",
+                  "cornerRadius": "$ds-radius-pill",
+                  "gap": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "g9xKrp",
+                      "name": "Swatch",
+                      "width": 32,
+                      "height": 32,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "BlCWW",
+                          "name": "Dot",
+                          "fill": "$ds-ink",
+                          "width": 12,
+                          "height": 12
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "Zv7g2",
+                      "name": "Label",
+                      "fill": "$ds-on-reward",
+                      "content": "BRUSH",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 17,
+                      "fontWeight": "800"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "wdrA6",
+                  "name": "WIDE BRUSH",
+                  "width": "fill_container",
+                  "height": 64,
+                  "fill": "$ds-label",
+                  "cornerRadius": "$ds-radius-pill",
+                  "stroke": "$ds-outline",
+                  "strokeWidth": 2,
+                  "strokeAlignment": "inner",
+                  "gap": 10,
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "CfeI2",
+                      "name": "Swatch",
+                      "width": 32,
+                      "height": 32,
+                      "justifyContent": "center",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "ellipse",
+                          "id": "ER8o7",
+                          "name": "Dot",
+                          "fill": "$ds-ink",
+                          "width": 24,
+                          "height": 24
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "vYYOB",
+                      "name": "Label",
+                      "fill": "$ds-ink",
+                      "content": "WIDE BRUSH",
+                      "fontFamily": "$ds-font",
+                      "fontSize": 17,
+                      "fontWeight": "800"
+                    }
+                  ]
+                }
+              ]
             }
           ]
         },
@@ -28177,42 +28287,6 @@
               }
             },
             {
-              "type": "frame",
-              "id": "MJSrX",
-              "name": "Brush menu",
-              "width": 48,
-              "height": 48,
-              "fill": "$ds-reward",
-              "cornerRadius": 24,
-              "layout": "none",
-              "children": [
-                {
-                  "type": "icon",
-                  "id": "dFY38",
-                  "x": 10,
-                  "y": 9,
-                  "name": "Icon",
-                  "width": 26,
-                  "height": 26,
-                  "icon": "paint-brush-broad",
-                  "library": "phosphor",
-                  "fill": "$ds-on-reward"
-                },
-                {
-                  "type": "ellipse",
-                  "id": "PPuVz",
-                  "x": 31,
-                  "y": 31,
-                  "name": "Dot",
-                  "fill": "$ds-ink",
-                  "width": 10,
-                  "height": 10,
-                  "stroke": "$ds-reward",
-                  "strokeWidth": 2
-                }
-              ]
-            },
-            {
               "id": "hf0Vp",
               "type": "ref",
               "ref": "iPOQT",
@@ -28249,154 +28323,6 @@
                   "fontSize": 20
                 }
               }
-            }
-          ]
-        },
-        {
-          "type": "frame",
-          "id": "NhpC2",
-          "x": 84,
-          "y": 134,
-          "name": "Brush menu · open",
-          "width": 230,
-          "fill": "$ds-label",
-          "cornerRadius": 20,
-          "effect": {
-            "type": "shadow",
-            "shadowType": "outer",
-            "color": "#1D274233",
-            "offset": {
-              "x": 0,
-              "y": 8
-            },
-            "blur": 24
-          },
-          "layout": "vertical",
-          "gap": 4,
-          "padding": 8,
-          "children": [
-            {
-              "type": "frame",
-              "id": "m4nHyp",
-              "name": "BRUSH",
-              "width": "fill_container",
-              "height": 52,
-              "fill": "$ds-quiet",
-              "cornerRadius": 14,
-              "gap": 12,
-              "padding": [
-                0,
-                12
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "vQuJF",
-                  "name": "Swatch",
-                  "width": 36,
-                  "height": 36,
-                  "fill": "$ds-reward",
-                  "cornerRadius": 18,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "ellipse",
-                      "id": "B5rTi",
-                      "name": "Dot",
-                      "fill": "$ds-ink",
-                      "width": 9,
-                      "height": 9
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "id": "X8NR4k",
-                  "name": "Label",
-                  "fill": "$ds-ink",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "BRUSH",
-                  "fontFamily": "$ds-font",
-                  "fontSize": 17,
-                  "fontWeight": "800"
-                },
-                {
-                  "type": "icon",
-                  "id": "O5SuDW",
-                  "name": "Tick",
-                  "width": 22,
-                  "height": 22,
-                  "icon": "check",
-                  "library": "lucide",
-                  "fill": "$ds-good"
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "LkvuI",
-              "name": "WIDE BRUSH",
-              "width": "fill_container",
-              "height": 52,
-              "fill": "#00000000",
-              "cornerRadius": 14,
-              "gap": 12,
-              "padding": [
-                0,
-                12
-              ],
-              "alignItems": "center",
-              "children": [
-                {
-                  "type": "frame",
-                  "id": "uYSoM",
-                  "name": "Swatch",
-                  "width": 36,
-                  "height": 36,
-                  "fill": "$ds-quiet",
-                  "cornerRadius": 18,
-                  "justifyContent": "center",
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "ellipse",
-                      "id": "RHTkg",
-                      "name": "Dot",
-                      "fill": "$ds-ink",
-                      "width": 18,
-                      "height": 18
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "id": "fTmis",
-                  "name": "Label",
-                  "fill": "$ds-ink",
-                  "textGrowth": "fixed-width",
-                  "width": "fill_container",
-                  "content": "WIDE BRUSH",
-                  "fontFamily": "$ds-font",
-                  "fontSize": 17,
-                  "fontWeight": "800"
-                },
-                {
-                  "type": "icon",
-                  "id": "So23C",
-                  "x": 0,
-                  "y": 0,
-                  "name": "Tick",
-                  "enabled": false,
-                  "width": 22,
-                  "height": 22,
-                  "icon": "check",
-                  "library": "lucide",
-                  "fill": "$ds-good"
-                }
-              ]
             }
           ]
         }
