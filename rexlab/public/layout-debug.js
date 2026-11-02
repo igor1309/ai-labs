@@ -1,7 +1,7 @@
-// LAB-909: with ?debug in the address, shows the window's and the page's
+// LAB-909: on this debug branch, unless ?nodebug is in the address, shows the window's and the page's
 // measured sizes on screen, to find where an iPhone layout ends.
 (function () {
-  if (!/[?&]debug\b/.test(location.search)) return;
+  if (/[?&]nodebug\b/.test(location.search)) return;
   var probe = function (css) {
     var d = document.createElement("div");
     d.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;visibility:hidden;" + css;
