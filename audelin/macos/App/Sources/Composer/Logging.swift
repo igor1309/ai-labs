@@ -1,40 +1,26 @@
 import Foundation
-import os
 import Recording
 import Session
 
 // Keep private fields separate so a caller cannot accidentally make a path public.
-struct LogEntry: Sendable, Equatable {
+public struct LogEntry: Sendable, Equatable {
 
-    enum Category: String, CaseIterable, Sendable {
+    public enum Category: String, CaseIterable, Sendable {
         case calls, recording, session, capture, conditions, model, menu, reading, panel
     }
 
-    let category: Category
-    let message: String
-    var error: String? = nil
-    var path: String? = nil
-}
-
-protocol LogSink: Sendable {
-    func write(_ entry: LogEntry)
-}
-
-struct SystemLogSink: LogSink {
-
-    private let loggers = Dictionary(uniqueKeysWithValues: LogEntry.Category.allCases.map {
-        ($0, Logger(subsystem: "dev.igor1309.audelin", category: $0.rawValue))
-    })
-
-    func write(_ entry: LogEntry) {
-
-        let logger = loggers[entry.category]!
-        if let error = entry.error {
-            logger.error("\(entry.message, privacy: .public) error=\(error, privacy: .public) path=\(entry.path ?? "", privacy: .private)")
-        } else {
-            logger.notice("\(entry.message, privacy: .public) path=\(entry.path ?? "", privacy: .private)")
-        }
+    public let category: Category
+    public let message: String
+    public var error: String? = nil
+    public var path: String? = nil
+    public init(category: Category, message: String, error: String? = nil, path: String? = nil) {
+        self.category = category; self.message = message; self.error = error; self.path = path
     }
+
+}
+
+public protocol LogSink: Sendable {
+    func write(_ entry: LogEntry)
 }
 
 struct PortLog: Sendable {

@@ -8,7 +8,7 @@ import Session
 
 /// Each recording's reading model, reducing on the main actor.
 @MainActor
-public func makeReading() -> ReadingInputs {
+func makeReading() -> ReadingInputs {
 
     let model = ObservableModel<ReadingState, ReadingEvent, Never>(
         initialState: .init(), reduce: ReadingReducer.reduce, handleEffect: { switch $0 {} }
@@ -18,7 +18,7 @@ public func makeReading() -> ReadingInputs {
 
 /// Recording's model, reducing on the main actor, and the doer that makes the Session follow it.
 @MainActor
-public func makeRecording(
+func makeRecording(
     initial: RecordingState, session: any RecordingSession, log: @escaping @Sendable (RecordingState) -> Void,
     callAudioReady: @escaping @Sendable () async -> Bool,
     callAudioReleased: @escaping @Sendable () async -> Void
@@ -69,7 +69,7 @@ final class RecordingModel {
 }
 
 /// One Session's model, reducing on its own actor and running its effects through the handler.
-public func makeSession(handler: SessionEffectHandler) async -> SessionInputs {
+func makeSession(handler: SessionEffectHandler) async -> SessionInputs {
 
     let model = SessionModel()
     await model.start(handler: handler)
@@ -88,10 +88,10 @@ actor SessionModel {
     private var ended: SessionState?
     private let feed = StateFeed<SessionState>()
 
-    func start(handler: SessionEffectHandler, initial: SessionState = .init()) {
+    func start(handler: SessionEffectHandler) {
 
         let feed = feed
-        model = ObservableModel(initialState: initial, reduce: { state, event in
+        model = ObservableModel(initialState: SessionState(), reduce: { state, event in
             guard !feed.finished else { return (state, nil) }
             let (next, effect) = SessionReducer.reduce(state, event)
             if next != state { feed.publish(next) }
@@ -123,7 +123,7 @@ actor SessionModel {
 
 /// Returns once the lifecycle has terminated: every begun session has ended first.
 @MainActor
-public func quit(_ handler: LifecycleEffectHandler) async {
+func quit(_ handler: LifecycleEffectHandler) async {
 
     let model = ObservableModel(initialState: LifecycleState.running, reduce: LifecycleReducer.reduce, handleEffect: handler.handle)
     model.event(.quit)
@@ -131,9 +131,8 @@ public func quit(_ handler: LifecycleEffectHandler) async {
 }
 
 @MainActor
-public func makeRecordings(handler: RecordingsEffectHandler) -> RecordingsInputs {
+func makeRecordings(handler: RecordingsEffectHandler) -> RecordingsInputs {
     let model = ObservableModel(initialState: RecordingsState(), reduce: RecordingsReducer.reduce,
                                 handleEffect: { handleRecordingsEffect(handler, $0) })
     return RecordingsInputs(state: { model.state }, send: { model.event($0) })
 }
-

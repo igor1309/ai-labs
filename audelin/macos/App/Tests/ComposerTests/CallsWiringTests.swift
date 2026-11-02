@@ -1,127 +1,17 @@
-import Calls
+import BlockingTestWork
 import CallsListUI
 import Foundation
-import MenuBar
-import Preferences
 import Observation
+import Preferences
 import Recording
 import Recordings
-import Synchronization
 import Testing
-@testable import Audelin
 @testable import Composer
 
+/// The composed calls window over real folders on disk.
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct CallsWiringTests {
-    @Test func appReopenBetweenCallsOpensAndRefreshesTheCallsWindow() async {
-        let spy = CallsStoreSpy()
-        spy.calls.withLock { $0 = [call("A")] }
-        let shown = Counter()
-        let controller = makeController(spy: spy, present: { shown.increment() })
-        let menu = await AudelinMenu(storage: CallsPreferences(), makeApplication: {
-            MenuApplication(states: { AsyncStream { $0.yield(.init()); $0.finish() } },
-                            failures: AsyncStream { $0.finish() },
-                            send: { _ in Issue.record("Reopening must not control recording") }, quit: {},
-                            panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in })
-        }, openFolder: { _ in Issue.record("Reopening opens a window") }, openURL: { _ in }, terminate: {},
-            didDeliver: {}, sink: CallsLog(), presentPanel: { _ in Issue.record("No recording panel between calls") },
-            sleep: { _ in Issue.record("No hide delay between calls") }, calls: controller)
-        await menu.waitForObservers()
-        let delegate = AudelinAppDelegate()
-        delegate.connect(menu)
-        delegate.handleReopen()
-        await wait(controller) { !$0.busy && $0.rows.map(\.id) == ["A"] }
-        spy.calls.withLock { $0 = [call("B")] }
-        menu.appReopened()
-        await wait(controller) { !$0.busy && $0.rows.map(\.id) == ["B"] }
-        #expect(shown.value == 2)
-        #expect(spy.operations.withLock { $0 } == ["list", "list"])
-    }
-
-    @Test func appReopenDuringARecordingBringsThePanelForwardAndLogsTheReason() async {
-        for origin: RecordingState.Origin in [.call, .hand] {
-            for phase: RecordingState.Phase in [.beginning, .recording, .ending] {
-                let spy = CallsStoreSpy()
-                let controller = makeController(spy: spy, present: { Issue.record("Recording reopens the panel") })
-                var state = RecordingState()
-                state.phase = phase
-                state.session = .init(id: 1, origin: origin)
-                var visibility: [Bool] = []
-                let log = CallsLog()
-                let menu = await AudelinMenu(storage: CallsPreferences(), makeApplication: {
-                    MenuApplication(states: { AsyncStream { $0.yield(state); $0.finish() } },
-                                    failures: AsyncStream { $0.finish() },
-                                    send: { _ in Issue.record("Reopening must not control recording") }, quit: {},
-                                    panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in })
-                }, openFolder: { _ in Issue.record("Reopening opens a window") }, openURL: { _ in }, terminate: {},
-                    didDeliver: {}, sink: log, presentPanel: { visibility.append($0) },
-                    sleep: { _ in Issue.record("Active recordings have no hide delay") }, calls: controller)
-                await menu.waitForObservers()
-                menu.appReopened()
-                #expect(visibility == [true, true])
-                menu.panelClosed()
-                menu.appReopened()
-                #expect(menu.panelPresence.visible)
-                #expect(visibility == [true, true, false, true])
-                #expect(log.entries.all.filter { $0.category == .panel }.map(\.message) == [
-                    "shown reason=recordingBegan", "shown reason=appReopen", "hidden reason=userClosed",
-                    "shown reason=appReopen",
-                ])
-                #expect(spy.operations.withLock { $0.isEmpty })
-            }
-        }
-    }
-
-    @Test func menuActionOpensTheCallsWindowAndListsOnEveryOpen() async {
-        let spy = CallsStoreSpy()
-        let shown = Counter()
-        let controller = makeController(spy: spy, present: { shown.increment() })
-        let menu = await AudelinMenu(storage: CallsPreferences(), makeApplication: {
-            MenuApplication(states: { AsyncStream { $0.finish() } }, failures: AsyncStream { $0.finish() },
-                            send: { _ in Issue.record("Calls menu must not control recording") }, quit: {},
-                            panelStates: { AsyncStream { $0.finish() } }, sendPanel: { _ in })
-        }, openFolder: { _ in Issue.record("Calls menu opens a window") }, openURL: { _ in }, terminate: {},
-            didDeliver: {}, sink: CallsLog(), presentPanel: { _ in }, sleep: { _ in }, calls: controller)
-        #expect(menu.menu.entries.contains(.button("Звонки…", .showCalls)))
-        await menu.perform(.showCalls)
-        await wait(controller) { !$0.busy && spy.operations.withLock { $0.count } == 1 }
-        await menu.perform(.showCalls)
-        await wait(controller) { !$0.busy && spy.operations.withLock { $0.count } == 2 }
-        #expect(shown.value == 2)
-        await menu.waitForObservers()
-    }
-
-    @Test nonisolated func createdFolderReachesRecordingBeforeReadinessAndClearsAfterCleanup() async throws {
-        let started = Signal(), release = Signal()
-        defer { started.end(); release.end() }
-        try await withSessionRig(connect: { _, _ in Task {} }, beforeMicrophoneStartReturns: {
-            started.send(); await release.next()
-        }) { rig, _ in
-            let recording = await composeRecording(initial: .init(missing: []), access: testAccessPolicy(),
-                makePieces: { _ in rig.pieces }, liveText: { false }, panel: ReadingClockSpy().panel(),
-                makeModel: makeRecording, makeSession: makeSession)
-            await recording.send(.userStart)
-            await started.next()
-            for await state in await recording.states() where state.callID != nil {
-                #expect(state.callID == "1970.01.01-0000")
-                #expect(state.phase == .beginning)
-                break
-            }
-            release.send()
-            for await state in await recording.states() where state.phase == .recording {
-                #expect(state.callID == "1970.01.01-0000")
-                break
-            }
-            await recording.send(.userStop)
-            for await state in await recording.states() where state.phase == .idle {
-                #expect(state.callID == nil)
-                break
-            }
-            await recording.end()
-        }
-    }
-
     @Test func mappingNamesTheFailedCallAndProtectsOnlyTheRecording() {
         var state = RecordingsState()
         state.calls = [call("A"), call("B")]
@@ -141,105 +31,120 @@ struct CallsWiringTests {
         }
     }
 
-    @Test func menuOpeningListsAgainAndInlineRenameUsesAFreshResult() async {
-        let spy = CallsStoreSpy()
-        spy.calls.withLock { $0 = [call("A")] }
-        let shown = Counter()
-        let controller = makeController(spy: spy, present: { shown.increment() })
-        controller.show()
-        await wait(controller) { !$0.busy && $0.rows.count == 1 }
-        #expect(shown.value == 1)
-        await controller.send(.beginRename("A"))
-        #expect(controller.state.editing == .init(id: "A", title: "Zoom"))
-        await controller.send(.editTitle("Edited"))
-        await controller.send(.cancelRename)
-        #expect(controller.state.editing == nil)
-        #expect(spy.operations.withLock { $0 } == ["list"])
-        await controller.send(.beginRename("A"))
-        await controller.send(.editTitle("New"))
-        await controller.send(.submitRename)
-        await wait(controller) { !$0.busy && $0.rows.first?.title == "disk New" }
-        #expect(spy.operations.withLock { $0 } == ["list", "rename A New", "list"])
-        controller.show()
-        await wait(controller) { !($0.busy) && spy.operations.withLock { $0.count } == 4 }
-        #expect(shown.value == 2)
+    @Test func menuOpeningListsAgainAndInlineRenameUsesAFreshResult() async throws {
+        let shown = Values<Bool>()
+        try await withComposition(presentCalls: { shown.append(true) }) { rig in
+            let calls = try #require(rig.menu.calls)
+            try await make("2024.01.01-1000 Zoom", in: rig.root)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { !$0.busy && $0.rows.map(\.title) == ["Zoom"] }
+            #expect(shown.all.count == 1)
+            await calls.send(.beginRename(a))
+            #expect(calls.state.editing == .init(id: a, title: "Zoom"))
+            await calls.send(.editTitle("Edited"))
+            await calls.send(.cancelRename)
+            #expect(calls.state.editing == nil)
+            #expect(try await names(in: rig.root) == ["2024.01.01-1000 Zoom"])
+            await calls.send(.beginRename(a))
+            await calls.send(.editTitle("New"))
+            await calls.send(.submitRename)
+            await wait(calls) { !$0.busy && $0.rows.first?.title == "New" }
+            #expect(try await names(in: rig.root) == ["2024.01.01-1000 New"])
+
+            // Folders made since are found when the window opens again.
+            try await make("2024.01.01-0900 Later", in: rig.root)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { !$0.busy && $0.rows.map(\.id) == [a, b] }
+            #expect(shown.all.count == 2)
+        }
     }
 
-    @Test func deleteNeedsConfirmationAndAFailureRefreshesPartialDiskContents() async {
-        let spy = CallsStoreSpy()
-        spy.calls.withLock { $0 = [call("A"), call("B")] }
-        let controller = makeController(spy: spy)
-        controller.show()
-        await wait(controller) { !$0.busy && $0.rows.count == 2 }
-        await controller.send(.askDelete("A"))
-        await wait(controller) { $0.deleteID == "A" }
-        #expect(spy.operations.withLock { $0 } == ["list"])
-        await controller.send(.cancelDelete)
-        await wait(controller) { $0.deleteID == nil }
-        #expect(spy.operations.withLock { $0 } == ["list"])
-        spy.failDelete.withLock { $0 = true }
-        await controller.send(.askDelete("A"))
-        await wait(controller) { $0.deleteID == "A" }
-        await controller.send(.confirmDelete)
-        await wait(controller) { !$0.busy && $0.rows.map(\.id) == ["B"] && $0.failure != nil }
-        #expect(controller.state.failure == "«A»: disk")
-        #expect(spy.operations.withLock { $0 } == ["list", "delete A", "list"])
-        await controller.send(.open("B"))
-        await wait(controller) { $0.failure == nil }
-        await controller.send(.askDelete("B"))
-        await wait(controller) { $0.deleteID == "B" }
-        spy.failDelete.withLock { $0 = false }
-        await controller.send(.confirmDelete)
-        await wait(controller) { !$0.busy && $0.rows.isEmpty }
-        #expect(spy.operations.withLock { $0 }.suffix(2) == ["delete B", "list"])
+    @Test func deleteNeedsConfirmationAndAFailureRefreshesPartialDiskContents() async throws {
+        try await withComposition { rig in
+            let calls = try #require(rig.menu.calls)
+            try await make("2024.01.01-1000 Zoom", in: rig.root)
+            try await make("2024.01.01-0900 Other", in: rig.root)
+            // A folder inside that cannot be emptied stops the delete partway.
+            let stuck = rig.root.appendingPathComponent("2024.01.01-1000 Zoom/stuck")
+            try await make("stuck", in: stuck.deletingLastPathComponent())
+            try await make("kept", in: stuck)
+            try await setMode(0o500, of: stuck)
+            do {
+                await rig.menu.perform(.showCalls)
+                await wait(calls) { !$0.busy && $0.rows.map(\.id) == [a, b] }
+                await calls.send(.askDelete(a))
+                await wait(calls) { $0.deleteID == a }
+                await calls.send(.cancelDelete)
+                await wait(calls) { $0.deleteID == nil }
+                #expect(try await names(in: rig.root).count == 2)
+
+                await calls.send(.askDelete(a))
+                await wait(calls) { $0.deleteID == a }
+                // Only a fresh listing after the failure can show this one.
+                try await make("2024.01.01-0800 New", in: rig.root)
+                await calls.send(.confirmDelete)
+                await wait(calls) { !$0.busy && $0.failure != nil && $0.rows.map(\.id) == [a, b, c] }
+                #expect(calls.state.failure?.hasPrefix("«\(a)»: ") == true)
+
+                // The reason stays until the next action.
+                await calls.send(.open(b))
+                await wait(calls) { $0.failure == "Не удалось открыть «\(b)» в Finder." }
+                await calls.send(.askDelete(b))
+                await wait(calls) { $0.deleteID == b }
+                await calls.send(.confirmDelete)
+                await wait(calls) { !$0.busy && $0.rows.map(\.id) == [a, c] }
+                #expect(try await names(in: rig.root).sorted() == ["2024.01.01-0800 New", "2024.01.01-1000 Zoom"])
+            } catch { try await setMode(0o700, of: stuck); throw error }
+            try await setMode(0o700, of: stuck)
+        }
     }
 
-    @Test func recordingThatStartsAfterTheAskPreventsConfirmation() async {
-        let spy = CallsStoreSpy()
-        spy.calls.withLock { $0 = [call("A"), call("B")] }
-        let recording = RecordingHolder()
-        let controller = makeController(spy: spy, recording: { recording.state })
-        controller.show()
-        await wait(controller) { !$0.busy && $0.rows.count == 2 }
-        await controller.send(.askDelete("A"))
-        await wait(controller) { $0.deleteID == "A" }
-        recording.state.phase = .recording
-        recording.state.callID = "A"
-        await controller.send(.confirmDelete)
-        await wait(controller) { $0.rows.first?.editable == false }
-        #expect(controller.state.deleteID == "A")
-        #expect(spy.operations.withLock { $0 } == ["list"])
-        await controller.send(.cancelDelete)
-        await wait(controller) { $0.deleteID == nil }
-        await controller.send(.beginRename("B"))
-        await controller.send(.editTitle("Other"))
-        await controller.send(.submitRename)
-        await wait(controller) { !$0.busy && $0.rows.last?.title == "disk Other" }
-        #expect(spy.operations.withLock { $0 } == ["list", "rename B Other", "list"])
+    /// The row asked about turned into the call being recorded: the question
+    /// stays open, the folder stays on disk, and other calls can still change.
+    @Test func recordingThatStartsAfterTheAskPreventsConfirmation() async throws {
+        let id = "1970.01.01-0000"
+        try await withComposition { rig in
+            let calls = try #require(rig.menu.calls)
+            try await make(id, in: rig.root)
+            try await make("2024.01.01-0900 Other", in: rig.root)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { !$0.busy && $0.rows.count == 2 }
+            await calls.send(.askDelete(id))
+            await wait(calls) { $0.deleteID == id }
+
+            // The listed folder goes away, so the recording's new folder takes its name.
+            try await offPool { try FileManager.default.removeItem(at: rig.folder(id)) }
+            try await rig.start()
+            _ = try await rig.state { $0.callID == id }
+            await calls.send(.confirmDelete)
+            await wait(calls) { state in state.rows.first { $0.id == id }?.editable == false }
+            #expect(calls.state.deleteID == id)
+            #expect(await isFolder(rig.folder(id)))
+
+            await calls.send(.cancelDelete)
+            await wait(calls) { $0.deleteID == nil }
+            await calls.send(.beginRename(id))
+            #expect(calls.state.editing == nil)
+            await calls.send(.beginRename(b))
+            await calls.send(.editTitle("Renamed"))
+            await calls.send(.submitRename)
+            await wait(calls) { state in !state.busy && state.rows.first { $0.id == b }?.title == "Renamed" }
+            try await rig.stop()
+        }
     }
 
-    @Test func openResolvesTheCurrentFolderAndReportsBothKindsOfFailure() async {
-        let spy = CallsStoreSpy()
-        let opened = URLHolder()
-        let controller = makeController(spy: spy, location: { id in
-            if id == "gone" { throw DiskFailure() }
-            return URL(fileURLWithPath: "/calls/\(id) Finder title")
-        }, open: { opened.url = $0; return false })
-        await controller.send(.open("A"))
-        #expect(opened.url?.path == "/calls/A Finder title")
-        #expect(controller.state.failure == "Не удалось открыть «A» в Finder.")
-        await controller.send(.open("gone"))
-        #expect(controller.state.failure == "«gone»: disk")
-    }
-
-    @Test func diskAdapterForwardsEachOperationAndMapsTheListing() async throws {
-        let disk = DiskSpy()
-        let adapter = ComposeCalls(disk: disk)
-        #expect(try await adapter.list() == [call("A")])
-        try await adapter.rename(id: "A", title: "New")
-        try await adapter.delete(id: "B")
-        #expect(try await adapter.location(id: "C").path == "/calls/C Finder")
-        #expect(disk.operations.withLock { $0 } == ["list", "rename A New", "delete B", "location C"])
+    @Test func openResolvesTheCurrentFolderAndReportsBothKindsOfFailure() async throws {
+        let opened = Values<URL>()
+        try await withComposition(openFolder: { opened.append($0); return false }) { rig in
+            let calls = try #require(rig.menu.calls)
+            try await make("2024.01.01-1000 Finder title", in: rig.root)
+            await calls.send(.open(a))
+            #expect(opened.all.map(\.lastPathComponent) == ["2024.01.01-1000 Finder title"])
+            #expect(calls.state.failure == "Не удалось открыть «\(a)» в Finder.")
+            await calls.send(.open("2024.01.01-0700"))
+            #expect(opened.all.count == 1)
+            #expect(calls.state.failure == "«2024.01.01-0700»: Звонок «2024.01.01-0700» больше не найден.")
+        }
     }
 
     @Test func recordingIDStaysProtectedUntilCleanupEnds() {
@@ -260,60 +165,33 @@ struct CallsWiringTests {
     }
 }
 
-@MainActor
-private func makeController(spy: CallsStoreSpy, recording: @escaping () -> RecordingState = { .init() },
-                            location: @escaping (String) async throws -> URL = { URL(fileURLWithPath: "/calls/\($0)") },
-                            open: @escaping (URL) -> Bool = { _ in true }, present: @escaping () -> Void = {}) -> AudelinCalls {
-    AudelinCalls(inputs: makeRecordings(handler: .init(calls: spy)), timeZone: .gmt, recordingState: recording,
-                 location: location, openFolder: open, present: present)
+private let a = "2024.01.01-1000", b = "2024.01.01-0900", c = "2024.01.01-0800"
+
+private func make(_ name: String, in folder: URL) async throws {
+    let url = folder.appendingPathComponent(name)
+    try await offPool { try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false) }
+}
+
+private func setMode(_ mode: Int, of url: URL) async throws {
+    try await offPool { try FileManager.default.setAttributes([.posixPermissions: mode], ofItemAtPath: url.path) }
+}
+
+/// The call folders in the calls folder, leaving out the preferences beside them.
+private func names(in folder: URL) async throws -> [String] {
+    try await offPool {
+        try FileManager.default.contentsOfDirectory(atPath: folder.path).filter { $0.hasPrefix("20") }
+    }
+}
+
+private func isFolder(_ url: URL) async -> Bool {
+    await offPool { var folder: ObjCBool = false; return FileManager.default.fileExists(atPath: url.path, isDirectory: &folder) && folder.boolValue }
 }
 
 @MainActor
-private func wait(_ controller: AudelinCalls, until predicate: (CallsListState) -> Bool) async {
-    for await state in Observations({ controller.state }) where predicate(state) { return }
+private func wait(_ calls: AudelinCalls, until predicate: (CallsListState) -> Bool) async {
+    for await state in Observations({ calls.state }) where predicate(state) { return }
     Issue.record("Calls observation ended")
 }
 private func call(_ id: String, title: String = "Zoom") -> RecordedCall {
     .init(id: id, title: title, start: Date(timeIntervalSince1970: 0), duration: 72)
-}
-private struct DiskFailure: LocalizedError { var errorDescription: String? { "disk" } }
-private final class CallsStoreSpy: RecordingsCalls, Sendable {
-    let calls = Mutex<[RecordedCall]>([])
-    let operations = Mutex<[String]>([])
-    let failDelete = Mutex(false)
-    func list() async throws -> [RecordedCall] { operations.withLock { $0.append("list") }; return calls.withLock { $0 } }
-    func rename(id: String, title: String) async throws {
-        operations.withLock { $0.append("rename \(id) \(title)") }
-        calls.withLock { $0 = $0.map { $0.id == id ? call(id, title: "disk " + title) : $0 } }
-    }
-    func delete(id: String) async throws {
-        operations.withLock { $0.append("delete \(id)") }
-        calls.withLock { $0.removeAll { $0.id == id } }
-        if failDelete.withLock({ $0 }) { throw DiskFailure() }
-    }
-}
-private final class DiskSpy: CallsDisk, Sendable {
-    let operations = Mutex<[String]>([])
-    func list() throws -> [Calls.Call] {
-        operations.withLock { $0.append("list") }
-        return [.init(id: "A", title: "Zoom", start: Date(timeIntervalSince1970: 0), duration: 72)]
-    }
-    func rename(id: String, title: String) throws { operations.withLock { $0.append("rename \(id) \(title)") } }
-    func delete(id: String) throws { operations.withLock { $0.append("delete \(id)") } }
-    func location(id: String) throws -> URL {
-        operations.withLock { $0.append("location \(id)") }
-        return URL(fileURLWithPath: "/calls/\(id) Finder")
-    }
-}
-@MainActor private final class Counter { var value = 0; func increment() { value += 1 } }
-@MainActor private final class URLHolder { var url: URL? }
-@MainActor private final class RecordingHolder { var state = RecordingState() }
-
-private struct CallsPreferences: PreferenceSettingsStorage {
-    func read() -> Preferences { .init() }
-    func write(_ preferences: Preferences) throws { Issue.record("Calls window does not change preferences") }
-}
-private struct CallsLog: LogSink {
-    let entries = Values<LogEntry>()
-    func write(_ entry: LogEntry) { entries.append(entry) }
 }

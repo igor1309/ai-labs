@@ -188,6 +188,7 @@ const usage = `usage:
   agister status [<run-id>|--last] [--json]
   agister runs list [--json]
   agister runs export <run id> --to <directory>
+  agister pages [--addr <host:port>] [--no-open]
 `
 
 // CLI runs commands against its settings, its runner and its runs,

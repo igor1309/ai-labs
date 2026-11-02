@@ -559,8 +559,12 @@ describe("the System theme", () => {
   });
 
   it("follows the device while the app is open, without reloading", async () => {
+    const tint = document.createElement("meta");
+    tint.name = "theme-color";
+    tint.content = "#F2EFE8";
+    document.head.append(tint);
     const device = manualAppearance("light");
-    const { user } = openApp({ device });
+    const { user, unmount } = openApp({ device });
     await user.click(gameDoor("COMPARE"));
     await user.click(cardOf(wrongOf(shownQuestion())));
     expectScreenIn("light");
@@ -569,6 +573,8 @@ describe("the System theme", () => {
     act(() => device.switchTo("dark"));
 
     expectScreenIn("dark");
+    expect(tint.content).toBe("#0f1320");
+    expect(sameColour(getComputedStyle(document.documentElement).backgroundColor, PALETTE.dark.bg ?? "")).toBe(true);
     expect(document.body.innerHTML).toBe(answered);
     expect(progress()).toBe("1/10");
 
@@ -576,6 +582,10 @@ describe("the System theme", () => {
 
     expectScreenIn("light");
     expect(document.body.innerHTML).toBe(answered);
+    expect(tint.content).toBe("#f2efe8");
+    unmount();
+    expect(tint.content).toBe("#F2EFE8");
+    tint.remove();
   });
 });
 

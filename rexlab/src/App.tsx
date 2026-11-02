@@ -307,8 +307,12 @@ export function App({
   useLayoutEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = theme;
+    const tint = document.querySelector('meta[name="theme-color"]');
+    const previousTint = tint?.getAttribute("content");
+    tint?.setAttribute("content", theme === "dark" ? "#0f1320" : "#f2efe8");
     return () => {
       delete root.dataset.theme;
+      if (previousTint != null) tint?.setAttribute("content", previousTint);
     };
   }, [theme]);
 

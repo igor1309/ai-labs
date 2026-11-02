@@ -1,3 +1,4 @@
+import CoreAudioProcesses
 import Calls
 import Recordings
 import Foundation
@@ -9,7 +10,7 @@ import PanelUI
 import Preferences
 import Recording
 
-struct MenuApplication {
+private struct MenuApplication {
 
     let states: () async -> AsyncStream<RecordingState>
     let failures: AsyncStream<any Error>
@@ -36,6 +37,8 @@ public final class AudelinMenu {
     private var failure: String?
     private let sink: any LogSink
     private let settings: PreferenceSettings
+    private let recordingStates: () async -> AsyncStream<RecordingState>
+    private let panels: () async -> AsyncStream<PanelState>
     private let send: (RecordingEvent) async -> Void
     private let openFolder: (URL) -> Void
     private let openURL: (URL) -> Void
@@ -48,65 +51,33 @@ public final class AudelinMenu {
                      offersPanelReopen: panelPresence.offersReopen)
     }
 
-    public convenience init(
-        preferences: PreferencesStore,
-        access: AccessPolicy,
-        openCallsFolder: @escaping (URL) -> Bool,
-        presentCalls: @escaping () -> Void,
-        makeRecordings: @escaping (RecordingsEffectHandler) -> RecordingsInputs,
-        openURL: @escaping (URL) -> Void,
-        presentPanel: @escaping (Bool) -> Void,
-        terminate: @escaping @Sendable () async -> Void,
-        quit: @escaping (LifecycleEffectHandler) async -> Void,
-        makeReading: @escaping @MainActor @Sendable () -> ReadingInputs,
-        makeRecording: @escaping MakeRecordingModel,
-        makeSession: @escaping MakeSessionModel
-    ) async {
-
-        await self.init(
-            storage: preferences,
-            makeApplication: {
-                let application = try await AudelinRecording(preferences: preferences, access: access, makeReading: makeReading, makeRecording: makeRecording, makeSession: makeSession)
-                return MenuApplication(
-                    states: { await application.inputs.states() },
-                    failures: application.detectionFailures,
-                    send: { await application.inputs.send($0) },
-                    quit: { await quit(application.lifecycle(terminate: terminate)) },
-                    panelStates: { await application.panel.states() },
-                    sendPanel: { await application.panel.send($0) }
-                )
-            },
-            openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: { await terminate() }, didDeliver: {}, sink: SystemLogSink(),
-            presentPanel: presentPanel, sleep: { try await ContinuousClock().sleep(for: $0) }
-        )
-        let disk = ComposeCalls(disk: Calls(folder: self.preferences.callsFolder, timeZone: .current))
-        calls = AudelinCalls(inputs: makeRecordings(RecordingsEffectHandler(calls: disk)), timeZone: .current,
-                             recordingState: { [weak self] in self?.state ?? .init() },
-                             location: { try await disk.location(id: $0) }, openFolder: openCallsFolder, present: presentCalls)
-        calls?.recordingChanged(state)
-    }
-
-    // Delivery is acknowledged after the observable state or failure has been updated.
     init(
-        storage: any PreferenceSettingsStorage,
-        makeApplication: () async throws -> MenuApplication,
+        storage: PreferencesStore,
+        boundary: ComposerBoundary,
+        processes: CoreAudioProcesses,
+        panel: AudelinPanel,
         openFolder: @escaping (URL) -> Void,
         openURL: @escaping (URL) -> Void,
-        terminate: @escaping () async -> Void,
-        didDeliver: @escaping () -> Void,
+        terminate: @escaping @Sendable () async -> Void,
         sink: any LogSink,
         presentPanel: @escaping (Bool) -> Void,
-        sleep: @escaping @Sendable (Duration) async throws -> Void,
-        calls: AudelinCalls? = nil
+        sleep: @escaping @Sendable (Duration) async throws -> Void
     ) async {
 
         self.sink = sink
-        self.calls = calls
         self.presentPanel = presentPanel
         self.sleep = sleep
         let application: MenuApplication?
         do {
-            application = try await makeApplication()
+            let recording = try await AudelinRecording(preferences: storage, boundary: boundary,
+                                                       processes: processes, panel: panel)
+            application = MenuApplication(
+                states: { await recording.inputs.states() }, failures: recording.detectionFailures,
+                send: { await recording.inputs.send($0) },
+                quit: { await Composer.quit(recording.lifecycle(terminate: terminate)) },
+                panelStates: { await recording.panel.states() },
+                sendPanel: { await recording.panel.send($0) }
+            )
         } catch {
             sink.write(.init(category: .menu, message: "startup failed", error: String(describing: error)))
             application = nil
@@ -114,6 +85,8 @@ public final class AudelinMenu {
         }
         let send = application?.send ?? { _ in }
         settings = PreferenceSettings(storage: storage, automaticChanged: { await send(.automaticChanged($0)) })
+        self.recordingStates = application?.states ?? { AsyncStream { $0.finish() } }
+        self.panels = application?.panelStates ?? { AsyncStream { $0.finish() } }
         self.send = send
         self.openFolder = openFolder
         self.openURL = openURL
@@ -133,7 +106,6 @@ public final class AudelinMenu {
                     self.calls?.recordingChanged(state)
                     self.receivePanelPresence(.recordingChanged(panelRecordingID(state)))
                     sink.write(.init(category: .menu, message: "item symbol=\(self.menu.item.symbol) red=\(self.menu.item.isRed)"))
-                    didDeliver()
                 }
             }
             detectionObservation = Task { [weak self, failures = application.failures] in
@@ -141,19 +113,19 @@ public final class AudelinMenu {
                     guard let self else { return }
                     sink.write(.init(category: .menu, message: "detection failed", error: String(describing: error)))
                     self.failure = "Наблюдение за звонками остановлено: \(error)"
-                    didDeliver()
                 }
             }
         }
     }
 
-    /// Waits for state and failure delivery after their input streams finish.
-    func waitForObservers() async {
-
-        await observation?.value
-        await detectionObservation?.value
-        await panelObservation?.value
+    func installCalls(_ calls: AudelinCalls) {
+        self.calls = calls
+        calls.recordingChanged(state)
     }
+
+    public func states() async -> AsyncStream<RecordingState> { await recordingStates() }
+
+    public func panelStates() async -> AsyncStream<PanelState> { await panels() }
 
     public func perform(_ action: MenuBarAction) async {
 

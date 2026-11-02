@@ -53,6 +53,10 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "agister:", err)
 		return 1
 	}
+	// agister pages serves the page of the runs kept; it needs no settings.
+	if len(args) > 0 && args[0] == "pages" {
+		return runPages(ctx, user, args[1:], stdout, stderr)
+	}
 	commandLine, err := connect(ctx, user, stdout, stderr)
 	if err != nil {
 		fmt.Fprintln(stderr, "agister:", err)
@@ -261,7 +265,7 @@ func build(user string, links links, fs layout.FileSystem, roots layout.Worktree
 	for _, turn := range turns {
 		takes[turn.contract] = turn.inputs
 	}
-	states, err := newRunStates(store, machine.clock.Now, machine.probe, 10*time.Second)
+	states, err := newRunStates(store, machine.clock.Now, machine.probe, stalledAfter)
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,7 @@ import PanelUI
 import Preferences
 import Testing
 @testable import Audelin
-@testable import Composer
+import Composer
 
 private let recordingSkipReason: String? = {
     // A hosted CI runner's microphone capture never ends (PR 1262), and it may
@@ -53,20 +53,15 @@ struct RealRecordingTranscriptTests {
             try preferences.write(Preferences(automaticRecording: false, liveText: true, callsFolder: calls))
             let speech = try await synthesize(Self.spoken, in: directory)
 
-            let binding = CoreAudioBinding()
-            let processes = CoreAudioProcesses(binding: binding, clock: ContinuousCallClock())
-            let callApp = RecordingCallApp()
-            // A name no process has: other suites play their own afplay meanwhile, and
-            // selecting one of them by name would leave this call's speech out.
-            callApp.started("audelin-test-call-\(UUID().uuidString)")
-            let panel = AudelinPanel(makeReading: ReadingStub.inputs)
-            let sessions = RecordingSessions(
-                makePieces: composeRecordingPieces(preferences: preferences, callApp: callApp, processes: processes),
-                liveText: { preferences.read().liveText }, report: { _, _ in }, panel: panel,
-                makeSession: makeSession
-            )
-            let states = await panel.states()
-            #expect(await sessions.begin(id: 1) == .ready)
+            let boundary = await makeRealBoundary()
+            let composition = await compose(boundary: boundary, preferencesURL: directory.appendingPathComponent("preferences.json"),
+                openCallsFolder: { _ in false }, presentCalls: {}, openURL: { _ in }, presentPanel: { _ in }, terminate: {})
+            let states = await composition.panelStates()
+            await composition.perform(.start)
+            for await state in await composition.states() {
+                if state.phase == .recording { break }
+                try #require(state.cannotRecord == nil)
+            }
             // The call speaks only once its audio is being recorded; with no process of
             // the call app's, the session hears every app but Audelin, afplay included.
             let player = try await play(speech)
@@ -82,7 +77,7 @@ struct RealRecordingTranscriptTests {
                 await group.next()
                 group.cancelAll()
             }
-            await sessions.end(id: 1)
+            await composition.perform(.quit)
 
             let folders = try await offPool { try FileManager.default.contentsOfDirectory(at: calls, includingPropertiesForKeys: nil) }
             let folder = try #require(folders.first)

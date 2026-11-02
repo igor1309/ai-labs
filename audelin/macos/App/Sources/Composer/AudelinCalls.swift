@@ -7,11 +7,11 @@ import Recordings
 
 /// The app supplies a machine built on its observable model loop.
 @MainActor
-public struct RecordingsInputs {
-    public let state: () -> RecordingsState
-    public let send: (RecordingsEvent) -> Void
+struct RecordingsInputs {
+    let state: () -> RecordingsState
+    let send: (RecordingsEvent) -> Void
 
-    public init(state: @escaping () -> RecordingsState, send: @escaping (RecordingsEvent) -> Void) {
+    init(state: @escaping () -> RecordingsState, send: @escaping (RecordingsEvent) -> Void) {
         self.state = state; self.send = send
     }
 }

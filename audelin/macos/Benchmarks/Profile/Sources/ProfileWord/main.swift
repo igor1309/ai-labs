@@ -1,14 +1,9 @@
-import CallAppProcesses
-import CallFolder
 import Composer
 import Foundation
-import struct MicrophoneCapture.AudioPiece
 import TranscriptFile
 import os
 import PanelUI
-import protocol RecordedCapture.Track
 import SessionRehearsal
-import struct SystemAudioCapture.AudioPiece
 
 // ProfileWord words LINES WORDS ROUNDS: plays a call to LINES, then speaks WORDS
 // inside a signpost, so a trace can be cut to the words alone.
@@ -153,9 +148,9 @@ final class Call: @unchecked Sendable {
         name: "theirs", sentence: 10, pause: CommandLine.arguments.contains("quiet") ? 1e9 : 5,
         offset: CommandLine.arguments.contains("silent") ? 1e9 : 6
     )
-    let microphone = Feed<MicrophoneCapture.AudioPiece>()
-    let call = Feed<SystemAudioCapture.AudioPiece>()
-    let sessions: RecordingSessions
+    let microphone = Feed<CaptureBuffer>()
+    let call = Feed<CaptureBuffer>()
+    let composition: AudelinMenu
     var shown: AsyncStream<PanelState>.Iterator
     var latest: PanelState?
     /// Slots of audio fed to both sides.
@@ -181,25 +176,15 @@ final class Call: @unchecked Sendable {
 
         root = FileManager.default.temporaryDirectory.appendingPathComponent("audelin-bench-\(ProcessInfo.processInfo.processIdentifier)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        let pieces = SessionPieces(
-            folder: CallFolder(callsURL: root, now: { Date() }, timeZone: .current),
-            processes: CallAppProcesses(app: "meeting", list: OneCallApp()),
-            startMicrophone: { [microphone] in microphone.started() },
-            startCall: { [call] _ in call.started() },
-            microphoneRecognizer: mine, callRecognizer: theirs,
-            missingModels: { [] },
-            // The audio tracks cost the same each second however long the
-            // call, and three hours of them is gigabytes: they are dropped.
-            recordingTrack: { _, _ in DroppedTrack() }
+        let boundary = rehearsalBoundary(
+        capturePersistence: .transient,
+            microphone: { [microphone] in microphone.started() }, call: { [call] _ in call.started() },
+            mine: RehearsalRecognizer(mine), theirs: RehearsalRecognizer(theirs),
+            now: { Date() }, timeZone: { .current }, sleep: { try await ContinuousClock().sleep(for: $0) },
+            intervals: rehearsalIntervals()
         )
-        let panel = AudelinPanel(makeReading: makeReading)
-        sessions = RecordingSessions(
-            makePieces: { _ in pieces }, liveText: { true }, report: { _, _ in }, panel: panel,
-            makeSession: { await makeSession(handler: $0) }
-        )
-        shown = await panel.states().makeAsyncIterator()
-        let begun = await sessions.begin(id: 1)
-        guard begun == .ready else { throw Failure.notStarted("\(begun)") }
+        composition = try await startRehearsal(boundary: boundary, root: root)
+        shown = await composition.panelStates().makeAsyncIterator()
     }
 
     func speakOneWord() async {
@@ -210,7 +195,7 @@ final class Call: @unchecked Sendable {
 
     func end() async {
 
-        await sessions.end(id: 1)
+        await composition.perform(.quit)
         try? FileManager.default.removeItem(at: root)
     }
 
@@ -281,18 +266,5 @@ final class Feed<Piece: Sendable>: Sendable {
     }
 
     func yield(_ piece: Piece) { source.continuation.yield(piece) }
-}
-
-private struct DroppedTrack: Track {
-
-    func write(_ samples: [Float], sampleRate: Double) async throws {}
-}
-
-private struct OneCallApp: ProcessList {
-
-    func processes() -> [AudioProcess] {
-
-        [AudioProcess(pid: 72, bundleID: "meeting", name: "meeting", isAudelin: false)]
-    }
 }
 

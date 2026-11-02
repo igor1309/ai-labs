@@ -18,14 +18,9 @@ let package = Package(
             name: "LateUpdate",
             dependencies: [
                 .product(name: "Benchmark", package: "package-benchmark"),
-                .product(name: "CallAppProcesses", package: "macos"),
-                .product(name: "CallFolder", package: "macos"),
                 .product(name: "Composer", package: "App"),
-                .product(name: "MicrophoneCapture", package: "macos"),
                 .product(name: "PanelUI", package: "macos"),
-                .product(name: "RecordedCapture", package: "macos"),
                 .product(name: "SessionRehearsal", package: "App"),
-                .product(name: "SystemAudioCapture", package: "macos"),
             ],
             path: "Benchmarks/LateUpdate",
             plugins: [.plugin(name: "BenchmarkPlugin", package: "package-benchmark")]

@@ -17,6 +17,12 @@ let package = Package(
             name: "Audelin",
             dependencies: [
                 "Composer",
+                .product(name: "MicrophoneCapture", package: "macos"),
+                .product(name: "SystemAudioCapture", package: "macos"),
+                .product(name: "ParakeetRecognizer", package: "macos"),
+                .product(name: "CoreAudioProcesses", package: "macos"),
+                .product(name: "LiveText", package: "macos"),
+
                 .product(name: "Recordings", package: "macos"),
                 .product(name: "CallsListUI", package: "macos"),
                 .product(name: "CallAudioAccess", package: "macos"),
@@ -40,17 +46,12 @@ let package = Package(
                 .product(name: "Recording", package: "macos"),
                 .product(name: "Session", package: "macos"),
                 "SessionRehearsal",
-                .product(name: "CallFolder", package: "macos"),
-                .product(name: "CallAppProcesses", package: "macos"),
-                .product(name: "LiveText", package: "macos"),
-                .product(name: "MicrophoneCapture", package: "macos"),
-                .product(name: "SystemAudioCapture", package: "macos"),
                 .product(name: "IMRxObservation", package: "swift-imrx"),
             ]
         ),
         .target(
             name: "SessionRehearsal",
-            dependencies: [.product(name: "LiveText", package: "macos")]
+            dependencies: ["Composer", .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
         ),
         .target(
             name: "Composer",
@@ -74,12 +75,9 @@ let package = Package(
                 .product(name: "SideText", package: "macos"),
                 .product(name: "FillIn", package: "macos"),
                 .product(name: "LiveText", package: "macos"),
-                .product(name: "ParakeetRecognizer", package: "macos"),
                 .product(name: "TrackFile", package: "macos"),
                 .product(name: "TranscriptFile", package: "macos"),
                 .product(name: "TranscriptWriting", package: "macos"),
-                .product(name: "MicrophoneCapture", package: "macos"),
-                .product(name: "SystemAudioCapture", package: "macos"),
                 .product(name: "Reading", package: "macos"),
                 .product(name: "PanelUI", package: "macos"),
                 .product(name: "SplitRows", package: "macos"),
@@ -89,20 +87,12 @@ let package = Package(
             name: "SessionCrashWriter",
             dependencies: [
                 "Composer",
-                .product(name: "PanelUI", package: "macos"),
                 "SessionRehearsal",
-                .product(name: "CallFolder", package: "macos"),
-                .product(name: "CallAppProcesses", package: "macos"),
-                .product(name: "CallText", package: "macos"),
-                .product(name: "MicrophoneCapture", package: "macos"),
-                .product(name: "SystemAudioCapture", package: "macos"),
-                .product(name: "RecordedCapture", package: "macos"),
-                .product(name: "TranscriptFile", package: "macos"),
             ]
         ),
         .testTarget(
             name: "AudelinTests",
-            dependencies: ["Audelin", "Composer"]
+            dependencies: ["Audelin", "Composer", .product(name: "BlockingTestWork", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "ParakeetRecognizer", package: "macos")]
         ),
         .testTarget(
             name: "ComposerTests",

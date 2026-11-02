@@ -3,7 +3,7 @@ import Foundation
 import IMRxObservation
 
 /// Each request reduces and reads on this actor before waiting for its particular generation.
-public actor CallAudioAccessModel {
+actor CallAudioAccessModel {
     private var model: SyncModel<AccessState, AccessEvent>?
     private var doer: AccessDoer?
     private let feed = StateFeed<AccessState>()
@@ -11,11 +11,11 @@ public actor CallAudioAccessModel {
     private let device: @Sendable () async -> UInt32?
     private let now: @Sendable () -> Double
 
-    public init(device: @escaping @Sendable () async -> UInt32?, now: @escaping @Sendable () -> Double) {
+    init(device: @escaping @Sendable () async -> UInt32?, now: @escaping @Sendable () -> Double) {
         self.device = device; self.now = now
     }
 
-    public func start(probe: @escaping @Sendable () async -> AccessEvidence,
+    func start(probe: @escaping @Sendable () async -> AccessEvidence,
                sleep: @escaping @Sendable (Duration) async throws -> Void, changes: AsyncStream<Void>) {
         guard model == nil, !feed.finished else { return }
         model = SyncModel(initialState: AccessState(), reduce: AccessReducer.reduce)
@@ -25,7 +25,7 @@ public actor CallAudioAccessModel {
         }
     }
 
-    public func policy() -> AccessPolicy {
+    func policy() -> AccessPolicy {
         AccessPolicy(refresh: { await self.refresh() }, reserve: { await self.reserve() },
                      release: { await self.release() }, states: { await self.states() },
                      invalidate: { await self.send(.invalidated) })

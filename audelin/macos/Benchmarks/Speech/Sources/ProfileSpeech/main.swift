@@ -1,15 +1,10 @@
 import AVFoundation
-import CallAppProcesses
-import CallFolder
 import Composer
 import Foundation
 import LiveText
-import struct MicrophoneCapture.AudioPiece
 import PanelUI
 import ParakeetRecognizer
-import protocol RecordedCapture.Track
 import SessionRehearsal
-import struct SystemAudioCapture.AudioPiece
 
 // ProfileSpeech LINES SECONDS MINE.wav THEIRS.wav: plays a call to LINES with the fake
 // recogniser, then switches both sides to the real one and feeds speech at 1× for
@@ -116,9 +111,9 @@ final class Call: @unchecked Sendable {
     static let rate = 48_000.0
 
     let root: URL
-    let microphone = Feed<MicrophoneCapture.AudioPiece>()
-    let call = Feed<SystemAudioCapture.AudioPiece>()
-    let sessions: RecordingSessions
+    let microphone = Feed<CaptureBuffer>()
+    let call = Feed<CaptureBuffer>()
+    let composition: AudelinMenu
     var shown: AsyncStream<PanelState>.Iterator
     var latest: PanelState?
     var slots = 0
@@ -127,23 +122,15 @@ final class Call: @unchecked Sendable {
 
         root = FileManager.default.temporaryDirectory.appendingPathComponent("audelin-speech-\(getpid())")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        let pieces = SessionPieces(
-            folder: CallFolder(callsURL: root, now: { Date() }, timeZone: .current),
-            processes: CallAppProcesses(app: "meeting", list: OneCallApp()),
-            startMicrophone: { [microphone] in microphone.started() },
-            startCall: { [call] _ in call.started() },
-            microphoneRecognizer: mine, callRecognizer: theirs,
-            missingModels: { [] },
-            recordingTrack: { _, _ in DroppedTrack() }
+        let boundary = rehearsalBoundary(
+        capturePersistence: .transient,
+            microphone: { [microphone] in microphone.started() }, call: { [call] _ in call.started() },
+            mine: RehearsalRecognizer(mine), theirs: RehearsalRecognizer(theirs),
+            now: { Date() }, timeZone: { .current }, sleep: { try await ContinuousClock().sleep(for: $0) },
+            intervals: rehearsalIntervals()
         )
-        let panel = AudelinPanel(makeReading: makeReading)
-        sessions = RecordingSessions(
-            makePieces: { _ in pieces }, liveText: { true }, report: { _, _ in }, panel: panel,
-            makeSession: { await makeSession(handler: $0) }
-        )
-        shown = await panel.states().makeAsyncIterator()
-        let begun = await sessions.begin(id: 1)
-        guard begun == .ready else { throw Failure.notStarted("\(begun)") }
+        composition = try await startRehearsal(boundary: boundary, root: root)
+        shown = await composition.panelStates().makeAsyncIterator()
     }
 
     var lines: Int { if case let .lines(lines) = latest?.log { lines.rows.count } else { 0 } }
@@ -185,7 +172,7 @@ final class Call: @unchecked Sendable {
 
     func end() async {
 
-        await sessions.end(id: 1)
+        await composition.perform(.quit)
         try? FileManager.default.removeItem(at: root)
     }
 
@@ -202,19 +189,6 @@ final class Feed<Piece: Sendable>: Sendable {
     }
 
     func yield(_ piece: Piece) { source.continuation.yield(piece) }
-}
-
-private struct DroppedTrack: Track {
-
-    func write(_ samples: [Float], sampleRate: Double) async throws {}
-}
-
-private struct OneCallApp: ProcessList {
-
-    func processes() -> [AudioProcess] {
-
-        [AudioProcess(pid: 72, bundleID: "meeting", name: "meeting", isAudelin: false)]
-    }
 }
 
 let arguments = CommandLine.arguments

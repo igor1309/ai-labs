@@ -1,56 +1,46 @@
-import Testing
+import Composer
 import LiveText
-import struct SideText.Audio
-import struct SideText.Text
-@testable import Composer
+import Testing
 
+/// However long the call, a word only changes the text it belongs to.
+@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct TrackTextDeltaTests {
 
     @Test(arguments: [20, 800, 6_000])
-    func keepsTextAcrossCancellationReplayAndFinish(count: Int) async throws {
+    func keepsTextAcrossRevisionsAdvanceAndFinish(count: Int) async throws {
 
         let words = (0...count).map { Word("word\($0).", start: Double($0 * 3), end: Double($0 * 3) + 0.5) }
         let start = Double(count * 3)
-        let began = Signal(), release = Signal()
         let recognizer = ScriptRecognizer(hearings: [
             .success(Hearing(words: words, finalThrough: words.last!.end)),
             .success(Hearing(words: [Word("draft", start: start + 0.5, end: start + 1)])),
             .success(Hearing(words: [Word("next.", start: start + 4, end: start + 4.5)], finalThrough: start + 4.5)),
-        ], endings: [.success(Hearing(words: [Word("last", start: start + 4.5, end: start + 5)]))], blocked: began, release: release)
-        let adapter = TrackText(recognizerSource: { recognizer })
-        defer { release.end(); began.end() }
-        try await adapter.prepare()
-        let firstAudio = Audio(start: 0, samples: [0], sampleRate: 1)
-        let cancelled = Task { try await adapter.hear(firstAudio) }
-        await began.next()
-        cancelled.cancel()
-        await #expect(throws: CancellationError.self) { try await cancelled.value }
-        release.send()
-        let replay = try await adapter.hear(firstAudio)
-        #expect(replay.final.map(\.id) == Array(0..<count))
-        #expect(replay.tail == [Text(id: count, start: start, end: start + 0.5, settled: "word\(count).")])
-        #expect(try await adapter.hear(firstAudio) == replay)
-
-        let changing = Task { try await adapter.hear(Audio(start: 1, samples: [1], sampleRate: 1)) }
-        await began.next()
-        release.send()
-        let changed = try await changing.value
-        #expect(changed.final == replay.final)
-        #expect(changed.tail == [Text(id: count, start: start, end: start + 1, settled: "word\(count).", pending: "draft")])
-
-        let advancing = Task { try await adapter.hear(Audio(start: 2, samples: [2], sampleRate: 1)) }
-        await began.next()
-        release.send()
-        let advanced = try await advancing.value
-        #expect(advanced.final.count == count + 1)
-        #expect(advanced.final.last == Text(id: count, start: start, end: start + 4, settled: "word\(count). draft"))
-        #expect(advanced.tail == [Text(id: count + 1, start: start + 4, end: start + 4.5, settled: "next.")])
-
-        let finished = try await adapter.finish()
-        #expect(finished.final == advanced.final + [Text(id: count + 1, start: start + 4, end: start + 5, settled: "next. last")])
-        #expect(finished.tail.isEmpty)
-        #expect(await recognizer.chunks.count == 3)
-        #expect(await recognizer.finishes == 1)
+        ], endings: [.success(Hearing(words: [Word("last", start: start + 4.5, end: start + 5)]))])
+        let microphone = FedCapture()
+        defer { microphone.end() }
+        try await withComposition(recognizers: (recognizer, SessionRecognizer(name: "theirs")), configure: { boundary in
+            boundary.microphone = FixtureMicrophone { microphone.started }
+        }) { rig in
+            try await rig.start()
+            microphone.send([0])
+            _ = try await rig.panel { entries(of: $0).contains { $0.speaker == .me && $0.settled == "word\(count)." } }
+            microphone.send([1])
+            _ = try await rig.panel { entries(of: $0).contains { $0.speaker == .me && $0.settled == "word\(count)." && $0.pending == "draft" } }
+            microphone.send([2])
+            let advanced = try await rig.panel { entries(of: $0).contains { $0.speaker == .me && $0.settled == "next." } }
+            let mine = entries(of: advanced).filter { $0.speaker == .me }
+            #expect(mine.count == count + 2)
+            #expect(mine.first?.settled == "word0.")
+            #expect(mine[count].settled == "word\(count). draft")
+            try await rig.stop()
+            #expect(await recognizer.chunks.count == 3)
+            #expect(await recognizer.finishes == 1)
+            let transcript = try await transcriptText(of: rig)
+            #expect(transcript.contains("word0."))
+            #expect(transcript.contains("word\(count). draft"))
+            #expect(transcript.contains("next. last"))
+            #expect(!transcript.contains("failed"))
+        }
     }
 }

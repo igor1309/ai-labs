@@ -1,214 +1,158 @@
-@testable import Composer
-import Lifecycle
+import Observation
+import Composer
+import Foundation
+import Preferences
 import Recording
 import Synchronization
 import Testing
 
-/// Runs the application's quit effects in the reducer's order against a real recording.
+/// Quitting through the composed menu: the captures, the detection source and
+/// the terminate closure are all that is seen.
+@MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct QuitTests {
 
-    @Test func quitWaitsForEveryBegunSession() async {
+    @Test func quitWaitsForTheActiveSessionBeforeTerminating() async throws {
 
-        for scenario in [Scenario.active, .queuedStart, .pendingResumes, .pendingCleared] {
-            let log = Log()
-            let firstEnd = Gate(), secondEnd = Gate()
-            let session = Session(log: log, firstEnd: firstEnd, secondEnd: secondEnd)
-            let recording = await composedRecording(session: session, initial: .init(automatic: true, missing: []))
-            let delivery = Delivery()
-            let port = RecordingPort(base: ApplicationRecording(recording: recording), log: log)
-            let handler = LifecycleEffectHandler(delivery: delivery, recording: port, terminate: { log.append("terminate") })
-
-            if scenario != .queuedStart {
-                await recording.send(.callStarted)
-                await wait(recording, phase: .recording, id: 1)
-            }
-            if scenario == .pendingResumes || scenario == .pendingCleared {
-                await recording.send(.callEnded)
-                await firstEnd.entered()
-                await recording.send(.callStarted)
-                #expect(await recording.state().pendingCall)
-            }
-
-            let quit = Task { await runQuit(handler) }
-            await delivery.gate.entered()
-            #expect(log.values.filter { $0 == "stop" }.isEmpty)
-            if scenario == .queuedStart {
-                // Delivery already accepted this start; quit must drain it with the stop.
-                await recording.send(.callStarted)
-            }
-            if scenario == .pendingResumes {
-                await firstEnd.release()
-                await wait(recording, phase: .recording, id: 2)
-            }
-            await delivery.gate.release()
-
-            await port.drainGate.entered()
-            #expect(log.values.contains("stop"))
-            #expect(!(await recording.state().pendingCall))
-            #expect(!log.values.contains("observe"))
-            await port.drainGate.release()
-            await port.observeGate.entered()
-            #expect(!log.values.contains("end delivery"))
-            #expect(!log.values.contains("terminate"))
-
-            // The subscribed stream retains cleanup's transition while consumption is held.
-            if scenario == .pendingResumes {
-                await secondEnd.entered()
-                #expect(!log.values.contains("end 2"))
-                await secondEnd.release()
-            } else {
-                await firstEnd.entered()
-                #expect(!log.values.contains("end 1"))
-                await firstEnd.release()
-            }
-            await wait(recording, phase: .idle, id: nil)
-            #expect(!log.values.contains("end delivery"))
-            await port.observeGate.release()
-            await port.endGate.entered()
-            #expect(await recording.state().phase == .idle)
-            let ids = scenario == .pendingResumes ? [1, 2] : [1]
-            #expect(log.values.filter { $0.hasPrefix("begin ") } == ids.map { "begin \($0)" })
-            #expect(log.values.filter { $0.hasPrefix("end ") } == ids.map { "end \($0)" })
-            #expect(!log.values.contains("terminate"))
-            await port.endGate.release()
+        let binding = CallBinding(fails: false, input: true), stop = DrainGate(), terminated = Values<Bool>()
+        defer { stop.release() }
+        try await withComposition(preferences: automatic, configure: { boundary in
+            boundary.processes = FixtureProcesses(binding: binding)
+            holdStop(of: &boundary, on: stop)
+        }, terminate: { terminated.append(true) }) { rig in
+            _ = try await rig.state { $0.phase == .recording }
+            let quit = Task { await rig.menu.perform(.quit) }
+            await stop.waitUntilEntered()
+            #expect(terminated.all.isEmpty)
+            stop.release()
             await quit.value
-            #expect(Array(log.values.suffix(2)) == ["end delivery", "terminate"])
+            #expect(terminated.all == [true])
+            #expect(rig.microphone.starts.all == [true])
+            #expect(rig.microphone.stops.all == [true])
+            #expect(rig.call.stops.all == [true])
         }
     }
 
-    @Test func quitWhileIdleTerminatesWithoutASession() async {
+    /// A call that came back while the first session was still ending would
+    /// start a second session; quitting clears it instead.
+    @Test func quitClearsACallWaitingForTheEndingSession() async throws {
 
-        let log = Log()
-        let firstEnd = Gate(), secondEnd = Gate()
-        let recording = await composedRecording(session: Session(log: log, firstEnd: firstEnd, secondEnd: secondEnd))
-        let delivery = Delivery()
-        let port = RecordingPort(base: ApplicationRecording(recording: recording), log: log)
-        await delivery.gate.release()
-        await port.drainGate.release()
-        await port.observeGate.release()
-        await port.endGate.release()
-        await runQuit(LifecycleEffectHandler(delivery: delivery, recording: port, terminate: { log.append("terminate") }))
-        #expect(log.values == ["stop", "observe", "end delivery", "terminate"])
+        let binding = CallBinding(fails: false, input: false), deadlines = FixtureDeadlines()
+        let stop = DrainGate(), terminated = Values<Bool>()
+        defer { stop.release(); deadlines.end() }
+        try await withComposition(preferences: automatic, configure: { boundary in
+            boundary.processes = FixtureProcesses(binding: binding)
+            boundary.time = deadlines.time(over: boundary.time)
+            holdStop(of: &boundary, on: stop)
+        }, terminate: { terminated.append(true) }) { rig in
+            try await reachAWaitingCall(rig, binding, deadlines, stop)
+
+            let quit = Task { await rig.menu.perform(.quit) }
+            _ = try await rig.state { !$0.pendingCall }
+            #expect(terminated.all.isEmpty)
+            stop.release()
+            await quit.value
+            #expect(terminated.all == [true])
+            #expect(rig.microphone.starts.all == [true])
+            #expect(rig.microphone.stops.all == [true])
+        }
+    }
+
+    @Test func quitEndsTheSessionAWaitingCallResumedInto() async throws {
+
+        let binding = CallBinding(fails: false, input: false), deadlines = FixtureDeadlines()
+        let stop = DrainGate(), terminated = Values<Bool>()
+        defer { stop.release(); deadlines.end() }
+        try await withComposition(preferences: automatic, configure: { boundary in
+            boundary.processes = FixtureProcesses(binding: binding)
+            boundary.time = deadlines.time(over: boundary.time)
+            holdStop(of: &boundary, on: stop)
+        }, terminate: { terminated.append(true) }) { rig in
+            try await reachAWaitingCall(rig, binding, deadlines, stop)
+            stop.release()
+            let resumed = try await rig.state { $0.phase == .recording && !$0.pendingCall }
+            #expect(resumed.callOn)
+            #expect(rig.microphone.starts.all == [true, true])
+
+            await rig.menu.perform(.quit)
+            #expect(terminated.all == [true])
+            #expect(rig.microphone.starts.all == [true, true])
+            #expect(rig.microphone.stops.all == [true, true])
+        }
+    }
+
+    /// A start detection has already accepted is settled before the recording
+    /// is asked to stop, so nothing can begin behind the stop.
+    @Test func quitStopsDetectionBeforeStoppingTheRecording() async throws {
+
+        let binding = CallBinding(fails: false, input: false), held = DrainGate()
+        let holding = Mutex(false), order = Values<String>(), terminated = Values<Bool>()
+        defer { held.release() }
+        try await withComposition(configure: { boundary in
+            boundary.processes = FixtureProcesses(binding: binding)
+            boundary.access = ComposerAccess(refresh: {
+                if holding.withLock({ $0 }) { await held.wait() }
+                return true
+            }, reserve: { true }, release: {}, states: { AsyncStream { $0.yield(true); $0.finish() } }, invalidate: {})
+            let microphone = boundary.microphone
+            boundary.microphone = FixtureMicrophone {
+                let started = try await microphone.start()
+                return StartedCapture(stream: started.stream, stop: {
+                    order.append("recording stopped")
+                    try await started.stop()
+                })
+            }
+        }, terminate: { terminated.append(true) }) { rig in
+            try await rig.start()
+            holding.withLock { $0 = true }
+            binding.setInput(true)
+            await held.waitUntilEntered()
+            let quit = Task { await rig.menu.perform(.quit) }
+            for await quitting in Observations({ rig.menu.quitting }) where quitting { break }
+            order.append("detection released")
+            held.release()
+            await quit.value
+            #expect(order.all == ["detection released", "recording stopped"])
+            #expect(terminated.all == [true])
+            #expect(rig.microphone.starts.all == [true])
+        }
+    }
+
+    @Test func quitWhileIdleTerminatesWithoutASession() async throws {
+
+        let terminated = Values<Bool>()
+        try await withComposition(terminate: { terminated.append(true) }) { rig in
+            await rig.menu.perform(.quit)
+            #expect(terminated.all == [true])
+            #expect(rig.microphone.starts.all.isEmpty && rig.call.starts.all.isEmpty)
+        }
     }
 }
 
-/// Feeds each effect the reducer asks for to the handler, and its event back, until no effect is left.
-func runQuit(_ handler: LifecycleEffectHandler) async {
+private func automatic(_ root: URL) -> Preferences { .init(automaticRecording: true, liveText: false, callsFolder: root) }
 
-    var (state, effect) = LifecycleReducer.reduce(.running, .quit)
-    while let next = effect {
-        var events: [LifecycleEvent] = []
-        for await event in handler.handle(next) { events.append(event) }
-        #expect(events.count == 1, "\(next)")
-        guard let event = events.first else { return }
-        (state, effect) = LifecycleReducer.reduce(state, event)
-    }
-    #expect(state == .terminated)
+/// Ends a detected call with its session's stop held, and brings the call back while it is.
+@MainActor
+private func reachAWaitingCall(_ rig: ComposeFixture, _ binding: CallBinding, _ deadlines: FixtureDeadlines, _ stop: DrainGate) async throws {
+
+    binding.setInput(true)
+    _ = try await rig.state { $0.phase == .recording }
+    binding.setInput(false)
+    await deadlines.fire()
+    await stop.waitUntilEntered()
+    binding.setInput(true)
+    _ = try await rig.state { $0.pendingCall }
 }
 
-private enum Scenario {
+/// Holds the microphone's stop, and so the session's end, until the gate opens.
+private func holdStop(of boundary: inout ComposerBoundary, on gate: DrainGate) {
 
-    case active, queuedStart, pendingResumes, pendingCleared
-}
-
-private func wait(_ recording: RecordingInputs, phase: RecordingState.Phase, id: UInt64?) async {
-
-    for await state in await recording.states() {
-        if state.phase == phase && state.session?.id == id { return }
-    }
-    Issue.record("Recording ended before the expected session state")
-}
-
-private struct Delivery: LifecycleDelivery {
-
-    let gate = Gate()
-    func stop() async { await gate.wait() }
-}
-
-private struct RecordingPort: LifecycleRecording {
-
-    let base: ApplicationRecording
-    let log: Log
-    let drainGate = Gate(), observeGate = Gate(), endGate = Gate()
-
-    func requestStop() { log.append("stop"); base.requestStop() }
-
-    func drain() async {
-
-        await base.drain()
-        await drainGate.wait()
-    }
-
-    func states() async -> AsyncStream<LifecycleRecordingState> {
-
-        let states = await base.states()
-        log.append("observe")
-        await observeGate.wait()
-        return states
-    }
-
-    func end() async {
-
-        await endGate.wait()
-        await base.end()
-        log.append("end delivery")
-    }
-}
-
-private struct Session: RecordingSession {
-
-    let log: Log
-    let firstEnd: Gate
-    let secondEnd: Gate
-    let firstBegan = Gate(), secondBegan = Gate()
-
-    func begin(id: UInt64) async -> RecordingSessionReport {
-
-        log.append("begin \(id)")
-        await (id == 1 ? firstBegan : secondBegan).release()
-        return .ready
-    }
-
-    func end(id: UInt64) async {
-
-        await (id == 1 ? firstBegan : secondBegan).wait()
-        await (id == 1 ? firstEnd : secondEnd).wait()
-        log.append("end \(id)")
-    }
-}
-
-private final class Log: Sendable {
-
-    private let storage = Mutex<[String]>([])
-    var values: [String] { storage.withLock { $0 } }
-    func append(_ value: String) { storage.withLock { $0.append(value) } }
-}
-
-private actor Gate {
-
-    private var open = false
-    private var reached = false
-    private var waiters: [CheckedContinuation<Void, Never>] = []
-    private var observers: [CheckedContinuation<Void, Never>] = []
-
-    func wait() async {
-
-        reached = true
-        for observer in observers { observer.resume() }
-        observers.removeAll()
-        if !open { await withCheckedContinuation { waiters.append($0) } }
-    }
-
-    func entered() async {
-
-        if !reached { await withCheckedContinuation { observers.append($0) } }
-    }
-
-    func release() {
-
-        open = true
-        for waiter in waiters { waiter.resume() }
-        waiters.removeAll()
+    let microphone = boundary.microphone
+    boundary.microphone = FixtureMicrophone {
+        let started = try await microphone.start()
+        return StartedCapture(stream: started.stream, stop: {
+            await gate.wait()
+            try await started.stop()
+        })
     }
 }

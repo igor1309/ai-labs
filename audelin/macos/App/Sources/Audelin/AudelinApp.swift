@@ -35,24 +35,14 @@ struct AudelinApp: App {
                      styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         }, activate: { NSApplication.shared.activate() })
         self.callsWindow = callsWindow
-        let access = await makeCallAudioAccess()
-        let model = await AudelinMenu(
-            preferences: PreferencesStore(fileURL: FileManager.default.homeDirectoryForCurrentUser
-                .appendingPathComponent(".audelin/preferences.json")),
-            access: access,
-            openCallsFolder: { NSWorkspace.shared.open($0) },
-            presentCalls: { callsWindow.show() },
-            makeRecordings: makeRecordings,
+        let boundary = await makeRealBoundary()
+        let model = await compose(
+            boundary: boundary,
+            preferencesURL: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".audelin/preferences.json"),
+            openCallsFolder: { NSWorkspace.shared.open($0) }, presentCalls: { callsWindow.show() },
             openURL: { NSWorkspace.shared.open($0) },
             presentPanel: { [weak panel] in panel?.setVisible($0) },
-            terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } },
-            quit: quit,
-            makeReading: makeReading,
-            makeRecording: { initial, session, log, ready, released in
-                await makeRecording(initial: initial, session: session, log: log,
-                                    callAudioReady: ready, callAudioReleased: released)
-            },
-            makeSession: { await makeSession(handler: $0) }
+            terminate: { await MainActor.run { NSApplication.shared.terminate(nil) } }
         )
         self.model = model
         if let calls = model.calls { callsWindow.install(content: NSHostingView(rootView: CallsContent(model: calls))) }

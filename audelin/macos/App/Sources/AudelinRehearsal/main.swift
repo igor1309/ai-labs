@@ -1,15 +1,11 @@
 import AppKit
-import CallAppProcesses
-import CallFolder
 import Composer
 import Foundation
 import LiveText
-import struct MicrophoneCapture.AudioPiece
 import Observation
 import PanelUI
 import SessionRehearsal
 import SwiftUI
-import struct SystemAudioCapture.AudioPiece
 
 // A long synthetic call through the real session and panel: both tracks
 // recorded, Live text on, the transcript written, and the panel on screen,
@@ -74,35 +70,28 @@ private func rehearse(_ options: Options, shown: Shown) async -> Int32 {
         monologue: options.monologueEvery.map { .init(every: $0, length: options.monologueLength) }
     )
     let theirs = SpeakingRecognizer(name: "theirs", sentence: 10, pause: 5, offset: 6)
-    let microphone = Feed<MicrophoneCapture.AudioPiece>(), call = Feed<SystemAudioCapture.AudioPiece>()
+    let microphone = Feed<CaptureBuffer>(), call = Feed<CaptureBuffer>()
 
-    let pieces = SessionPieces(
-        folder: CallFolder(callsURL: root, now: { Date() }, timeZone: .current),
-        processes: CallAppProcesses(app: "meeting", list: OneCallApp()),
-        startMicrophone: { microphone.started() },
-        startCall: { _ in call.started() },
-        microphoneRecognizer: mine, callRecognizer: theirs,
-        missingModels: { [] }
+    let boundary = rehearsalBoundary(
+        capturePersistence: .recorded,
+        microphone: { microphone.started() }, call: { _ in call.started() },
+        mine: RehearsalRecognizer(mine), theirs: RehearsalRecognizer(theirs),
+        now: { Date() }, timeZone: { .current }, sleep: { try await ContinuousClock().sleep(for: $0) },
+        intervals: rehearsalIntervals()
     )
-    let panel = AudelinPanel(makeReading: makeReading)
-    let sessions = RecordingSessions(
-        makePieces: { _ in pieces }, liveText: { true }, report: { _, _ in }, panel: panel,
-        makeSession: { await makeSession(handler: $0) }
-    )
-    let showing = Task { @MainActor in
-        for await state in await panel.states() { shown.state = state }
-    }
-
-    report("recording into \(root.path)")
-    let begun = await sessions.begin(id: 1)
-    guard begun == .ready else {
-        report("the session did not start: \(begun)")
+    let composition: AudelinMenu
+    do { composition = try await startRehearsal(boundary: boundary, root: root) } catch {
+        report("the session did not start: \(error)")
         return 1
     }
+    let showing = Task { @MainActor in
+        for await state in await composition.panelStates() { shown.state = state }
+    }
+    report("recording into \(root.path)")
 
     let rate = 48_000.0, micFrames = 1024, callFrames = 512
-    let micPiece = MicrophoneCapture.AudioPiece(samples: .init(repeating: 0.25, count: micFrames), sampleRate: rate)
-    let callPiece = SystemAudioCapture.AudioPiece(samples: .init(repeating: -0.25, count: callFrames), sampleRate: rate)
+    let micPiece = CaptureBuffer(samples: .init(repeating: 0.25, count: micFrames), sampleRate: rate)
+    let callPiece = CaptureBuffer(samples: .init(repeating: -0.25, count: callFrames), sampleRate: rate)
     let seconds = options.minutes * 60
     let clock = ContinuousClock()
     let started = clock.now
@@ -137,7 +126,7 @@ private func rehearse(_ options: Options, shown: Shown) async -> Int32 {
         }
     }
 
-    await sessions.end(id: 1)
+    await composition.perform(.quit)
     showing.cancel()
     let wall = started.duration(to: clock.now).seconds
     report("""
@@ -159,14 +148,6 @@ private final class Feed<Piece: Sendable>: Sendable {
     }
 
     func yield(_ piece: Piece) { source.continuation.yield(piece) }
-}
-
-private struct OneCallApp: ProcessList {
-
-    func processes() -> [AudioProcess] {
-
-        [AudioProcess(pid: 72, bundleID: "meeting", name: "meeting", isAudelin: false)]
-    }
 }
 
 private func report(_ line: String) {
