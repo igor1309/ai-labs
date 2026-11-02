@@ -1,3 +1,4 @@
+import packageInfo from "../package.json";
 import { coloringVersionsFor } from "./coloringWorkshopRoot.ts";
 import { ColoringGame, type ColoringGameProps } from "./ColoringGame.tsx";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, ViewTransition } from "react";
@@ -17,7 +18,7 @@ import { dinosaurSlide } from "./dinosaurSlide.ts";
 import { dinosaurWordsWidth, keptLines, NARROW_PAGE, PORTRAIT_PAGE } from "./dinosaurPageLayout.ts";
 import { calendarDay, chooseFeatured, type FeaturedStore } from "./featured.ts";
 import type { ChipWidths } from "./FoodChips.tsx";
-import { HOME_GAMES, HomePage, type HomePageProps, type HomeGame } from "./HomePage.tsx";
+import { HOME_GAMES, HomePage, type HomeGame } from "./HomePage.tsx";
 import { languageOfDevice, type Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { useLayoutTurns } from "./layoutTurns.ts";
@@ -132,7 +133,8 @@ export type AppProps = CareGameProps &
     whoseJaw?: WhoseJawGameProps;
     // The skeleton game's sounds, silent if none.
     skeletonSounds?: SkeletonSounds;
-    readTileColumns: HomePageProps["readTileColumns"];
+    // Unstarted games added after the first visit, none when storage is unavailable.
+    newHomeGames: () => readonly string[];
     viewport: Viewport;
     portraitLayouts: PortraitLayouts;
     // How the catalogue's food chips' parts are measured as laid out.
@@ -230,7 +232,7 @@ export function App({
   bodyPicture,
   random,
   viewport,
-  readTileColumns,
+  newHomeGames,
   portraitLayouts,
   chipWidths,
   layoutMotion,
@@ -707,11 +709,11 @@ export function App({
             onLanguage={chooseLanguage}
             theme={themeChoice}
             onTheme={chooseTheme}
-            readTileColumns={readTileColumns}
+            newGames={newHomeGames()}
+            version={`v${packageInfo.version}`}
             ageLevel={ageLevel.level}
             onAgeLevel={chooseAgeLevel}
             startTimer={startTimer}
-            layoutKeeping={turns}
             featured={featured}
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={quiz.best}

@@ -2,7 +2,7 @@ import { render } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HomePage, type HomeGame } from "../src/HomePage.tsx";
 import type { Language } from "../src/language/language.ts";
-import { SHIPPED_CATALOGUE, fakeBodyPicture, fakeSkeletonPicture, keptNothing, manualViewport } from "./support.ts";
+import { SHIPPED_CATALOGUE, fakeBodyPicture, fakeSkeletonPicture } from "./support.ts";
 import { withPictures } from "./pictures.tsx";
 
 // Every game the home page offers, in its tiles' order, with the text
@@ -24,12 +24,11 @@ const nothing = () => {};
 // The home page alone, featuring `featured`, with every game's badge
 // filled in when `scored` and every one that can be empty left empty
 // when not; each game's opening counted in `opened`.
-export function renderHomePageFeaturing(featured: HomeGame, { language = "en", scored = true, allGames = false, best = 7 }: { language?: Language; scored?: boolean; allGames?: boolean; best?: number } = {}) {
+export function renderHomePageFeaturing(featured: HomeGame, { language = "en", scored = true, allGames = false, best = 7, newGames = [] }: { language?: Language; scored?: boolean; allGames?: boolean; best?: number; newGames?: readonly string[] } = {}) {
   const opened: HomeGame[] = [];
   const score = (value: number) => (scored ? value : undefined);
   const view = render(
     <HomePage
-      readTileColumns={() => ({ column: 274.6667, gap: 16 })}
       language={language}
       onLanguage={nothing}
       theme="light"
@@ -37,7 +36,8 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
       ageLevel="explorer"
       onAgeLevel={nothing}
       startTimer={() => nothing}
-      layoutKeeping={keptNothing}
+      newGames={newGames}
+      version="v1.2.3"
       featured={featured}
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
       best={score(best)}

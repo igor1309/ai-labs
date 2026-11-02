@@ -155,7 +155,7 @@ function expectScreenIn(theme: Theme, part: Element = document.body) {
       [...element.childNodes].some((node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
   );
   const tokens = styleOf(document.documentElement);
-  const sharedColours = ["quiet", "strong", "action", "label", "reward", "pocket-1", "sky-top", "sky-bottom", "sky-halo", "sky-core"]
+  const sharedColours = ["quiet", "strong", "action", "label", "reward", "pocket-1", "pocket-2", "strata-1", "strata-2", "strata-3", "sky-top", "sky-bottom", "sky-halo", "sky-core"]
     .map((name) => tokens.getPropertyValue(`--ds-${name}`));
   const colours = [...Object.values(PALETTE[theme]), ...sharedColours, ...OVERLAYS];
 
@@ -908,7 +908,7 @@ describe("marks", () => {
 });
 
 describe("the SORT card", () => {
-  it.each(["light", "dark"] as const)("is on the %s theme's paper with the shared icon badge and its title at text contrast", (theme) => {
+  it.each(["light", "dark"] as const)("has a pocket and name pill at text contrast in the %s theme", (theme) => {
     const sortingStorage = memoryStorage({
       [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: { "sort-dinosaurs": { bestScore: 4, explorerBest: 4, roundsPlayed: 2 } } })
     });
@@ -921,9 +921,10 @@ describe("the SORT card", () => {
     const best = card.querySelector(".sort-tile-best") ?? card;
     const colours = PALETTE[theme];
     const parts = {
-      card: [getComputedStyle(card).backgroundColor, colours.surface],
-      symbol: [getComputedStyle(symbol).backgroundColor, "rgba(255, 255, 255, 0.18)"],
-      words: [getComputedStyle(title).color, colours.ink],
+      // Ground tiles take their surfaces and ink from the dig-site tokens.
+      card: [getComputedStyle(card.querySelector(".home-tile-pocket")!).backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--ds-pocket-1")],
+      symbol: [getComputedStyle(symbol).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-action")],
+      words: [getComputedStyle(title).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-on-label")],
     };
     expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
     expect(title.textContent).toBe("SORT");
@@ -933,7 +934,7 @@ describe("the SORT card", () => {
 });
 
 describe("the FIND THE PAIR tile", () => {
-  it.each(["light", "dark"] as const)("is the %s theme's sky, its words in the ink at text contrast", (theme) => {
+  it.each(["light", "dark"] as const)("has its words on the %s theme's name pill at text contrast", (theme) => {
     openApp({ device: manualAppearance(theme) });
 
     expectScreenIn(theme);
@@ -941,8 +942,9 @@ describe("the FIND THE PAIR tile", () => {
     const title = tile.querySelector(".pairs-tile-title") ?? tile;
     const colours = PALETTE[theme];
     const parts = {
-      tile: [getComputedStyle(tile).backgroundColor, colours.sky],
-      words: [getComputedStyle(title).color, colours.ink]
+      // The pill supplies the background behind the name.
+      tile: [getComputedStyle(title.parentElement!).backgroundColor, getComputedStyle(document.documentElement).getPropertyValue("--ds-label")],
+      words: [getComputedStyle(title).color, getComputedStyle(document.documentElement).getPropertyValue("--ds-on-label")]
     };
     expect(Object.entries(parts).filter(([, [seen, wanted]]) => !sameColour(seen ?? "", wanted ?? ""))).toEqual([]);
     expect(textContrast(title)).toBeGreaterThanOrEqual(TEXT_CONTRAST);

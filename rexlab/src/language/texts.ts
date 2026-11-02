@@ -47,6 +47,8 @@ export type Texts = {
   // The version footer's name, read out by a screen reader, for parents
   // too.
   versionLabel: string;
+  homeNew: string;
+  homeParentNote: string;
   turnSideways: string;
   makeWindowWider: string;
   portraitLayoutComing: string;

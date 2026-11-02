@@ -123,7 +123,7 @@ async function chooseLevel(user: UserEvent, name: string, language: Language = "
 }
 
 // What each tile's badge and the large card's badge read, in order.
-const badgesOnHome = () => [...tilesRow().children, featuredCard()].map((card) => badgeOf(card)?.textContent ?? null);
+const badgesOnHome = () => [...tilesRow().querySelectorAll(".tiles-grid > *"), featuredCard()].map((card) => badgeOf(card)?.textContent ?? null);
 
 const saved = (level: Level) => JSON.stringify({ level, revision: `picked-${level}` });
 
@@ -242,7 +242,7 @@ describe("a chosen level", () => {
 
     expect(pictureOn(levelButton())).toBe("🥚");
     // Small tiles omit rewards even when the selected level changes.
-    expect(badges).toEqual([null, "6"]);
+    expect(badges).toEqual([...Array(9).fill(null), "6"]);
     expect([badgesOnHome(), featuredCard().getAttribute("data-game")]).toEqual([badges, featured]);
     expect(featured).toBe("care");
     expect([...storage.items].filter(([key]) => key !== AGE_LEVEL_KEY)).toEqual([...kept].filter(([key]) => key !== AGE_LEVEL_KEY));

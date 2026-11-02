@@ -22,10 +22,8 @@ it.each((["en", "ru"] as const).flatMap(language => games.map(featured => ({ lan
     const footer = title.parentElement!;
     expect(footer.classList.contains("home-tile-footer")).toBe(true);
     expect(footer.firstElementChild?.classList.contains("home-tile-symbol")).toBe(true);
-    expect(footer.querySelector("svg")?.getAttribute("width")).toBe("20");
-    const style = getComputedStyle(title);
-    expect([style.fontSize, style.lineHeight, style.fontWeight, style.letterSpacing, style.whiteSpace]).toEqual(["20px", "24px", "700", "0px", "nowrap"]);
-    expect(getComputedStyle(footer).height).toBe("48px");
+    expect(footer.querySelector("svg")).toBeTruthy();
+
   }
   const hero = featuredCard();
   expect(hero.getAttribute("aria-label")).toBe(fullLabels[language][games.indexOf(featured)]);

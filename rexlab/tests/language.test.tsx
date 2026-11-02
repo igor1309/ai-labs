@@ -1,3 +1,4 @@
+import packageInfo from "../package.json";
 import { emptyLabyrinth } from "./support.ts";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
@@ -266,17 +267,21 @@ describe("the language menu", () => {
       document.body.append(footer);
       try {
         const { user } = openApp({ device, nameVersion: versionFooter(document) });
-        expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
+        // Home names its bedrock version while the static footer is hidden.
+        expect(footer.getAttribute("aria-label")).toBe(first);
+        expect(document.querySelector(".home-version")?.getAttribute("aria-label")).toBe(first);
 
         await chooseFrom(user, menu, choice);
-        expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
+        expect(footer.getAttribute("aria-label")).toBe(then);
+        expect(document.querySelector(".home-version")?.getAttribute("aria-label")).toBe(then);
         await user.click(gameDoor(tile));
         await screen.findByRole("button", { name: home });
         expect(screen.getByRole("contentinfo", { name: then })).toBe(footer);
 
         await user.click(screen.getByRole("button", { name: home }));
         await chooseFrom(user, menuBack, choiceBack);
-        expect(screen.getByRole("contentinfo", { name: first })).toBe(footer);
+        expect(footer.getAttribute("aria-label")).toBe(first);
+        expect(document.querySelector(".home-version")?.getAttribute("aria-label")).toBe(first);
       } finally {
         footer.remove();
       }
@@ -517,6 +522,7 @@ const levelAges = (language: Language) => Object.values(TEXTS[language].ageLevel
 // The app's name, a wordmark for parents, written the same in every
 // language.
 const BRAND = "RexLab";
+const APP_VERSION = `v${packageInfo.version}`;
 
 // What the child is shown on screens, recorded as a walk over them in a
 // language goes.
@@ -566,6 +572,7 @@ function openPlay(language: Language, progressStorage = memoryStorage()): Play {
       // hidden and so unnamed for a screen reader.
       ...[...document.querySelectorAll('[role="menu"]')].filter((menu) => PARENT_CONTROLS[language].includes(menu.getAttribute("aria-label") ?? "")),
       ...screen.queryAllByText(BRAND),
+      ...document.querySelectorAll(".home-bedrock"),
       ...screen.queryAllByText(TEXTS[language].sourceNote),
       ...screen.queryAllByText(TEXTS[language].portraitLayoutComing)
     ];
@@ -827,7 +834,7 @@ async function skeletons(language: Language): Promise<Seen> {
 type ForParents = (language: Language) => { words: string[]; labels: string[] };
 
 const NOTHING_FOR_PARENTS: ForParents = () => ({ words: [], labels: [] });
-const HOME_PAGE: ForParents = (language) => ({ words: [BRAND], labels: PARENT_CONTROLS[language] });
+const HOME_PAGE: ForParents = (language) => ({ words: [BRAND, TEXTS[language].homeParentNote, APP_VERSION], labels: [...PARENT_CONTROLS[language], TEXTS[language].versionLabel] });
 
 // What the child is shown on every screen and in every state, by part,
 // each part walked from a newly opened app: one walk over them all
@@ -844,8 +851,8 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
     "the home page and its menus",
     homeAndMenus,
     (language) => ({
-      words: [BRAND, TEXTS[language].portraitLayoutComing, ...OWN_NAMES, ...Object.values(TEXTS[language].themes), ...levelNames(language), ...levelAges(language)],
-      labels: PARENT_CONTROLS[language]
+      words: [BRAND, TEXTS[language].homeParentNote, APP_VERSION, TEXTS[language].portraitLayoutComing, ...OWN_NAMES, ...Object.values(TEXTS[language].themes), ...levelNames(language), ...levelAges(language)],
+      labels: [...PARENT_CONTROLS[language], TEXTS[language].versionLabel]
     })
   ],
   ["a round with mistakes and its result", roundWithMistakes, NOTHING_FOR_PARENTS],
@@ -853,7 +860,7 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
   [
     "the catalogue",
     catalogue,
-    (language) => ({ words: [BRAND, TEXTS[language].sourceNote], labels: PARENT_CONTROLS[language] })
+    (language) => ({ words: [BRAND, TEXTS[language].homeParentNote, APP_VERSION, TEXTS[language].sourceNote], labels: [...PARENT_CONTROLS[language], TEXTS[language].versionLabel] })
   ],
   ["care's welcome and its friends", careWelcome, NOTHING_FOR_PARENTS],
   ["a visit with each need refused once and its result", visitWithRefusals, NOTHING_FOR_PARENTS],
@@ -862,7 +869,7 @@ const PARTS: Array<[string, (language: Language) => Promise<Seen>, ForParents]> 
   [
     "find the pair, its result, and the dinosaurs found in the catalogue",
     findThePair,
-    (language) => ({ words: [BRAND, TEXTS[language].sourceNote], labels: PARENT_CONTROLS[language] })
+    (language) => ({ words: [BRAND, TEXTS[language].homeParentNote, APP_VERSION, TEXTS[language].sourceNote], labels: [...PARENT_CONTROLS[language], TEXTS[language].versionLabel] })
   ],
   ["the skeleton game's tile, its choice of dinosaurs, a puzzle, its reveal, the choice again, the museum, a rebuild and the home page again", skeletons, HOME_PAGE]
 ];
@@ -883,7 +890,7 @@ const PICTURES = new Set([...Object.values(AGE_LEVEL_PICTURES), ...Object.values
 // menu's codes and names and the wordmark read the same in both.
 describe("every string shown", () => {
   const FOREIGN: Record<Language, RegExp> = { en: /[А-Яа-яЁё]/, ru: /[A-Za-z]/ };
-  const SAME_IN_EVERY_LANGUAGE = new Set([...CODES, ...OWN_NAMES, BRAND]);
+  const SAME_IN_EVERY_LANGUAGE = new Set([...CODES, ...OWN_NAMES, BRAND, APP_VERSION]);
 
   it.each(CASES)("is in %s, on %s", async (language, _, walk) => {
     const { texts, names, parentTexts, parentLabels } = await walk(language);
@@ -894,10 +901,6 @@ describe("every string shown", () => {
   });
 });
 
-// The version footer, also for parents, is part of the static page, not
-// the app: release.test.ts proves it reads the version as stamped, and
-// the test of its name above that the app names it in the chosen
-// language.
 describe("text for children", () => {
   it.each(CASES)("is in capitals in %s on %s, but not the menus and the wordmark for parents, save the age levels' names", async (language, _, walk, forParents) => {
     const { texts, parentTexts, parentLabels } = await walk(language);
@@ -915,13 +918,13 @@ describe("text for children", () => {
   // Every dictionary entry, including those only shown in a state the
   // round above may not reach, such as either celebration.
   it.each(["en", "ru"] as const)("is written in capitals in the %s dictionary, all but the menus for parents, save the age levels' names", (language) => {
-    const { languageMenu, themeMenu, themes, ageLevelMenu, ageLevels, versionLabel, sourceNote, portraitLayoutComing, stars, heartsOf, ...forChildren } = TEXTS[language];
+    const { languageMenu, themeMenu, themes, ageLevelMenu, ageLevels, versionLabel, homeParentNote, sourceNote, portraitLayoutComing, stars, heartsOf, ...forChildren } = TEXTS[language];
     const strings = (value: unknown): string[] =>
       typeof value === "string" ? [value] : Object.values(value as Record<string, unknown>).flatMap(strings);
     const texts = [...strings(forChildren), ...levelNames(language), stars(7, 10), heartsOf(6, 8)];
 
     expect(texts.filter((text) => text !== text.toLocaleUpperCase(language))).toEqual([]);
     expect([languageMenu, themeMenu, ageLevelMenu]).toEqual(PARENT_CONTROLS[language]);
-    expect([...Object.values(themes), ...levelAges(language), versionLabel, sourceNote, portraitLayoutComing].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
+    expect([...Object.values(themes), ...levelAges(language), versionLabel, homeParentNote, sourceNote, portraitLayoutComing].filter((text) => text === text.toLocaleUpperCase(language))).toEqual([]);
   });
 });

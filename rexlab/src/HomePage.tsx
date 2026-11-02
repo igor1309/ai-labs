@@ -1,4 +1,4 @@
-import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Pencil, Play, Puzzle, Scale, Shapes, Star, Sun, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
+import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Pencil, Play, Puzzle, Scale, Shapes, Star, Sun, Sparkles, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
@@ -10,8 +10,6 @@ import { Picture } from "./Picture.tsx";
 import { PicturePuzzlePicture } from "./PicturePuzzlePicture.tsx";
 import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { THEME_CHOICES, type ThemeChoice } from "./theme.ts";
-import type { RowColumns } from "./rowAnchor.ts";
-import { useKeptRow, type LayoutKeeping } from "./useKeptRow.ts";
 
 const THEME_SYMBOLS: Record<ThemeChoice, LucideIcon> = { system: Monitor, light: Sun, dark: Moon };
 
@@ -28,7 +26,8 @@ export const HOME_GAMES: readonly HomeGame[] = ["compare", "catalogue", "pairs",
 type Badge = { symbol: LucideIcon; value: number | string };
 
 export type HomePageProps = {
-  readTileColumns: (row: HTMLElement) => RowColumns;
+  newGames: readonly string[];
+  version: string;
   language: Language;
   onLanguage: (language: Language) => void;
   theme: ThemeChoice;
@@ -37,9 +36,6 @@ export type HomePageProps = {
   onAgeLevel: (level: AgeLevel) => void;
   // Times each menu's way out.
   startTimer: ParentMenuProps<string>["startTimer"];
-  // Where the page keeps where the tiles' row was swiped to, through each
-  // change of its layout.
-  layoutKeeping: LayoutKeeping;
   // Today's featured game, whose small tile is omitted.
   featured: HomeGame;
   // The pictures of the two dinosaurs facing off, the quiz's picture.
@@ -98,7 +94,8 @@ function Tooth() {
 type Menu = "language" | "theme" | "ageLevel";
 
 export function HomePage({
-  readTileColumns,
+  newGames,
+  version,
   language,
   onLanguage,
   theme,
@@ -106,7 +103,6 @@ export function HomePage({
   ageLevel,
   onAgeLevel,
   startTimer,
-  layoutKeeping,
   featured,
   faceOff,
   best,
@@ -233,8 +229,9 @@ export function HomePage({
     const prefix = game.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
     const Symbol = entry.symbol;
     return [game, (
-      <Button key={game} className={`card ${prefix}-tile`} data-turn-part={`tile-${game}`} aria-label={labels[game]} onClick={entry.onOpen}>
-        {entry.picture}
+      <Button key={game} className={`card home-ground-tile ${prefix}-tile`} data-turn-part={`tile-${game}`} aria-label={labels[game]} onClick={entry.onOpen}>
+        <span className="home-tile-pocket">{entry.picture}</span>
+        {newGames.includes(game) && <span className="home-new"><Sparkles size={14} aria-hidden="true" />{text.homeNew}</span>}
         <span className={`${prefix}-tile-row home-tile-footer`}>
           <span className={`${prefix}-tile-symbol home-tile-symbol`} aria-hidden="true">
             {game === "whoseJaw" ? <Tooth /> : <Symbol size={20} />}
@@ -246,7 +243,6 @@ export function HomePage({
   }));
   const featuredGame = (featured === "picturePuzzle" && !picturePuzzle) || (featured === "whoseJaw" && !whoseJaw) || (featured === "coloring" && !coloring) ? "compare" : featured;
   const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined) && (game !== "coloring" || coloring !== undefined));
-  const tilesRow = useKeptRow(layoutKeeping, readTileColumns);
   const today = games[featuredGame] ?? games.compare;
   const FeaturedSymbol = today.symbol;
   return (
@@ -347,32 +343,36 @@ export function HomePage({
           <path d="M0 10q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0l0 20-1440 0z" />
         </svg>
       </section>
-      <div className="games">
-        {/* The other games stand in columns of two, in a fixed order, and
-            scroll sideways below the sky when they do not fit. The
-            games still to come stand under the last of them. */}
-        <div
-          ref={tilesRow.ref}
-          className="games-tiles"
-          data-turn-part="tiles"
-          onScroll={tilesRow.onScroll}
-        >
-          <div className="tiles-grid">
-            {shown.map((game) => tiles[game])}
-            {/* The games still to come are a picture, not a button: a tap on
-                it does nothing, and nothing on it invites one. */}
-            <div className="more-coming" data-turn-part="more-coming">
-              <Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} />
-              <span className="more-coming-row home-tile-footer">
-                <span className="home-tile-symbol" aria-hidden="true"><Lock size={20} /></span>
-                <span className="more-coming-title home-tile-title">{labels.moreComing}</span>
-              </span>
+      <div className="home-ground games-tiles">
+        {[shown.slice(0, 6), shown.slice(6)].map((layer, index) => (
+          <div className="home-layer" data-depth={index + 1} key={index}>
+            {index > 0 && <EarthEdge />}
+            <div className="tiles-grid">
+              {layer.map((game) => tiles[game])}
+              {index === 1 && <div className="more-coming home-ground-tile" data-turn-part="more-coming" role="img" aria-label={labels.moreComing}>
+                <span className="home-tile-pocket"><Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} /></span>
+                <span className="more-coming-row home-tile-footer" aria-hidden="true">
+                  <span className="home-tile-symbol" aria-hidden="true"><Lock size={18} /></span>
+                  <span className="more-coming-title home-tile-title">{labels.moreComing}</span>
+                </span>
+              </div>}
             </div>
           </div>
-        </div>
+        ))}
       </div>
+      <footer className="home-bedrock">
+        <EarthEdge />
+        <p className="home-parent-note">{text.homeParentNote}</p>
+        <span className="home-version" aria-label={text.versionLabel}>{version}</span>
+      </footer>
     </main>
   );
+}
+
+function EarthEdge() {
+  return <svg className="home-earth-wave" viewBox="0 0 1440 30" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M0 10q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0q60-10 120 0t120 0q60 10 120 0t120 0l0 20-1440 0z" />
+  </svg>;
 }
 
 // An age level's picture, beside its name or standing for it.

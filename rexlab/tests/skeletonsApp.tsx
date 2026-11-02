@@ -54,6 +54,7 @@ export type SkeletonsAppOptions = {
   appearance?: Theme;
   // Told each game whose start the app counts.
   startCounter?: AppProps["startCounter"];
+  newHomeGames?: AppProps["newHomeGames"];
   // Where the parent's age level is kept, apart from progress, so a test
   // that blocks progress still has the level it gives; none picked by
   // default.
@@ -81,6 +82,7 @@ export function openHomeApp({
   reducedMotion = false,
   appearance = "light",
   startCounter,
+  newHomeGames,
   ageLevels = memoryStorage(),
   skeletons = SHIPPED_SKELETONS,
   loadHome = true,
@@ -119,6 +121,7 @@ export function openHomeApp({
     reducedMotion: () => reducedMotion,
     ...featuring(),
     ...(startCounter && { startCounter }),
+    ...(newHomeGames && { newHomeGames }),
     ...pictures
   };
   const view = render(<App {...emptyLabyrinth()} {...props} />);

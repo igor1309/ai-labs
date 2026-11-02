@@ -5,7 +5,7 @@ import type { Language } from "./language/language.ts";
 import { TEXTS } from "./language/texts.ts";
 import { Picture } from "./Picture.tsx";
 import { useKeptList } from "./useKeptList.ts";
-import type { LayoutKeeping } from "./useKeptRow.ts";
+import type { LayoutKeeping } from "./layoutKeeping.ts";
 
 // The cards in a row of friends.
 const COLUMNS = 4;

@@ -59,9 +59,14 @@ describe("safe areas stay clear", () => {
 
   it.each(SCREEN_ROOTS)("insets the content of .%s by adding the safe areas to its own padding, its background still filling the window", (classes) => {
     const root = screenRoot(classes);
+    const bedrock = classes === "home home-dig-site" ? document.createElement("footer") : undefined;
+    if (bedrock) { bedrock.className = "home-bedrock"; root.append(bedrock); }
     const measure = () => {
       const style = getComputedStyle(root);
-      return { padding: padding(style), box: box(style) };
+      const contentPadding = padding(style);
+      // Home's last band owns the bottom inset so its earth reaches the edge.
+      if (bedrock) contentPadding.bottom += px(getComputedStyle(bedrock).paddingBottom);
+      return { padding: contentPadding, box: box(style) };
     };
     const without = measure();
 

@@ -68,7 +68,15 @@ exports.runHome = async function(sizes) {
               title: box(title), actions: box(part('.home-today-actions')), art: box(part('.home-today-art')), sky: box(sky),
               titleFits: title.scrollWidth <= title.clientWidth + 1,
               images: [...part('.home-today-art').querySelectorAll('img')].map(box),
-              tiles: [...part('.tiles-grid').children].map(box),
+              tiles: [...document.querySelectorAll('.tiles-grid > *')].map(box),
+              layerColumns: [...document.querySelectorAll('.tiles-grid')].map(grid => getComputedStyle(grid).gridTemplateColumns.split(' ').length),
+              pocketHeights: [...document.querySelectorAll('.home-tile-pocket')].map(e => e.getBoundingClientRect().height),
+              bands: [...document.querySelectorAll('.home-layer')].map(e => getComputedStyle(e).backgroundColor),
+              bedrock: getComputedStyle(part('.home-bedrock')).backgroundColor,
+              note: part('.home-parent-note').textContent,
+              version: part('.home-version').textContent,
+              release: part('meta[name="rexlab-version"]').content,
+              groundScroll: part('.games-tiles').scrollWidth > part('.games-tiles').clientWidth,
               titlesFit: [...part('.games-tiles').querySelectorAll('.home-tile-title')].every(t => t.scrollWidth <= t.clientWidth + 1),
               noFeaturedTile: !part(`.games-tiles [data-turn-part="tile-${part('.featured-card').dataset.game}"]`),
               tag: part('.home-today-tag').textContent,
@@ -93,10 +101,14 @@ exports.runHome = async function(sizes) {
           assert.equal(measured.tag, language === 'en' ? 'TODAY' : 'СЕГОДНЯ', label);
           assert.equal(measured.play, language === 'en' ? 'PLAY' : 'ИГРАТЬ', label);
           assert.deepEqual(measured.animations, ['fade-in', 'fade-in'], label);
-          const row = page.locator('.games-tiles');
-          await row.evaluate(row => { row.scrollLeft = row.scrollWidth; });
-          assert(await row.evaluate(row => row.scrollLeft > 0), `${label}: row browsing`);
-          await row.evaluate(row => { row.scrollLeft = 0; });
+          assert(!measured.groundScroll, `${label}: ground scrolls sideways`);
+          if (width === 1180 || width === 1133) assert.deepEqual(measured.layerColumns, [6, 6], `${label}: six iPad tiles per band`);
+          if (width === 393 || width === 375) assert.deepEqual(measured.layerColumns, [3, 3], `${label}: three phone tiles per row`);
+          assert(measured.pocketHeights.every(h => h === (Math.min(width, height) < 600 ? 88 : 96)), `${label}: pocket size`);
+          assert.notEqual(measured.bands[0], measured.bands[1], `${label}: earth deepens`);
+          assert.notEqual(measured.bands[1], measured.bedrock, `${label}: bedrock`);
+          assert(measured.note.includes(language === 'en' ? 'Settings' : 'Настройки'), `${label}: parents' note`);
+          assert.equal(measured.version, measured.release, `${label}: release version`);
           checked++;
         }
         if (variants.length > 1) {
@@ -116,17 +128,31 @@ exports.runHome = async function(sizes) {
           assert.deepEqual(await page.locator('.home-today-copy, .home-today-art').evaluateAll(elements => elements.map(e => getComputedStyle(e).animationName)), ['rise-in', 'rise-in']);
           await page.emulateMedia({ reducedMotion: 'reduce' });
         }
-        await page.locator('.games-tiles').evaluate(row => {
-          row.scrollLeft = row.scrollWidth;
-          row.dispatchEvent(new Event('scroll'));
-        });
-        // A menu and the end of the tile row survive a turn together.
-        // The tap that closes the menu starts nothing.
+        if (language === 'en' && theme === 'light' && level === 'explorer') {
+          await page.evaluate(games => {
+            const record = JSON.parse(localStorage.getItem('rexlab-progress'));
+            record.games['home-first-visit'] = { games: games.filter(game => game !== 'catalogue') };
+            localStorage.setItem('rexlab-progress', JSON.stringify(record));
+          }, games);
+          await page.reload();
+          await settle(page);
+          assert.deepEqual(await page.locator('.home-new').allTextContents(), ['NEW']);
+          assert.equal(await page.locator('.catalogue-tile .home-new').textContent(), 'NEW');
+          await page.locator('.catalogue-tile').press('Enter');
+          await page.locator('.catalogue').waitFor();
+          await settle(page);
+          await page.locator('.catalogue .home-button').press('Enter');
+          await page.locator('.home').waitFor();
+          await settle(page);
+          assert.equal(await page.locator('.home-new').count(), 0);
+        }
+        // Turning keeps today's game and an open parents' menu.
+        const featuredBeforeTurn = await page.locator('.featured-card').getAttribute('data-game');
         await page.locator('.parent-menu-button').first().click();
         await page.setViewportSize({ width: height, height: width });
         await settle(page);
         assert.equal(await page.getByRole('menu').count(), 1);
-        assert(await page.locator('.games-tiles').evaluate(row => Math.abs(row.scrollLeft - (row.scrollWidth - row.clientWidth)) <= 1), 'tile row keeps its end through a turn');
+        assert.equal(await page.locator('.featured-card').getAttribute('data-game'), featuredBeforeTurn);
         const museum = await page.locator('.home-museum').boundingBox();
         await page.mouse.click(museum.x + museum.width / 2, museum.y + museum.height / 2);
         await settle(page);
@@ -135,6 +161,6 @@ exports.runHome = async function(sizes) {
         await page.locator('.skeleton-museum-screen').waitFor();
       } finally { await context.close(); }
     }
-    console.log(`PASS ${checked} Home sky configurations: header, full names, artwork, motion, menus, museum and tile browsing`);
+    console.log(`PASS ${checked} Home configurations: sky, pocket tiles, earth bands, bedrock, menus and museum`);
   } finally { await browser.close(); }
 };

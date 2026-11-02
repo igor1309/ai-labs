@@ -79,7 +79,9 @@ describe("sand writing through Home", () => {
         getComputedStyle(document.documentElement).overflow, getComputedStyle(app.footer).display, app.footer.getAttribute("aria-label")];
     };
     const initialLayout = layout();
-    expect(initialLayout[5]).not.toBe("none");
+    // Home shows its version on the bedrock instead of the static game footer.
+    expect(initialLayout[5]).toBe("none");
+    expect(document.querySelector(".home-version")?.textContent).toMatch(/^v\d/);
     expect(gateShown()).toBe(false);
 
     // Both activations reach the same Home door before React commits it.

@@ -1,4 +1,3 @@
-import { homeTileGeometry } from "./support.ts";
 import { emptyLabyrinth } from "./support.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -31,7 +30,6 @@ import {
   homeTile,
   shortHomeName,
   fakeSkeletonPicture,
-  keptNothing,
   lightDevice,
   countedStarts,
   loadShownPictures,
@@ -92,7 +90,7 @@ const nothing = () => {};
 function renderHomePage(taps: number[]) {
   render(
     <HomePage
-      readTileColumns={homeTileGeometry}
+
       language="en"
       onLanguage={nothing}
       theme="light"
@@ -100,7 +98,8 @@ function renderHomePage(taps: number[]) {
       ageLevel="explorer"
       onAgeLevel={nothing}
       startTimer={() => nothing}
-      layoutKeeping={keptNothing}
+      newGames={[]}
+      version="v1.2.3"
       featured="compare"
       faceOff={{ left: fakeBodyPicture("tyrannosaurus"), right: fakeBodyPicture("brachiosaurus") }}
       best={undefined}
@@ -147,7 +146,7 @@ describe("the home page", () => {
   it("offers the quiz as the first tile, with the app's own Tyrannosaurus and Brachiosaurus facing off", () => {
     const { tile } = openWithCompareTile();
 
-    expect(tile).toBe(tilesRow().firstElementChild?.firstElementChild);
+    expect(tile).toBe(tilesRow().querySelector(".tiles-grid")?.firstElementChild);
     expect(tile.textContent).toBe("COMPARE");
     expect(symbolsOf(tile)).toEqual(["scale"]);
     const faceOff = within(tile).getByRole("img", { name: "TWO DINOSAURS" });
@@ -155,32 +154,23 @@ describe("the home page", () => {
     expect(pictures.map((picture) => picture.getAttribute("src"))).toEqual([fakeBodyPicture("tyrannosaurus"), fakeBodyPicture("brachiosaurus")]);
   });
 
-  it("stands every other game in equal columns of two beside the large card, with SAND WRITING after CARE and MORE COMING last", () => {
+  it("stands every other game in order beneath the sky, with SOON last", () => {
     const { card } = openHomePage();
-
-    expect(card.closest(".home-sky")?.nextElementSibling).toBe(document.querySelector(".games"));
-    const row = tilesRow();
+    expect(card.closest(".home-sky")?.nextElementSibling).toBe(tilesRow());
     const tiles = [...["ANCIENT REPTILES", "FIND THE PAIR", "SKELETONS", "DIG", "SORT", "CARE", "SAND WRITING", "LABYRINTH"].map(homeTile), document.querySelector(".more-coming")];
-    expect([...row.querySelector(".tiles-grid")!.children]).toEqual(tiles);
-    // The tiles fill the row a column at a time, two to a column, every
-    // column as wide as the others and its two tiles sharing its height,
-    // MORE COMING among them.
-    const style = getComputedStyle(row.querySelector(".tiles-grid")!);
-    expect([style.display, style.gridAutoFlow, style.gridTemplateRows]).toEqual(["grid", "column", "minmax(0, 1fr) minmax(0, 1fr)"]);
-    expect(tiles.map((tile) => getComputedStyle(tile ?? row).minHeight)).toEqual(tiles.map(() => "0px"));
-    expect(tiles.map((tile) => getComputedStyle(tile ?? row).gridRow || "auto")).toEqual(tiles.map(() => "auto"));
+    expect([...tilesRow().querySelectorAll(".tiles-grid > *")]).toEqual(tiles);
   });
 
   it("only scrolls on a swipe that starts on a tile: no game opens and no tile is left pressed", () => {
     openHomePage();
     const sort = screen.getByRole("button", { name: "SORT" });
 
-    // The browser pans the row sideways only if nothing from the tile up
+    // The browser scrolls vertically only if nothing from the tile up
     // forbids it.
     const panning: string[] = [];
     for (let element: Element | null = sort; element; element = element.parentElement) panning.push(getComputedStyle(element).touchAction || "auto");
-    expect(panning.filter((action) => !["auto", "manipulation"].includes(action) && !action.split(" ").includes("pan-x"))).toEqual([]);
-    expect(getComputedStyle(tilesRow()).overflowX).toBe("auto");
+    expect(panning.filter((action) => !["auto", "manipulation"].includes(action) && !action.split(" ").includes("pan-y"))).toEqual([]);
+    expect(getComputedStyle(tilesRow()).overflowX).not.toBe("auto");
 
     // A finger that pans the row gets a pointercancel and no click.
     fireEvent.pointerDown(sort, { pointerType: "touch" });
@@ -226,12 +216,12 @@ describe("the home page", () => {
     await user.pointer({ keys: "[TouchA>]", target: tile });
     expect(getComputedStyle(tile).transform).toBe("none");
     await user.pointer({ keys: "[/TouchA]", target: tile });
-    expect(document.querySelector(".home-sky")?.nextElementSibling).toBe(tilesRow().parentElement);
+    expect(document.querySelector(".home-sky")?.nextElementSibling).toBe(tilesRow());
   });
 
-  it("keeps the tile row scrollable below the sky", () => {
+  it("lays the tiles in the page below the sky", () => {
     openHomePage();
-    expect(getComputedStyle(tilesRow()).overflowX).toBe("auto");
+    expect(getComputedStyle(tilesRow()).overflowX).not.toBe("auto");
     expect(tilesRow().contains(featuredCard())).toBe(false);
   });
 
@@ -537,7 +527,7 @@ describe("the large card", () => {
       const name = TEXTS.en[key];
       const looks = (door: HTMLElement) => {
         const badge = badgeOf(door);
-        return { picture: (door.querySelector(".home-today-art")?.firstElementChild ?? door.firstElementChild)?.outerHTML, sources: sources(door), symbols: symbolsOf(door), badge: badge && [symbolOf(badge), badge.textContent] };
+        return { picture: (door.querySelector(".home-today-art, .home-tile-pocket")?.firstElementChild ?? door.firstElementChild)?.outerHTML, sources: sources(door), symbols: symbolsOf(door), badge: badge && [symbolOf(badge), badge.textContent] };
       };
       // The game's tile, on a home page featuring another game.
       const other = HOME_GAMES.find(([shown]) => shown !== game)?.[0] ?? game;

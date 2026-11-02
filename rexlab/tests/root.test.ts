@@ -287,9 +287,6 @@ describe("the app in a browser", () => {
 
     expect(layoutMotion.parts).toBe(document);
     expect(layoutMotion.measure(part)).toBe(box);
-    // A part's frame and the row's window are drawn as homeTurn.test.tsx
-    // proves of them, timed by the stylesheet's tokens, which
-    // motion.test.ts holds TURN_TIMING to.
     expect([layoutMotion.frame, layoutMotion.extend, layoutMotion.timing]).toEqual([turnFrame, extendPart, TURN_TIMING]);
     expect([layoutMotion.animate(part, [{ translate: "1px 2px" }], { duration: 240 }), animated]).toEqual([animation, [[[{ translate: "1px 2px" }], { duration: 240 }]]]);
     expect([layoutMotion.animations, layoutMotion.opacity]).toEqual([pageAnimations, drawnOpacity]);
@@ -528,6 +525,17 @@ describe("the app in a browser", () => {
     });
 
     expect(appProps(given).featuredStore.history()).toEqual({ timesStarted: new Map(Object.entries(starts)), lastFeatured: { game: "skeletons", on: "2026-10-18" } });
+  });
+
+  it("reads first-visit games and start counts through the same progress storage", () => {
+    const local = memoryStorage({ [PROGRESS_KEY]: JSON.stringify({ schemaVersion: 1, games: {
+      "home-first-visit": { games: HOME_GAMES.filter(game => game !== "whoseJaw" && game !== "coloring") }
+    } }) });
+    const props = appProps(browser({ local }));
+    expect(props.newHomeGames()).toEqual(["whoseJaw", "coloring"]);
+    props.startCounter.countStart("whoseJaw");
+    expect(props.newHomeGames()).toEqual(["coloring"]);
+    expect(appProps(browser({ local })).newHomeGames()).toEqual(["coloring"]);
   });
 
   it("names index.html's version footer", () => {

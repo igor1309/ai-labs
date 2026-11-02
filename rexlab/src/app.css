@@ -1021,8 +1021,6 @@ img {
   font-size: 13px;
 }
 
-
-
 /* Covers the page under an open menu, to catch a tap outside it. */
 .menu-backdrop {
   position: fixed;
@@ -1054,17 +1052,6 @@ body:has(.result) #version {
   font-size: 40px;
   font-weight: 700;
   letter-spacing: 1.5px;
-}
-
-/* The games keep the design's proportions, and shrink to fit a shorter
-   iPad above the bands of rock. The large card takes three sevenths of
-   the width and the tiles the rest, in columns of two. The sizes in the
-   tiles are what fits a column. */
-.games {
-  height: clamp(360px, calc(100vh - 380px), 520px);
-  height: clamp(360px, calc(100dvh - 380px), 520px);
-  display: flex;
-  gap: 28px;
 }
 
 /* The large card features one game in its tile's colours, picture,
@@ -1254,20 +1241,6 @@ body:has(.result) #version {
   color: #e39b2d;
 }
 
-/* The scrolling row reaches past the games above and below so its
-   tiles' shadows are not cut off. */
-.games-tiles {
-  flex: 4 1 0;
-  min-width: 0;
-  margin-block: -24px;
-  padding-block: 24px;
-  container-type: size;
-  overflow-x: auto;
-  overflow-y: hidden;
-  overscroll-behavior: none;
-  scrollbar-width: none;
-}
-
 /* In a tall window the home page stands upright: the corner and the
    greeting on top, the large card across the width under them, and under
    it the row of tiles, 36% of the height within the landscape row's
@@ -1319,13 +1292,6 @@ body:has(.result) #version {
   padding: 0 16px 0 12px;
 }
 
-[data-size="tall"] .games,
-[data-size="tall-narrow"] .games {
-  flex: 1 0 auto;
-  height: auto;
-  flex-direction: column;
-}
-
 [data-size="tall"] .featured-card,
 [data-size="tall-narrow"] .featured-card {
   flex: 1 0 0;
@@ -1368,14 +1334,6 @@ body:has(.result) #version {
 [data-size="tall"] .featured-card[data-game="dig"] .featured-card-footer,
 [data-size="tall-narrow"] .featured-card[data-game="dig"] .featured-card-footer {
   margin-top: 8px;
-}
-
-[data-size="tall"] .games-tiles,
-[data-size="tall-narrow"] .games-tiles {
-  flex: none;
-  height: clamp(360px, 36vh, 520px);
-  height: clamp(360px, 36dvh, 520px);
-  margin-right: -56px;
 }
 
 /* In a tall-narrow window, an iPhone upright, the page stands as in a
@@ -1445,14 +1403,6 @@ body:has(.result) #version {
   line-height: 36px;
 }
 
-/* Share the space left below the greeting instead of imposing card
-   minimums that make the document taller than the phone. */
-[data-size="tall-narrow"] .games {
-  flex: 1 1 0;
-  min-height: 0;
-  gap: 16px;
-}
-
 [data-size="tall-narrow"] .featured-card {
   flex: 1 1 0;
   min-height: 0;
@@ -1473,16 +1423,6 @@ body:has(.result) #version {
   right: 16px;
   padding: 8px 14px;
   font-size: 22px;
-}
-
-[data-size="tall-narrow"] .games-tiles {
-  flex: 1.3 1 0;
-  min-height: 0;
-  height: auto;
-  margin-block: 0;
-  padding-block: 0;
-  margin-right: -20px;
-  row-gap: 16px;
 }
 
 /* Under 360 wide (an iPhone with its display zoomed, or a window in
@@ -1576,14 +1516,7 @@ body:has(.result) #version {
   line-height: 60px;
 }
 
-[data-size="wide-short"] .games {
-  height: auto;
-  flex: 1 0 260px;
-  gap: 16px;
-}
-
-[data-size="wide-short"] .featured-card,
-[data-size="wide-short"] .games-tiles {
+[data-size="wide-short"] .featured-card {
   flex: 1 1 0;
 }
 
@@ -1608,11 +1541,6 @@ body:has(.result) #version {
   font-size: 22px;
 }
 
-[data-size="wide-short"] .games-tiles {
-  margin-right: -20px;
-
-}
-
 [data-size="wide-short"] .more-coming {
   padding: 16px 12px;
 }
@@ -1631,12 +1559,6 @@ body:has(.result) #version {
 [data-size="wide-short"] body:has(.home) #version {
   right: calc(20px + var(--screen-right));
   bottom: calc(3px + env(safe-area-inset-bottom));
-}
-
-/* The row stays where the page put it until the motion to the other
-   layout settles: no swipe scrolls it meanwhile. */
-[data-turning] .games-tiles {
-  overflow-x: hidden;
 }
 
 /* The games still to come: a faded dinosaur's shape over a lock, on the
@@ -1686,49 +1608,6 @@ body:has(.result) #version {
   white-space: nowrap;
 }
 
-/* The quiz's tile, first in the row: the two dinosaurs facing off on
-   the navy, in the other tiles' shape, its symbol on amber over a shade
-   as the quiz's large card has always had them. */
-.compare-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #1f2b4d;
-  color: #f6f2e9;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
-
-.compare-tile .face-off {
-  padding: 16px 20px 10px;
-}
-
-/* The catalogue's tile is terracotta. White words keep text contrast on
-   terracotta only under the shade the quiz card's footer also has. */
-.catalogue-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #c9583d;
-  color: #ffffff;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
-
 .catalogue-tile-picture {
   flex: 1 1 0;
   min-height: 0;
@@ -1736,53 +1615,7 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding: 16px 20px 10px;
   object-fit: contain;
-}/* The book sits in the picture's corner,  across from the count {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: #ffffff33;
-}/* The count sits in the tile's corner {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  height: 40px;
-  box-sizing: border-box;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-radius: 20px;
-  background: #00000026;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-/* Sorting and labyrinth use paper cards. */
-.sort-tile,
-.labyrinth-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  outline: 1px solid #1d27421f;
-  outline-offset: -0.5px;
-  background: #fffdf8;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
-
-.sort-tile-picture,
+}.sort-tile-picture,
 .labyrinth-tile-picture {
   flex: 1 1 0;
   min-height: 0;
@@ -1792,24 +1625,8 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* Find the pair's tile, sky, under SORT and as tall: two cards of one
-   dinosaur with a face-down card between them, sized by the tile's
-   height. The ink keeps its contrast on sky. */
-.pairs-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #a9bcd6;
-  color: #1d2742;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
+/* A pair's artwork keeps its cards together inside either picture area. */
+
 
 .pairs-tile-art {
   position: relative;
@@ -1861,27 +1678,6 @@ body:has(.result) #version {
   object-fit: contain;
 }
 
-/* The skeleton game's tile, over MORE COMING, in the other tiles'
-   shape. The design's forest green is no colour of either theme,
-   so the tile takes the navy, as the skeleton screens' mark does, and the
-   bones stand out on it in both themes. */
-.skeletons-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #1f2b4d;
-  color: #f6f2e9;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
-
 .skeletons-tile-picture {
   flex: 1 1 0;
   min-height: 0;
@@ -1889,27 +1685,6 @@ body:has(.result) #version {
   box-sizing: border-box;
   padding: 16px 20px 10px;
   object-fit: contain;
-}
-
-/* The dig game's tile, over MORE COMING, in the other tiles' shape. The
-   design's sand brown is no colour of either theme, so the tile takes the
-   deepest band of rock, the nearest the palette has to sand. */
-.sand-writing-tile,
-.dig-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #d0c5b2;
-  color: #1d2742;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
 }
 
 .sand-writing-tile-art {
@@ -3706,26 +3481,6 @@ html[data-size="tall-narrow"] .result-actions .home-button {
   height: 64px;
   justify-content: center;
   padding: 0 20px;
-}
-
-/* Dinosaur care's tile, amber, under the catalogue's, in its shape. The
-   ink keeps its contrast on amber with no shade under it, so the row is
-   lit, as the design draws it. */
-.care-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #e39b2d;
-  color: #1d2742;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
 }
 
 .care-tile-picture {
@@ -6311,8 +6066,6 @@ html[data-size="wide-short"] .pairs-play-button svg {
   height: 72px;
   white-space: nowrap;
 }
-
-
 
 /* Upright, a game's switch is its column's width, at most 648, each level
    64 tall, its picture above its name, the names in the one type its
@@ -11155,9 +10908,8 @@ html[data-size="tall-narrow"] .jaw-result-actions button { width: 100%; font-siz
 .whose-jaw-shelf { background: #fffdf8; color: #1d2742; }
 .whose-jaw-play svg,
 .whose-jaw-shelf svg { width: 28px; height: 28px; flex-shrink: 0; }
-.whose-jaw-tile,
 .featured-card[data-game="whoseJaw"] { background: #e39b2d; color: #1d2742; }
-.whose-jaw-tile { position: relative; flex: 1 1 0; min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; border: 0; border-radius: 28px; text-align: left; }
+
 .whose-jaw-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
 .featured-card[data-game="whoseJaw"] .whose-jaw-tile-picture { height: 100%; }
 html:is([data-size="tall"], [data-size="tall-narrow"]) .whose-jaw-welcome-body {
@@ -11194,7 +10946,6 @@ html[data-size="wide-short"] .whose-jaw-welcome-actions svg { width: 24px; heigh
 
 [data-theme="dark"] .whose-jaw-shelf { background: #181e2e; color: #ece8de; }
 [data-theme="dark"] .whose-jaw-play,
-[data-theme="dark"] .whose-jaw-tile,
 [data-theme="dark"] .featured-card[data-game="whoseJaw"] { background: #f2b24b; color: #1d2742; }
 
 /* Reduced motion comes after every rule it overrides, so that it wins
@@ -11564,8 +11315,6 @@ html[data-size="tall-narrow"] .jaw-card-controls > .home-button:first-child span
 .labyrinth-reunion-actions button:focus-visible,
 .picture-puzzle-result-actions button:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
 
-
-
 /* The dark theme: each fm-* colour takes its dark value, in the same
    shapes. */
 :root[data-theme="dark"] {
@@ -11641,25 +11390,11 @@ html[data-theme="dark"],
   background: #2c3b66;
 }
 
-[data-theme="dark"] .compare-tile,
-[data-theme="dark"] .skeletons-tile {
-  background: #2c3b66;
-  box-shadow: 0 8px 24px #00000066;
-}
-
-[data-theme="dark"] .sort-tile,
-[data-theme="dark"] .labyrinth-tile {
-  background: #181e2e;
-  box-shadow: 0 8px 24px #00000066;
-}
-
 [data-theme="dark"] .featured-card[data-game="sort"],
 [data-theme="dark"] .featured-card[data-game="labyrinth"] {
   background: #181e2e;
 }
 
-[data-theme="dark"] .sort-tile,
-[data-theme="dark"] .labyrinth-tile,
 [data-theme="dark"] .featured-card[data-game="sort"],
 [data-theme="dark"] .featured-card[data-game="labyrinth"] {
   outline-color: #ece8de1f;
@@ -11746,22 +11481,18 @@ html[data-theme="dark"],
 }/* White words would fade on the dark theme's lighter terracotta and
    green,  so the tiles and tags there take the dark page's ink,  as the
    marks do. */
-[data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
   color: #0f1320;
 }
-[data-theme="dark"] .catalogue-tile,
 [data-theme="dark"] .featured-card[data-game="catalogue"],
 [data-theme="dark"] .featured-card[data-game="sort"] .featured-card-symbol,
 [data-theme="dark"] .featured-card[data-game="labyrinth"] .featured-card-symbol {
   background: #e57a5d;
 }
 
-[data-theme="dark"] .catalogue-tile {
-  box-shadow: 0 8px 24px #00000066;
-}
+
 [data-theme="dark"] .featured-card[data-game="catalogue"] .featured-card-footer {
   background: none;
 }
@@ -11808,7 +11539,6 @@ html[data-theme="dark"],
 
 /* Care's screens take the dark values in the same shapes. Words and
    symbols on amber stay the light ink. */
-[data-theme="dark"] .care-tile,
 [data-theme="dark"] .featured-card[data-game="care"],
 [data-theme="dark"] .care-mark,
 [data-theme="dark"] .new-visitor-symbol,
@@ -11816,10 +11546,6 @@ html[data-theme="dark"],
 [data-theme="dark"] .bubble-badge,
 [data-theme="dark"] .new-visitor-button {
   background: #f2b24b;
-}
-
-[data-theme="dark"] .care-tile {
-  box-shadow: 0 8px 24px #00000066;
 }
 
 [data-theme="dark"] .care-best,
@@ -11979,7 +11705,6 @@ html[data-theme="dark"],
 /* Find the pair takes the dark values in the same shapes. Words and
    symbols on amber stay the light ink; a silhouette is the dark ink's
    shape. */
-[data-theme="dark"] .pairs-tile,
 [data-theme="dark"] .featured-card[data-game="pairs"],
 [data-theme="dark"] .pairs-mark,
 [data-theme="dark"] .pairs-bar-mark {
@@ -11987,7 +11712,6 @@ html[data-theme="dark"],
   color: #ece8de;
 }
 
-[data-theme="dark"] .pairs-tile,
 [data-theme="dark"] .pairs-tile-card {
   box-shadow: 0 8px 24px #00000066;
 }
@@ -12176,8 +11900,6 @@ html[data-theme="dark"],
 }
 
 [data-theme="dark"] .featured-card[data-game="dig"],
-[data-theme="dark"] .dig-tile,
-[data-theme="dark"] .sand-writing-tile,
 [data-theme="dark"] .featured-card[data-game="sandWriting"] {
   background: #1f273c;
   color: #ece8de;
@@ -12577,38 +12299,23 @@ body:has(.picture-puzzle-board-screen) {
 [data-theme="dark"] .picture-puzzle-result-screen { background: #0f1320; color: #ece8de; }
 [data-theme="dark"] .picture-puzzle-round-star { color: #f2b24b; }
 
-.picture-puzzle-tile {
-  position: relative;
-  flex: 1 1 0;
-  min-height: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: none;
-  border-radius: 28px;
-  background: #dceade;
-  color: #1d2742;
-  box-shadow: 0 8px 24px #1d274224;
-  text-align: left;
-}
+
 .picture-puzzle-tile-art { display: block; flex: 1 1 0; min-height: 0; width: 100%; overflow: hidden; }
 .picture-puzzle-tile-art > .picture-puzzle-crop { width: 100%; height: 100%; }
 .featured-card[data-game="picturePuzzle"] { background: #dceade; color: #1d2742; }
 .featured-card[data-game="picturePuzzle"] .featured-card-symbol { background: #ffffff80; }
 .featured-card[data-game="picturePuzzle"] .featured-card-badge { background: #fffdf8; color: #1d2742; }
 .featured-card[data-game="picturePuzzle"] .featured-card-badge svg { color: #a66c16; }
-[data-theme="dark"] .picture-puzzle-tile,
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] { background: #253b37; color: #ece8de; }
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-symbol { background: #ffffff1f; }
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-badge { background: #181e2e; color: #ece8de; }
 [data-theme="dark"] .featured-card[data-game="picturePuzzle"] .featured-card-badge svg { color: #f2b24b; }
 
-.coloring-tile, .featured-card[data-game="coloring"] { background: #dceade; color: #1d2742; }
-.coloring-tile { position: relative; flex: 1 1 0; min-height: 0; padding: 0; display: flex; flex-direction: column; overflow: hidden; border: 0; border-radius: 28px; text-align: left; }
+.featured-card[data-game="coloring"] { background: #dceade; color: #1d2742; }
+
 .coloring-tile-picture { width: 100%; min-height: 0; flex: 1 1 0; object-fit: contain; }
 .featured-card[data-game="coloring"] .coloring-tile-picture { height: 100%; }
-[data-theme="dark"] .coloring-tile, [data-theme="dark"] .featured-card[data-game="coloring"] { background: #253b37; color: #ece8de; }
+[data-theme="dark"] .featured-card[data-game="coloring"] { background: #253b37; color: #ece8de; }
 
 /* A viewport-attached opaque edge lets WebKit extend a solid colour into
    its system top bar. Keep it outside screen transforms and transitions;
@@ -12628,138 +12335,12 @@ body:has(.picture-puzzle-board-screen) {
   background: #0f1320;
 }
 
-/* Size containment keeps the tiles' intrinsic widths out of the hero's
-   flex allocation. Columns follow the two rows' actual available height. */
-.tiles-grid {
-  height: 100%;
-  width: max-content;
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  grid-auto-columns: calc((100cqh - 28px) * 2 / 3);
-  row-gap: 28px;
-  column-gap: 16px;
-}
-
-[data-size="wide-short"] .tiles-grid {
-  grid-auto-columns: calc((100cqh - 16px) * 2 / 3);
-  row-gap: 16px;
-}
-
-.games-tiles .home-tile-footer {
-  position: relative;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
-  padding: 8px;
-  width: 100%;
-  height: 48px;
-  min-height: 48px;
-  flex: 0 0 48px;
-  margin: 0;
-  background: rgba(0, 0, 0, .1);
-}
-
-.games-tiles .more-coming {
-  padding: 0;
-  gap: 0;
-  overflow: hidden;
-}
-
-.games-tiles .more-coming-picture {
-  box-sizing: border-box;
-  padding: 20px 24px 10px;
-}
-
-.games-tiles .home-tile-symbol {
-  position: static;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, .18);
-  color: inherit;
-}
-
-.games-tiles .home-tile-symbol svg {
-  width: 20px;
-  height: 20px;
-}
-
-.games-tiles .home-tile-title {
-  min-width: 0;
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 24px;
-  letter-spacing: 0;
-  white-space: nowrap;
-}
-
-/* Keep the approved phone hero and two readable rows. Shorter phones
-   scroll vertically rather than clipping game names or reducing tap targets. */
-[data-size="tall-narrow"] .home { height: auto; min-height: 100vh; min-height: 100dvh; }
-[data-size="tall-narrow"] .games { flex: 1 1 0; min-height: 0; gap: 28px; }
-[data-size="tall-narrow"] .featured-card { flex: 1 1 0; min-height: 240px; }
-[data-size="tall-narrow"] .games-tiles {
-  flex: 0 0 auto;
-  height: clamp(320px, 36vh, 420px);
-  height: clamp(320px, 36dvh, 420px);
-  margin-block: -24px;
-  padding-block: 24px;
-}
-
-/* Upright on a phone the row of small tiles scrolls across the whole
-   width of the window, edge to edge; the ribbon inside it keeps the
-   page's sides as its own leading and trailing padding, so the first
-   and the last tile line up with the large card when scrolled to. */
-[data-size="tall-narrow"] .games-tiles {
-  margin-inline: calc(-20px - var(--screen-left)) calc(-20px - var(--screen-right));
-  padding-inline: calc(20px + var(--screen-left)) calc(20px + var(--screen-right));
-  scroll-padding-inline: calc(20px + var(--screen-left)) calc(20px + var(--screen-right));
-}
-
-/* LAB-909: upright on a phone the page is one column exactly the window's
-   height. The large card and the row of tiles share what the corner, the
-   greeting and the version line leave; neither has a floor that could
-   push the row past the page's bottom edge, where .home clips it. The
-   row's 24-pixel band for shadows stays inside the page at the bottom.
-   Shorter phones, an iPhone SE, keep the page that scrolls, where
-   both stay readable. */
-@media (min-height: 640px) {
-  [data-size="tall-narrow"] .home {
-    height: 100vh;
-    height: 100dvh;
-    min-height: 0;
-    padding-bottom: calc(24px + env(safe-area-inset-bottom));
-  }
-  [data-size="tall-narrow"] .games { flex: 1 1 0; min-height: 0; }
-  [data-size="tall-narrow"] .featured-card { flex: 1 1 0; min-height: 0; }
-  [data-size="tall-narrow"] .games-tiles {
-    flex: 0 1 clamp(320px, 36dvh, 420px);
-    height: auto;
-    min-height: 300px;
-    margin-top: -24px;
-    margin-bottom: 0;
-    padding-top: 24px;
-    padding-bottom: 0;
-  }
-  [data-size="tall-narrow"] #version,
-  [data-size="tall-narrow"] body:has(.home) #version {
-    bottom: calc(4px + env(safe-area-inset-bottom));
-  }
-}
-
 [data-theme="dark"] .no-friends-button { background: #f2b24b; }
 
-/* The sky and the game row share one page. */
+/* The sky opens onto the ground below. */
 html .home.home-dig-site {
-  padding: calc(36px + env(safe-area-inset-top)) var(--screen-right) calc(72px + env(safe-area-inset-bottom)) var(--screen-left);
-  height: auto; min-height: 100vh; min-height: 100dvh; gap: 10px;
+  padding: calc(36px + env(safe-area-inset-top)) var(--screen-right) 0 var(--screen-left);
+  height: auto; min-height: 100vh; min-height: 100dvh; --home-gap: 10px; gap: var(--home-gap);
   font-family: var(--ds-font);
   --home-sky-fade: 376px;
   background: linear-gradient(var(--ds-sky-top), var(--ds-sky-bottom) var(--home-sky-fade));
@@ -12856,13 +12437,10 @@ html .home.home-dig-site {
 .home.home-dig-site .home-today-art .face-off-left { width: 49.15%; height: 80%; }
 .home.home-dig-site .home-today-art .face-off-right { width: 44.07%; height: 100%; }
 .home.home-dig-site .home-sky-wave { position: absolute; bottom: 0; left: 0; width: 100%; height: 30px; fill: var(--ds-strata-1); pointer-events: none; }
-html .home.home-dig-site .games {
-  flex: none; height: 360px; min-height: 0; width: auto; max-width: none;
-  margin-inline: var(--ds-page);
-}
-html .home.home-dig-site .games-tiles { flex: 1 1 0px; }
+
+
 @media (min-height: 800px) {
-  html .home.home-dig-site { gap: 14px; --home-sky-fade: 410px; }
+  html .home.home-dig-site { --home-gap: 14px; --home-sky-fade: 410px; }
   .home.home-dig-site .home-sky { min-height: 310px; }
   .home.home-dig-site .home-today-art { right: 5.93%; width: 50%; height: 300px; bottom: 18px; }
   .home.home-dig-site .home-sky-body { top: -70px; }
@@ -12875,7 +12453,7 @@ html[data-size="tall"] .home.home-dig-site .home-today-art,
 html[data-size="tall-narrow"] .home.home-dig-site .home-today-art { width: 100%; height: 160px; right: 0; }
 html[data-size="tall"] .home.home-dig-site .home-today-copy,
 html[data-size="tall-narrow"] .home.home-dig-site .home-today-copy { width: calc(100% - var(--ds-page) * 2); }
-html[data-size="tall-narrow"] .home.home-dig-site { padding-top: calc(62px + env(safe-area-inset-top)); gap: 20px; --home-sky-fade: 480px; }
+html[data-size="tall-narrow"] .home.home-dig-site { padding-top: calc(62px + env(safe-area-inset-top)); --home-gap: 20px; --home-sky-fade: 480px; }
 html[data-size="tall-narrow"] .home.home-dig-site .home-header { min-height: 44px; }
 html[data-size="tall-narrow"] .home.home-dig-site .wordmark { font-size: 22px; }
 html[data-size="tall-narrow"] .home.home-dig-site .wordmark-mark { width: 28px; height: 28px; }
@@ -13029,3 +12607,174 @@ html[data-size="wide-short"] .home.home-dig-site .home-today-art { width: 44%; r
   .home.home-dig-site .home-today-copy,
   .home.home-dig-site .home-today-art { animation: fade-in var(--motion-small) var(--ease-out) both; }
 }
+
+/* Each band holds six games, wrapping at the pocket size for the device. */
+.home.home-dig-site .home-ground {
+  flex: none;
+  margin-top: calc(-1 * var(--home-gap));
+  width: 100%;
+  min-width: 0;
+}
+.home-layer {
+  position: relative;
+  --home-earth: var(--ds-strata-1);
+  background: var(--ds-strata-1);
+}
+.home-layer[data-depth="2"] {
+  --home-earth: var(--ds-strata-2);
+  background: var(--ds-strata-2);
+}
+.home-layer .tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 18px 12px;
+  padding: 16px var(--ds-page) 18px;
+  min-height: 180px;
+  box-sizing: border-box;
+  align-content: start;
+}
+.home-ground .home-ground-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--ds-on-label);
+  overflow: visible;
+  text-align: center;
+  container-type: inline-size;
+  touch-action: pan-y;
+}
+.home-ground .home-ground-tile:focus-visible { outline: 3px solid var(--ds-action); outline-offset: 3px; }
+.home-tile-pocket {
+  box-sizing: border-box;
+  width: 100%;
+  height: 96px;
+  padding: 9px 12px 3px;
+  display: flex;
+  position: relative;
+  border-radius: var(--ds-radius-pocket-top) var(--ds-radius-pocket-top) var(--ds-radius-pocket-bottom) var(--ds-radius-pocket-bottom);
+  background: var(--ds-pocket-1);
+  box-shadow: inset 0 6px 10px var(--ds-pocket-shadow);
+}
+.home-layer[data-depth="2"] .home-tile-pocket { background: var(--ds-pocket-2); }
+.home-tile-pocket > .picture,
+.home-tile-pocket > .face-off,
+.home-tile-pocket > .picture-puzzle-tile-art,
+.home-tile-pocket > .sand-writing-tile-art,
+.home-tile-pocket > .pairs-tile-art {
+  position: relative;
+  inset: auto;
+  flex: none;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  object-fit: contain;
+}
+.home-tile-pocket .face-off-picture { width: 50%; height: 100%; }
+.home-tile-pocket .pairs-tile-art { container-type: size; }
+.home-tile-pocket .pairs-tile-card { height: min(65cqh, 32cqw); background: var(--ds-label); box-shadow: 0 4px 12px var(--ds-ground-shadow); }
+.home-tile-pocket .pairs-tile-back { background: var(--ds-strong); color: var(--ds-on-strong); }
+.home-ground .home-tile-footer {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  box-sizing: border-box;
+  max-width: none;
+  width: max-content;
+  height: auto;
+  margin: 0;
+  padding: var(--ds-chip-pad-y) var(--ds-chip-pad-x) var(--ds-chip-pad-y) var(--ds-chip-pad-x-lead);
+  gap: var(--ds-chip-gap);
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-label);
+  color: var(--ds-on-label);
+}
+.home-ground .home-tile-symbol {
+  display: flex;
+  position: static;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ds-action);
+}
+.home-ground .home-tile-symbol svg { width: 100%; height: 100%; }
+.home-ground .home-tile-title {
+  min-width: 0;
+  font-size: var(--ds-size-label);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.home-new {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px 7px 10px;
+  border-radius: var(--ds-radius-tag);
+  background: var(--ds-reward);
+  color: var(--ds-on-reward);
+  font-size: var(--ds-size-tag);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+.home-ground .more-coming { opacity: .6; }
+.home-ground .more-coming-picture { opacity: .35; }
+.home-ground .more-coming .home-tile-footer { background: transparent; color: var(--ds-ink-soft); }
+.home-ground .more-coming .home-tile-symbol { color: var(--ds-ink-soft); }
+.home-earth-wave {
+  position: absolute;
+  left: 0;
+  top: -20px;
+  width: 100%;
+  height: 30px;
+  fill: var(--home-earth);
+  pointer-events: none;
+}
+.home-bedrock {
+  position: relative;
+  --home-earth: var(--ds-strata-3);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1 0 auto;
+  min-height: 80px;
+  padding: 0 var(--ds-page) env(safe-area-inset-bottom);
+  margin-top: calc(-1 * var(--home-gap));
+  background: var(--ds-strata-3);
+  color: var(--ds-ink);
+}
+.home-parent-note { margin: 0; font-size: var(--ds-size-foot); font-weight: 400; opacity: .75; }
+.home-version { flex: none; font-size: 11px; font-weight: 400; opacity: .6; }
+body:has(.home-dig-site) #version { display: none; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-layer .tiles-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 100px), 1fr));
+  column-gap: 10px;
+  padding-bottom: 22px;
+}
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-tile-pocket { height: 88px; padding: 8px 8px 2px; }
+html:is([data-size="tall-narrow"], [data-size="wide-short"]) .home-ground .home-tile-symbol { width: 16px; height: 16px; }
+html[data-size="tall-narrow"] .home-bedrock { flex-direction: column; align-items: flex-start; justify-content: flex-start; min-height: 110px; padding-top: 22px; }
