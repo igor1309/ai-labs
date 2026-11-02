@@ -25,6 +25,7 @@ const { mkdir } = require('node:fs/promises');
  if(await button.textContent()!=='🇬🇧') throw Error('Wrong collapsed flag');
  if (screenshots) await page.screenshot({path:`${screenshots}/${level}-${size}-closed.png`});
  await button.click();await page.getByRole('menu',{name:'Language',exact:true}).waitFor();
+ await page.getByRole('menu',{name:'Language',exact:true}).evaluate(menu => Promise.all(menu.getAnimations({subtree:true}).map(animation => animation.finished)));
  for(const name of ['English','Русский']) await page.getByRole('menuitemradio',{name,exact:true}).waitFor();
  if (screenshots) await page.screenshot({path:`${screenshots}/${level}-${size}-open.png`});
  await page.getByRole('menuitemradio',{name:'Русский',exact:true}).click();
