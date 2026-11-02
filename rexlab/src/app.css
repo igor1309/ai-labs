@@ -1280,9 +1280,24 @@ body:has(.result) #version {
   padding:
     calc(100px + env(safe-area-inset-top))
     calc(20px + var(--screen-right))
-    calc(48px + env(safe-area-inset-bottom))
+    calc(28px + env(safe-area-inset-bottom))
     calc(20px + var(--screen-left));
   gap: 20px;
+}
+
+/* On an iPhone upright every pixel counts: no bands of rock along the
+   bottom, and the version stands at the very bottom of the window, in a
+   strip of its own that no screen covers. The room this frees goes to
+   the screen itself. */
+[data-size="tall-narrow"] .stratum {
+  display: none;
+}
+
+[data-size="tall-narrow"] #version,
+[data-size="tall-narrow"] body:has(.home) #version {
+  right: calc(20px + var(--screen-right));
+  bottom: calc(6px + env(safe-area-inset-bottom) / 2);
+  font-size: 11px;
 }
 
 [data-size="tall-narrow"] .wordmark {
