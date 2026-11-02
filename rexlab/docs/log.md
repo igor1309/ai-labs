@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-02
+
+- LAB-905: The upright iPhone home fits the available screen height, keeping both tile rows visible and horizontal game browsing.
+
 ## 2026-11-01
 
 - LAB-903: The document canvas and browser tint follow the active theme; the home app icon keeps its image in dark mode. iPhone Safari status-bar verification is pending.

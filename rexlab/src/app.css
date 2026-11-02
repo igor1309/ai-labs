@@ -1172,8 +1172,9 @@ body:has(.result) #version {
    greeting on top, the large card across the width under them, and under
    it the row of tiles, 36% of the height within the landscape row's
    bounds, running to the window's right edge. The large card takes the
-   height the rest leaves, so the safe areas come off it, but no less than
-   280 pixels: below that the whole page scrolls. The wordmark, the corner
+   height the rest leaves, so the safe areas come off it. On an iPad it
+   keeps at least 280 pixels, below which the page scrolls; on a phone
+   both parts shrink to the available height. The wordmark, the corner
    and the version footer then scroll with it, so they stand on the page
    rather than the window, which is the same where it does not scroll.
    HomePage gives the columns' width, narrowed so the next one peeks in. */
@@ -1284,6 +1285,9 @@ body:has(.result) #version {
    beside the wordmark. The greeting, the large card's words and the
    tiles' row are smaller for the narrower page. */
 [data-size="tall-narrow"] .home {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   padding:
     calc(100px + env(safe-area-inset-top))
     calc(20px + var(--screen-right))
@@ -1327,8 +1331,17 @@ body:has(.result) #version {
   line-height: 36px;
 }
 
+/* Share the space left below the greeting instead of imposing card
+   minimums that make the document taller than the phone. */
+[data-size="tall-narrow"] .games {
+  flex: 1 1 0;
+  min-height: 0;
+  gap: 16px;
+}
+
 [data-size="tall-narrow"] .featured-card {
-  min-height: 240px;
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 [data-size="tall-narrow"] .featured-card-footer {
@@ -1349,9 +1362,13 @@ body:has(.result) #version {
 }
 
 [data-size="tall-narrow"] .games-tiles {
-  height: clamp(320px, 36vh, 420px);
-  height: clamp(320px, 36dvh, 420px);
+  flex: 1.3 1 0;
+  min-height: 0;
+  height: auto;
+  margin-block: 0;
+  padding-block: 0;
   margin-right: -20px;
+  row-gap: 16px;
 }
 
 /* Under 360 wide (an iPhone with its display zoomed, or a window in
