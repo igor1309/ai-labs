@@ -23,7 +23,7 @@ Feature: DIG: the board at Hatchling in a tall window
   Scenario: The bar keeps one row at the narrowest width
     Given a window of 600 by 1000 CSS pixels at Hatchling
     When I open DIG
-    Then HOME shows as its symbol, named for screen readers, beside the title, the brushes and the field guide
+    Then HOME shows as its symbol, named for screen readers, beside the title and the field guide
 
   Scenario: A stroke brushes the sand upright
     Given a window of 820 by 1180 CSS pixels at Hatchling, on the board

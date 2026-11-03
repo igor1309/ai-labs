@@ -336,7 +336,11 @@ export function appProps(browser: Browser): AppProps {
           finished();
           return;
         }
-        browser.document.startViewTransition(update).finished.then(finished, finished);
+        const transition = browser.document.startViewTransition(update);
+        // A transition skipped before it starts, as when the viewport
+        // resizes, rejects ready; the page then just changes at once.
+        transition.ready.then(undefined, () => {});
+        transition.finished.then(finished, finished);
       },
       timing: TURN_TIMING
     },

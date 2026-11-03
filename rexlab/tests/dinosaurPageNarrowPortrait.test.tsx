@@ -61,7 +61,7 @@ async function openPage(size: WindowSize, { language = "en", id = "pachycephalos
     {...emptyCare()} {...emptySorting()} {...emptyPairs()}
     {...emptySkeletons()} {...emptyDig()} {...pageAtRest()}
   />);
-  await user.click(gameDoor(TEXTS[language].catalogueTile));
+  await user.click(gameDoor(TEXTS[language].catalogue));
   await user.click(part(`[data-id="${id}"]`));
   return { user, viewport };
 }
