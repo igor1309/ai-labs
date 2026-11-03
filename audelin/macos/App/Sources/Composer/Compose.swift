@@ -3,6 +3,7 @@ import CoreAudioProcesses
 import Foundation
 import Preferences
 import Recordings
+import TrackFile
 
 /// Builds the same recording, panel, menu and calls composition for every caller.
 @MainActor
@@ -29,7 +30,8 @@ public func compose(
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
         sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep)
     let timeZone = boundary.time.timeZone()
-    let disk = ComposeCalls(disk: Calls(folder: menu.preferences.callsFolder, timeZone: timeZone))
+    let disk = ComposeCalls(disk: Calls(folder: menu.preferences.callsFolder, timeZone: timeZone,
+                                      duration: TrackFile.duration(at:)))
     menu.installCalls(AudelinCalls(inputs: makeRecordings(handler: RecordingsEffectHandler(calls: disk)),
                                   timeZone: timeZone, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await disk.location(id: $0) }, openFolder: openCallsFolder,
