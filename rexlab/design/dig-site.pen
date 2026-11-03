@@ -27199,6 +27199,7 @@
           "y": 176,
           "name": "Layer 1 · Sand",
           "width": 375,
+          "height": 500,
           "fill": "$ds-strata-1",
           "layout": "vertical",
           "gap": "$ds-space-m",
@@ -27419,8 +27420,7 @@
                 }
               }
             }
-          ],
-          "height": 500
+          ]
         },
         {
           "id": "wNr4m",
@@ -541768,7 +541768,325 @@
     },
     {
       "type": "frame",
-      "id": "mvbsV",
+      "id": "sMaL7",
+      "x": 20209,
+      "y": 15444,
+      "name": "DIG · reveal · new best · iPad mini upright 744×1133 · Light",
+      "theme": {
+        "mode": "light",
+        "device": "ipad"
+      },
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.5
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "fRcWQ",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 460,
+          "width": 744,
+          "descendants": {
+            "uZToM": {
+              "width": 744,
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "id": "eqyCV",
+          "type": "ref",
+          "ref": "S542ia",
+          "name": "Celebration",
+          "x": 92,
+          "y": 50,
+          "descendants": {
+            "k3GFg7": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/triceratops.webp",
+                "mode": "contain"
+              }
+            },
+            "sbJOe": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "Nnn93",
+          "x": 0,
+          "y": 480,
+          "name": "Layer 1 · Sand",
+          "width": 744,
+          "height": 583,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": "$ds-space-20",
+          "padding": [
+            "$ds-space-40",
+            "$ds-space-56",
+            0,
+            "$ds-space-56"
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "SHYIY",
+              "name": "Name",
+              "fill": "$ds-ink",
+              "content": "TRICERATOPS",
+              "fontFamily": "$ds-font",
+              "fontSize": "$ds-size-display",
+              "fontWeight": "800",
+              "letterSpacing": -1
+            },
+            {
+              "id": "B0yqBg",
+              "type": "ref",
+              "ref": "TxEoT",
+              "name": "Dug up",
+              "descendants": {
+                "QMAvP": {
+                  "enabled": true
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "MoTn2",
+              "name": "New best",
+              "fill": "$ds-reward",
+              "cornerRadius": "$ds-radius-tag",
+              "gap": "$ds-btn-gap",
+              "padding": [
+                "$ds-btn-gap",
+                "$ds-space-18",
+                "$ds-btn-gap",
+                "$ds-space-14"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "rqUXG",
+                  "name": "Icon",
+                  "width": 28,
+                  "height": 28,
+                  "icon": "trophy-fill",
+                  "library": "phosphor",
+                  "fill": "$ds-on-reward"
+                },
+                {
+                  "type": "text",
+                  "id": "zKWKi",
+                  "name": "Label",
+                  "fill": "$ds-on-reward",
+                  "content": "NEW BEST!",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-20",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "k6vXS6",
+                  "name": "Number",
+                  "fill": "$ds-on-reward",
+                  "content": "5",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-26",
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "id": "XKvOS",
+              "type": "ref",
+              "ref": "I0PBB",
+              "name": "Level switch"
+            },
+            {
+              "type": "frame",
+              "id": "a851e",
+              "name": "Buttons",
+              "gap": "$ds-space-l",
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "sNNwX",
+                  "type": "ref",
+                  "ref": "q7W1Cw",
+                  "name": "Play again",
+                  "descendants": {
+                    "h8hp2i": {
+                      "icon": "rotate-ccw"
+                    },
+                    "kWZZZ": {
+                      "content": "DIG AGAIN"
+                    }
+                  }
+                },
+                {
+                  "id": "ABWNC",
+                  "type": "ref",
+                  "ref": "YcGaY",
+                  "name": "Home",
+                  "descendants": {
+                    "q6PILi": {
+                      "icon": "house"
+                    },
+                    "xdZD6": {
+                      "content": "HOME"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "GRP0G",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 1063,
+          "width": 744,
+          "descendants": {
+            "uZToM": {
+              "width": 744,
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "B7qm0",
+          "x": 0,
+          "y": 1083,
+          "name": "Layer 2 · Ochre",
+          "width": 744,
+          "height": 50,
+          "fill": "$ds-strata-2",
+          "layout": "none"
+        },
+        {
+          "type": "frame",
+          "id": "bUNdk",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 744,
+          "height": 24,
+          "padding": [
+            "$ds-space-xs",
+            "$ds-space-xl",
+            0,
+            "$ds-space-xl"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "F1bPwF",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41  Mon 2 Nov",
+              "fontFamily": "Inter",
+              "fontSize": "$ds-size-13",
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "JKybX",
+              "name": "Indicators",
+              "gap": "$ds-space-6",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "utJTf",
+                  "name": "signal",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "l62vQ9",
+                  "name": "wifi",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "n2AJnN",
+                  "name": "battery-full",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": "$ds-radius-3",
+          "id": "iw18t",
+          "x": 212,
+          "y": 1121,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 320,
+          "height": 5
+        },
+        {
+          "id": "UmeXx",
+          "type": "ref",
+          "ref": "SUciX",
+          "name": "Field guide",
+          "x": 644,
+          "y": 30
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "GYO2N",
       "x": 1750,
       "y": 25717,
       "name": "TEETH · welcome · returning, Explorer best 2 · iPhone SE 375×667 · Light",
@@ -541801,7 +542119,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "Q7jFd",
+          "id": "WDjCY",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -541826,7 +542144,7 @@
         },
         {
           "type": "frame",
-          "id": "p1gtIW",
+          "id": "DGyvZ",
           "x": 0,
           "y": 186,
           "name": "Layer 1 · Sand",
@@ -541845,7 +542163,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "r1bbL",
+              "id": "GxtrY",
               "name": "Jaw and gummy dinosaur",
               "width": 340,
               "height": 160,
@@ -541854,7 +542172,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-22",
-                  "id": "qC4so",
+                  "id": "lJCZr",
                   "x": 0,
                   "y": 0,
                   "name": "Gummy dinosaur",
@@ -541873,7 +542191,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-16",
-                  "id": "bi6aI",
+                  "id": "nriyj",
                   "x": 180,
                   "y": 100,
                   "name": "Jaw",
@@ -541904,12 +542222,12 @@
             },
             {
               "type": "frame",
-              "id": "JjZqg",
+              "id": "e5M3Z",
               "name": "Badges",
               "gap": "$ds-space-m",
               "children": [
                 {
-                  "id": "y6RofP",
+                  "id": "M3XMEs",
                   "type": "ref",
                   "ref": "JejOB",
                   "name": "Best",
@@ -541939,7 +542257,7 @@
                   }
                 },
                 {
-                  "id": "b4GVjq",
+                  "id": "jEv0U",
                   "type": "ref",
                   "ref": "DaaWt",
                   "name": "Collection count",
@@ -541971,7 +542289,7 @@
               ]
             },
             {
-              "id": "JZo1l",
+              "id": "tKbpG",
               "type": "ref",
               "ref": "I0PBB",
               "name": "Level switch",
@@ -542015,7 +542333,7 @@
               }
             },
             {
-              "id": "dZVhp",
+              "id": "ZVyoy",
               "type": "ref",
               "ref": "q7W1Cw",
               "name": "Play",
@@ -542032,7 +542350,7 @@
               }
             },
             {
-              "id": "IPBYv",
+              "id": "D85AUe",
               "type": "ref",
               "ref": "YcGaY",
               "name": "Jaw shelf",
@@ -542051,7 +542369,7 @@
           ]
         },
         {
-          "id": "gDLiR",
+          "id": "s00hHa",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 2 · Ochre edge",
@@ -542076,7 +542394,7 @@
         },
         {
           "type": "frame",
-          "id": "NiR3C",
+          "id": "n6gnOp",
           "x": 0,
           "y": 653,
           "name": "Layer 2 · Ochre",
@@ -542087,7 +542405,7 @@
         },
         {
           "type": "frame",
-          "id": "Ved1N",
+          "id": "ywm38",
           "x": 20,
           "y": 44,
           "name": "Top bar",
@@ -542096,7 +542414,7 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "k2pQp",
+              "id": "iDM6x",
               "type": "ref",
               "ref": "tAopu",
               "name": "Home"
@@ -542105,7 +542423,7 @@
         },
         {
           "type": "frame",
-          "id": "Y6n2SG",
+          "id": "f4ACoa",
           "x": 20,
           "y": 120,
           "name": "Question line",
@@ -542113,7 +542431,7 @@
           "justifyContent": "center",
           "children": [
             {
-              "id": "suYQS",
+              "id": "fYYe5",
               "type": "ref",
               "ref": "qWLc5",
               "name": "Question",
@@ -542139,7 +542457,7 @@
         },
         {
           "type": "frame",
-          "id": "W8ixI",
+          "id": "DglHS",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -542156,7 +542474,7 @@
           "children": [
             {
               "type": "text",
-              "id": "E5xoH",
+              "id": "mDU12",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41",
@@ -542166,14 +542484,14 @@
             },
             {
               "type": "frame",
-              "id": "E0Keru",
+              "id": "BSl5m",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "djRhb",
+                  "id": "GnGVK",
                   "name": "signal",
                   "width": 18,
                   "height": 18,
@@ -542183,7 +542501,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "OqOWF",
+                  "id": "TpFej",
                   "name": "wifi",
                   "width": 18,
                   "height": 18,
@@ -542193,7 +542511,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "g9BNMl",
+                  "id": "S3m5l",
                   "name": "battery-full",
                   "width": 18,
                   "height": 18,
@@ -542209,7 +542527,7 @@
     },
     {
       "type": "frame",
-      "id": "vMXXP",
+      "id": "b0qUj",
       "x": 2225,
       "y": 25717,
       "name": "TEETH · JAW SHELF · 5 of 16 won · iPhone SE 375×667 · Light",
@@ -542225,7 +542543,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "KH9IM",
+          "id": "POeEH",
           "x": 20,
           "y": 44,
           "name": "Top bar",
@@ -542235,21 +542553,21 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "wORm6",
+              "id": "C585R",
               "type": "ref",
               "ref": "tAopu",
               "name": "Home"
             },
             {
               "type": "frame",
-              "id": "WpLzn",
+              "id": "iRdJx",
               "name": "Title",
               "gap": "$ds-btn-gap",
               "alignItems": "center",
               "children": [
                 {
                   "type": "text",
-                  "id": "ZqgSq",
+                  "id": "FVbnr",
                   "name": "Label",
                   "fill": "$ds-ink",
                   "content": "JAW SHELF",
@@ -542260,7 +542578,7 @@
               ]
             },
             {
-              "id": "yUVbt",
+              "id": "K4DZaR",
               "type": "ref",
               "ref": "DaaWt",
               "name": "Collection count",
@@ -542291,7 +542609,7 @@
         },
         {
           "type": "frame",
-          "id": "LXOuY",
+          "id": "locfp",
           "x": 20,
           "y": 100,
           "name": "Shelves",
@@ -542302,7 +542620,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "K5Ywu",
+              "id": "krBNG",
               "name": "Shelf 1",
               "width": "fill_container",
               "layout": "vertical",
@@ -542310,13 +542628,13 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "ns2BR",
+                  "id": "P7kVpW",
                   "name": "Diet labels",
                   "gap": "$ds-space-s",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "EJQMF",
+                      "id": "RXMno",
                       "name": "Diet · plants",
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-tag",
@@ -542331,7 +542649,7 @@
                       "children": [
                         {
                           "type": "rectangle",
-                          "id": "qyFlF",
+                          "id": "op0TJ",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -542344,7 +542662,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "leQ2j",
+                          "id": "c7hlR",
                           "name": "Label",
                           "fill": "$ds-ink",
                           "content": "PLANTS",
@@ -542358,13 +542676,13 @@
                 },
                 {
                   "type": "frame",
-                  "id": "PzpnR",
+                  "id": "NDc5T",
                   "name": "Places",
                   "width": "fill_container",
                   "gap": "$ds-space-s",
                   "children": [
                     {
-                      "id": "WngUw",
+                      "id": "rlkpC",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · triceratops",
@@ -542406,7 +542724,7 @@
                       }
                     },
                     {
-                      "id": "xLEKv",
+                      "id": "QdBT2",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · edmontosaurus",
@@ -542448,7 +542766,7 @@
                       }
                     },
                     {
-                      "id": "wM7O6",
+                      "id": "iYsJ3",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · diplodocus",
@@ -542490,7 +542808,7 @@
                       }
                     },
                     {
-                      "id": "TRkXn",
+                      "id": "l0QRJ",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · brachiosaurus",
@@ -542536,7 +542854,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-4",
-                  "id": "rma37",
+                  "id": "eJSB9",
                   "name": "Plank",
                   "fill": "$ds-plank",
                   "width": "fill_container",
@@ -542546,7 +542864,7 @@
             },
             {
               "type": "frame",
-              "id": "U9pNv",
+              "id": "IxmM5",
               "name": "Shelf 2",
               "width": "fill_container",
               "layout": "vertical",
@@ -542554,13 +542872,13 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "rGPHV",
+                  "id": "eujNZ",
                   "name": "Diet labels",
                   "gap": "$ds-space-s",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "ugCx0",
+                      "id": "Dx5Ml",
                       "name": "Diet · plants",
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-tag",
@@ -542575,7 +542893,7 @@
                       "children": [
                         {
                           "type": "rectangle",
-                          "id": "AWo7N",
+                          "id": "FgifI",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -542588,7 +542906,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "xLmxs",
+                          "id": "tOYfv",
                           "name": "Label",
                           "fill": "$ds-ink",
                           "content": "PLANTS",
@@ -542600,7 +542918,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "xOw9v",
+                      "id": "nmE6N",
                       "name": "Diet · meat",
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-tag",
@@ -542615,7 +542933,7 @@
                       "children": [
                         {
                           "type": "rectangle",
-                          "id": "hr8lf",
+                          "id": "KByqL",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -542628,7 +542946,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "BWAHU",
+                          "id": "MKwPe",
                           "name": "Label",
                           "fill": "$ds-ink",
                           "content": "MEAT",
@@ -542642,13 +542960,13 @@
                 },
                 {
                   "type": "frame",
-                  "id": "lxIoE",
+                  "id": "gh9Kc",
                   "name": "Places",
                   "width": "fill_container",
                   "gap": "$ds-space-s",
                   "children": [
                     {
-                      "id": "JhtPN",
+                      "id": "XHAlb",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · stegosaurus",
@@ -542690,7 +543008,7 @@
                       }
                     },
                     {
-                      "id": "WRAKV",
+                      "id": "hxHr2",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · ankylosaurus",
@@ -542732,7 +543050,7 @@
                       }
                     },
                     {
-                      "id": "rU6E3",
+                      "id": "XlXKl",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · tyrannosaurus",
@@ -542774,7 +543092,7 @@
                       }
                     },
                     {
-                      "id": "eTmcP",
+                      "id": "X0kQVe",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · allosaurus",
@@ -542820,7 +543138,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-4",
-                  "id": "J1Fi8",
+                  "id": "kAWuV",
                   "name": "Plank",
                   "fill": "$ds-plank",
                   "width": "fill_container",
@@ -542830,7 +543148,7 @@
             },
             {
               "type": "frame",
-              "id": "j00oe",
+              "id": "K787ZA",
               "name": "Shelf 3",
               "width": "fill_container",
               "layout": "vertical",
@@ -542838,13 +543156,13 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "p2sQN",
+                  "id": "cmcBy",
                   "name": "Diet labels",
                   "gap": "$ds-space-s",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "M5Axh",
+                      "id": "H0YXI",
                       "name": "Diet · meat",
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-tag",
@@ -542859,7 +543177,7 @@
                       "children": [
                         {
                           "type": "rectangle",
-                          "id": "Cl5K8",
+                          "id": "GCptj",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -542872,7 +543190,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "Bk9ep",
+                          "id": "JQpFk",
                           "name": "Label",
                           "fill": "$ds-ink",
                           "content": "MEAT",
@@ -542886,13 +543204,13 @@
                 },
                 {
                   "type": "frame",
-                  "id": "RL0M5",
+                  "id": "a4UG8I",
                   "name": "Places",
                   "width": "fill_container",
                   "gap": "$ds-space-s",
                   "children": [
                     {
-                      "id": "SuHxf",
+                      "id": "U2munB",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · velociraptor",
@@ -542934,7 +543252,7 @@
                       }
                     },
                     {
-                      "id": "U1eIp",
+                      "id": "oXD0U",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · deinonychus",
@@ -542976,7 +543294,7 @@
                       }
                     },
                     {
-                      "id": "krA08",
+                      "id": "U5dngd",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · spinosaurus",
@@ -543018,7 +543336,7 @@
                       }
                     },
                     {
-                      "id": "y7UrK",
+                      "id": "X9Ejsh",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · baryonyx",
@@ -543064,7 +543382,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-4",
-                  "id": "x7uXJp",
+                  "id": "Zk3Yv",
                   "name": "Plank",
                   "fill": "$ds-plank",
                   "width": "fill_container",
@@ -543074,7 +543392,7 @@
             },
             {
               "type": "frame",
-              "id": "OjuMu",
+              "id": "gZDyK",
               "name": "Shelf 4",
               "width": "fill_container",
               "layout": "vertical",
@@ -543082,13 +543400,13 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "ttxtn",
+                  "id": "BVAKz",
                   "name": "Diet labels",
                   "gap": "$ds-space-s",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "nM1bU",
+                      "id": "K0V6qv",
                       "name": "Diet · meat",
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-tag",
@@ -543103,7 +543421,7 @@
                       "children": [
                         {
                           "type": "rectangle",
-                          "id": "o4iLL1",
+                          "id": "l6kvlf",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -543116,7 +543434,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "CCmjo",
+                          "id": "AXXCL",
                           "name": "Label",
                           "fill": "$ds-ink",
                           "content": "MEAT",
@@ -543130,13 +543448,13 @@
                 },
                 {
                   "type": "frame",
-                  "id": "L4QCc",
+                  "id": "W3Sbu",
                   "name": "Places",
                   "width": "fill_container",
                   "gap": "$ds-space-s",
                   "children": [
                     {
-                      "id": "wextA",
+                      "id": "yPP0S",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · rhamphorhynchus",
@@ -543178,7 +543496,7 @@
                       }
                     },
                     {
-                      "id": "WCM7H",
+                      "id": "CwsIL",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · dimorphodon",
@@ -543220,7 +543538,7 @@
                       }
                     },
                     {
-                      "id": "llIvK",
+                      "id": "SoPR1",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · mosasaurus",
@@ -543262,7 +543580,7 @@
                       }
                     },
                     {
-                      "id": "jgf8Q",
+                      "id": "S7fdG",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · kronosaurus",
@@ -543308,7 +543626,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-4",
-                  "id": "ZOs9P",
+                  "id": "l1IbPB",
                   "name": "Plank",
                   "fill": "$ds-plank",
                   "width": "fill_container",
@@ -543320,7 +543638,7 @@
         },
         {
           "type": "frame",
-          "id": "VoUe1",
+          "id": "mbjSQ",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -543337,7 +543655,7 @@
           "children": [
             {
               "type": "text",
-              "id": "K7txp",
+              "id": "c2bnK",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41",
@@ -543347,14 +543665,14 @@
             },
             {
               "type": "frame",
-              "id": "KYdJ0",
+              "id": "jFcOi",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "N7eR1",
+                  "id": "qUnvd",
                   "name": "signal",
                   "width": 18,
                   "height": 18,
@@ -543364,7 +543682,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "VAXjT",
+                  "id": "TUzFh",
                   "name": "wifi",
                   "width": 18,
                   "height": 18,
@@ -543374,7 +543692,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "m1ETc",
+                  "id": "jcxXd",
                   "name": "battery-full",
                   "width": 18,
                   "height": 18,
@@ -543390,7 +543708,7 @@
     },
     {
       "type": "frame",
-      "id": "AOwFD",
+      "id": "OqeiL",
       "x": 2700,
       "y": 25717,
       "name": "TEETH · Explorer · result · 3 stars, first best, new shelf finds · iPhone SE 375×667 · Light",
@@ -543423,7 +543741,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "rjuuD",
+          "id": "HCT7y",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -543447,7 +543765,7 @@
           }
         },
         {
-          "id": "M5da2i",
+          "id": "GpX7s",
           "type": "ref",
           "ref": "S542ia",
           "name": "Celebration",
@@ -543529,7 +543847,7 @@
         },
         {
           "type": "frame",
-          "id": "CB576",
+          "id": "cRmw0",
           "x": 0,
           "y": 242,
           "name": "Layer 1 · Sand",
@@ -543547,7 +543865,7 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "cPBAR",
+              "id": "E1qni",
               "type": "ref",
               "ref": "tBssY",
               "name": "Stars",
@@ -543575,7 +543893,7 @@
             },
             {
               "type": "frame",
-              "id": "sdS7l",
+              "id": "HWQfg",
               "name": "Praise and best",
               "layout": "vertical",
               "gap": "$ds-space-s",
@@ -543583,7 +543901,7 @@
               "children": [
                 {
                   "type": "text",
-                  "id": "KEOoo",
+                  "id": "F6w2p",
                   "name": "Praise",
                   "fill": "$ds-ink",
                   "content": "WELL DONE!",
@@ -543593,7 +543911,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "y6Pzz",
+                  "id": "IfgPG",
                   "name": "New best",
                   "fill": "$ds-reward",
                   "cornerRadius": "$ds-radius-tag",
@@ -543606,7 +543924,7 @@
                   "children": [
                     {
                       "type": "icon",
-                      "id": "BHXl9",
+                      "id": "Ed1jM",
                       "name": "Icon",
                       "width": 24,
                       "height": 24,
@@ -543616,7 +543934,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "iECC1",
+                      "id": "XhDr5",
                       "name": "Label",
                       "fill": "$ds-on-reward",
                       "content": "FIRST BEST!",
@@ -543626,7 +543944,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "rcY8S",
+                      "id": "sNWK7",
                       "name": "Number",
                       "fill": "$ds-on-reward",
                       "content": "3",
@@ -543640,7 +543958,7 @@
             },
             {
               "type": "frame",
-              "id": "H3KAS",
+              "id": "FYSkj",
               "name": "New on your shelf",
               "width": 280,
               "layout": "vertical",
@@ -543649,14 +543967,14 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "O4YN95",
+                  "id": "rhUzM",
                   "name": "Tag",
                   "gap": "$ds-space-s",
                   "alignItems": "center",
                   "children": [
                     {
                       "type": "icon",
-                      "id": "h6wXNt",
+                      "id": "gCGLo",
                       "name": "Icon",
                       "width": 20,
                       "height": 20,
@@ -543666,7 +543984,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "uLh70",
+                      "id": "jPhw0",
                       "name": "Label",
                       "fill": "$ds-ink",
                       "content": "NEW ON YOUR SHELF!",
@@ -543678,7 +543996,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "Txff7",
+                  "id": "IsBUL",
                   "name": "Jaws",
                   "width": "fill_container",
                   "gap": "$ds-space-m",
@@ -543687,7 +544005,7 @@
                     {
                       "type": "rectangle",
                       "cornerRadius": "$ds-radius-10",
-                      "id": "U9OHTS",
+                      "id": "qqRoR",
                       "name": "New jaw · diplodocus",
                       "fill": [
                         "$ds-photo-white",
@@ -543704,7 +544022,7 @@
                     {
                       "type": "rectangle",
                       "cornerRadius": "$ds-radius-10",
-                      "id": "xk62q",
+                      "id": "A4ZeLL",
                       "name": "New jaw · stegosaurus",
                       "fill": [
                         "$ds-photo-white",
@@ -543723,7 +544041,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-4",
-                  "id": "iNeoR",
+                  "id": "aHXY9",
                   "name": "Plank",
                   "fill": "$ds-plank",
                   "width": "fill_container",
@@ -543732,7 +544050,7 @@
               ]
             },
             {
-              "id": "i8OhmZ",
+              "id": "ksnnz",
               "type": "ref",
               "ref": "q7W1Cw",
               "name": "Play again",
@@ -543750,13 +544068,13 @@
             },
             {
               "type": "frame",
-              "id": "xNXJu",
+              "id": "C7m3u",
               "name": "More",
               "width": "fill_container",
               "gap": "$ds-space-m",
               "children": [
                 {
-                  "id": "Xd4RM",
+                  "id": "k98J8",
                   "type": "ref",
                   "ref": "YcGaY",
                   "name": "Jaw shelf",
@@ -543774,7 +544092,7 @@
                   }
                 },
                 {
-                  "id": "vQUbX",
+                  "id": "m56Mn",
                   "type": "ref",
                   "ref": "qMai3",
                   "name": "Home",
@@ -543796,7 +544114,7 @@
           ]
         },
         {
-          "id": "nzScz",
+          "id": "bYU1Y",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 2 · Ochre edge",
@@ -543821,7 +544139,7 @@
         },
         {
           "type": "frame",
-          "id": "d8FaH",
+          "id": "u1Yqv1",
           "x": 0,
           "y": 653,
           "name": "Layer 2 · Ochre",
@@ -543832,7 +544150,7 @@
         },
         {
           "type": "frame",
-          "id": "fGjuD",
+          "id": "VDyfp",
           "x": 46,
           "y": 30,
           "name": "Jaw pile",
@@ -543843,7 +544161,7 @@
             {
               "type": "rectangle",
               "cornerRadius": "$ds-radius-14",
-              "id": "Q4s2V",
+              "id": "opCva",
               "x": 0,
               "y": 96,
               "name": "Jaw · tyrannosaurus",
@@ -543875,7 +544193,7 @@
             {
               "type": "rectangle",
               "cornerRadius": "$ds-radius-14",
-              "id": "uznME",
+              "id": "E0PYMy",
               "x": 166,
               "y": 100,
               "name": "Jaw · triceratops",
@@ -543907,7 +544225,7 @@
             {
               "type": "rectangle",
               "cornerRadius": "$ds-radius-14",
-              "id": "gQp4y",
+              "id": "h6Qiyi",
               "x": 80,
               "y": 52,
               "name": "Jaw · velociraptor",
@@ -543939,7 +544257,7 @@
             {
               "type": "rectangle",
               "cornerRadius": "$ds-radius-14",
-              "id": "b921f",
+              "id": "OkZzb",
               "x": 10,
               "y": 0,
               "name": "Jaw · diplodocus",
@@ -543971,7 +544289,7 @@
             {
               "type": "rectangle",
               "cornerRadius": "$ds-radius-14",
-              "id": "yWu9P",
+              "id": "rpqXl",
               "x": 170,
               "y": 0,
               "name": "Jaw · stegosaurus",
@@ -544004,7 +544322,7 @@
         },
         {
           "type": "frame",
-          "id": "EYzZZ",
+          "id": "nZGNh",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -544021,7 +544339,7 @@
           "children": [
             {
               "type": "text",
-              "id": "oz0Fk",
+              "id": "zKYgi",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41",
@@ -544031,14 +544349,14 @@
             },
             {
               "type": "frame",
-              "id": "CHx2Z",
+              "id": "rlQL8",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "XNTwO",
+                  "id": "miXar",
                   "name": "signal",
                   "width": 18,
                   "height": 18,
@@ -544048,7 +544366,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "bdtu5",
+                  "id": "Y9w7d",
                   "name": "wifi",
                   "width": 18,
                   "height": 18,
@@ -544058,7 +544376,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "hbWqI",
+                  "id": "j2oGw",
                   "name": "battery-full",
                   "width": 18,
                   "height": 18,
@@ -544074,7 +544392,7 @@
     },
     {
       "type": "frame",
-      "id": "kEILi",
+      "id": "PbhT9",
       "x": 3175,
       "y": 25717,
       "name": "TEETH · welcome · first visit · iPad mini upright 744×1133 · Light",
@@ -544107,7 +544425,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "ruVwX",
+          "id": "VUQuf",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -544123,7 +544441,7 @@
         },
         {
           "type": "frame",
-          "id": "X6bdf",
+          "id": "itqmp",
           "x": 0,
           "y": 206,
           "name": "Layer 1 · Sand",
@@ -544143,7 +544461,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "Q6GCw3",
+              "id": "LzLCW",
               "name": "Hero",
               "layout": "vertical",
               "gap": "$ds-space-3xl",
@@ -544151,7 +544469,7 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "dHOsV",
+                  "id": "HFhnK",
                   "name": "Jaw and gummy dinosaur",
                   "width": 440,
                   "height": 200,
@@ -544160,7 +544478,7 @@
                     {
                       "type": "rectangle",
                       "cornerRadius": "$ds-radius-24",
-                      "id": "nBv1Q",
+                      "id": "M9rS7",
                       "x": 0,
                       "y": 0,
                       "name": "Gummy dinosaur",
@@ -544179,7 +544497,7 @@
                     {
                       "type": "rectangle",
                       "cornerRadius": "$ds-radius-18",
-                      "id": "zlNno",
+                      "id": "zOevv",
                       "x": 250,
                       "y": 84,
                       "name": "Jaw",
@@ -544210,13 +544528,13 @@
                 },
                 {
                   "type": "frame",
-                  "id": "FBDmI",
+                  "id": "ZTKrj",
                   "name": "Badges",
                   "layout": "vertical",
                   "gap": "$ds-space-l",
                   "children": [
                     {
-                      "id": "uCaSG",
+                      "id": "jKR9A",
                       "type": "ref",
                       "ref": "DaaWt",
                       "name": "Collection count",
@@ -544250,7 +544568,7 @@
               ]
             },
             {
-              "id": "L6XqS",
+              "id": "V6RTj7",
               "type": "ref",
               "ref": "I0PBB",
               "name": "Level switch",
@@ -544277,12 +544595,12 @@
             },
             {
               "type": "frame",
-              "id": "lR3xl",
+              "id": "vTubZ",
               "name": "Buttons",
               "gap": "$ds-space-l",
               "children": [
                 {
-                  "id": "KW0J8",
+                  "id": "rW03L",
                   "type": "ref",
                   "ref": "q7W1Cw",
                   "name": "Play",
@@ -544296,7 +544614,7 @@
                   }
                 },
                 {
-                  "id": "vcv0A",
+                  "id": "P2pda",
                   "type": "ref",
                   "ref": "YcGaY",
                   "name": "Jaw shelf",
@@ -544314,7 +544632,7 @@
           ]
         },
         {
-          "id": "cMcAl",
+          "id": "awreI",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 2 · Ochre edge",
@@ -544330,7 +544648,7 @@
         },
         {
           "type": "frame",
-          "id": "pOZtp",
+          "id": "zwz3y",
           "x": 0,
           "y": 1083,
           "name": "Layer 2 · Ochre",
@@ -544341,7 +544659,7 @@
         },
         {
           "type": "frame",
-          "id": "GcLXJ",
+          "id": "mR2XZ",
           "x": 56,
           "y": 36,
           "name": "Top bar",
@@ -544350,7 +544668,7 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "T6HnW",
+              "id": "QNyfY",
               "type": "ref",
               "ref": "CyWgg",
               "name": "Home"
@@ -544359,7 +544677,7 @@
         },
         {
           "type": "frame",
-          "id": "V18zVO",
+          "id": "Fj3Qa",
           "x": 56,
           "y": 100,
           "name": "Question line",
@@ -544367,7 +544685,7 @@
           "justifyContent": "center",
           "children": [
             {
-              "id": "gOJlr",
+              "id": "v6CcwA",
               "type": "ref",
               "ref": "qWLc5",
               "name": "Question",
@@ -544385,7 +544703,7 @@
         },
         {
           "type": "frame",
-          "id": "J9H4t",
+          "id": "AfjlB",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -544402,7 +544720,7 @@
           "children": [
             {
               "type": "text",
-              "id": "PkbMC",
+              "id": "ZKZKl",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41  Mon 2 Nov",
@@ -544412,14 +544730,14 @@
             },
             {
               "type": "frame",
-              "id": "qq5uY",
+              "id": "RzYxK",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "yh6HB",
+                  "id": "Ck80b",
                   "name": "signal",
                   "width": 15,
                   "height": 15,
@@ -544429,7 +544747,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "Gtqdy",
+                  "id": "D60baA",
                   "name": "wifi",
                   "width": 15,
                   "height": 15,
@@ -544439,7 +544757,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "F61EN",
+                  "id": "eL4g5",
                   "name": "battery-full",
                   "width": 15,
                   "height": 15,
@@ -544454,7 +544772,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "YQ9Kq",
+          "id": "N7rJdY",
           "x": 212,
           "y": 1121,
           "name": "Home indicator",
@@ -544466,7 +544784,7 @@
     },
     {
       "type": "frame",
-      "id": "U7g13",
+      "id": "kbKCP",
       "x": 4019,
       "y": 25717,
       "name": "TEETH · JAW SHELF · 5 of 16 won · iPad mini upright 744×1133 · Light",
@@ -544482,7 +544800,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "qL304",
+          "id": "t3cKI2",
           "x": 56,
           "y": 36,
           "name": "Top bar",
@@ -544491,21 +544809,21 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "v7a9L",
+              "id": "YWM7M",
               "type": "ref",
               "ref": "tAopu",
               "name": "Home"
             },
             {
               "type": "frame",
-              "id": "w7VGp",
+              "id": "X0fep",
               "name": "Title",
               "gap": "$ds-btn-gap",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "L9Xf9",
+                  "id": "u6TNQ",
                   "name": "Icon",
                   "width": 28,
                   "height": 28,
@@ -544515,7 +544833,7 @@
                 },
                 {
                   "type": "text",
-                  "id": "nhYFG",
+                  "id": "mysr3",
                   "name": "Label",
                   "fill": "$ds-ink",
                   "content": "JAW SHELF",
@@ -544529,7 +544847,7 @@
         },
         {
           "type": "frame",
-          "id": "MoVTw",
+          "id": "OCzS4",
           "x": 56,
           "y": 120,
           "name": "Shelves",
@@ -544539,7 +544857,7 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "s0lpRL",
+              "id": "VYSKB",
               "type": "ref",
               "ref": "DaaWt",
               "name": "Collection count",
@@ -544568,7 +544886,7 @@
             },
             {
               "type": "frame",
-              "id": "fHzCu",
+              "id": "VOq87",
               "name": "Shelf 1",
               "width": "fill_container",
               "layout": "vertical",
@@ -544576,13 +544894,13 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "sJZBh",
+                  "id": "x0YoOJ",
                   "name": "Diet labels",
                   "gap": "$ds-space-s",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "Mxhug",
+                      "id": "F0cHn",
                       "name": "Diet · plants",
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-tag",
@@ -544597,7 +544915,7 @@
                       "children": [
                         {
                           "type": "rectangle",
-                          "id": "lcwEe",
+                          "id": "rAHLW",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -544610,7 +544928,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "FujPf",
+                          "id": "A9fui",
                           "name": "Label",
                           "fill": "$ds-ink",
                           "content": "PLANTS",
@@ -544624,13 +544942,13 @@
                 },
                 {
                   "type": "frame",
-                  "id": "seSjK",
+                  "id": "O0mux",
                   "name": "Places",
                   "width": "fill_container",
                   "gap": "$ds-space-s",
                   "children": [
                     {
-                      "id": "GRcv7",
+                      "id": "mJ6gI",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · triceratops",
@@ -544672,7 +544990,7 @@
                       }
                     },
                     {
-                      "id": "KtycJ",
+                      "id": "Ah4h2",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · edmontosaurus",
@@ -544714,7 +545032,7 @@
                       }
                     },
                     {
-                      "id": "P0gtr3",
+                      "id": "uMNBY",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · diplodocus",
@@ -544756,7 +545074,7 @@
                       }
                     },
                     {
-                      "id": "vupAZ",
+                      "id": "SMZJm",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · brachiosaurus",
@@ -544802,7 +545120,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-4",
-                  "id": "Sov88",
+                  "id": "O7Xxjr",
                   "name": "Plank",
                   "fill": "$ds-plank",
                   "width": "fill_container",
@@ -544812,7 +545130,7 @@
             },
             {
               "type": "frame",
-              "id": "L3HnmH",
+              "id": "N4YZOX",
               "name": "Shelf 2",
               "width": "fill_container",
               "layout": "vertical",
@@ -544820,13 +545138,13 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "EKKkw",
+                  "id": "q0t18q",
                   "name": "Diet labels",
                   "gap": "$ds-space-s",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "k1Gn0",
+                      "id": "RurBC",
                       "name": "Diet · plants",
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-tag",
@@ -544841,7 +545159,7 @@
                       "children": [
                         {
                           "type": "rectangle",
-                          "id": "i0NVTc",
+                          "id": "e443Ja",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -544854,7 +545172,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "sFJ6Q",
+                          "id": "S2I0u",
                           "name": "Label",
                           "fill": "$ds-ink",
                           "content": "PLANTS",
@@ -544866,7 +545184,7 @@
                     },
                     {
                       "type": "frame",
-                      "id": "CKcYF",
+                      "id": "mwfXs",
                       "name": "Diet · meat",
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-tag",
@@ -544881,7 +545199,7 @@
                       "children": [
                         {
                           "type": "rectangle",
-                          "id": "RzWcZ",
+                          "id": "X8edD",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -544894,7 +545212,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "wUWJP",
+                          "id": "ULHCI",
                           "name": "Label",
                           "fill": "$ds-ink",
                           "content": "MEAT",
@@ -544908,13 +545226,13 @@
                 },
                 {
                   "type": "frame",
-                  "id": "W47eeu",
+                  "id": "F4RfP",
                   "name": "Places",
                   "width": "fill_container",
                   "gap": "$ds-space-s",
                   "children": [
                     {
-                      "id": "Iozbp",
+                      "id": "H4MNjz",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · stegosaurus",
@@ -544956,7 +545274,7 @@
                       }
                     },
                     {
-                      "id": "Odi0K",
+                      "id": "c2ijM",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · ankylosaurus",
@@ -544998,7 +545316,7 @@
                       }
                     },
                     {
-                      "id": "J2j16",
+                      "id": "lLwM9",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · tyrannosaurus",
@@ -545040,7 +545358,7 @@
                       }
                     },
                     {
-                      "id": "O44hr",
+                      "id": "tCgtz",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · allosaurus",
@@ -545086,7 +545404,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-4",
-                  "id": "nqlFN",
+                  "id": "Swnbn",
                   "name": "Plank",
                   "fill": "$ds-plank",
                   "width": "fill_container",
@@ -545096,7 +545414,7 @@
             },
             {
               "type": "frame",
-              "id": "g6QIY",
+              "id": "zWA8B",
               "name": "Shelf 3",
               "width": "fill_container",
               "layout": "vertical",
@@ -545104,13 +545422,13 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "ZP8BA",
+                  "id": "ZZGmF",
                   "name": "Diet labels",
                   "gap": "$ds-space-s",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "uPZQJ",
+                      "id": "s2bQ8",
                       "name": "Diet · meat",
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-tag",
@@ -545125,7 +545443,7 @@
                       "children": [
                         {
                           "type": "rectangle",
-                          "id": "S1NRB",
+                          "id": "XrKYB",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -545138,7 +545456,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "QKK5V",
+                          "id": "o97gam",
                           "name": "Label",
                           "fill": "$ds-ink",
                           "content": "MEAT",
@@ -545152,13 +545470,13 @@
                 },
                 {
                   "type": "frame",
-                  "id": "ySY0O",
+                  "id": "YWsKC",
                   "name": "Places",
                   "width": "fill_container",
                   "gap": "$ds-space-s",
                   "children": [
                     {
-                      "id": "GbSjp",
+                      "id": "sJ1gb",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · velociraptor",
@@ -545200,7 +545518,7 @@
                       }
                     },
                     {
-                      "id": "cBZRS",
+                      "id": "b9ksb2",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · deinonychus",
@@ -545242,7 +545560,7 @@
                       }
                     },
                     {
-                      "id": "Sb9Bb",
+                      "id": "usYJ6",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · spinosaurus",
@@ -545284,7 +545602,7 @@
                       }
                     },
                     {
-                      "id": "x7z4YQ",
+                      "id": "x4KmUb",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · baryonyx",
@@ -545330,7 +545648,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-4",
-                  "id": "mj6oA",
+                  "id": "w7sKA",
                   "name": "Plank",
                   "fill": "$ds-plank",
                   "width": "fill_container",
@@ -545340,7 +545658,7 @@
             },
             {
               "type": "frame",
-              "id": "Y6rWm",
+              "id": "N2yoL",
               "name": "Shelf 4",
               "width": "fill_container",
               "layout": "vertical",
@@ -545348,13 +545666,13 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "A2gIZE",
+                  "id": "q3lcEE",
                   "name": "Diet labels",
                   "gap": "$ds-space-s",
                   "children": [
                     {
                       "type": "frame",
-                      "id": "NqY04",
+                      "id": "uBn43",
                       "name": "Diet · meat",
                       "fill": "$ds-label",
                       "cornerRadius": "$ds-radius-tag",
@@ -545369,7 +545687,7 @@
                       "children": [
                         {
                           "type": "rectangle",
-                          "id": "FJBYr",
+                          "id": "OtsJC",
                           "name": "Picture",
                           "fill": {
                             "type": "image",
@@ -545382,7 +545700,7 @@
                         },
                         {
                           "type": "text",
-                          "id": "yIia5",
+                          "id": "WnInf",
                           "name": "Label",
                           "fill": "$ds-ink",
                           "content": "MEAT",
@@ -545396,13 +545714,13 @@
                 },
                 {
                   "type": "frame",
-                  "id": "a8Lyo8",
+                  "id": "Ghpn0",
                   "name": "Places",
                   "width": "fill_container",
                   "gap": "$ds-space-s",
                   "children": [
                     {
-                      "id": "D193rz",
+                      "id": "bmGGZ",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · rhamphorhynchus",
@@ -545444,7 +545762,7 @@
                       }
                     },
                     {
-                      "id": "SUgxE",
+                      "id": "xFr5R",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · dimorphodon",
@@ -545486,7 +545804,7 @@
                       }
                     },
                     {
-                      "id": "nI1M6",
+                      "id": "TVWpV",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · mosasaurus",
@@ -545528,7 +545846,7 @@
                       }
                     },
                     {
-                      "id": "KtEuA",
+                      "id": "TwZf6",
                       "type": "ref",
                       "ref": "Jnu1b",
                       "name": "Place · kronosaurus",
@@ -545574,7 +545892,7 @@
                 {
                   "type": "rectangle",
                   "cornerRadius": "$ds-radius-4",
-                  "id": "h7oSY",
+                  "id": "qAfuE",
                   "name": "Plank",
                   "fill": "$ds-plank",
                   "width": "fill_container",
@@ -545586,7 +545904,7 @@
         },
         {
           "type": "frame",
-          "id": "CnnM9",
+          "id": "M1PLo",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -545603,7 +545921,7 @@
           "children": [
             {
               "type": "text",
-              "id": "yX6GS",
+              "id": "fLXgS",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41  Mon 2 Nov",
@@ -545613,14 +545931,14 @@
             },
             {
               "type": "frame",
-              "id": "z1HEyo",
+              "id": "ns4ms",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "VKLEI",
+                  "id": "aWVcM",
                   "name": "signal",
                   "width": 15,
                   "height": 15,
@@ -545630,7 +545948,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "g4dJvo",
+                  "id": "ablBT",
                   "name": "wifi",
                   "width": 15,
                   "height": 15,
@@ -545640,7 +545958,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "HSrUh",
+                  "id": "d2kCeC",
                   "name": "battery-full",
                   "width": 15,
                   "height": 15,
@@ -545655,7 +545973,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "nvtOn",
+          "id": "Jou8P",
           "x": 212,
           "y": 1121,
           "name": "Home indicator",
@@ -545667,7 +545985,7 @@
     },
     {
       "type": "frame",
-      "id": "GqO6z",
+      "id": "GroMS",
       "x": 4863,
       "y": 25717,
       "name": "TEETH · Hatchling · jaw waiting · iPad mini upright 744×1133 · Light",
@@ -545700,7 +546018,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "SrsS3",
+          "id": "xHy0D",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -545716,7 +546034,7 @@
         },
         {
           "type": "frame",
-          "id": "vxwzs",
+          "id": "sQ59V",
           "x": 0,
           "y": 206,
           "name": "Layer 1 · Sand",
@@ -545735,14 +546053,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "P2T47W",
+              "id": "WiwXV",
               "name": "Dinosaurs",
               "width": "fill_container",
               "gap": "$ds-space-20",
               "alignItems": "end",
               "children": [
                 {
-                  "id": "C0Pxz",
+                  "id": "oeRUS",
                   "type": "ref",
                   "ref": "d7hprD",
                   "name": "Dino · tyrannosaurus",
@@ -545776,7 +546094,7 @@
                   }
                 },
                 {
-                  "id": "gKCYF",
+                  "id": "b6KvEc",
                   "type": "ref",
                   "ref": "d7hprD",
                   "name": "Dino · triceratops",
@@ -545812,7 +546130,7 @@
               ]
             },
             {
-              "id": "WqZK0",
+              "id": "OG0tF",
               "type": "ref",
               "ref": "jHMG1",
               "name": "Tray"
@@ -545820,7 +546138,7 @@
           ]
         },
         {
-          "id": "pVqkf",
+          "id": "OMMKA",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 2 · Ochre edge",
@@ -545836,7 +546154,7 @@
         },
         {
           "type": "frame",
-          "id": "snS0K",
+          "id": "z3YMU9",
           "x": 0,
           "y": 1083,
           "name": "Layer 2 · Ochre",
@@ -545847,7 +546165,7 @@
         },
         {
           "type": "frame",
-          "id": "i4YsCn",
+          "id": "FCouS",
           "x": 56,
           "y": 36,
           "name": "Top bar",
@@ -545856,19 +546174,19 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "bqzcq",
+              "id": "MbDBp",
               "type": "ref",
               "ref": "CyWgg",
               "name": "Home"
             },
             {
-              "id": "J5FAL",
+              "id": "Xa7M2",
               "type": "ref",
               "ref": "JkMjj",
               "name": "Tooth sockets"
             },
             {
-              "id": "P8VHD9",
+              "id": "XF6OW",
               "type": "ref",
               "ref": "JejOB",
               "name": "Best",
@@ -545888,7 +546206,7 @@
         },
         {
           "type": "frame",
-          "id": "K3ABdc",
+          "id": "MjOmJ",
           "x": 56,
           "y": 100,
           "name": "Question line",
@@ -545896,7 +546214,7 @@
           "justifyContent": "center",
           "children": [
             {
-              "id": "fEDAb",
+              "id": "gwNFn",
               "type": "ref",
               "ref": "qWLc5",
               "name": "Question",
@@ -545914,7 +546232,7 @@
         },
         {
           "type": "frame",
-          "id": "F9SpQ",
+          "id": "UJo8R",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -545931,7 +546249,7 @@
           "children": [
             {
               "type": "text",
-              "id": "n9ILPI",
+              "id": "r5f93J",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41  Mon 2 Nov",
@@ -545941,14 +546259,14 @@
             },
             {
               "type": "frame",
-              "id": "FhYQb",
+              "id": "y7rdI",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "LzULL",
+                  "id": "ukUbj",
                   "name": "signal",
                   "width": 15,
                   "height": 15,
@@ -545958,7 +546276,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "xMOJH",
+                  "id": "h0Dk15",
                   "name": "wifi",
                   "width": 15,
                   "height": 15,
@@ -545968,7 +546286,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "ga4F8",
+                  "id": "ddPaI",
                   "name": "battery-full",
                   "width": 15,
                   "height": 15,
@@ -545983,7 +546301,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "cImIv",
+          "id": "NYkhu",
           "x": 212,
           "y": 1121,
           "name": "Home indicator",
@@ -545995,7 +546313,7 @@
     },
     {
       "type": "frame",
-      "id": "e3brBH",
+      "id": "tSbP9",
       "x": 5707,
       "y": 25717,
       "name": "TEETH · Explorer · jaw waiting · iPad mini upright 744×1133 · Light",
@@ -546028,7 +546346,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "wHqSs",
+          "id": "DmTTM",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -546044,7 +546362,7 @@
         },
         {
           "type": "frame",
-          "id": "AhNOR",
+          "id": "s7rP1",
           "x": 0,
           "y": 206,
           "name": "Layer 1 · Sand",
@@ -546063,7 +546381,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "Yyl0o",
+              "id": "L5vTmj",
               "name": "Dinosaurs",
               "width": "fill_container",
               "layout": "vertical",
@@ -546072,13 +546390,13 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "gF3yM",
+                  "id": "YGZED",
                   "name": "Row 1",
                   "width": "fill_container",
                   "gap": "$ds-space-20",
                   "children": [
                     {
-                      "id": "vquE1",
+                      "id": "w0uJB",
                       "type": "ref",
                       "ref": "d7hprD",
                       "name": "Dino · velociraptor",
@@ -546116,7 +546434,7 @@
                       }
                     },
                     {
-                      "id": "HJl8N",
+                      "id": "x11lE",
                       "type": "ref",
                       "ref": "d7hprD",
                       "name": "Dino · spinosaurus",
@@ -546156,7 +546474,7 @@
                   ]
                 },
                 {
-                  "id": "nOSqt",
+                  "id": "Bg6fW",
                   "type": "ref",
                   "ref": "d7hprD",
                   "name": "Dino · diplodocus",
@@ -546196,7 +546514,7 @@
               ]
             },
             {
-              "id": "HYe4V",
+              "id": "mtCqF",
               "type": "ref",
               "ref": "jHMG1",
               "name": "Tray",
@@ -546221,7 +546539,7 @@
           ]
         },
         {
-          "id": "ysYvj",
+          "id": "Iyded",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 2 · Ochre edge",
@@ -546237,7 +546555,7 @@
         },
         {
           "type": "frame",
-          "id": "pySmC",
+          "id": "ijrkp",
           "x": 0,
           "y": 1083,
           "name": "Layer 2 · Ochre",
@@ -546248,7 +546566,7 @@
         },
         {
           "type": "frame",
-          "id": "gE4vl",
+          "id": "fgCMg",
           "x": 56,
           "y": 36,
           "name": "Top bar",
@@ -546257,13 +546575,13 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "aRWWE",
+              "id": "VTTcl",
               "type": "ref",
               "ref": "CyWgg",
               "name": "Home"
             },
             {
-              "id": "kycWv",
+              "id": "GbAz1",
               "type": "ref",
               "ref": "JkMjj",
               "name": "Tooth sockets",
@@ -546311,7 +546629,7 @@
               }
             },
             {
-              "id": "mMVQh",
+              "id": "ys07B",
               "type": "ref",
               "ref": "JejOB",
               "name": "Best",
@@ -546331,7 +546649,7 @@
         },
         {
           "type": "frame",
-          "id": "eynuV",
+          "id": "T0Vx2L",
           "x": 56,
           "y": 100,
           "name": "Question line",
@@ -546339,7 +546657,7 @@
           "justifyContent": "center",
           "children": [
             {
-              "id": "sS194",
+              "id": "LOCjj",
               "type": "ref",
               "ref": "qWLc5",
               "name": "Question",
@@ -546357,7 +546675,7 @@
         },
         {
           "type": "frame",
-          "id": "u7Fs9",
+          "id": "v67nFd",
           "x": 0,
           "y": 0,
           "name": "Status bar",
@@ -546374,7 +546692,7 @@
           "children": [
             {
               "type": "text",
-              "id": "uikkP",
+              "id": "Z6anC0",
               "name": "Time",
               "fill": "$ds-ink",
               "content": "9:41  Mon 2 Nov",
@@ -546384,14 +546702,14 @@
             },
             {
               "type": "frame",
-              "id": "AlOQf",
+              "id": "GrCPV",
               "name": "Indicators",
               "gap": "$ds-space-6",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "BPEXD",
+                  "id": "wBNVt",
                   "name": "signal",
                   "width": 15,
                   "height": 15,
@@ -546401,7 +546719,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "x7to9y",
+                  "id": "utUJ7",
                   "name": "wifi",
                   "width": 15,
                   "height": 15,
@@ -546411,7 +546729,7 @@
                 },
                 {
                   "type": "icon",
-                  "id": "R1sRe",
+                  "id": "sEW2Z",
                   "name": "battery-full",
                   "width": 15,
                   "height": 15,
@@ -546426,7 +546744,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "RoD0r",
+          "id": "q7xeFa",
           "x": 212,
           "y": 1121,
           "name": "Home indicator",
@@ -546438,7 +546756,7 @@
     },
     {
       "type": "frame",
-      "id": "BXniL",
+      "id": "AVe16",
       "x": 6551,
       "y": 25717,
       "name": "TEETH · welcome · first visit · iPhone on its side 852×393 · Light",
@@ -546471,7 +546789,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "KFXUn",
+          "id": "sRrsZ",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -546488,7 +546806,7 @@
         },
         {
           "type": "frame",
-          "id": "rHpex",
+          "id": "cc8zE",
           "x": 0,
           "y": 124,
           "name": "Layer 1 · Sand",
@@ -546507,14 +546825,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "L7nTd",
+              "id": "kpJaO",
               "name": "Hero",
               "gap": "$ds-space-3xl",
               "alignItems": "center",
               "children": [
                 {
                   "type": "frame",
-                  "id": "viZF2",
+                  "id": "IReGi",
                   "name": "Jaw and gummy dinosaur",
                   "width": 340,
                   "height": 200,
@@ -546523,7 +546841,7 @@
                     {
                       "type": "rectangle",
                       "cornerRadius": "$ds-radius-22",
-                      "id": "FvU5h",
+                      "id": "XVUDB",
                       "x": 0,
                       "y": 0,
                       "name": "Gummy dinosaur",
@@ -546542,7 +546860,7 @@
                     {
                       "type": "rectangle",
                       "cornerRadius": "$ds-radius-16",
-                      "id": "HMMjw",
+                      "id": "GulJ3",
                       "x": 180,
                       "y": 100,
                       "name": "Jaw",
@@ -546575,7 +546893,7 @@
             },
             {
               "type": "frame",
-              "id": "eygq4",
+              "id": "oIqYq",
               "name": "Controls",
               "width": 400,
               "layout": "vertical",
@@ -546584,12 +546902,12 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "HiKcf",
+                  "id": "Ai9Kw",
                   "name": "Badges",
                   "gap": "$ds-space-l",
                   "children": [
                     {
-                      "id": "Xm5kH",
+                      "id": "vBAlq",
                       "type": "ref",
                       "ref": "DaaWt",
                       "name": "Collection count",
@@ -546621,7 +546939,7 @@
                   ]
                 },
                 {
-                  "id": "AiJlB",
+                  "id": "OlaRD",
                   "type": "ref",
                   "ref": "I0PBB",
                   "name": "Level switch",
@@ -546666,13 +546984,13 @@
                 },
                 {
                   "type": "frame",
-                  "id": "STzNu",
+                  "id": "P2jQpm",
                   "name": "Buttons",
                   "width": "fill_container",
                   "gap": "$ds-space-s",
                   "children": [
                     {
-                      "id": "zEObF",
+                      "id": "sV68r",
                       "type": "ref",
                       "ref": "q7W1Cw",
                       "height": 56,
@@ -546689,7 +547007,7 @@
                       }
                     },
                     {
-                      "id": "naTCN",
+                      "id": "JyAMq",
                       "type": "ref",
                       "ref": "YcGaY",
                       "height": 56,
@@ -546713,7 +547031,7 @@
         },
         {
           "type": "frame",
-          "id": "wy2J0",
+          "id": "cDXCB",
           "x": 79,
           "y": 8,
           "name": "Top bar",
@@ -546722,7 +547040,7 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "QNJQp",
+              "id": "V0CnC",
               "type": "ref",
               "ref": "CyWgg",
               "name": "Home"
@@ -546731,14 +547049,14 @@
         },
         {
           "type": "frame",
-          "id": "Y5m9xe",
+          "id": "KS4aS",
           "x": 430,
           "y": 8,
           "name": "Question line",
           "width": 380,
           "children": [
             {
-              "id": "X6AjT",
+              "id": "dBIpR",
               "type": "ref",
               "ref": "qWLc5",
               "name": "Question",
@@ -546757,7 +547075,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "C97KEr",
+          "id": "sJAMY",
           "x": 359,
           "y": 385,
           "name": "Home indicator",
@@ -546769,7 +547087,7 @@
     },
     {
       "type": "frame",
-      "id": "udDxh",
+      "id": "tYYmJ",
       "x": 7503,
       "y": 25717,
       "name": "TEETH · JAW SHELF · 5 of 16 won · iPhone on its side 852×393 · Light",
@@ -546785,7 +547103,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "DkBH7",
+          "id": "kXVoM",
           "x": 79,
           "y": 8,
           "name": "Top bar",
@@ -546794,21 +547112,21 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "Z3mxt",
+              "id": "VugNK",
               "type": "ref",
               "ref": "tAopu",
               "name": "Home"
             },
             {
               "type": "frame",
-              "id": "u72f8O",
+              "id": "CZhAx",
               "name": "Title",
               "gap": "$ds-btn-gap",
               "alignItems": "center",
               "children": [
                 {
                   "type": "icon",
-                  "id": "fzFcp",
+                  "id": "bqIen",
                   "name": "Icon",
                   "width": 28,
                   "height": 28,
@@ -546818,7 +547136,7 @@
                 },
                 {
                   "type": "text",
-                  "id": "fsFKr",
+                  "id": "V1znR",
                   "name": "Label",
                   "fill": "$ds-ink",
                   "content": "JAW SHELF",
@@ -546829,7 +547147,7 @@
               ]
             },
             {
-              "id": "o5qEr",
+              "id": "pPJ13",
               "type": "ref",
               "ref": "DaaWt",
               "name": "Collection count",
@@ -546860,7 +547178,7 @@
         },
         {
           "type": "frame",
-          "id": "zcsEP",
+          "id": "sIQND",
           "x": 79,
           "y": 64,
           "name": "Shelves",
@@ -546869,7 +547187,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "p66i24",
+              "id": "xUQbS",
               "name": "Column 1",
               "width": "fill_container",
               "layout": "vertical",
@@ -546877,7 +547195,7 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "OvW3o",
+                  "id": "d9Hhd",
                   "name": "Shelf 1",
                   "width": "fill_container",
                   "layout": "vertical",
@@ -546885,13 +547203,13 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "rXLmX",
+                      "id": "KoOg9",
                       "name": "Diet labels",
                       "gap": "$ds-space-s",
                       "children": [
                         {
                           "type": "frame",
-                          "id": "f0sSmV",
+                          "id": "R1Jx1",
                           "name": "Diet · plants",
                           "fill": "$ds-label",
                           "cornerRadius": "$ds-radius-tag",
@@ -546906,7 +547224,7 @@
                           "children": [
                             {
                               "type": "rectangle",
-                              "id": "swptN",
+                              "id": "ZkRX0",
                               "name": "Picture",
                               "fill": {
                                 "type": "image",
@@ -546919,7 +547237,7 @@
                             },
                             {
                               "type": "text",
-                              "id": "WsNNB",
+                              "id": "McQZZ",
                               "name": "Label",
                               "fill": "$ds-ink",
                               "content": "PLANTS",
@@ -546933,13 +547251,13 @@
                     },
                     {
                       "type": "frame",
-                      "id": "EQB2E",
+                      "id": "n7vI0B",
                       "name": "Places",
                       "width": "fill_container",
                       "gap": "$ds-space-s",
                       "children": [
                         {
-                          "id": "RLJLR",
+                          "id": "oLhJ7",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · triceratops",
@@ -546981,7 +547299,7 @@
                           }
                         },
                         {
-                          "id": "R6oTvI",
+                          "id": "Jhz0C",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · edmontosaurus",
@@ -547023,7 +547341,7 @@
                           }
                         },
                         {
-                          "id": "UrMWR",
+                          "id": "DaBTh",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · diplodocus",
@@ -547065,7 +547383,7 @@
                           }
                         },
                         {
-                          "id": "OKmQl",
+                          "id": "fUoj3",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · brachiosaurus",
@@ -547111,7 +547429,7 @@
                     {
                       "type": "rectangle",
                       "cornerRadius": "$ds-radius-4",
-                      "id": "zbW4n",
+                      "id": "oBrzU",
                       "name": "Plank",
                       "fill": "$ds-plank",
                       "width": "fill_container",
@@ -547121,7 +547439,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "l8pwU",
+                  "id": "koXzP",
                   "name": "Shelf 2",
                   "width": "fill_container",
                   "layout": "vertical",
@@ -547129,13 +547447,13 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "BMSHy",
+                      "id": "yKEfd",
                       "name": "Diet labels",
                       "gap": "$ds-space-s",
                       "children": [
                         {
                           "type": "frame",
-                          "id": "joeCC",
+                          "id": "X5J4z7",
                           "name": "Diet · plants",
                           "fill": "$ds-label",
                           "cornerRadius": "$ds-radius-tag",
@@ -547150,7 +547468,7 @@
                           "children": [
                             {
                               "type": "rectangle",
-                              "id": "Ph9cY",
+                              "id": "sZyJc",
                               "name": "Picture",
                               "fill": {
                                 "type": "image",
@@ -547163,7 +547481,7 @@
                             },
                             {
                               "type": "text",
-                              "id": "I3tn3",
+                              "id": "nLEqD",
                               "name": "Label",
                               "fill": "$ds-ink",
                               "content": "PLANTS",
@@ -547175,7 +547493,7 @@
                         },
                         {
                           "type": "frame",
-                          "id": "bwn8V",
+                          "id": "e6bqz",
                           "name": "Diet · meat",
                           "fill": "$ds-label",
                           "cornerRadius": "$ds-radius-tag",
@@ -547190,7 +547508,7 @@
                           "children": [
                             {
                               "type": "rectangle",
-                              "id": "VaeZG",
+                              "id": "UADl3",
                               "name": "Picture",
                               "fill": {
                                 "type": "image",
@@ -547203,7 +547521,7 @@
                             },
                             {
                               "type": "text",
-                              "id": "HTxw2",
+                              "id": "BEgWb",
                               "name": "Label",
                               "fill": "$ds-ink",
                               "content": "MEAT",
@@ -547217,13 +547535,13 @@
                     },
                     {
                       "type": "frame",
-                      "id": "L6LeG",
+                      "id": "c2IbHS",
                       "name": "Places",
                       "width": "fill_container",
                       "gap": "$ds-space-s",
                       "children": [
                         {
-                          "id": "mTpRO",
+                          "id": "FsD1Y",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · stegosaurus",
@@ -547265,7 +547583,7 @@
                           }
                         },
                         {
-                          "id": "eClYn",
+                          "id": "x2afyh",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · ankylosaurus",
@@ -547307,7 +547625,7 @@
                           }
                         },
                         {
-                          "id": "n0ivb",
+                          "id": "wBTh3",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · tyrannosaurus",
@@ -547349,7 +547667,7 @@
                           }
                         },
                         {
-                          "id": "kjjCm",
+                          "id": "T5es7I",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · allosaurus",
@@ -547395,7 +547713,7 @@
                     {
                       "type": "rectangle",
                       "cornerRadius": "$ds-radius-4",
-                      "id": "B9k4lB",
+                      "id": "eIbwV",
                       "name": "Plank",
                       "fill": "$ds-plank",
                       "width": "fill_container",
@@ -547407,7 +547725,7 @@
             },
             {
               "type": "frame",
-              "id": "T35yT4",
+              "id": "wPMCr",
               "name": "Column 2",
               "width": "fill_container",
               "layout": "vertical",
@@ -547415,7 +547733,7 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "N1ljr",
+                  "id": "M0wIx",
                   "name": "Shelf 3",
                   "width": "fill_container",
                   "layout": "vertical",
@@ -547423,13 +547741,13 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "lw0kM",
+                      "id": "NL10N",
                       "name": "Diet labels",
                       "gap": "$ds-space-s",
                       "children": [
                         {
                           "type": "frame",
-                          "id": "ctMdq",
+                          "id": "q1Ala",
                           "name": "Diet · meat",
                           "fill": "$ds-label",
                           "cornerRadius": "$ds-radius-tag",
@@ -547444,7 +547762,7 @@
                           "children": [
                             {
                               "type": "rectangle",
-                              "id": "zoMMA",
+                              "id": "bjAUm",
                               "name": "Picture",
                               "fill": {
                                 "type": "image",
@@ -547457,7 +547775,7 @@
                             },
                             {
                               "type": "text",
-                              "id": "Djg6d",
+                              "id": "cdV9E",
                               "name": "Label",
                               "fill": "$ds-ink",
                               "content": "MEAT",
@@ -547471,13 +547789,13 @@
                     },
                     {
                       "type": "frame",
-                      "id": "A1FVsn",
+                      "id": "FsfcJ",
                       "name": "Places",
                       "width": "fill_container",
                       "gap": "$ds-space-s",
                       "children": [
                         {
-                          "id": "DOOg8",
+                          "id": "Caxa4",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · velociraptor",
@@ -547519,7 +547837,7 @@
                           }
                         },
                         {
-                          "id": "nmtJb",
+                          "id": "HtJCX",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · deinonychus",
@@ -547561,7 +547879,7 @@
                           }
                         },
                         {
-                          "id": "WeWHq",
+                          "id": "WTAI0",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · spinosaurus",
@@ -547603,7 +547921,7 @@
                           }
                         },
                         {
-                          "id": "kkSHg",
+                          "id": "hPN6v",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · baryonyx",
@@ -547649,7 +547967,7 @@
                     {
                       "type": "rectangle",
                       "cornerRadius": "$ds-radius-4",
-                      "id": "e3tSiq",
+                      "id": "QsxG1",
                       "name": "Plank",
                       "fill": "$ds-plank",
                       "width": "fill_container",
@@ -547659,7 +547977,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "BxTDa",
+                  "id": "QlfYL",
                   "name": "Shelf 4",
                   "width": "fill_container",
                   "layout": "vertical",
@@ -547667,13 +547985,13 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "CKAdA",
+                      "id": "ATaKn",
                       "name": "Diet labels",
                       "gap": "$ds-space-s",
                       "children": [
                         {
                           "type": "frame",
-                          "id": "WxgrJ",
+                          "id": "HDHBz",
                           "name": "Diet · meat",
                           "fill": "$ds-label",
                           "cornerRadius": "$ds-radius-tag",
@@ -547688,7 +548006,7 @@
                           "children": [
                             {
                               "type": "rectangle",
-                              "id": "V5ZfS",
+                              "id": "O9kVIL",
                               "name": "Picture",
                               "fill": {
                                 "type": "image",
@@ -547701,7 +548019,7 @@
                             },
                             {
                               "type": "text",
-                              "id": "XL5Iw",
+                              "id": "ZRRIe",
                               "name": "Label",
                               "fill": "$ds-ink",
                               "content": "MEAT",
@@ -547715,13 +548033,13 @@
                     },
                     {
                       "type": "frame",
-                      "id": "L1sNAR",
+                      "id": "hGVDp",
                       "name": "Places",
                       "width": "fill_container",
                       "gap": "$ds-space-s",
                       "children": [
                         {
-                          "id": "SjjRd",
+                          "id": "n7u0W",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · rhamphorhynchus",
@@ -547763,7 +548081,7 @@
                           }
                         },
                         {
-                          "id": "Mm05v",
+                          "id": "Timuv",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · dimorphodon",
@@ -547805,7 +548123,7 @@
                           }
                         },
                         {
-                          "id": "NAE9t",
+                          "id": "W0Ei7",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · mosasaurus",
@@ -547847,7 +548165,7 @@
                           }
                         },
                         {
-                          "id": "G5lp3y",
+                          "id": "o6nRBD",
                           "type": "ref",
                           "ref": "Jnu1b",
                           "name": "Place · kronosaurus",
@@ -547893,7 +548211,7 @@
                     {
                       "type": "rectangle",
                       "cornerRadius": "$ds-radius-4",
-                      "id": "fOz3N",
+                      "id": "X6oer",
                       "name": "Plank",
                       "fill": "$ds-plank",
                       "width": "fill_container",
@@ -547908,7 +548226,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "u01as",
+          "id": "Wtf7s",
           "x": 359,
           "y": 385,
           "name": "Home indicator",
@@ -547920,7 +548238,7 @@
     },
     {
       "type": "frame",
-      "id": "oNyKJ",
+      "id": "PFSPc",
       "x": 8455,
       "y": 25717,
       "name": "TEETH · Hatchling · jaw waiting · iPhone on its side 852×393 · Light",
@@ -547953,7 +548271,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "aEtSX",
+          "id": "bmxn9",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -547978,7 +548296,7 @@
         },
         {
           "type": "frame",
-          "id": "p5bCSB",
+          "id": "A1ZbF",
           "x": 0,
           "y": 124,
           "name": "Layer 1 · Sand",
@@ -547997,14 +548315,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "q31Zp",
+              "id": "mphox",
               "name": "Dinosaurs",
               "width": 420,
               "gap": "$ds-space-s",
               "alignItems": "end",
               "children": [
                 {
-                  "id": "E38cc",
+                  "id": "N1gScH",
                   "type": "ref",
                   "ref": "d7hprD",
                   "width": "fill_container",
@@ -548038,7 +548356,7 @@
                   }
                 },
                 {
-                  "id": "Ro7z4",
+                  "id": "ixEgg",
                   "type": "ref",
                   "ref": "d7hprD",
                   "width": "fill_container",
@@ -548074,7 +548392,7 @@
               ]
             },
             {
-              "id": "TL0SQ",
+              "id": "Jq6Z4",
               "type": "ref",
               "ref": "jHMG1",
               "name": "Tray",
@@ -548109,7 +548427,7 @@
         },
         {
           "type": "frame",
-          "id": "BPYG3",
+          "id": "iahXZ",
           "x": 79,
           "y": 8,
           "name": "Top bar",
@@ -548118,13 +548436,13 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "vZFux",
+              "id": "F1aD0H",
               "type": "ref",
               "ref": "tAopu",
               "name": "Home"
             },
             {
-              "id": "BZA9N",
+              "id": "mI8Xc",
               "type": "ref",
               "ref": "JkMjj",
               "name": "Tooth sockets"
@@ -548133,7 +548451,7 @@
         },
         {
           "type": "frame",
-          "id": "FA4SG",
+          "id": "NgUlF",
           "x": 430,
           "y": 8,
           "name": "Question line",
@@ -548141,7 +548459,7 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "ndf6f",
+              "id": "zrbsj",
               "type": "ref",
               "ref": "qWLc5",
               "name": "Question",
@@ -548168,7 +548486,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "yLHJY",
+          "id": "awr6i",
           "x": 359,
           "y": 385,
           "name": "Home indicator",
@@ -548180,7 +548498,7 @@
     },
     {
       "type": "frame",
-      "id": "q0v1p",
+      "id": "WiB01",
       "x": 9407,
       "y": 25717,
       "name": "TEETH · Explorer · jaw waiting · iPhone on its side 852×393 · Light",
@@ -548213,7 +548531,7 @@
       "layout": "none",
       "children": [
         {
-          "id": "YrBdc",
+          "id": "yG9Tp",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
@@ -548238,7 +548556,7 @@
         },
         {
           "type": "frame",
-          "id": "S4Obq",
+          "id": "X6Q7HA",
           "x": 0,
           "y": 124,
           "name": "Layer 1 · Sand",
@@ -548257,14 +548575,14 @@
           "children": [
             {
               "type": "frame",
-              "id": "Q7cvPK",
+              "id": "MxqAr",
               "name": "Dinosaurs",
               "width": 470,
               "gap": "$ds-space-s",
               "alignItems": "end",
               "children": [
                 {
-                  "id": "oytqc",
+                  "id": "ySpps",
                   "type": "ref",
                   "ref": "d7hprD",
                   "width": "fill_container",
@@ -548302,7 +548620,7 @@
                   }
                 },
                 {
-                  "id": "LHsd6",
+                  "id": "c3EQW",
                   "type": "ref",
                   "ref": "d7hprD",
                   "width": "fill_container",
@@ -548340,7 +548658,7 @@
                   }
                 },
                 {
-                  "id": "pL6I9",
+                  "id": "ZnjWo",
                   "type": "ref",
                   "ref": "d7hprD",
                   "name": "Dino · diplodocus",
@@ -548380,7 +548698,7 @@
               ]
             },
             {
-              "id": "JujfV",
+              "id": "d2jGS",
               "type": "ref",
               "ref": "jHMG1",
               "name": "Tray",
@@ -548416,7 +548734,7 @@
         },
         {
           "type": "frame",
-          "id": "p4Q3c",
+          "id": "XrLp0",
           "x": 79,
           "y": 8,
           "name": "Top bar",
@@ -548425,13 +548743,13 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "LX97W",
+              "id": "GLbzm",
               "type": "ref",
               "ref": "tAopu",
               "name": "Home"
             },
             {
-              "id": "bd42u",
+              "id": "k0Fm5l",
               "type": "ref",
               "ref": "JkMjj",
               "name": "Tooth sockets",
@@ -548482,7 +548800,7 @@
         },
         {
           "type": "frame",
-          "id": "UfUDR",
+          "id": "R6AhN",
           "x": 430,
           "y": 8,
           "name": "Question line",
@@ -548490,7 +548808,7 @@
           "alignItems": "center",
           "children": [
             {
-              "id": "ZTRNM",
+              "id": "ZBVm7",
               "type": "ref",
               "ref": "qWLc5",
               "name": "Question",
@@ -548517,7 +548835,7 @@
         {
           "type": "rectangle",
           "cornerRadius": "$ds-radius-3",
-          "id": "Wk8xL",
+          "id": "ZfAgU",
           "x": 359,
           "y": 385,
           "name": "Home indicator",
