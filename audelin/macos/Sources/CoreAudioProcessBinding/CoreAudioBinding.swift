@@ -1,4 +1,5 @@
 import CoreAudio
+import CoreAudioProcesses
 import Darwin
 import Foundation
 import Synchronization

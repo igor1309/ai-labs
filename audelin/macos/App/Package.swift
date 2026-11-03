@@ -21,6 +21,7 @@ let package = Package(
                 .product(name: "SystemAudioCapture", package: "macos"),
                 .product(name: "ParakeetRecognizer", package: "macos"),
                 .product(name: "CoreAudioProcesses", package: "macos"),
+                .product(name: "CoreAudioProcessBinding", package: "macos"),
                 .product(name: "LiveText", package: "macos"),
 
                 .product(name: "Recordings", package: "macos"),
