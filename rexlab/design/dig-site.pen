@@ -149309,7 +149309,7 @@
                           "id": "tqjmw",
                           "name": "Name",
                           "fill": "$ds-ink",
-                          "content": "ВСЁ",
+                          "content": "ОБА",
                           "textAlign": "center",
                           "fontFamily": "$ds-font",
                           "fontSize": 22,
@@ -394071,7 +394071,7 @@
       "id": "k7zwM",
       "x": 0,
       "y": 92787,
-      "name": "EXPLORE · catalogue · РАСТЕНИЯ chosen: ДОМОЙ, ВСЕ, МЯСО 26, РАСТЕНИЯ 23, ВСЁ 3 in one row · iPad mini 1133×744 · Light · RU",
+      "name": "EXPLORE · catalogue · РАСТЕНИЯ chosen: ДОМОЙ, ВСЕ, МЯСО 26, РАСТЕНИЯ 23, ОБА 3 in one row · iPad mini 1133×744 · Light · RU",
       "theme": {
         "mode": "light",
         "device": "ipad"
@@ -394918,7 +394918,7 @@
                   "id": "c9HDAs",
                   "type": "ref",
                   "ref": "IOzU5",
-                  "name": "Chip · ВСЁ",
+                  "name": "Chip · ОБА",
                   "height": 56,
                   "descendants": {
                     "Bq0uW": {
@@ -394933,7 +394933,7 @@
                       "fill": "$ds-on-reward"
                     },
                     "N5Sb74": {
-                      "content": "ВСЁ"
+                      "content": "ОБА"
                     },
                     "AQ4Ob": {
                       "content": "3"
@@ -394962,7 +394962,7 @@
       "id": "B0CahS",
       "x": 1233,
       "y": 92787,
-      "name": "EXPLORE · page · Галлимим 13 / 52: ДРЕВНИЕ ЯЩЕРЫ, food tag ВСЁ, РОСТ and ВЕС · iPad mini 1133×744 · Light · RU",
+      "name": "EXPLORE · page · Галлимим 13 / 52: ДРЕВНИЕ ЯЩЕРЫ, food tag ОБА, РОСТ and ВЕС · iPad mini 1133×744 · Light · RU",
       "theme": {
         "mode": "light",
         "device": "ipad"
@@ -395312,7 +395312,7 @@
                       "id": "C5Z99d",
                       "name": "Word",
                       "fill": "$ds-on-label",
-                      "content": "ВСЁ",
+                      "content": "ОБА",
                       "fontFamily": "$ds-font",
                       "fontSize": "$ds-size-label",
                       "fontWeight": "800",
@@ -396305,7 +396305,7 @@
                   "id": "K3Hsm",
                   "type": "ref",
                   "ref": "IOzU5",
-                  "name": "Chip · ВСЁ",
+                  "name": "Chip · ОБА",
                   "height": 48,
                   "width": 48,
                   "padding": 0,
@@ -396332,7 +396332,7 @@
                       "height": 16
                     },
                     "N5Sb74": {
-                      "content": "ВСЁ",
+                      "content": "ОБА",
                       "enabled": false
                     },
                     "wPLDc": {
@@ -396841,7 +396841,7 @@
       "id": "CKuOa",
       "x": 4685,
       "y": 92787,
-      "name": "EXPLORE · page · Галлимим 13 / 52: ДРЕВНИЕ ЯЩЕРЫ at the left, ВСЁ tag · upright iPad 744×1133 · Light · RU",
+      "name": "EXPLORE · page · Галлимим 13 / 52: ДРЕВНИЕ ЯЩЕРЫ at the left, ОБА tag · upright iPad 744×1133 · Light · RU",
       "theme": {
         "mode": "light",
         "device": "ipad"
@@ -397189,7 +397189,7 @@
                       "id": "j2TWyc",
                       "name": "Word",
                       "fill": "$ds-on-label",
-                      "content": "ВСЁ",
+                      "content": "ОБА",
                       "fontFamily": "$ds-font",
                       "fontSize": "$ds-size-label",
                       "fontWeight": "800",
@@ -397793,7 +397793,7 @@
                   "id": "KbRFT",
                   "type": "ref",
                   "ref": "IOzU5",
-                  "name": "Chip · ВСЁ",
+                  "name": "Chip · ОБА",
                   "height": 48,
                   "width": 48,
                   "padding": 0,
@@ -397820,7 +397820,7 @@
                       "height": 16
                     },
                     "N5Sb74": {
-                      "content": "ВСЁ",
+                      "content": "ОБА",
                       "enabled": false
                     },
                     "wPLDc": {
