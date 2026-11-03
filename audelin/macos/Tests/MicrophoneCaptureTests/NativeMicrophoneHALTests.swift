@@ -56,10 +56,11 @@ struct NativeMicrophoneHALTests {
         let calls = RecordingMicrophoneHAL(value: 7)
         let binding = makeBinding(calls)
         let delivered = Mutex<[UInt32]>([])
+        let callbackQueues = Mutex<[Bool]>([])
         try await withCleanup {
             try await offPool {
                 try binding.watchDefaultInput { device in
-                    #expect(isMicrophoneNotification)
+                    callbackQueues.withLock { $0.append(isMicrophoneNotification) }
                     delivered.withLock { $0.append(device) }
                 }
             }
@@ -71,6 +72,7 @@ struct NativeMicrophoneHALTests {
             }
             #expect(calls.state.withLock { $0.reads } == Array(repeating: .defaultInput, count: 2))
             #expect(calls.state.withLock { $0.notificationReads } == [true, true])
+            #expect(callbackQueues.withLock { $0 } == [true, true])
         } cleanup: {
             binding.unwatchDefaultInput()
         }
@@ -159,6 +161,9 @@ private struct HALRead: Equatable, Sendable {
     let selector: UInt32
     var scope: UInt32 = kAudioObjectPropertyScopeGlobal
     var element: UInt32 = kAudioObjectPropertyElementMain
+    var qualifierSize: UInt32 = 0
+    var hasQualifier = false
+    var size = UInt32(MemoryLayout<UInt32>.size)
 
     static var defaultInput: Self {
         HALRead(object: AudioObjectID(kAudioObjectSystemObject), selector: kAudioHardwarePropertyDefaultInputDevice)
@@ -169,11 +174,18 @@ private struct HALRead: Equatable, Sendable {
         self.selector = selector
     }
 
-    init(object: UInt32, address: AudioObjectPropertyAddress) {
+    init(
+        object: UInt32, address: AudioObjectPropertyAddress,
+        qualifierSize: UInt32 = 0, hasQualifier: Bool = false,
+        size: UInt32 = UInt32(MemoryLayout<UInt32>.size)
+    ) {
         self.object = object
         selector = address.mSelector
         scope = address.mScope
         element = address.mElement
+        self.qualifierSize = qualifierSize
+        self.hasQualifier = hasQualifier
+        self.size = size
     }
 }
 
@@ -226,11 +238,11 @@ private final class RecordingMicrophoneHAL: Sendable {
     var hal: MicrophoneHALCalls {
         MicrophoneHALCalls(
             read: { [self] object, address, qualifierSize, qualifier, size, data in
-                #expect(qualifierSize == 0)
-                #expect(qualifier == nil)
-                #expect(size == MemoryLayout<UInt32>.size)
                 return state.withLock {
-                    $0.reads.append(HALRead(object: object, address: address))
+                    $0.reads.append(HALRead(
+                        object: object, address: address, qualifierSize: qualifierSize,
+                        hasQualifier: qualifier != nil, size: size
+                    ))
                     $0.notificationReads.append(isMicrophoneNotification)
                     data.storeBytes(of: $0.value, as: UInt32.self)
                     return $0.readStatus
@@ -277,4 +289,3 @@ private final class CallbackLifetime: Sendable {}
 private final class WeakCallbackLifetime: @unchecked Sendable {
     weak var value: CallbackLifetime?
 }
-
