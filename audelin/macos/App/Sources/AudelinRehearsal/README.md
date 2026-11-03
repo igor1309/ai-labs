@@ -47,6 +47,7 @@ From `audelin/macos`:
 | `--keep` | off | keep the recorded call folder instead of deleting it |
 | `--report FILE` | none | append the progress lines to FILE too |
 | `--recordings-dir DIR` | none | record into DIR, which the caller cleans |
+| `--speech FILE` | none | feed FILE, looped, on both sides to real Parakeet v3 instead of the fakes |
 
 It prints when the call is detected and when it ends, a line every 10 audio minutes, with how far the slower
 recogniser trails what was fed and the footprint, and a last line with
@@ -54,6 +55,25 @@ the words each side said and the peak footprint. The last line's time is
 the feeding time, without the 30-second wait for the call to end. A 3-hour call writes
 about 1 GB of audio per track to a temporary folder, deleted at the end
 unless `--keep` is given.
+
+## Baseline over real Parakeet
+
+With `--speech FILE` the two sides play the same speech file, looped, at
+the file's own rate, and each side is heard by its own real Parakeet v3
+recogniser; the call lasts the file's length unless `--minutes` says. It
+needs Parakeet's models on disk. Besides the usual lines it reports the
+model load, then every audio minute how far the newest word and the final
+text trail what was fed, and at the end the time to the first text in the
+panel, the time from the recording's end to its final transcript, process
+CPU, and each track's length and the transcript's words per speaker.
+
+    scripts/baseline-rehearsal.sh [--runs 3] [--minutes 5]
+
+synthesises [the fixture](../../../../docs/research/baseline/fixture.txt)
+with `say`, builds a release and runs it once after the build and then
+`--runs` times warm, at 1×, keeping each run's report and transcript and
+the machine, macOS and commit in `profiles/baseline-<date>/`. Results are
+in [the baseline](../../../../docs/research/baseline/README.md).
 
 ## Profile
 
@@ -93,8 +113,8 @@ hangs and intervals. Older summaries must be regenerated with this format.
 
 ## Not covered
 
-- Real recognisers, audio devices, Core Audio process notifications,
-  permissions, call-audio access and the menu bar.
+- Real recognisers, except with `--speech`; audio devices, Core Audio
+  process notifications, permissions, call-audio access and the menu bar.
 - More than one call app, apps coming and going, or a call that resumes
   within the grace period: the scripted app joins once and leaves once.
 - Transcript entries whose id returns, which only a real recogniser's

@@ -22,6 +22,7 @@ under the working name wisper.
 | [audelin-availability-check.md](audelin-availability-check.md) | Collision search and score for Audelin; GitHub and App Store not yet confirmed directly |
 | [endurance-tests.md](endurance-tests.md) | How to test a 3-hour call and a loaded Mac without waiting 3 hours: growth per unit of work, test tiers, what others do |
 | [transcript-save-interval.md](transcript-save-interval.md) | How often to save the transcript: other apps, cost of 1, 5 and 30 s; owner chose 5 s (2026-10-31) |
+| [baseline/](baseline/README.md) | Recording and live text baseline (LAB-667): what the tests cover, the real-device smoke procedure, and real Parakeet through the app's composition at 1× |
 | [replay/](replay/) | `audelin-replay`: recorded call tracks through Audelin's recognisers and Live text, with word delays and how much live text changes |
 | [spike/](spike/) | CLIs that run a recording through Parakeet v3: the sliding window, and Audelin's own windows (`audelin-windows`, with the stabilizer's fixtures) |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |

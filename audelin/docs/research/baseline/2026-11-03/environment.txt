@@ -1,0 +1,5 @@
+commit f4844d2c (uncommitted changes)
+mac Mac15,10, Apple M3 Max, 36 GB
+macOS 26.6.2 (25G83)
+fixture Data format: 1 ch, 22050 Hz, lpcm (0x0000000E) 16-bit big-endian signed integer;estimated duration: 135.375964 sec;
+voice Samantha, rate 170; fed looped for 5 min on both sides, 1x
