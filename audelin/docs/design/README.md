@@ -100,7 +100,7 @@ from instances.
 | Pin/Off, /On | `w24st`, `S5zLs` | — |
 | Title bar | `H1efZf` | `Title` |
 | Banner/Error, /Warn, /Info | `qAImO`, `XK4si`, `jjhu5` | `H`, `Sub` |
-| Entry/Me, /Them, /Pending | `Nescm`, `ysZuS`, `Dl07G` | `Time`, `Who`, `Confirmed`; Pending adds `Pending` |
+| Entry/Me, /Them, /Pending | `Nescm`, `ysZuS`, `Dl07G` | `Time`, coloured `me` or `them` as the only speaker mark (LAB-933), `Confirmed`; Pending adds `Pending` |
 | Footnote card | `bMU2S` | `Term`, `Hint`, `Text` |
 | Panel header/Idle, /Recording | `MaM9e`, `rVa43` | `Status` |
 | File chip | `U4MdJG` | `Name` |
