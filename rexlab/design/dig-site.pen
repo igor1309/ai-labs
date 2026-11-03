@@ -390891,13 +390891,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "3.1 M"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "8 T"
@@ -390939,13 +390939,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "2.7 M"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "7 T"
@@ -390987,13 +390987,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "0.6 M"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "15 KG"
@@ -391044,13 +391044,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "3.4 M"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "50 T"
@@ -391092,13 +391092,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "1.5 M"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "2.7 T"
@@ -391140,13 +391140,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "1.1 M"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "6 T"
@@ -397399,13 +397399,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "3,1 М"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "8 Т"
@@ -397447,13 +397447,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "0,6 М"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "15 КГ"
@@ -397495,13 +397495,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "1,6 М"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "7,4 Т"
@@ -397552,13 +397552,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "0,3 М"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "3 КГ"
@@ -397600,13 +397600,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "2,2 М"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "2,3 Т"
@@ -397648,13 +397648,13 @@
                         },
                         "yePCa": {
                           "icon": "ruler",
-                          "enabled": false
+                          "enabled": true
                         },
                         "VdSa1": {
                           "content": "0,3 М"
                         },
                         "Jr9PE": {
-                          "enabled": false
+                          "enabled": true
                         },
                         "PSVKm": {
                           "content": "1 КГ"
