@@ -257,6 +257,17 @@ struct TranscriptLogTests {
         #expect(settles { isAtBottom(scroll) }, "the newest line is out of view")
     }
 
+    /// TextKit lays text out after the update that scrolled to its end, so
+    /// the text grows under a scroll that was made too early.
+    @Test func opensALongLogAtItsNewestLine() throws {
+
+        let host = hosted(.init(entries: many(14)), height: 160)
+        let scroll = try #require(scrollView(in: host))
+
+        #expect(isTallerThanItsView(scroll))
+        #expect(settles { isAtBottom(scroll) }, "a long log opens away from its newest line")
+    }
+
     @Test func staysWhereTheReaderScrolled() throws {
 
         let host = hosted(.init(entries: many(12), followsLive: false), height: 160)
