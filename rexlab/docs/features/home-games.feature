@@ -38,9 +38,9 @@ Feature: Home page: the game tiles in the ground
     And CARE is today's featured game
     And the app gained TEETH and COLOR after my first visit, and I have started neither
     When I open the home page
-    Then the TEETH and COLOR tiles each carry a "<new>" tag, and no other tile does
+    Then the TEETH and COLOR tiles each carry a sparkle mark named "<new>", and no other tile does
     When I start TEETH and come back home
-    Then only the COLOR tile carries a "<new>" tag
+    Then only the COLOR tile carries the "<new>" mark
 
     Examples:
       | language | new     |
@@ -50,19 +50,19 @@ Feature: Home page: the game tiles in the ground
   Scenario: A new game featured today shows no tag
     Given the app gained TEETH after my first visit, and I have not started it
     When TEETH is today's featured game and I open the home page
-    Then the sky shows TEETH as on any day, with no NEW tag
-    And no tile carries a NEW tag
+    Then the sky shows TEETH as on any day, with no NEW mark
+    And no tile carries a NEW mark
 
   Scenario: Another new game keeps its tag while one is featured
     Given the app gained TEETH and COLOR after my first visit, and I have started neither
     When TEETH is today's featured game and I open the home page
-    Then the sky shows TEETH with no NEW tag
-    And the COLOR tile carries a "NEW" tag
+    Then the sky shows TEETH with no NEW mark
+    And the COLOR tile carries the "NEW" mark
 
   Scenario: Games there on the first visit are not new
     Given this is my first visit
     When I open the home page
-    Then no tile carries a NEW tag
+    Then no tile carries a NEW mark
 
   Scenario: SOON is a picture, not a game
     When I open the home page
@@ -89,12 +89,12 @@ Feature: Home page: the game tiles in the ground
     When I open the home page and later reload the app
     Then the games present at my first visit are still not new, as the record is kept on this device with my progress
 
-  Scenario: A browser that cannot keep the record shows no NEW tag
+  Scenario: A browser that cannot keep the record shows no NEW mark
     Given the browser cannot read or cannot save progress
     When I open the home page
-    Then no tile carries a NEW tag, and every tile still opens its game
+    Then no tile carries a NEW mark, and every tile still opens its game
 
-  Scenario: A child who played before the record existed sees no NEW tag at first
+  Scenario: A child who played before the record existed sees no NEW mark at first
     Given saved progress from before the app kept a first-visit record
     When I open the home page
-    Then no tile carries a NEW tag, and only games the app gains later can carry one
+    Then no tile carries a NEW mark, and only games the app gains later can carry one

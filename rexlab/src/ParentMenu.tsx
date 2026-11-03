@@ -25,8 +25,6 @@ export type ParentMenuProps<Value extends string> = {
   // What the button shows: a small symbol or picture, and at most a short
   // code.
   button: ReactNode;
-  // A button that shows a code beside its symbol is a pill, not a circle.
-  chip?: boolean;
   choices: readonly MenuChoice<Value>[];
   chosen: Value;
   open: boolean;
@@ -42,7 +40,7 @@ export type ParentMenuProps<Value extends string> = {
 // A small button that opens a menu of choices, one of them ticked. The
 // page that holds it decides which menu is open, so only one ever is, and
 // closes it on a tap outside.
-export function ParentMenu<Value extends string>({ label, button, chip, choices, chosen, open, disabled, onOpen, onClose, onChoose, startTimer }: ParentMenuProps<Value>) {
+export function ParentMenu<Value extends string>({ label, button, choices, chosen, open, disabled, onOpen, onClose, onChoose, startTimer }: ParentMenuProps<Value>) {
   const id = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -93,7 +91,7 @@ export function ParentMenu<Value extends string>({ label, button, chip, choices,
     <div className="parent-menu">
       <Button
         ref={buttonRef}
-        className={chip ? "parent-menu-button parent-menu-chip" : "parent-menu-button"}
+        className="parent-menu-button"
         aria-label={label}
         aria-haspopup="menu"
         aria-expanded={open}

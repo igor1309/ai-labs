@@ -9,6 +9,8 @@ import { featuredCard, largestSize, manualViewport, tilesRow } from "./support.t
 import { openHomeApp } from "./skeletonsApp.tsx";
 
 const design = JSON.parse(readFileSync(join(import.meta.dirname, "../design/dig-site.pen"), "utf8"));
+// A corner radius is a number or the name of a design variable holding one.
+const radius = (value: number | string) => typeof value === "number" ? value : design.variables[value.slice(1)].value;
 const part = (selector: string) => document.querySelector(selector)!;
 const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(`--ds-${name}`).trim();
 const literal = (property: string, value: string) => {
@@ -21,7 +23,7 @@ afterEach(() => { delete document.documentElement.dataset.size; delete document.
 for (const language of ["en", "ru"] as const) for (const game of HOME_GAMES) {
   test(`today names ${game} in ${language}; PLAY, the name and artwork open the same game`, async () => {
     const { user, opened } = renderHomePageFeaturing(game, { language, allGames: true });
-    expect(part(".home-today-tag").textContent).toBe(language === "en" ? "TODAY" : "СЕГОДНЯ");
+    expect(featuredCard().closest("section")!.getAttribute("aria-label")).toBe(TEXTS[language].today);
     expect(part(".home-play").textContent).toBe(TEXTS[language].play);
     expect(part(".featured-card-title").textContent).toBe(featuredCard().getAttribute("aria-label"));
     expect(part(".featured-card-symbol svg")).toBeTruthy();
@@ -46,7 +48,6 @@ for (const theme of ["light", "dark"]) for (const size of ["wide", "tall", "wide
     };
     matches(".home-sky", { color: "ink" });
     matches(".home-museum", { color: "on-strong", "background-color": "strong", "border-radius": "radius-pill", "font-size": "size-label" });
-    matches(".home-today-tag", { color: "on-strong", "background-color": "strong", "border-radius": "radius-tag", "font-size": "size-tag" });
     matches(".featured-card-symbol", { color: "action", "background-color": "pocket-1" });
     matches(".featured-card-title", { "font-size": "size-display", color: "ink" });
     matches(".home-play", { "background-color": "action", color: "on-action", "font-size": "size-action", "border-radius": "radius-pill" });
@@ -113,7 +114,7 @@ for (const [size, frameName] of [["wide", "Home · Dig site · iPad 11 landscape
     const symbol = featured.descendants.MKp0m;
     const style = getComputedStyle(part(".featured-card-symbol"));
     expect([style.width, style.height]).toEqual([`${symbol.width}px`, `${symbol.height}px`]);
-    expect(style.borderRadius).toBe(symbol.cornerRadius.map((value: number) => `${value}px`).join(" "));
+    expect(style.borderRadius).toBe(symbol.cornerRadius.map((value: number | string) => `${radius(value)}px`).join(" "));
   });
 }
 

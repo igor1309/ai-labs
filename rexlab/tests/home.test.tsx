@@ -90,6 +90,7 @@ function renderHomePage(taps: number[]) {
   render(
     <HomePage
       motion={() => () => {}}
+      tilesPerLayer={6}
 
       language="en"
       onLanguage={nothing}
@@ -262,14 +263,14 @@ describe("the home page", () => {
     expect(screen.getByRole("button", { name: "PLAY" })).toBeDefined();
   });
 
-  it("offers the skeleton game as a SKELETONS tile before DIG: the Triceratops's skeleton, a bone beside its title, and no best before a skeleton is built", () => {
+  it("offers the skeleton game as a SKELETONS tile before DIG: the Brachiosaurus's skeleton, a bone beside its title, and no best before a skeleton is built", () => {
     openHomePage();
 
     const tile = skeletonsTile();
     expect(tile.textContent).toBe("BONES");
     expect(TEXTS.ru.skeletons).toBe("СКЕЛЕТЫ");
     expect(symbolsOf(tile)).toEqual(["bone"]);
-    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeSkeletonPicture("triceratops", "skeleton")]);
+    expect([...tile.querySelectorAll("img")].map((picture) => picture.getAttribute("src"))).toEqual([fakeSkeletonPicture("brachiosaurus", "skeleton")]);
     const title = tile.querySelector(".skeletons-tile-title");
     expect(title?.previousElementSibling?.contains(tile.querySelector("svg.lucide-bone"))).toBe(true);
     expect(tile.nextElementSibling).toBe(homeTile("DIG"));
@@ -341,13 +342,13 @@ describe("the home page", () => {
     expect(symbolsOf(tile)).toEqual(["scale"]);
   });
 
-  it("offers the sorting game as a SORT card with a Tyrannosaurus's silhouette beside a symbol of shapes, and no best score before a board is finished", () => {
+  it("offers the sorting game as a SORT card with a dinosaur's picture beside a symbol of shapes, and no best score before a board is finished", () => {
     openHomePage();
 
     const sort = screen.getByRole("button", { name: "SORT" });
     expect(sort.textContent).toBe("SORT");
     expect(symbolsOf(sort)).toEqual(["shapes"]);
-    expect(sort.querySelector<HTMLElement>(".sort-tile-silhouette")?.style.getPropertyValue("--silhouette")).toBe(`url("${fakeBodyPicture("tyrannosaurus")}")`);
+    expect(sort.querySelector("img.sort-tile-picture")?.getAttribute("src")).toBe(fakeBodyPicture("pachycephalosaurus"));
     const title = sort.querySelector(".sort-tile-title");
     expect(title?.previousElementSibling?.contains(sort.querySelector("svg.lucide-shapes"))).toBe(true);
     expect(sort.querySelector(".sort-tile-best")).toBeNull();
@@ -413,7 +414,7 @@ describe("the home page", () => {
     openHomePage();
     document.documentElement.dataset.theme = theme;
     try {
-      expect(getComputedStyle(document.querySelector(".wordmark-mark")!).backgroundImage).toContain("/icons/icon-180.png");
+      expect(getComputedStyle(document.querySelector(".wordmark-mark")!).backgroundImage).toContain("app-icon-trex.png");
     } finally {
       delete document.documentElement.dataset.theme;
     }

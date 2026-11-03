@@ -11,10 +11,6 @@ import { chipArrangement, type ChipContent } from "./chipArrangement.ts";
 import { closingPicture, refitPicture, type PictureMotion } from "./closingPicture.ts";
 import { compareQuestionType, compareQuestionWidth, NARROW_QUESTION, PORTRAIT_QUESTION } from "./compareQuestionLayout.ts";
 import { compareResultType, compareResultWidth, NARROW_RESULT, PORTRAIT_RESULT } from "./compareResultLayout.ts";
-import careBowl from "./assets/care/home-tile.webp";
-import jawTile from "./assets/jaws/home-tile.webp";
-import { TREASURE_PICTURES } from "./treasurePictures.ts";
-import colorTile from "./assets/coloring/home-tile.png";
 import { DIG_REVEAL, useDigGame, type DigGameProps, type DigPhase } from "./digGame.tsx";
 import { DinosaurPage, NEXT_DINOSAUR, PREVIOUS_DINOSAUR, type DinosaurPageLayout } from "./DinosaurPage.tsx";
 import { dinosaurSlide } from "./dinosaurSlide.ts";
@@ -179,13 +175,22 @@ const FACE_OFF = { left: "tyrannosaurus", right: "brachiosaurus" };
 const CATALOGUE_TILE = "stegosaurus";
 
 // The dinosaur on the sorting game's card.
-const SORT_TILE = "tyrannosaurus";
+const SORT_TILE = "pachycephalosaurus";
 
 // The dinosaur on find the pair's tile.
 const PAIRS_TILE = "triceratops";
 
 // The dinosaur whose skeleton stands on the skeleton game's tile.
-const SKELETONS_TILE = "triceratops";
+const SKELETONS_TILE = "brachiosaurus";
+
+// Home shows six tiles to a layer of earth where the page is wide enough, three elsewhere.
+const homeTilesPerLayer = (width: number) => width >= 1000 ? 6 : 3;
+
+// The dinosaurs on the other games' tiles.
+const DIG_TILE = "therizinosaurus";
+const CARE_TILE = "oviraptor";
+const JAW_TILE = "baryonyx";
+const COLOR_TILE = "mosasaurus";
 
 // The dinosaur whose shape stands on the home tile of the games still to
 // come.
@@ -273,6 +278,7 @@ export function App({
 }: AppProps) {
   const { screen, go, set } = useScreens<Screen, Step>({ kind: "home" }, transitionFor);
   const size = useSyncExternalStore(viewport.subscribe, viewport.sizeClass);
+  const tilesPerLayer = useSyncExternalStore(viewport.subscribe, () => homeTilesPerLayer(viewport.width()));
   const screenUpright = useSyncExternalStore(viewport.subscribe, viewport.isScreenUpright);
   const [closing] = useState<ReturnType<typeof closingPicture>>(() => closingPicture(layoutMotion, pictureMotion));
   const [sliding] = useState<ReturnType<typeof dinosaurSlide>>(() => dinosaurSlide(layoutMotion, pictureMotion));
@@ -722,16 +728,17 @@ export function App({
             faceOff={{ left: bodyPicture(FACE_OFF.left), right: bodyPicture(FACE_OFF.right) }}
             best={quiz.best}
             catalogue={{ picture: bodyPicture(CATALOGUE_TILE), count: catalogue.length }}
-            care={{ picture: careBowl, best: care.best }}
+            care={{ picture: bodyPicture(CARE_TILE), best: care.best }}
             pairs={{ picture: bodyPicture(PAIRS_TILE), stars: pairs.stars }}
             skeletons={{ picture: skeletonPicture(SKELETONS_TILE, "skeleton"), best: skeletonGame.best }}
             sort={{ picture: bodyPicture(SORT_TILE), best: sorting.best }}
-            dig={{ picture: TREASURE_PICTURES["golden-fossil"], dugUp: dig.dugUp }}
-            coloring={coloring && { picture: colorTile, completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
-            whoseJaw={whoseJaw && { picture: jawTile, collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
+            dig={{ picture: bodyPicture(DIG_TILE), dugUp: dig.dugUp }}
+            coloring={coloring && { picture: bodyPicture(COLOR_TILE), completed: coloringCount, onOpen: () => go({ kind: "coloring" }) }}
+            whoseJaw={whoseJaw && { picture: bodyPicture(JAW_TILE), collected: jawGame.collected, total: whoseJaw.total, onOpen: () => go({ kind: "whoseJaw" }, { also: jawGame.open }) }}
             picturePuzzle={picturePuzzle && { picture: bodyPicture("spinosaurus"), collected: pictureGame.collected, onOpen: () => go({ kind: "picturePuzzle" }) }}
             labyrinth={{ picture: bodyPicture("ankylosaurus"), stars: labyrinth.stars }}
             moreComing={bodyPicture(MORE_COMING)}
+            tilesPerLayer={tilesPerLayer}
             onCompareDinosaurs={openCompare}
             onCatalogue={openCatalogue}
             onCare={openCare}

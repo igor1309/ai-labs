@@ -21,7 +21,8 @@ afterEach(() => { delete document.documentElement.dataset.theme; delete document
 it.each(["en", "ru"] as const)("shows NEW only on the offered, unfeatured new games in %s", (language) => {
   const { opened } = renderHomePageFeaturing("whoseJaw", { allGames: true, language, newGames: ["whoseJaw", "coloring"] });
   expect(document.querySelectorAll(".home-new")).toHaveLength(1);
-  expect(part(".coloring-tile .home-new").textContent).toBe(language === "en" ? "NEW" : "НОВИНКА");
+  expect(part(".coloring-tile .home-new").getAttribute("aria-label")).toBe(language === "en" ? "NEW" : "НОВИНКА");
+  expect(part(".coloring-tile .home-new svg.lucide-sparkles")).not.toBeNull();
   expect(part(".home-sky").querySelector(".home-new")).toBeNull();
   fireEvent.click(part(".coloring-tile .home-new"));
   expect(opened).toEqual(["coloring"]);
@@ -53,7 +54,7 @@ for (const theme of ["light", "dark"]) for (const size of ["wide", "tall", "tall
     matches('.home-tile-footer', { "background-color": "label", color: "on-label", "border-radius": "radius-pill", "padding-left": "chip-pad-x-lead", "padding-right": "chip-pad-x" });
     matches('.home-tile-title', { "font-size": "size-label" });
     matches('.home-tile-symbol', { color: "action" });
-    matches('.home-new', { "background-color": "reward", color: "on-reward", "font-size": "size-tag", "border-radius": "radius-tag" });
+    matches('.home-new', { "background-color": "reward", color: "on-reward" });
     matches('.home-bedrock', { "background-color": "strata-3", color: "ink" });
     matches('.home-parent-note', { "font-size": "size-foot" });
     const phone = size === "tall-narrow" || size === "wide-short";
@@ -78,7 +79,7 @@ it("drops a new game's tag when its start is counted and the child returns home"
   } }) });
   const visit = localFeatured(() => storage, HOME_GAMES);
   const { user } = openHomeApp({ storage, startCounter: visit, newHomeGames: visit.newGames });
-  expect(homeTile("EXPLORE").querySelector(".home-new")?.textContent).toBe("NEW");
+  expect(homeTile("EXPLORE").querySelector(".home-new")?.getAttribute("aria-label")).toBe("NEW");
   await user.click(homeTile("EXPLORE"));
   await user.click(screen.getByRole("button", { name: "HOME" }));
   expect(homeTile("EXPLORE").querySelector(".home-new")).toBeNull();

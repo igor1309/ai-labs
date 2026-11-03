@@ -32,6 +32,7 @@ export function renderHomePageFeaturing(featured: HomeGame, { language = "en", s
   const view = render(
     <HomePage
       motion={motion}
+      tilesPerLayer={6}
       language={language}
       onLanguage={nothing}
       theme="light"

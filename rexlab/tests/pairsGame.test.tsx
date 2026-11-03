@@ -51,7 +51,7 @@ const NAMES = namesOf(dealt(1, { pals: THREE }));
 const [TRIKE, STEGO] = [placesOf(NAMES, "TRICERATOPS"), placesOf(NAMES, "STEGOSAURUS")];
 // Dinosaurs whose pictures the home page and the welcome screen do not
 // show, so they load only once dealt.
-const UNSEEN = [pal("velociraptor"), pal("allosaurus"), pal("pachycephalosaurus"), pal("diplodocus")];
+const UNSEEN = [pal("velociraptor"), pal("allosaurus"), pal("iguanodon"), pal("diplodocus")];
 
 const picked = (level: AgeLevel): AgeLevelSetting => ({ level, revision: `picked-${level}` });
 

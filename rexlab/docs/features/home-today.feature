@@ -10,7 +10,7 @@ Feature: Home page: today's game in the sky
     Given the app is in <language>
     And <game> is today's featured game
     When I open the home page
-    Then the sky shows a "<today>" tag, <game>'s symbol, its full name "<name>" in large capitals and its dinosaurs
+    Then the sky, named "<today>" for screen readers, shows <game>'s symbol, its full name "<name>" in large capitals and its dinosaurs
     And PLAY reads "<play>"
 
     Examples:

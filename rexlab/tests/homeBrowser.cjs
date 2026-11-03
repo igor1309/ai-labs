@@ -183,7 +183,7 @@ exports.runHome = async function(sizes) {
               groundScroll: part('.games-tiles').scrollWidth > part('.games-tiles').clientWidth,
               titlesFit: [...part('.games-tiles').querySelectorAll('.home-tile-title')].every(t => t.scrollWidth <= t.clientWidth + 1),
               noFeaturedTile: !part(`.games-tiles [data-turn-part="tile-${part('.featured-card').dataset.game}"]`),
-              tag: part('.home-today-tag').textContent,
+              skyName: part('.home-sky').getAttribute('aria-label'),
               play: part('.home-play').textContent,
               animations: [part('.home-today-copy'), part('.home-today-art')].map(e => getComputedStyle(e).animationName),
               skyCore: getComputedStyle(part('.home-sky-body span')).backgroundColor,
@@ -202,12 +202,12 @@ exports.runHome = async function(sizes) {
           assert(measured.tiles.every(b => b.height >= 44), `${label}: tile targets`);
           assert(measured.titlesFit, `${label}: tile names clipped`);
           assert(measured.noFeaturedTile, `${label}: featured tile repeated`);
-          assert.equal(measured.tag, language === 'en' ? 'TODAY' : 'СЕГОДНЯ', label);
+          assert.equal(measured.skyName, language === 'en' ? 'TODAY' : 'СЕГОДНЯ', label);
           assert.equal(measured.play, language === 'en' ? 'PLAY' : 'ИГРАТЬ', label);
           assert.deepEqual(measured.animations, ['fade-in', 'fade-in'], label);
           assert(!measured.groundScroll, `${label}: ground scrolls sideways`);
           if (width === 1180 || width === 1133) assert.deepEqual(measured.layerColumns, [6, 6], `${label}: six iPad tiles per band`);
-          if (width === 393 || width === 375) assert.deepEqual(measured.layerColumns, [3, 3], `${label}: three phone tiles per row`);
+          if (width === 393 || width === 375) assert.deepEqual(measured.layerColumns, [3, 3, 3, 3], `${label}: three phone tiles to each of four layers`);
           assert(measured.pocketHeights.every(h => h === (Math.min(width, height) < 600 ? 88 : 96)), `${label}: pocket size`);
           assert.notEqual(measured.bands[0], measured.bands[1], `${label}: earth deepens`);
           assert.notEqual(measured.bands[1], measured.bedrock, `${label}: bedrock`);
@@ -245,8 +245,8 @@ exports.runHome = async function(sizes) {
           }, games);
           await page.reload();
           await settle(page);
-          assert.deepEqual(await page.locator('.home-new').allTextContents(), ['NEW']);
-          assert.equal(await page.locator('.catalogue-tile .home-new').textContent(), 'NEW');
+          assert.equal(await page.locator('.home-new').count(), 1);
+          assert.equal(await page.locator('.catalogue-tile .home-new').getAttribute('aria-label'), 'NEW');
           await page.locator('.catalogue-tile').press('Enter');
           await page.locator('.catalogue').waitFor();
           await settle(page);

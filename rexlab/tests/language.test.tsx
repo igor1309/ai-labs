@@ -174,13 +174,14 @@ describe("the language menu", () => {
     ["en-GB", "en", "Language", "COMPARE"],
     ["ru-RU", "ru", "Язык", "СРАВНИ"]
   ] as const)(
-    "is a globe and the language's code on a button in the soft ink in the top-right corner of the home page only, on a %s device",
+    "is the language's flag on a round button in the soft ink in the top-right corner of the home page only, on a %s device",
     async (device, language, label, card) => {
       const { user } = openApp({ device });
       const button = screen.getByRole("button", { name: label });
 
-      expect(button.textContent).toBe(language.toUpperCase());
-      expect(button.querySelector("svg.lucide-globe")?.getAttribute("aria-hidden")).toBe("true");
+      expect(button.textContent).toBe("");
+      expect(button.querySelector("svg.language-flag-disc")?.getAttribute("data-language")).toBe(language);
+      expect(button.querySelector("svg.language-flag-disc")?.getAttribute("aria-hidden")).toBe("true");
       const corner = getComputedStyle(button.closest(".home-corner") ?? button);
       expect(corner.position).toBe("static");
       expect(button.closest("header")).not.toBeNull();
@@ -233,7 +234,7 @@ describe("the language menu", () => {
     await chooseFrom(user, "Language", "Русский");
 
     expect(screen.queryByRole("menu")).toBeNull();
-    expect(screen.getByRole("button", { name: "Язык" }).textContent).toBe("RU");
+    expect(screen.getByRole("button", { name: "Язык" }).querySelector("svg.language-flag-disc")?.getAttribute("data-language")).toBe("ru");
     expect(choicesIn(await openMenu(user, "Язык")).filter(({ tick }) => tick)).toEqual([{ name: "Русский", checked: true, tick: true }]);
   });
 

@@ -1,10 +1,11 @@
-import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Palette, Pencil, Globe, Play, Puzzle, Scale, Shapes, Star, Sun, Sparkles, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
+import { Route, Bone, BookOpen, Brush, Copy, Footprints, Heart, Landmark, Lock, Monitor, Moon, Palette, Pencil, Play, Puzzle, Scale, Shapes, Star, Sun, Sparkles, TriangleAlert, Trophy, type LucideIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { HomeMotion } from "./homeMotion.ts";
 import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
 import { LANGUAGE_FLAGS, LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
+import { LanguageFlag } from "./LanguageFlag.tsx";
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
 import { Picture } from "./Picture.tsx";
@@ -68,6 +69,8 @@ export type HomePageProps = {
   // come.
   labyrinth: { picture: string; stars: number | undefined };
   moreComing: string;
+  // How many tiles share a row; each row is its own layer of earth.
+  tilesPerLayer: number;
   onCompareDinosaurs: () => void;
   onCatalogue: () => void;
   onCare: () => void;
@@ -130,7 +133,8 @@ export function HomePage({
   onDig,
   sandWritingPicture,
   onSandWriting,
-  onLabyrinth
+  onLabyrinth,
+  tilesPerLayer
 }: HomePageProps) {
   const page = useRef<HTMLElement>(null);
   useLayoutEffect(() => motion(page.current!), [motion]);
@@ -176,7 +180,7 @@ export function HomePage({
     sort: {
       name: text.sort,
       symbol: Shapes,
-      picture: <span className="sort-tile-silhouette" style={{ "--silhouette": `url("${sort.picture}")` } as CSSProperties} />,
+      picture: <Picture className="sort-tile-picture" src={sort.picture} alt="" width={800} height={600} />,
       badge: sort.best === undefined ? undefined : { symbol: Trophy, value: sort.best },
       onOpen: onSort
     },
@@ -243,7 +247,7 @@ export function HomePage({
     return [game, (
       <Button key={game} className={`card home-ground-tile ${prefix}-tile`} data-turn-part={`tile-${game}`} aria-label={labels[game]} onClick={entry.onOpen}>
         <span className="home-tile-pocket">{entry.picture}</span>
-        {newGames.includes(game) && <span className="home-new"><Sparkles size={14} aria-hidden="true" />{text.homeNew}</span>}
+        {newGames.includes(game) && <span className="home-new" role="img" aria-label={text.homeNew}><Sparkles size={14} aria-hidden="true" /></span>}
         <span className={`${prefix}-tile-row home-tile-footer`}>
           <span className={`${prefix}-tile-symbol home-tile-symbol`} aria-hidden="true">
             {game === "whoseJaw" ? <Tooth /> : <Symbol size={20} />}
@@ -257,6 +261,15 @@ export function HomePage({
   const shown = HOME_GAMES.filter((game) => game !== featuredGame && (game !== "picturePuzzle" || picturePuzzle !== undefined) && (game !== "whoseJaw" || whoseJaw !== undefined) && (game !== "coloring" || coloring !== undefined));
   const today = games[featuredGame] ?? games.compare;
   const FeaturedSymbol = today.symbol;
+  const moreComingTile = (
+    <div key="moreComing" className="more-coming home-ground-tile" data-turn-part="more-coming" role="img" aria-label={labels.moreComing}>
+      <span className="home-tile-pocket"><Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} /></span>
+      <span className="more-coming-row home-tile-footer" aria-hidden="true">
+        <span className="home-tile-symbol" aria-hidden="true"><Lock size={18} /></span>
+        <span className="more-coming-title home-tile-title">{labels.moreComing}</span>
+      </span>
+    </div>
+  );
   return (
     <main ref={page} className="home home-dig-site">
       <header className="home-header">
@@ -282,8 +295,7 @@ export function HomePage({
           <div className="parent-menus">
             <ParentMenu
               label={text.languageMenu}
-              chip
-              button={<span className="home-language-chip" aria-hidden="true"><Globe size={18} />{language.toUpperCase()}</span>}
+              button={<LanguageFlag language={language} />}
               choices={LANGUAGES.map((option) => ({
                 value: option,
                 name: LANGUAGE_NAMES[option],
@@ -335,7 +347,6 @@ export function HomePage({
           onClick={today.onOpen}
         >
           <span className="home-today-copy">
-            <span className="home-today-tag"><Sun size={14} aria-hidden="true" />{text.today}</span>
             <span className="featured-card-footer">
               <span className="featured-card-symbol" aria-hidden="true">
                 {featuredGame === "whoseJaw" ? <Tooth /> : <FeaturedSymbol size={36} />}
@@ -357,18 +368,11 @@ export function HomePage({
         </svg>
       </section>
       <div className="home-ground games-tiles">
-        {[shown.slice(0, 6), shown.slice(6)].map((layer, index) => (
-          <div className="home-layer" data-depth={index + 1} key={index}>
+        {layersOf([...shown, "moreComing" as const], tilesPerLayer).map((layer, index) => (
+          <div className="home-layer" data-depth={index % 2 + 1} key={index}>
             {index > 0 && <EarthEdge />}
-            <div className="tiles-grid">
-              {layer.map((game) => tiles[game])}
-              {index === 1 && <div className="more-coming home-ground-tile" data-turn-part="more-coming" role="img" aria-label={labels.moreComing}>
-                <span className="home-tile-pocket"><Picture className="more-coming-picture" src={moreComing} alt="" width={800} height={600} /></span>
-                <span className="more-coming-row home-tile-footer" aria-hidden="true">
-                  <span className="home-tile-symbol" aria-hidden="true"><Lock size={18} /></span>
-                  <span className="more-coming-title home-tile-title">{labels.moreComing}</span>
-                </span>
-              </div>}
+            <div className="tiles-grid" style={{ "--tiles-per-layer": tilesPerLayer } as CSSProperties}>
+              {layer.map((game) => game === "moreComing" ? moreComingTile : tiles[game])}
             </div>
           </div>
         ))}
@@ -380,6 +384,11 @@ export function HomePage({
       </footer>
     </main>
   );
+}
+
+// The tiles, a layer of earth to each row.
+function layersOf<Tile>(tiles: readonly Tile[], perLayer: number): Tile[][] {
+  return Array.from({ length: Math.ceil(tiles.length / perLayer) }, (_, at) => tiles.slice(at * perLayer, (at + 1) * perLayer));
 }
 
 function EarthEdge() {
