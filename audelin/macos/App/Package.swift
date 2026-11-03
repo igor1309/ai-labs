@@ -40,13 +40,8 @@ let package = Package(
         .executableTarget(
             name: "AudelinRehearsal",
             dependencies: [
-                "Composer",
-                .product(name: "PanelUI", package: "macos"),
-                .product(name: "Reading", package: "macos"),
-                .product(name: "Recording", package: "macos"),
-                .product(name: "Session", package: "macos"),
-                "SessionRehearsal",
-                .product(name: "IMRxObservation", package: "swift-imrx"),
+                "Composer", "SessionRehearsal",
+                .product(name: "LiveText", package: "macos"), .product(name: "ParakeetRecognizer", package: "macos"),
             ]
         ),
         .target(

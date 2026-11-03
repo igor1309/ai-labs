@@ -3,6 +3,7 @@
 ## 2026-11-03
 
 - LAB-914: Home is the dig site: today's game in the sky with PLAY and its progress, every other game as a pocket tile in deepening earth each with its dinosaur, a sparkle on games added since the first visit and SOON last, three to a layer on phones, the parents' note on the bedrock; one page scroll from sky to bedrock with a slower sky; the T. rex logo, and the language menu shows its flag.
+- Dig site: each Home tile and featured hero shows its own game's dinosaur in that game's form (a Triceratops pair for PAIRS, a half-dug Therizinosaurus for DIG), and no hero borrows another game's dinosaur.
 - In Russian, Home's large card names the catalogue ДРЕВНИЕ ЯЩЕРЫ when it is today's game, as in English, instead of the old tile word ВСЕ.
 - A page change cut short by the window resizing no longer leaves an unhandled error behind.
 
