@@ -541288,6 +541288,324 @@
           "height": 5
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "sMaL7",
+      "x": 20209,
+      "y": 15444,
+      "name": "DIG · reveal · new best · iPad mini upright 744×1133 · Light",
+      "theme": {
+        "mode": "light",
+        "device": "ipad"
+      },
+      "clip": true,
+      "width": 744,
+      "height": 1133,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.5
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "fRcWQ",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 460,
+          "width": 744,
+          "descendants": {
+            "uZToM": {
+              "width": 744,
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "id": "eqyCV",
+          "type": "ref",
+          "ref": "S542ia",
+          "name": "Celebration",
+          "x": 92,
+          "y": 50,
+          "descendants": {
+            "k3GFg7": {
+              "fill": {
+                "type": "image",
+                "enabled": true,
+                "url": "images/triceratops.webp",
+                "mode": "contain"
+              }
+            },
+            "sbJOe": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "Nnn93",
+          "x": 0,
+          "y": 480,
+          "name": "Layer 1 · Sand",
+          "width": 744,
+          "height": 583,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "gap": "$ds-space-20",
+          "padding": [
+            "$ds-space-40",
+            "$ds-space-56",
+            0,
+            "$ds-space-56"
+          ],
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "SHYIY",
+              "name": "Name",
+              "fill": "$ds-ink",
+              "content": "TRICERATOPS",
+              "fontFamily": "$ds-font",
+              "fontSize": "$ds-size-display",
+              "fontWeight": "800",
+              "letterSpacing": -1
+            },
+            {
+              "id": "B0yqBg",
+              "type": "ref",
+              "ref": "TxEoT",
+              "name": "Dug up",
+              "descendants": {
+                "QMAvP": {
+                  "enabled": true
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "MoTn2",
+              "name": "New best",
+              "fill": "$ds-reward",
+              "cornerRadius": "$ds-radius-tag",
+              "gap": "$ds-btn-gap",
+              "padding": [
+                "$ds-btn-gap",
+                "$ds-space-18",
+                "$ds-btn-gap",
+                "$ds-space-14"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "rqUXG",
+                  "name": "Icon",
+                  "width": 28,
+                  "height": 28,
+                  "icon": "trophy-fill",
+                  "library": "phosphor",
+                  "fill": "$ds-on-reward"
+                },
+                {
+                  "type": "text",
+                  "id": "zKWKi",
+                  "name": "Label",
+                  "fill": "$ds-on-reward",
+                  "content": "NEW BEST!",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-20",
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "k6vXS6",
+                  "name": "Number",
+                  "fill": "$ds-on-reward",
+                  "content": "5",
+                  "fontFamily": "$ds-font",
+                  "fontSize": "$ds-size-26",
+                  "fontWeight": "800"
+                }
+              ]
+            },
+            {
+              "id": "XKvOS",
+              "type": "ref",
+              "ref": "I0PBB",
+              "name": "Level switch"
+            },
+            {
+              "type": "frame",
+              "id": "a851e",
+              "name": "Buttons",
+              "gap": "$ds-space-l",
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "sNNwX",
+                  "type": "ref",
+                  "ref": "q7W1Cw",
+                  "name": "Play again",
+                  "descendants": {
+                    "h8hp2i": {
+                      "icon": "rotate-ccw"
+                    },
+                    "kWZZZ": {
+                      "content": "DIG AGAIN"
+                    }
+                  }
+                },
+                {
+                  "id": "ABWNC",
+                  "type": "ref",
+                  "ref": "YcGaY",
+                  "name": "Home",
+                  "descendants": {
+                    "q6PILi": {
+                      "icon": "house"
+                    },
+                    "xdZD6": {
+                      "content": "HOME"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "GRP0G",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 1063,
+          "width": 744,
+          "descendants": {
+            "uZToM": {
+              "width": 744,
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "B7qm0",
+          "x": 0,
+          "y": 1083,
+          "name": "Layer 2 · Ochre",
+          "width": 744,
+          "height": 50,
+          "fill": "$ds-strata-2",
+          "layout": "none"
+        },
+        {
+          "type": "frame",
+          "id": "bUNdk",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 744,
+          "height": 24,
+          "padding": [
+            "$ds-space-xs",
+            "$ds-space-xl",
+            0,
+            "$ds-space-xl"
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "F1bPwF",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41  Mon 2 Nov",
+              "fontFamily": "Inter",
+              "fontSize": "$ds-size-13",
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "JKybX",
+              "name": "Indicators",
+              "gap": "$ds-space-6",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "utJTf",
+                  "name": "signal",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "l62vQ9",
+                  "name": "wifi",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "n2AJnN",
+                  "name": "battery-full",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": "$ds-radius-3",
+          "id": "iw18t",
+          "x": 212,
+          "y": 1121,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 320,
+          "height": 5
+        },
+        {
+          "id": "UmeXx",
+          "type": "ref",
+          "ref": "SUciX",
+          "name": "Field guide",
+          "x": 644,
+          "y": 30
+        }
+      ]
     }
   ],
   "themes": {
