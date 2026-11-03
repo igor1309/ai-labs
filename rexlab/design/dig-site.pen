@@ -11295,7 +11295,7 @@
       },
       "clip": true,
       "width": 393,
-      "height": 1220,
+      "height": 1276,
       "fill": {
         "type": "gradient",
         "gradientType": "linear",
@@ -11535,16 +11535,17 @@
           "height": 144
         },
         {
-          "id": "MPIaH",
+          "id": "d5x3oH",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
-          "x": 0,
           "y": 458,
+          "x": 0,
           "width": 393,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -11553,35 +11554,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-1"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "U8bi8",
+          "id": "x2lkD5",
           "x": 0,
           "y": 474,
           "name": "Layer 1 · Sand",
           "width": 393,
-          "height": 318,
           "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 18,
           "padding": [
             16,
             20,
-            0,
+            24,
             20
           ],
           "children": [
             {
               "type": "frame",
-              "id": "Apo6A",
-              "name": "Row 1",
+              "id": "QCI4U",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "JvZNE",
@@ -11689,13 +11688,56 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "IS5ke",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "y": 630,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "puXAD",
+          "x": 0,
+          "y": 646,
+          "name": "Layer 2 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
             {
               "type": "frame",
-              "id": "P4Iyc",
-              "name": "Row 2",
+              "id": "H21lT",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "MGNZz",
@@ -11705,7 +11747,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -11740,7 +11782,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -11775,7 +11817,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -11807,16 +11849,17 @@
           ]
         },
         {
-          "id": "OjiwQ",
+          "id": "SscTE",
           "type": "ref",
           "ref": "m8Jt7",
-          "name": "Layer 2 · Ochre edge",
+          "name": "Layer 3 · Sand edge",
+          "y": 802,
           "x": 0,
-          "y": 776,
           "width": 393,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -11825,35 +11868,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-2"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "Wubd7",
+          "id": "mHKRx",
           "x": 0,
-          "y": 792,
-          "name": "Layer 2 · Ochre",
+          "y": 818,
+          "name": "Layer 3 · Sand",
           "width": 393,
-          "height": 318,
-          "fill": "$ds-strata-2",
+          "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 18,
           "padding": [
             16,
             20,
-            0,
+            24,
             20
           ],
           "children": [
             {
               "type": "frame",
-              "id": "haUgs",
-              "name": "Row 1",
+              "id": "WwpmK",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "BHwss",
@@ -11863,7 +11904,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -11898,7 +11939,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -11933,7 +11974,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -11961,13 +12002,56 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "m1tgbK",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 4 · Ochre edge",
+          "y": 974,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "OcuHR",
+          "x": 0,
+          "y": 990,
+          "name": "Layer 4 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
             {
               "type": "frame",
-              "id": "f0QOE",
-              "name": "Row 2",
+              "id": "plAig",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "W2G31d",
@@ -12078,7 +12162,7 @@
           "ref": "m8Jt7",
           "name": "Bedrock edge",
           "x": 0,
-          "y": 1094,
+          "y": 1150,
           "width": 393,
           "height": 24,
           "descendants": {
@@ -12100,7 +12184,7 @@
           "type": "frame",
           "id": "YNrrh",
           "x": 0,
-          "y": 1110,
+          "y": 1166,
           "name": "Bedrock",
           "width": 393,
           "height": 110,
@@ -12140,7 +12224,7 @@
           "cornerRadius": 3,
           "id": "fY9mc",
           "x": 130,
-          "y": 1207,
+          "y": 1263,
           "name": "Home indicator",
           "fill": "$ds-ink",
           "width": 134,
@@ -13616,7 +13700,7 @@
       },
       "clip": true,
       "width": 393,
-      "height": 1220,
+      "height": 1276,
       "fill": {
         "type": "gradient",
         "gradientType": "linear",
@@ -13856,16 +13940,17 @@
           "height": 144
         },
         {
-          "id": "RshNN",
+          "id": "jCPlu",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
-          "x": 0,
           "y": 458,
+          "x": 0,
           "width": 393,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -13874,35 +13959,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-1"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "r7vA0",
+          "id": "Zi5Tk",
           "x": 0,
           "y": 474,
           "name": "Layer 1 · Sand",
           "width": 393,
-          "height": 318,
           "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 18,
           "padding": [
             16,
             20,
-            0,
+            24,
             20
           ],
           "children": [
             {
               "type": "frame",
-              "id": "y8q4t",
-              "name": "Row 1",
+              "id": "J0Z4hU",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "WznMh",
@@ -14010,13 +14093,56 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "y49WGF",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "y": 630,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "asTi6",
+          "x": 0,
+          "y": 646,
+          "name": "Layer 2 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
             {
               "type": "frame",
-              "id": "zjHyX",
-              "name": "Row 2",
+              "id": "wFkOn",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "ugMuy",
@@ -14026,7 +14152,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -14061,7 +14187,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -14096,7 +14222,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -14128,16 +14254,17 @@
           ]
         },
         {
-          "id": "Qi2nd",
+          "id": "wog5x",
           "type": "ref",
           "ref": "m8Jt7",
-          "name": "Layer 2 · Ochre edge",
+          "name": "Layer 3 · Sand edge",
+          "y": 802,
           "x": 0,
-          "y": 776,
           "width": 393,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -14146,35 +14273,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-2"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "y9sL2",
+          "id": "P2aX6W",
           "x": 0,
-          "y": 792,
-          "name": "Layer 2 · Ochre",
+          "y": 818,
+          "name": "Layer 3 · Sand",
           "width": 393,
-          "height": 318,
-          "fill": "$ds-strata-2",
+          "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 18,
           "padding": [
             16,
             20,
-            0,
+            24,
             20
           ],
           "children": [
             {
               "type": "frame",
-              "id": "SRM9n",
-              "name": "Row 1",
+              "id": "odgPl",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "qsrxL",
@@ -14184,7 +14309,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -14219,7 +14344,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -14254,7 +14379,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -14282,13 +14407,56 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "JOYtF",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 4 · Ochre edge",
+          "y": 974,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "HNYvd",
+          "x": 0,
+          "y": 990,
+          "name": "Layer 4 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
             {
               "type": "frame",
-              "id": "MELiv",
-              "name": "Row 2",
+              "id": "Q9wb82",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "T6csK",
@@ -14407,7 +14575,7 @@
           "ref": "m8Jt7",
           "name": "Bedrock edge",
           "x": 0,
-          "y": 1094,
+          "y": 1150,
           "width": 393,
           "height": 24,
           "descendants": {
@@ -14429,7 +14597,7 @@
           "type": "frame",
           "id": "C82rgY",
           "x": 0,
-          "y": 1110,
+          "y": 1166,
           "name": "Bedrock",
           "width": 393,
           "height": 110,
@@ -14469,7 +14637,7 @@
           "cornerRadius": 3,
           "id": "Zmnpu",
           "x": 130,
-          "y": 1207,
+          "y": 1263,
           "name": "Home indicator",
           "fill": "$ds-ink",
           "width": 134,
@@ -17657,16 +17825,17 @@
           "height": 144
         },
         {
-          "id": "ufAjZ",
+          "id": "olM6L",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
-          "x": 0,
           "y": 458,
+          "x": 0,
           "width": 393,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -17675,35 +17844,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-1"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "Fkqzf",
+          "id": "NGQVt",
           "x": 0,
           "y": 474,
           "name": "Layer 1 · Sand",
           "width": 393,
-          "height": 318,
           "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 18,
           "padding": [
             16,
             20,
-            0,
+            24,
             20
           ],
           "children": [
             {
               "type": "frame",
-              "id": "McOsr",
-              "name": "Row 1",
+              "id": "c5yXa4",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "Dt1FK",
@@ -17811,13 +17978,56 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "sUnn6",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "y": 630,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "s941z",
+          "x": 0,
+          "y": 646,
+          "name": "Layer 2 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
             {
               "type": "frame",
-              "id": "Lad5F",
-              "name": "Row 2",
+              "id": "B17mq",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "NWA6h",
@@ -17827,7 +18037,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -17862,7 +18072,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -17897,7 +18107,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -17929,16 +18139,17 @@
           ]
         },
         {
-          "id": "aMoAg",
+          "id": "NYtwm",
           "type": "ref",
           "ref": "m8Jt7",
-          "name": "Layer 2 · Ochre edge",
+          "name": "Layer 3 · Sand edge",
+          "y": 802,
           "x": 0,
-          "y": 776,
           "width": 393,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -17947,35 +18158,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-2"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "SmipE",
+          "id": "lNBLC",
           "x": 0,
-          "y": 792,
-          "name": "Layer 2 · Ochre",
+          "y": 818,
+          "name": "Layer 3 · Sand",
           "width": 393,
-          "height": 318,
-          "fill": "$ds-strata-2",
+          "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 18,
           "padding": [
             16,
             20,
-            0,
+            24,
             20
           ],
           "children": [
             {
               "type": "frame",
-              "id": "U7LT7",
-              "name": "Row 1",
+              "id": "n1I2h",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "JJHiz",
@@ -17985,7 +18194,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -18020,7 +18229,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -18055,7 +18264,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -18083,13 +18292,56 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "IKBLf",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 4 · Ochre edge",
+          "y": 974,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "mDg0I",
+          "x": 0,
+          "y": 990,
+          "name": "Layer 4 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
             {
               "type": "frame",
-              "id": "degEq",
-              "name": "Row 2",
+              "id": "q2mNeZ",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "FXUoQ",
@@ -18200,7 +18452,7 @@
           "ref": "m8Jt7",
           "name": "Bedrock edge",
           "x": 0,
-          "y": 1094,
+          "y": 1150,
           "width": 393,
           "height": 24,
           "descendants": {
@@ -18222,7 +18474,7 @@
           "type": "frame",
           "id": "H5W1OQ",
           "x": 0,
-          "y": 1110,
+          "y": 1166,
           "name": "Bedrock",
           "width": 393,
           "height": 110,
@@ -18343,7 +18595,7 @@
           "fill": "$ds-ink-soft",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "Sky with today's game, then sand, ochre and bedrock. Each row of games is one earth layer; going down means digging deeper.",
+          "content": "Sky with today's game, then the earth. Each row of games is one earth layer, Sand and Ochre in turn, and bedrock is always last; going down means digging deeper.",
           "lineHeight": 1.45,
           "fontFamily": "$ds-font",
           "fontSize": 14,
@@ -18356,7 +18608,7 @@
           "fill": "$ds-ink",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "iPad 11 and iPad mini",
+          "content": "Tiles flow",
           "fontFamily": "$ds-font",
           "fontSize": 15,
           "fontWeight": "700"
@@ -18368,7 +18620,7 @@
           "fill": "$ds-ink-soft",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "Every game fits the first screen in landscape. Scrolling only uncovers the bedrock with the parent note: 30 px on iPad 11, 72 px on mini. A third row of games becomes a deeper layer and the page grows.",
+          "content": "A row holds as many tiles as fit between the margins at their smallest: 150 on iPad and desktop (gap 12), 100 on phones (gap 10). The twelve tiles (eleven games and SOON) are spread evenly over as few rows as that allows, longer rows first, so rows differ by one tile at most and no tile is left alone. Tiles widen up to 200 on iPad and 130 on phones, and each row is centred. Never a fixed count of columns: the board beside this note shows eight widths.",
           "lineHeight": 1.45,
           "fontFamily": "$ds-font",
           "fontSize": 14,
@@ -18381,7 +18633,7 @@
           "fill": "$ds-ink",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "iPhone",
+          "content": "iPhone and iPhone SE",
           "fontFamily": "$ds-font",
           "fontSize": 15,
           "fontWeight": "700"
@@ -18393,7 +18645,7 @@
           "fill": "$ds-ink-soft",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "The first screen holds today's game and the first layer; the next layer's pockets peek above the home indicator, so there is visibly more below. The whole page is about 1.4 screens.",
+          "content": "Four layers of three. The first screen holds today's game and the first layer, and the next layer's pockets peek above the home indicator, so there is visibly more below. The iPhone SE keeps the same page; its first screen ends inside the first layer.",
           "lineHeight": 1.45,
           "fontFamily": "$ds-font",
           "fontSize": 14,
@@ -18406,7 +18658,7 @@
           "fill": "$ds-ink",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "iPad upright, iPhone SE, iPhone on its side",
+          "content": "iPad, upright and on its side",
           "fontFamily": "$ds-font",
           "fontSize": 15,
           "fontWeight": "700"
@@ -18418,7 +18670,7 @@
           "fill": "$ds-ink-soft",
           "textGrowth": "fixed-width",
           "width": "fill_container",
-          "content": "The iPad upright stacks like the iPhone: today's game over the dinosaurs, then each layer as two rows of three, so the next layer's tiles show below the first. The iPhone SE keeps the iPhone's page; its first screen ends inside the first row. On its side the iPhone keeps a layer to one row of six between the safe edges, as on the iPad, and the first screen shows the tops of the first row.",
+          "content": "iPad mini and iPad 11 in landscape, and the iPhone on its side, have two layers of six; on the iPad every game fits the first screen and scrolling only uncovers the bedrock with the parent note. The iPad upright has three layers of four under today's game, all on the first screen.",
           "lineHeight": 1.45,
           "fontFamily": "$ds-font",
           "fontSize": 14,
@@ -420093,14 +420345,14 @@
       "id": "N0CM6u",
       "x": 6273,
       "y": 7400,
-      "name": "Home · Dig site · iPad mini upright 744×1133 · Light · whole page (1356)",
+      "name": "Home · Dig site · iPad mini upright 744×1133 · Light · whole page (1259)",
       "theme": {
         "mode": "light",
         "device": "ipad"
       },
       "clip": true,
       "width": 744,
-      "height": 1356,
+      "height": 1259,
       "fill": {
         "type": "gradient",
         "gradientType": "linear",
@@ -420340,16 +420592,17 @@
           "height": 250
         },
         {
-          "id": "q6OGEf",
+          "id": "gjKY7",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
-          "x": 0,
           "y": 597,
+          "x": 0,
           "width": 744,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -420358,34 +420611,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-1"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "KZNvk",
+          "id": "WCqys",
           "x": 0,
           "y": 613,
           "name": "Layer 1 · Sand",
           "width": 744,
           "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 20,
           "padding": [
             20,
             32,
-            8,
+            24,
             32
           ],
           "children": [
             {
               "type": "frame",
-              "id": "gVBtc",
-              "name": "Row 1",
+              "id": "v3mhht",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "MNkun",
@@ -420491,16 +420743,7 @@
                       "content": "BONES"
                     }
                   }
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "HkdwF",
-              "name": "Row 2",
-              "width": "fill_container",
-              "gap": 10,
-              "children": [
+                },
                 {
                   "id": "Sts5z",
                   "type": "ref",
@@ -420535,7 +420778,59 @@
                       "content": "DIG"
                     }
                   }
-                },
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "EEbDZ",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "y": 778,
+          "x": 0,
+          "width": 744,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "hvxGd",
+          "x": 0,
+          "y": 794,
+          "name": "Layer 2 · Ochre",
+          "width": 744,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            20,
+            32,
+            24,
+            32
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "p0iBBQ",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": 10,
+              "justifyContent": "center",
+              "children": [
                 {
                   "id": "i0XQ9",
                   "type": "ref",
@@ -420544,7 +420839,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -420579,7 +420874,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -420605,59 +420900,7 @@
                       "content": "CARE"
                     }
                   }
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "sDV1L",
-          "type": "ref",
-          "ref": "m8Jt7",
-          "name": "Layer 2 · Ochre edge",
-          "x": 0,
-          "y": 917,
-          "width": 744,
-          "height": 24,
-          "descendants": {
-            "uZToM": {
-              "width": 393,
-              "height": 24,
-              "viewBox": [
-                0,
-                0,
-                393,
-                24
-              ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-2"
-            }
-          }
-        },
-        {
-          "type": "frame",
-          "id": "d3WzIX",
-          "x": 0,
-          "y": 933,
-          "name": "Layer 2 · Ochre",
-          "width": 744,
-          "fill": "$ds-strata-2",
-          "layout": "vertical",
-          "gap": 20,
-          "padding": [
-            20,
-            32,
-            8,
-            32
-          ],
-          "children": [
-            {
-              "type": "frame",
-              "id": "zV2uY",
-              "name": "Row 1",
-              "width": "fill_container",
-              "gap": 10,
-              "children": [
+                },
                 {
                   "id": "BbOQB",
                   "type": "ref",
@@ -420727,7 +420970,59 @@
                       "content": "MAZE"
                     }
                   }
-                },
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "SK0yY",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 3 · Sand edge",
+          "y": 959,
+          "x": 0,
+          "width": 744,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-1",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "it8aR",
+          "x": 0,
+          "y": 975,
+          "name": "Layer 3 · Sand",
+          "width": 744,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "padding": [
+            20,
+            32,
+            24,
+            32
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "Q5YzW",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": 10,
+              "justifyContent": "center",
+              "children": [
                 {
                   "id": "Zyeqd",
                   "type": "ref",
@@ -420736,7 +421031,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -420762,16 +421057,7 @@
                       "content": "PUZZLE"
                     }
                   }
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "Ir3z0",
-              "name": "Row 2",
-              "width": "fill_container",
-              "gap": 10,
-              "children": [
+                },
                 {
                   "id": "jCyfE",
                   "type": "ref",
@@ -420780,7 +421066,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -420821,7 +421107,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -420856,7 +421142,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "xEUIu": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -420881,7 +421167,7 @@
           "ref": "m8Jt7",
           "name": "Bedrock edge",
           "x": 0,
-          "y": 1239,
+          "y": 1142,
           "width": 744,
           "height": 24,
           "descendants": {
@@ -420903,7 +421189,7 @@
           "type": "frame",
           "id": "DA7YR",
           "x": 0,
-          "y": 1255,
+          "y": 1158,
           "name": "Bedrock",
           "width": 744,
           "fill": "$ds-strata-3",
@@ -420942,7 +421228,7 @@
           "cornerRadius": 3,
           "id": "HHOOF",
           "x": 212,
-          "y": 1343,
+          "y": 1246,
           "name": "Home indicator",
           "fill": "$ds-ink",
           "width": 320,
@@ -421202,16 +421488,17 @@
           "height": 250
         },
         {
-          "id": "a22Z0",
+          "id": "hwv8H",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
-          "x": 0,
           "y": 597,
+          "x": 0,
           "width": 744,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -421220,34 +421507,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-1"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "aluBK",
+          "id": "fOWme",
           "x": 0,
           "y": 613,
           "name": "Layer 1 · Sand",
           "width": 744,
           "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 20,
           "padding": [
             20,
             32,
-            8,
+            24,
             32
           ],
           "children": [
             {
               "type": "frame",
-              "id": "k4A4H",
-              "name": "Row 1",
+              "id": "uMVkn",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "E54NY",
@@ -421353,16 +421639,7 @@
                       "content": "BONES"
                     }
                   }
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "D3VDv",
-              "name": "Row 2",
-              "width": "fill_container",
-              "gap": 10,
-              "children": [
+                },
                 {
                   "id": "HzHs8",
                   "type": "ref",
@@ -421397,7 +421674,59 @@
                       "content": "DIG"
                     }
                   }
-                },
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "S7RhG",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "y": 778,
+          "x": 0,
+          "width": 744,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "ZKqYw",
+          "x": 0,
+          "y": 794,
+          "name": "Layer 2 · Ochre",
+          "width": 744,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            20,
+            32,
+            24,
+            32
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "hFwAL",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": 10,
+              "justifyContent": "center",
+              "children": [
                 {
                   "id": "I6eVMZ",
                   "type": "ref",
@@ -421406,7 +421735,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -421441,7 +421770,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -421467,59 +421796,7 @@
                       "content": "CARE"
                     }
                   }
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "id": "t76JC",
-          "type": "ref",
-          "ref": "m8Jt7",
-          "name": "Layer 2 · Ochre edge",
-          "x": 0,
-          "y": 917,
-          "width": 744,
-          "height": 24,
-          "descendants": {
-            "uZToM": {
-              "width": 393,
-              "height": 24,
-              "viewBox": [
-                0,
-                0,
-                393,
-                24
-              ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-2"
-            }
-          }
-        },
-        {
-          "type": "frame",
-          "id": "Ipo5X",
-          "x": 0,
-          "y": 933,
-          "name": "Layer 2 · Ochre",
-          "width": 744,
-          "fill": "$ds-strata-2",
-          "layout": "vertical",
-          "gap": 20,
-          "padding": [
-            20,
-            32,
-            8,
-            32
-          ],
-          "children": [
-            {
-              "type": "frame",
-              "id": "Udld3",
-              "name": "Row 1",
-              "width": "fill_container",
-              "gap": 10,
-              "children": [
+                },
                 {
                   "id": "yhJXB",
                   "type": "ref",
@@ -421589,7 +421866,59 @@
                       "content": "MAZE"
                     }
                   }
-                },
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "M8JAM9",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 3 · Sand edge",
+          "y": 959,
+          "x": 0,
+          "width": 744,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-1",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "ZBjyK",
+          "x": 0,
+          "y": 975,
+          "name": "Layer 3 · Sand",
+          "width": 744,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "padding": [
+            20,
+            32,
+            24,
+            32
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "WK35I",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": 10,
+              "justifyContent": "center",
+              "children": [
                 {
                   "id": "Q5UvP",
                   "type": "ref",
@@ -421598,7 +421927,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -421624,16 +421953,7 @@
                       "content": "PUZZLE"
                     }
                   }
-                }
-              ]
-            },
-            {
-              "type": "frame",
-              "id": "E4OfK",
-              "name": "Row 2",
-              "width": "fill_container",
-              "gap": 10,
-              "children": [
+                },
                 {
                   "id": "A1d2N9",
                   "type": "ref",
@@ -421642,7 +421962,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -421683,7 +422003,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -421718,7 +422038,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "xEUIu": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -421743,7 +422063,7 @@
           "ref": "m8Jt7",
           "name": "Bedrock edge",
           "x": 0,
-          "y": 1239,
+          "y": 1142,
           "width": 744,
           "height": 24,
           "descendants": {
@@ -421765,7 +422085,7 @@
           "type": "frame",
           "id": "P5dhL6",
           "x": 0,
-          "y": 1255,
+          "y": 1158,
           "name": "Bedrock",
           "width": 744,
           "fill": "$ds-strata-3",
@@ -422064,16 +422384,17 @@
           "height": 144
         },
         {
-          "id": "d1c5oc",
+          "id": "U2rvpX",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
-          "x": 0,
           "y": 458,
+          "x": 0,
           "width": 375,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -422082,35 +422403,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-1"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "WNsP2",
+          "id": "hDGXI",
           "x": 0,
           "y": 474,
           "name": "Layer 1 · Sand",
           "width": 375,
-          "height": 318,
           "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 18,
           "padding": [
             16,
             20,
-            0,
+            24,
             20
           ],
           "children": [
             {
               "type": "frame",
-              "id": "gxxS8",
-              "name": "Row 1",
+              "id": "PZmyL",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "VUhpj",
@@ -422218,13 +422537,56 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "tqUGb",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "y": 630,
+          "x": 0,
+          "width": 375,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "C2vj74",
+          "x": 0,
+          "y": 646,
+          "name": "Layer 2 · Ochre",
+          "width": 375,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
             {
               "type": "frame",
-              "id": "Oq1GQ",
-              "name": "Row 2",
+              "id": "nO5EM",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "QE79J",
@@ -422234,7 +422596,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -422269,7 +422631,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -422304,7 +422666,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -422336,16 +422698,17 @@
           ]
         },
         {
-          "id": "yrCiH",
+          "id": "pHDE1",
           "type": "ref",
           "ref": "m8Jt7",
-          "name": "Layer 2 · Ochre edge",
+          "name": "Layer 3 · Sand edge",
+          "y": 802,
           "x": 0,
-          "y": 776,
           "width": 375,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -422354,35 +422717,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-2"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "oHo93",
+          "id": "mWQaK",
           "x": 0,
-          "y": 792,
-          "name": "Layer 2 · Ochre",
+          "y": 818,
+          "name": "Layer 3 · Sand",
           "width": 375,
-          "height": 318,
-          "fill": "$ds-strata-2",
+          "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 18,
           "padding": [
             16,
             20,
-            0,
+            24,
             20
           ],
           "children": [
             {
               "type": "frame",
-              "id": "SwQvy",
-              "name": "Row 1",
+              "id": "b3X97K",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "KaSAN",
@@ -422392,7 +422753,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -422427,7 +422788,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -422462,7 +422823,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -422490,13 +422851,56 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "wCIIs",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 4 · Ochre edge",
+          "y": 974,
+          "x": 0,
+          "width": 375,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "fL3dx",
+          "x": 0,
+          "y": 990,
+          "name": "Layer 4 · Ochre",
+          "width": 375,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
             {
               "type": "frame",
-              "id": "J3uX4W",
-              "name": "Row 2",
+              "id": "tLs90",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "nZLju",
@@ -422607,7 +423011,7 @@
           "ref": "m8Jt7",
           "name": "Bedrock edge",
           "x": 0,
-          "y": 1094,
+          "y": 1150,
           "width": 375,
           "height": 24,
           "descendants": {
@@ -422629,7 +423033,7 @@
           "type": "frame",
           "id": "V3KmLJ",
           "x": 0,
-          "y": 1110,
+          "y": 1166,
           "name": "Bedrock",
           "width": 375,
           "height": 110,
@@ -425047,16 +425451,17 @@
           "height": 144
         },
         {
-          "id": "P4n0Pe",
+          "id": "f1Rx1M",
           "type": "ref",
           "ref": "m8Jt7",
           "name": "Layer 1 · Sand edge",
-          "x": 0,
           "y": 458,
+          "x": 0,
           "width": 393,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -425065,35 +425470,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-1"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "Fdnu5",
+          "id": "lbA6A",
           "x": 0,
           "y": 474,
           "name": "Layer 1 · Sand",
           "width": 393,
-          "height": 318,
           "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 18,
           "padding": [
             16,
             20,
-            0,
+            24,
             20
           ],
           "children": [
             {
               "type": "frame",
-              "id": "S7GUq1",
-              "name": "Row 1",
+              "id": "QUX8Q",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "hHA1K",
@@ -425210,13 +425613,56 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "gBMUK",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "y": 630,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "unGFa",
+          "x": 0,
+          "y": 646,
+          "name": "Layer 2 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
             {
               "type": "frame",
-              "id": "WVScR",
-              "name": "Row 2",
+              "id": "k4De5",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "l2Mdo",
@@ -425226,7 +425672,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -425264,7 +425710,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -425302,7 +425748,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-1",
+                      "fill": "$ds-pocket-2",
                       "height": 88,
                       "padding": [
                         8,
@@ -425337,16 +425783,17 @@
           ]
         },
         {
-          "id": "ceHXV",
+          "id": "o3wUtG",
           "type": "ref",
           "ref": "m8Jt7",
-          "name": "Layer 2 · Ochre edge",
+          "name": "Layer 3 · Sand edge",
+          "y": 802,
           "x": 0,
-          "y": 776,
           "width": 393,
           "height": 24,
           "descendants": {
             "uZToM": {
+              "fill": "$ds-strata-1",
               "width": 393,
               "height": 24,
               "viewBox": [
@@ -425355,35 +425802,33 @@
                 393,
                 24
               ],
-              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
-              "fill": "$ds-strata-2"
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
             }
           }
         },
         {
           "type": "frame",
-          "id": "TnRbP",
+          "id": "i7giw",
           "x": 0,
-          "y": 792,
-          "name": "Layer 2 · Ochre",
+          "y": 818,
+          "name": "Layer 3 · Sand",
           "width": 393,
-          "height": 318,
-          "fill": "$ds-strata-2",
+          "fill": "$ds-strata-1",
           "layout": "vertical",
-          "gap": 18,
           "padding": [
             16,
             20,
-            0,
+            24,
             20
           ],
           "children": [
             {
               "type": "frame",
-              "id": "y1yrM",
-              "name": "Row 1",
+              "id": "GYN07",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "hxYah",
@@ -425393,7 +425838,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -425431,7 +425876,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -425469,7 +425914,7 @@
                   "width": "fill_container",
                   "descendants": {
                     "CAk7E": {
-                      "fill": "$ds-pocket-2",
+                      "fill": "$ds-pocket-1",
                       "height": 88,
                       "padding": [
                         8,
@@ -425500,13 +425945,56 @@
                   }
                 }
               ]
-            },
+            }
+          ]
+        },
+        {
+          "id": "g02eh9",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 4 · Ochre edge",
+          "y": 974,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "BZPT1",
+          "x": 0,
+          "y": 990,
+          "name": "Layer 4 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
             {
               "type": "frame",
-              "id": "KGAsN",
-              "name": "Row 2",
+              "id": "XKFb7",
+              "name": "Row",
               "width": "fill_container",
               "gap": 10,
+              "justifyContent": "center",
               "children": [
                 {
                   "id": "T8Kh9",
@@ -425626,7 +426114,7 @@
           "ref": "m8Jt7",
           "name": "Bedrock edge",
           "x": 0,
-          "y": 1094,
+          "y": 1150,
           "width": 393,
           "height": 24,
           "descendants": {
@@ -425648,7 +426136,7 @@
           "type": "frame",
           "id": "e4oYgM",
           "x": 0,
-          "y": 1110,
+          "y": 1166,
           "name": "Bedrock",
           "width": 393,
           "height": 110,
@@ -437584,6 +438072,2093 @@
                   "fontFamily": "$ds-font",
                   "fontSize": 13,
                   "fontWeight": "700"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "YtHMC",
+      "x": 11946,
+      "y": 7760,
+      "name": "Home · how the tiles flow · every window width",
+      "fill": "#F4EFE4",
+      "layout": "vertical",
+      "gap": 18,
+      "padding": 32,
+      "children": [
+        {
+          "type": "text",
+          "id": "BsXsR",
+          "name": "Title",
+          "fill": "#1F2B4D",
+          "content": "Tiles flow: as many as fit, spread evenly, one earth layer per row",
+          "fontFamily": "$ds-font",
+          "fontSize": 20,
+          "fontWeight": "800"
+        },
+        {
+          "type": "text",
+          "id": "WJuQ7",
+          "name": "Rule",
+          "fill": "#1F2B4D",
+          "textGrowth": "fixed-width",
+          "width": 960,
+          "content": "Across = how many tiles of the smallest size fit between the margins (150 on iPad and desktop, 100 on phones, with their gaps). Rows = the tiles ÷ across, rounded up. The tiles are then spread evenly over those rows, longer rows first, so rows differ by one tile at most and no tile sits alone. Tiles widen to share a row, up to 200 on iPad and 130 on phones, and the row centres. Twelve tiles: eleven games and SOON; today's game is in the sky.",
+          "lineHeight": 1.4,
+          "fontFamily": "$ds-font",
+          "fontSize": 14,
+          "fontWeight": "normal"
+        },
+        {
+          "type": "frame",
+          "id": "RBgU1",
+          "name": "iPhone SE",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "nTwvN",
+              "name": "Label",
+              "width": 200,
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "eHbSJ",
+                  "name": "Device",
+                  "fill": "#1F2B4D",
+                  "content": "iPhone SE · 375",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "hyJ1n",
+                  "name": "Counts",
+                  "fill": "#5A4A37",
+                  "content": "3 · 3 · 3 · 3  ·  tile 105",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Z8Sl4",
+              "name": "Page",
+              "clip": true,
+              "width": 120,
+              "cornerRadius": 6,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "WtCVL",
+                  "name": "Layer 1",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.2,
+                  "padding": [
+                    6,
+                    6.4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "E61VBo",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "z3j0WD",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "NlKHy",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ls68h",
+                  "name": "Layer 2",
+                  "width": "fill_container",
+                  "fill": "#CDB48C",
+                  "gap": 3.2,
+                  "padding": [
+                    6,
+                    6.4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "ZKvTR",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "PHtbk",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "cuYNZ",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "E0Wtb",
+                  "name": "Layer 3",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.2,
+                  "padding": [
+                    6,
+                    6.4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "ui4L0",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "u9qTf",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "o5EMna",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "eKPXG",
+                  "name": "Layer 4",
+                  "width": "fill_container",
+                  "fill": "#CDB48C",
+                  "gap": 3.2,
+                  "padding": [
+                    6,
+                    6.4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "eWm3u",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "nDgcK",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "eqj1P",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Xyn2U",
+          "name": "iPhone",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "xNAZH",
+              "name": "Label",
+              "width": 200,
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "oX5Bf",
+                  "name": "Device",
+                  "fill": "#1F2B4D",
+                  "content": "iPhone · 393",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "Wkwt0",
+                  "name": "Counts",
+                  "fill": "#5A4A37",
+                  "content": "3 · 3 · 3 · 3  ·  tile 111",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "hPhPz",
+              "name": "Page",
+              "clip": true,
+              "width": 126,
+              "cornerRadius": 6,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "eqMD8",
+                  "name": "Layer 1",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.2,
+                  "padding": [
+                    6,
+                    6.4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "YThAs",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 36,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "wJOtS",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 36,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "QBs55",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 36,
+                      "height": 28
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "qEC08",
+                  "name": "Layer 2",
+                  "width": "fill_container",
+                  "fill": "#CDB48C",
+                  "gap": 3.2,
+                  "padding": [
+                    6,
+                    6.4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "yaH7M",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 36,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "wZ4Fa",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 36,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "yXsbc",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 36,
+                      "height": 28
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "v6RbO",
+                  "name": "Layer 3",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.2,
+                  "padding": [
+                    6,
+                    6.4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "GR2Q8",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 36,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "gL1dF",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 36,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "Pcpye",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 36,
+                      "height": 28
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "sTsCS",
+                  "name": "Layer 4",
+                  "width": "fill_container",
+                  "fill": "#CDB48C",
+                  "gap": 3.2,
+                  "padding": [
+                    6,
+                    6.4
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "v2gSA",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 36,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "SglMQ",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 36,
+                      "height": 28
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "eLnn2",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 36,
+                      "height": 28
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "QfVXT",
+          "name": "iPad mini upright",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "O9tmi",
+              "name": "Label",
+              "width": 200,
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "iNevq",
+                  "name": "Device",
+                  "fill": "#1F2B4D",
+                  "content": "iPad mini upright · 744",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "VI5Y3",
+                  "name": "Counts",
+                  "fill": "#5A4A37",
+                  "content": "4 · 4 · 4  ·  tile 157",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "UB1qR",
+              "name": "Page",
+              "clip": true,
+              "width": 238,
+              "cornerRadius": 6,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "HnzoN",
+                  "name": "Layer 1",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "V2VnSK",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 50,
+                      "height": 40
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "glX3l",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 50,
+                      "height": 40
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "oowsy",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 50,
+                      "height": 40
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "g5dZC",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 50,
+                      "height": 40
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "d0ncje",
+                  "name": "Layer 2",
+                  "width": "fill_container",
+                  "fill": "#CDB48C",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "maVT9",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 50,
+                      "height": 40
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "u6TWK",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 50,
+                      "height": 40
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "N16NX",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 50,
+                      "height": 40
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "Ta2Wm",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 50,
+                      "height": 40
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "ucH3J",
+                  "name": "Layer 3",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "h4daNh",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 50,
+                      "height": 40
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "DrSpR",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 50,
+                      "height": 40
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "wrEzm",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 50,
+                      "height": 40
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "feLYm",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 50,
+                      "height": 40
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Ps10X",
+          "name": "iPhone on its side",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "ulfCk",
+              "name": "Label",
+              "width": 200,
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "rw9DL",
+                  "name": "Device",
+                  "fill": "#1F2B4D",
+                  "content": "iPhone on its side · 852",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "Jqppv",
+                  "name": "Counts",
+                  "fill": "#5A4A37",
+                  "content": "6 · 6  ·  tile 107",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "b3ZYh9",
+              "name": "Page",
+              "clip": true,
+              "width": 273,
+              "cornerRadius": 6,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "GeWIM",
+                  "name": "Layer 1",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.2,
+                  "padding": [
+                    6,
+                    25.28
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "Nmosr",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "C2rWDF",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "V1YtO",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "Cipez",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "ULwEi",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "Kyvhe",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 34,
+                      "height": 27
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "B3ppp",
+                  "name": "Layer 2",
+                  "width": "fill_container",
+                  "fill": "#CDB48C",
+                  "gap": 3.2,
+                  "padding": [
+                    6,
+                    25.28
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "VYGzd",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "EJZqd",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "Z65PM2",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "l4dfJg",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "J5n7pe",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "KOQWp",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 34,
+                      "height": 27
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "ShfhI",
+          "name": "Browser window",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "fxUJW",
+              "name": "Label",
+              "width": 200,
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "ZfB2K",
+                  "name": "Device",
+                  "fill": "#1F2B4D",
+                  "content": "Browser window · 960",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "BVnNL",
+                  "name": "Counts",
+                  "fill": "#5A4A37",
+                  "content": "4 · 4 · 4  ·  tile 200",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "MUrXE",
+              "name": "Page",
+              "clip": true,
+              "width": 307,
+              "cornerRadius": 6,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "gkPUZ",
+                  "name": "Layer 1",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "RIVBE",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "OFNSz",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "aJMgr",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "QIRbi",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "kPy74",
+                  "name": "Layer 2",
+                  "width": "fill_container",
+                  "fill": "#CDB48C",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "u1ZZf",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "n1iNu",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "SlJ6o",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "Miz5e",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 64,
+                      "height": 51
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "aOz0h",
+                  "name": "Layer 3",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "WaxKU",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "IQWZg",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "D1dF2c",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "Jgre3",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "FCctT",
+          "name": "iPad mini",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "bsy2S",
+              "name": "Label",
+              "width": 200,
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "V4Rwn9",
+                  "name": "Device",
+                  "fill": "#1F2B4D",
+                  "content": "iPad mini · 1133",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "ruyIZ",
+                  "name": "Counts",
+                  "fill": "#5A4A37",
+                  "content": "6 · 6  ·  tile 166",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "zqDKz",
+              "name": "Page",
+              "clip": true,
+              "width": 363,
+              "cornerRadius": 6,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "giC36",
+                  "name": "Layer 1",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "V03Fn",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 53,
+                      "height": 42
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "FCZsR",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 53,
+                      "height": 42
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "PW3Xc",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 53,
+                      "height": 42
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "pEtyd",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 53,
+                      "height": 42
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "X1me3",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 53,
+                      "height": 42
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "r19tx",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 53,
+                      "height": 42
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "SoDNW",
+                  "name": "Layer 2",
+                  "width": "fill_container",
+                  "fill": "#CDB48C",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "HmibG",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 53,
+                      "height": 42
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "wcZPM",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 53,
+                      "height": 42
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "fRtTG",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 53,
+                      "height": 42
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "FlfYB",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 53,
+                      "height": 42
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "PfduH",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 53,
+                      "height": 42
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "AMrcK",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 53,
+                      "height": 42
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "yi5dN",
+          "name": "Desktop",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "c3yObN",
+              "name": "Label",
+              "width": 200,
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "lnpPj",
+                  "name": "Device",
+                  "fill": "#1F2B4D",
+                  "content": "Desktop · 1440",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "GlVEu",
+                  "name": "Counts",
+                  "fill": "#5A4A37",
+                  "content": "6 · 6  ·  tile 200",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "Gb8On",
+              "name": "Page",
+              "clip": true,
+              "width": 461,
+              "cornerRadius": 6,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "XHex7",
+                  "name": "Layer 1",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "IAl6U",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "U6n3U",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "nYQpW",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "RzlnV",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "YAFqV",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "LtQq1",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 64,
+                      "height": 51
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "cRLQH",
+                  "name": "Layer 2",
+                  "width": "fill_container",
+                  "fill": "#CDB48C",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "UBvZV",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "xET0f",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "ddHGo",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "jk96y",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "FfB29",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 64,
+                      "height": 51
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "gitZK",
+                      "name": "Tile",
+                      "fill": "#BEA278",
+                      "width": 64,
+                      "height": 51
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "xqwTE",
+          "name": "Wide desktop",
+          "gap": 24,
+          "children": [
+            {
+              "type": "frame",
+              "id": "TIz7X",
+              "name": "Label",
+              "width": 200,
+              "layout": "vertical",
+              "gap": 4,
+              "children": [
+                {
+                  "type": "text",
+                  "id": "YlWT1",
+                  "name": "Device",
+                  "fill": "#1F2B4D",
+                  "content": "Wide desktop · 2560",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 15,
+                  "fontWeight": "800"
+                },
+                {
+                  "type": "text",
+                  "id": "OH1lJ",
+                  "name": "Counts",
+                  "fill": "#5A4A37",
+                  "content": "12  ·  tile 196",
+                  "fontFamily": "$ds-font",
+                  "fontSize": 13,
+                  "fontWeight": "600"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "TB7J6",
+              "name": "Page",
+              "clip": true,
+              "width": 819,
+              "cornerRadius": 6,
+              "layout": "vertical",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "l5dLN",
+                  "name": "Layer 1",
+                  "width": "fill_container",
+                  "fill": "#E4D5B7",
+                  "gap": 3.84,
+                  "padding": [
+                    6,
+                    12.8
+                  ],
+                  "justifyContent": "center",
+                  "children": [
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "l8uxx",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "h4zde",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "abdsY",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "e69kiU",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "i4xgf1",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "W0JkT",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "HAJme",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "WgaDr",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "p6Ha8",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "BSjI4",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "TvHyu",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    },
+                    {
+                      "type": "rectangle",
+                      "cornerRadius": [
+                        8,
+                        8,
+                        4,
+                        4
+                      ],
+                      "id": "PJkdx",
+                      "name": "Tile",
+                      "fill": "#D5C29F",
+                      "width": 63,
+                      "height": 50
+                    }
+                  ]
                 }
               ]
             }
