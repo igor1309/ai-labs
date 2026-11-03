@@ -529095,6 +529095,1689 @@
           "height": 5
         }
       ]
+    },
+    {
+      "type": "frame",
+      "id": "FLP24",
+      "x": 13253,
+      "y": 21873,
+      "name": "Home · sky · COMPARE · first visit, no progress yet · iPad mini 1133×744 · Light",
+      "theme": {
+        "mode": "light",
+        "device": "ipad"
+      },
+      "clip": true,
+      "width": 1133,
+      "height": 744,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.5
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "vpuvp",
+          "type": "ref",
+          "ref": "s0Vee",
+          "name": "Sun",
+          "x": 590,
+          "y": 24,
+          "width": 320,
+          "height": 320,
+          "descendants": {
+            "c4WgiH": {
+              "width": 320,
+              "height": 320
+            },
+            "ovl4O": {
+              "x": 90,
+              "y": 90,
+              "width": 140,
+              "height": 140
+            }
+          }
+        },
+        {
+          "id": "mqJAs",
+          "type": "ref",
+          "ref": "s1Ymnh",
+          "name": "Header",
+          "x": 40,
+          "y": 36,
+          "width": 1053
+        },
+        {
+          "id": "h4xqi",
+          "type": "ref",
+          "ref": "ZpYVi",
+          "name": "Featured",
+          "x": 40,
+          "y": 96,
+          "gap": 20,
+          "descendants": {
+            "MKp0m": {
+              "width": 72,
+              "height": 72,
+              "cornerRadius": [
+                36,
+                36,
+                18,
+                18
+              ]
+            },
+            "x3XOwo": {
+              "width": 36,
+              "height": 36
+            },
+            "R00ORG": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "id": "d3Z9OD",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "T-Rex shadow",
+          "x": 530,
+          "y": 350,
+          "width": 210,
+          "height": 18
+        },
+        {
+          "id": "zDDR9",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "Brachiosaurus shadow",
+          "x": 827,
+          "y": 350,
+          "width": 200,
+          "height": 18
+        },
+        {
+          "type": "rectangle",
+          "id": "i2CfL",
+          "x": 500,
+          "y": 140,
+          "name": "Tyrannosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 270,
+          "height": 220
+        },
+        {
+          "type": "rectangle",
+          "id": "Fs43R",
+          "x": 812,
+          "y": 88,
+          "name": "Brachiosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/brachiosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 240,
+          "height": 276
+        },
+        {
+          "id": "icWn4",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "x": 0,
+          "y": 356,
+          "width": 1133,
+          "descendants": {
+            "uZToM": {
+              "width": 1133,
+              "fill": "$ds-strata-1"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "PZ9JZ",
+          "x": 0,
+          "y": 376,
+          "name": "Layer 1 · Sand",
+          "width": 1133,
+          "height": 180,
+          "fill": "$ds-strata-1",
+          "gap": 12,
+          "padding": [
+            16,
+            40,
+            0,
+            40
+          ],
+          "children": [
+            {
+              "id": "jkiux",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · EXPLORE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-1",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/stegosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "book-open"
+                },
+                "bMwPQ": {
+                  "content": "EXPLORE"
+                }
+              }
+            },
+            {
+              "id": "x4gefY",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · PAIRS",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-1",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/triceratops.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "copy"
+                },
+                "bMwPQ": {
+                  "content": "PAIRS"
+                }
+              }
+            },
+            {
+              "id": "EaSuF",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · BONES",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-1",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/skeleton-triceratops.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "bone"
+                },
+                "bMwPQ": {
+                  "content": "BONES"
+                }
+              }
+            },
+            {
+              "id": "sKP9L",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · DIG",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-1",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/dig-treasure-golden-fossil.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "brush"
+                },
+                "bMwPQ": {
+                  "content": "DIG"
+                }
+              }
+            },
+            {
+              "id": "etOyF",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · SORT",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-1",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/silhouette-tyrannosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "shapes"
+                },
+                "bMwPQ": {
+                  "content": "SORT"
+                }
+              }
+            },
+            {
+              "id": "DWxvw",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · CARE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-1",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/care-bowl.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "heart"
+                },
+                "bMwPQ": {
+                  "content": "CARE"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "XKS4n",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "x": 0,
+          "y": 536,
+          "width": 1133,
+          "descendants": {
+            "uZToM": {
+              "width": 1133,
+              "fill": "$ds-strata-2"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "b41NO",
+          "x": 0,
+          "y": 556,
+          "name": "Layer 2 · Ochre",
+          "width": 1133,
+          "height": 180,
+          "fill": "$ds-strata-2",
+          "gap": 12,
+          "padding": [
+            16,
+            40,
+            0,
+            40
+          ],
+          "children": [
+            {
+              "id": "ioyHr",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · DRAW",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-2",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/parasaurolophus.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "pencil"
+                },
+                "bMwPQ": {
+                  "content": "DRAW"
+                }
+              }
+            },
+            {
+              "id": "i8Tfn",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · MAZE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-2",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/ankylosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "route"
+                },
+                "bMwPQ": {
+                  "content": "MAZE"
+                }
+              }
+            },
+            {
+              "id": "GHMkE",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · PUZZLE",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-2",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/spinosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "puzzle"
+                },
+                "bMwPQ": {
+                  "content": "PUZZLE"
+                }
+              }
+            },
+            {
+              "id": "HDltg",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · TEETH",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-2",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/whose-jaw-jaw-tyrannosaurus.webp",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "library": "Material Symbols Rounded",
+                  "icon": "dentistry"
+                },
+                "bMwPQ": {
+                  "content": "TEETH"
+                },
+                "v6wxpm": {
+                  "enabled": true,
+                  "x": 40,
+                  "y": -12
+                }
+              }
+            },
+            {
+              "id": "H0j99h",
+              "type": "ref",
+              "ref": "L8jWq",
+              "name": "Tile · COLOR",
+              "width": "fill_container",
+              "descendants": {
+                "CAk7E": {
+                  "fill": "$ds-pocket-2",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                },
+                "gIGvI": {
+                  "fill": {
+                    "type": "image",
+                    "enabled": true,
+                    "url": "images/colour/SNc97.png",
+                    "mode": "contain"
+                  }
+                },
+                "t0wfo": {
+                  "icon": "palette"
+                },
+                "bMwPQ": {
+                  "content": "COLOR"
+                }
+              }
+            },
+            {
+              "id": "rX5yj",
+              "type": "ref",
+              "ref": "eZPLE",
+              "name": "Tile · SOON",
+              "width": "fill_container",
+              "descendants": {
+                "xEUIu": {
+                  "fill": "$ds-pocket-2",
+                  "height": 96,
+                  "padding": [
+                    9,
+                    12,
+                    3,
+                    12
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "id": "Y6wuL",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Bedrock edge",
+          "x": 0,
+          "y": 716,
+          "width": 1133,
+          "descendants": {
+            "uZToM": {
+              "width": 1133,
+              "fill": "$ds-strata-3"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "eIoI2",
+          "x": 0,
+          "y": 736,
+          "name": "Bedrock",
+          "width": 1133,
+          "height": 80,
+          "fill": "$ds-strata-3",
+          "padding": [
+            0,
+            40
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "id": "ukaKF",
+              "type": "ref",
+              "ref": "q065f",
+              "name": "Parent note",
+              "textGrowth": "auto",
+              "content": "Parents: progress is saved on this device. Settings are at the top of the page.",
+              "fill": "$ds-ink",
+              "opacity": 0.75
+            },
+            {
+              "id": "x4VQb",
+              "type": "ref",
+              "ref": "FKCrL",
+              "name": "Version",
+              "fill": "$ds-ink",
+              "opacity": 0.6
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "Zbd1v",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 1133,
+          "height": 24,
+          "padding": [
+            4,
+            24,
+            0,
+            24
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "VjbLg",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41  Mon 2 Nov",
+              "fontFamily": "Inter",
+              "fontSize": 13,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "d5PII",
+              "name": "Indicators",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "LljtV",
+                  "name": "signal",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "llyzC",
+                  "name": "wifi",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "Xac7D",
+                  "name": "battery-full",
+                  "width": 15,
+                  "height": 15,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 3,
+          "id": "WRnOK",
+          "x": 406.5,
+          "y": 732,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 320,
+          "height": 5
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "eTsP2",
+      "x": 17796,
+      "y": 21873,
+      "name": "Home · sky · COMPARE · first visit, no progress yet · iPhone 393×852 · Light",
+      "theme": {
+        "mode": "light",
+        "device": "phone"
+      },
+      "clip": true,
+      "width": 393,
+      "height": 852,
+      "fill": {
+        "type": "gradient",
+        "gradientType": "linear",
+        "enabled": true,
+        "rotation": 180,
+        "size": {
+          "height": 1
+        },
+        "colors": [
+          {
+            "color": "$ds-sky-top",
+            "position": 0
+          },
+          {
+            "color": "$ds-sky-bottom",
+            "position": 0.4
+          }
+        ]
+      },
+      "layout": "none",
+      "children": [
+        {
+          "id": "S9XQjY",
+          "type": "ref",
+          "ref": "s0Vee",
+          "name": "Sun",
+          "x": 190,
+          "y": 236,
+          "width": 240,
+          "height": 240,
+          "descendants": {
+            "c4WgiH": {
+              "width": 240,
+              "height": 240
+            },
+            "ovl4O": {
+              "x": 70,
+              "y": 70,
+              "width": 100,
+              "height": 100
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "FGZGY",
+          "x": 0,
+          "y": 0,
+          "name": "Status bar",
+          "width": 393,
+          "height": 54,
+          "padding": [
+            18,
+            32,
+            0,
+            40
+          ],
+          "justifyContent": "space_between",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "XcZRQ",
+              "name": "Time",
+              "fill": "$ds-ink",
+              "content": "9:41",
+              "fontFamily": "Inter",
+              "fontSize": 17,
+              "fontWeight": "600"
+            },
+            {
+              "type": "frame",
+              "id": "OgiRc",
+              "name": "Indicators",
+              "gap": 6,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "icon",
+                  "id": "kqZge",
+                  "name": "signal",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "signal",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "xXsfR",
+                  "name": "wifi",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "wifi",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                },
+                {
+                  "type": "icon",
+                  "id": "qpzsb",
+                  "name": "battery-full",
+                  "width": 18,
+                  "height": 18,
+                  "icon": "battery-full",
+                  "library": "lucide",
+                  "fill": "$ds-ink"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "cxeVY",
+          "type": "ref",
+          "ref": "s1Ymnh",
+          "name": "Header",
+          "x": 20,
+          "y": 62,
+          "width": 353,
+          "descendants": {
+            "uLHwl": {
+              "width": 35,
+              "height": 36
+            },
+            "zZLHv": {
+              "fontSize": 22
+            },
+            "aEYal": {
+              "gap": 8
+            },
+            "uEZBH": {
+              "padding": 11
+            },
+            "uEZBH/V67ofj": {
+              "enabled": false
+            },
+            "Vf9b3": {
+              "width": 44,
+              "height": 44
+            },
+            "a0TFjE": {
+              "width": 44,
+              "height": 44
+            },
+            "a0TFjE/Y1YWBe": {
+              "width": 20,
+              "height": 20
+            },
+            "t3ZWSa": {
+              "enabled": false
+            }
+          }
+        },
+        {
+          "id": "vH0mI",
+          "type": "ref",
+          "ref": "ZpYVi",
+          "name": "Featured",
+          "x": 20,
+          "y": 126,
+          "descendants": {
+            "SoABT": {
+              "gap": 14
+            },
+            "MKp0m": {
+              "width": 64,
+              "height": 64,
+              "cornerRadius": [
+                32,
+                32,
+                16,
+                16
+              ]
+            },
+            "x3XOwo": {
+              "width": 32,
+              "height": 32
+            },
+            "xpUZe/h8hp2i": {
+              "width": 24,
+              "height": 24
+            },
+            "R00ORG": {
+              "enabled": false
+            },
+            "R00ORG/Lw9AV": {
+              "width": 18,
+              "height": 18
+            }
+          }
+        },
+        {
+          "id": "q3f4t",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "T-Rex shadow",
+          "x": 24,
+          "y": 448,
+          "width": 160,
+          "height": 16
+        },
+        {
+          "id": "jkeLm",
+          "type": "ref",
+          "ref": "EsKu5",
+          "name": "Brachiosaurus shadow",
+          "x": 220,
+          "y": 448,
+          "width": 150,
+          "height": 16
+        },
+        {
+          "type": "rectangle",
+          "id": "X6d305",
+          "x": 4,
+          "y": 316,
+          "name": "Tyrannosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/tyrannosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 200,
+          "height": 140
+        },
+        {
+          "type": "rectangle",
+          "id": "tfWeR",
+          "x": 206,
+          "y": 312,
+          "name": "Brachiosaurus",
+          "fill": {
+            "type": "image",
+            "enabled": true,
+            "url": "images/brachiosaurus.webp",
+            "mode": "contain"
+          },
+          "width": 176,
+          "height": 144
+        },
+        {
+          "id": "vhmQS",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 1 · Sand edge",
+          "y": 458,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-1",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "vQ0ok",
+          "x": 0,
+          "y": 474,
+          "name": "Layer 1 · Sand",
+          "width": 393,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "D6DBY",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": 10,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "mRED9",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · EXPLORE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-1",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/stegosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "book-open",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "EXPLORE"
+                    }
+                  }
+                },
+                {
+                  "id": "pmWfW",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · PAIRS",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-1",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/triceratops.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "copy",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "PAIRS"
+                    }
+                  }
+                },
+                {
+                  "id": "hlSMY",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · BONES",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-1",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/skeleton-triceratops.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "bone",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "BONES"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "DR9c8",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 2 · Ochre edge",
+          "y": 630,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "fCFrN",
+          "x": 0,
+          "y": 646,
+          "name": "Layer 2 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "UcLNi",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": 10,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "jIBg8",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · DIG",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-2",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/dig-treasure-golden-fossil.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "brush",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "DIG"
+                    }
+                  }
+                },
+                {
+                  "id": "g2RIz",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · SORT",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-2",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/silhouette-tyrannosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "shapes",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "SORT"
+                    }
+                  }
+                },
+                {
+                  "id": "xnMXA",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · CARE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-2",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/care-bowl.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "heart",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "CARE"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "vHKjj",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 3 · Sand edge",
+          "y": 802,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-1",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "dfJ5y",
+          "x": 0,
+          "y": 818,
+          "name": "Layer 3 · Sand",
+          "width": 393,
+          "fill": "$ds-strata-1",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "UxEEx",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": 10,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "ckTIu",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · DRAW",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-1",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/parasaurolophus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "pencil",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "DRAW"
+                    }
+                  }
+                },
+                {
+                  "id": "kIBb6",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · MAZE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-1",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/ankylosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "route",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "MAZE"
+                    }
+                  }
+                },
+                {
+                  "id": "w5vuy",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · PUZZLE",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-1",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/spinosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "puzzle",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "PUZZLE"
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "VyYKp",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Layer 4 · Ochre edge",
+          "y": 974,
+          "x": 0,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "fill": "$ds-strata-2",
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "RptRo",
+          "x": 0,
+          "y": 990,
+          "name": "Layer 4 · Ochre",
+          "width": 393,
+          "fill": "$ds-strata-2",
+          "layout": "vertical",
+          "padding": [
+            16,
+            20,
+            24,
+            20
+          ],
+          "children": [
+            {
+              "type": "frame",
+              "id": "tMspl",
+              "name": "Row",
+              "width": "fill_container",
+              "gap": 10,
+              "justifyContent": "center",
+              "children": [
+                {
+                  "id": "En6yw",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · TEETH",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-2",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/whose-jaw-jaw-tyrannosaurus.webp",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "library": "Material Symbols Rounded",
+                      "icon": "dentistry",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "TEETH"
+                    },
+                    "v6wxpm": {
+                      "enabled": true,
+                      "x": 18,
+                      "y": -12
+                    }
+                  }
+                },
+                {
+                  "id": "tsBIl",
+                  "type": "ref",
+                  "ref": "L8jWq",
+                  "name": "Tile · COLOR",
+                  "width": "fill_container",
+                  "descendants": {
+                    "CAk7E": {
+                      "fill": "$ds-pocket-2",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "gIGvI": {
+                      "fill": {
+                        "type": "image",
+                        "enabled": true,
+                        "url": "images/colour/SNc97.png",
+                        "mode": "contain"
+                      }
+                    },
+                    "t0wfo": {
+                      "icon": "palette",
+                      "width": 16,
+                      "height": 16
+                    },
+                    "bMwPQ": {
+                      "content": "COLOR"
+                    }
+                  }
+                },
+                {
+                  "id": "UyxD0",
+                  "type": "ref",
+                  "ref": "eZPLE",
+                  "name": "Tile · SOON",
+                  "width": "fill_container",
+                  "descendants": {
+                    "xEUIu": {
+                      "fill": "$ds-pocket-2",
+                      "height": 88,
+                      "padding": [
+                        8,
+                        8,
+                        2,
+                        8
+                      ]
+                    },
+                    "swL2S": {
+                      "width": 16,
+                      "height": 16
+                    }
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wIERe",
+          "type": "ref",
+          "ref": "m8Jt7",
+          "name": "Bedrock edge",
+          "x": 0,
+          "y": 1150,
+          "width": 393,
+          "height": 24,
+          "descendants": {
+            "uZToM": {
+              "width": 393,
+              "height": 24,
+              "viewBox": [
+                0,
+                0,
+                393,
+                24
+              ],
+              "geometry": "M0 8 Q32.75 0 65.5 8 T131 8 Q163.75 16 196.5 8 T262 8 Q294.75 0 327.5 8 T393 8 L393 24 L0 24 Z",
+              "fill": "$ds-strata-3"
+            }
+          }
+        },
+        {
+          "type": "frame",
+          "id": "h69lWw",
+          "x": 0,
+          "y": 1166,
+          "name": "Bedrock",
+          "width": 393,
+          "height": 110,
+          "fill": "$ds-strata-3",
+          "layout": "vertical",
+          "gap": 8,
+          "padding": [
+            22,
+            20,
+            0,
+            20
+          ],
+          "children": [
+            {
+              "id": "m3g7U2",
+              "type": "ref",
+              "ref": "q065f",
+              "name": "Parent note",
+              "textGrowth": "fixed-width",
+              "width": "fill_container",
+              "fill": "$ds-ink",
+              "opacity": 0.75,
+              "content": "Parents: progress is saved on this device. Settings are at the top of the page."
+            },
+            {
+              "id": "jpwio",
+              "type": "ref",
+              "ref": "FKCrL",
+              "name": "Version",
+              "fill": "$ds-ink",
+              "opacity": 0.6
+            }
+          ]
+        },
+        {
+          "type": "rectangle",
+          "cornerRadius": 3,
+          "id": "tNzR8",
+          "x": 130,
+          "y": 839,
+          "name": "Home indicator",
+          "fill": "$ds-ink",
+          "width": 134,
+          "height": 5
+        }
+      ]
     }
   ],
   "themes": {
