@@ -6016,7 +6016,7 @@
                   "width": 28,
                   "height": 28,
                   "cornerRadius": 14,
-                  "stroke": "#00000026",
+                  "stroke": "$ds-flag-edge",
                   "strokeWidth": 1,
                   "strokeAlignment": "inner",
                   "layout": "none",
@@ -6027,7 +6027,7 @@
                       "x": -14,
                       "y": 0,
                       "name": "Blue",
-                      "fill": "#012169",
+                      "fill": "$ds-flag-uk-blue",
                       "width": 56,
                       "height": 28
                     },
@@ -6046,7 +6046,7 @@
                       ],
                       "width": 56,
                       "height": 28,
-                      "stroke": "#FFFFFF",
+                      "stroke": "$ds-flag-white",
                       "strokeWidth": 5.6
                     },
                     {
@@ -6064,7 +6064,7 @@
                       ],
                       "width": 56,
                       "height": 28,
-                      "stroke": "#C8102E",
+                      "stroke": "$ds-flag-uk-red",
                       "strokeWidth": 1.9
                     },
                     {
@@ -6082,7 +6082,7 @@
                       ],
                       "width": 56,
                       "height": 28,
-                      "stroke": "#FFFFFF",
+                      "stroke": "$ds-flag-white",
                       "strokeWidth": 9.3
                     },
                     {
@@ -6100,7 +6100,7 @@
                       ],
                       "width": 56,
                       "height": 28,
-                      "stroke": "#C8102E",
+                      "stroke": "$ds-flag-uk-red",
                       "strokeWidth": 5.6
                     }
                   ]
@@ -6114,7 +6114,7 @@
                   "width": 28,
                   "height": 28,
                   "cornerRadius": 14,
-                  "stroke": "#00000026",
+                  "stroke": "$ds-flag-edge",
                   "strokeWidth": 1,
                   "strokeAlignment": "inner",
                   "layout": "none",
@@ -6125,7 +6125,7 @@
                       "x": 0,
                       "y": 0,
                       "name": "White",
-                      "fill": "#FFFFFF",
+                      "fill": "$ds-flag-white",
                       "width": 28,
                       "height": 9.34
                     },
@@ -6135,7 +6135,7 @@
                       "x": 0,
                       "y": 9.33,
                       "name": "Blue",
-                      "fill": "#0039A6",
+                      "fill": "$ds-flag-ru-blue",
                       "width": 28,
                       "height": 9.34
                     },
@@ -6145,7 +6145,7 @@
                       "x": 0,
                       "y": 18.67,
                       "name": "Red",
-                      "fill": "#D52B1E",
+                      "fill": "$ds-flag-ru-red",
                       "width": 28,
                       "height": 9.34
                     }
@@ -8579,7 +8579,7 @@
                                   "height": 26,
                                   "icon": "x",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -9193,7 +9193,7 @@
                                   "type": "ellipse",
                                   "id": "kQAk2",
                                   "name": "Colour",
-                                  "fill": "#C9583D",
+                                  "fill": "$ds-draw-red",
                                   "width": "fill_container",
                                   "height": "fill_container"
                                 }
@@ -9215,7 +9215,7 @@
                                   "type": "ellipse",
                                   "id": "fCUnR",
                                   "name": "Colour",
-                                  "fill": "#E39B2D",
+                                  "fill": "$ds-draw-orange",
                                   "width": "fill_container",
                                   "height": "fill_container"
                                 }
@@ -9237,7 +9237,7 @@
                                   "type": "ellipse",
                                   "id": "hSKy9",
                                   "name": "Colour",
-                                  "fill": "#F2D04A",
+                                  "fill": "$ds-draw-yellow",
                                   "width": "fill_container",
                                   "height": "fill_container"
                                 }
@@ -9259,7 +9259,7 @@
                                   "type": "ellipse",
                                   "id": "L0JbN",
                                   "name": "Colour",
-                                  "fill": "#5E9F4E",
+                                  "fill": "$ds-draw-green",
                                   "width": "fill_container",
                                   "height": "fill_container"
                                 }
@@ -9281,7 +9281,7 @@
                                   "type": "ellipse",
                                   "id": "volOs",
                                   "name": "Colour",
-                                  "fill": "#3C7DC4",
+                                  "fill": "$ds-draw-blue",
                                   "width": "fill_container",
                                   "height": "fill_container"
                                 }
@@ -9303,7 +9303,7 @@
                                   "type": "ellipse",
                                   "id": "ZWwhZ",
                                   "name": "Colour",
-                                  "fill": "#7A4FA8",
+                                  "fill": "$ds-draw-purple",
                                   "width": "fill_container",
                                   "height": "fill_container"
                                 }
@@ -10726,7 +10726,7 @@
                               "height": 34,
                               "icon": "x",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -28484,7 +28484,7 @@
                     },
                     "colors": [
                       {
-                        "color": "#F7C25AAA",
+                        "color": "$ds-treasure-glow",
                         "position": 0
                       },
                       {
@@ -46041,7 +46041,7 @@
               "clip": true,
               "width": "fill_container",
               "height": 176,
-              "fill": "#FEFEFE",
+              "fill": "$ds-photo-white",
               "cornerRadius": 24,
               "stroke": "$ds-outline",
               "strokeWidth": 2,
@@ -46141,7 +46141,7 @@
               "id": "Q9zkNx",
               "name": "Jaw",
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -46271,7 +46271,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274240",
+            "color": "$ds-shade-25",
             "offset": {
               "x": 0,
               "y": 12
@@ -46290,7 +46290,7 @@
               "clip": true,
               "width": "fill_container",
               "height": 252,
-              "fill": "#FEFEFE",
+              "fill": "$ds-photo-white",
               "cornerRadius": 20,
               "layout": "none",
               "children": [
@@ -46914,7 +46914,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -46925,7 +46925,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2DCC",
+                    "color": "$ds-glow-80",
                     "offset": {
                       "x": 0,
                       "y": 10
@@ -47320,7 +47320,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -47658,7 +47658,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "outer",
-                        "color": "#E39B2DAA",
+                        "color": "$ds-glow-67",
                         "blur": 28
                       }
                     },
@@ -47739,7 +47739,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -48186,7 +48186,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -48426,7 +48426,7 @@
           "name": "Jaw in hand",
           "rotation": -8,
           "fill": [
-            "#FEFEFE",
+            "$ds-photo-white",
             {
               "type": "image",
               "enabled": true,
@@ -48439,7 +48439,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274240",
+            "color": "$ds-shade-25",
             "offset": {
               "x": 0,
               "y": 14
@@ -48650,7 +48650,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -49570,7 +49570,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -50042,7 +50042,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -50861,7 +50861,7 @@
                       "y": 0,
                       "name": "Gummy dinosaur",
                       "fill": [
-                        "#FEFEFE",
+                        "$ds-photo-white",
                         {
                           "type": "image",
                           "enabled": true,
@@ -50881,7 +50881,7 @@
                       "name": "Jaw",
                       "rotation": 8,
                       "fill": [
-                        "#FEFEFE",
+                        "$ds-photo-white",
                         {
                           "type": "image",
                           "enabled": true,
@@ -50894,7 +50894,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "outer",
-                        "color": "#1D274233",
+                        "color": "$ds-shade-20",
                         "offset": {
                           "x": 0,
                           "y": 10
@@ -51251,7 +51251,7 @@
                       "y": 0,
                       "name": "Gummy dinosaur",
                       "fill": [
-                        "#FEFEFE",
+                        "$ds-photo-white",
                         {
                           "type": "image",
                           "enabled": true,
@@ -51271,7 +51271,7 @@
                       "name": "Jaw",
                       "rotation": 8,
                       "fill": [
-                        "#FEFEFE",
+                        "$ds-photo-white",
                         {
                           "type": "image",
                           "enabled": true,
@@ -51284,7 +51284,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "outer",
-                        "color": "#1D274233",
+                        "color": "$ds-shade-20",
                         "offset": {
                           "x": 0,
                           "y": 10
@@ -51985,7 +51985,7 @@
                           "id": "b8Lw9u",
                           "name": "New jaw · diplodocus",
                           "fill": [
-                            "#FEFEFE",
+                            "$ds-photo-white",
                             {
                               "type": "image",
                               "enabled": true,
@@ -52002,7 +52002,7 @@
                           "id": "aRcHx",
                           "name": "New jaw · stegosaurus",
                           "fill": [
-                            "#FEFEFE",
+                            "$ds-photo-white",
                             {
                               "type": "image",
                               "enabled": true,
@@ -52020,7 +52020,7 @@
                       "cornerRadius": 4,
                       "id": "LZA79",
                       "name": "Plank",
-                      "fill": "#A9774A",
+                      "fill": "$ds-plank",
                       "width": "fill_container",
                       "height": 14
                     }
@@ -52049,7 +52049,7 @@
               "name": "Jaw · tyrannosaurus",
               "rotation": -10,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -52064,7 +52064,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -52081,7 +52081,7 @@
               "name": "Jaw · triceratops",
               "rotation": 7,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -52096,7 +52096,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -52113,7 +52113,7 @@
               "name": "Jaw · velociraptor",
               "rotation": -3.0000000000000004,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -52128,7 +52128,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -52145,7 +52145,7 @@
               "name": "Jaw · diplodocus",
               "rotation": 6.000000000000001,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -52160,7 +52160,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -52177,7 +52177,7 @@
               "name": "Jaw · stegosaurus",
               "rotation": -8,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -52192,7 +52192,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -52568,7 +52568,7 @@
               "name": "Jaw · tyrannosaurus",
               "rotation": -10,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -52583,7 +52583,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -52600,7 +52600,7 @@
               "name": "Jaw · triceratops",
               "rotation": 7,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -52615,7 +52615,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -52632,7 +52632,7 @@
               "name": "Jaw · tyrannosaurus",
               "rotation": -3.0000000000000004,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -52647,7 +52647,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -52664,7 +52664,7 @@
               "name": "Jaw · triceratops",
               "rotation": 6.000000000000001,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -52679,7 +52679,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -52696,7 +52696,7 @@
               "name": "Jaw · triceratops",
               "rotation": -8,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -52711,7 +52711,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -53087,7 +53087,7 @@
               "name": "Jaw · triceratops",
               "rotation": -10,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -53102,7 +53102,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -53119,7 +53119,7 @@
               "name": "Jaw · tyrannosaurus",
               "rotation": 7,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -53134,7 +53134,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -53151,7 +53151,7 @@
               "name": "Jaw · triceratops",
               "rotation": -3.0000000000000004,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -53166,7 +53166,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -53183,7 +53183,7 @@
               "name": "Jaw · tyrannosaurus",
               "rotation": 6.000000000000001,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -53198,7 +53198,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -53215,7 +53215,7 @@
               "name": "Jaw · tyrannosaurus",
               "rotation": -8,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -53230,7 +53230,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 8
@@ -53633,7 +53633,7 @@
                   "cornerRadius": 4,
                   "id": "ae0wl",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 14
                 }
@@ -53863,7 +53863,7 @@
                   "cornerRadius": 4,
                   "id": "MflLt",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 14
                 }
@@ -54058,7 +54058,7 @@
                   "cornerRadius": 4,
                   "id": "PlMSZ",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 14
                 }
@@ -54256,7 +54256,7 @@
                   "cornerRadius": 4,
                   "id": "EREPj",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 14
                 }
@@ -54631,7 +54631,7 @@
                   "cornerRadius": 4,
                   "id": "L9wsF",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 14
                 }
@@ -54861,7 +54861,7 @@
                   "cornerRadius": 4,
                   "id": "A6IjKn",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 14
                 }
@@ -55056,7 +55056,7 @@
                   "cornerRadius": 4,
                   "id": "b9iaz",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 14
                 }
@@ -55254,7 +55254,7 @@
                   "cornerRadius": 4,
                   "id": "icqDZ",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 14
                 }
@@ -55290,7 +55290,7 @@
             },
             "XlcgO": {
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -55889,7 +55889,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -56311,7 +56311,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -56792,7 +56792,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -57317,7 +57317,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -57839,7 +57839,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -58382,7 +58382,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -58725,7 +58725,7 @@
                   "y": 0,
                   "name": "Gummy dinosaur",
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -58745,7 +58745,7 @@
                   "name": "Jaw",
                   "rotation": 8,
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -58758,7 +58758,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#1D274233",
+                    "color": "$ds-shade-20",
                     "offset": {
                       "x": 0,
                       "y": 10
@@ -59386,7 +59386,7 @@
                       "id": "FC4x0",
                       "name": "New jaw · diplodocus",
                       "fill": [
-                        "#FEFEFE",
+                        "$ds-photo-white",
                         {
                           "type": "image",
                           "enabled": true,
@@ -59403,7 +59403,7 @@
                       "id": "erUei",
                       "name": "New jaw · stegosaurus",
                       "fill": [
-                        "#FEFEFE",
+                        "$ds-photo-white",
                         {
                           "type": "image",
                           "enabled": true,
@@ -59421,7 +59421,7 @@
                   "cornerRadius": 4,
                   "id": "sgRHQ",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -59624,7 +59624,7 @@
               "name": "Jaw · tyrannosaurus",
               "rotation": -10,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -59639,7 +59639,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -59656,7 +59656,7 @@
               "name": "Jaw · triceratops",
               "rotation": 7,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -59671,7 +59671,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -59688,7 +59688,7 @@
               "name": "Jaw · velociraptor",
               "rotation": -3.0000000000000004,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -59703,7 +59703,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -59720,7 +59720,7 @@
               "name": "Jaw · diplodocus",
               "rotation": 6.000000000000001,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -59735,7 +59735,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -59752,7 +59752,7 @@
               "name": "Jaw · stegosaurus",
               "rotation": -8,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -59767,7 +59767,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -60198,7 +60198,7 @@
                   "cornerRadius": 4,
                   "id": "lBoGc",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -60482,7 +60482,7 @@
                   "cornerRadius": 4,
                   "id": "rYvR9",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -60726,7 +60726,7 @@
                   "cornerRadius": 4,
                   "id": "dLeiL",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -60970,7 +60970,7 @@
                   "cornerRadius": 4,
                   "id": "IwNRm",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -61399,7 +61399,7 @@
                   "cornerRadius": 4,
                   "id": "bxM3W",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -61683,7 +61683,7 @@
                   "cornerRadius": 4,
                   "id": "QfqAr",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -61927,7 +61927,7 @@
                   "cornerRadius": 4,
                   "id": "yF8fR",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -62171,7 +62171,7 @@
                   "cornerRadius": 4,
                   "id": "QckGi",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -62214,7 +62214,7 @@
             },
             "XlcgO": {
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -62670,7 +62670,7 @@
                   "cornerRadius": 4,
                   "id": "GX5U8",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -62954,7 +62954,7 @@
                   "cornerRadius": 4,
                   "id": "JeXhr",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -63198,7 +63198,7 @@
                   "cornerRadius": 4,
                   "id": "ILqad",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -63442,7 +63442,7 @@
                   "cornerRadius": 4,
                   "id": "cWmNI",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -63545,7 +63545,7 @@
                   "y": 0,
                   "name": "Gummy dinosaur",
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -63565,7 +63565,7 @@
                   "name": "Jaw",
                   "rotation": 8,
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -63578,7 +63578,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#1D274233",
+                    "color": "$ds-shade-20",
                     "offset": {
                       "x": 0,
                       "y": 10
@@ -64132,7 +64132,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -64607,7 +64607,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -65021,7 +65021,7 @@
                       "id": "yH37F",
                       "name": "New jaw · baryonyx",
                       "fill": [
-                        "#FEFEFE",
+                        "$ds-photo-white",
                         {
                           "type": "image",
                           "enabled": true,
@@ -65038,7 +65038,7 @@
                       "id": "OBxdy",
                       "name": "New jaw · allosaurus",
                       "fill": [
-                        "#FEFEFE",
+                        "$ds-photo-white",
                         {
                           "type": "image",
                           "enabled": true,
@@ -65056,7 +65056,7 @@
                   "cornerRadius": 4,
                   "id": "xwUNd",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -65254,7 +65254,7 @@
               "name": "Jaw · spinosaurus",
               "rotation": -10,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -65269,7 +65269,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -65286,7 +65286,7 @@
               "name": "Jaw · tyrannosaurus",
               "rotation": 7,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -65301,7 +65301,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -65318,7 +65318,7 @@
               "name": "Jaw · baryonyx",
               "rotation": -3.0000000000000004,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -65333,7 +65333,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -65350,7 +65350,7 @@
               "name": "Jaw · allosaurus",
               "rotation": 6.000000000000001,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -65365,7 +65365,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -65382,7 +65382,7 @@
               "name": "Jaw · velociraptor",
               "rotation": -8,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -65397,7 +65397,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -65781,7 +65781,7 @@
                       "id": "C0dhY",
                       "name": "New jaw · baryonyx",
                       "fill": [
-                        "#FEFEFE",
+                        "$ds-photo-white",
                         {
                           "type": "image",
                           "enabled": true,
@@ -65798,7 +65798,7 @@
                       "id": "cOFb6",
                       "name": "New jaw · allosaurus",
                       "fill": [
-                        "#FEFEFE",
+                        "$ds-photo-white",
                         {
                           "type": "image",
                           "enabled": true,
@@ -65816,7 +65816,7 @@
                   "cornerRadius": 4,
                   "id": "axbJ7",
                   "name": "Plank",
-                  "fill": "#A9774A",
+                  "fill": "$ds-plank",
                   "width": "fill_container",
                   "height": 12
                 }
@@ -65843,7 +65843,7 @@
               "name": "Jaw · spinosaurus",
               "rotation": -10,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -65858,7 +65858,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -65875,7 +65875,7 @@
               "name": "Jaw · tyrannosaurus",
               "rotation": 7,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -65890,7 +65890,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -65907,7 +65907,7 @@
               "name": "Jaw · baryonyx",
               "rotation": -3.0000000000000004,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -65922,7 +65922,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -65939,7 +65939,7 @@
               "name": "Jaw · allosaurus",
               "rotation": 6.000000000000001,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -65954,7 +65954,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -65971,7 +65971,7 @@
               "name": "Jaw · velociraptor",
               "rotation": -8,
               "fill": [
-                "#FEFEFE",
+                "$ds-photo-white",
                 {
                   "type": "image",
                   "enabled": true,
@@ -65986,7 +65986,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -66199,7 +66199,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -67136,7 +67136,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -67696,7 +67696,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -159920,7 +159920,7 @@
           "x": 578,
           "y": 201.75,
           "name": "Bubble 1",
-          "fill": "#FFFFFF99",
+          "fill": "$ds-bubble",
           "width": 18,
           "height": 18,
           "stroke": "$ds-ink-soft",
@@ -159932,7 +159932,7 @@
           "x": 647,
           "y": 236.25,
           "name": "Bubble 2",
-          "fill": "#FFFFFF99",
+          "fill": "$ds-bubble",
           "width": 24,
           "height": 24,
           "stroke": "$ds-ink-soft",
@@ -159944,7 +159944,7 @@
           "x": 716,
           "y": 270.75,
           "name": "Bubble 3",
-          "fill": "#FFFFFF99",
+          "fill": "$ds-bubble",
           "width": 30,
           "height": 30,
           "stroke": "$ds-ink-soft",
@@ -159956,7 +159956,7 @@
           "x": 614.8,
           "y": 305.25,
           "name": "Bubble 4",
-          "fill": "#FFFFFF99",
+          "fill": "$ds-bubble",
           "width": 18,
           "height": 18,
           "stroke": "$ds-ink-soft",
@@ -159968,7 +159968,7 @@
           "x": 679.2,
           "y": 339.75,
           "name": "Bubble 5",
-          "fill": "#FFFFFF99",
+          "fill": "$ds-bubble",
           "width": 24,
           "height": 24,
           "stroke": "$ds-ink-soft",
@@ -193585,7 +193585,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -194767,7 +194767,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -195372,7 +195372,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -195960,7 +195960,7 @@
           "y": 363,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 181,
           "height": 55,
           "effect": {
@@ -195989,10 +195989,10 @@
           "x": 207,
           "y": 283,
           "name": "Finger",
-          "fill": "#1D27421F",
+          "fill": "$ds-shade-12",
           "width": 44,
           "height": 44,
-          "stroke": "#FFFDF8B3",
+          "stroke": "$ds-finger",
           "strokeWidth": 2
         }
       ]
@@ -197389,7 +197389,7 @@
           "y": 369,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 176,
           "height": 72,
           "effect": {
@@ -199407,7 +199407,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#E39B2D80",
+            "color": "$ds-glow-50",
             "blur": 16
           },
           "justifyContent": "center",
@@ -210945,7 +210945,7 @@
           "y": 379,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 175,
           "height": 53,
           "effect": {
@@ -210974,10 +210974,10 @@
           "x": 193,
           "y": 301,
           "name": "Finger",
-          "fill": "#1D27421F",
+          "fill": "$ds-shade-12",
           "width": 44,
           "height": 44,
-          "stroke": "#FFFDF8B3",
+          "stroke": "$ds-finger",
           "strokeWidth": 2
         }
       ]
@@ -211525,7 +211525,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -212329,7 +212329,7 @@
           "y": 659,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 171,
           "height": 70,
           "effect": {
@@ -212997,7 +212997,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#E39B2D80",
+            "color": "$ds-glow-50",
             "blur": 16
           },
           "justifyContent": "center",
@@ -218385,7 +218385,7 @@
           "y": 317,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 92,
           "height": 28,
           "effect": {
@@ -218414,10 +218414,10 @@
           "x": 91,
           "y": 265,
           "name": "Finger",
-          "fill": "#1D27421F",
+          "fill": "$ds-shade-12",
           "width": 44,
           "height": 44,
-          "stroke": "#FFFDF8B3",
+          "stroke": "$ds-finger",
           "strokeWidth": 2
         }
       ]
@@ -218945,7 +218945,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -219575,7 +219575,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -220418,7 +220418,7 @@
           "y": 472,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 91,
           "height": 37,
           "effect": {
@@ -221117,7 +221117,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#E39B2D80",
+            "color": "$ds-glow-50",
             "blur": 16
           },
           "justifyContent": "center",
@@ -226980,7 +226980,7 @@
           "y": 358,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 86,
           "height": 35,
           "effect": {
@@ -230339,7 +230339,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -231066,7 +231066,7 @@
           "y": 175,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 100,
           "height": 41,
           "effect": {
@@ -234205,7 +234205,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -235023,7 +235023,7 @@
           "y": 294,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 176,
           "height": 72,
           "effect": {
@@ -238677,7 +238677,7 @@
           "y": 294,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 176,
           "height": 72,
           "effect": {
@@ -242395,7 +242395,7 @@
           "y": 418,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 91,
           "height": 37,
           "effect": {
@@ -244732,7 +244732,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "outer",
-                        "color": "#E39B2D80",
+                        "color": "$ds-glow-50",
                         "blur": 18
                       },
                       "justifyContent": "center",
@@ -245019,7 +245019,7 @@
                           "y": 222,
                           "name": "Lift shadow",
                           "opacity": 0.18,
-                          "fill": "#1D2742",
+                          "fill": "$ds-lift-shadow",
                           "width": 181,
                           "height": 55,
                           "effect": {
@@ -247017,7 +247017,7 @@
                                   "height": 22,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -247747,7 +247747,7 @@
                                   "height": 29,
                                   "icon": "footprints",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 },
                                 {
                                   "type": "icon",
@@ -247760,7 +247760,7 @@
                                   "height": 19,
                                   "icon": "sparkles",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -247924,7 +247924,7 @@
                                   "height": 22,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -248810,7 +248810,7 @@
                                   "height": 22,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -249873,7 +249873,7 @@
                                   "height": 15,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -249962,7 +249962,7 @@
                                   "height": 18,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -250387,7 +250387,7 @@
                                   "height": 13,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -251440,7 +251440,7 @@
                                   "height": 17,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -252249,7 +252249,7 @@
                                   "height": 22,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -253267,7 +253267,7 @@
                                   "height": 15,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -253356,7 +253356,7 @@
                                   "height": 18,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -254232,7 +254232,7 @@
                                   "height": 22,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -254698,7 +254698,7 @@
                               "height": 26,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -255243,7 +255243,7 @@
                               "height": 26,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -255769,7 +255769,7 @@
                               "height": 26,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -256230,7 +256230,7 @@
                               "height": 26,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -257226,7 +257226,7 @@
                               "height": 24,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -257679,7 +257679,7 @@
                                   "height": 24,
                                   "icon": "footprints",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 },
                                 {
                                   "type": "icon",
@@ -257692,7 +257692,7 @@
                                   "height": 16,
                                   "icon": "sparkles",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -258446,7 +258446,7 @@
                                   "height": 15,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -259109,7 +259109,7 @@
                                   "height": 13,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -260122,7 +260122,7 @@
                       "height": 26,
                       "icon": "house",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     }
                   ]
                 },
@@ -260661,7 +260661,7 @@
                       "height": 26,
                       "icon": "house",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     }
                   ]
                 },
@@ -261680,7 +261680,7 @@
                               "height": 15,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -262767,7 +262767,7 @@
                                       "height": 13,
                                       "icon": "house",
                                       "library": "lucide",
-                                      "fill": "#FFFDF8"
+                                      "fill": "$ds-on-action"
                                     }
                                   ]
                                 }
@@ -262793,7 +262793,7 @@
                         },
                         "colors": [
                           {
-                            "color": "#A3835DF2",
+                            "color": "$ds-fade-edge",
                             "position": 0
                           },
                           {
@@ -263305,7 +263305,7 @@
                                       "height": 13,
                                       "icon": "house",
                                       "library": "lucide",
-                                      "fill": "#FFFDF8"
+                                      "fill": "$ds-on-action"
                                     }
                                   ]
                                 }
@@ -264182,7 +264182,7 @@
                                       "height": 22,
                                       "icon": "footprints",
                                       "library": "lucide",
-                                      "fill": "#FFFDF8"
+                                      "fill": "$ds-on-action"
                                     },
                                     {
                                       "type": "icon",
@@ -264195,7 +264195,7 @@
                                       "height": 14,
                                       "icon": "sparkles",
                                       "library": "lucide",
-                                      "fill": "#FFFDF8"
+                                      "fill": "$ds-on-action"
                                     }
                                   ]
                                 }
@@ -264296,7 +264296,7 @@
                         },
                         "colors": [
                           {
-                            "color": "#A3835DF2",
+                            "color": "$ds-fade-edge",
                             "position": 0
                           },
                           {
@@ -264324,7 +264324,7 @@
                         },
                         "colors": [
                           {
-                            "color": "#A3835DF2",
+                            "color": "$ds-fade-edge",
                             "position": 0
                           },
                           {
@@ -264839,7 +264839,7 @@
                       "height": 19,
                       "icon": "house",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     }
                   ]
                 },
@@ -265415,7 +265415,7 @@
                       "height": 19,
                       "icon": "house",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     }
                   ]
                 },
@@ -267466,7 +267466,7 @@
                                       "height": 13,
                                       "icon": "house",
                                       "library": "lucide",
-                                      "fill": "#FFFDF8"
+                                      "fill": "$ds-on-action"
                                     }
                                   ]
                                 }
@@ -267492,7 +267492,7 @@
                         },
                         "colors": [
                           {
-                            "color": "#A3835DF2",
+                            "color": "$ds-fade-edge",
                             "position": 0
                           },
                           {
@@ -268006,7 +268006,7 @@
                       "height": 16,
                       "icon": "house",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     }
                   ]
                 },
@@ -268929,7 +268929,7 @@
                         },
                         "colors": [
                           {
-                            "color": "#A3835DF2",
+                            "color": "$ds-fade-edge",
                             "position": 0
                           },
                           {
@@ -269022,7 +269022,7 @@
                                   "height": 14,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -270001,7 +270001,7 @@
                                       "height": 13,
                                       "icon": "house",
                                       "library": "lucide",
-                                      "fill": "#FFFDF8"
+                                      "fill": "$ds-on-action"
                                     }
                                   ]
                                 }
@@ -270027,7 +270027,7 @@
                         },
                         "colors": [
                           {
-                            "color": "#A3835DF2",
+                            "color": "$ds-fade-edge",
                             "position": 0
                           },
                           {
@@ -270055,7 +270055,7 @@
                         },
                         "colors": [
                           {
-                            "color": "#A3835DF2",
+                            "color": "$ds-fade-edge",
                             "position": 0
                           },
                           {
@@ -270083,7 +270083,7 @@
                         },
                         "colors": [
                           {
-                            "color": "#A3835DF2",
+                            "color": "$ds-fade-edge",
                             "position": 0
                           },
                           {
@@ -270243,7 +270243,7 @@
                                   "height": 13,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -270613,7 +270613,7 @@
                               "height": 16,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -271354,7 +271354,7 @@
                                   "height": 29,
                                   "icon": "footprints",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 },
                                 {
                                   "type": "icon",
@@ -271367,7 +271367,7 @@
                                   "height": 19,
                                   "icon": "sparkles",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -271531,7 +271531,7 @@
                                   "height": 22,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -272595,7 +272595,7 @@
                                   "height": 15,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -272684,7 +272684,7 @@
                                   "height": 18,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -273109,7 +273109,7 @@
                                   "height": 13,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -274162,7 +274162,7 @@
                                   "height": 17,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -274610,7 +274610,7 @@
                               "height": 26,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -275155,7 +275155,7 @@
                               "height": 26,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -276109,7 +276109,7 @@
                                   "height": 22,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -276537,7 +276537,7 @@
                                   "height": 24,
                                   "icon": "footprints",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 },
                                 {
                                   "type": "icon",
@@ -276550,7 +276550,7 @@
                                   "height": 16,
                                   "icon": "sparkles",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -277194,7 +277194,7 @@
                                   "height": 15,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -277283,7 +277283,7 @@
                                   "height": 18,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -277737,7 +277737,7 @@
                               "height": 26,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -278285,7 +278285,7 @@
                               "height": 26,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -279299,7 +279299,7 @@
                               "height": 15,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -279771,7 +279771,7 @@
                       "height": 19,
                       "icon": "house",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     }
                   ]
                 },
@@ -280414,7 +280414,7 @@
                                   "height": 29,
                                   "icon": "footprints",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 },
                                 {
                                   "type": "icon",
@@ -280427,7 +280427,7 @@
                                   "height": 19,
                                   "icon": "sparkles",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -280568,7 +280568,7 @@
                                   "height": 15,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             }
@@ -280910,7 +280910,7 @@
                                   "height": 22,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -281021,7 +281021,7 @@
                                   "height": 18,
                                   "icon": "house",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -281089,7 +281089,7 @@
                             },
                             "colors": [
                               {
-                                "color": "#A3835DF2",
+                                "color": "$ds-fade-edge",
                                 "position": 0
                               },
                               {
@@ -281500,7 +281500,7 @@
                               "height": 26,
                               "icon": "house",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -282434,7 +282434,7 @@
                           "effect": {
                             "type": "shadow",
                             "shadowType": "inner",
-                            "color": "#E39B2D80",
+                            "color": "$ds-glow-50",
                             "blur": 14
                           }
                         },
@@ -282650,7 +282650,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "outer",
-                        "color": "#1D274240",
+                        "color": "$ds-shade-25",
                         "offset": {
                           "x": 0,
                           "y": 6
@@ -282731,7 +282731,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "outer",
-                        "color": "#E39B2D80",
+                        "color": "$ds-glow-50",
                         "blur": 18
                       },
                       "justifyContent": "center",
@@ -283265,7 +283265,7 @@
                           "effect": {
                             "type": "shadow",
                             "shadowType": "outer",
-                            "color": "#1D274226",
+                            "color": "$ds-shade-15",
                             "offset": {
                               "x": 0,
                               "y": 4
@@ -283333,7 +283333,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "outer",
-                        "color": "#1D274240",
+                        "color": "$ds-shade-25",
                         "offset": {
                           "x": 0,
                           "y": 10
@@ -283430,7 +283430,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "outer",
-                        "color": "#00000055",
+                        "color": "$ds-gate-shadow",
                         "offset": {
                           "x": 0,
                           "y": 12
@@ -285976,7 +285976,7 @@
           "y": 404,
           "name": "Lift shadow",
           "opacity": 0.2,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 160,
           "height": 46,
           "effect": {
@@ -285999,7 +285999,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274259",
+            "color": "$ds-shade-35",
             "offset": {
               "x": 0,
               "y": 10
@@ -286039,10 +286039,10 @@
           "x": 433,
           "y": 318,
           "name": "Finger",
-          "fill": "#1D27421F",
+          "fill": "$ds-shade-12",
           "width": 44,
           "height": 44,
-          "stroke": "#FFFDF8B3",
+          "stroke": "$ds-finger",
           "strokeWidth": 2
         }
       ]
@@ -286692,7 +286692,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#1D274240",
+                    "color": "$ds-shade-25",
                     "offset": {
                       "x": 0,
                       "y": 6
@@ -287891,7 +287891,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "inner",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 14
                   }
                 },
@@ -288065,7 +288065,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -289635,7 +289635,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274240",
+            "color": "$ds-shade-25",
             "offset": {
               "x": 0,
               "y": 10
@@ -291336,7 +291336,7 @@
           "y": 280,
           "name": "Lift shadow",
           "opacity": 0.2,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 117,
           "height": 25,
           "effect": {
@@ -291359,7 +291359,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274259",
+            "color": "$ds-shade-35",
             "offset": {
               "x": 0,
               "y": 10
@@ -291411,7 +291411,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 4
@@ -292321,7 +292321,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#1D274240",
+                    "color": "$ds-shade-25",
                     "offset": {
                       "x": 0,
                       "y": 6
@@ -292978,7 +292978,7 @@
             {
               "type": "shadow",
               "shadowType": "outer",
-              "color": "#E39B2D66",
+              "color": "$ds-glow-40",
               "blur": 28
             }
           ],
@@ -293447,7 +293447,7 @@
                         "position": 0
                       },
                       {
-                        "color": "#FFFDF8A6",
+                        "color": "$ds-sparkle-sweep",
                         "position": 0.5
                       },
                       {
@@ -299292,7 +299292,7 @@
           "y": 493,
           "name": "Lift shadow",
           "opacity": 0.2,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 160,
           "height": 46,
           "effect": {
@@ -299315,7 +299315,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274259",
+            "color": "$ds-shade-35",
             "offset": {
               "x": 0,
               "y": 10
@@ -299355,10 +299355,10 @@
           "x": 431,
           "y": 407,
           "name": "Finger",
-          "fill": "#1D27421F",
+          "fill": "$ds-shade-12",
           "width": 44,
           "height": 44,
-          "stroke": "#FFFDF8B3",
+          "stroke": "$ds-finger",
           "strokeWidth": 2
         }
       ]
@@ -300580,7 +300580,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "inner",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 14
                   }
                 },
@@ -300745,7 +300745,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -302213,7 +302213,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274240",
+            "color": "$ds-shade-25",
             "offset": {
               "x": 0,
               "y": 10
@@ -304180,7 +304180,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#1D274240",
+                    "color": "$ds-shade-25",
                     "offset": {
                       "x": 0,
                       "y": 6
@@ -305696,7 +305696,7 @@
           "y": 335,
           "name": "Lift shadow",
           "opacity": 0.2,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 53,
           "height": 17,
           "effect": {
@@ -305719,7 +305719,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274259",
+            "color": "$ds-shade-35",
             "offset": {
               "x": 0,
               "y": 10
@@ -305759,10 +305759,10 @@
           "x": 140,
           "y": 289,
           "name": "Finger",
-          "fill": "#1D27421F",
+          "fill": "$ds-shade-12",
           "width": 44,
           "height": 44,
-          "stroke": "#FFFDF8B3",
+          "stroke": "$ds-finger",
           "strokeWidth": 2
         }
       ]
@@ -306961,7 +306961,7 @@
           "x": 0,
           "y": 0,
           "name": "Scrim · puzzle behind is not interactive",
-          "fill": "#1E2A3AB3",
+          "fill": "$ds-scrim-puzzle",
           "width": 393,
           "height": 852
         },
@@ -306980,7 +306980,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000055",
+            "color": "$ds-gate-shadow",
             "offset": {
               "x": 0,
               "y": 12
@@ -309141,7 +309141,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "inner",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 14
                   }
                 },
@@ -309210,7 +309210,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -310849,7 +310849,7 @@
           "x": 0,
           "y": 0,
           "name": "Scrim · puzzle behind is not interactive",
-          "fill": "#1E2A3AB3",
+          "fill": "$ds-scrim-puzzle",
           "width": 375,
           "height": 667
         },
@@ -310868,7 +310868,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000055",
+            "color": "$ds-gate-shadow",
             "offset": {
               "x": 0,
               "y": 12
@@ -313564,7 +313564,7 @@
           "y": 263,
           "name": "Lift shadow",
           "opacity": 0.2,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 61,
           "height": 13,
           "effect": {
@@ -313587,7 +313587,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274259",
+            "color": "$ds-shade-35",
             "offset": {
               "x": 0,
               "y": 10
@@ -313627,10 +313627,10 @@
           "x": 178,
           "y": 223,
           "name": "Finger",
-          "fill": "#1D27421F",
+          "fill": "$ds-shade-12",
           "width": 44,
           "height": 44,
-          "stroke": "#FFFDF8B3",
+          "stroke": "$ds-finger",
           "strokeWidth": 2
         }
       ]
@@ -314519,7 +314519,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "inner",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 14
                   }
                 },
@@ -314741,7 +314741,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -316799,7 +316799,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "inner",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 14
                   }
                 },
@@ -316917,7 +316917,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -318217,7 +318217,7 @@
           "y": 280,
           "name": "Lift shadow",
           "opacity": 0.2,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 117,
           "height": 34,
           "effect": {
@@ -318240,7 +318240,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274259",
+            "color": "$ds-shade-35",
             "offset": {
               "x": 0,
               "y": 10
@@ -318292,7 +318292,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 4
@@ -320322,7 +320322,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "inner",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 14
                   }
                 },
@@ -320440,7 +320440,7 @@
                   "effect": {
                     "type": "shadow",
                     "shadowType": "outer",
-                    "color": "#E39B2D80",
+                    "color": "$ds-glow-50",
                     "blur": 18
                   },
                   "justifyContent": "center",
@@ -322488,7 +322488,7 @@
           "y": 459,
           "name": "Lift shadow",
           "opacity": 0.2,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 56,
           "height": 18,
           "effect": {
@@ -322511,7 +322511,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274259",
+            "color": "$ds-shade-35",
             "offset": {
               "x": 0,
               "y": 10
@@ -322563,7 +322563,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "outer",
-                "color": "#1D274226",
+                "color": "$ds-shade-15",
                 "offset": {
                   "x": 0,
                   "y": 4
@@ -323866,7 +323866,7 @@
           "x": 0,
           "y": 0,
           "name": "Scrim · puzzle behind is not interactive",
-          "fill": "#1E2A3AB3",
+          "fill": "$ds-scrim-puzzle",
           "width": 393,
           "height": 852
         },
@@ -323885,7 +323885,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#00000055",
+            "color": "$ds-gate-shadow",
             "offset": {
               "x": 0,
               "y": 12
@@ -331990,7 +331990,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -332005,7 +332005,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             }
                           ]
                         },
@@ -332044,7 +332044,7 @@
                               "type": "ellipse",
                               "id": "P5Hk2",
                               "name": "Dot · MEDIUM",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -332724,7 +332724,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -332739,7 +332739,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             }
                           ]
                         },
@@ -332778,7 +332778,7 @@
                               "type": "ellipse",
                               "id": "kHIcH",
                               "name": "Dot · MEDIUM",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -333507,7 +333507,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -333522,7 +333522,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -333561,7 +333561,7 @@
                               "type": "ellipse",
                               "id": "QiTlb",
                               "name": "Dot · MEDIUM",
-                              "fill": "#ab67cb",
+                              "fill": "$ds-paint-purple",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -334262,7 +334262,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ff9345",
+                          "fill": "$ds-paint-orange",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -334277,7 +334277,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             },
                             {
                               "type": "frame",
@@ -334344,7 +334344,7 @@
                               "type": "ellipse",
                               "id": "R8Lkr",
                               "name": "Dot · MEDIUM",
-                              "fill": "#ff9345",
+                              "fill": "$ds-paint-orange",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -334621,7 +334621,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#fff0cf",
+                          "fill": "$ds-paint-cream",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -334658,7 +334658,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ef5350",
+                          "fill": "$ds-paint-red",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -334695,7 +334695,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ff9345",
+                          "fill": "$ds-paint-orange",
                           "cornerRadius": 30,
                           "stroke": "$ds-strong",
                           "strokeWidth": 4,
@@ -334710,7 +334710,7 @@
                               "height": 27,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             }
                           ]
                         },
@@ -334744,7 +334744,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ffd84a",
+                          "fill": "$ds-paint-yellow",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -334789,7 +334789,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -334826,7 +334826,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#26a69a",
+                          "fill": "$ds-paint-teal",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -334863,7 +334863,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#42a5f5",
+                          "fill": "$ds-paint-sky",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -334900,7 +334900,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#536dce",
+                          "fill": "$ds-paint-indigo",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -334945,7 +334945,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -334982,7 +334982,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#f78fbd",
+                          "fill": "$ds-paint-pink",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -335019,7 +335019,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#875c45",
+                          "fill": "$ds-paint-brown",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -335056,7 +335056,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#3c4358",
+                          "fill": "$ds-paint-charcoal",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -335618,7 +335618,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -335633,7 +335633,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             }
                           ]
                         },
@@ -335672,7 +335672,7 @@
                               "type": "ellipse",
                               "id": "WatqI",
                               "name": "Dot · MEDIUM",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -335986,7 +335986,7 @@
                               "type": "ellipse",
                               "id": "r1k0o",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 12,
                               "height": 12,
                               "stroke": "$ds-ink",
@@ -336033,7 +336033,7 @@
                               "type": "ellipse",
                               "id": "ex41n",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 24,
                               "height": 24,
                               "stroke": "$ds-on-strong",
@@ -336108,7 +336108,7 @@
                               "type": "ellipse",
                               "id": "T05AD",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 45,
                               "height": 45,
                               "stroke": "$ds-ink",
@@ -336699,7 +336699,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -336714,7 +336714,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -336753,7 +336753,7 @@
                               "type": "ellipse",
                               "id": "s1NBX",
                               "name": "Dot · MEDIUM",
-                              "fill": "#ab67cb",
+                              "fill": "$ds-paint-purple",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -337503,7 +337503,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -337518,7 +337518,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -337557,7 +337557,7 @@
                               "type": "ellipse",
                               "id": "V4tAb",
                               "name": "Dot · MEDIUM",
-                              "fill": "#ab67cb",
+                              "fill": "$ds-paint-purple",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -338448,7 +338448,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -338463,7 +338463,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             }
                           ]
                         },
@@ -338502,7 +338502,7 @@
                               "type": "ellipse",
                               "id": "mrsRq",
                               "name": "Dot · MEDIUM",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -339357,7 +339357,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ef5350",
+                          "fill": "$ds-paint-red",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -339372,7 +339372,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -339411,7 +339411,7 @@
                               "type": "ellipse",
                               "id": "UvFDD",
                               "name": "Dot · MEDIUM",
-                              "fill": "#ef5350",
+                              "fill": "$ds-paint-red",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -342175,7 +342175,7 @@
                           "type": "ellipse",
                           "id": "Q1DFq",
                           "name": "Dot · MEDIUM",
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "width": 24,
                           "height": 24,
                           "stroke": "$ds-ink",
@@ -342332,7 +342332,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#fff0cf",
+                      "fill": "$ds-paint-cream",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -342369,7 +342369,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ef5350",
+                      "fill": "$ds-paint-red",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -342406,7 +342406,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ff9345",
+                      "fill": "$ds-paint-orange",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -342443,7 +342443,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ffd84a",
+                      "fill": "$ds-paint-yellow",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -342480,7 +342480,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#9ccc65",
+                      "fill": "$ds-paint-green",
                       "cornerRadius": 28,
                       "stroke": "$ds-strong",
                       "strokeWidth": 4,
@@ -342495,7 +342495,7 @@
                           "height": 25,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#1D2742"
+                          "fill": "$ds-on-paint"
                         }
                       ]
                     },
@@ -342529,7 +342529,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#26a69a",
+                      "fill": "$ds-paint-teal",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -342574,7 +342574,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#42a5f5",
+                      "fill": "$ds-paint-sky",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -342611,7 +342611,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#536dce",
+                      "fill": "$ds-paint-indigo",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -342648,7 +342648,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ab67cb",
+                      "fill": "$ds-paint-purple",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -342685,7 +342685,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#f78fbd",
+                      "fill": "$ds-paint-pink",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -342722,7 +342722,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#875c45",
+                      "fill": "$ds-paint-brown",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -342759,7 +342759,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#3c4358",
+                      "fill": "$ds-paint-charcoal",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -347088,7 +347088,7 @@
                   "name": "Button",
                   "width": 58,
                   "height": 58,
-                  "fill": "#9ccc65",
+                  "fill": "$ds-paint-green",
                   "cornerRadius": 29,
                   "stroke": "$ds-outline",
                   "strokeWidth": 3,
@@ -347103,7 +347103,7 @@
                       "height": 27,
                       "icon": "palette",
                       "library": "lucide",
-                      "fill": "#1D2742"
+                      "fill": "$ds-on-paint"
                     }
                   ]
                 },
@@ -347142,7 +347142,7 @@
                       "type": "ellipse",
                       "id": "SzB9T",
                       "name": "Dot · MEDIUM",
-                      "fill": "#9ccc65",
+                      "fill": "$ds-paint-green",
                       "width": 22,
                       "height": 22,
                       "stroke": "$ds-ink",
@@ -347805,7 +347805,7 @@
                   "name": "Button",
                   "width": 58,
                   "height": 58,
-                  "fill": "#ab67cb",
+                  "fill": "$ds-paint-purple",
                   "cornerRadius": 29,
                   "stroke": "$ds-outline",
                   "strokeWidth": 3,
@@ -347820,7 +347820,7 @@
                       "height": 27,
                       "icon": "palette",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     },
                     {
                       "type": "frame",
@@ -347887,7 +347887,7 @@
                       "type": "ellipse",
                       "id": "GFv24",
                       "name": "Dot · MEDIUM",
-                      "fill": "#ab67cb",
+                      "fill": "$ds-paint-purple",
                       "width": 22,
                       "height": 22,
                       "stroke": "$ds-ink",
@@ -348068,7 +348068,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#fff0cf",
+                          "fill": "$ds-paint-cream",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -348105,7 +348105,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#ef5350",
+                          "fill": "$ds-paint-red",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -348142,7 +348142,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#ff9345",
+                          "fill": "$ds-paint-orange",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -348179,7 +348179,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#ffd84a",
+                          "fill": "$ds-paint-yellow",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -348225,7 +348225,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -348262,7 +348262,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#26a69a",
+                          "fill": "$ds-paint-teal",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -348299,7 +348299,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#42a5f5",
+                          "fill": "$ds-paint-sky",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -348336,7 +348336,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#536dce",
+                          "fill": "$ds-paint-indigo",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -348382,7 +348382,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "cornerRadius": 31,
                           "stroke": "$ds-strong",
                           "strokeWidth": 4,
@@ -348397,7 +348397,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -348431,7 +348431,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#f78fbd",
+                          "fill": "$ds-paint-pink",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -348468,7 +348468,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#875c45",
+                          "fill": "$ds-paint-brown",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -348505,7 +348505,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#3c4358",
+                          "fill": "$ds-paint-charcoal",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -349041,7 +349041,7 @@
                   "name": "Button",
                   "width": 58,
                   "height": 58,
-                  "fill": "#9ccc65",
+                  "fill": "$ds-paint-green",
                   "cornerRadius": 29,
                   "stroke": "$ds-outline",
                   "strokeWidth": 3,
@@ -349056,7 +349056,7 @@
                       "height": 27,
                       "icon": "palette",
                       "library": "lucide",
-                      "fill": "#1D2742"
+                      "fill": "$ds-on-paint"
                     }
                   ]
                 },
@@ -349095,7 +349095,7 @@
                       "type": "ellipse",
                       "id": "wfEi4",
                       "name": "Dot · SMALL",
-                      "fill": "#9ccc65",
+                      "fill": "$ds-paint-green",
                       "width": 12,
                       "height": 12,
                       "stroke": "$ds-ink",
@@ -349313,7 +349313,7 @@
                               "type": "ellipse",
                               "id": "KiK0M",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 13,
                               "height": 13,
                               "stroke": "$ds-on-strong",
@@ -349388,7 +349388,7 @@
                               "type": "ellipse",
                               "id": "f43i1X",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 29,
                               "height": 29,
                               "stroke": "$ds-ink",
@@ -349435,7 +349435,7 @@
                               "type": "ellipse",
                               "id": "RhKif",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 52,
                               "height": 52,
                               "stroke": "$ds-ink",
@@ -350598,7 +350598,7 @@
                   "name": "Button",
                   "width": 58,
                   "height": 58,
-                  "fill": "#ab67cb",
+                  "fill": "$ds-paint-purple",
                   "cornerRadius": 29,
                   "stroke": "$ds-outline",
                   "strokeWidth": 3,
@@ -350613,7 +350613,7 @@
                       "height": 27,
                       "icon": "palette",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     }
                   ]
                 },
@@ -350652,7 +350652,7 @@
                       "type": "ellipse",
                       "id": "V5IRnW",
                       "name": "Dot · MEDIUM",
-                      "fill": "#ab67cb",
+                      "fill": "$ds-paint-purple",
                       "width": 22,
                       "height": 22,
                       "stroke": "$ds-ink",
@@ -352646,7 +352646,7 @@
                   "name": "Button",
                   "width": 54,
                   "height": 54,
-                  "fill": "#ab67cb",
+                  "fill": "$ds-paint-purple",
                   "cornerRadius": 27,
                   "stroke": "$ds-outline",
                   "strokeWidth": 3,
@@ -352661,7 +352661,7 @@
                       "height": 25,
                       "icon": "palette",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     }
                   ]
                 },
@@ -352700,7 +352700,7 @@
                       "type": "ellipse",
                       "id": "HuWp0",
                       "name": "Dot · MEDIUM",
-                      "fill": "#ab67cb",
+                      "fill": "$ds-paint-purple",
                       "width": 21,
                       "height": 21,
                       "stroke": "$ds-ink",
@@ -353363,7 +353363,7 @@
                   "name": "Button",
                   "width": 54,
                   "height": 54,
-                  "fill": "#9ccc65",
+                  "fill": "$ds-paint-green",
                   "cornerRadius": 27,
                   "stroke": "$ds-outline",
                   "strokeWidth": 3,
@@ -353378,7 +353378,7 @@
                       "height": 25,
                       "icon": "palette",
                       "library": "lucide",
-                      "fill": "#1D2742"
+                      "fill": "$ds-on-paint"
                     },
                     {
                       "type": "frame",
@@ -353445,7 +353445,7 @@
                       "type": "ellipse",
                       "id": "VUBlz",
                       "name": "Dot · MEDIUM",
-                      "fill": "#9ccc65",
+                      "fill": "$ds-paint-green",
                       "width": 21,
                       "height": 21,
                       "stroke": "$ds-ink",
@@ -353626,7 +353626,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#fff0cf",
+                          "fill": "$ds-paint-cream",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -353663,7 +353663,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#ef5350",
+                          "fill": "$ds-paint-red",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -353700,7 +353700,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#ff9345",
+                          "fill": "$ds-paint-orange",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -353737,7 +353737,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#ffd84a",
+                          "fill": "$ds-paint-yellow",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -353783,7 +353783,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 28,
                           "stroke": "$ds-strong",
                           "strokeWidth": 4,
@@ -353798,7 +353798,7 @@
                               "height": 25,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             }
                           ]
                         },
@@ -353832,7 +353832,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#26a69a",
+                          "fill": "$ds-paint-teal",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -353869,7 +353869,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#42a5f5",
+                          "fill": "$ds-paint-sky",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -353906,7 +353906,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#536dce",
+                          "fill": "$ds-paint-indigo",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -353952,7 +353952,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -353989,7 +353989,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#f78fbd",
+                          "fill": "$ds-paint-pink",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -354026,7 +354026,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#875c45",
+                          "fill": "$ds-paint-brown",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -354063,7 +354063,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#3c4358",
+                          "fill": "$ds-paint-charcoal",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -356171,7 +356171,7 @@
                   "name": "Button",
                   "width": 48,
                   "height": 48,
-                  "fill": "#9ccc65",
+                  "fill": "$ds-paint-green",
                   "cornerRadius": 24,
                   "stroke": "$ds-outline",
                   "strokeWidth": 3,
@@ -356186,7 +356186,7 @@
                       "height": 22,
                       "icon": "palette",
                       "library": "lucide",
-                      "fill": "#1D2742"
+                      "fill": "$ds-on-paint"
                     }
                   ]
                 },
@@ -356234,7 +356234,7 @@
                       "type": "ellipse",
                       "id": "gwGDw",
                       "name": "Dot · MEDIUM",
-                      "fill": "#9ccc65",
+                      "fill": "$ds-paint-green",
                       "width": 18,
                       "height": 18,
                       "stroke": "$ds-ink",
@@ -356854,7 +356854,7 @@
                   "name": "Button",
                   "width": 48,
                   "height": 48,
-                  "fill": "#9ccc65",
+                  "fill": "$ds-paint-green",
                   "cornerRadius": 24,
                   "stroke": "$ds-outline",
                   "strokeWidth": 3,
@@ -356869,7 +356869,7 @@
                       "height": 22,
                       "icon": "palette",
                       "library": "lucide",
-                      "fill": "#1D2742"
+                      "fill": "$ds-on-paint"
                     }
                   ]
                 },
@@ -356927,7 +356927,7 @@
                       "type": "ellipse",
                       "id": "JNfc0",
                       "name": "Dot · MEDIUM",
-                      "fill": "#9ccc65",
+                      "fill": "$ds-paint-green",
                       "width": 18,
                       "height": 18,
                       "stroke": "$ds-ink",
@@ -357120,7 +357120,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#fff0cf",
+                          "fill": "$ds-paint-cream",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -357157,7 +357157,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#ef5350",
+                          "fill": "$ds-paint-red",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -357194,7 +357194,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#ff9345",
+                          "fill": "$ds-paint-orange",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -357231,7 +357231,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#ffd84a",
+                          "fill": "$ds-paint-yellow",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -357268,7 +357268,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 22,
                           "stroke": "$ds-strong",
                           "strokeWidth": 4,
@@ -357283,7 +357283,7 @@
                               "height": 20,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             }
                           ]
                         },
@@ -357317,7 +357317,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#26a69a",
+                          "fill": "$ds-paint-teal",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -357363,7 +357363,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#42a5f5",
+                          "fill": "$ds-paint-sky",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -357400,7 +357400,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#536dce",
+                          "fill": "$ds-paint-indigo",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -357437,7 +357437,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -357474,7 +357474,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#f78fbd",
+                          "fill": "$ds-paint-pink",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -357511,7 +357511,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#875c45",
+                          "fill": "$ds-paint-brown",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -357548,7 +357548,7 @@
                           "name": "Swatch",
                           "width": 44,
                           "height": 44,
-                          "fill": "#3c4358",
+                          "fill": "$ds-paint-charcoal",
                           "cornerRadius": 22,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -359711,7 +359711,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -359726,7 +359726,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             }
                           ]
                         },
@@ -359765,7 +359765,7 @@
                               "type": "ellipse",
                               "id": "SRRyt",
                               "name": "Dot · MEDIUM",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -361047,7 +361047,7 @@
                   "name": "Button",
                   "width": 58,
                   "height": 58,
-                  "fill": "#ab67cb",
+                  "fill": "$ds-paint-purple",
                   "cornerRadius": 29,
                   "stroke": "$ds-outline",
                   "strokeWidth": 3,
@@ -361062,7 +361062,7 @@
                       "height": 27,
                       "icon": "palette",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     }
                   ]
                 },
@@ -361101,7 +361101,7 @@
                       "type": "ellipse",
                       "id": "Lle0f",
                       "name": "Dot · MEDIUM",
-                      "fill": "#ab67cb",
+                      "fill": "$ds-paint-purple",
                       "width": 22,
                       "height": 22,
                       "stroke": "$ds-ink",
@@ -363625,7 +363625,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -363640,7 +363640,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             },
                             {
                               "type": "frame",
@@ -363707,7 +363707,7 @@
                               "type": "ellipse",
                               "id": "qKdOt",
                               "name": "Dot · MEDIUM",
-                              "fill": "#ab67cb",
+                              "fill": "$ds-paint-purple",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -363984,7 +363984,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#fff0cf",
+                          "fill": "$ds-paint-cream",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -364021,7 +364021,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ef5350",
+                          "fill": "$ds-paint-red",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -364058,7 +364058,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ff9345",
+                          "fill": "$ds-paint-orange",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -364095,7 +364095,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ffd84a",
+                          "fill": "$ds-paint-yellow",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -364140,7 +364140,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -364177,7 +364177,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#26a69a",
+                          "fill": "$ds-paint-teal",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -364214,7 +364214,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#42a5f5",
+                          "fill": "$ds-paint-sky",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -364251,7 +364251,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#536dce",
+                          "fill": "$ds-paint-indigo",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -364296,7 +364296,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "cornerRadius": 30,
                           "stroke": "$ds-strong",
                           "strokeWidth": 4,
@@ -364311,7 +364311,7 @@
                               "height": 27,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -364345,7 +364345,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#f78fbd",
+                          "fill": "$ds-paint-pink",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -364382,7 +364382,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#875c45",
+                          "fill": "$ds-paint-brown",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -364419,7 +364419,7 @@
                           "name": "Swatch",
                           "width": 60,
                           "height": 60,
-                          "fill": "#3c4358",
+                          "fill": "$ds-paint-charcoal",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -365009,7 +365009,7 @@
                           "name": "Button",
                           "width": 60,
                           "height": 60,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 30,
                           "stroke": "$ds-outline",
                           "strokeWidth": 3,
@@ -365024,7 +365024,7 @@
                               "height": 28,
                               "icon": "palette",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             }
                           ]
                         },
@@ -365063,7 +365063,7 @@
                               "type": "ellipse",
                               "id": "zTurc",
                               "name": "Dot · MEDIUM",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 23,
                               "height": 23,
                               "stroke": "$ds-ink",
@@ -367580,7 +367580,7 @@
                   "name": "Button",
                   "width": 58,
                   "height": 58,
-                  "fill": "#875c45",
+                  "fill": "$ds-paint-brown",
                   "cornerRadius": 29,
                   "stroke": "$ds-outline",
                   "strokeWidth": 3,
@@ -367595,7 +367595,7 @@
                       "height": 27,
                       "icon": "palette",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     },
                     {
                       "type": "frame",
@@ -367662,7 +367662,7 @@
                       "type": "ellipse",
                       "id": "mOzSv",
                       "name": "Dot · MEDIUM",
-                      "fill": "#875c45",
+                      "fill": "$ds-paint-brown",
                       "width": 22,
                       "height": 22,
                       "stroke": "$ds-ink",
@@ -367850,7 +367850,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#fff0cf",
+                          "fill": "$ds-paint-cream",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -367887,7 +367887,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#ef5350",
+                          "fill": "$ds-paint-red",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -367924,7 +367924,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#ff9345",
+                          "fill": "$ds-paint-orange",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -367961,7 +367961,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#ffd84a",
+                          "fill": "$ds-paint-yellow",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -368007,7 +368007,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -368044,7 +368044,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#26a69a",
+                          "fill": "$ds-paint-teal",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -368081,7 +368081,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#42a5f5",
+                          "fill": "$ds-paint-sky",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -368118,7 +368118,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#536dce",
+                          "fill": "$ds-paint-indigo",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -368164,7 +368164,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -368201,7 +368201,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#f78fbd",
+                          "fill": "$ds-paint-pink",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -368238,7 +368238,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#875c45",
+                          "fill": "$ds-paint-brown",
                           "cornerRadius": 31,
                           "stroke": "$ds-strong",
                           "strokeWidth": 4,
@@ -368253,7 +368253,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-action"
                             }
                           ]
                         },
@@ -368287,7 +368287,7 @@
                           "name": "Swatch",
                           "width": 62,
                           "height": 62,
-                          "fill": "#3c4358",
+                          "fill": "$ds-paint-charcoal",
                           "cornerRadius": 31,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -369365,7 +369365,7 @@
                                       "name": "Button",
                                       "width": 60,
                                       "height": 60,
-                                      "fill": "#9ccc65",
+                                      "fill": "$ds-paint-green",
                                       "cornerRadius": 30,
                                       "stroke": "$ds-outline",
                                       "strokeWidth": 3,
@@ -369380,7 +369380,7 @@
                                           "height": 28,
                                           "icon": "palette",
                                           "library": "lucide",
-                                          "fill": "#1D2742"
+                                          "fill": "$ds-on-paint"
                                         }
                                       ]
                                     },
@@ -369419,7 +369419,7 @@
                                           "type": "ellipse",
                                           "id": "mmU9i",
                                           "name": "Dot · MEDIUM",
-                                          "fill": "#9ccc65",
+                                          "fill": "$ds-paint-green",
                                           "width": 23,
                                           "height": 23,
                                           "stroke": "$ds-ink",
@@ -369804,7 +369804,7 @@
                                       "type": "ellipse",
                                       "id": "t9k8OV",
                                       "name": "Dot · MEDIUM",
-                                      "fill": "#9ccc65",
+                                      "fill": "$ds-paint-green",
                                       "width": 24,
                                       "height": 24,
                                       "stroke": "$ds-ink",
@@ -370084,7 +370084,7 @@
                               "name": "Button",
                               "width": 54,
                               "height": 54,
-                              "fill": "#ab67cb",
+                              "fill": "$ds-paint-purple",
                               "cornerRadius": 27,
                               "stroke": "$ds-outline",
                               "strokeWidth": 3,
@@ -370099,7 +370099,7 @@
                                   "height": 25,
                                   "icon": "palette",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-action"
                                 }
                               ]
                             },
@@ -370138,7 +370138,7 @@
                                   "type": "ellipse",
                                   "id": "cCLsS",
                                   "name": "Dot · MEDIUM",
-                                  "fill": "#ab67cb",
+                                  "fill": "$ds-paint-purple",
                                   "width": 21,
                                   "height": 21,
                                   "stroke": "$ds-ink",
@@ -370369,7 +370369,7 @@
                               "name": "Button",
                               "width": 48,
                               "height": 48,
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "cornerRadius": 24,
                               "stroke": "$ds-outline",
                               "strokeWidth": 3,
@@ -370384,7 +370384,7 @@
                                   "height": 22,
                                   "icon": "palette",
                                   "library": "lucide",
-                                  "fill": "#1D2742"
+                                  "fill": "$ds-on-paint"
                                 }
                               ]
                             },
@@ -370432,7 +370432,7 @@
                                   "type": "ellipse",
                                   "id": "vxYgL",
                                   "name": "Dot · MEDIUM",
-                                  "fill": "#9ccc65",
+                                  "fill": "$ds-paint-green",
                                   "width": 18,
                                   "height": 18,
                                   "stroke": "$ds-ink",
@@ -370571,7 +370571,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#fff0cf",
+                                  "fill": "$ds-paint-cream",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -370608,7 +370608,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#ef5350",
+                                  "fill": "$ds-paint-red",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -370645,7 +370645,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#ff9345",
+                                  "fill": "$ds-paint-orange",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -370682,7 +370682,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#ffd84a",
+                                  "fill": "$ds-paint-yellow",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -370719,7 +370719,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#9ccc65",
+                                  "fill": "$ds-paint-green",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-strong",
                                   "strokeWidth": 4,
@@ -370734,7 +370734,7 @@
                                       "height": 25,
                                       "icon": "check",
                                       "library": "lucide",
-                                      "fill": "#1D2742"
+                                      "fill": "$ds-on-paint"
                                     }
                                   ]
                                 },
@@ -370768,7 +370768,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#26a69a",
+                                  "fill": "$ds-paint-teal",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -370813,7 +370813,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#42a5f5",
+                                  "fill": "$ds-paint-sky",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -370850,7 +370850,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#536dce",
+                                  "fill": "$ds-paint-indigo",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -370887,7 +370887,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#ab67cb",
+                                  "fill": "$ds-paint-purple",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -370924,7 +370924,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#f78fbd",
+                                  "fill": "$ds-paint-pink",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -370961,7 +370961,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#875c45",
+                                  "fill": "$ds-paint-brown",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -370998,7 +370998,7 @@
                                   "name": "Swatch",
                                   "width": 56,
                                   "height": 56,
-                                  "fill": "#3c4358",
+                                  "fill": "$ds-paint-charcoal",
                                   "cornerRadius": 28,
                                   "stroke": "$ds-outline",
                                   "strokeWidth": 2,
@@ -371088,7 +371088,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#fff0cf",
+                          "fill": "$ds-paint-cream",
                           "cornerRadius": 28,
                           "stroke": "$ds-outline",
                           "strokeWidth": 2,
@@ -371146,7 +371146,7 @@
                           "name": "Swatch",
                           "width": 56,
                           "height": 56,
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "cornerRadius": 28,
                           "stroke": "$ds-strong",
                           "strokeWidth": 4,
@@ -371161,7 +371161,7 @@
                               "height": 25,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#1D2742"
+                              "fill": "$ds-on-paint"
                             }
                           ]
                         },
@@ -371225,7 +371225,7 @@
                               "type": "ellipse",
                               "id": "gfiVD",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 18,
                               "height": 18,
                               "stroke": "$ds-ink",
@@ -371293,7 +371293,7 @@
                               "type": "ellipse",
                               "id": "mkDNk",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 68,
                               "height": 68,
                               "stroke": "$ds-on-strong",
@@ -373463,7 +373463,7 @@
                           "type": "ellipse",
                           "id": "DMWtJ",
                           "name": "Dot · MEDIUM",
-                          "fill": "#ab67cb",
+                          "fill": "$ds-paint-purple",
                           "width": 24,
                           "height": 24,
                           "stroke": "$ds-ink",
@@ -373620,7 +373620,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#fff0cf",
+                      "fill": "$ds-paint-cream",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -373657,7 +373657,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ef5350",
+                      "fill": "$ds-paint-red",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -373694,7 +373694,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ff9345",
+                      "fill": "$ds-paint-orange",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -373731,7 +373731,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ffd84a",
+                      "fill": "$ds-paint-yellow",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -373768,7 +373768,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#9ccc65",
+                      "fill": "$ds-paint-green",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -373805,7 +373805,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#26a69a",
+                      "fill": "$ds-paint-teal",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -373850,7 +373850,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#42a5f5",
+                      "fill": "$ds-paint-sky",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -373887,7 +373887,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#536dce",
+                      "fill": "$ds-paint-indigo",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -373924,7 +373924,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ab67cb",
+                      "fill": "$ds-paint-purple",
                       "cornerRadius": 28,
                       "stroke": "$ds-strong",
                       "strokeWidth": 4,
@@ -373939,7 +373939,7 @@
                           "height": 25,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#1D2742"
+                          "fill": "$ds-on-paint"
                         }
                       ]
                     },
@@ -373973,7 +373973,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#f78fbd",
+                      "fill": "$ds-paint-pink",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -374010,7 +374010,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#875c45",
+                      "fill": "$ds-paint-brown",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -374047,7 +374047,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#3c4358",
+                      "fill": "$ds-paint-charcoal",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -374628,7 +374628,7 @@
                           "type": "ellipse",
                           "id": "pzDfs",
                           "name": "Dot · LARGE",
-                          "fill": "#9ccc65",
+                          "fill": "$ds-paint-green",
                           "width": 42,
                           "height": 42,
                           "stroke": "$ds-on-strong",
@@ -374785,7 +374785,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#fff0cf",
+                      "fill": "$ds-paint-cream",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -374822,7 +374822,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ef5350",
+                      "fill": "$ds-paint-red",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -374859,7 +374859,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ff9345",
+                      "fill": "$ds-paint-orange",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -374896,7 +374896,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ffd84a",
+                      "fill": "$ds-paint-yellow",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -374933,7 +374933,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#9ccc65",
+                      "fill": "$ds-paint-green",
                       "cornerRadius": 28,
                       "stroke": "$ds-strong",
                       "strokeWidth": 4,
@@ -374948,7 +374948,7 @@
                           "height": 25,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#1D2742"
+                          "fill": "$ds-on-paint"
                         }
                       ]
                     },
@@ -374982,7 +374982,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#26a69a",
+                      "fill": "$ds-paint-teal",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -375027,7 +375027,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#42a5f5",
+                      "fill": "$ds-paint-sky",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -375064,7 +375064,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#536dce",
+                      "fill": "$ds-paint-indigo",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -375101,7 +375101,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#ab67cb",
+                      "fill": "$ds-paint-purple",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -375138,7 +375138,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#f78fbd",
+                      "fill": "$ds-paint-pink",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -375175,7 +375175,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#875c45",
+                      "fill": "$ds-paint-brown",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -375212,7 +375212,7 @@
                       "name": "Swatch",
                       "width": 56,
                       "height": 56,
-                      "fill": "#3c4358",
+                      "fill": "$ds-paint-charcoal",
                       "cornerRadius": 28,
                       "stroke": "$ds-outline",
                       "strokeWidth": 2,
@@ -375447,7 +375447,7 @@
                               "type": "ellipse",
                               "id": "I5jQ2",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 12,
                               "height": 12,
                               "stroke": "$ds-ink",
@@ -375494,7 +375494,7 @@
                               "type": "ellipse",
                               "id": "hsYkM",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 24,
                               "height": 24,
                               "stroke": "$ds-ink",
@@ -375541,7 +375541,7 @@
                               "type": "ellipse",
                               "id": "KbdJJ",
                               "name": "Dot",
-                              "fill": "#9ccc65",
+                              "fill": "$ds-paint-green",
                               "width": 45,
                               "height": 45,
                               "stroke": "$ds-on-strong",
@@ -377153,7 +377153,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "inner",
-                        "color": "#00000040",
+                        "color": "$ds-stage-shadow",
                         "offset": {
                           "x": 0,
                           "y": 6
@@ -377253,7 +377253,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "inner",
-                        "color": "#00000040",
+                        "color": "$ds-stage-shadow",
                         "offset": {
                           "x": 0,
                           "y": 6
@@ -377352,7 +377352,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "inner",
-                        "color": "#00000040",
+                        "color": "$ds-stage-shadow",
                         "offset": {
                           "x": 0,
                           "y": 6
@@ -377468,7 +377468,7 @@
                       "effect": {
                         "type": "shadow",
                         "shadowType": "inner",
-                        "color": "#00000040",
+                        "color": "$ds-stage-shadow",
                         "offset": {
                           "x": 0,
                           "y": 6
@@ -382472,7 +382472,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -382927,7 +382927,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -383382,7 +383382,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -383860,7 +383860,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -384338,7 +384338,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -384810,7 +384810,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -386754,7 +386754,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -387206,7 +387206,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -388667,7 +388667,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -389120,7 +389120,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -389573,7 +389573,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -390542,7 +390542,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -391494,7 +391494,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -392857,7 +392857,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -393828,7 +393828,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -395172,7 +395172,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -395627,7 +395627,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -396575,7 +396575,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -397051,7 +397051,7 @@
               "effect": {
                 "type": "shadow",
                 "shadowType": "inner",
-                "color": "#00000040",
+                "color": "$ds-stage-shadow",
                 "offset": {
                   "x": 0,
                   "y": 6
@@ -435608,7 +435608,7 @@
           "y": 472,
           "name": "Lift shadow",
           "opacity": 0.18,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 91,
           "height": 37,
           "effect": {
@@ -437042,7 +437042,7 @@
                                       "height": 13,
                                       "icon": "house",
                                       "library": "lucide",
-                                      "fill": "#FFFDF8"
+                                      "fill": "$ds-on-action"
                                     }
                                   ]
                                 }
@@ -437068,7 +437068,7 @@
                         },
                         "colors": [
                           {
-                            "color": "#A3835DF2",
+                            "color": "$ds-fade-edge",
                             "position": 0
                           },
                           {
@@ -437582,7 +437582,7 @@
                       "height": 19,
                       "icon": "house",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-action"
                     }
                   ]
                 },
@@ -439234,7 +439234,7 @@
           "y": 335,
           "name": "Lift shadow",
           "opacity": 0.2,
-          "fill": "#1D2742",
+          "fill": "$ds-lift-shadow",
           "width": 53,
           "height": 17,
           "effect": {
@@ -439257,7 +439257,7 @@
           "effect": {
             "type": "shadow",
             "shadowType": "outer",
-            "color": "#1D274259",
+            "color": "$ds-shade-35",
             "offset": {
               "x": 0,
               "y": 10
@@ -439297,10 +439297,10 @@
           "x": 140,
           "y": 289,
           "name": "Finger",
-          "fill": "#1D27421F",
+          "fill": "$ds-shade-12",
           "width": 44,
           "height": 44,
-          "stroke": "#FFFDF8B3",
+          "stroke": "$ds-finger",
           "strokeWidth": 2
         }
       ]
@@ -440138,7 +440138,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -440648,7 +440648,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -441168,7 +441168,7 @@
               "descendants": {
                 "Q9zkNx": {
                   "fill": [
-                    "#FEFEFE",
+                    "$ds-photo-white",
                     {
                       "type": "image",
                       "enabled": true,
@@ -543750,6 +543750,186 @@
           }
         }
       ]
+    },
+    "ds-shade-12": {
+      "type": "color",
+      "value": "#1D27421F"
+    },
+    "ds-shade-15": {
+      "type": "color",
+      "value": "#1D274226"
+    },
+    "ds-shade-20": {
+      "type": "color",
+      "value": "#1D274233"
+    },
+    "ds-shade-25": {
+      "type": "color",
+      "value": "#1D274240"
+    },
+    "ds-shade-35": {
+      "type": "color",
+      "value": "#1D274259"
+    },
+    "ds-flag-edge": {
+      "type": "color",
+      "value": "#00000026"
+    },
+    "ds-stage-shadow": {
+      "type": "color",
+      "value": "#00000040"
+    },
+    "ds-gate-shadow": {
+      "type": "color",
+      "value": "#00000055"
+    },
+    "ds-scrim-puzzle": {
+      "type": "color",
+      "value": "#1E2A3AB3"
+    },
+    "ds-paint-green": {
+      "type": "color",
+      "value": "#9CCC65"
+    },
+    "ds-paint-purple": {
+      "type": "color",
+      "value": "#AB67CB"
+    },
+    "ds-paint-orange": {
+      "type": "color",
+      "value": "#FF9345"
+    },
+    "ds-paint-red": {
+      "type": "color",
+      "value": "#EF5350"
+    },
+    "ds-paint-brown": {
+      "type": "color",
+      "value": "#875C45"
+    },
+    "ds-paint-cream": {
+      "type": "color",
+      "value": "#FFF0CF"
+    },
+    "ds-paint-yellow": {
+      "type": "color",
+      "value": "#FFD84A"
+    },
+    "ds-paint-teal": {
+      "type": "color",
+      "value": "#26A69A"
+    },
+    "ds-paint-sky": {
+      "type": "color",
+      "value": "#42A5F5"
+    },
+    "ds-paint-indigo": {
+      "type": "color",
+      "value": "#536DCE"
+    },
+    "ds-paint-pink": {
+      "type": "color",
+      "value": "#F78FBD"
+    },
+    "ds-paint-charcoal": {
+      "type": "color",
+      "value": "#3C4358"
+    },
+    "ds-draw-red": {
+      "type": "color",
+      "value": "#C9583D"
+    },
+    "ds-draw-orange": {
+      "type": "color",
+      "value": "#E39B2D"
+    },
+    "ds-draw-yellow": {
+      "type": "color",
+      "value": "#F2D04A"
+    },
+    "ds-draw-green": {
+      "type": "color",
+      "value": "#5E9F4E"
+    },
+    "ds-draw-blue": {
+      "type": "color",
+      "value": "#3C7DC4"
+    },
+    "ds-draw-purple": {
+      "type": "color",
+      "value": "#7A4FA8"
+    },
+    "ds-plank": {
+      "type": "color",
+      "value": "#A9774A"
+    },
+    "ds-fade-edge": {
+      "type": "color",
+      "value": "#A3835DF2"
+    },
+    "ds-glow-40": {
+      "type": "color",
+      "value": "#E39B2D66"
+    },
+    "ds-glow-50": {
+      "type": "color",
+      "value": "#E39B2D80"
+    },
+    "ds-glow-67": {
+      "type": "color",
+      "value": "#E39B2DAA"
+    },
+    "ds-glow-80": {
+      "type": "color",
+      "value": "#E39B2DCC"
+    },
+    "ds-treasure-glow": {
+      "type": "color",
+      "value": "#F7C25AAA"
+    },
+    "ds-finger": {
+      "type": "color",
+      "value": "#FFFDF8B3"
+    },
+    "ds-sparkle-sweep": {
+      "type": "color",
+      "value": "#FFFDF8A6"
+    },
+    "ds-bubble": {
+      "type": "color",
+      "value": "#FFFFFF99"
+    },
+    "ds-photo-white": {
+      "type": "color",
+      "value": "#FEFEFE"
+    },
+    "ds-flag-white": {
+      "type": "color",
+      "value": "#FFFFFF"
+    },
+    "ds-flag-uk-red": {
+      "type": "color",
+      "value": "#C8102E"
+    },
+    "ds-flag-uk-blue": {
+      "type": "color",
+      "value": "#012169"
+    },
+    "ds-flag-ru-blue": {
+      "type": "color",
+      "value": "#0039A6"
+    },
+    "ds-flag-ru-red": {
+      "type": "color",
+      "value": "#D52B1E"
+    },
+    "ds-lift-shadow": {
+      "type": "color",
+      "value": "#1D2742"
+    },
+    "ds-on-paint": {
+      "type": "color",
+      "value": "#1D2742"
     }
   },
   "fileToken": "038dfbcf-cc60-4e78-8bca-50c4f8fe1555"
