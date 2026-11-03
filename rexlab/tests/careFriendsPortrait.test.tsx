@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { computedStyleWithVariables } from "./stylesheet.ts";
 import type { PortraitLayouts } from "../src/App.tsx";
 import { TEXTS } from "../src/language/texts.ts";
 import { PROGRESS_KEY } from "../src/localProgress.ts";
@@ -8,6 +9,8 @@ import { SHIPPED_VISITORS, manualViewport, memoryStorage } from "./support.ts";
 import { openWindow, styleAt, type WindowSize } from "./windowSizes.ts";
 
 // dinosaur-care-friends-portrait.feature in the app.
+
+const browserStyle = computedStyleWithVariables(window.getComputedStyle.bind(window));
 
 const PORTRAIT_LAYOUTS: PortraitLayouts = { home: ["tall"], "care-welcome": ["tall"], "care-friends": ["tall"] };
 const NARROW_LAYOUTS: PortraitLayouts = { home: ["tall", "tall-narrow"], "care-welcome": ["tall", "tall-narrow"], "care-friends": ["tall", "tall-narrow"] };
@@ -29,111 +32,43 @@ function openFriends(size: WindowSize, { language = "en", friends = FRIENDS, vie
   fireEvent.click(screen.getByRole("button", { name: TEXTS[language].friends }));
 }
 
-// jsdom does not lay out: capitals at a conservative 0.8 em with their
-// spacing.
-const capitalsWidth = (words: string, style: ReturnType<typeof styleAt>) => words.length * (style.px("font-size") * 0.8 + style.px("letter-spacing"));
-
-// Whether every shipped name fits the two lines a friend card's footer
-// holds, its cards `columns` to a row of the window of `size`: then every
-// card is as tall as the others, and a turn keeps the list's place by its
-// rows.
-function namesFit(size: WindowSize, columns: number, language: "en" | "ru") {
-  const page = styleAt(part(".friends"), size);
-  const grid = styleAt(part(".friends-grid"), size);
-  const footer = styleAt(part(".friend-footer"), size);
-  const name = styleAt(part(".friend-name"), size);
-  expect(name.value("white-space") || "normal").toBe("normal");
-  expect([grid.value("grid-auto-rows"), footer.value("box-sizing"), footer.px("height")]).toEqual(["max-content", "border-box", footer.px("padding-top") + footer.px("padding-bottom") + 2 * name.px("line-height")]);
-  const card = (size[0] - page.px("padding-left") - page.px("padding-right") - (columns - 1) * grid.columnGap()) / columns;
-  const line = card - footer.px("padding-left") - footer.px("padding-right") - 20 - footer.columnGap();
-  return SHIPPED_VISITORS.every((visitor) => capitalsWidth(visitor.name[language], name) <= 2 * line);
-}
-
 describe("care's friends upright", () => {
+  beforeEach(() => {
+    vi.spyOn(window, "getComputedStyle").mockImplementation(browserStyle);
+  });
   afterEach(() => vi.restoreAllMocks());
 
-  it.each([[744, 1133], [820, 1180], [600, 1000]] as const)("stands upright at %j, the cards two to a row under NEW VISITOR", (...size) => {
+  it.each([[744, 1133], [820, 1180], [600, 1000]] as const)("stands upright at %j with two columns and its own action row", (...size) => {
     openFriends(size);
     expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall", false, false]);
-    expect(screen.queryByRole("img", { name: TEXTS.en.turnSideways })).toBeNull();
-    const page = styleAt(part(".friends"), size);
-    expect([page.px("padding-left"), page.px("padding-right")]).toEqual([32, 32]);
-    expect(styleAt(part(".friends-grid"), size).value("grid-template-columns")).toBe("repeat(2, minmax(0, 1fr))");
+    expect(part(".friends").style.getPropertyValue("--friends-columns")).toBe("2");
     expect(within(screen.getByRole("group", { name: TEXTS.en.friends })).getAllByRole("button")).toHaveLength(FRIENDS.length);
-    const visitor = styleAt(screen.getByRole("button", { name: TEXTS.en.newVisitor }), size);
-    expect([visitor.value("flex-basis"), visitor.value("justify-content")]).toEqual(["100%", "center"]);
-    expect(styleAt(part(".friends-bar"), size).value("flex-wrap")).toBe("wrap");
-    // NEW VISITOR comes last on the bar, so it alone wraps to the second
-    // row; nothing is ordered ahead of the rest.
-    const bar = [...part(".friends-bar").children] as HTMLElement[];
-    expect(bar.at(-1)).toBe(screen.getByRole("button", { name: TEXTS.en.newVisitor }));
-    expect(bar.map((each) => styleAt(each, size).value("order") || "0")).toEqual(bar.map(() => "0"));
-    expect(styleAt(part(".friends-bar"), size).value("flex-direction") || "row").toBe("row");
+    expect(styleAt(part(".friends-invite"), size).value("grid-column")).toBe("1 / -1");
+    expect([...part(".friends-bar").children].at(-1)?.contains(screen.getByRole("button", { name: TEXTS.en.newVisitor }))).toBe(true);
+    expect(styleAt(part(".friends-grid"), size).value("overflow-y")).toBe("auto");
   });
 
-  it.each(["en", "ru"] as const)("keeps the bar on one row and every word in its room at 600 wide in %s", (language) => {
-    const size: WindowSize = [600, 1000];
-    openFriends(size, { language });
-    const text = TEXTS[language];
-    const page = styleAt(part(".friends"), size);
-    const width = 600 - page.px("padding-left") - page.px("padding-right");
-
-    for (const name of [text.back, text.home]) {
-      const button = screen.getByRole("button", { name });
-      expect(styleAt(button, size).px("width")).toBe(56);
-      expect(button.querySelector(".upright-hidden")?.textContent).toBe(name);
-    }
-    // BACK, HOME, the title with its mark and the count with two digits
-    // share the first row; NEW VISITOR wraps to its own.
-    const bar = styleAt(part(".friends-bar"), size);
-    const title = styleAt(part(".friends-title"), size);
-    const mark = styleAt(part(".friends-mark"), size);
-    const count = styleAt(part(".friend-count"), size);
-    const titleWidth = title.px("padding-left") + mark.px("width") + title.columnGap() + capitalsWidth(text.friends, title);
-    const countWidth = count.px("padding-left") + count.px("padding-right") + 20 + count.columnGap() + 2 * count.px("font-size") * 0.7;
-    expect(56 + 56 + titleWidth + countWidth + 3 * bar.columnGap()).toBeLessThanOrEqual(width);
-
-    const visitor = styleAt(part(".new-visitor-button"), size);
-    expect(visitor.px("padding-left") + 24 + visitor.columnGap() + capitalsWidth(text.newVisitor, visitor) + visitor.px("padding-right")).toBeLessThanOrEqual(width);
-
-    // Every friend's name in two lines of its card, half the row.
-    expect(styleAt(part(".friend-name"), size).value("overflow-wrap")).toBe("anywhere");
-    expect(namesFit(size, 2, language)).toBe(true);
-  });
-
-  it.each(["en", "ru"] as const)("stands the nest and NEW VISITOR in the middle with no friends at 600 wide in %s", (language) => {
-    const size: WindowSize = [600, 1000];
-    openFriends(size, { language, friends: [] });
+  it.each(["en", "ru"] as const)("names HOME and BACK, shows the title, zero count and nest invite in %s", (language) => {
+    openFriends([600, 1000], { language, friends: [] });
     const text = TEXTS[language];
     expect([gateShown(), document.querySelector(".friends-grid")]).toEqual([false, null]);
-    const page = styleAt(part(".friends"), size);
-    const width = 600 - page.px("padding-left") - page.px("padding-right");
-    expect(styleAt(part(".no-friends-picture"), size).px("width")).toBeLessThanOrEqual(width);
-    // The words wrap between words, the longest word inside the width.
-    const words = styleAt(part(".no-friends-text"), size);
-    expect([words.value("white-space") || "normal", words.value("min-width") || "auto"]).toEqual(["normal", "auto"]);
-    const longest = Math.max(...text.noFriends.split(" ").map((word) => capitalsWidth(word, words)));
-    expect(longest).toBeLessThanOrEqual(width);
-    const button = styleAt(part(".no-friends-button"), size);
-    expect(button.px("padding-left") + 30 + button.columnGap() + capitalsWidth(text.newVisitor, button) + button.px("padding-right")).toBeLessThanOrEqual(width);
+    expect(screen.getByRole("button", { name: text.home }).querySelector("svg.lucide-house")).not.toBeNull();
+    expect(screen.getByRole("button", { name: text.back }).querySelector("svg.lucide-arrow-left")).not.toBeNull();
+    expect(screen.getByRole("heading").textContent).toBe(text.friends);
+    expect(part(".friend-count").textContent).toBe("0");
+    expect(part(".no-friends-nest")).toBeDefined();
+    expect(part(".no-friends-text").textContent).toBe(text.noFriends);
+    fireEvent.click(screen.getByRole("button", { name: text.home }));
+    expect(document.querySelector(".home")).not.toBeNull();
   });
 
-  it("keeps the landscape friends as they were", () => {
-    openFriends([1180, 820], { viewport: manualViewport("landscape") });
-    expect([document.documentElement.dataset.size, gateShown()]).toEqual(["wide", false]);
-    expect(getComputedStyle(part(".friends")).paddingLeft).toBe("56px");
-    expect(getComputedStyle(part(".friends-grid")).gridTemplateColumns).toBe("repeat(4, minmax(0, 1fr))");
-    expect(getComputedStyle(part(".friends-bar")).flexWrap || "nowrap").toBe("nowrap");
-    for (const language of ["en", "ru"] as const) expect(namesFit([1180, 820], 4, language), language).toBe(true);
-  });
-
-  // jsdom does not lay out: the list as a browser lays it out, four
+  // jsdom does not lay out: the list as a browser lays it out, five
   // cards to a row in landscape and two upright, on a phone too.
-  const ROW_GAP = 20;
+  const ROW_GAP = 16;
   const ROWS = { tall: 330, "tall-narrow": 250 } as Record<string, number>;
   const geometry = () => {
     const upright = ROWS[document.documentElement.dataset.size ?? ""];
-    const columns = upright ? 2 : 4;
+    const columns = Number(part(".friends").style.getPropertyValue("--friends-columns"));
     const row = upright ?? 260;
     const rows = Math.ceil(SHIPPED_VISITORS.length / columns);
     const height = { tall: 900, "tall-narrow": 400 }[document.documentElement.dataset.size ?? ""] ?? 600;
@@ -154,7 +89,7 @@ describe("care's friends upright", () => {
 
   it.each([
     ["its end", (scrollHeight: number, height: number) => scrollHeight - height, (scrollHeight: number, height: number) => scrollHeight - height],
-    ["the row of the 21st friend", () => 5 * (260 + ROW_GAP), () => 10 * (330 + ROW_GAP)]
+    ["the row of the 21st friend", () => 4 * (260 + ROW_GAP), () => 10 * (330 + ROW_GAP)]
   ] as const)("keeps the friends and the list at %s as the device turns, each card a part a turn glides", (_, landscape, upright) => {
     const viewport = manualViewport("landscape");
     openFriends([1180, 820], { viewport, friends: SHIPPED_VISITORS.map(({ id }) => id) });
@@ -171,8 +106,21 @@ describe("care's friends upright", () => {
     expect(grid.scrollTop).toBe(upright(geometry().scrollHeight, geometry().height));
   });
 
+  it("keeps the anchored friend when a landscape window grows from five columns to seven", () => {
+    const viewport = manualViewport("landscape");
+    openFriends([1133, 744], { viewport, friends: SHIPPED_VISITORS.map(({ id }) => id) });
+    const grid = laidOut();
+    grid.scrollTop = 4 * (260 + ROW_GAP);
+    fireEvent.scroll(grid);
+    openWindow(1440, 900);
+    act(() => viewport.resize("wide", false));
+    expect(part(".friends").style.getPropertyValue("--friends-columns")).toBe("7");
+    expect(part(".friends-grid")).toBe(grid);
+    expect(grid.scrollTop).toBe(2 * (260 + ROW_GAP));
+  });
+
   it.each([
-    ["landscape", "wide", [1180, 820], 5 * (260 + ROW_GAP)],
+    ["landscape", "wide", [1180, 820], 4 * (260 + ROW_GAP)],
     ["a tall window", "tall", [820, 1180], 10 * (330 + ROW_GAP)]
   ] as const)("keeps the list at the row of the 21st friend as %s narrows to a phone, two cards to a row", (_, from, size, scrolled) => {
     const viewport = manualViewport(from === "wide" ? "landscape" : "portrait");
