@@ -5,6 +5,7 @@
 - The live panel keeps the newest text visible after later layout growth,
   while paused reading and active text selection stay in place. Delayed scroll
   acknowledgements preserve the reader’s latest position (LAB-942).
+- Streaming transcript text leaves trailing space so the scrollbar does not cover words or the live caret (LAB-934).
 
 ## 2026-10-30
 

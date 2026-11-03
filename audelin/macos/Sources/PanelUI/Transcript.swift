@@ -319,6 +319,8 @@ private extension Transcript {
             style.maximumLineHeight = height
             style.paragraphSpacing = spacing
             style.headIndent = indent
+            // Keep wrapped text and the live caret clear of overlay scrollbars.
+            style.tailIndent = -tokens.space24
 
             style.tabStops = [NSTextTab(textAlignment: .left, location: indent)]
             paragraphs[key] = style
