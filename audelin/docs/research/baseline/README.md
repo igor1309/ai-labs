@@ -52,14 +52,16 @@ recorded here yet: **manual, untested**.
 
 ## Baseline command
 
-From `audelin/macos`:
+From `audelin/macos/Benchmarks`:
 
-    scripts/baseline-rehearsal.sh --runs 3 --minutes 5
+    ./baseline.sh --runs 3 --minutes 5
 
 It synthesises [`fixture.txt`](fixture.txt), an invented community-garden
 planning call (no private content), with `say -v Samantha -r 170`, and runs
-the rehearsal ([README](../../../macos/App/Sources/AudelinRehearsal/README.md))
-with `--speech`. The same speech plays on both sides, looped to 5 minutes,
+`AudelinBaseline` (`macos/Benchmarks/Baseline`): the rehearsal's run
+([README](../../../macos/App/Sources/AudelinRehearsal/README.md)) with
+`--speech`, in its own package so the app and the rehearsal never link the
+model. The same speech plays on both sides, looped to 5 minutes,
 at 1×, through the app's composition: call detection, the Recording
 machine, both tracks recorded to disk, Live text, the transcript and the
 panel. Each side has its own Parakeet v3 recogniser; both share one model
@@ -91,7 +93,9 @@ Measures, from each run's report:
 
 Measured. Apple M3 Max (Mac15,10), 36 GB, macOS 26.6.2 (25G83), release
 build of the baseline-mode commit before its rebase onto trunk
-(`f4844d2c`, now `91a2fbdf`; the uncommitted changes were documentation only). Parakeet v3 (`parakeet-tdt-0.6b-v3`, FluidAudio's Core ML models,
+(`f4844d2c`, now `91a2fbdf`; the uncommitted changes were documentation only),
+when the run was still inside `AudelinRehearsal`; the code it ran moved to
+`Benchmarks/Baseline` unchanged in behaviour. Parakeet v3 (`parakeet-tdt-0.6b-v3`, FluidAudio's Core ML models,
 its default compute units). Fixture: 135.4 s, mono 22,050 Hz 16-bit,
 looped to 300 s, converted to 16 kHz for recognition. Each run's report is
 in [2026-11-03/](2026-11-03/).
@@ -130,6 +134,28 @@ What the runs show:
   minutes.
 
 Not measured: real devices and real call audio (the smoke procedure),
-Russian speech, overlapping speakers, calls longer than 5 minutes at 1×,
-and a Mac under other load. Three warm runs on one Mac support no
-percentile claims.
+Russian speech, overlapping speakers, calls longer than 5 minutes at 1×.
+Three warm runs on one Mac support no percentile claims. The machine's
+load during these runs was not recorded.
+
+## Other load moves the result
+
+The command now writes `load before the run:` (`sysctl vm.loadavg`) at the
+top of each run's log. Five 1-minute runs on the same Mac after the move to
+`Benchmarks/Baseline`, while other work ran (an iOS simulator, builds,
+other agents), on 2026-11-03:
+
+| 1-minute load average before the run | Recognisers at most behind | Final text trails, mean | Stop to final |
+|---|---|---|---|
+| not recorded | 0.1 s | not reported | 0.2 s |
+| not recorded | 11.9 s | not reported | 0.1 s |
+| not recorded | 21.9 s | not reported | 0.4 s |
+| 6.8 | 0.4 s | 2.3 s | 26.2 s |
+| 33.2 | 17.7 s | 5.8 s | 0.4 s |
+
+No audio was lost in any of them: both tracks held all 60 s and each side's
+transcript had 208 words. The backlog cleared by each run's end. A busy
+machine delays live text by up to about 20 s; it does not drop it. One stop
+took 26.2 s against 0.1–0.4 s in every other run, in the run just before the
+load average reached 33; that it was the same load is likely, not shown.
+Compare runs only when the load before them is similar and low.

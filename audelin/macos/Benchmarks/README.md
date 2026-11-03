@@ -22,9 +22,10 @@ its own sandbox inside it), with nothing heavy alongside. Every tool takes `-h`.
 | Which frames grow, between two finished runs | `cd Profile && python3 -I frames.py TAG-20 TAG-6000 45` | seconds |
 | Saves, bytes written and CPU at real speaking speed | `Profile/saves.sh [SECONDS]` | minutes |
 | Does a real recogniser keep up late in a call? | `./speech.sh TAG [SECONDS]` | about 15 min |
+| Live text from the call's start: first text, lags, stop, CPU, lost audio | `./baseline.sh [--runs 3] [--minutes 5]` | about 25 min |
 
 Use these rather than typing the commands. `Profile/` is its own package, built
-against the checkout. All three benchmark packages use `Composer` and
+against the checkout. All four benchmark packages use `Composer` and
 `SessionRehearsal` from `../App` (the nested packages use `../../App`),
 and component products from `macos`. These harnesses require that App package;
 measure older commits with the benchmark tools from their package layout.
@@ -73,6 +74,15 @@ word end to report without the backlog, the recogniser's own wait; **capture→p
 the panel's state, not drawing; **capture→final** is word end to the word going final. Flat, as
 settled in LAB-795: capture→panel at 6,000 lines within 1.25× of 20 lines, or inside the spread of
 two runs of the same code, and no backlog growth.
+
+## Baseline
+
+`./baseline.sh` runs `AudelinBaseline` (`Baseline/`): the rehearsal's own run
+(`rehearsalMain` in `SessionRehearsal`) with a `say` fixture on both sides,
+each heard by real Parakeet at 1×, through call detection, both tracks, Live
+text, the transcript and the panel. Once after the build, then warm. What it
+reports and the results are in
+[the baseline](../../docs/research/baseline/README.md).
 
 ## Reading the number
 

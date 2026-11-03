@@ -1,5 +1,6 @@
 import BlockingTestWork
 import AVFAudio
+import CoreAudioProcessBinding
 import CoreAudioProcesses
 import Darwin
 import Foundation
@@ -37,7 +38,7 @@ struct CoreAudioBindingTests {
             try #require((size ?? 0) > 0, "The fixture must contain audio before afplay can open it")
 
             let binding = CoreAudioBinding()
-            let adapter = CoreAudioProcesses(binding: binding, clock: FakeClock())
+            let adapter = CoreAudioProcesses(binding: binding, clock: ContinuousCallClock())
             // The native listener only signals a change; the list is read by the awaiting task.
             let changed = AsyncStream<Void>.makeStream(bufferingPolicy: .bufferingNewest(1))
             defer { changed.continuation.finish() }

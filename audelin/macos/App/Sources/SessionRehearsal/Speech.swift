@@ -13,11 +13,11 @@ struct Speech {
         let file = try AVAudioFile(forReading: URL(fileURLWithPath: path))
         let format = file.processingFormat
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(file.length)) else {
-            throw Options.Failure("cannot read \(path)")
+            throw RehearsalOptions.Failure("cannot read \(path)")
         }
         try file.read(into: buffer)
         guard let channel = buffer.floatChannelData?[0], buffer.frameLength > 0 else {
-            throw Options.Failure("\(path) has no audio")
+            throw RehearsalOptions.Failure("\(path) has no audio")
         }
         samples = Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
         rate = format.sampleRate
