@@ -139,3 +139,9 @@ test("the TEETH tile shows the jaw's dinosaur", () => {
   renderHomePageFeaturing("compare", { allGames: true });
   expect(tilesRow().querySelector('[data-turn-part="tile-whoseJaw"] img')?.getAttribute("src")).toBe("baryonyx.webp");
 });
+
+test("DRAW shows marks in the sand in the sky", () => {
+  renderHomePageFeaturing("sandWriting", { allGames: true });
+  expect(part(".home-today-art .sand-writing-tile-art svg path")).not.toBeNull();
+  expect(part(".home-today-art").querySelector("img")).toBeNull();
+});

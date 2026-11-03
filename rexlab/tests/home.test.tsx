@@ -537,9 +537,13 @@ describe("the large card", () => {
       const card = featuredCard();
       expect([card.dataset.game, card.getAttribute("aria-label"), card.querySelector(".featured-card-title")?.textContent]).toEqual([game, name, name]);
       expect(name).toBe(name.toLocaleUpperCase("en"));
-      // The same picture, drawn the same way, and the same symbols.
-      expect(looks(card).picture).toEqual(tile.picture);
-      expect(looks(card).sources).toEqual(tile.sources);
+      // The same picture, drawn the same way, and the same symbols; DRAW's
+      // sky shows its marks in the sand in place of its tile's dinosaur.
+      if (game === "sandWriting") expect(card.querySelector(".home-today-art > .sand-writing-tile-art")).not.toBeNull();
+      else {
+        expect(looks(card).picture).toEqual(tile.picture);
+        expect(looks(card).sources).toEqual(tile.sources);
+      }
       expect(tile.badge).toBeNull();
       // Sand writing has no score; the catalogue always has its count.
       expect(looks(card).badge !== null).toBe(game !== "sandWriting" && (scored || game === "catalogue"));
@@ -588,8 +592,10 @@ describe("the large card", () => {
     const doubled = await openedBy(game, (user) => user.dblClick(featuredCard()));
     const once = await openedBy(other, (user) => user.click(homeTile(TEXTS.en[key])));
 
-    // The home page's pictures load in the order its tiles stand.
-    expect({ ...doubled, asked: [...doubled.asked].sort() }).toEqual({ ...once, asked: [...once.asked].sort() });
+    // The home page's pictures load in the order its tiles stand; DRAW's
+    // tile picture is not asked for while its sky shows sand.
+    const tileOnly = game === "sandWriting" ? [fakeBodyPicture("parasaurolophus")] : [];
+    expect({ ...doubled, asked: [...doubled.asked].sort() }).toEqual({ ...once, asked: once.asked.filter((url) => !tileOnly.includes(url)).sort() });
     expect(once.shown).not.toContain("games-tiles");
   });
 });

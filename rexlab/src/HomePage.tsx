@@ -5,6 +5,7 @@ import { AGE_LEVELS, type AgeLevel } from "./ageLevel.ts";
 import { AGE_LEVEL_PICTURES } from "./ageLevelPictures.ts";
 import { Button } from "./Button.tsx";
 import { LANGUAGE_FLAGS, LANGUAGE_NAMES, LANGUAGES, type Language } from "./language/language.ts";
+import { SandWritingPicture } from "./SandWritingPicture.tsx";
 import { LanguageFlag } from "./LanguageFlag.tsx";
 import { TEXTS } from "./language/texts.ts";
 import { ParentMenu, type ParentMenuProps } from "./ParentMenu.tsx";
@@ -236,6 +237,7 @@ export function HomePage({
       name: text.sandWriting,
       symbol: Pencil,
       picture: <Picture className="sand-writing-tile-picture" src={sandWritingPicture} alt="" width={800} height={600} />,
+      skyPicture: <SandWritingPicture />,
       badge: undefined,
       onOpen: onSandWriting
     }
