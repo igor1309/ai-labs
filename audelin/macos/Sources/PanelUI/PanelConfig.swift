@@ -11,7 +11,6 @@ public struct PanelConfig: Equatable, Sendable {
     public var lineHeight: CGFloat
     /// Line height of the empty-log hint and the new-lines pill.
     public var looseLineHeight: CGFloat
-    public var gutterWidth: CGFloat
     public var panelWidth: CGFloat
 
     public init(
@@ -19,14 +18,12 @@ public struct PanelConfig: Equatable, Sendable {
         dark: GlassLedger,
         lineHeight: CGFloat,
         looseLineHeight: CGFloat,
-        gutterWidth: CGFloat,
         panelWidth: CGFloat
     ) {
         self.light = light
         self.dark = dark
         self.lineHeight = lineHeight
         self.looseLineHeight = looseLineHeight
-        self.gutterWidth = gutterWidth
         self.panelWidth = panelWidth
     }
 
@@ -48,7 +45,6 @@ public extension PanelConfig {
             dark: .dark,
             lineHeight: 1.45,
             looseLineHeight: 1.55,
-            gutterWidth: 80,
             panelWidth: 396
         )
     }()
