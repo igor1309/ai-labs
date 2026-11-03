@@ -223,7 +223,7 @@ let package = Package(
         ),
         .testTarget(
             name: "MicrophoneCaptureTests",
-            dependencies: ["MicrophoneCapture"]
+            dependencies: ["MicrophoneCapture", "BlockingTestWork"]
         ),
         .testTarget(
             name: "ModelLoadingTests",

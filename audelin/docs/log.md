@@ -1,5 +1,10 @@
 # Log
 
+## 2026-11-03
+
+- Microphone capture keeps following the default input and checking device availability
+  through replaceable native audio calls (LAB-945).
+
 ## 2026-10-30
 
 - Call text keeps an ordered final prefix and merges only the remaining entries;
