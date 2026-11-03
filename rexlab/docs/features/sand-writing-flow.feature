@@ -9,7 +9,7 @@ Feature: Sand writing: Home navigation
     Then the blank full-viewport sand canvas opens in portrait or landscape
     And the screen uses the shared quick screen transition
     And reduced motion uses a short fade
-    When I press its icon-only Home button
+    When I press its Home button
     Then Home opens and its normal layout and version footer return
     When I open sand writing again
     Then I get fresh sand with the default fine tip
