@@ -192036,7 +192036,12 @@
               "id": "KxZwl",
               "type": "ref",
               "ref": "CyWgg",
-              "name": "Home"
+              "name": "Home",
+              "descendants": {
+                "N8ne2v": {
+                  "content": "ДОМОЙ"
+                }
+              }
             },
             {
               "type": "frame",
