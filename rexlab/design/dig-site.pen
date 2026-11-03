@@ -6330,13 +6330,13 @@
                           "height": 14,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         },
                         {
                           "type": "text",
                           "id": "RDrpD",
                           "name": "Label",
-                          "fill": "#FFFDF8",
+                          "fill": "$ds-on-good",
                           "content": "SAVED",
                           "fontFamily": "$ds-font",
                           "fontSize": "$ds-size-tag",
@@ -8463,7 +8463,7 @@
                                   "height": 26,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -10696,7 +10696,7 @@
                               "height": 34,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -27979,7 +27979,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         }
@@ -199101,13 +199101,13 @@
                       "height": 22,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     },
                     {
                       "type": "text",
                       "id": "XoTUy",
                       "name": "Count",
-                      "fill": "#FFFDF8",
+                      "fill": "$ds-on-good",
                       "content": "4/4",
                       "fontFamily": "$ds-font",
                       "fontSize": "$ds-size-number",
@@ -212690,13 +212690,13 @@
                       "height": 20,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     },
                     {
                       "type": "text",
                       "id": "tUmTY",
                       "name": "Count",
-                      "fill": "#FFFDF8",
+                      "fill": "$ds-on-good",
                       "content": "4/4",
                       "fontFamily": "$ds-font",
                       "fontSize": 20,
@@ -220750,13 +220750,13 @@
                       "height": 20,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     },
                     {
                       "type": "text",
                       "id": "W0g6L",
                       "name": "Count",
-                      "fill": "#FFFDF8",
+                      "fill": "$ds-on-good",
                       "content": "4/4",
                       "fontFamily": "$ds-font",
                       "fontSize": 20,
@@ -245168,13 +245168,13 @@
                           "height": 22,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         },
                         {
                           "type": "text",
                           "id": "bylBi",
                           "name": "Count",
-                          "fill": "#FFFDF8",
+                          "fill": "$ds-on-good",
                           "content": "4/4",
                           "fontFamily": "$ds-font",
                           "fontSize": "$ds-size-number",
@@ -283708,13 +283708,13 @@
                           "height": 22,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         },
                         {
                           "type": "text",
                           "id": "ONr9U",
                           "name": "Count",
-                          "fill": "#FFFDF8",
+                          "fill": "$ds-on-good",
                           "content": "12/12",
                           "fontFamily": "$ds-font",
                           "fontSize": "$ds-size-number",
@@ -292933,13 +292933,13 @@
                       "height": 22,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     },
                     {
                       "type": "text",
                       "id": "opr8T",
                       "name": "Count",
-                      "fill": "#FFFDF8",
+                      "fill": "$ds-on-good",
                       "content": "12/12",
                       "fontFamily": "$ds-font",
                       "fontSize": "$ds-size-number",
@@ -331811,7 +331811,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -331907,7 +331907,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -332545,7 +332545,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -332641,7 +332641,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -333328,7 +333328,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -333467,7 +333467,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -334111,7 +334111,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -334303,7 +334303,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -335467,7 +335467,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -335702,7 +335702,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -336063,7 +336063,7 @@
                                   "height": 15,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -336520,7 +336520,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -336616,7 +336616,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -337324,7 +337324,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -337420,7 +337420,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -338269,7 +338269,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -338365,7 +338365,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -339178,7 +339178,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -339317,7 +339317,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -342091,7 +342091,7 @@
                               "height": 14,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         }
@@ -342267,7 +342267,7 @@
                       "height": 29,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -346919,7 +346919,7 @@
                       "height": 27,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -347013,7 +347013,7 @@
                           "height": 14,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         }
                       ]
                     }
@@ -347664,7 +347664,7 @@
                       "height": 27,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -347846,7 +347846,7 @@
                           "height": 14,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         }
                       ]
                     }
@@ -348900,7 +348900,7 @@
                       "height": 27,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -349125,7 +349125,7 @@
                           "height": 14,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         }
                       ]
                     }
@@ -349343,7 +349343,7 @@
                                   "height": 15,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -350429,7 +350429,7 @@
                       "height": 27,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -350523,7 +350523,7 @@
                           "height": 14,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         }
                       ]
                     }
@@ -352477,7 +352477,7 @@
                       "height": 25,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -352614,7 +352614,7 @@
                           "height": 14,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         }
                       ]
                     }
@@ -353222,7 +353222,7 @@
                       "height": 25,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -353404,7 +353404,7 @@
                           "height": 14,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         }
                       ]
                     }
@@ -356006,7 +356006,7 @@
                       "height": 22,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -356699,7 +356699,7 @@
                       "height": 22,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -359532,7 +359532,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -359628,7 +359628,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -360878,7 +360878,7 @@
                       "height": 27,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -361015,7 +361015,7 @@
                           "height": 14,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         }
                       ]
                     }
@@ -363474,7 +363474,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -363666,7 +363666,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -364830,7 +364830,7 @@
                               "height": 28,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         },
@@ -364926,7 +364926,7 @@
                                   "height": 14,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -367439,7 +367439,7 @@
                       "height": 27,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -367621,7 +367621,7 @@
                           "height": 14,
                           "icon": "check",
                           "library": "lucide",
-                          "fill": "#FFFDF8"
+                          "fill": "$ds-on-good"
                         }
                       ]
                     }
@@ -369186,7 +369186,7 @@
                                           "height": 28,
                                           "icon": "check",
                                           "library": "lucide",
-                                          "fill": "#FFFDF8"
+                                          "fill": "$ds-on-good"
                                         }
                                       ]
                                     },
@@ -369282,7 +369282,7 @@
                                               "height": 14,
                                               "icon": "check",
                                               "library": "lucide",
-                                              "fill": "#FFFDF8"
+                                              "fill": "$ds-on-good"
                                             }
                                           ]
                                         }
@@ -369720,7 +369720,7 @@
                                           "height": 14,
                                           "icon": "check",
                                           "library": "lucide",
-                                          "fill": "#FFFDF8"
+                                          "fill": "$ds-on-good"
                                         }
                                       ]
                                     }
@@ -369896,7 +369896,7 @@
                                   "height": 29,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             },
@@ -370052,7 +370052,7 @@
                                       "height": 14,
                                       "icon": "check",
                                       "library": "lucide",
-                                      "fill": "#FFFDF8"
+                                      "fill": "$ds-on-good"
                                     }
                                   ]
                                 }
@@ -371323,7 +371323,7 @@
                                   "height": 15,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
@@ -373422,7 +373422,7 @@
                               "height": 14,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         }
@@ -373555,7 +373555,7 @@
                       "height": 29,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -374544,7 +374544,7 @@
                               "height": 14,
                               "icon": "check",
                               "library": "lucide",
-                              "fill": "#FFFDF8"
+                              "fill": "$ds-on-good"
                             }
                           ]
                         }
@@ -374720,7 +374720,7 @@
                       "height": 29,
                       "icon": "check",
                       "library": "lucide",
-                      "fill": "#FFFDF8"
+                      "fill": "$ds-on-good"
                     }
                   ]
                 },
@@ -375571,7 +375571,7 @@
                                   "height": 15,
                                   "icon": "check",
                                   "library": "lucide",
-                                  "fill": "#FFFDF8"
+                                  "fill": "$ds-on-good"
                                 }
                               ]
                             }
