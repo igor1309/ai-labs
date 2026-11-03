@@ -35,11 +35,12 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
 
     private let makeEngine: @Sendable () -> any MicrophoneEngine
     private let readClock: @Sendable () throws -> MicrophoneClockReading
+    private let hal: MicrophoneHALCalls
     private var engine: (any MicrophoneEngine)?
     private var tap: NativeTap?
     private var phase = Phase.ended
     private var configurationObserver: (any NSObjectProtocol)?
-    private var defaultListener: AudioObjectPropertyListenerBlock?
+    private var defaultListener: MicrophoneListenerBlock?
     private let notifications = DispatchQueue(label: "audelin.microphone-notifications")
     private let engineLock = NSLock()
     // Read without the engine lock, which configuration changes hold across native calls.
@@ -47,11 +48,13 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
 
     init(
         makeEngine: @escaping @Sendable () -> any MicrophoneEngine,
-        readClock: @escaping @Sendable () throws -> MicrophoneClockReading
+        readClock: @escaping @Sendable () throws -> MicrophoneClockReading,
+        hal: MicrophoneHALCalls = .system
     ) {
 
         self.makeEngine = makeEngine
         self.readClock = readClock
+        self.hal = hal
     }
 
     static func system() -> NativeMicrophoneBinding {
@@ -65,7 +68,7 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
 
     func defaultInput() throws -> UInt32 {
 
-        try Self.readDefaultInput()
+        try Self.readDefaultInput(hal: hal)
     }
 
     func inputAvailable(_ input: UInt32) -> Bool {
@@ -77,18 +80,19 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         )
         var alive: UInt32 = 0
         var size = UInt32(MemoryLayout<UInt32>.size)
-        return AudioObjectGetPropertyData(input, &address, 0, nil, &size, &alive) == noErr && alive != 0
+        return hal.read(input, &address, 0, nil, &size, &alive) == noErr && alive != 0
     }
 
     func watchDefaultInput(_ changed: @escaping @Sendable (UInt32) -> Void) throws {
 
         var address = Self.defaultInputAddress
-        let listener: AudioObjectPropertyListenerBlock = { _, _ in
+        let hal = self.hal
+        let listener = MicrophoneListenerBlock(value: { _, _ in
             // A missing device is reported as the unknown device, so a held
             // disappearance fails just like a rebuild without an input.
-            changed((try? Self.readDefaultInput()) ?? kAudioObjectUnknown)
-        }
-        try Self.check(AudioObjectAddPropertyListenerBlock(
+            changed((try? Self.readDefaultInput(hal: hal)) ?? kAudioObjectUnknown)
+        })
+        try Self.check(hal.addListener(
             AudioObjectID(kAudioObjectSystemObject), &address, notifications, listener
         ), "watching the default input")
         defaultListener = listener
@@ -98,7 +102,7 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
 
         guard let listener = defaultListener else { return }
         var address = Self.defaultInputAddress
-        AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, notifications, listener)
+        _ = hal.removeListener(AudioObjectID(kAudioObjectSystemObject), &address, notifications, listener)
         defaultListener = nil
     }
 
@@ -210,12 +214,12 @@ final class NativeMicrophoneBinding: MicrophoneBinding, @unchecked Sendable {
         return { timer.cancel() }
     }
 
-    static func readDefaultInput() throws -> UInt32 {
+    static func readDefaultInput(hal: MicrophoneHALCalls = .system) throws -> UInt32 {
 
         var address = defaultInputAddress
         var device = AudioObjectID(kAudioObjectUnknown)
         var size = UInt32(MemoryLayout<AudioObjectID>.size)
-        try check(AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device), "reading the default input")
+        try check(hal.read(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device), "reading the default input")
         guard device != kAudioObjectUnknown else { throw CaptureError.noInput }
         return device
     }
