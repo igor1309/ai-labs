@@ -40,7 +40,12 @@ struct SessionCrashTests {
                 #expect(last.finalCount >= finalEntries)
                 let parts = last.text.components(separatedBy: "\n\n")
                 try #require(parts.count > last.finalCount)
-                let kept = parts[...last.finalCount].joined(separator: "\n\n") + "\n\n"
+                // Each final entry is whole, but the blank line after the last one may
+                // not be: a save cuts the file back to its final text, which may end
+                // in one newline, before writing what follows.
+                var kept = parts[...last.finalCount].joined(separator: "\n\n")
+                while kept.hasSuffix("\n") { kept.removeLast() }
+                kept += "\n"
                 let text = try await offPool { try String(contentsOf: url, encoding: .utf8) }
                 #expect(text.hasPrefix(kept))
             } catch {
